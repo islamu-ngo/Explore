@@ -1,0 +1,23 @@
+<!-- ABOUTME: Builds the real fair-return drain sources as an isolated Stryker mutation target. -->
+<!-- ABOUTME: Excludes unrelated generated Infrastructure integrations from mutation instrumentation. -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <Compile Include="..\..\..\src\Explore.Infrastructure\Waitlist\FairReturnOrchestrationDrainService.cs"
+             Link="Waitlist\FairReturnOrchestrationDrainService.cs" />
+    <Compile Include="..\..\..\src\Explore.Infrastructure\Waitlist\FairReturnOrchestrationDrainSettings.cs"
+             Link="Waitlist\FairReturnOrchestrationDrainSettings.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Explore.Application\Explore.Application.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

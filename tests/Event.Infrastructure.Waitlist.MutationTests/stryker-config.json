@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.Core/Stryker.Core/stryker-config.schema.json",
   "stryker-config": {
-    "project": "Explore.Infrastructure.csproj",
+    "project": "Event.Infrastructure.Waitlist.MutationTarget.csproj",
     "test-runner": "mtp",
     "thresholds": {
       "high": 90,

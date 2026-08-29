@@ -17,9 +17,6 @@
       "**/FairReturnWaitlist.cs{29959..31497}"
     ],
     "ignore-mutations": [
-      "string"
-    ],
-    "ignore-mutations": [
       "string.IsNullOrEmpty",
       "string.IsNullOrWhiteSpace"
     ],

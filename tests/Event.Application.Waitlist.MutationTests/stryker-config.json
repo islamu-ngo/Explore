@@ -12,8 +12,8 @@
       "json"
     ],
     "mutate": [
-      "**/FairReturnWaitlistHandlers.cs{546..2244}",
-      "**/FairReturnWaitlistHandlers.cs{12169..17118}"
+      "**/GetFairReturnWaitlistQueryHandler.cs",
+      "**/FairReturnWaitlistCommandHandlers.cs{10520..15474}"
     ],
     "coverage-analysis": "perTest",
     "disable-bail": false,
