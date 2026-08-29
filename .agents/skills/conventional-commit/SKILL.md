@@ -12,14 +12,16 @@ priority: high
 
 ## Invariants & Rules
 
-1. **Releasable Vertical Slices**: One commit is one complete vertical outcome. Bundle domain, application, persistence, API, Blazor UI, generated clients (`EventApiClient.g.cs`), schemas (`openapi_islamu-event.json`), migrations, tests, and docs together.
-2. **Never Commit Orphaned Generated Files**: Never isolate generated clients or schemas into a standalone commit when they belong to an underlying contract or feature change.
-3. **No Layer Scopes**: Scopes describe product capability or approved engineering concerns—never code layers or folders (`api`, `domain`, `persistence`, `blazor`, `client`, `dto` are forbidden).
-4. **Subject Quality**: Subject line must state user/operator benefit, use imperative mood, and remain clear without the body.
-5. **Breaking Changes**: Require `!`, non-empty `BREAKING CHANGE:` footer, and must never use `Changelog: skip`.
-6. **Internal Nonbreaking Work**: Commits of type `test`, `build`, `ci`, `refactor`, `style`, or internal `docs`/`fix` must carry both `Changelog: skip` and non-empty `Changelog-Reason: <reason>`.
-7. **Safe Staging**: Never use blind `git add .` or `git commit -a` on mixed working trees. Explicitly name staged files per atomic commit.
-8. **Release Metadata Commit**: Commit `B` is the sole commit whose terminal footers must be exactly `Changelog: skip` and `Changelog-Reason: release metadata commit`.
+1. **Releasable Vertical Slices**: One commit is one complete vertical outcome. Bundle domain, app, persistence, API, Blazor UI, generated clients (`EventApiClient.g.cs`), schemas (`openapi_islamu-event.json`), migrations, tests, and docs together.
+2. **No Orphaned Generated Code**: Generated clients/schemas must travel in the commit that triggered them.
+3. **No Layer Scopes**: Scopes describe capability/engineering concern—never code layers (`api`, `domain`, `persistence`, `blazor`, `client`, `dto` are forbidden).
+4. **Cross-Domain Precedence**: When a feature spans domains, select the primary initiating capability (`registration`).
+5. **Subject Quality**: State user/operator benefit in imperative mood; clear without reading the body.
+6. **Breaking Work & Change-Id**: Breaking changes require `!` and `BREAKING CHANGE:` footer. Governed security/migration work requires its change fragment and matching `Change-Id: CHG-...` footer.
+7. **Internal Nonbreaking Work**: Commits of type `test`, `build`, `ci`, `refactor`, `style`, or internal `docs`/`fix` must carry both `Changelog: skip` and non-empty `Changelog-Reason: <reason>`.
+8. **Safe Staging**: Never use blind `git add .` on mixed trees. Explicitly name staged files per atomic commit.
+9. **Execution Protocol**: Show proposed commit plan by default; execute stage-and-commit directly when explicitly instructed.
+10. **History Invariants**: Commit `B` is the sole commit whose terminal footers are `Changelog: skip` and `Changelog-Reason: release metadata commit`. Never rewrite published history on `develop` or release lines.
 
 ## Canonical Scope Registry
 
@@ -52,26 +54,22 @@ Changelog-Reason: concise explanation of why commit is excluded from public rele
 
 | Type | Meaning |
 |---|---|
-| `feat` | New user-visible capability |
-| `fix` | Restored expected behavior |
-| `perf` | Proven efficiency improvement |
-| `revert` | Intentional reversal |
-| `docs` | Documentation-only outcome |
-| `test/refactor/style/build/ci/chore` | Internal outcome (normally skipped from public notes) |
+| `feat` / `fix` / `perf` | User/operator capability, bugfix, or efficiency improvement |
+| `revert` / `docs` | Rollback with stated outcome, or documentation-only change |
+| `test/build/ci/refactor/chore` | Internal outcome (skipped from public release notes) |
 
-### CLI Recipe
+### CLI Recipes
 
 ```bash
-# 1. Stage exact files for one atomic outcome
-git add path/to/File1.cs path/to/File2.razor path/to/GeneratedClient.g.cs
-
-# 2. Commit non-interactively with separate -m arguments
+# Vertical feature commit (single-outcome staging)
+git add path/to/Domain.cs path/to/Page.razor path/to/ApiClient.g.cs
 git commit -m "feat(registration): present tenant-branded intermediary disclaimer on paid events" \
            -m "Format canonical directory notice dynamically based on tenant branding."
 
-# 3. For internal nonbreaking commits, append skip trailers:
+# Internal nonbreaking commit (with required skip trailers)
+git add path/to/ProjectionUpdater.cs
 git commit -m "fix(database): wrap session projection rebuilds in db execution strategy" \
-           -m "Execute projection rebuilds within execution strategies to withstand retries." \
+           -m "Execute projection rebuilds within execution strategies." \
            -m "Changelog: skip" \
            -m "Changelog-Reason: internal projection resilience enhancement"
 ```
@@ -80,11 +78,11 @@ git commit -m "fix(database): wrap session projection rebuilds in db execution s
 
 | ❌ Anti-Pattern | ✅ Best Practice | Why |
 |---|---|---|
-| `feat(api): add public disclaimer` | `feat(registration): present disclaimer on paid events` | Layer scope rejected; scope must be capability. |
-| `fix(persistence): use execution strategy` | `fix(database): wrap session projection rebuilds in db execution strategy` | `persistence` is a layer; use approved `database` scope. |
-| `chore: update openapi.json and client` | *[Bundle inside originating feature commit]* | Never split generated client code from triggering feature. |
-| `docs: fix readme and cla` | `docs(documentation): clarify legal entity status` | Explicit engineering scope and benefit-led subject. |
-| `test: update characterization tests` | `test(testing): harden persistence integration tests` | Descriptive subject and canonical scope. |
+| `feat(api): add disclaimer` | `feat(registration): present disclaimer on paid events` | Layer scope rejected; use product capability. |
+| `fix(persistence): retry query` | `fix(database): wrap session projection in execution strategy` | `persistence` is a layer; use `database` scope. |
+| `chore: update client` | *[Bundle in originating feature commit]* | Never split generated client from triggering feature. |
+| `docs: update cla` | `docs(documentation): clarify legal entity status` | Explicit engineering scope and benefit-led subject. |
+| `test: update tests` | `test(testing): harden persistence integration tests` | Descriptive subject and canonical scope. |
 
 ## Resources
 
