@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Tenant.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.Management;
 using Explore.Application.Features.Tenants.Requests.Commands;
 using Explore.Application.Responses;
@@ -76,9 +77,15 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
         var assignAdmin = dto.AssignCurrentUserAsTenantAdmin && request.RequestingUserId.HasValue;
         Guid plannedTenantId = Guid.CreateVersion7();
         Guid plannedBrandingDocumentId = Guid.CreateVersion7();
+        Guid plannedDirectoryOperatorIdentityDocumentId = Guid.CreateVersion7();
         DateTime occurredAt = DateTime.UtcNow;
         TenantSettingsDocument defaultBranding =
             TenantBrandingSettingsDocumentDefaults.Create(plannedTenantId, dto.FullName);
+        TenantSettingsDocument defaultIdentity = dto.DirectoryOperatorIdentity is null
+            ? TenantDirectoryOperatorIdentityDocumentDefaults.Create(plannedTenantId, dto.FullName)
+            : TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+                plannedTenantId,
+                dto.DirectoryOperatorIdentity.ToPayload());
 
         async Task<BaseCommandResponse<Guid>> CreateAsync(CancellationToken ct)
         {
@@ -103,20 +110,36 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
                 }
             }
 
-            TenantCreationOutcome creation = await _tenantCreationService.CreateInCurrentTransactionAsync(
-                new TenantCreationRequest(
-                    plannedTenantId,
-                    plannedBrandingDocumentId,
-                    dto.FullName,
-                    dto.Slug,
-                    statusId,
-                    request.RequestingUserId,
-                    occurredAt,
-                    defaultBranding.DocumentKey,
-                    defaultBranding.SchemaVersion,
-                    defaultBranding.DefaultsVersion,
-                    defaultBranding.PayloadJson),
-                ct);
+            TenantCreationOutcome creation;
+            try
+            {
+                creation = await _tenantCreationService.CreateInCurrentTransactionAsync(
+                    new TenantCreationRequest(
+                        plannedTenantId,
+                        dto.FullName,
+                        dto.Slug,
+                        statusId,
+                        request.RequestingUserId,
+                        occurredAt,
+                        new TenantBrandingDocumentSeed(
+                            plannedBrandingDocumentId,
+                            defaultBranding.SchemaVersion,
+                            defaultBranding.DefaultsVersion,
+                            defaultBranding.PayloadJson),
+                        new TenantDirectoryOperatorIdentityDocumentSeed(
+                            plannedDirectoryOperatorIdentityDocumentId,
+                            defaultIdentity.SchemaVersion,
+                            defaultIdentity.DefaultsVersion,
+                            defaultIdentity.PayloadJson)),
+                    ct);
+            }
+            catch (TenantDirectoryOperatorIdentityReadinessException exception)
+            {
+                return BaseCommandResponse.Failure<Guid>(
+                    exception.FailureCode,
+                    exception.Message,
+                    exception.ReasonCodes);
+            }
 
             if (assignAdmin)
             {
@@ -148,6 +171,9 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, B
             _typedSettingsDocumentResolver.InvalidateTenantDocumentCache(
                 tenantId,
                 SettingsDocumentKeys.Tenant.Branding);
+            _typedSettingsDocumentResolver.InvalidateTenantDocumentCache(
+                tenantId,
+                SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity);
         }
 
         return result;

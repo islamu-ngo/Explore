@@ -3,6 +3,34 @@ ABOUTME: Authoritative source for Explore.API patterns — middleware order, req
 
 # API Architecture
 
+## Structured Legal-Identity Contracts
+
+Authenticated tenant administration exposes:
+
+| Route | Operation | Contract |
+|---|---|---|
+| `GET /api/tenant/settings/documents/directory-operator-identity` | `GetTenantDirectoryOperatorIdentityDocument` | HAL document with grouped payload, capability readiness, concurrency revision, and authorized links |
+| `PATCH /api/tenant/settings/documents/directory-operator-identity` | `PatchTenantDirectoryOperatorIdentityDocument` | Presence-aware legal/contact/link groups plus expected concurrency revision |
+
+The PATCH binds tenant scope from the authenticated context, validates the draft
+in the Application handler, records actor audit, invalidates public caches, and
+returns `409` for stale revisions. HAL `_links.edit` is the client affordance
+authority.
+
+Anonymous public settings and shell responses contain separate
+`directoryOperator` and `instanceOperator` objects. If the exact tenant identity
+is unavailable for `PublicDisclosure`, both endpoints return non-cacheable RFC
+7807 `503` with stable `code: tenant_identity_unavailable`; no partial shell or
+branding fallback is cached.
+
+Paid checkout composition contains structured `directoryOperator`.
+`PaidOrderAcceptanceDisclosureDto` contains grouped `organizerMerchant`,
+`tenantDirectoryOperator`, and `instanceOperator` evidence plus a versioned
+acceptance template. Removed breaking fields include the former
+branding-derived directory prose and the prior flattened operator/provider
+acceptance properties. The checked-in OpenAPI document and generated NSwag
+client are the only browser contract source.
+
 > **Audience:** Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** API

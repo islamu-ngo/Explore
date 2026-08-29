@@ -222,11 +222,39 @@
     transform: translateY(-0.125rem);
 }
 
-.site-footer__directory-notice {
-    max-inline-size: 80ch;
+.site-footer__operator-disclosures {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-4);
     margin-block-start: var(--isl-space-4);
     padding-block-start: var(--isl-space-3);
     border-block-start: 1px solid var(--mud-palette-lines-default);
+}
+
+.site-footer__operator-disclosure {
+    display: grid;
+    align-content: start;
+    gap: var(--isl-space-2);
     overflow-wrap: anywhere;
     color: var(--mud-palette-text-primary);
+}
+
+.site-footer__operator-disclosure p {
+    margin: 0;
+}
+
+.site-footer__operator-legal-name {
+    color: var(--mud-palette-text-secondary);
+}
+
+.site-footer__operator-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2) var(--isl-space-3);
+}
+
+@media (max-width: 40rem) {
+    .site-footer__operator-disclosures {
+        grid-template-columns: 1fr;
+    }
 }

@@ -64,7 +64,7 @@ public sealed class GeneratedClientRecordArchitectureTests
         await Assert.That(source).Contains(PolicyStamp);
         await Assert.That(names)
             .IsEquivalentTo(classification.RecordTypeNames);
-        await Assert.That(records.Length).IsEqualTo(672);
+        await Assert.That(records.Length).IsEqualTo(681);
         await Assert.That(nonRecords).IsEmpty();
         await Assert.That(mutableProperties).IsEmpty();
     }

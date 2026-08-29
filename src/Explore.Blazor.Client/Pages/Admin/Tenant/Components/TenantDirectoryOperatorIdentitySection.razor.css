@@ -1,0 +1,68 @@
+/* ABOUTME: Isolated responsive layout for tenant directory-operator identity administration. */
+/* ABOUTME: Uses repository tokens, semantic fieldsets, and logical properties for RTL-safe forms. */
+
+.tenant-operator-identity,
+.tenant-operator-identity__header,
+.tenant-operator-identity__group,
+.tenant-operator-identity__readiness {
+    display: grid;
+    gap: var(--isl-space-4);
+}
+
+.tenant-operator-identity__group {
+    min-inline-size: 0;
+    margin: 0;
+    padding: var(--isl-space-4);
+    border: var(--isl-card-border);
+    border-radius: var(--isl-radius-card);
+}
+
+.tenant-operator-identity__group legend {
+    padding-inline: var(--isl-space-2);
+    color: var(--mud-palette-text-primary);
+    font-weight: 700;
+}
+
+.tenant-operator-identity__legal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--isl-space-4);
+}
+
+.tenant-operator-identity__readiness {
+    padding: var(--isl-space-4);
+    border-inline-start: var(--isl-space-1) solid var(--isl-color-info);
+    border-radius: var(--isl-radius-card);
+    background: color-mix(in oklch, var(--isl-color-info) 8%, var(--isl-color-surface));
+}
+
+.tenant-operator-identity__readiness ul {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin: 0;
+    padding-inline-start: var(--isl-space-6);
+}
+
+.tenant-operator-identity__validation,
+.tenant-operator-identity__conflict {
+    padding: var(--isl-space-4);
+    border-inline-start: var(--isl-space-1) solid var(--isl-color-error);
+    border-radius: var(--isl-radius-card);
+    background: color-mix(in oklch, var(--isl-color-error) 8%, var(--isl-color-surface));
+}
+
+.tenant-operator-identity__validation ul,
+.tenant-operator-identity__conflict dl {
+    margin-block-end: 0;
+}
+
+.tenant-operator-identity__actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 40rem) {
+    .tenant-operator-identity__legal-grid {
+        grid-template-columns: 1fr;
+    }
+}

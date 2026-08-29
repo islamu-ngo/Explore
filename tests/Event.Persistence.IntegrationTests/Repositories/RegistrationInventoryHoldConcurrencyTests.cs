@@ -801,7 +801,19 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             currentOrder.PlatformFeeTotalMinorSnapshot,
             currentOrder.PlatformContributionTotalMinorSnapshot,
             requestedAt ?? UtcNow.AddSeconds(1),
-            currentOrder.CurrencyCode);
+            currentOrder.CurrencyCode,
+            OrganizerPaymentRecipientSnapshot.Create(
+                seed.TenantId,
+                eventTarget.OrganizerActorId.Value,
+                connection.Id,
+                "stripe",
+                "platform-eu",
+                connection.ExternalAccountId,
+                connection.MerchantCountryCode!,
+                currentOrder.CurrencyCode,
+                instancePolicy.Id,
+                null,
+                requestedAt ?? UtcNow.AddSeconds(1)));
         return await service.ClaimAsync(
             new(
                 seed.TenantId,
@@ -963,13 +975,24 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
         string idempotencyKey,
         string? compositionRevision = null)
     {
+        OrganizerPaymentRecipientSnapshot recipient =
+            OrganizerPaymentRecipientSnapshot.Create(
+                order.TenantId,
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                "stripe",
+                "platform-eu",
+                "acct_race",
+                "BE",
+                order.CurrencyCode,
+                Guid.CreateVersion7(),
+                null,
+                UtcNow.AddMinutes(-5));
         PaymentAttempt attempt = PaymentAttempt.Create(
             Guid.CreateVersion7(),
             order.TenantId,
             order.Id,
-            OrganizerPaymentRecipientSnapshot.Create(
-                order.TenantId, Guid.CreateVersion7(), Guid.CreateVersion7(), "stripe", "platform-eu", "acct_race", "BE",
-                order.CurrencyCode, Guid.CreateVersion7(), null, UtcNow.AddMinutes(-5)),
+            recipient,
             "OrganizerDirect",
             "2026-08-20.acacia",
             compositionRevision ?? order.ConcurrencyStamp.ToString("N"),
@@ -993,12 +1016,13 @@ public sealed class RegistrationInventoryHoldConcurrencyTests(PostgreSqlContaine
             order.Id,
             order.EventId,
             attempt.CompositionRevision,
-            Guid.CreateVersion7(),
+            recipient.InstancePolicyVersionId,
             order.OrganizerDirectedTotalMinorSnapshot,
             order.PlatformFeeTotalMinorSnapshot,
             order.PlatformContributionTotalMinorSnapshot,
             UtcNow.AddMinutes(-2),
-            order.CurrencyCode));
+            order.CurrencyCode,
+            recipient));
         return attempt;
     }
 

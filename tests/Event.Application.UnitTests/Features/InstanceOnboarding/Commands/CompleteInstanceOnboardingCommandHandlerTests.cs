@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Models.PublicExperience;
@@ -16,6 +17,8 @@ using Explore.Application.Onboarding;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Documents;
+using Explore.Domain.Settings.Documents.Payloads;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -34,6 +37,8 @@ public class CompleteInstanceOnboardingCommandHandlerTests
     private readonly IActorRepository _actorRepository = Substitute.For<IActorRepository>();
     private readonly IUserExternalLoginRepository _externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
     private readonly ITenantRepository _tenantRepository = Substitute.For<ITenantRepository>();
+    private readonly ITenantCreationService _tenantCreationService = Substitute.For<ITenantCreationService>();
+    private readonly ITenantSettingsDocumentRepository _tenantSettingsDocumentRepository = Substitute.For<ITenantSettingsDocumentRepository>();
     private readonly ISystemSettingRepository _systemSettingRepository = Substitute.For<ISystemSettingRepository>();
     private readonly ISetupSecretProvider _setupSecretProvider = Substitute.For<ISetupSecretProvider>();
     private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
@@ -80,6 +85,29 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             TenantStatus = null!,
             TenantStatusId = (int)TenantStatusEnum.Active
         });
+        _tenantCreationService
+            .CreateInCurrentTransactionAsync(
+                Arg.Any<TenantCreationRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                TenantCreationRequest creationRequest = callInfo.ArgAt<TenantCreationRequest>(0);
+                return new TenantCreationOutcome(
+                    new Tenant
+                    {
+                        Id = creationRequest.TenantId,
+                        FullName = creationRequest.FullName,
+                        Slug = creationRequest.Slug,
+                        TenantStatus = null!,
+                        TenantStatusId = creationRequest.TenantStatusId
+                    },
+                    TenantBrandingSettingsDocumentDefaults.Create(
+                        creationRequest.TenantId,
+                        creationRequest.FullName),
+                    TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+                        creationRequest.TenantId,
+                        CreateDirectoryOperatorIdentity().ToPayload()));
+            });
         _roleRepository.GetByMasterCodeAsync("platform.admin").Returns(new Role
         {
             Id = (int)RoleEnum.Admin,
@@ -121,6 +149,8 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             _actorRepository,
             _externalLoginRepository,
             _tenantRepository,
+            _tenantCreationService,
+            _tenantSettingsDocumentRepository,
             _systemSettingRepository,
             _setupSecretProvider,
             _bootstrapAuditLogger,
@@ -142,6 +172,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             UserId = TestUserId,
             Settings = new CompleteInstanceOnboardingRequest
             {
+                DirectoryOperatorIdentity = CreateDirectoryOperatorIdentity(),
                 SiteProfile = new SelfHostOnboardingProfileDto
                 {
                     SiteName = "Community Events",
@@ -222,6 +253,101 @@ public class CompleteInstanceOnboardingCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_SingleTenantWithoutDirectoryIdentity_DoesNotCreateActiveTenant()
+    {
+        _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns((Tenant?)null);
+        _tenantRepository.Create(Arg.Any<Tenant>())
+            .Returns(call => call.Arg<Tenant>());
+        var command = new CompleteInstanceOnboardingCommand
+        {
+            UserId = TestUserId,
+            Settings = new CompleteInstanceOnboardingRequest
+            {
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = "Community Events",
+                    SupportEmail = "support@example.org",
+                    CanonicalUrl = "https://events.example.org/start",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("tenant_directory_operator_identity_incomplete");
+        await Assert.That(result.Errors).IsNull();
+        await _tenantCreationService.DidNotReceiveWithAnyArgs()
+            .CreateInCurrentTransactionAsync(default!, default);
+        await _tenantRepository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Test]
+    public async Task Handle_SingleTenant_CreatesActiveDefaultTenantThroughAtomicBoundary()
+    {
+        _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns((Tenant?)null);
+        TenantCreationRequest? capturedCreationRequest = null;
+        _tenantCreationService
+            .CreateInCurrentTransactionAsync(
+                Arg.Do<TenantCreationRequest>(request => capturedCreationRequest = request),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                TenantCreationRequest creationRequest = callInfo.ArgAt<TenantCreationRequest>(0);
+                return new TenantCreationOutcome(
+                    new Tenant
+                    {
+                        Id = creationRequest.TenantId,
+                        FullName = creationRequest.FullName,
+                        Slug = creationRequest.Slug,
+                        TenantStatus = null!,
+                        TenantStatusId = creationRequest.TenantStatusId
+                    },
+                    TenantBrandingSettingsDocumentDefaults.Create(
+                        creationRequest.TenantId,
+                        creationRequest.FullName),
+                    TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+                        creationRequest.TenantId,
+                        CreateDirectoryOperatorIdentity().ToPayload()));
+            });
+        var command = new CompleteInstanceOnboardingCommand
+        {
+            UserId = TestUserId,
+            Settings = new CompleteInstanceOnboardingRequest
+            {
+                DirectoryOperatorIdentity = CreateDirectoryOperatorIdentity("Explicit Directory Operator"),
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = "Instance Branding",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsTrue();
+        await Assert.That(capturedCreationRequest).IsNotNull();
+        await Assert.That(capturedCreationRequest!.TenantId).IsEqualTo(PlatformDefaults.DefaultTenantId);
+        await Assert.That(capturedCreationRequest.TenantStatusId).IsEqualTo((int)TenantStatusEnum.Active);
+        await Assert.That(capturedCreationRequest.ActorUserId).IsEqualTo(TestUserId);
+        await Assert.That(capturedCreationRequest.Branding.DocumentId.Version).IsEqualTo(7);
+        await Assert.That(capturedCreationRequest.DirectoryOperatorIdentity.DocumentId.Version).IsEqualTo(7);
+        TenantDirectoryOperatorIdentitySettings? identity =
+            JsonSerializer.Deserialize<TenantDirectoryOperatorIdentitySettings>(
+                capturedCreationRequest.DirectoryOperatorIdentity.PayloadJson,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await Assert.That(identity).IsNotNull();
+        await Assert.That(identity!.PublicName).IsEqualTo("Explicit Directory Operator");
+        await Assert.That(identity.PublicName).IsNotEqualTo("Instance Branding");
+        await _tenantRepository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Test]
     public async Task Handle_SingleTenant_WithDetachedActor_CreatesTenantUserByForeignKeyOnly()
     {
         var actorId = Guid.NewGuid();
@@ -243,6 +369,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             UserId = TestUserId,
             Settings = new CompleteInstanceOnboardingRequest
             {
+                DirectoryOperatorIdentity = CreateDirectoryOperatorIdentity(),
                 SiteProfile = new SelfHostOnboardingProfileDto
                 {
                     SiteName = "Community Events",
@@ -269,6 +396,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             UserId = TestUserId,
             Settings = new CompleteInstanceOnboardingRequest
             {
+                DirectoryOperatorIdentity = CreateDirectoryOperatorIdentity(),
                 InstanceName = "  Trimmed Community Events  ",
                 SiteProfile = new SelfHostOnboardingProfileDto
                 {
@@ -327,6 +455,8 @@ public class CompleteInstanceOnboardingCommandHandlerTests
 
         _ = _tenantRepository.DidNotReceive().GetById(Arg.Any<Guid>());
         _ = _tenantRepository.DidNotReceive().Create(Arg.Any<Tenant>());
+        await _tenantCreationService.DidNotReceiveWithAnyArgs()
+            .CreateInCurrentTransactionAsync(default!, default);
         _ = _tenantUserRepository.DidNotReceive().Create(Arg.Any<TenantUser>());
         _ = _tenantUserRoleGrantRepository.DidNotReceive().Create(Arg.Any<TenantUserRoleGrant>());
         _ = _tenantBrandingProvisioningService.DidNotReceive().EnsureTenantBrandingDocumentAsync(
@@ -355,6 +485,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             UserId = TestUserId,
             Settings = new CompleteInstanceOnboardingRequest
             {
+                DirectoryOperatorIdentity = CreateDirectoryOperatorIdentity(),
                 SiteProfile = new SelfHostOnboardingProfileDto
                 {
                     SiteName = "Community Events",
@@ -410,6 +541,7 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             UserId = TestUserId,
             Settings = new CompleteInstanceOnboardingRequest
             {
+                DirectoryOperatorIdentity = CreateDirectoryOperatorIdentity(),
                 InstanceName = "  Trimmed Instance Name  ",
                 SiteProfile = new SelfHostOnboardingProfileDto
                 {
@@ -429,6 +561,69 @@ public class CompleteInstanceOnboardingCommandHandlerTests
             setting.SettingKey == GovernanceSettingKeys.Branding.DisplayName
             && setting.Value == JsonSerializer.Serialize("Trimmed Instance Name")), Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task Handle_SingleTenantWithExistingDefaultTenant_UpdatesMandatoryIdentity()
+    {
+        Tenant existingTenant = new()
+        {
+            Id = PlatformDefaults.DefaultTenantId,
+            FullName = PlatformDefaults.DefaultTenantName,
+            Slug = PlatformDefaults.DefaultTenantSlug,
+            TenantStatus = null!,
+            TenantStatusId = (int)TenantStatusEnum.Active
+        };
+        TenantSettingsDocument existingIdentity = TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+            PlatformDefaults.DefaultTenantId,
+            CreateDirectoryOperatorIdentity("Old Operator").ToPayload());
+        _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns(existingTenant);
+        _tenantSettingsDocumentRepository
+            .GetTrackedByTenantAndDocumentKey(
+                PlatformDefaults.DefaultTenantId,
+                SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity,
+                Arg.Any<CancellationToken>())
+            .Returns(existingIdentity);
+        var command = new CompleteInstanceOnboardingCommand
+        {
+            UserId = TestUserId,
+            Settings = new CompleteInstanceOnboardingRequest
+            {
+                DirectoryOperatorIdentity = CreateDirectoryOperatorIdentity("Existing Tenant Operator"),
+                SiteProfile = new SelfHostOnboardingProfileDto
+                {
+                    SiteName = "Existing Tenant Brand",
+                    Locale = "en",
+                    TimeZone = "UTC"
+                }
+            }
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsTrue();
+        await _tenantSettingsDocumentRepository.Received(1).Update(existingIdentity);
+        TenantDirectoryOperatorIdentitySettings? payload =
+            JsonSerializer.Deserialize<TenantDirectoryOperatorIdentitySettings>(
+                existingIdentity.PayloadJson,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await Assert.That(payload!.PublicName).IsEqualTo("Existing Tenant Operator");
+        await _tenantCreationService.DidNotReceiveWithAnyArgs()
+            .CreateInCurrentTransactionAsync(default!, default);
+    }
+
+    private static TenantDirectoryOperatorIdentityInputDto CreateDirectoryOperatorIdentity(
+        string publicName = "Community Events") => new()
+    {
+        PublicName = publicName,
+        LegalName = "Community Events ASBL",
+        OperatorKindCode = "registered_organization",
+        JurisdictionCountryCode = "BE",
+        RegistrationIdentifier = "BE 0123.456.789",
+        PublicContactEmail = "legal@example.org",
+        LegalNoticeUrl = "https://example.org/legal",
+        TermsUrl = "https://example.org/terms",
+        PrivacyUrl = "https://example.org/privacy"
+    };
 
     private static bool ContainsDefaultHomeBlock(string value, string expectedTitle)
     {

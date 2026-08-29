@@ -6,14 +6,27 @@
 > **Audience:** Operators | Integrators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Commerce
-> **Last Verified:** 2026-08-27
+> **Last Verified:** 2026-08-29
 > **Source Anchors:** `Explore.Domain/PaymentAttempt.cs`, `Explore.Domain/OrganizerPaymentProviderConnection.cs`, `Explore.Domain/PaidEventPolicyVersion.cs`, `Explore.Domain/Services/Registration/PaidEventPolicyRules.cs`, `Explore.Application/Contracts/Payments/`, `Explore.Application/Contracts/Services/IOrganizerPaymentOnboardingProvider.cs`, `Explore.Application/Services/Registration/RegistrationPaymentAttemptClaimService.cs`, `Explore.Infrastructure/Payments/Stripe/`, `Explore.API/Controllers/PaidEventPolicySettingsController.cs`, `Explore.Blazor/Extensions/BffRegistrationPaymentEndpoints.cs`, `docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md`, `docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md`
 
 ISLAMU Event provides a robust, multi-tenant, and **provider-neutral payment architecture** for paid event ticketing. The subsystem is decoupled through Clean Architecture ports and adapters: domain and application logic remain completely independent of any specific payment vendor.
 
 ## Paid Checkout Activation Safety
 
-New paid Checkout is disabled by default and fails closed until `Payments:CheckoutGovernance` names the independent instance operator, official origin, complaint contact, refund language, statement descriptor, and charge type. The browser first reads exact server facts and explicitly acknowledges their SHA-256 revision. The resulting `PaidOrderAcceptanceSnapshot` pins merchant/operator status, delivery, line and aggregate money, refund/support/complaint, provider, and descriptor facts before a provider session can be created. Historical attempts remain readable and reconcilable with a null acceptance reference; they are never backfilled. A global or event stop-sale blocks new claim and dispatch while signed webhooks, reconciliation, support, and reads continue. Refund initiation is not implemented and is not a stop-sale capability.
+New paid Checkout is disabled by default and fails closed until startup-bound
+`Instance:OperatorIdentity` is complete and `Payments:CheckoutGovernance`
+defines complaint, refund, dispute, reconciliation, activation, statement, and
+charge-type operations. The browser first reads exact server-authored facts and
+explicitly acknowledges their SHA-256 revision. The resulting
+`PaidOrderAcceptanceSnapshot` pins the organizer actor, payment-connection ID,
+Connect platform ID, external account ID, merchant country, tenant directory
+document/revision, complete instance identity, separately grouped payment
+operations, delivery, typed lines, aggregate money, refund/support facts, and
+provider descriptor before a provider session can be created. Historical
+attempts remain readable and reconcilable with a null acceptance reference;
+they are never backfilled. A global or event stop-sale blocks new claim and
+dispatch while signed webhooks, reconciliation, support, and reads continue.
+Refund initiation is not implemented and is not a stop-sale capability.
 
 `OrganizerDirect` describes the technical direct-charge profile. It does not establish who legally controls an account, bears loss, or owes a remedy in a particular deployment. Operators must retain provider, contractual, legal, and operational evidence for those deployment-specific conclusions.
 
@@ -105,83 +118,73 @@ Under [`PaidEventPolicyRules`](../src/Explore.Domain/Services/Registration/PaidE
 
 ---
 
-## 3. Legal Disclaimers, Multi-Party Responsibilities & Dynamic Branding
+## 3. Structured Legal-Identity And Paid Acceptance
 
-In marketplace and community platform law (as well as Stripe Connect requirements), financial liability and commercial relationships involve distinct legal entities:
+The payment model preserves four explicit roles. It does not derive a legal
+identity from cosmetic branding and does not infer legal conclusions for an
+operator:
 
-| Role | System Scope | Example | Responsibility |
-|---|---|---|---|
-| **Platform Operator** | **Instance Level** | *ISLAMU Platform Inc.* | Runs the core software, manages the Stripe Connect platform account, provisions technical infrastructure, and oversees telemetry. |
-| **Directory Host / Portal** | **Tenant Level** | *Dallas Muslim Center Events* | Curates the community portal, manages categories, navigations, and local directory listings. |
-| **Merchant / Event Organizer** | **Organizer Actor** | *Youth Halaqa Club* | Direct merchant of record for the event; receives ticket funds in their connected Stripe account, fulfills event delivery, sets refund terms. |
-| **Buyer / Attendee** | **End User / Order** | *Jane Doe* | Purchases tickets, accepts organizer refund policies, and enters a direct sales contract with the Organizer. |
+| Role | Authority source | Paid responsibility represented by the system |
+|---|---|---|
+| Tenant directory operator | `tenant.directory-operator-identity` typed settings document | Public accountability for the tenant directory and its legal/contact links |
+| Instance operator | Startup-bound `Instance:OperatorIdentity` | General platform identity and operator legal/contact links |
+| Organizer merchant | Event organizer actor plus connected provider account | Recipient/merchant lineage for the direct charge |
+| Payment operations | `Payments:CheckoutGovernance` | Complaint, refund, dispute, reconciliation, activation, statement, and charge-type operations |
 
-### Dynamic Directory Intermediary Disclaimer
+`PaidCommerce` readiness is an intersection, not a fallback chain. Paid event
+publication and Checkout activation require a complete tenant directory
+operator identity, a complete instance operator identity, active payment
+operations, current policies, and an eligible organizer payment connection.
+Missing or corrupt tenant identity blocks the operation with stable reason
+codes; branding is never consulted as a substitute.
 
-When paid events are enabled for a tenancy (i.e. Instance `IsPaymentsEnabled = true` AND Tenant `IsPaymentsEnabled = true`), the platform dynamically injects the canonical intermediary disclaimer:
+Before provider handoff, `PaidOrderAcceptanceService` returns a structured
+`PaidOrderAcceptanceDisclosureDto` containing:
 
-> **"{BrandName} provides an event discovery and management directory only. {BrandName} does not process ticket sales or act as event organizer. Any financial transaction or contract is strictly between the attendee and the external organizer."**
+- a code-owned, versioned acceptance template identifier and exact text;
+- organizer actor plus immutable payment-connection, Connect-platform,
+  external-account, and merchant-country lineage;
+- the exact tenant directory document/revision and normalized identity facts;
+- the exact instance operator identity, including legal name, operator kind,
+  and optional registration identifier;
+- a separate `paymentOperations` group for complaint, refund, dispute,
+  reconciliation, activation, statement, and charge-type facts;
+- policy, schedule, money, line, and support facts.
 
-#### Dynamic Author / Branding Resolution Rules
-
-The `{BrandName}` token interpolates dynamically based on the tenancy and deployment mode:
-
-```mermaid
-flowchart TD
-    Mode{Deployment Mode?}
-    Mode -->|SingleTenant| Single[Use Instance Branding / AppSetting DisplayName]
-    Mode -->|MultiTenant| Multi[Query Tenant Branding Document]
-
-    Multi -->|Tenant DisplayName set & unlocked| TenantName[Use Tenant DisplayName]
-    Multi -->|Tenant DisplayName empty or locked| FallbackInstance[Fallback to Instance DisplayName]
-    FallbackInstance -->|Instance DisplayName empty| DefaultFallback[Fallback to 'ISLAMU']
-```
-
-1. **Multi-Tenant Mode**:
-   - Primary: Uses the tenant's `BrandingSettings.DisplayName` from `SettingsDocumentKeys.Tenant.Branding` (e.g., *"Dallas Muslim Center"*).
-   - Fallback: If unconfigured or locked by instance governance (`displayName.IsLocked == true`), gracefully falls back to the instance-level display name (`GovernanceSettingKeys.Branding.DisplayName`), and finally to default `"ISLAMU"`.
-2. **Single-Tenant Mode**:
-   - The instance is the single tenant. It directly uses the instance-level `Branding.DisplayName` (or default `"ISLAMU"`).
-
-### Dynamic Disclaimer Flow & Touchpoints
+The browser sends only the `DisclosureRevision` and explicit acknowledgement.
+The server recomputes the disclosure, rejects stale evidence, and persists an
+immutable `PaidOrderAcceptanceSnapshot`. Any directory identity revision,
+instance identity fact, payment-operation fact, organizer actor, connection,
+platform, external account, merchant country, provider descriptor, policy,
+schedule, line, or money change invalidates an earlier acceptance. Claim-time
+fencing repeats the exact recipient comparison before any payment-attempt or
+dispatch write.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Attendee as Attendee / Buyer
-    participant UI as Blazor Client (TicketSelection / EventDetail / Footer)
-    participant App as Application (PaidOrderAcceptanceService / PublicExperience)
-    participant Domain as Domain (PaidEventPolicyRules / LegalDisclaimerFormatter)
+    actor Buyer
+    participant UI as Blazor Checkout
+    participant App as Application
+    participant Tenant as Tenant Identity Document
+    participant Instance as Instance Operator Identity
+    participant Provider as Organizer Payment Provider
 
-    Note over App,Domain: 1. Policy & Payment Activation Check
-    App->>Domain: IsPaymentsEnabled(instancePolicy, tenantPolicy)
-    Domain-->>App: True (Paid events active for tenancy)
-
-    Note over App: 2. Dynamic Branding Interpolation
-    App->>App: Resolve effective BrandDisplayName
-    App->>Domain: FormatDirectoryDisclaimer(brandDisplayName)
-    Domain-->>App: Formatted Legal Text
-
-    Note over UI,App: 3. Delivery across Buyer-Facing Surfaces
-    App-->>UI: PaidOrderAcceptanceDisclosureDto / PublicExperienceSettingsDto
-    UI-->>Attendee: Display Intermediary Disclaimer in Event Details, Ticket Selection & Checkout
+    App->>Tenant: Evaluate PaidCommerce readiness
+    App->>Instance: Read immutable startup identity
+    App->>Provider: Resolve organizer recipient lineage
+    App-->>UI: Structured multi-party disclosure + revision
+    Buyer->>UI: Acknowledge revision
+    UI->>App: Revision + acknowledgement
+    App->>App: Recompose and compare exact facts
+    App-->>Provider: Handoff only when evidence is fresh
 ```
 
-### Surface Presentation Table
-
-| Surface | Component / Handler | Behavior when Paid Events Enabled |
-|---|---|---|
-| **Paid Order Acceptance** | `PaidOrderAcceptanceService.DescribeAsync()` | Injects disclaimer into `PaidOrderAcceptanceDisclosureDto` and includes it in the cryptographic SHA-256 `DisclosureRevision` hash acknowledged before Stripe handoff. |
-| **Ticket Selection** | `TicketSelection.razor` | Displays prominent legal callout above ticket reservation options. |
-| **Event Details** | `EventDetail.razor` | Renders directory intermediary disclaimer inside the Participation / Pricing section for paid events. |
-| **Payment Status / Return** | `PaymentStatusPanel.razor`, `OrderRecovery.razor` | Displays directory disclaimer during order summary and payment confirmation. |
-| **Public Footer** | `PublicExperienceSettingsDto`, `Footer.razor` | Displays directory legal disclaimer in public footer when tenancy has paid events enabled. |
-
-### Directory Disclaimer vs. Operator Payment Disclosure
-
-It is critical to distinguish between the **Tenant Directory Disclaimer** and the **Instance Operator Disclosure**:
-* **Tenant Directory Disclaimer**: Uses the **Tenant Brand** (e.g. *Dallas Muslim Center*) to clarify to local community members that the host organization/directory is not organizing or holding ticket revenue for third-party events listed on its portal.
-* **Instance Operator Disclosure**: Uses the **Instance Operator Identity** (`IPaidCheckoutGovernance`), providing Stripe Connect and consumer-protection disclosures (legal entity name, registered country, operator terms of service, and dispute/complaint contacts).
+The public footer renders the tenant **Directory operator** and instance
+**Platform operator** separately. Paid event details and ticket selection render
+the structured tenant directory operator; payment review renders organizer,
+directory, and instance groups. No prose disclaimer DTO, branding interpolation,
+dual read, or compatibility alias remains.
 
 ---
 
@@ -456,7 +459,62 @@ tenant narrowing; `Portable` flattens the active safe policy while explicitly
 marking sovereign values omitted and locked. Neither export claims refund,
 liability, dispute, or provider behavior.
 
-## 12. Related Documentation & Decisions
+## 12. Event-Bound Add-On Commerce
+
+Event add-ons are organizer-authored optional commerce items in a separate
+versioned catalog. One event catalog may contain multiple items. Every item
+owns its immutable name, integer-minor-unit unit price, finite quantity,
+fulfillment disclosure, and refund disclosure.
+
+Buyer selection is bounded to the original registration-order checkout:
+
+1. the browser submits catalog item IDs and quantities only;
+2. the browser also submits the exact catalog ID it was shown;
+3. the server resolves that still-published tenant/event catalog, pins it to
+   the order, and rejects a replaced or retired catalog instead of silently
+   changing the offer;
+4. checked `long` multiplication creates separate add-on line snapshots;
+5. a serializable item/order/line fence reserves finite stock;
+6. the registration order discloses add-on and grand totals before payment
+   handoff.
+
+Add-ons do not introduce a new platform-fee authority. Phase 7 preserves the
+order's already-pinned platform fee while adding the add-on amount to the
+organizer-directed total. A later fee on add-ons requires an explicit paid
+event policy and I-VSD decision; it must not be inferred from ticket fees.
+Ticket promotions remain scoped to ticket lines and do not discount add-on
+lines unless a later explicit add-on promotion policy is approved.
+
+Refund allocation and provider-confirmed refund are distinct. The add-on API
+may report `allocated_pending_provider` after exact quantity/value allocation,
+but it never labels that amount succeeded or refunded until the existing
+provider reconciliation authority confirms it. Pending allocation does not
+release stock for resale. Only a later provider-confirmed refund transition may
+release add-on stock. Fulfillment and refund replay are idempotent and never
+mutate tickets, participant readiness, credentials, ticket capacity, admission,
+or check-in.
+
+Refund allocation requires the exact latest provider-reconciled `Succeeded`
+payment ID and amount for the order. Provider failure marks the allocation
+failed and reopens refundable quantity. Provider success releases stock
+atomically; if stock release cannot complete, the durable
+`provider_confirmed_inventory_release_pending` state preserves provider truth
+for recovery instead of reverting it to pending.
+
+The add-on allocation, generic `RefundAttempt`, and PII-free refund dispatch
+outbox message commit in one serializable transaction. `RefundOperationId`
+therefore identifies the canonical `RefundAttempt`; it is not a browser-
+invented provider authority. Dispatch and reconciliation synchronize terminal
+provider evidence back into the add-on allocation idempotently.
+
+The catalog response discloses the current maximum selectable quantity and the
+order response discloses the current maximum refundable quantity. These are
+neutral operational limits, not scarcity-pressure copy.
+
+Specialist-system boundaries remain unchanged: Event does not become the
+merchant's accounting, tax, invoice, credit-note, banking, or escrow system.
+
+## 13. Related Documentation & Decisions
 
 - [ADR-022: Paid Event Commerce And Stripe Connect](adr/ADR-022-paid-event-commerce-and-stripe-connect.md)
 - [ADR-024: External Business Integrations And Protected Payout Boundaries](adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md)

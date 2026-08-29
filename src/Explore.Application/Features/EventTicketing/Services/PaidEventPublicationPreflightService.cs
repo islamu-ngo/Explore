@@ -10,6 +10,7 @@ using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Registration;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Application.Features.EventTicketing.Services;
 
@@ -23,8 +24,12 @@ public sealed class PaidEventPublicationPreflightService(
     IAuthorizationProvider authorization,
     ITenantContext tenant,
     IOrganizerPaymentCommerceConfiguration commerceConfiguration,
+    ITenantDirectoryOperatorReadinessEvaluator directoryOperatorReadiness,
     IPaidCheckoutActivationService checkoutActivation)
 {
+    private readonly ITenantDirectoryOperatorReadinessEvaluator _directoryOperatorReadiness =
+        directoryOperatorReadiness;
+
     public async Task<PaidEventPublicationPreflightDto> AssessAsync(Guid eventId, CancellationToken cancellationToken)
     {
         Event? eventTarget = await events.GetEventWithDetails(eventId);
@@ -50,6 +55,19 @@ public sealed class PaidEventPublicationPreflightService(
         }
 
         var blockers = new List<PaidEventPublicationPreflightBlockerDto>();
+        TenantDirectoryOperatorReadinessAssessment directoryIdentity =
+            await _directoryOperatorReadiness.EvaluateAsync(
+                eventTarget.TenantId,
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                cancellationToken);
+        if (!directoryIdentity.IsReady)
+        {
+            blockers.Add(Block(
+                "tenant_directory_operator_identity_unavailable",
+                "Tenant directory operator identity is unavailable for paid commerce."));
+            return Result(eventTarget, draft.Id, isPaid, blockers);
+        }
+
         PaidCheckoutActivationResult saleControl = await checkoutActivation.EvaluateSaleControlAsync(
             eventTarget.TenantId, eventTarget.Id, cancellationToken);
         if (!saleControl.IsActive)

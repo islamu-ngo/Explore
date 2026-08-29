@@ -420,12 +420,21 @@
                         <div class="event-registration-card__body">
                             @if (IsCancelledEvent())
                             {
-                                <div class="d-flex align-center gap-4">
+                                <div class="d-flex align-center gap-4"
+                                     data-testid="event-detail-cancelled">
                                     <MudIcon Icon="@Icons.Material.Filled.EventBusy" Color="Color.Error" Size="Size.Large" />
                                     <div>
                                         <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Event Cancelled</MudText>
                                         <MudText Typo="Typo.body2" Color="Color.Secondary">This event is no longer accepting registrations.</MudText>
                                     </div>
+                                </div>
+                            }
+                            else if (PaidRegistrationIdentityUnavailable)
+                            {
+                                <div role="alert"
+                                     aria-live="assertive"
+                                     data-testid="event-detail-paid-identity-unavailable">
+                                    @T("eventDetail.identityUnavailable", "Paid registration is unavailable because the directory operator identity could not be verified.")
                                 </div>
                             }
                             else if (IsPastEvent() || _eventDetails.EventStatusMasterCode == "COMPLETED")
@@ -463,16 +472,34 @@
                                 <AppButton Href="@($"/auth/login?returnUrl={Uri.EscapeDataString($"/registration/events/{_eventDetails.Id}/tickets")}")">Sign in to register</AppButton>
                             }
 
-                            @if (ShouldShowPaidEventDirectoryDisclaimer)
+                            @if (ShouldShowPaidEventDirectoryOperator && _directoryOperator is not null)
                             {
                                 <aside class="event-registration-card__directory-notice"
                                        role="note"
-                                       aria-labelledby="event-paid-directory-heading"
-                                       data-testid="event-detail-paid-event-directory-disclaimer">
-                                    <MudText Id="event-paid-directory-heading" Typo="Typo.subtitle2" HtmlTag="p">
-                                        <span lang="en" dir="ltr">About paid ticket transactions</span>
+                                       aria-labelledby="event-directory-operator-heading"
+                                       data-testid="event-detail-directory-operator-disclosure">
+                                    <MudText Id="event-directory-operator-heading" Typo="Typo.subtitle2" HtmlTag="h3">
+                                        @T("eventDetail.directoryOperator", "Directory operator")
                                     </MudText>
-                                    <MudText Typo="Typo.body2"><span lang="en" dir="ltr">@_paidEventDirectoryDisclaimer</span></MudText>
+                                    <MudText Typo="Typo.body2">
+                                        <bdi dir="auto">@_directoryOperator.PublicName</bdi> (<bdi dir="auto">@_directoryOperator.LegalName</bdi>)
+                                    </MudText>
+                                    <MudText Typo="Typo.caption">
+                                        <bdi dir="ltr" lang="en">@_directoryOperator.JurisdictionCountryCode</bdi>
+                                        @if (!string.IsNullOrWhiteSpace(_directoryOperator.RegistrationIdentifier))
+                                        {
+                                            <span dir="ltr" lang="en"> · @_directoryOperator.RegistrationIdentifier</span>
+                                        }
+                                    </MudText>
+                                    <div class="event-registration-card__directory-links">
+                                        <a href="mailto:@_directoryOperator.PublicContactEmail" dir="ltr">@T("eventDetail.contact", "Contact")</a>
+                                        <a href="@_directoryOperator.LegalNoticeUrl" dir="ltr" rel="noopener">@T("eventDetail.legalNotice", "Legal notice")</a>
+                                        @if (!string.IsNullOrWhiteSpace(_directoryOperator.TermsUrl))
+                                        {
+                                            <a href="@_directoryOperator.TermsUrl" dir="ltr" rel="noopener">@T("eventDetail.terms", "Terms")</a>
+                                        }
+                                        <a href="@_directoryOperator.PrivacyUrl" dir="ltr" rel="noopener">@T("eventDetail.privacy", "Privacy")</a>
+                                    </div>
                                 </aside>
                             }
                         </div>

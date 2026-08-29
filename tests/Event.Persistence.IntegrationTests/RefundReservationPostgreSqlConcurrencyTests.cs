@@ -263,7 +263,15 @@ public sealed class RefundReservationPostgreSqlConcurrencyTests(RefundPostgreSql
         IReadOnlyList<long>? lineTotals = null) =>
         PaidOrderAcceptanceSnapshot.Create(
             paymentId, tenantId, tenantId, orderId, Guid.CreateVersion7(), "refund-race", "disclosure-1",
-            "Example Organizer", PaidCheckoutOperatorDisclosure.Create(
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateIdentifier,
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateText,
+            Guid.CreateVersion7(),
+            "Example Organizer",
+            PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
+                Guid.CreateVersion7(), Guid.CreateVersion7(), "Community Events", "Community Events ASBL",
+                "registered_organization", "BE", null, "contact@example.test", "https://example.test/legal",
+                "https://example.test/terms", "https://example.test/privacy"),
+            PaidCheckoutOperatorDisclosure.Create(
                 Guid.CreateVersion7(), "Example Operator", false, "https://events.example.test", "BE",
                 "https://events.example.test", "https://events.example.test/legal", "https://events.example.test/terms",
                 "https://events.example.test/privacy", "complaints@example.test", "Trust and Safety", "Payments Operations",

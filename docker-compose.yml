@@ -127,6 +127,31 @@ x-api-runtime-env: &api-runtime-env
   AUTOMAPPER_COMMERCIAL_VERSION: ${AUTOMAPPER_COMMERCIAL_VERSION:-false}
   MEDIATR_COMMERCIAL_VERSION: ${MEDIATR_COMMERCIAL_VERSION:-false}
 
+x-instance-operator-identity-env: &instance-operator-identity-env
+  INSTANCE__OPERATORIDENTITY__OPERATORID: ${INSTANCE__OPERATORIDENTITY__OPERATORID:-}
+  INSTANCE__OPERATORIDENTITY__PUBLICNAME: ${INSTANCE__OPERATORIDENTITY__PUBLICNAME:-}
+  INSTANCE__OPERATORIDENTITY__LEGALNAME: ${INSTANCE__OPERATORIDENTITY__LEGALNAME:-}
+  INSTANCE__OPERATORIDENTITY__ISOFFICIALINSTANCE: ${INSTANCE__OPERATORIDENTITY__ISOFFICIALINSTANCE:-false}
+  INSTANCE__OPERATORIDENTITY__OFFICIALORIGIN: ${INSTANCE__OPERATORIDENTITY__OFFICIALORIGIN:-}
+  INSTANCE__OPERATORIDENTITY__OPERATORKINDCODE: ${INSTANCE__OPERATORIDENTITY__OPERATORKINDCODE:-}
+  INSTANCE__OPERATORIDENTITY__JURISDICTIONCOUNTRYCODE: ${INSTANCE__OPERATORIDENTITY__JURISDICTIONCOUNTRYCODE:-}
+  INSTANCE__OPERATORIDENTITY__REGISTRATIONIDENTIFIER: ${INSTANCE__OPERATORIDENTITY__REGISTRATIONIDENTIFIER:-}
+  INSTANCE__OPERATORIDENTITY__PUBLICCONTACTEMAIL: ${INSTANCE__OPERATORIDENTITY__PUBLICCONTACTEMAIL:-}
+  INSTANCE__OPERATORIDENTITY__WEBSITEURL: ${INSTANCE__OPERATORIDENTITY__WEBSITEURL:-}
+  INSTANCE__OPERATORIDENTITY__LEGALNOTICEURL: ${INSTANCE__OPERATORIDENTITY__LEGALNOTICEURL:-}
+  INSTANCE__OPERATORIDENTITY__TERMSURL: ${INSTANCE__OPERATORIDENTITY__TERMSURL:-}
+  INSTANCE__OPERATORIDENTITY__PRIVACYURL: ${INSTANCE__OPERATORIDENTITY__PRIVACYURL:-}
+
+x-payment-operations-env: &payment-operations-env
+  PAYMENTS__CHECKOUTGOVERNANCE__COMPLAINTOWNER: ${PAYMENTS__CHECKOUTGOVERNANCE__COMPLAINTOWNER:-}
+  PAYMENTS__CHECKOUTGOVERNANCE__REFUNDOWNER: ${PAYMENTS__CHECKOUTGOVERNANCE__REFUNDOWNER:-}
+  PAYMENTS__CHECKOUTGOVERNANCE__DISPUTEOWNER: ${PAYMENTS__CHECKOUTGOVERNANCE__DISPUTEOWNER:-}
+  PAYMENTS__CHECKOUTGOVERNANCE__RECONCILIATIONOWNER: ${PAYMENTS__CHECKOUTGOVERNANCE__RECONCILIATIONOWNER:-}
+  PAYMENTS__CHECKOUTGOVERNANCE__ACTIVATIONSTATUS: ${PAYMENTS__CHECKOUTGOVERNANCE__ACTIVATIONSTATUS:-suspended}
+  PAYMENTS__CHECKOUTGOVERNANCE__REFUNDPOLICYLANGUAGETAG: ${PAYMENTS__CHECKOUTGOVERNANCE__REFUNDPOLICYLANGUAGETAG:-}
+  PAYMENTS__CHECKOUTGOVERNANCE__STATEMENTDESCRIPTOR: ${PAYMENTS__CHECKOUTGOVERNANCE__STATEMENTDESCRIPTOR:-}
+  PAYMENTS__CHECKOUTGOVERNANCE__CHARGETYPE: ${PAYMENTS__CHECKOUTGOVERNANCE__CHARGETYPE:-direct-charge}
+
 x-payment-api-env: &payment-api-env
   PublicBaseUrl: ${PUBLIC_BASE_URL:-}
   Payments__Stripe__Mode: ${PAYMENTS_STRIPE_MODE:-Test}
@@ -436,7 +461,7 @@ services:
       context: .
       dockerfile: src/Explore.API/Dockerfile
     environment:
-      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *database-env, *database-runtime-env, *privacy-erasure-runtime-env, *api-runtime-env, *payment-api-env, *ai-env, *geocoding-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
+      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *database-env, *database-runtime-env, *privacy-erasure-runtime-env, *api-runtime-env, *instance-operator-identity-env, *payment-operations-env, *payment-api-env, *ai-env, *geocoding-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
@@ -455,6 +480,12 @@ services:
       Cerbos__AdminPasswordHash: ${CERBOS_ADMIN_PASSWORD_HASH:-}
     ports:
       - "${API_HTTP_PORT:-7039}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     extra_hosts:
       - "keycloak.localhost:host-gateway"
       - "minio.localhost:host-gateway"
@@ -521,7 +552,7 @@ services:
       - "minio.localhost:host-gateway"
     depends_on:
       islamu-event-api:
-        condition: service_started
+        condition: service_healthy
       keycloak:
         condition: service_healthy
       keycloak-init:

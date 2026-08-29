@@ -59,6 +59,8 @@ public static class ResourceDescriptorRegistry
 
         // Tenant Settings
         [typeof(TenantBrandingSettingsDocumentDto)] = global::Explore.Application.Authorization.ResourceKinds.TenantSetting,
+        [typeof(TenantDirectoryOperatorIdentityDocumentDto)] =
+            global::Explore.Application.Authorization.ResourceKinds.TenantSetting,
 
         // Event
         [typeof(EventDto)] = global::Explore.Application.Authorization.ResourceKinds.Event,

@@ -3,12 +3,14 @@
 
 namespace Explore.Application.DTOs.RegistrationOrders;
 
+using Explore.Application.DTOs.PublicExperience;
+
 public sealed record RegistrationCheckoutCompositionDto
 {
     public Guid EventId { get; init; }
     public Guid TicketCatalogVersionId { get; init; }
     public string CurrencyCode { get; init; } = string.Empty;
-    public string? PaidEventDirectoryDisclaimer { get; init; }
+    public TenantDirectoryOperatorPublicDto? DirectoryOperator { get; init; }
     public IReadOnlyList<RegistrationCheckoutTicketTypeDto> TicketTypes { get; init; } = [];
 }
 

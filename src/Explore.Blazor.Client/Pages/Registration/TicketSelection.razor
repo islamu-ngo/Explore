@@ -5,22 +5,42 @@
 @inject IRegistrationOrderService RegistrationOrderService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
+@inject ITranslationService Translation
 
 <PageTitle>Select tickets</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="ticket-selection">
     <MudText Typo="Typo.h4" HtmlTag="h1">Select tickets</MudText>
 
-    @if (!_isLoading && !string.IsNullOrWhiteSpace(_composition?.PaidEventDirectoryDisclaimer))
+    @if (!_isLoading && _composition?.DirectoryOperator is { } directoryOperator)
     {
         <aside class="ticket-selection__directory-notice"
                role="note"
-               aria-labelledby="paid-event-directory-heading"
-               data-testid="ticket-selection-paid-event-directory-disclaimer">
-            <MudText Id="paid-event-directory-heading" Typo="Typo.subtitle1" HtmlTag="h2">
-                <span lang="en" dir="ltr">About paid ticket transactions</span>
+               aria-labelledby="directory-operator-heading"
+               data-testid="ticket-selection-directory-operator">
+            <MudText Id="directory-operator-heading" Typo="Typo.subtitle1" HtmlTag="h2">
+                @T("ticketSelection.directoryOperator", "Directory operator")
             </MudText>
-            <MudText Typo="Typo.body2"><span lang="en" dir="ltr">@_composition.PaidEventDirectoryDisclaimer</span></MudText>
+            <MudText Typo="Typo.body2">
+                <bdi dir="auto">@directoryOperator.PublicName</bdi>
+                <span class="ticket-selection__legal-name">(<bdi dir="auto">@directoryOperator.LegalName</bdi>)</span>
+            </MudText>
+            <MudText Typo="Typo.caption">
+                <bdi dir="ltr" lang="en">@directoryOperator.JurisdictionCountryCode</bdi>
+                @if (!string.IsNullOrWhiteSpace(directoryOperator.RegistrationIdentifier))
+                {
+                    <span dir="ltr" lang="en"> · @directoryOperator.RegistrationIdentifier</span>
+                }
+            </MudText>
+            <div class="ticket-selection__directory-links">
+                <a href="mailto:@directoryOperator.PublicContactEmail" dir="ltr">@T("ticketSelection.contact", "Contact")</a>
+                <a href="@directoryOperator.LegalNoticeUrl" dir="ltr" rel="noopener">@T("ticketSelection.legalNotice", "Legal notice")</a>
+                @if (!string.IsNullOrWhiteSpace(directoryOperator.TermsUrl))
+                {
+                    <a href="@directoryOperator.TermsUrl" dir="ltr" rel="noopener">@T("ticketSelection.terms", "Terms")</a>
+                }
+                <a href="@directoryOperator.PrivacyUrl" dir="ltr" rel="noopener">@T("ticketSelection.privacy", "Privacy")</a>
+            </div>
         </aside>
     }
 
@@ -31,6 +51,14 @@
     else if (_tickets.Count == 0)
     {
         <div role="alert">Tickets are not available for this event.</div>
+    }
+    else if (HasPaidTickets && _composition?.DirectoryOperator is null)
+    {
+        <div role="alert"
+             aria-live="assertive"
+             data-testid="paid-checkout-identity-unavailable">
+            @T("ticketSelection.identityUnavailable", "Paid tickets are unavailable because the directory operator identity could not be verified.")
+        </div>
     }
     else
     {
@@ -51,9 +79,18 @@
                 {
                     @if (state.Ticket.SlidingScaleOptions is { Count: > 0 })
                     {
-                        <MudSlider T="int" Min="0" Max="@(state.Ticket.SlidingScaleOptions.Count - 1)" Step="1" @bind-Value="state.SlidingScaleIndex" aria-label="Choose sliding-scale price" />
-                        <MudText Typo="Typo.body2">You pay @RegistrationOrderMoneyFormatter.Format(state.SelectedSlidingScaleOption!.BuyerPriceMinor, _composition?.CurrencyCode)</MudText>
-                        <MudText Typo="Typo.body2">Organizer earns @RegistrationOrderMoneyFormatter.Format(state.SelectedSlidingScaleOption!.OrganizerEarningsMinor, _composition?.CurrencyCode)</MudText>
+                        <MudSlider T="int"
+                                   Min="0"
+                                   Max="@(state.Ticket.SlidingScaleOptions.Count - 1)"
+                                   Step="1"
+                                   @bind-Value="state.SlidingScaleIndex"
+                                   aria-label="@T("ticketSelection.slidingScale", "Choose sliding-scale price")"
+                                   aria-valuetext="@SlidingScaleValueText(state)"
+                                   aria-describedby="@state.MonetaryOutputId" />
+                        <output id="@state.MonetaryOutputId" aria-live="off">
+                            <MudText Typo="Typo.body2">@T("ticketSelection.youPay", "You pay") @RegistrationOrderMoneyFormatter.Format(state.SelectedSlidingScaleOption!.BuyerPriceMinor, _composition?.CurrencyCode)</MudText>
+                            <MudText Typo="Typo.body2">@T("ticketSelection.organizerEarns", "Organizer earns") @RegistrationOrderMoneyFormatter.Format(state.SelectedSlidingScaleOption!.OrganizerEarningsMinor, _composition?.CurrencyCode)</MudText>
+                        </output>
                     }
                     else
                     {
@@ -68,7 +105,17 @@
             <div role="alert">@_error</div>
         }
 
-        <AppButton Disabled="_isSubmitting" OnClick="StartAsync">Reserve selected tickets</AppButton>
+        <AppButton Disabled="_isSubmitting"
+                   OnClick="StartAsync"
+                   aria-busy="@_isSubmitting.ToString().ToLowerInvariant()"
+                   data-testid="ticket-reservation-action">
+            @(_isSubmitting
+                ? T("ticketSelection.reserving", "Reserving selected tickets…")
+                : T("ticketSelection.reserve", "Reserve selected tickets"))
+        </AppButton>
+        <div role="status" aria-live="polite" aria-atomic="true">
+            @(_isSubmitting ? T("ticketSelection.reservingStatus", "Reservation is in progress.") : null)
+        </div>
     }
 </MudContainer>
 
@@ -80,6 +127,7 @@
     private bool _isLoading = true;
     private bool _isSubmitting;
     private string? _error;
+    private bool HasPaidTickets => _tickets.Any(state => IsPaidMode(state.Ticket.TicketPricingModeCode));
 
     protected override async Task OnParametersSetAsync()
     {
@@ -135,6 +183,15 @@
     private static bool AllowsChosenPrice(RegistrationCheckoutTicketTypeDto ticket) =>
         ticket.TicketPricingModeCode is "DONATION" or "PAY_WHAT_YOU_CAN" or "SLIDING_SCALE";
 
+    private static bool IsPaidMode(string? mode) =>
+        mode is "FIXED" or "DONATION" or "PAY_WHAT_YOU_CAN" or "SLIDING_SCALE";
+
+    private string SlidingScaleValueText(TicketState state) =>
+        $"{T("ticketSelection.youPay", "You pay")} {RegistrationOrderMoneyFormatter.Format(state.SelectedSlidingScaleOption!.BuyerPriceMinor, _composition?.CurrencyCode)}; " +
+        $"{T("ticketSelection.organizerEarns", "Organizer earns")} {RegistrationOrderMoneyFormatter.Format(state.SelectedSlidingScaleOption.OrganizerEarningsMinor, _composition?.CurrencyCode)}";
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+
     private static string PriceLabel(RegistrationCheckoutTicketTypeDto ticket, string? currencyCode) => ticket.TicketPricingModeCode switch
     {
         "FREE" => "Free",
@@ -148,6 +205,7 @@
         public int Quantity { get; set; }
         public long ChosenUnitPriceMinor { get; set; } = ticket.SuggestedPriceMinor ?? ticket.MinimumPriceMinor ?? 0;
         public int SlidingScaleIndex { get; set; } = Math.Max(0, (ticket.SlidingScaleOptions?.Count ?? 1) - 1);
+        public string MonetaryOutputId { get; } = $"sliding-scale-output-{Guid.NewGuid():N}";
         public RegistrationCheckoutSlidingScaleOptionDto? SelectedSlidingScaleOption =>
             Ticket.SlidingScaleOptions is { Count: > 0 } options ? options.ElementAt(Math.Min(SlidingScaleIndex, options.Count - 1)) : null;
         public long SelectedPriceMinor => SelectedSlidingScaleOption?.BuyerPriceMinor ?? ChosenUnitPriceMinor;

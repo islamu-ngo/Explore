@@ -5,6 +5,23 @@ ABOUTME: Covers link groups, social links, templates, instance governance lockin
 
 Tenants customize their site footer through an admin interface. Instance admins can lock specific footer aspects to enforce branding consistency across tenants.
 
+## Structured Operator Disclosures
+
+Footer templates remain cosmetic tenant configuration. After template
+composition, the public footer renders two server-authored accountability
+resources from `PublicExperienceShellDto`:
+
+- **Directory operator**: tenant public/legal name, jurisdiction, optional
+  registration identifier, contact, legal notice, optional terms, and privacy;
+- **Platform operator**: instance public/legal name, official/independent
+  status, jurisdiction, contact, website, legal notice, terms, and privacy.
+
+These roles are intentionally not merged or deduplicated even when facts happen
+to match. The public shell is unavailable when the tenant directory identity is
+not ready for `PublicDisclosure`; the API returns non-cacheable RFC 7807 `503`
+with stable code `tenant_identity_unavailable`. No tenant brand name or prose
+directory disclaimer is rendered as a fallback.
+
 ## Data Model
 
 ### TenantFooterLinkGroup

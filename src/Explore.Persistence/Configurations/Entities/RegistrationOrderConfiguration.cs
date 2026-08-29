@@ -41,6 +41,7 @@ public sealed class RegistrationOrderConfiguration : IEntityTypeConfiguration<Re
         builder.Property(order => order.OrganizerEarningsTotalMinorSnapshot).HasColumnType("bigint");
         builder.Property(order => order.PlatformContributionTotalMinorSnapshot).HasColumnType("bigint");
         builder.Property(order => order.TotalDueMinorSnapshot).HasColumnType("bigint");
+        builder.Property(order => order.AddOnTotalMinorSnapshot).HasColumnType("bigint");
         builder.Property(order => order.CreatedAt).IsRequired();
         builder.Property(order => order.IsDeleted).HasDefaultValue(false);
         builder.Property(order => order.ConcurrencyStamp).IsConcurrencyToken();
@@ -78,6 +79,20 @@ public sealed class RegistrationOrderConfiguration : IEntityTypeConfiguration<Re
             .HasPrincipalKey(@event => new { @event.TenantId, @event.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<EventTicketCatalogVersion>().WithMany().HasForeignKey(order => new { order.TenantId, order.TicketCatalogVersionId })
             .HasPrincipalKey(catalog => new { catalog.TenantId, catalog.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<EventAddOnCatalogVersion>().WithMany()
+            .HasForeignKey(order => new
+            {
+                order.TenantId,
+                order.EventId,
+                order.AddOnCatalogVersionIdSnapshot,
+            })
+            .HasPrincipalKey(catalog => new
+            {
+                catalog.TenantId,
+                catalog.EventId,
+                catalog.Id,
+            })
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<PromotionDefinition>().WithMany().HasForeignKey(order => new { order.TenantId, order.AppliedPromotionDefinitionVersionIdSnapshot })
             .HasPrincipalKey(definition => new { definition.TenantId, definition.Id }).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<PromotionCode>().WithMany().HasForeignKey(order => new { order.TenantId, order.AppliedPromotionCodeIdSnapshot })
@@ -86,6 +101,10 @@ public sealed class RegistrationOrderConfiguration : IEntityTypeConfiguration<Re
         builder.HasOne(order => order.RegistrationOrderStatus).WithMany().HasForeignKey(order => order.RegistrationOrderStatusId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(order => order.Lines).WithOne().HasForeignKey(line => new { line.TenantId, line.RegistrationOrderId })
             .HasPrincipalKey(order => new { order.TenantId, order.Id }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(order => order.AddOnLines).WithOne()
+            .HasForeignKey(line => new { line.TenantId, line.EventId, line.RegistrationOrderId })
+            .HasPrincipalKey(order => new { order.TenantId, order.EventId, order.Id })
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(order => order.Participants).WithOne(participant => participant.RegistrationOrder)
             .HasForeignKey(participant => new { participant.TenantId, participant.RegistrationOrderId })
             .HasPrincipalKey(order => new { order.TenantId, order.Id }).OnDelete(DeleteBehavior.Restrict);

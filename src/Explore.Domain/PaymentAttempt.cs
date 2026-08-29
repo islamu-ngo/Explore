@@ -232,7 +232,11 @@ public sealed class PaymentAttempt : ITenantEntity, IAuditableEntity, IConcurren
             acceptance.OrganizerAmountMinor != OrganizerAmountMinor || acceptance.PlatformFeeMinor != PlatformFeeMinor ||
             acceptance.PlatformContributionMinor != PlatformContributionMinor || acceptance.TotalMinor != TotalMinor ||
             !string.Equals(acceptance.ProviderCode, ProviderCode, StringComparison.OrdinalIgnoreCase) ||
-            !string.Equals(acceptance.ProviderProfileCode, ProfileCode, StringComparison.Ordinal))
+            !string.Equals(acceptance.ProviderProfileCode, ProfileCode, StringComparison.Ordinal) ||
+            acceptance.OrganizerPaymentProviderConnectionId != RecipientSnapshot.OrganizerPaymentProviderConnectionId ||
+            !string.Equals(acceptance.ConnectPlatformId, RecipientSnapshot.ConnectPlatformId, StringComparison.Ordinal) ||
+            !string.Equals(acceptance.ExternalAccountId, RecipientSnapshot.ExternalAccountId, StringComparison.Ordinal) ||
+            !string.Equals(acceptance.MerchantCountryCode, RecipientSnapshot.MerchantCountryCode, StringComparison.Ordinal))
         {
             throw new ArgumentException("Acceptance evidence must match the exact payment attempt facts.", nameof(acceptance));
         }

@@ -105,7 +105,7 @@ public class PublicExperienceServiceTests
     [Test]
     public async Task GetCachedSettingsAsync_ReusesSuccessfulResponse()
     {
-        var expected = new PublicExperienceSettingsDto { PreferredHomePage = "LandingPage" };
+        var expected = SettingsWithIdentity("Cached directory");
         _apiClient.GetPublicExperienceSettingsAsync(
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
@@ -121,6 +121,60 @@ public class PublicExperienceServiceTests
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ExpiredSettings503_DoesNotReturnStaleSentinelIdentityA()
+    {
+        var clock = new MutableTimeProvider(new DateTimeOffset(2026, 8, 29, 0, 0, 0, TimeSpan.Zero));
+        var service = new PublicExperienceService(_apiClient, Substitute.For<ILogger<PublicExperienceService>>(), clock);
+        PublicExperienceSettingsDto sentinel = SettingsWithIdentity("Sentinel identity A");
+        int calls = 0;
+        _apiClient.GetPublicExperienceSettingsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ++calls == 1
+                ? Task.FromResult(sentinel)
+                : Task.FromException<PublicExperienceSettingsDto>(new ApiException("Unavailable", 503, string.Empty, new Dictionary<string, IEnumerable<string>>(), null)));
+
+        await Assert.That(await service.GetCachedSettingsAsync()).IsSameReferenceAs(sentinel);
+        clock.Advance(TimeSpan.FromMinutes(6));
+
+        await Assert.That(await service.GetCachedSettingsAsync()).IsNull();
+        await Assert.That(service.SettingsAvailability).IsEqualTo(PublicExperienceAvailability.Unavailable);
+    }
+
+    [Test]
+    public async Task ExpiredShellMissingIdentity_DoesNotReturnStaleSentinelIdentityA()
+    {
+        var clock = new MutableTimeProvider(new DateTimeOffset(2026, 8, 29, 0, 0, 0, TimeSpan.Zero));
+        var service = new PublicExperienceService(_apiClient, Substitute.For<ILogger<PublicExperienceService>>(), clock);
+        PublicExperienceShellDto sentinel = ShellWithIdentities("Sentinel identity A");
+        _apiClient.GetPublicExperienceShellAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(sentinel), Task.FromResult(new PublicExperienceShellDto()));
+
+        await Assert.That(await service.GetCachedShellAsync()).IsSameReferenceAs(sentinel);
+        clock.Advance(TimeSpan.FromMinutes(6));
+
+        await Assert.That(await service.GetCachedShellAsync()).IsNull();
+        await Assert.That(service.ShellAvailability).IsEqualTo(PublicExperienceAvailability.Unavailable);
+    }
+
+    private static PublicExperienceSettingsDto SettingsWithIdentity(string name) => new()
+    {
+        PreferredHomePage = "LandingPage",
+        DirectoryOperator = new TenantDirectoryOperatorPublicDto { PublicName = name, LegalName = name }
+    };
+
+    private static PublicExperienceShellDto ShellWithIdentities(string name) => new()
+    {
+        DirectoryOperator = SettingsWithIdentity(name).DirectoryOperator,
+        InstanceOperator = new InstanceOperatorPublicDto { PublicName = "Instance A", LegalName = "Instance A legal" }
+    };
+
+    private sealed class MutableTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        private DateTimeOffset _now = now;
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(TimeSpan duration) => _now += duration;
     }
 
     [Test]

@@ -18815,6 +18815,466 @@
         "x-rate-limit-policy": "Global"
       }
     },
+    "/api/events/{eventId}/add-ons": {
+      "get": {
+        "tags": [
+          "EventAddOnCatalog"
+        ],
+        "operationId": "GetEventAddOnCatalog",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/events/{eventId}/add-ons/management": {
+      "get": {
+        "tags": [
+          "EventAddOnManagement"
+        ],
+        "operationId": "GetEventAddOnManagement",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/events/{eventId}/add-ons/management/draft": {
+      "post": {
+        "tags": [
+          "EventAddOnManagement"
+        ],
+        "operationId": "CreateEventAddOnCatalogDraft",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventAddOnCatalogDraftRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventAddOnCatalogDraftRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventAddOnCatalogDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/add-ons/management/items": {
+      "post": {
+        "tags": [
+          "EventAddOnManagement"
+        ],
+        "operationId": "AddEventAddOnCatalogItem",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManageEventAddOnCatalogItemRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManageEventAddOnCatalogItemRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ManageEventAddOnCatalogItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/add-ons/management/publish": {
+      "post": {
+        "tags": [
+          "EventAddOnManagement"
+        ],
+        "operationId": "PublishEventAddOnCatalog",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/add-ons/management/retire": {
+      "post": {
+        "tags": [
+          "EventAddOnManagement"
+        ],
+        "operationId": "RetireEventAddOnCatalog",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventAddOnCatalogDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
+      }
+    },
     "/api/eventagendaitem/by-event/{eventId}": {
       "get": {
         "tags": [
@@ -68434,6 +68894,26 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "x-endpoint-class": "Public"
@@ -68480,6 +68960,26 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicExperienceShellDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -75092,6 +75592,403 @@
         },
         "x-endpoint-class": "Public",
         "x-output-cache-policy": "DetailData"
+      }
+    },
+    "/api/events/{eventId}/registration-orders/{registrationOrderId}/add-ons": {
+      "get": {
+        "tags": [
+          "RegistrationOrderAddOn"
+        ],
+        "operationId": "GetRegistrationOrderAddOns",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "registrationOrderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      },
+      "post": {
+        "tags": [
+          "RegistrationOrderAddOn"
+        ],
+        "operationId": "ReserveRegistrationOrderAddOns",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "registrationOrderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveEventAddOnsRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveEventAddOnsRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveEventAddOnsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/registration-orders/{registrationOrderId}/add-ons/{registrationOrderAddOnLineId}/fulfillment": {
+      "post": {
+        "tags": [
+          "RegistrationOrderAddOn"
+        ],
+        "operationId": "FulfillRegistrationOrderAddOn",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "registrationOrderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "registrationOrderAddOnLineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
+      }
+    },
+    "/api/events/{eventId}/registration-orders/{registrationOrderId}/add-ons/{registrationOrderAddOnLineId}/refunds": {
+      "post": {
+        "tags": [
+          "RegistrationOrderAddOn"
+        ],
+        "operationId": "RefundRegistrationOrderAddOn",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "registrationOrderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "registrationOrderAddOnLineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Registration-Order-Capability",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundEventAddOnRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundEventAddOnRequest"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundEventAddOnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfRegistrationOrderAddOnSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated",
+        "x-rate-limit-policy": "Write",
+        "x-idempotency-key-required": true
       }
     },
     "/api/events/{eventId}/registration-orders/checkout": {
@@ -85806,7 +86703,7 @@
           "TenantOnboarding"
         ],
         "summary": "Complete Tenant Onboarding",
-        "description": "Completes tenant onboarding and persists tenant policy answers.",
+        "description": "Completes tenant onboarding and atomically persists tenant policy answers, branding, and directory-operator identity.",
         "operationId": "CompleteTenantOnboarding",
         "parameters": [
           {
@@ -85828,17 +86725,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
+                "$ref": "#/components/schemas/CompleteTenantOnboardingRequest"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
+                "$ref": "#/components/schemas/CompleteTenantOnboardingRequest"
               }
             },
             "application/*+json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
+                "$ref": "#/components/schemas/CompleteTenantOnboardingRequest"
               }
             }
           },
@@ -86368,6 +87265,257 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/HalResourceOfTenantBrandingSettingsDocumentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/api/tenant/settings/documents/directory-operator-identity": {
+      "get": {
+        "tags": [
+          "TenantSettingsDocuments"
+        ],
+        "summary": "Get Tenant Directory Operator Identity",
+        "description": "Returns the current tenant-owned directory operator identity without provisioning or fallback.",
+        "operationId": "GetTenantDirectoryOperatorIdentityDocument",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantDirectoryOperatorIdentityDocumentDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantDirectoryOperatorIdentityDocumentDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantDirectoryOperatorIdentityDocumentDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Authenticated"
+      },
+      "patch": {
+        "tags": [
+          "TenantSettingsDocuments"
+        ],
+        "summary": "Patch Tenant Directory Operator Identity",
+        "description": "Patches supplied legal-identity groups with optimistic concurrency while preserving omitted fields.",
+        "operationId": "PatchTenantDirectoryOperatorIdentityDocument",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchTenantDirectoryOperatorIdentityDocumentDto"
+              }
+            },
+            "application/*+json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchTenantDirectoryOperatorIdentityDocumentDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantDirectoryOperatorIdentityDocumentDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantDirectoryOperatorIdentityDocumentDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfTenantDirectoryOperatorIdentityDocumentDto"
                 }
               }
             }
@@ -98589,6 +99737,16 @@
           "siteProfile": {
             "$ref": "#/components/schemas/SelfHostOnboardingProfileDto"
           },
+          "directoryOperatorIdentity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TenantDirectoryOperatorIdentityInputDto"
+              }
+            ]
+          },
           "administrationAccessMode": {
             "type": "string"
           },
@@ -98603,6 +99761,28 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "CompleteTenantOnboardingRequest": {
+        "required": [
+          "settings",
+          "directoryOperatorIdentity"
+        ],
+        "type": "object",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
+          },
+          "directoryOperatorIdentity": {
+            "$ref": "#/components/schemas/TenantDirectoryOperatorIdentityInputDto"
+          },
+          "expectedDirectoryOperatorIdentityConcurrencyStamp": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -100075,6 +101255,17 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "CreateEventAddOnCatalogDraftRequest": {
+        "required": [
+          "currencyCode"
+        ],
+        "type": "object",
+        "properties": {
+          "currencyCode": {
+            "type": "string"
           }
         }
       },
@@ -102587,6 +103778,16 @@
           "isActive": {
             "type": "boolean"
           },
+          "directoryOperatorIdentity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TenantDirectoryOperatorIdentityInputDto"
+              }
+            ]
+          },
           "assignCurrentUserAsTenantAdmin": {
             "type": "boolean"
           }
@@ -103872,6 +105073,116 @@
           "Group"
         ],
         "type": "string"
+      },
+      "EventAddOnCatalogDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "versionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventAddOnCatalogItemDto"
+            }
+          }
+        }
+      },
+      "EventAddOnCatalogItemDto": {
+        "required": [
+          "id",
+          "name",
+          "unitPriceMinor",
+          "currencyCode",
+          "isAvailable",
+          "maximumSelectableQuantity",
+          "fulfillmentDisclosure",
+          "refundDisclosure"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "unitPriceMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "maximumSelectableQuantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fulfillmentDisclosure": {
+            "type": "string"
+          },
+          "refundDisclosure": {
+            "type": "string"
+          }
+        }
+      },
+      "EventAddOnSelectionRequest": {
+        "required": [
+          "catalogItemId",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "catalogItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
       },
       "EventAgendaItemDto": {
         "required": [
@@ -119504,6 +120815,53 @@
           }
         }
       },
+      "HalResourceOfEventAddOnCatalogDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "versionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "currencyCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventAddOnCatalogItemDto"
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfEventAgendaItemDto": {
         "required": [
           "title"
@@ -130884,6 +132242,60 @@
           }
         }
       },
+      "HalResourceOfRegistrationOrderAddOnSummaryDto": {
+        "required": [
+          "registrationOrderId",
+          "currencyCode",
+          "addOnTotalMinor",
+          "grandTotalMinor"
+        ],
+        "type": "object",
+        "properties": {
+          "registrationOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "addOnTotalMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "grandTotalMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegistrationOrderAddOnLineDto"
+            }
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfRegistrationOrderDto": {
         "type": "object",
         "properties": {
@@ -133069,6 +134481,155 @@
             "type": "boolean"
           },
           "canChangeCustomCssUrl": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfTenantDirectoryOperatorIdentityDocumentDto": {
+        "required": [
+          "documentKey",
+          "schemaVersion",
+          "defaultsVersion",
+          "payload",
+          "source",
+          "sourceScopeId",
+          "concurrencyStamp"
+        ],
+        "type": "object",
+        "properties": {
+          "documentKey": {
+            "type": "string"
+          },
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "defaultsVersion": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "publicName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "legalName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "operatorKindCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "jurisdictionCountryCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "registrationIdentifier": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "publicContactEmail": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "legalNoticeUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "termsUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "privacyUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "sourceScopeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActivationReady": {
+            "type": "boolean"
+          },
+          "isPublicDisclosureReady": {
+            "type": "boolean"
+          },
+          "isPaidCommerceReady": {
+            "type": "boolean"
+          },
+          "activationReasonCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publicDisclosureReasonCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "paidCommerceReasonCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "canEdit": {
             "type": "boolean"
           },
           "updatedAt": {
@@ -135555,6 +137116,68 @@
           }
         }
       },
+      "InstanceOperatorPublicDto": {
+        "required": [
+          "operatorId",
+          "publicName",
+          "legalName",
+          "isOfficialInstance",
+          "officialOrigin",
+          "operatorKindCode",
+          "jurisdictionCountryCode",
+          "publicContactEmail",
+          "websiteUrl",
+          "legalNoticeUrl",
+          "termsUrl",
+          "privacyUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "operatorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publicName": {
+            "type": "string"
+          },
+          "legalName": {
+            "type": "string"
+          },
+          "isOfficialInstance": {
+            "type": "boolean"
+          },
+          "officialOrigin": {
+            "type": "string"
+          },
+          "operatorKindCode": {
+            "type": "string"
+          },
+          "jurisdictionCountryCode": {
+            "type": "string"
+          },
+          "registrationIdentifier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicContactEmail": {
+            "type": "string"
+          },
+          "websiteUrl": {
+            "type": "string"
+          },
+          "legalNoticeUrl": {
+            "type": "string"
+          },
+          "termsUrl": {
+            "type": "string"
+          },
+          "privacyUrl": {
+            "type": "string"
+          }
+        }
+      },
       "InstanceS3ConfigurationWriteDto": {
         "type": "object",
         "properties": {
@@ -137523,6 +139146,16 @@
           "activateTenant": {
             "type": "boolean"
           },
+          "directoryOperatorIdentity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TenantDirectoryOperatorIdentityInputDto"
+              }
+            ]
+          },
           "externalAdmin": {
             "$ref": "#/components/schemas/ManagedProviderExternalAdminDto"
           },
@@ -137705,6 +139338,49 @@
           "Group"
         ],
         "type": "string"
+      },
+      "ManageEventAddOnCatalogItemRequest": {
+        "required": [
+          "name",
+          "unitPriceMinor",
+          "inventoryCapacity",
+          "fulfillmentDisclosure",
+          "refundDisclosure"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "unitPriceMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "inventoryCapacity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fulfillmentDisclosure": {
+            "type": "string"
+          },
+          "refundDisclosure": {
+            "type": "string"
+          }
+        }
       },
       "ManageEventCapacityPoolDto": {
         "type": "object",
@@ -143763,17 +145439,12 @@
       "PaidOrderAcceptanceDisclosureDto": {
         "required": [
           "disclosureRevision",
-          "merchantDisclosureText",
-          "paidEventDirectoryDisclaimer",
-          "operatorDisplayName",
-          "isOfficialInstance",
-          "officialOrigin",
-          "operatorRegionCode",
-          "operatorWebsiteUrl",
-          "operatorLegalNoticeUrl",
-          "operatorTermsUrl",
-          "operatorPrivacyUrl",
-          "operatorActivationStatus",
+          "acceptanceTemplateIdentifier",
+          "acceptanceTemplateText",
+          "organizerMerchant",
+          "tenantDirectoryOperator",
+          "instanceOperator",
+          "paymentOperations",
           "deliveryStartsAtUtc",
           "deliveryEndsAtUtc",
           "eventTimeZoneId",
@@ -143787,17 +145458,6 @@
           "refundPolicyText",
           "refundPolicyLanguageTag",
           "supportContact",
-          "complaintContact",
-          "complaintOwner",
-          "refundOwner",
-          "disputeOwner",
-          "reconciliationOwner",
-          "providerCode",
-          "providerProfileCode",
-          "providerEnvironment",
-          "providerCredentialOwner",
-          "chargeType",
-          "statementDescriptor",
           "lines"
         ],
         "type": "object",
@@ -143805,38 +145465,23 @@
           "disclosureRevision": {
             "type": "string"
           },
-          "merchantDisclosureText": {
+          "acceptanceTemplateIdentifier": {
             "type": "string"
           },
-          "paidEventDirectoryDisclaimer": {
+          "acceptanceTemplateText": {
             "type": "string"
           },
-          "operatorDisplayName": {
-            "type": "string"
+          "organizerMerchant": {
+            "$ref": "#/components/schemas/PaidOrderAcceptanceOrganizerMerchantDto"
           },
-          "isOfficialInstance": {
-            "type": "boolean"
+          "tenantDirectoryOperator": {
+            "$ref": "#/components/schemas/PaidOrderAcceptanceTenantDirectoryOperatorDto"
           },
-          "officialOrigin": {
-            "type": "string"
+          "instanceOperator": {
+            "$ref": "#/components/schemas/PaidOrderAcceptanceInstanceOperatorDto"
           },
-          "operatorRegionCode": {
-            "type": "string"
-          },
-          "operatorWebsiteUrl": {
-            "type": "string"
-          },
-          "operatorLegalNoticeUrl": {
-            "type": "string"
-          },
-          "operatorTermsUrl": {
-            "type": "string"
-          },
-          "operatorPrivacyUrl": {
-            "type": "string"
-          },
-          "operatorActivationStatus": {
-            "type": "string"
+          "paymentOperations": {
+            "$ref": "#/components/schemas/PaidOrderAcceptancePaymentOperationsDto"
           },
           "deliveryStartsAtUtc": {
             "type": "string",
@@ -143909,44 +145554,69 @@
           "supportContact": {
             "type": "string"
           },
-          "complaintContact": {
-            "type": "string"
-          },
-          "complaintOwner": {
-            "type": "string"
-          },
-          "refundOwner": {
-            "type": "string"
-          },
-          "disputeOwner": {
-            "type": "string"
-          },
-          "reconciliationOwner": {
-            "type": "string"
-          },
-          "providerCode": {
-            "type": "string"
-          },
-          "providerProfileCode": {
-            "type": "string"
-          },
-          "providerEnvironment": {
-            "type": "string"
-          },
-          "providerCredentialOwner": {
-            "type": "string"
-          },
-          "chargeType": {
-            "type": "string"
-          },
-          "statementDescriptor": {
-            "type": "string"
-          },
           "lines": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PaidOrderAcceptanceLineDto"
             }
+          }
+        }
+      },
+      "PaidOrderAcceptanceInstanceOperatorDto": {
+        "required": [
+          "operatorId",
+          "publicName",
+          "legalName",
+          "operatorKindCode",
+          "isOfficialInstance",
+          "officialOrigin",
+          "jurisdictionCountryCode",
+          "websiteUrl",
+          "legalNoticeUrl",
+          "termsUrl",
+          "privacyUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "operatorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publicName": {
+            "type": "string"
+          },
+          "legalName": {
+            "type": "string"
+          },
+          "operatorKindCode": {
+            "type": "string"
+          },
+          "registrationIdentifier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isOfficialInstance": {
+            "type": "boolean"
+          },
+          "officialOrigin": {
+            "type": "string"
+          },
+          "jurisdictionCountryCode": {
+            "type": "string"
+          },
+          "websiteUrl": {
+            "type": "string"
+          },
+          "legalNoticeUrl": {
+            "type": "string"
+          },
+          "termsUrl": {
+            "type": "string"
+          },
+          "privacyUrl": {
+            "type": "string"
           }
         }
       },
@@ -143999,6 +145669,149 @@
               "string"
             ],
             "format": "int64"
+          }
+        }
+      },
+      "PaidOrderAcceptanceOrganizerMerchantDto": {
+        "required": [
+          "organizerActorId",
+          "merchantDisclosureText",
+          "providerCode",
+          "providerProfileCode",
+          "providerEnvironment",
+          "providerCredentialOwner",
+          "chargeType",
+          "statementDescriptor",
+          "organizerPaymentProviderConnectionId",
+          "connectPlatformId",
+          "externalAccountId",
+          "merchantCountryCode"
+        ],
+        "type": "object",
+        "properties": {
+          "organizerActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "merchantDisclosureText": {
+            "type": "string"
+          },
+          "providerCode": {
+            "type": "string"
+          },
+          "providerProfileCode": {
+            "type": "string"
+          },
+          "providerEnvironment": {
+            "type": "string"
+          },
+          "providerCredentialOwner": {
+            "type": "string"
+          },
+          "chargeType": {
+            "type": "string"
+          },
+          "statementDescriptor": {
+            "type": "string"
+          },
+          "organizerPaymentProviderConnectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "connectPlatformId": {
+            "type": "string"
+          },
+          "externalAccountId": {
+            "type": "string"
+          },
+          "merchantCountryCode": {
+            "type": "string"
+          }
+        }
+      },
+      "PaidOrderAcceptancePaymentOperationsDto": {
+        "required": [
+          "complaintContact",
+          "complaintOwner",
+          "refundOwner",
+          "disputeOwner",
+          "reconciliationOwner",
+          "activationStatus"
+        ],
+        "type": "object",
+        "properties": {
+          "complaintContact": {
+            "type": "string"
+          },
+          "complaintOwner": {
+            "type": "string"
+          },
+          "refundOwner": {
+            "type": "string"
+          },
+          "disputeOwner": {
+            "type": "string"
+          },
+          "reconciliationOwner": {
+            "type": "string"
+          },
+          "activationStatus": {
+            "type": "string"
+          }
+        }
+      },
+      "PaidOrderAcceptanceTenantDirectoryOperatorDto": {
+        "required": [
+          "documentId",
+          "revisionId",
+          "publicName",
+          "legalName",
+          "operatorKindCode",
+          "jurisdictionCountryCode",
+          "publicContactEmail",
+          "legalNoticeUrl",
+          "termsUrl",
+          "privacyUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publicName": {
+            "type": "string"
+          },
+          "legalName": {
+            "type": "string"
+          },
+          "operatorKindCode": {
+            "type": "string"
+          },
+          "jurisdictionCountryCode": {
+            "type": "string"
+          },
+          "registrationIdentifier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicContactEmail": {
+            "type": "string"
+          },
+          "legalNoticeUrl": {
+            "type": "string"
+          },
+          "termsUrl": {
+            "type": "string"
+          },
+          "privacyUrl": {
+            "type": "string"
           }
         }
       },
@@ -144632,6 +146445,90 @@
           },
           "lockTenantAiAssistant": {
             "$ref": "#/components/schemas/OptionalUpdateOfboolean"
+          }
+        }
+      },
+      "PatchTenantDirectoryOperatorContactsDto": {
+        "type": "object",
+        "properties": {
+          "publicContactEmail": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "PatchTenantDirectoryOperatorIdentityDocumentDto": {
+        "required": [
+          "expectedConcurrencyStamp"
+        ],
+        "type": "object",
+        "properties": {
+          "expectedConcurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "legalEntity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantDirectoryOperatorLegalEntityDto"
+              }
+            ]
+          },
+          "contacts": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantDirectoryOperatorContactsDto"
+              }
+            ]
+          },
+          "legalLinks": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PatchTenantDirectoryOperatorLegalLinksDto"
+              }
+            ]
+          }
+        }
+      },
+      "PatchTenantDirectoryOperatorLegalEntityDto": {
+        "type": "object",
+        "properties": {
+          "publicName": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "legalName": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "operatorKindCode": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "jurisdictionCountryCode": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "registrationIdentifier": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          }
+        }
+      },
+      "PatchTenantDirectoryOperatorLegalLinksDto": {
+        "type": "object",
+        "properties": {
+          "legalNoticeUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "termsUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
+          },
+          "privacyUrl": {
+            "$ref": "#/components/schemas/OptionalUpdateOfstring"
           }
         }
       },
@@ -146031,6 +147928,35 @@
             "type": "string",
             "format": "uuid"
           },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "unavailableCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "directoryOperator": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TenantDirectoryOperatorPublicDto"
+              }
+            ]
+          },
+          "instanceOperator": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InstanceOperatorPublicDto"
+              }
+            ]
+          },
           "mode": {
             "$ref": "#/components/schemas/PublicExperienceMode"
           },
@@ -146042,12 +147968,6 @@
           },
           "brandDisplayName": {
             "type": "string"
-          },
-          "paidEventDirectoryDisclaimer": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "brandLogoUrl": {
             "type": "string"
@@ -146241,6 +148161,35 @@
               "string"
             ],
             "format": "int32"
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "unavailableCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "directoryOperator": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TenantDirectoryOperatorPublicDto"
+              }
+            ]
+          },
+          "instanceOperator": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InstanceOperatorPublicDto"
+              }
+            ]
           },
           "revision": {
             "type": "string"
@@ -146545,6 +148494,22 @@
             "format": "int32"
           },
           "operatorCaseCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "RefundEventAddOnRequest": {
+        "required": [
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "quantity": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -146900,10 +148865,14 @@
           "currencyCode": {
             "type": "string"
           },
-          "paidEventDirectoryDisclaimer": {
-            "type": [
-              "null",
-              "string"
+          "directoryOperator": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TenantDirectoryOperatorPublicDto"
+              }
             ]
           },
           "ticketTypes": {
@@ -148915,6 +150884,141 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RegistrationOrderAddOnLineDto": {
+        "required": [
+          "id",
+          "catalogItemId",
+          "name",
+          "quantity",
+          "unitPriceMinor",
+          "lineTotalMinor",
+          "currencyCode",
+          "fulfillmentDisclosure",
+          "refundDisclosure",
+          "fulfillmentStatusCode",
+          "refundAllocatedQuantity",
+          "refundAllocatedMinor",
+          "refundStatusCode",
+          "maximumRefundableQuantity"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "catalogItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "unitPriceMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "lineTotalMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "fulfillmentDisclosure": {
+            "type": "string"
+          },
+          "refundDisclosure": {
+            "type": "string"
+          },
+          "fulfillmentStatusCode": {
+            "type": "string"
+          },
+          "refundAllocatedQuantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "refundAllocatedMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "refundStatusCode": {
+            "type": "string"
+          },
+          "maximumRefundableQuantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "RegistrationOrderAddOnSummaryDto": {
+        "required": [
+          "registrationOrderId",
+          "currencyCode",
+          "addOnTotalMinor",
+          "grandTotalMinor"
+        ],
+        "type": "object",
+        "properties": {
+          "registrationOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "addOnTotalMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "grandTotalMinor": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegistrationOrderAddOnLineDto"
+            }
           }
         }
       },
@@ -150990,6 +153094,24 @@
           },
           "reasonCode": {
             "type": "string"
+          }
+        }
+      },
+      "ReserveEventAddOnsRequest": {
+        "required": [
+          "catalogId"
+        ],
+        "type": "object",
+        "properties": {
+          "catalogId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "selections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventAddOnSelectionRequest"
+            }
           }
         }
       },
@@ -153852,6 +155974,252 @@
             "type": "boolean"
           },
           "authorizationProvider": {
+            "type": "string"
+          }
+        }
+      },
+      "TenantDirectoryOperatorIdentityDocumentDto": {
+        "required": [
+          "documentKey",
+          "schemaVersion",
+          "defaultsVersion",
+          "payload",
+          "source",
+          "sourceScopeId",
+          "concurrencyStamp"
+        ],
+        "type": "object",
+        "properties": {
+          "documentKey": {
+            "type": "string"
+          },
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "defaultsVersion": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "publicName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "legalName": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "operatorKindCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "jurisdictionCountryCode": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "registrationIdentifier": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "publicContactEmail": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "legalNoticeUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "termsUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "privacyUrl": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "sourceScopeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "concurrencyStamp": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActivationReady": {
+            "type": "boolean"
+          },
+          "isPublicDisclosureReady": {
+            "type": "boolean"
+          },
+          "isPaidCommerceReady": {
+            "type": "boolean"
+          },
+          "activationReasonCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "publicDisclosureReasonCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "paidCommerceReasonCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "TenantDirectoryOperatorIdentityInputDto": {
+        "type": "object",
+        "properties": {
+          "publicName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "legalName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "operatorKindCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "jurisdictionCountryCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "registrationIdentifier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicContactEmail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "legalNoticeUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "termsUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "privacyUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TenantDirectoryOperatorPublicDto": {
+        "required": [
+          "documentRevision",
+          "publicName",
+          "legalName",
+          "operatorKindCode",
+          "jurisdictionCountryCode",
+          "publicContactEmail",
+          "legalNoticeUrl",
+          "privacyUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "documentRevision": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publicName": {
+            "type": "string"
+          },
+          "legalName": {
+            "type": "string"
+          },
+          "operatorKindCode": {
+            "type": "string"
+          },
+          "jurisdictionCountryCode": {
+            "type": "string"
+          },
+          "registrationIdentifier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publicContactEmail": {
+            "type": "string"
+          },
+          "legalNoticeUrl": {
+            "type": "string"
+          },
+          "termsUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "privacyUrl": {
             "type": "string"
           }
         }
@@ -161505,6 +163873,12 @@
       "name": "EmailUnsubscribe"
     },
     {
+      "name": "EventAddOnCatalog"
+    },
+    {
+      "name": "EventAddOnManagement"
+    },
+    {
       "name": "EventAgendaItem"
     },
     {
@@ -161752,6 +164126,9 @@
     },
     {
       "name": "RegistrationMode"
+    },
+    {
+      "name": "RegistrationOrderAddOn"
     },
     {
       "name": "RegistrationProviderCallback"

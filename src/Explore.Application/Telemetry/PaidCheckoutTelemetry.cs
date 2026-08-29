@@ -48,6 +48,7 @@ public sealed class PaidCheckoutTelemetry : IPaidCheckoutTelemetry, IDisposable
         "payment_ceiling_exceeded" => "ceiling",
         "payment_review_required" => "review",
         "payment_organizer_unavailable" => "organizer",
+        "tenant_directory_operator_identity_unavailable" => "directory_operator_identity",
         "payment_activation_invalid" => "invalid",
         _ => "unknown"
     };

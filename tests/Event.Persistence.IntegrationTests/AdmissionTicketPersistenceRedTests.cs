@@ -1655,7 +1655,14 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
             eventId,
             "phase20-paid-admission",
             "disclosure-1",
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateIdentifier,
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateText,
+            Guid.CreateVersion7(),
             "Example Organizer",
+            PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
+                Guid.CreateVersion7(), Guid.CreateVersion7(), "Community Events", "Community Events ASBL",
+                "registered_organization", "BE", null, "contact@example.test", "https://example.test/legal",
+                "https://example.test/terms", "https://example.test/privacy"),
             PaidCheckoutOperatorDisclosure.Create(
                 Guid.CreateVersion7(),
                 "Example Operator",

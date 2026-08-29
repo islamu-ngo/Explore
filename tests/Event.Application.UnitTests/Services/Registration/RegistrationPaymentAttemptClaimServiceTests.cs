@@ -99,6 +99,33 @@ public sealed class RegistrationPaymentAttemptClaimServiceTests
     }
 
     [Test]
+    [Arguments(nameof(PaidOrderAcceptanceSnapshot.OrganizerPaymentProviderConnectionId))]
+    [Arguments(nameof(PaidOrderAcceptanceSnapshot.ConnectPlatformId))]
+    [Arguments(nameof(PaidOrderAcceptanceSnapshot.ExternalAccountId))]
+    [Arguments(nameof(PaidOrderAcceptanceSnapshot.MerchantCountryCode))]
+    public async Task ClaimAsyncFencesEveryAcceptedRecipientFactBeforePersistence(string propertyName)
+    {
+        PaymentAttempt acceptanceSource = CreateAttempt(PaymentAttemptStatusEnum.Created);
+        ConfigureCurrentReadiness(acceptanceSource);
+        PaidOrderAcceptanceSnapshot acceptance = acceptanceSource.AcceptanceSnapshot!;
+        object changed = propertyName == nameof(PaidOrderAcceptanceSnapshot.OrganizerPaymentProviderConnectionId)
+            ? Guid.CreateVersion7()
+            : propertyName == nameof(PaidOrderAcceptanceSnapshot.MerchantCountryCode) ? "FR" : "changed";
+        typeof(PaidOrderAcceptanceSnapshot).GetProperty(propertyName)!.SetValue(acceptance, changed);
+        _orders.GetOrderForUpdateWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(CreateOrder(RegistrationOrderStatusEnum.AwaitingPayment, 1_125));
+
+        RegistrationPaymentAttemptClaimResult result = await CreateService().ClaimAsync(
+            new(_tenantId, _orderId, UtcNow, AcceptanceSnapshot: acceptance), CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("payment_acceptance_stale");
+        await Assert.That(result.Attempt).IsNull();
+        await Assert.That(result.DispatchEffect).IsNull();
+        await _attempts.DidNotReceive().ClaimAsync(
+            Arg.Any<RegistrationPaymentAttemptClaim>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task ClaimAsyncRejectsNonPayableOrZeroTotalOrders()
     {
         _orders.GetOrderForUpdateWithLinesAsync(_orderId, _tenantId, Arg.Any<CancellationToken>())
@@ -620,7 +647,7 @@ public sealed class RegistrationPaymentAttemptClaimServiceTests
             attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
                 _tenantId, _orderId, _eventId, Guid.Empty.ToString("N"),
                 attempt.RecipientSnapshot.InstancePolicyVersionId, attempt.RecipientSnapshot.TenantPolicyVersionId,
-                1_000, 75, 125, UtcNow));
+                1_000, 75, 125, UtcNow, recipient));
         }
         if (status == PaymentAttemptStatusEnum.DispatchPending)
         {
@@ -632,7 +659,8 @@ public sealed class RegistrationPaymentAttemptClaimServiceTests
 
     private void ConfigureCurrentReadiness(PaymentAttempt attempt)
     {
-        Guid organizerActorId = Guid.CreateVersion7();
+        OrganizerPaymentRecipientSnapshot recipient = attempt.RecipientSnapshot;
+        Guid organizerActorId = recipient.OrganizerActorId;
         _events.GetEventWithDetailsAsync(_eventId, _tenantId, Arg.Any<CancellationToken>()).Returns(EventTarget(organizerActorId));
         PaidEventPolicyVersion policy = EnabledPolicy();
         typeof(PaidEventPolicyVersion).GetProperty(nameof(PaidEventPolicyVersion.Id))!
@@ -640,7 +668,14 @@ public sealed class RegistrationPaymentAttemptClaimServiceTests
         _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(policy);
         _commerce.ProviderCode.Returns("stripe");
         _commerce.ConnectPlatformId.Returns("platform-live-eu");
-        OrganizerPaymentProviderConnection connection = ReadyConnection(organizerActorId, ["EUR"], UtcNow.AddMinutes(-1));
+        OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(
+            recipient.OrganizerPaymentProviderConnectionId, _tenantId, organizerActorId,
+            recipient.ProviderCode, recipient.ConnectPlatformId, recipient.ExternalAccountId,
+            UtcNow.AddMinutes(-20));
+        connection.ApplyReadiness(OrganizerPaymentProviderReadinessObservation.Create(
+            recipient.MerchantCountryCode, ChargeCapabilityState.Active,
+            ProviderRequirementsState.Satisfied, [recipient.CurrencyCode], UtcNow.AddMinutes(-1),
+            $"rev-{Guid.CreateVersion7():N}"));
         _connections.GetActiveByScopeAsync(
             _tenantId, organizerActorId, "stripe", "platform-live-eu", Arg.Any<CancellationToken>()).Returns(connection);
     }

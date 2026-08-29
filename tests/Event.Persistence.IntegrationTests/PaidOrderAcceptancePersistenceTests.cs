@@ -38,6 +38,18 @@ public sealed class PaidOrderAcceptancePersistenceTests
         await Assert.That(attempt.GetIndexes().Any(index => !index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(
             [nameof(PaymentAttempt.TenantId), nameof(PaymentAttempt.PaidOrderAcceptanceSnapshotId)]))).IsTrue();
         await Assert.That(acceptance.FindProperty("LineFactsJson")).IsNull();
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.OrganizerActorId))!.IsNullable).IsFalse();
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorDocumentId))!.IsNullable).IsFalse();
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorRevisionId))!.IsNullable).IsFalse();
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.AcceptanceTemplateIdentifier))!.GetMaxLength()).IsEqualTo(80);
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorLegalName))!.GetMaxLength()).IsEqualTo(300);
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.OrganizerPaymentProviderConnectionId))!.IsNullable).IsFalse();
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.ConnectPlatformId))!.GetMaxLength()).IsEqualTo(120);
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.ExternalAccountId))!.GetMaxLength()).IsEqualTo(200);
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.MerchantCountryCode))!.GetMaxLength()).IsEqualTo(2);
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.OperatorLegalName))!.GetMaxLength()).IsEqualTo(300);
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.OperatorKindCode))!.GetMaxLength()).IsEqualTo(80);
+        await Assert.That(acceptance.FindProperty(nameof(PaidOrderAcceptanceSnapshot.OperatorRegistrationIdentifier))!.GetMaxLength()).IsEqualTo(120);
         await Assert.That(acceptanceLine.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
         await Assert.That(acceptanceLine.GetForeignKeys().Any(foreignKey =>
             foreignKey.PrincipalEntityType == acceptance &&

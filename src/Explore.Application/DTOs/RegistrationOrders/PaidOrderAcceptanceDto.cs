@@ -1,4 +1,4 @@
-// ABOUTME: Exposes exact server-owned commercial, schedule, operator, and provider facts acknowledged before paid Checkout.
+// ABOUTME: Exposes grouped organizer-merchant, tenant-directory, and instance-operator evidence before paid Checkout.
 // ABOUTME: Carries only a revision and explicit acknowledgement back; browser values never author activation facts.
 
 namespace Explore.Application.DTOs.RegistrationOrders;
@@ -6,17 +6,12 @@ namespace Explore.Application.DTOs.RegistrationOrders;
 public sealed record PaidOrderAcceptanceDisclosureDto
 {
     public required string DisclosureRevision { get; init; }
-    public required string MerchantDisclosureText { get; init; }
-    public required string PaidEventDirectoryDisclaimer { get; init; }
-    public required string OperatorDisplayName { get; init; }
-    public required bool IsOfficialInstance { get; init; }
-    public required string OfficialOrigin { get; init; }
-    public required string OperatorRegionCode { get; init; }
-    public required string OperatorWebsiteUrl { get; init; }
-    public required string OperatorLegalNoticeUrl { get; init; }
-    public required string OperatorTermsUrl { get; init; }
-    public required string OperatorPrivacyUrl { get; init; }
-    public required string OperatorActivationStatus { get; init; }
+    public required string AcceptanceTemplateIdentifier { get; init; }
+    public required string AcceptanceTemplateText { get; init; }
+    public required PaidOrderAcceptanceOrganizerMerchantDto OrganizerMerchant { get; init; }
+    public required PaidOrderAcceptanceTenantDirectoryOperatorDto TenantDirectoryOperator { get; init; }
+    public required PaidOrderAcceptanceInstanceOperatorDto InstanceOperator { get; init; }
+    public required PaidOrderAcceptancePaymentOperationsDto PaymentOperations { get; init; }
     public required DateTimeOffset DeliveryStartsAtUtc { get; init; }
     public required DateTimeOffset DeliveryEndsAtUtc { get; init; }
     public required string EventTimeZoneId { get; init; }
@@ -30,18 +25,64 @@ public sealed record PaidOrderAcceptanceDisclosureDto
     public required string RefundPolicyText { get; init; }
     public required string RefundPolicyLanguageTag { get; init; }
     public required string SupportContact { get; init; }
-    public required string ComplaintContact { get; init; }
-    public required string ComplaintOwner { get; init; }
-    public required string RefundOwner { get; init; }
-    public required string DisputeOwner { get; init; }
-    public required string ReconciliationOwner { get; init; }
+    public required IReadOnlyList<PaidOrderAcceptanceLineDto> Lines { get; init; }
+}
+
+public sealed record PaidOrderAcceptanceOrganizerMerchantDto
+{
+    public required Guid OrganizerActorId { get; init; }
+    public required string MerchantDisclosureText { get; init; }
     public required string ProviderCode { get; init; }
     public required string ProviderProfileCode { get; init; }
     public required string ProviderEnvironment { get; init; }
     public required string ProviderCredentialOwner { get; init; }
     public required string ChargeType { get; init; }
     public required string StatementDescriptor { get; init; }
-    public required IReadOnlyList<PaidOrderAcceptanceLineDto> Lines { get; init; }
+    public required Guid OrganizerPaymentProviderConnectionId { get; init; }
+    public required string ConnectPlatformId { get; init; }
+    public required string ExternalAccountId { get; init; }
+    public required string MerchantCountryCode { get; init; }
+}
+
+public sealed record PaidOrderAcceptanceTenantDirectoryOperatorDto
+{
+    public required Guid DocumentId { get; init; }
+    public required Guid RevisionId { get; init; }
+    public required string PublicName { get; init; }
+    public required string LegalName { get; init; }
+    public required string OperatorKindCode { get; init; }
+    public required string JurisdictionCountryCode { get; init; }
+    public string? RegistrationIdentifier { get; init; }
+    public required string PublicContactEmail { get; init; }
+    public required string LegalNoticeUrl { get; init; }
+    public required string TermsUrl { get; init; }
+    public required string PrivacyUrl { get; init; }
+}
+
+public sealed record PaidOrderAcceptanceInstanceOperatorDto
+{
+    public required Guid OperatorId { get; init; }
+    public required string PublicName { get; init; }
+    public required string LegalName { get; init; }
+    public required string OperatorKindCode { get; init; }
+    public string? RegistrationIdentifier { get; init; }
+    public required bool IsOfficialInstance { get; init; }
+    public required string OfficialOrigin { get; init; }
+    public required string JurisdictionCountryCode { get; init; }
+    public required string WebsiteUrl { get; init; }
+    public required string LegalNoticeUrl { get; init; }
+    public required string TermsUrl { get; init; }
+    public required string PrivacyUrl { get; init; }
+}
+
+public sealed record PaidOrderAcceptancePaymentOperationsDto
+{
+    public required string ComplaintContact { get; init; }
+    public required string ComplaintOwner { get; init; }
+    public required string RefundOwner { get; init; }
+    public required string DisputeOwner { get; init; }
+    public required string ReconciliationOwner { get; init; }
+    public required string ActivationStatus { get; init; }
 }
 
 public sealed record PaidOrderAcceptanceLineDto

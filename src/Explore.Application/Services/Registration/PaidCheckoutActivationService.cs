@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Domain;
 using Explore.Domain.Services.Registration;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Application.Services.Registration;
 
@@ -43,13 +44,29 @@ public sealed class PaidCheckoutActivationService(
     IPaidCheckoutActivationRepository repository,
     IPaidEventPolicyRepository policies,
     IEventRepository events,
+    ITenantDirectoryOperatorReadinessEvaluator directoryOperatorReadiness,
     IPaidCheckoutGovernance governance) : IPaidCheckoutActivationService
 {
+    private readonly ITenantDirectoryOperatorReadinessEvaluator _directoryOperatorReadiness =
+        directoryOperatorReadiness;
+
     public async Task<PaidCheckoutActivationResult> EvaluateSaleControlAsync(
         Guid tenantId,
         Guid eventId,
         CancellationToken cancellationToken)
     {
+        TenantDirectoryOperatorReadinessAssessment directoryIdentity =
+            await _directoryOperatorReadiness.EvaluateAsync(
+                tenantId,
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                cancellationToken);
+        if (!directoryIdentity.IsReady)
+        {
+            return PaidCheckoutActivationResult.Failure(
+                "tenant_directory_operator_identity_unavailable",
+                "Tenant directory operator identity is unavailable for paid commerce.");
+        }
+
         if (!governance.IsConfigured || !governance.IsActivated)
         {
             return PaidCheckoutActivationResult.Failure("payment_operator_inactive", "The instance operator has not activated new paid sales.");

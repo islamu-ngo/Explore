@@ -11,6 +11,9 @@ public sealed class PaidOrderAcceptanceSnapshot : ITenantEntity, IAuditableEntit
     public const int MaxDisplayNameLength = 200;
     public const int MaxDisclosureLength = 2000;
     public const int MaxContactLength = 320;
+    public const string CurrentAcceptanceTemplateIdentifier = "paid-order-acceptance.v1";
+    public const string CurrentAcceptanceTemplateText =
+        "The buyer accepts the disclosed organizer merchant, tenant directory operator, instance operator, delivery, refund, support, payment-provider, and amount facts for this order.";
     private readonly List<PaidOrderAcceptanceLine> _lines = [];
 
     private PaidOrderAcceptanceSnapshot()
@@ -23,9 +26,31 @@ public sealed class PaidOrderAcceptanceSnapshot : ITenantEntity, IAuditableEntit
     public Guid EventId { get; private set; }
     public string CompositionRevision { get; private set; } = string.Empty;
     public string DisclosureRevision { get; private set; } = string.Empty;
+    public string AcceptanceTemplateIdentifier { get; private set; } = string.Empty;
+    public string AcceptanceTemplateText { get; private set; } = string.Empty;
+    public Guid OrganizerActorId { get; private set; }
+    public Guid OrganizerPaymentProviderConnectionId { get; private set; }
+    public string ConnectPlatformId { get; private set; } = string.Empty;
+    public string ExternalAccountId { get; private set; } = string.Empty;
+    public string MerchantCountryCode { get; private set; } = string.Empty;
     public string MerchantDisclosureText { get; private set; } = string.Empty;
 
+    public Guid TenantDirectoryOperatorDocumentId { get; private set; }
+    public Guid TenantDirectoryOperatorRevisionId { get; private set; }
+    public string TenantDirectoryOperatorPublicName { get; private set; } = string.Empty;
+    public string TenantDirectoryOperatorLegalName { get; private set; } = string.Empty;
+    public string TenantDirectoryOperatorKindCode { get; private set; } = string.Empty;
+    public string TenantDirectoryOperatorCountryCode { get; private set; } = string.Empty;
+    public string? TenantDirectoryOperatorRegistrationIdentifier { get; private set; }
+    public string TenantDirectoryOperatorPublicContactEmail { get; private set; } = string.Empty;
+    public string TenantDirectoryOperatorLegalNoticeUrl { get; private set; } = string.Empty;
+    public string TenantDirectoryOperatorTermsUrl { get; private set; } = string.Empty;
+    public string TenantDirectoryOperatorPrivacyUrl { get; private set; } = string.Empty;
+
     public Guid OperatorId { get; private set; }
+    public string OperatorLegalName { get; private set; } = string.Empty;
+    public string OperatorKindCode { get; private set; } = string.Empty;
+    public string? OperatorRegistrationIdentifier { get; private set; }
     public string OperatorDisplayName { get; private set; } = string.Empty;
     public bool IsOfficialInstance { get; private set; }
     public string OfficialOrigin { get; private set; } = string.Empty;
@@ -72,10 +97,33 @@ public sealed class PaidOrderAcceptanceSnapshot : ITenantEntity, IAuditableEntit
 
     public IReadOnlyCollection<PaidOrderAcceptanceLine> Lines => _lines.OrderBy(line => line.Ordinal).ToArray();
 
+    public PaidCheckoutTenantDirectoryOperatorDisclosure TenantDirectoryOperator =>
+        PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
+            TenantDirectoryOperatorDocumentId,
+            TenantDirectoryOperatorRevisionId,
+            TenantDirectoryOperatorPublicName,
+            TenantDirectoryOperatorLegalName,
+            TenantDirectoryOperatorKindCode,
+            TenantDirectoryOperatorCountryCode,
+            TenantDirectoryOperatorRegistrationIdentifier,
+            TenantDirectoryOperatorPublicContactEmail,
+            TenantDirectoryOperatorLegalNoticeUrl,
+            TenantDirectoryOperatorTermsUrl,
+            TenantDirectoryOperatorPrivacyUrl);
+
     public PaidCheckoutOperatorDisclosure Operator => PaidCheckoutOperatorDisclosure.Create(
         OperatorId, OperatorDisplayName, IsOfficialInstance, OfficialOrigin, OperatorRegionCode, OperatorWebsiteUrl,
         OperatorLegalNoticeUrl, OperatorTermsUrl, OperatorPrivacyUrl, ComplaintContact, ComplaintOwner, RefundOwner,
         DisputeOwner, ReconciliationOwner, ActivationStatus);
+
+    public PaidCheckoutInstanceOperatorDisclosure InstanceOperator => new(
+        OperatorId, OperatorDisplayName, OperatorLegalName, OperatorKindCode,
+        OperatorRegistrationIdentifier, IsOfficialInstance, OfficialOrigin, OperatorRegionCode,
+        OperatorWebsiteUrl, OperatorLegalNoticeUrl, OperatorTermsUrl, OperatorPrivacyUrl);
+
+    public PaidCheckoutPaymentOperationsDisclosure PaymentOperations => new(
+        ComplaintContact, ComplaintOwner, RefundOwner, DisputeOwner, ReconciliationOwner,
+        ActivationStatus);
 
     public PaidOrderDeliverySnapshot Delivery => PaidOrderDeliverySnapshot.Create(
         DeliveryStartsAtUtc, DeliveryEndsAtUtc, EventTimeZoneId);
@@ -91,7 +139,11 @@ public sealed class PaidOrderAcceptanceSnapshot : ITenantEntity, IAuditableEntit
         Guid eventId,
         string compositionRevision,
         string disclosureRevision,
+        string acceptanceTemplateIdentifier,
+        string acceptanceTemplateText,
+        Guid organizerActorId,
         string merchantDisclosureText,
+        PaidCheckoutTenantDirectoryOperatorDisclosure tenantDirectoryOperator,
         PaidCheckoutOperatorDisclosure operatorDisclosure,
         PaidOrderDeliverySnapshot delivery,
         string currencyCode,
@@ -107,14 +159,21 @@ public sealed class PaidOrderAcceptanceSnapshot : ITenantEntity, IAuditableEntit
         PaidCheckoutProviderDisclosure provider,
         IReadOnlyCollection<PaidOrderAcceptanceLineFact> lines,
         DateTime acceptedAt,
-        Guid? tenantPolicyVersionId = null)
+        Guid? tenantPolicyVersionId = null,
+        Guid organizerPaymentProviderConnectionId = default,
+        string connectPlatformId = "",
+        string externalAccountId = "",
+        string merchantCountryCode = "")
     {
+        ArgumentNullException.ThrowIfNull(tenantDirectoryOperator);
         ArgumentNullException.ThrowIfNull(operatorDisclosure);
         ArgumentNullException.ThrowIfNull(delivery);
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(lines);
         if (id == Guid.Empty || tenantId == Guid.Empty || orderTenantId != tenantId || registrationOrderId == Guid.Empty ||
-            eventId == Guid.Empty || instancePolicyVersionId == Guid.Empty || refundPolicyVersion <= 0)
+            eventId == Guid.Empty || organizerActorId == Guid.Empty || organizerPaymentProviderConnectionId == Guid.Empty ||
+            instancePolicyVersionId == Guid.Empty ||
+            refundPolicyVersion <= 0)
         {
             throw new ArgumentException("Acceptance identity, policy, and tenant lineage are required.");
         }
@@ -143,8 +202,31 @@ public sealed class PaidOrderAcceptanceSnapshot : ITenantEntity, IAuditableEntit
             EventId = eventId,
             CompositionRevision = PaidCheckoutDisclosureValidation.Required(compositionRevision, nameof(compositionRevision), 80),
             DisclosureRevision = PaidCheckoutDisclosureValidation.Required(disclosureRevision, nameof(disclosureRevision), 80),
+            AcceptanceTemplateIdentifier = PaidCheckoutDisclosureValidation.Required(
+                acceptanceTemplateIdentifier, nameof(acceptanceTemplateIdentifier), 80),
+            AcceptanceTemplateText = PaidCheckoutDisclosureValidation.Required(
+                acceptanceTemplateText, nameof(acceptanceTemplateText), MaxDisclosureLength),
+            OrganizerActorId = organizerActorId,
+            OrganizerPaymentProviderConnectionId = organizerPaymentProviderConnectionId,
+            ConnectPlatformId = OrganizerPaymentProviderConnection.NormalizeProviderIdentity(connectPlatformId, nameof(connectPlatformId), 120, preserveCase: false),
+            ExternalAccountId = OrganizerPaymentProviderConnection.NormalizeProviderIdentity(externalAccountId, nameof(externalAccountId), 200, preserveCase: true),
+            MerchantCountryCode = OrganizerPaymentProviderConnection.NormalizeCountryCode(merchantCountryCode),
             MerchantDisclosureText = PaidCheckoutDisclosureValidation.Required(merchantDisclosureText, nameof(merchantDisclosureText), MaxDisclosureLength),
+            TenantDirectoryOperatorDocumentId = tenantDirectoryOperator.DocumentId,
+            TenantDirectoryOperatorRevisionId = tenantDirectoryOperator.DocumentRevisionId,
+            TenantDirectoryOperatorPublicName = tenantDirectoryOperator.PublicName,
+            TenantDirectoryOperatorLegalName = tenantDirectoryOperator.LegalName,
+            TenantDirectoryOperatorKindCode = tenantDirectoryOperator.OperatorKindCode,
+            TenantDirectoryOperatorCountryCode = tenantDirectoryOperator.JurisdictionCountryCode,
+            TenantDirectoryOperatorRegistrationIdentifier = tenantDirectoryOperator.RegistrationIdentifier,
+            TenantDirectoryOperatorPublicContactEmail = tenantDirectoryOperator.PublicContactEmail,
+            TenantDirectoryOperatorLegalNoticeUrl = tenantDirectoryOperator.LegalNoticeUrl,
+            TenantDirectoryOperatorTermsUrl = tenantDirectoryOperator.TermsUrl,
+            TenantDirectoryOperatorPrivacyUrl = tenantDirectoryOperator.PrivacyUrl,
             OperatorId = operatorDisclosure.OperatorId,
+            OperatorLegalName = operatorDisclosure.LegalName,
+            OperatorKindCode = operatorDisclosure.OperatorKindCode,
+            OperatorRegistrationIdentifier = operatorDisclosure.RegistrationIdentifier,
             OperatorDisplayName = operatorDisclosure.OperatorDisplayName,
             IsOfficialInstance = operatorDisclosure.IsOfficialInstance,
             OfficialOrigin = operatorDisclosure.OfficialOrigin,

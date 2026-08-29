@@ -167,6 +167,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<
             IFairReturnWaitlistService,
             FairReturnWaitlistService>();
+        services.AddScoped<IEventAddOnService, EventAddOnService>();
 
         // Notification services
         services.AddScoped<INotificationService, NotificationService>();
@@ -185,6 +186,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IHomeDiscoveryService, HomeDiscoveryService>();
         services.AddScoped<ITenantPublicExperienceAdminService, TenantPublicExperienceAdminService>();
         services.AddScoped<ITenantBrandingSettingsAdminService, TenantBrandingSettingsAdminService>();
+        services.AddScoped<
+            ITenantDirectoryOperatorIdentityAdminService,
+            TenantDirectoryOperatorIdentityAdminService>();
         services.AddScoped<ITenantStorageSettingsAdminService, TenantStorageSettingsAdminService>();
         services.AddScoped<IAppearanceThemeService, AppearanceThemeService>();
         services.AddScoped<IUserAppearancePreferencesService, UserAppearancePreferencesService>();

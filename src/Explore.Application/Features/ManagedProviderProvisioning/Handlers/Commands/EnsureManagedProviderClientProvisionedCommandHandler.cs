@@ -51,6 +51,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
     ITenantCapabilityRepository tenantCapabilityRepository,
     ITenantSettingRepository tenantSettingRepository,
     ITenantSettingsDocumentRepository tenantSettingsDocumentRepository,
+    ITenantCreationService tenantCreationService,
     IRecipientNotificationMaterializer recipientNotificationMaterializer,
     IAuditLogRepository auditLogRepository,
     ITenantBrandingSettingsDocumentProvisioningService brandingProvisioningService,
@@ -83,6 +84,13 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         CancellationToken cancellationToken)
     {
         var dto = provisioningDto;
+
+        if (dto.ActivateTenant && dto.DirectoryOperatorIdentity is null)
+        {
+            return BaseCommandResponse.Failure<ManagedProviderClientProvisioningResultDto>(
+                "tenant_directory_operator_identity_incomplete",
+                "Tenant directory operator identity is not ready.");
+        }
 
         var validator = new ManagedProviderClientProvisioningDtoValidator();
         var validation = await validator.ValidateAsync(dto, cancellationToken);
@@ -221,6 +229,16 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         }
 
         var tenantId = Guid.CreateVersion7();
+        var brandingDocumentId = Guid.CreateVersion7();
+        var directoryOperatorIdentityDocumentId = Guid.CreateVersion7();
+        DateTime tenantOccurredAt = DateTime.UtcNow;
+        TenantSettingsDocument brandingSeed =
+            TenantBrandingSettingsDocumentDefaults.Create(tenantId, dto.TenantFullName);
+        TenantSettingsDocument identitySeed = dto.DirectoryOperatorIdentity is null
+            ? TenantDirectoryOperatorIdentityDocumentDefaults.Create(tenantId)
+            : TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+                tenantId,
+                dto.DirectoryOperatorIdentity.ToPayload());
         var userId = existingUser?.Id ?? Guid.CreateVersion7();
         var tenantUserId = Guid.CreateVersion7();
         var tenantUserProfileId = Guid.CreateVersion7();
@@ -240,7 +258,30 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
 
         async Task<ManagedProviderClientProvisioningResultDto> ProvisionAsync(CancellationToken ct)
         {
-            var tenant = await CreateTenantAsync(dto, normalizedTenantSlug, tenantId);
+            TenantCreationOutcome creation =
+                await tenantCreationService.CreateInCurrentTransactionAsync(
+                    new TenantCreationRequest(
+                        tenantId,
+                        dto.TenantFullName,
+                        normalizedTenantSlug,
+                        dto.ActivateTenant
+                            ? (int)TenantStatusEnum.Active
+                            : (int)TenantStatusEnum.Provisioning,
+                        ActorUserId: null,
+                        tenantOccurredAt,
+                        new TenantBrandingDocumentSeed(
+                            brandingDocumentId,
+                            brandingSeed.SchemaVersion,
+                            brandingSeed.DefaultsVersion,
+                            brandingSeed.PayloadJson),
+                        new TenantDirectoryOperatorIdentityDocumentSeed(
+                            directoryOperatorIdentityDocumentId,
+                            identitySeed.SchemaVersion,
+                            identitySeed.DefaultsVersion,
+                            identitySeed.PayloadJson)),
+                    ct);
+            Tenant tenant = creation.Tenant;
+            tenant.Description = $"Provisioned from {dto.ExternalSystem.Trim()} customer {dto.ExternalCustomerId.Trim()} by provider {dto.ProviderKey.Trim()}.";
             var user = await EnsureUserAsync(dto.ExternalAdmin, normalizedIdentityProvider, normalizedSubject, existingUser, userId);
             var userActor = await EnsureUserActorAsync(dto.ExternalAdmin, user, userActorId);
             var tenantUser = await EnsureTenantUserAsync(tenant.Id, user.Id, userActor.Id, tenantUserId, user.Id);
@@ -449,104 +490,114 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         }
 
         ManagedProviderClientProvisioningResultDto? result;
-        if (managementRequest is null)
+        try
         {
-            if (dto.ActivateTenant && tenantActivationCapacityPolicy.IsEnforced)
+            if (managementRequest is null)
             {
-                (ManagedProviderClientProvisioningResultDto? Result,
-                    BaseCommandResponse<ManagedProviderClientProvisioningResultDto>? Failure) ordinaryOutcome =
-                    await mutationLock.ExecuteAsync<(
-                        ManagedProviderClientProvisioningResultDto? Result,
-                        BaseCommandResponse<ManagedProviderClientProvisioningResultDto>? Failure)>(
-                        GovernanceSettingKeys.Deployment.Mode,
-                        async ct =>
-                        {
-                            TenantActivationCapacityAssessment capacity =
-                                await tenantActivationCapacityPolicy.EvaluateAsync(
-                                    requireMultiTenant: false,
-                                    cancellationToken: ct);
-                            return capacity.Allowed
-                                ? (await ProvisionAsync(ct), null)
-                                : (null, Failure(
-                                    "Tenant activation capacity validation failed.",
-                                    capacity.Error!,
-                                    capacity.FailureCode));
-                        },
-                        cancellationToken);
-                if (ordinaryOutcome.Failure is not null)
+                if (dto.ActivateTenant && tenantActivationCapacityPolicy.IsEnforced)
                 {
-                    return ordinaryOutcome.Failure;
-                }
+                    (ManagedProviderClientProvisioningResultDto? Result,
+                        BaseCommandResponse<ManagedProviderClientProvisioningResultDto>? Failure) ordinaryOutcome =
+                        await mutationLock.ExecuteAsync<(
+                            ManagedProviderClientProvisioningResultDto? Result,
+                            BaseCommandResponse<ManagedProviderClientProvisioningResultDto>? Failure)>(
+                            GovernanceSettingKeys.Deployment.Mode,
+                            async ct =>
+                            {
+                                TenantActivationCapacityAssessment capacity =
+                                    await tenantActivationCapacityPolicy.EvaluateAsync(
+                                        requireMultiTenant: false,
+                                        cancellationToken: ct);
+                                return capacity.Allowed
+                                    ? (await ProvisionAsync(ct), null)
+                                    : (null, Failure(
+                                        "Tenant activation capacity validation failed.",
+                                        capacity.Error!,
+                                        capacity.FailureCode));
+                            },
+                            cancellationToken);
+                    if (ordinaryOutcome.Failure is not null)
+                    {
+                        return ordinaryOutcome.Failure;
+                    }
 
-                result = ordinaryOutcome.Result;
+                    result = ordinaryOutcome.Result;
+                }
+                else
+                {
+                    result = await unitOfWork.ExecuteInTransactionAsync(ProvisionAsync, cancellationToken);
+                }
             }
             else
             {
-                result = await unitOfWork.ExecuteInTransactionAsync(ProvisionAsync, cancellationToken);
+                (ManagedProviderClientProvisioningResultDto? Result,
+                    BaseCommandResponse<ManagedProviderClientProvisioningResultDto>? Failure) outcome =
+                    await mutationLock.ExecuteManyAsync<(
+                        ManagedProviderClientProvisioningResultDto? Result,
+                        BaseCommandResponse<ManagedProviderClientProvisioningResultDto>? Failure)>(
+                    BuildManagedMutationKeys(resolvedBootstrap!),
+                    async ct =>
+                    {
+                        ManagedTenantProvisioningOperation? currentOperation =
+                            await managedTenantProvisioningOperationRepository.GetByIdAsNoTrackingAsync(
+                                operationId!.Value,
+                                ct);
+                        if (!IsCurrentGeneration(
+                                currentOperation,
+                                managedOperation!,
+                                expectedOutboxMessageId!.Value))
+                        {
+                            return (null, Failure(
+                                "Managed tenant provisioning generation is stale.",
+                                "The operation was retried, cancelled, or completed before tenant mutation began.",
+                                "tenant_provisioning_generation_stale"));
+                        }
+
+                        managedOperation = currentOperation;
+                        TenantActivationCapacityAssessment capacity = await tenantActivationCapacityPolicy.EvaluateAsync(
+                            requireMultiTenant: true,
+                            excludedReservationOperationId: operationId,
+                            cancellationToken: ct);
+                        if (!capacity.Allowed)
+                        {
+                            return (null, Failure(
+                                "Managed tenant provisioning capacity validation failed.",
+                                capacity.Error!,
+                                capacity.FailureCode));
+                        }
+
+                        ManagedTenantProvisioningPreflightResult recheck =
+                            await managedTenantProvisioningPreflight.EvaluateAsync(
+                                managementRequest,
+                                requireProvisionablePlan: true,
+                                ct);
+                        if (!recheck.Success)
+                        {
+                            return (null, Failure(
+                                "Managed tenant provisioning policy validation failed.",
+                                recheck.Error!,
+                                recheck.FailureCode));
+                        }
+
+                        resolvedBootstrap = recheck.Resolved!;
+                        return (await ProvisionAsync(ct), null);
+                    },
+                    cancellationToken);
+
+                if (outcome.Failure is not null)
+                {
+                    return outcome.Failure;
+                }
+
+                result = outcome.Result;
             }
         }
-        else
+        catch (TenantDirectoryOperatorIdentityReadinessException exception)
         {
-            (ManagedProviderClientProvisioningResultDto? Result,
-                BaseCommandResponse<ManagedProviderClientProvisioningResultDto>? Failure) outcome =
-                await mutationLock.ExecuteManyAsync<(
-                    ManagedProviderClientProvisioningResultDto? Result,
-                    BaseCommandResponse<ManagedProviderClientProvisioningResultDto>? Failure)>(
-                BuildManagedMutationKeys(resolvedBootstrap!),
-                async ct =>
-                {
-                    ManagedTenantProvisioningOperation? currentOperation =
-                        await managedTenantProvisioningOperationRepository.GetByIdAsNoTrackingAsync(
-                            operationId!.Value,
-                            ct);
-                    if (!IsCurrentGeneration(
-                            currentOperation,
-                            managedOperation!,
-                            expectedOutboxMessageId!.Value))
-                    {
-                        return (null, Failure(
-                            "Managed tenant provisioning generation is stale.",
-                            "The operation was retried, cancelled, or completed before tenant mutation began.",
-                            "tenant_provisioning_generation_stale"));
-                    }
-
-                    managedOperation = currentOperation;
-                    TenantActivationCapacityAssessment capacity = await tenantActivationCapacityPolicy.EvaluateAsync(
-                        requireMultiTenant: true,
-                        excludedReservationOperationId: operationId,
-                        cancellationToken: ct);
-                    if (!capacity.Allowed)
-                    {
-                        return (null, Failure(
-                            "Managed tenant provisioning capacity validation failed.",
-                            capacity.Error!,
-                            capacity.FailureCode));
-                    }
-
-                    ManagedTenantProvisioningPreflightResult recheck =
-                        await managedTenantProvisioningPreflight.EvaluateAsync(
-                            managementRequest,
-                            requireProvisionablePlan: true,
-                            ct);
-                    if (!recheck.Success)
-                    {
-                        return (null, Failure(
-                            "Managed tenant provisioning policy validation failed.",
-                            recheck.Error!,
-                            recheck.FailureCode));
-                    }
-
-                    resolvedBootstrap = recheck.Resolved!;
-                    return (await ProvisionAsync(ct), null);
-                },
-                cancellationToken);
-
-            if (outcome.Failure is not null)
-            {
-                return outcome.Failure;
-            }
-
-            result = outcome.Result;
+            return BaseCommandResponse.Failure<ManagedProviderClientProvisioningResultDto>(
+                exception.FailureCode,
+                exception.Message,
+                exception.ReasonCodes);
         }
 
         if (result is null)
@@ -568,20 +619,6 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         return BaseCommandResponse.Success(
             result,
             "Managed provider client provisioned successfully.");
-    }
-
-    private async Task<Tenant> CreateTenantAsync(ManagedProviderClientProvisioningDto dto, string normalizedTenantSlug, Guid tenantId)
-    {
-        return await tenantRepository.Create(new Tenant
-        {
-            Id = tenantId,
-            FullName = dto.TenantFullName.Trim(),
-            Slug = normalizedTenantSlug,
-            Description = $"Provisioned from {dto.ExternalSystem.Trim()} customer {dto.ExternalCustomerId.Trim()} by provider {dto.ProviderKey.Trim()}.",
-            TenantStatusId = dto.ActivateTenant ? (int)TenantStatusEnum.Active : (int)TenantStatusEnum.Provisioning,
-            TenantStatus = null!,
-            CreatedAt = DateTime.UtcNow
-        });
     }
 
     private async Task<User> EnsureUserAsync(

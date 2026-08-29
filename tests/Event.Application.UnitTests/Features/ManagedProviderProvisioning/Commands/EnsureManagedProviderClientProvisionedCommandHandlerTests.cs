@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
 using Explore.Application.DTOs.Management;
+using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Features.ControlPlane.Plans;
 using Explore.Application.Features.ManagedProviderProvisioning.Handlers.Commands;
 using Explore.Application.Features.ManagedProviderProvisioning.Requests.Commands;
@@ -14,6 +15,7 @@ using Explore.Application.Features.Management;
 using Explore.Application.Management;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -42,6 +44,8 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IExternalBindingRepository _externalBindingRepository;
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
+    private readonly ITenantSettingsDocumentRepository _tenantSettingsDocumentRepository;
+    private readonly ITenantCreationService _tenantCreationService;
     private readonly IRecipientNotificationMaterializer _recipientNotificationMaterializer;
     private readonly IUnitOfWork _unitOfWork;
     private readonly EnsureManagedProviderClientProvisionedCommandHandler _handler;
@@ -64,6 +68,10 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         _externalBindingRepository = Substitute.For<IExternalBindingRepository>();
         _instanceBootstrapStateRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        _tenantSettingsDocumentRepository = Substitute.For<ITenantSettingsDocumentRepository>();
+        _tenantCreationService = new TenantCreationService(
+            _tenantRepository,
+            _tenantSettingsDocumentRepository);
         _recipientNotificationMaterializer = Substitute.For<IRecipientNotificationMaterializer>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
 
@@ -89,6 +97,8 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         _groupMemberRepository.Create(Arg.Any<GroupMember>()).Returns(call => call.Arg<GroupMember>());
         _externalBindingRepository.Create(Arg.Any<ExternalBinding>()).Returns(call => call.Arg<ExternalBinding>());
         _externalBindingRepository.Update(Arg.Any<ExternalBinding>()).Returns(Task.CompletedTask);
+        _tenantSettingsDocumentRepository.Create(Arg.Any<TenantSettingsDocument>())
+            .Returns(call => call.Arg<TenantSettingsDocument>());
         _userRepository.GetUsersByNormalizedEmailAsync(
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
@@ -137,7 +147,8 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             tenantPlanRepository,
             Substitute.For<ITenantCapabilityRepository>(),
             tenantSettingRepository,
-            Substitute.For<ITenantSettingsDocumentRepository>(),
+            _tenantSettingsDocumentRepository,
+            _tenantCreationService,
             _recipientNotificationMaterializer,
             Substitute.For<IAuditLogRepository>(),
             Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>(),
@@ -174,6 +185,14 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             tenant.FullName == "ERP Customer" &&
             tenant.Slug == "erp-customer" &&
             tenant.TenantStatusId == (int)TenantStatusEnum.Active));
+        await _tenantSettingsDocumentRepository.Received(1).Create(
+            Arg.Is<TenantSettingsDocument>(document =>
+                document.TenantId == result.Id!.TenantId
+                && document.DocumentKey == SettingsDocumentKeys.Tenant.Branding));
+        await _tenantSettingsDocumentRepository.Received(1).Create(
+            Arg.Is<TenantSettingsDocument>(document =>
+                document.TenantId == result.Id!.TenantId
+                && document.DocumentKey == SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity));
         await _actorRepository.Received(1).Create(Arg.Is<Actor>(actor =>
             actor.ActorTypeId == (int)ActorTypeEnum.User &&
             actor.UserId == result.Id.UserId));
@@ -212,6 +231,67 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             binding.InternalType == ExternalBindingTypes.Internal.TenantUser &&
             binding.InternalId == result.Id!.TenantUserId &&
             binding.ScopeTenantId == result.Id.TenantId));
+    }
+
+    [Test]
+    public async Task Handle_ActiveTenantWithoutDirectoryIdentity_FailsBeforeTenantWrite()
+    {
+        var request = new EnsureManagedProviderClientProvisionedCommand
+        {
+            ProvisioningDto = CreateValidDto() with
+            {
+                DirectoryOperatorIdentity = null
+            }
+        };
+        _tenantRepository.GetTenantBySlug("erp-customer").Returns((Tenant?)null);
+        _userExternalLoginRepository.GetByProviderAndKey("keycloak", "external-admin-1")
+            .Returns((UserExternalLogin?)null);
+        _actorRepository.GetActorByUserId(Arg.Any<Guid>()).Returns((Actor?)null);
+        _tenantUserRepository.GetByTenantAndUserAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns((TenantUser?)null);
+        _tenantUserProfileRepository.GetByTenantUserAsync(
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns((TenantUserProfile?)null);
+        _tenantUserRoleGrantRepository.GetByTenantAndUser(
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>())
+            .Returns((TenantUserRoleGrant?)null);
+
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("tenant_directory_operator_identity_incomplete");
+        await _tenantRepository.DidNotReceiveWithAnyArgs().Create(default!);
+        await _tenantSettingsDocumentRepository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Test]
+    public async Task Handle_ProvisioningTenantWithoutDirectoryIdentity_CreatesDraftIdentityDocument()
+    {
+        ManagedProviderClientProvisioningDto dto = CreateValidDto() with
+        {
+            ActivateTenant = false,
+            DirectoryOperatorIdentity = null
+        };
+        _tenantRepository.GetTenantBySlug("erp-customer").Returns((Tenant?)null);
+        _userExternalLoginRepository.GetByProviderAndKey("keycloak", "external-admin-1")
+            .Returns((UserExternalLogin?)null);
+
+        BaseCommandResponse<ManagedProviderClientProvisioningResultDto> result = await _handler.Handle(
+            new EnsureManagedProviderClientProvisionedCommand { ProvisioningDto = dto },
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsTrue();
+        await _tenantRepository.Received(1).Create(Arg.Is<Tenant>(tenant =>
+            tenant.TenantStatusId == (int)TenantStatusEnum.Provisioning));
+        await _tenantSettingsDocumentRepository.Received(1).Create(
+            Arg.Is<TenantSettingsDocument>(document =>
+                document.DocumentKey == SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity));
     }
 
     [Test]
@@ -581,6 +661,8 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             .Returns(call => call.Arg<TenantOnboardingState>());
         var tenantCapabilityRepository = Substitute.For<ITenantCapabilityRepository>();
         var tenantSettingsDocumentRepository = Substitute.For<ITenantSettingsDocumentRepository>();
+        tenantSettingsDocumentRepository.Create(Arg.Any<TenantSettingsDocument>())
+            .Returns(call => call.Arg<TenantSettingsDocument>());
         tenantSettingsDocumentRepository.Update(Arg.Any<TenantSettingsDocument>())
             .Returns(Task.CompletedTask);
         var brandingService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
@@ -624,6 +706,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             tenantCapabilityRepository,
             tenantSettingRepository,
             tenantSettingsDocumentRepository,
+            new TenantCreationService(_tenantRepository, tenantSettingsDocumentRepository),
             _recipientNotificationMaterializer,
             auditRepository,
             brandingService,
@@ -823,6 +906,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
 
         await Assert.That(constructorParameterTypes).DoesNotContain(typeof(IPlatformUserRoleRepository));
         await Assert.That(constructorParameterTypes).Contains(typeof(IRecipientNotificationMaterializer));
+        await Assert.That(constructorParameterTypes).Contains(typeof(ITenantCreationService));
         await Assert.That(constructorParameterTypes).DoesNotContain(typeof(IEmailDispatchOutboxRepository));
     }
 
@@ -838,6 +922,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             TenantFullName = "ERP Customer",
             TenantSlug = "erp-customer",
             ActivateTenant = true,
+            DirectoryOperatorIdentity = CreateValidDirectoryOperatorIdentity(),
             ExternalAdmin = new ManagedProviderExternalAdminDto
             {
                 IdentityProvider = "keycloak",
@@ -858,6 +943,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
         TenantFullName = "ERP Customer",
         TenantSlug = "erp-customer",
         ActivateTenant = true,
+        DirectoryOperatorIdentity = CreateValidDirectoryOperatorIdentity(),
         ExternalAdmin = new ManagedProviderExternalAdminDto
         {
             IdentityProvider = "managed-invitation",
@@ -867,6 +953,19 @@ public class EnsureManagedProviderClientProvisionedCommandHandlerTests
             LastName = "Admin",
             EmailVerified = false
         }
+    };
+
+    private static TenantDirectoryOperatorIdentityInputDto CreateValidDirectoryOperatorIdentity() => new()
+    {
+        PublicName = "ERP Customer",
+        LegalName = "ERP Customer Limited",
+        OperatorKindCode = "registered_organization",
+        JurisdictionCountryCode = "GB",
+        RegistrationIdentifier = "12345678",
+        PublicContactEmail = "legal@example.com",
+        LegalNoticeUrl = "https://example.com/legal",
+        TermsUrl = "https://example.com/terms",
+        PrivacyUrl = "https://example.com/privacy"
     };
 
     private sealed class ImmediateSettingMutationLock : ISettingMutationLock

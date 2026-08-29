@@ -139,6 +139,7 @@ public sealed class TypedSettingsDocumentResolver : ITypedSettingsDocumentResolv
 
         return new ResolvedSettingsDocument<TPayload>
         {
+            DocumentId = document.Id,
             DocumentKey = document.DocumentKey,
             SchemaVersion = document.SchemaVersion,
             DefaultsVersion = document.DefaultsVersion,

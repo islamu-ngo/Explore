@@ -8,7 +8,6 @@ using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.Application.Authentication;
 using Explore.Application.DTOs.Onboarding;
-using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Application.Features.TenantOnboarding.Requests.Queries;
 using Explore.Application.Hateoas;
@@ -78,12 +77,12 @@ public class TenantOnboardingController : ExploreControllerBase
     [HttpPost("complete", Name = RouteNames.CompleteTenantOnboarding)]
     [Authorize]
     [EndpointSummary("Complete Tenant Onboarding")]
-    [EndpointDescription("Completes tenant onboarding and persists tenant policy answers.")]
+    [EndpointDescription("Completes tenant onboarding and atomically persists tenant policy answers, branding, and directory-operator identity.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete(
-        [FromBody] UpdateTenantPolicyRequest settings,
+        [FromBody] CompleteTenantOnboardingRequest request,
         [FromServices] IOutputCacheStore cacheStore,
         CancellationToken cancellationToken = default)
     {
@@ -97,7 +96,10 @@ public class TenantOnboardingController : ExploreControllerBase
         var response = await _mediator.Send(new CompleteTenantOnboardingCommand
         {
             UserId = currentUserId.Value,
-            Settings = settings
+            Settings = request.Settings,
+            DirectoryOperatorIdentity = request.DirectoryOperatorIdentity,
+            ExpectedDirectoryOperatorIdentityConcurrencyStamp =
+                request.ExpectedDirectoryOperatorIdentityConcurrencyStamp
         }, cancellationToken);
 
         if (!response.IsSuccess)

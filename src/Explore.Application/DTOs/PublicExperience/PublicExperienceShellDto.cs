@@ -14,6 +14,10 @@ public sealed record PublicExperienceShellDto
     private IReadOnlyList<PublicExperienceCtaDto> _ctas = Array.AsReadOnly(Array.Empty<PublicExperienceCtaDto>());
 
     public int SchemaVersion { get; init; } = 1;
+    public bool IsAvailable { get; init; }
+    public string? UnavailableCode { get; init; }
+    public TenantDirectoryOperatorPublicDto? DirectoryOperator { get; init; }
+    public InstanceOperatorPublicDto? InstanceOperator { get; init; }
     public string Revision { get; init; } = string.Empty;
     public PublicExperienceMode Mode { get; init; } = PublicExperienceMode.DiscoveryCentric;
     public string RailPublicVisibility { get; init; } = "AuthenticatedOnly";

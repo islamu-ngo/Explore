@@ -2,8 +2,8 @@
 /* ABOUTME: Uses design tokens while leaving control styling to MudBlazor. */
 
 .ticket-selection__ticket {
-    margin-block: var(--space-4, 1rem);
-    padding: var(--space-4, 1rem);
+    margin-block: var(--isl-space-4);
+    padding: var(--isl-space-4);
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: var(--mud-default-borderradius);
 }
@@ -16,5 +16,19 @@
     border-inline-start: var(--isl-space-1) solid var(--isl-color-info);
     border-radius: var(--isl-radius-card);
     overflow-wrap: anywhere;
-    background: color-mix(in srgb, var(--isl-color-info) 8%, var(--isl-color-surface));
+    background: color-mix(in oklch, var(--isl-color-info) 8%, var(--isl-color-surface));
+}
+
+.ticket-selection__directory-notice p {
+    margin: 0;
+}
+
+.ticket-selection__legal-name {
+    color: var(--mud-palette-text-secondary);
+}
+
+.ticket-selection__directory-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2) var(--isl-space-3);
 }

@@ -17,15 +17,23 @@ internal static class PaidAcceptanceTestFacts
         long platformFeeMinor,
         long platformContributionMinor,
         DateTime acceptedAt,
-        string currencyCode = "EUR") => PaidOrderAcceptanceSnapshot.Create(
-            Guid.CreateVersion7(),
+        string currencyCode = "EUR",
+        OrganizerPaymentRecipientSnapshot? recipient = null) => PaidOrderAcceptanceSnapshot.Create(
+            recipient?.OrganizerActorId ?? Guid.CreateVersion7(),
             tenantId,
             tenantId,
             orderId,
             eventId,
             compositionRevision,
             $"disclosure:{compositionRevision}",
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateIdentifier,
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateText,
+            Guid.CreateVersion7(),
             "Example Organizer is the legal merchant for this order.",
+            PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
+                Guid.CreateVersion7(), Guid.CreateVersion7(), "Community Events", "Community Events ASBL",
+                "registered_organization", "BE", null, "contact@example.test", "https://example.test/legal",
+                "https://example.test/terms", "https://example.test/privacy"),
             PaidCheckoutOperatorDisclosure.Create(
                 Guid.CreateVersion7(),
                 "Independent Example Operator",
@@ -51,14 +59,14 @@ internal static class PaidAcceptanceTestFacts
             platformFeeMinor,
             platformContributionMinor,
             checked(organizerAmountMinor + platformContributionMinor),
-            instancePolicyVersionId,
+            recipient?.InstancePolicyVersionId ?? instancePolicyVersionId,
             1,
             "Refund policy",
             "en-GB",
             "support@example.test",
             PaidCheckoutProviderDisclosure.Create(
-                "stripe",
-                "OrganizerDirect",
+                recipient?.ProviderCode ?? "stripe",
+                recipient?.ProfileCode ?? "OrganizerDirect",
                 "direct-charge",
                 "EXAMPLE EVENT",
                 "test",
@@ -72,5 +80,11 @@ internal static class PaidAcceptanceTestFacts
                     0,
                     organizerAmountMinor)
             ],
-            acceptedAt);
+            acceptedAt,
+            tenantPolicyVersionId: recipient?.TenantPolicyVersionId,
+            organizerPaymentProviderConnectionId:
+                recipient?.OrganizerPaymentProviderConnectionId ?? Guid.CreateVersion7(),
+            connectPlatformId: recipient?.ConnectPlatformId ?? "platform-live-eu",
+            externalAccountId: recipient?.ExternalAccountId ?? "acct_123",
+            merchantCountryCode: recipient?.MerchantCountryCode ?? "BE");
 }

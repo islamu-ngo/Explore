@@ -585,7 +585,19 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
             1_000,
             75,
             125,
-            UtcNow);
+            UtcNow,
+            recipient: OrganizerPaymentRecipientSnapshot.Create(
+                TenantId,
+                organizerActorId,
+                connection.Id,
+                "stripe",
+                "platform-live-eu",
+                "acct_authority",
+                "BE",
+                "EUR",
+                instancePolicy.Id,
+                null,
+                UtcNow));
         RegistrationPaymentAttemptClaimResult result = await service.ClaimAsync(
             new(TenantId, OrderId, UtcNow, AcceptanceSnapshot: acceptance),
             CancellationToken.None);
@@ -632,10 +644,23 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
             VisibilityType = null!,
             EventStatus = null!
         });
+        OrganizerPaymentRecipientSnapshot existingRecipient =
+            existing.Attempt.RecipientSnapshot;
         OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(
-            Guid.CreateVersion7(), TenantId, organizerActorId, "stripe", "platform-live-eu", "acct_authority", UtcNow);
+            existingRecipient.OrganizerPaymentProviderConnectionId,
+            TenantId,
+            organizerActorId,
+            existingRecipient.ProviderCode,
+            existingRecipient.ConnectPlatformId,
+            existingRecipient.ExternalAccountId,
+            UtcNow);
         connection.ApplyReadiness(OrganizerPaymentProviderReadinessObservation.Create(
-            "BE", ChargeCapabilityState.Active, ProviderRequirementsState.Satisfied, ["EUR"], UtcNow, "ready-1"));
+            existingRecipient.MerchantCountryCode,
+            ChargeCapabilityState.Active,
+            ProviderRequirementsState.Satisfied,
+            [existingRecipient.CurrencyCode],
+            UtcNow,
+            "ready-1"));
         var connections = Substitute.For<IOrganizerPaymentProviderConnectionRepository>();
         connections.GetActiveByScopeAsync(
             TenantId, organizerActorId, "stripe", "platform-live-eu", Arg.Any<CancellationToken>()).Returns(connection);
@@ -733,7 +758,19 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
             1_000,
             75,
             125,
-            UtcNow);
+            UtcNow,
+            recipient: OrganizerPaymentRecipientSnapshot.Create(
+                TenantId,
+                organizerActorId,
+                connection.Id,
+                "stripe",
+                "platform-live-eu",
+                "acct_authority",
+                "BE",
+                "EUR",
+                instancePolicy.Id,
+                null,
+                UtcNow));
         RegistrationPaymentAttemptClaimResult first = await service.ClaimAsync(
             new(TenantId, OrderId, UtcNow, AcceptanceSnapshot: acceptance), CancellationToken.None);
         first.Attempt!.MarkDispatchFailed(UtcNow.AddSeconds(1), "req-a-failed");
@@ -1246,7 +1283,8 @@ public sealed class RegistrationPaymentAttemptPersistenceTests
             1_000,
             75,
             125,
-            UtcNow));
+            UtcNow,
+            recipient: recipient));
         return new(attempt, CheckoutDispatchEffect.Create(attempt, UtcNow));
     }
 

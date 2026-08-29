@@ -13,6 +13,10 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.EventSeries.EventSeriesDto),
         typeof(Explore.Application.DTOs.EventSeries.EventSeriesListDto),
         typeof(Explore.Application.DTOs.Event.EventPublicActionDto),
+        typeof(Explore.Application.DTOs.EventAddOns.EventAddOnCatalogDto),
+        typeof(Explore.Application.DTOs.EventAddOns.EventAddOnCatalogItemDto),
+        typeof(Explore.Application.DTOs.EventAddOns.RegistrationOrderAddOnSummaryDto),
+        typeof(Explore.Application.DTOs.EventAddOns.RegistrationOrderAddOnLineDto),
         typeof(Explore.Application.DTOs.EventRoleAssignment.EventTeamMemberDto),
         typeof(Explore.Application.DTOs.EventOrganizerClaim.EventOrganizerClaimDto),
         typeof(Explore.Application.DTOs.PublicExperience.EventDiscoveryItemDto),
@@ -201,6 +205,7 @@ internal static class HalOpenApiSchemaCatalog
 
         // Tenant settings DTOs
         typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
+        typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantDirectoryOperatorIdentityDocumentDto),
         typeof(Explore.Application.DTOs.Footer.TenantFooterSettingsDto),
 
         // AI assistant DTOs
@@ -259,6 +264,10 @@ internal static class HalOpenApiSchemaCatalog
             typeof(Explore.Application.DTOs.Admissions.TicketTransferDto),
         ["HalResourceOfFairReturnWaitlistDto"] =
             typeof(Explore.Application.DTOs.Waitlist.FairReturnWaitlistDto),
+        ["HalResourceOfEventAddOnCatalogDto"] =
+            typeof(Explore.Application.DTOs.EventAddOns.EventAddOnCatalogDto),
+        ["HalResourceOfRegistrationOrderAddOnSummaryDto"] =
+            typeof(Explore.Application.DTOs.EventAddOns.RegistrationOrderAddOnSummaryDto),
         ["HalResourceOfEventDto"] = typeof(Explore.Application.DTOs.Event.EventDto),
         ["HalResourceOfEventListDto"] = typeof(Explore.Application.DTOs.Event.EventListDto),
         ["HalResourceOfEventSeriesDto"] = typeof(Explore.Application.DTOs.EventSeries.EventSeriesDto),
@@ -373,6 +382,7 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfProjectionStatusDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionStatusDto),
         ["HalResourceOfProjectionDirtyScopeDto"] = typeof(Explore.Application.DTOs.CustomPropertyProjection.ProjectionDirtyScopeDto),
         ["HalResourceOfTenantBrandingSettingsDocumentDto"] = typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantBrandingSettingsDocumentDto),
+        ["HalResourceOfTenantDirectoryOperatorIdentityDocumentDto"] = typeof(Explore.Application.DTOs.TenantSettingsDocuments.TenantDirectoryOperatorIdentityDocumentDto),
         ["HalResourceOfTenantFooterSettingsDto"] = typeof(Explore.Application.DTOs.Footer.TenantFooterSettingsDto),
         ["HalResourceOfNotificationPreferenceMatrixDto"] = typeof(Explore.Application.DTOs.Notification.NotificationPreferenceMatrixDto),
         ["HalResourceOfWebPushSubscriptionDto"] = typeof(Explore.Application.DTOs.Notification.WebPushSubscriptionDto),

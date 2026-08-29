@@ -3,6 +3,22 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 
 # Self-Hosting Guide
 
+## Required Operator Identity
+
+Runtime API and Standalone hosts require a complete
+`INSTANCE__OPERATORIDENTITY__*` section before startup. Copy the exact keys from
+`.env.example`; provide a UUIDv7 operator ID, public/legal names,
+official-instance origin, kind, jurisdiction, public contact, website, legal
+notice, terms, and privacy URL. These are public accountability facts, not
+payment credentials.
+
+If startup reports an `Instance:OperatorIdentity` validation failure, correct
+the named environment values and restart. Do not move identity into
+`Payments:CheckoutGovernance`, appsettings, branding, or a tenant document.
+Payment-operation owners and activation remain under
+`PAYMENTS__CHECKOUTGOVERNANCE__*`. Tenant directory identities are provisioned
+through onboarding/tenant administration and must be ready before activation.
+
 > **Audience:** Operators and DevOps engineers  
 > **Status:** Implemented  
 > **Owner:** Platform/Ops  

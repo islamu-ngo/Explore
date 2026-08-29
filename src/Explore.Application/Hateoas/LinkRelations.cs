@@ -9,6 +9,15 @@ namespace Explore.Application.Hateoas;
 /// </summary>
 public static class LinkRelations
 {
+    public const string ManageEventAddOns = "manage-event-add-ons";
+    public const string CreateEventAddOnCatalogDraft = "create-event-add-on-catalog-draft";
+    public const string AddEventAddOnCatalogItem = "add-event-add-on-catalog-item";
+    public const string PublishEventAddOnCatalog = "publish-event-add-on-catalog";
+    public const string RetireEventAddOnCatalog = "retire-event-add-on-catalog";
+    public const string ReserveEventAddOns = "reserve-event-add-ons";
+    public const string FulfillEventAddOn = "fulfill-event-add-on";
+    public const string RefundEventAddOn = "refund-event-add-on";
+
     #region IANA Standard Relations (RFC 8288)
 
     /// <summary>

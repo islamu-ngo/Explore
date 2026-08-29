@@ -7,6 +7,7 @@ using Event.Web.BffHosting.Proxy;
 using Event.Web.BffHosting.Security;
 using Explore.Blazor.Components;
 using Explore.Blazor.Extensions;
+using Explore.Blazor.HealthChecks;
 
 namespace Explore.Blazor.Hosting;
 
@@ -19,6 +20,29 @@ public static class BlazorHostApplicationExtensions
         ValidateProfile(app, profile);
         if (profile == BlazorHostProfile.Split)
         {
+            bool requireApiReadyOnStart =
+                !app.Environment.IsEnvironment("Testing")
+                || app.Configuration.GetValue<bool>("Blazor:RequireApiReadyOnStart");
+            if (requireApiReadyOnStart)
+            {
+                await using var scope = app.Services.CreateAsyncScope();
+                var probe = scope.ServiceProvider.GetRequiredService<IExploreApiReadinessProbe>();
+                try
+                {
+                    await probe.EnsureReadyAsync(app.Lifetime.ApplicationStopping)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception exception) when (
+                    exception is Explore.Blazor.Client.Clients.ApiException
+                    or HttpRequestException
+                    or TaskCanceledException)
+                {
+                    throw new InvalidOperationException(
+                        "The split Blazor host cannot start because the Explore API is not ready.",
+                        exception);
+                }
+            }
+
             await app.InitializeDynamicAuthSchemesAsync();
         }
 

@@ -26,6 +26,11 @@ The I-VSD payment consultation identifies Stripe Connect direct charges on the o
 3. Effective paid-event policy is the intersection of hard product invariants, the instance ceiling, tenant narrowing, organizer/event choice, and live provider/account capability. A tenant can narrow but never broaden instance policy.
 4. Paid publication requires an eligible organizer actor, permitted actor kind, required local verification, an active actor-bound connected account, charge readiness, one supported currency, refund/support disclosures, and current provider capability.
 5. Connected-account replacement affects future publication and payment only. Historical recipient, merchant country, currency, profile, and policy snapshots are immutable.
+6. Buyer acceptance records separate organizer merchant, tenant directory
+   operator, general instance operator, and payment-operation evidence. Tenant
+   branding is never an identity source. The server recomposes the exact
+   versioned disclosure before provider handoff, and any authority revision
+   invalidates stale acceptance.
 
 ### Money, promotions, and payment attempts
 

@@ -1,6 +1,7 @@
-// ABOUTME: bUnit coverage for the attendee ticket-selection entry page.
-// ABOUTME: Verifies server composition drives guest order creation and recovery navigation.
+// ABOUTME: bUnit coverage for attendee ticket selection and structured operator disclosure.
+// ABOUTME: Verifies server composition drives guest orders without a prose identity fallback.
 
+using System.Reflection;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Pages.Registration;
@@ -18,16 +19,19 @@ public sealed class TicketSelectionTests : IDisposable
     public void Dispose() => _ctx.Dispose();
 
     [Test]
-    public async Task PaidDirectoryDisclaimer_RendersServerAuthoredTenantBranding()
+    public async Task PaidCheckout_RendersStructuredDirectoryOperatorAndLegalLinks_WithoutProseDisclaimer()
     {
+        PropertyInfo? directoryProperty = typeof(RegistrationCheckoutCompositionDto).GetProperty("DirectoryOperator");
+        await Assert.That(directoryProperty).IsNotNull();
+        if (directoryProperty is null) return;
+
         _ctx.SetAnonymousUser();
         Guid eventId = Guid.CreateVersion7();
-        _service.GetCheckoutAsync(eventId, Arg.Any<CancellationToken>()).Returns(new RegistrationCheckoutCompositionDto
+        var composition = new RegistrationCheckoutCompositionDto
         {
             EventId = eventId,
             TicketCatalogVersionId = Guid.CreateVersion7(),
             CurrencyCode = "EUR",
-            PaidEventDirectoryDisclaimer = "Tenant Events provides an event discovery and management directory only.",
             TicketTypes =
             [
                 new RegistrationCheckoutTicketTypeDto
@@ -38,17 +42,26 @@ public sealed class TicketSelectionTests : IDisposable
                     FixedPriceMinor = 1200
                 }
             ]
-        });
+        };
+        SetDirectoryOperator(composition, directoryProperty);
+        _service.GetCheckoutAsync(eventId, Arg.Any<CancellationToken>()).Returns(composition);
 
         var cut = _ctx.RenderMudComponent<TicketSelection>(
             parameters => parameters.Add(component => component.EventId, eventId));
 
-        var notice = cut.WaitForElement("[data-testid='ticket-selection-paid-event-directory-disclaimer']");
-
-        await Assert.That(notice.TextContent)
-            .Contains("Tenant Events provides an event discovery and management directory only.");
-        await Assert.That(notice.GetAttribute("dir")).IsNull();
-        await Assert.That(notice.QuerySelectorAll("[lang='en'][dir='ltr']").Length).IsEqualTo(2);
+        IReadOnlyList<AngleSharp.Dom.IElement> disclosures = cut.FindAll("[data-testid='ticket-selection-directory-operator']");
+        await Assert.That(disclosures.Count).IsEqualTo(1);
+        if (disclosures.Count != 1) return;
+        AngleSharp.Dom.IElement disclosure = disclosures[0];
+        await Assert.That(disclosure.TextContent).Contains("Directory operator");
+        await Assert.That(disclosure.TextContent).Contains("Community Directory Foundation");
+        await Assert.That(disclosure.QuerySelector("a[href='https://directory.example/legal']")).IsNotNull();
+        await Assert.That(disclosure.QuerySelector("a[href='https://directory.example/terms']")).IsNotNull();
+        await Assert.That(disclosure.QuerySelector("a[href='https://directory.example/privacy']")).IsNotNull();
+        await Assert.That(cut.FindAll("[data-testid='ticket-selection-paid-event-directory-disclaimer']").Count).IsEqualTo(0);
+        await Assert.That(cut.Markup).DoesNotContain("provides an event discovery and management directory only");
+        await Assert.That(typeof(RegistrationCheckoutCompositionDto).GetProperty("PaidEventDirectoryDisclaimer"))
+            .IsNull();
     }
 
     [Test]
@@ -64,6 +77,7 @@ public sealed class TicketSelectionTests : IDisposable
             EventId = eventId,
             TicketCatalogVersionId = catalogId,
             CurrencyCode = "EUR",
+            DirectoryOperator = new TenantDirectoryOperatorPublicDto(),
             TicketTypes = [new RegistrationCheckoutTicketTypeDto { Id = ticketId, Name = "General admission", TicketPricingModeCode = "FIXED", FixedPriceMinor = 1200 }]
         });
         _service.StartGuestAsync(eventId, Arg.Any<StartRegistrationOrderRequest>(), Arg.Any<CancellationToken>())
@@ -95,6 +109,7 @@ public sealed class TicketSelectionTests : IDisposable
             EventId = eventId,
             TicketCatalogVersionId = Guid.CreateVersion7(),
             CurrencyCode = "EUR",
+            DirectoryOperator = new TenantDirectoryOperatorPublicDto(),
             TicketTypes = [new RegistrationCheckoutTicketTypeDto
             {
                 Id = ticketId,
@@ -133,6 +148,7 @@ public sealed class TicketSelectionTests : IDisposable
             EventId = eventId,
             TicketCatalogVersionId = Guid.CreateVersion7(),
             CurrencyCode = "EUR",
+            DirectoryOperator = new TenantDirectoryOperatorPublicDto(),
             TicketTypes =
             [
                 new RegistrationCheckoutTicketTypeDto
@@ -157,6 +173,129 @@ public sealed class TicketSelectionTests : IDisposable
     }
 
     [Test]
+    public async Task MissingDirectoryOperator_BlocksAllPaidModes_ButFreeRemainsAvailable()
+    {
+        foreach (string mode in new[] { "FIXED", "DONATION", "PAY_WHAT_YOU_CAN", "SLIDING_SCALE" })
+        {
+            using var context = new BlazorTestContext();
+            context.SetAnonymousUser();
+            IRegistrationOrderService service = context.AddMockService<IRegistrationOrderService>();
+            Guid eventId = Guid.CreateVersion7();
+            service.GetCheckoutAsync(eventId, Arg.Any<CancellationToken>()).Returns(Composition(eventId, mode));
+            var cut = context.RenderMudComponent<TicketSelection>(p => p.Add(c => c.EventId, eventId));
+            cut.WaitForElement("[data-testid='paid-checkout-identity-unavailable']");
+            await Assert.That(cut.FindAll("button").Any(b => b.TextContent.Contains("Reserve selected tickets"))).IsFalse();
+        }
+
+        _ctx.SetAnonymousUser();
+        Guid freeId = Guid.CreateVersion7();
+        _service.GetCheckoutAsync(freeId, Arg.Any<CancellationToken>()).Returns(Composition(freeId, "FREE"));
+        var free = _ctx.RenderMudComponent<TicketSelection>(p => p.Add(c => c.EventId, freeId));
+        free.WaitForAssertion(() => Assert.That(free.FindAll("button").Any(b => b.TextContent.Contains("Reserve selected tickets"))).IsTrue());
+    }
+
+    [Test]
+    public async Task SlidingScale_UsesValueTextWithoutDuplicateLiveAnnouncement()
+    {
+        _ctx.SetAnonymousUser();
+        Guid eventId = Guid.CreateVersion7();
+        RegistrationCheckoutCompositionDto composition = Composition(eventId, "SLIDING_SCALE");
+        SetDirectoryOperator(composition, typeof(RegistrationCheckoutCompositionDto).GetProperty("DirectoryOperator")!);
+        _service.GetCheckoutAsync(eventId, Arg.Any<CancellationToken>()).Returns(composition);
+        var cut = _ctx.RenderMudComponent<TicketSelection>(p => p.Add(c => c.EventId, eventId));
+        var slider = cut.WaitForElement("input[type='range']");
+        string outputId = slider.GetAttribute("aria-describedby")!;
+        await Assert.That(slider.GetAttribute("aria-valuetext")).Contains("You pay");
+        var output = cut.Find($"#{outputId}");
+        await Assert.That(output.TextContent).Contains("Organizer earns");
+        await Assert.That(output.HasAttribute("role")).IsFalse();
+        await Assert.That(output.GetAttribute("aria-live")).IsEqualTo("off");
+    }
+
+    [Test]
+    public async Task InFlightReservation_AnnouncesBusyStateAndLabel()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<GuestRegistrationOrderStartDto?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ctx.SetAnonymousUser();
+        Guid eventId = Guid.CreateVersion7();
+        _service.GetCheckoutAsync(eventId, Arg.Any<CancellationToken>()).Returns(Composition(eventId, "FREE"));
+        _service.StartGuestAsync(eventId, Arg.Any<StartRegistrationOrderRequest>(), Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            entered.TrySetResult();
+            return await completion.Task;
+        });
+        var cut = _ctx.RenderMudComponent<TicketSelection>(p => p.Add(c => c.EventId, eventId));
+        cut.WaitForElement("input").Change("1");
+        Task click = cut.InvokeAsync(() => cut.FindAll("button").Single(b => b.TextContent.Contains("Reserve selected tickets")).Click());
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.That(cut.Find("[data-testid='ticket-reservation-action']").GetAttribute("aria-busy")).IsEqualTo("true");
+        await Assert.That(cut.Markup).Contains("Reserving selected tickets");
+        completion.SetResult(null);
+        await click;
+    }
+
+    [Test]
+    public async Task ReviewedCommerceCssUsesCanonicalIslSpacingTokens()
+    {
+        string root = AppContext.BaseDirectory;
+        while (!File.Exists(Path.Combine(root, "Directory.Build.props"))) root = Directory.GetParent(root)!.FullName;
+        string source = string.Join('\n', new[]
+        {
+            "src/Explore.Blazor.Client/Pages/Registration/TicketSelection.razor.css",
+            "src/Explore.Blazor.Client/Components/Registration/TicketPurchaseGovernancePanel.razor.css",
+            "src/Explore.Blazor.Client/Components/Registration/PaymentStatusPanel.razor.css"
+        }.Select(path => File.ReadAllText(Path.Combine(root, path))));
+        await Assert.That(source).DoesNotContain("--space-4");
+        await Assert.That(source).DoesNotContain("--space-2");
+    }
+
+    private static RegistrationCheckoutCompositionDto Composition(Guid eventId, string mode) => new()
+    {
+        EventId = eventId,
+        TicketCatalogVersionId = Guid.CreateVersion7(),
+        CurrencyCode = "EUR",
+        TicketTypes = [new RegistrationCheckoutTicketTypeDto
+        {
+            Id = Guid.CreateVersion7(), Name = "Admission", TicketPricingModeCode = mode,
+            FixedPriceMinor = mode == "FIXED" ? 1200 : null,
+            MinimumPriceMinor = mode == "FREE" ? null : 500,
+            SlidingScaleOptions = mode == "SLIDING_SCALE"
+                ? [new RegistrationCheckoutSlidingScaleOptionDto { BuyerPriceMinor = 500, OrganizerEarningsMinor = 450 }]
+                : null
+        }]
+    };
+
+    private static void SetDirectoryOperator(
+        RegistrationCheckoutCompositionDto composition,
+        PropertyInfo directoryProperty)
+    {
+        Type operatorType = Nullable.GetUnderlyingType(directoryProperty.PropertyType) ?? directoryProperty.PropertyType;
+        object operatorValue = Activator.CreateInstance(operatorType)
+            ?? throw new InvalidOperationException($"Could not create {operatorType.Name}.");
+        var values = new Dictionary<string, object?>
+        {
+            ["DocumentRevision"] = Guid.Parse("99999999-9999-9999-9999-999999999999"),
+            ["PublicName"] = "Community Directory",
+            ["LegalName"] = "Community Directory Foundation",
+            ["OperatorKindCode"] = "NONPROFIT",
+            ["JurisdictionCountryCode"] = "DE",
+            ["RegistrationIdentifier"] = "VR 12345",
+            ["PublicContactEmail"] = "support@directory.example",
+            ["LegalNoticeUrl"] = "https://directory.example/legal",
+            ["TermsUrl"] = "https://directory.example/terms",
+            ["PrivacyUrl"] = "https://directory.example/privacy"
+        };
+        foreach ((string name, object? value) in values)
+        {
+            PropertyInfo property = operatorType.GetProperty(name)
+                ?? throw new InvalidOperationException($"{operatorType.Name} does not expose {name}.");
+            property.SetValue(operatorValue, value);
+        }
+        directoryProperty.SetValue(composition, operatorValue);
+    }
+
+    [Test]
     public async Task NullPerOrderLimit_AllowsQuantitiesAboveNinetyNine()
     {
         _ctx.SetAnonymousUser();
@@ -166,6 +305,7 @@ public sealed class TicketSelectionTests : IDisposable
             EventId = eventId,
             TicketCatalogVersionId = Guid.CreateVersion7(),
             CurrencyCode = "EUR",
+            DirectoryOperator = new TenantDirectoryOperatorPublicDto(),
             TicketTypes = [new RegistrationCheckoutTicketTypeDto
             {
                 Id = Guid.CreateVersion7(),

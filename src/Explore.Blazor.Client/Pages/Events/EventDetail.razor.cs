@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.EventReporting;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.EventReporting;
 using Explore.Blazor.Client.Contracts.Services.Events;
@@ -122,6 +123,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
     [Inject] private IBrowserActionInterop BrowserActionInterop { get; set; } = default!;
+    [Inject] private ITranslationService Translation { get; set; } = default!;
 
     [PersistentState]
     public EventDetailState? PersistedState { get; set; }
@@ -168,7 +170,7 @@ public partial class EventDetail : ComponentBase, IDisposable
     private bool _wasLoading = true;
     private bool _hasHandledReportIntent;
     private string _brandDisplayName = DefaultBrandDisplayName;
-    private string? _paidEventDirectoryDisclaimer;
+    private TenantDirectoryOperatorPublicDto? _directoryOperator;
 
     private ICollection<EventDayListDto>? _eventDays;
 
@@ -206,10 +208,11 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     private bool HasMultipleSessions => _eventSessions?.Count > 1;
     private string BrandDisplayName => _brandDisplayName;
-    private bool ShouldShowPaidEventDirectoryDisclaimer =>
-        !string.IsNullOrWhiteSpace(_paidEventDirectoryDisclaimer) &&
+    private bool IsPaidEvent =>
         _eventDetails?.TicketPriceSummary is { } summary &&
         !string.Equals(summary.SummaryCode, "FREE", StringComparison.OrdinalIgnoreCase);
+    private bool ShouldShowPaidEventDirectoryOperator => _directoryOperator is not null && IsPaidEvent;
+    private bool PaidRegistrationIdentityUnavailable => IsPaidEvent && _directoryOperator is null;
 
     /// <summary>
     /// Initializes the component and loads event data.
@@ -226,15 +229,14 @@ public partial class EventDetail : ComponentBase, IDisposable
         try
         {
             var shell = await PublicExperienceService.GetCachedShellAsync();
-            var settings = await PublicExperienceService.GetCachedSettingsAsync();
             _brandDisplayName = NormalizeBrandDisplayName(shell?.Home?.BrandDisplayName);
-            _paidEventDirectoryDisclaimer = settings?.PaidEventDirectoryDisclaimer;
+            _directoryOperator = shell?.DirectoryOperator;
         }
         catch (Exception ex)
         {
             Logger.LogDebug(ex, "Unable to load public brand display name for event metadata");
             _brandDisplayName = DefaultBrandDisplayName;
-            _paidEventDirectoryDisclaimer = null;
+            _directoryOperator = null;
         }
     }
 
@@ -2058,6 +2060,8 @@ public partial class EventDetail : ComponentBase, IDisposable
         _eventDetails?.GetHalTitle("external-registration") ?? "Continue on external site";
 
     private bool HasParticipationAction => CanStartRegistration || ExternalParticipationHref is not null;
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
 
     private string GetProgramSummary()
     {

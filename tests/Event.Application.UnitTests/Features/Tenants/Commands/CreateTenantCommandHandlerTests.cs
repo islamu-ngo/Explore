@@ -219,6 +219,9 @@ public class CreateTenantCommandHandlerTests
         TenantSettingsDocument branding =
             TenantBrandingSettingsDocumentDefaults.Create(tenantId, fullName);
         branding.Id = Guid.CreateVersion7();
+        TenantSettingsDocument identity =
+            TenantDirectoryOperatorIdentityDocumentDefaults.Create(tenantId, fullName);
+        identity.Id = Guid.CreateVersion7();
         return new TenantCreationOutcome(
             new Tenant
             {
@@ -227,7 +230,8 @@ public class CreateTenantCommandHandlerTests
                 Slug = slug,
                 TenantStatus = null!
             },
-            branding);
+            branding,
+            identity);
     }
 
     private sealed class PassThroughSettingMutationLock : ISettingMutationLock

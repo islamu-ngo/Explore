@@ -8,13 +8,18 @@ namespace Explore.Blazor.Client.Tests.Services;
 public class TenantOnboardingServiceTests
 {
     private readonly IEventApiClient _api;
+    private readonly ITenantDirectoryOperatorIdentityAdminService _directoryOperatorIdentity;
     private readonly TenantOnboardingService _service;
 
     public TenantOnboardingServiceTests()
     {
         _api = Substitute.For<IEventApiClient>();
+        _directoryOperatorIdentity = Substitute.For<ITenantDirectoryOperatorIdentityAdminService>();
+        _directoryOperatorIdentity.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(CompleteIdentity());
         _service = new TenantOnboardingService(
             _api,
+            _directoryOperatorIdentity,
             Substitute.For<ILogger<TenantOnboardingService>>());
     }
 
@@ -183,7 +188,7 @@ public class TenantOnboardingServiceTests
     public async Task CompleteAsync_ForwardsMappedSettingsAndReturnsSuccess()
     {
         _api.CompleteTenantOnboardingAsync(
-                Arg.Any<UpdateTenantPolicyRequest>(),
+                Arg.Any<CompleteTenantOnboardingRequest>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -203,8 +208,12 @@ public class TenantOnboardingServiceTests
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Message).IsEqualTo("OK");
         await _api.Received(1).CompleteTenantOnboardingAsync(
-            Arg.Is<UpdateTenantPolicyRequest>(request =>
-                request.PreferredHomePage == "Dashboard" && request.RequireEventApproval == true),
+            Arg.Is<CompleteTenantOnboardingRequest>(request =>
+                request.Settings.PreferredHomePage == "Dashboard"
+                && request.Settings.RequireEventApproval == true
+                && request.DirectoryOperatorIdentity.LegalName == "Community Events ASBL"
+                && request.ExpectedDirectoryOperatorIdentityConcurrencyStamp ==
+                    Guid.Parse("018e4e5c-7f00-7000-8000-000000000202")),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
@@ -214,7 +223,7 @@ public class TenantOnboardingServiceTests
     public async Task CompleteAsync_ReturnsFailure_WhenApiThrows()
     {
         _api.CompleteTenantOnboardingAsync(
-                Arg.Any<UpdateTenantPolicyRequest>(),
+                Arg.Any<CompleteTenantOnboardingRequest>(),
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
@@ -227,4 +236,35 @@ public class TenantOnboardingServiceTests
         await Assert.That(result.Errors).IsNull();
     }
 
+    [Test]
+    public async Task CompleteAsync_FailsClosedWhenDirectoryIdentityIsUnavailable()
+    {
+        _directoryOperatorIdentity.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new TenantDirectoryOperatorIdentityAdminModel
+            {
+                MessageCode = TenantDirectoryOperatorIdentityAdminMessageCode.LoadFailed
+            });
+
+        BaseCommandResponseOfGuid result =
+            await _service.CompleteAsync(new TenantPolicySettingsDto());
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message)
+            .IsEqualTo(TenantOnboardingService.DirectoryOperatorIdentityUnavailableCode);
+        await _api.DidNotReceiveWithAnyArgs().CompleteTenantOnboardingAsync(default!);
+    }
+
+    private static TenantDirectoryOperatorIdentityAdminModel CompleteIdentity() => new()
+    {
+        ConcurrencyStamp = Guid.Parse("018e4e5c-7f00-7000-8000-000000000202"),
+        PublicName = "Community Events",
+        LegalName = "Community Events ASBL",
+        OperatorKindCode = "registered_organization",
+        JurisdictionCountryCode = "BE",
+        RegistrationIdentifier = "BE 0123.456.789",
+        PublicContactEmail = "contact@example.test",
+        LegalNoticeUrl = "https://example.test/legal",
+        TermsUrl = "https://example.test/terms",
+        PrivacyUrl = "https://example.test/privacy"
+    };
 }

@@ -33,6 +33,12 @@ public interface IBffClient
         string path,
         Guid operationId,
         CancellationToken ct = default);
+    Task<TResponse?> SendIdempotentAsync<TBody, TResponse>(
+        HttpMethod method,
+        string path,
+        TBody body,
+        Guid operationId,
+        CancellationToken ct = default);
     Task<TResponse?>
         SendWithTicketTransferCapabilityAsync<
             TBody,
@@ -186,6 +192,27 @@ public sealed class BffClient : IBffClient, IAsyncDisposable
         }
         return await response.Content
             .ReadFromJsonAsync<TResponse>(ct);
+    }
+
+    public async Task<TResponse?> SendIdempotentAsync<TBody, TResponse>(
+        HttpMethod method,
+        string path,
+        TBody body,
+        Guid operationId,
+        CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(method, path)
+        {
+            Content = JsonContent.Create(body),
+        };
+        request.Headers.Add("Idempotency-Key", operationId.ToString("D"));
+        using HttpResponseMessage response = await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<TResponse>(ct);
     }
 
     public async Task<TResponse?>

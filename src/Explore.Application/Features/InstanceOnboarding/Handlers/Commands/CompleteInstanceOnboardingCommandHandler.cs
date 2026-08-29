@@ -7,6 +7,8 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
+using Explore.Application.DTOs.TenantSettings;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.InstanceOnboarding.Common;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Models;
@@ -16,6 +18,7 @@ using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Documents;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -32,6 +35,8 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly IActorRepository _actorRepository;
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly ITenantRepository _tenantRepository;
+    private readonly ITenantCreationService _tenantCreationService;
+    private readonly ITenantSettingsDocumentRepository _tenantSettingsDocumentRepository;
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger;
@@ -52,6 +57,8 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         IActorRepository actorRepository,
         IUserExternalLoginRepository userExternalLoginRepository,
         ITenantRepository tenantRepository,
+        ITenantCreationService tenantCreationService,
+        ITenantSettingsDocumentRepository tenantSettingsDocumentRepository,
         ISystemSettingRepository systemSettingRepository,
         ISetupSecretProvider setupSecretProvider,
         IInstanceBootstrapAuditLogger bootstrapAuditLogger,
@@ -71,6 +78,8 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         _actorRepository = actorRepository;
         _userExternalLoginRepository = userExternalLoginRepository;
         _tenantRepository = tenantRepository;
+        _tenantCreationService = tenantCreationService;
+        _tenantSettingsDocumentRepository = tenantSettingsDocumentRepository;
         _systemSettingRepository = systemSettingRepository;
         _setupSecretProvider = setupSecretProvider;
         _bootstrapAuditLogger = bootstrapAuditLogger;
@@ -100,6 +109,14 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             request.Settings.SiteProfile.SiteName = request.Settings.InstanceName;
         }
 
+        if (configuredDeploymentMode == DeploymentMode.SingleTenant
+            && request.Settings.DirectoryOperatorIdentity is null)
+        {
+            return BaseCommandResponse.Failure<Guid>(
+                "tenant_directory_operator_identity_incomplete",
+                "Tenant directory operator identity is not ready.");
+        }
+
         var validator = new CompleteInstanceOnboardingRequestValidator();
         var validation = await validator.ValidateAsync(request.Settings, cancellationToken);
         if (!validation.IsValid)
@@ -125,59 +142,73 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             request.Settings.InstanceName);
         Guid? defaultTenantId = null;
 
-        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        try
         {
-            if (isSingleTenant)
+            await _unitOfWork.ExecuteInTransactionAsync(async ct =>
             {
-                var defaultTenant = await EnsureDefaultTenantAsync();
-                defaultTenantId = defaultTenant.Id;
-            }
-
-            var user = await _userRepository.GetById(request.UserId);
-            if (user == null)
-            {
-                user = await CreateOnboardingUserAsync(request, defaultTenantId);
-            }
-
-            await PersistDeploymentModeSettingAsync(deploymentMode);
-            await PersistSiteProfileSettingsAsync(siteProfile, isSingleTenant, ct);
-            await PersistAdministrationAccessSettingsAsync(request.Settings, isSingleTenant);
-
-            await EnsurePlatformAdministratorRoleAsync(request.UserId);
-            _logger.LogInformation("Onboarding: Assigned Platform Admin role");
-
-            if (isSingleTenant && defaultTenantId.HasValue)
-            {
-                await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(
-                    defaultTenantId.Value,
-                    siteProfile.SiteName,
-                    ct);
-                await EnsureDefaultTenantAdministratorAsync(defaultTenantId.Value, user);
-                _logger.LogInformation("Onboarding: Assigned Tenant Admin role for default tenant");
-            }
-
-            var selectedMode = deploymentMode.ToString();
-
-            if (bootstrap == null)
-            {
-                bootstrap = await _instanceBootstrapStateRepository.Create(new InstanceBootstrapState
+                if (isSingleTenant)
                 {
-                    IsCompleted = true,
-                    CreatedAt = DateTime.UtcNow,
-                    CompletedAt = DateTime.UtcNow,
-                    CompletedByUserId = request.UserId,
-                    SelectedDeploymentMode = selectedMode
-                });
-            }
-            else
-            {
-                bootstrap.IsCompleted = true;
-                bootstrap.CompletedAt = DateTime.UtcNow;
-                bootstrap.CompletedByUserId = request.UserId;
-                bootstrap.SelectedDeploymentMode = selectedMode;
-                await _instanceBootstrapStateRepository.Update(bootstrap);
-            }
-        }, cancellationToken);
+                    var defaultTenant = await EnsureDefaultTenantAsync(
+                        request.Settings.DirectoryOperatorIdentity!,
+                        siteProfile.SiteName,
+                        request.UserId,
+                        ct);
+                    defaultTenantId = defaultTenant.Id;
+                }
+
+                var user = await _userRepository.GetById(request.UserId);
+                if (user == null)
+                {
+                    user = await CreateOnboardingUserAsync(request, defaultTenantId);
+                }
+
+                await PersistDeploymentModeSettingAsync(deploymentMode);
+                await PersistSiteProfileSettingsAsync(siteProfile, isSingleTenant, ct);
+                await PersistAdministrationAccessSettingsAsync(request.Settings, isSingleTenant);
+
+                await EnsurePlatformAdministratorRoleAsync(request.UserId);
+                _logger.LogInformation("Onboarding: Assigned Platform Admin role");
+
+                if (isSingleTenant && defaultTenantId.HasValue)
+                {
+                    await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(
+                        defaultTenantId.Value,
+                        siteProfile.SiteName,
+                        ct);
+                    await EnsureDefaultTenantAdministratorAsync(defaultTenantId.Value, user);
+                    _logger.LogInformation("Onboarding: Assigned Tenant Admin role for default tenant");
+                }
+
+                var selectedMode = deploymentMode.ToString();
+
+                if (bootstrap == null)
+                {
+                    bootstrap = await _instanceBootstrapStateRepository.Create(new InstanceBootstrapState
+                    {
+                        IsCompleted = true,
+                        CreatedAt = DateTime.UtcNow,
+                        CompletedAt = DateTime.UtcNow,
+                        CompletedByUserId = request.UserId,
+                        SelectedDeploymentMode = selectedMode
+                    });
+                }
+                else
+                {
+                    bootstrap.IsCompleted = true;
+                    bootstrap.CompletedAt = DateTime.UtcNow;
+                    bootstrap.CompletedByUserId = request.UserId;
+                    bootstrap.SelectedDeploymentMode = selectedMode;
+                    await _instanceBootstrapStateRepository.Update(bootstrap);
+                }
+            }, cancellationToken);
+        }
+        catch (TenantDirectoryOperatorIdentityReadinessException exception)
+        {
+            return BaseCommandResponse.Failure<Guid>(
+                exception.FailureCode,
+                exception.Message,
+                exception.ReasonCodes);
+        }
 
         // Post-commit side effects
         _setupSecretProvider.Lock();
@@ -225,10 +256,6 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         user = await _userRepository.Create(user);
 
         var actorTenantId = tenantId ?? PlatformDefaults.DefaultTenantId;
-        if (!tenantId.HasValue)
-        {
-            await EnsureDefaultTenantAsync();
-        }
 
         var displayName = $"{firstName} {lastName}".Trim();
         var actor = new Actor
@@ -268,19 +295,82 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         return user;
     }
 
-    private async Task<Tenant> EnsureDefaultTenantAsync()
+    private async Task<Tenant> EnsureDefaultTenantAsync(
+        TenantDirectoryOperatorIdentityInputDto directoryOperatorIdentity,
+        string brandingDisplayName,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
     {
         var tenant = await _tenantRepository.GetById(PlatformDefaults.DefaultTenantId);
-        if (tenant != null) return tenant;
-
-        return await _tenantRepository.Create(new Tenant
+        if (tenant != null)
         {
-            Id = PlatformDefaults.DefaultTenantId,
-            FullName = PlatformDefaults.DefaultTenantName,
-            Slug = PlatformDefaults.DefaultTenantSlug,
-            TenantStatusId = (int)TenantStatusEnum.Active,
-            TenantStatus = null!
-        });
+            await UpsertDefaultTenantIdentityAsync(
+                directoryOperatorIdentity,
+                actorUserId,
+                cancellationToken);
+            return tenant;
+        }
+
+        DateTime occurredAt = DateTime.UtcNow;
+        TenantSettingsDocument branding = TenantBrandingSettingsDocumentDefaults.Create(
+            PlatformDefaults.DefaultTenantId,
+            brandingDisplayName);
+        TenantSettingsDocument identity = TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+            PlatformDefaults.DefaultTenantId,
+            directoryOperatorIdentity.ToPayload());
+        TenantCreationOutcome creation = await _tenantCreationService.CreateInCurrentTransactionAsync(
+            new TenantCreationRequest(
+                PlatformDefaults.DefaultTenantId,
+                PlatformDefaults.DefaultTenantName,
+                PlatformDefaults.DefaultTenantSlug,
+                (int)TenantStatusEnum.Active,
+                actorUserId,
+                occurredAt,
+                new TenantBrandingDocumentSeed(
+                    Guid.CreateVersion7(),
+                    branding.SchemaVersion,
+                    branding.DefaultsVersion,
+                    branding.PayloadJson),
+                new TenantDirectoryOperatorIdentityDocumentSeed(
+                    Guid.CreateVersion7(),
+                    identity.SchemaVersion,
+                    identity.DefaultsVersion,
+                    identity.PayloadJson)),
+            cancellationToken);
+        return creation.Tenant;
+    }
+
+    private async Task UpsertDefaultTenantIdentityAsync(
+        TenantDirectoryOperatorIdentityInputDto directoryOperatorIdentity,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
+    {
+        TenantSettingsDocument replacement =
+            TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+                PlatformDefaults.DefaultTenantId,
+                directoryOperatorIdentity.ToPayload());
+        TenantSettingsDocument? existing =
+            await _tenantSettingsDocumentRepository.GetTrackedByTenantAndDocumentKey(
+                PlatformDefaults.DefaultTenantId,
+                SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity,
+                cancellationToken);
+        DateTime changedAt = DateTime.UtcNow;
+        if (existing is null)
+        {
+            replacement.Id = Guid.CreateVersion7();
+            replacement.CreatedAt = changedAt;
+            replacement.CreatedBy = actorUserId;
+            await _tenantSettingsDocumentRepository.Create(replacement);
+            return;
+        }
+
+        existing.UpdatePayload(
+            replacement.SchemaVersion,
+            replacement.DefaultsVersion,
+            replacement.PayloadJson);
+        existing.UpdatedAt = changedAt;
+        existing.UpdatedBy = actorUserId;
+        await _tenantSettingsDocumentRepository.Update(existing);
     }
 
     private async Task EnsurePlatformAdministratorRoleAsync(Guid userId)

@@ -11,6 +11,7 @@ namespace Explore.Domain;
 public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     private readonly List<RegistrationOrderLine> _lines = [];
+    private readonly List<RegistrationOrderAddOnLine> _addOnLines = [];
     private readonly List<RegistrationParticipant> _participants = [];
     private Guid _tenantId;
 
@@ -74,6 +75,8 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
 
     public Guid TicketCatalogVersionId { get; private set; }
 
+    public Guid? AddOnCatalogVersionIdSnapshot { get; private set; }
+
     public RegistrationParticipationSnapshot ParticipationSnapshot { get; private set; } = null!;
 
     public Guid ParticipationConfigurationVersionSnapshot { get; private set; }
@@ -123,6 +126,10 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
     public long TotalDueMinorSnapshot { get; private set; }
 
     public IReadOnlyCollection<RegistrationOrderLine> Lines => _lines.AsReadOnly();
+
+    public IReadOnlyCollection<RegistrationOrderAddOnLine> AddOnLines => _addOnLines.AsReadOnly();
+
+    public long AddOnTotalMinorSnapshot { get; private set; }
 
     public IReadOnlyCollection<RegistrationParticipant> Participants => _participants.AsReadOnly();
 
@@ -230,6 +237,57 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
         _lines.Add(line);
     }
 
+    public void AddAddOnLine(RegistrationOrderAddOnLine line)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        EnsureAddOnSelectionMutable();
+        if (line.RegistrationOrderId != Id ||
+            line.TenantId != TenantId ||
+            line.EventId != EventId ||
+            line.EventAddOnCatalogVersionId != AddOnCatalogVersionIdSnapshot ||
+            !string.Equals(line.CurrencyCodeSnapshot, CurrencyCode, StringComparison.Ordinal) ||
+            _addOnLines.Any(existing =>
+                existing.Id == line.Id ||
+                existing.EventAddOnCatalogItemId == line.EventAddOnCatalogItemId))
+        {
+            throw new ArgumentException(
+                "Add-on line does not match the order's event, tenant, currency, or unique item selection.",
+                nameof(line));
+        }
+
+        long nextTotal = MinorUnitMath.Add(
+            AddOnTotalMinorSnapshot,
+            line.LineTotalMinorSnapshot);
+        _addOnLines.Add(line);
+        AddOnTotalMinorSnapshot = nextTotal;
+    }
+
+    public void PinAddOnCatalog(EventAddOnCatalogVersion catalog)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        EnsureAddOnSelectionMutable();
+        if (!catalog.IsPublished ||
+            catalog.TenantId != TenantId ||
+            catalog.EventId != EventId ||
+            !string.Equals(catalog.CurrencyCode, CurrencyCode, StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                "The add-on catalog must be the published catalog disclosed for this order.",
+                nameof(catalog));
+        }
+
+        if (AddOnCatalogVersionIdSnapshot.HasValue &&
+            AddOnCatalogVersionIdSnapshot.Value != catalog.Id)
+        {
+            throw new InvalidOperationException(
+                "The order's add-on catalog lineage is already pinned.");
+        }
+
+        AddOnCatalogVersionIdSnapshot = catalog.Id;
+    }
+
+    public void VerifyCommercialTotals() => _ = GetVerifiedTotalDueSnapshot();
+
     public void AddParticipant(RegistrationParticipant participant)
     {
         ArgumentNullException.ThrowIfNull(participant);
@@ -322,15 +380,27 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
         ArgumentNullException.ThrowIfNull(totals);
         EnsureCommercialFactsMutable();
 
-        long lineTotal = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PostDiscountLineSubtotalMinorSnapshot));
+        long ticketLineTotal = _lines.Aggregate(
+            0L,
+            static (total, line) =>
+                MinorUnitMath.Add(total, line.PostDiscountLineSubtotalMinorSnapshot));
+        long lineTotal = MinorUnitMath.Add(ticketLineTotal, AddOnTotalMinorSnapshot);
         long contributionTotal = PlatformContribution?.AmountMinor ?? 0;
         if (!string.Equals(totals.CurrencyCode, CurrencyCode, StringComparison.Ordinal) ||
-            totals.OrganizerDirectedTotalMinor != lineTotal || totals.PlatformContributionTotalMinor != contributionTotal)
+            totals.OrganizerDirectedTotalMinor != lineTotal ||
+            totals.PlatformFeeTotalMinor < 0 ||
+            totals.PlatformFeeTotalMinor > ticketLineTotal ||
+            totals.PlatformContributionTotalMinor != contributionTotal)
         {
             throw new ArgumentException("Order totals do not match the pinned order snapshots.", nameof(totals));
         }
 
-        PreDiscountOrganizerDirectedTotalMinorSnapshot = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PreDiscountLineSubtotalMinorSnapshot));
+        long ticketPreDiscountTotal = _lines.Aggregate(
+            0L,
+            static (total, line) =>
+                MinorUnitMath.Add(total, line.PreDiscountLineSubtotalMinorSnapshot));
+        PreDiscountOrganizerDirectedTotalMinorSnapshot =
+            MinorUnitMath.Add(ticketPreDiscountTotal, AddOnTotalMinorSnapshot);
         PromotionDiscountTotalMinorSnapshot = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PromotionDiscountAmountMinorSnapshot));
         PostDiscountOrganizerDirectedTotalMinorSnapshot = totals.OrganizerDirectedTotalMinor;
         OrganizerDirectedTotalMinorSnapshot = totals.OrganizerDirectedTotalMinor;
@@ -559,9 +629,24 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
         }
     }
 
+    private void EnsureAddOnSelectionMutable()
+    {
+        EnsureCommercialFactsMutable();
+        if ((RegistrationOrderStatusEnum)RegistrationOrderStatusId !=
+            RegistrationOrderStatusEnum.Draft)
+        {
+            throw new InvalidOperationException(
+                "Add-on selection is allowed only during the original draft checkout.");
+        }
+    }
+
     private long GetVerifiedTotalDueSnapshot()
     {
-        long lineTotal = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PostDiscountLineSubtotalMinorSnapshot));
+        long ticketLineTotal = _lines.Aggregate(
+            0L,
+            static (total, line) =>
+                MinorUnitMath.Add(total, line.PostDiscountLineSubtotalMinorSnapshot));
+        long lineTotal = MinorUnitMath.Add(ticketLineTotal, AddOnTotalMinorSnapshot);
         long contributionTotal = PlatformContribution?.AmountMinor ?? 0;
         long expectedTotalDue = MinorUnitMath.Add(lineTotal, contributionTotal);
 
@@ -569,7 +654,7 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
             PlatformContributionTotalMinorSnapshot != contributionTotal ||
             TotalDueMinorSnapshot != expectedTotalDue ||
             PlatformFeeTotalMinorSnapshot < 0 ||
-            PlatformFeeTotalMinorSnapshot > lineTotal ||
+            PlatformFeeTotalMinorSnapshot > ticketLineTotal ||
             OrganizerEarningsTotalMinorSnapshot != lineTotal - PlatformFeeTotalMinorSnapshot)
         {
             throw new InvalidOperationException("Order totals must match the immutable line and contribution snapshots before checkout.");
@@ -619,9 +704,15 @@ public sealed class RegistrationOrder : ITenantEntity, IAuditableEntity, ISoftDe
 
     private void RepriceFromCurrentLines(PlatformFeePolicy? feePolicy)
     {
-        long postDiscountOrganizerTotal = _lines.Aggregate(0L, static (total, line) => MinorUnitMath.Add(total, line.PostDiscountLineSubtotalMinorSnapshot));
+        long ticketPostDiscountTotal = _lines.Aggregate(
+            0L,
+            static (total, line) =>
+                MinorUnitMath.Add(total, line.PostDiscountLineSubtotalMinorSnapshot));
+        long postDiscountOrganizerTotal =
+            MinorUnitMath.Add(ticketPostDiscountTotal, AddOnTotalMinorSnapshot);
         PlatformContribution?.Reprice(postDiscountOrganizerTotal);
-        long platformFee = feePolicy?.CalculateFeeMinor(CurrencyCode, postDiscountOrganizerTotal) ?? 0;
+        long platformFee =
+            feePolicy?.CalculateFeeMinor(CurrencyCode, ticketPostDiscountTotal) ?? 0;
         ApplyTotals(RegistrationOrderTotalsSnapshot.Create(
             CurrencyCode,
             postDiscountOrganizerTotal,

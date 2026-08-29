@@ -11,6 +11,7 @@ using Explore.Application.Features.EventTicketing.Services;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -186,7 +187,30 @@ public sealed class GetEventTicketCatalogManagementQueryHandlerTests
         _authorization,
         _tenant,
         _commerceConfiguration,
+        ReadyDirectoryIdentityEvaluator(),
         ReadyCheckoutActivation());
+
+    private static ITenantDirectoryOperatorReadinessEvaluator ReadyDirectoryIdentityEvaluator()
+    {
+        var evaluator = Substitute.For<ITenantDirectoryOperatorReadinessEvaluator>();
+        TenantDirectoryOperatorIdentity identity = TenantDirectoryOperatorIdentity.Evaluate(
+            new Explore.Domain.Settings.Documents.Payloads.TenantDirectoryOperatorIdentitySettings
+            {
+                PublicName = "Community Events",
+                LegalName = "Community Events ASBL",
+                OperatorKindCode = TenantDirectoryOperatorKinds.RegisteredOrganization,
+                JurisdictionCountryCode = "BE",
+                PublicContactEmail = "contact@example.test",
+                LegalNoticeUrl = "https://example.test/legal",
+                TermsUrl = "https://example.test/terms",
+                PrivacyUrl = "https://example.test/privacy"
+            }, TenantDirectoryOperatorIdentityCapability.PaidCommerce).Identity!;
+        evaluator.EvaluateAsync(
+                Arg.Any<Guid>(), TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                Arg.Any<CancellationToken>())
+            .Returns(TenantDirectoryOperatorReadinessAssessment.Ready(identity, Guid.CreateVersion7(), Guid.CreateVersion7()));
+        return evaluator;
+    }
 
     private static IPaidCheckoutActivationService ReadyCheckoutActivation()
     {

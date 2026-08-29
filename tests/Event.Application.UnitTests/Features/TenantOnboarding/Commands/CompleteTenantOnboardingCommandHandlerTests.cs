@@ -7,6 +7,8 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.TenantPolicy;
+using Explore.Application.DTOs.TenantSettings;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.TenantOnboarding.Handlers.Commands;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Application.Notifications;
@@ -29,6 +31,8 @@ public class CompleteTenantOnboardingCommandHandlerTests
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
+    private readonly ITenantSettingsDocumentRepository _tenantSettingsDocumentRepository;
+    private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
     private readonly IMediator _mediator;
@@ -41,6 +45,8 @@ public class CompleteTenantOnboardingCommandHandlerTests
         _adminContext = Substitute.For<IAdminContext>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
         _tenantBrandingProvisioningService = Substitute.For<ITenantBrandingSettingsDocumentProvisioningService>();
+        _tenantSettingsDocumentRepository = Substitute.For<ITenantSettingsDocumentRepository>();
+        _typedSettingsDocumentResolver = Substitute.For<ITypedSettingsDocumentResolver>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
         _tenantBrandingProvisioningService
             .EnsureTenantBrandingDocumentAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -72,6 +78,8 @@ public class CompleteTenantOnboardingCommandHandlerTests
             _adminContext,
             _policySettingService,
             _tenantBrandingProvisioningService,
+            _tenantSettingsDocumentRepository,
+            _typedSettingsDocumentResolver,
             _unitOfWork,
             _hierarchicalSettingsResolver,
             _mediator);
@@ -80,7 +88,17 @@ public class CompleteTenantOnboardingCommandHandlerTests
     private static CompleteTenantOnboardingCommand CreateCommand() => new()
     {
         UserId = TestUserId,
-        Settings = new UpdateTenantPolicyRequest()
+        Settings = new UpdateTenantPolicyRequest(),
+        DirectoryOperatorIdentity = new TenantDirectoryOperatorIdentityInputDto
+        {
+            PublicName = "Community Events",
+            LegalName = "Community Events ASBL",
+            OperatorKindCode = "registered_organization",
+            JurisdictionCountryCode = "BE",
+            PublicContactEmail = "contact@example.test",
+            LegalNoticeUrl = "https://example.test/legal",
+            PrivacyUrl = "https://example.test/privacy"
+        }
     };
 
     [Test]
@@ -123,6 +141,26 @@ public class CompleteTenantOnboardingCommandHandlerTests
             Arg.Any<UpdateTenantPolicyRequest>(),
             cancellation.Token);
         await _tenantBrandingProvisioningService.Received(1).EnsureTenantBrandingDocumentAsync(TestTenantId, null, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenDirectoryIdentityIsMissing_DoesNotCompleteIdentityStep()
+    {
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _onboardingStateRepository.GetByTenantId(TestTenantId)
+            .Returns((TenantOnboardingState?)null);
+        _onboardingStateRepository.Create(Arg.Any<TenantOnboardingState>())
+            .Returns(call => call.Arg<TenantOnboardingState>());
+
+        var result = await _handler.Handle(
+            CreateCommand() with { DirectoryOperatorIdentity = null },
+            CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("tenant_directory_operator_identity_incomplete");
+        await _onboardingStateRepository.DidNotReceiveWithAnyArgs().Create(default!);
     }
 
     [Test]
@@ -185,5 +223,57 @@ public class CompleteTenantOnboardingCommandHandlerTests
         await Assert.That(result.Id).IsEqualTo(existingState.Id);
         await _onboardingStateRepository.Received(1).Update(Arg.Is<TenantOnboardingState>(s => s.IsCompleted));
         await _onboardingStateRepository.DidNotReceive().Create(Arg.Any<TenantOnboardingState>());
+    }
+
+    [Test]
+    public async Task Handle_WhenIdentityRevisionIsStale_ConflictsWithoutOverwriting()
+    {
+        Guid currentStamp = Guid.CreateVersion7();
+        TenantSettingsDocument existingIdentity = TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+            TestTenantId,
+            CreateCommand().DirectoryOperatorIdentity.ToPayload());
+        existingIdentity.Id = Guid.CreateVersion7();
+        existingIdentity.ConcurrencyStamp = currentStamp;
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _tenantSettingsDocumentRepository
+            .GetTrackedByTenantAndDocumentKey(
+                TestTenantId,
+                SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity,
+                Arg.Any<CancellationToken>())
+            .Returns(existingIdentity);
+
+        await Assert.That(async () => await _handler.Handle(
+                CreateCommand() with
+                {
+                    ExpectedDirectoryOperatorIdentityConcurrencyStamp = Guid.CreateVersion7()
+                },
+                CancellationToken.None))
+            .Throws<ConcurrencyConflictException>();
+        await Assert.That(existingIdentity.ConcurrencyStamp).IsEqualTo(currentStamp);
+        await _tenantSettingsDocumentRepository.DidNotReceiveWithAnyArgs().Update(default!);
+        await _onboardingStateRepository.DidNotReceiveWithAnyArgs().Create(default!);
+    }
+
+    [Test]
+    public async Task Handle_WhenIdentityExistsWithoutExpectedRevision_ConflictsWithoutOverwriting()
+    {
+        Guid currentStamp = Guid.CreateVersion7();
+        TenantSettingsDocument existingIdentity = TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+            TestTenantId,
+            CreateCommand().DirectoryOperatorIdentity.ToPayload());
+        existingIdentity.Id = Guid.CreateVersion7();
+        existingIdentity.ConcurrencyStamp = currentStamp;
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _tenantSettingsDocumentRepository
+            .GetTrackedByTenantAndDocumentKey(
+                TestTenantId,
+                SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity,
+                Arg.Any<CancellationToken>())
+            .Returns(existingIdentity);
+
+        await Assert.That(async () => await _handler.Handle(CreateCommand(), CancellationToken.None))
+            .Throws<ConcurrencyConflictException>();
+        await Assert.That(existingIdentity.ConcurrencyStamp).IsEqualTo(currentStamp);
+        await _tenantSettingsDocumentRepository.DidNotReceiveWithAnyArgs().Update(default!);
     }
 }

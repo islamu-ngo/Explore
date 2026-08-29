@@ -101,8 +101,8 @@
 .payment-status__choice-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-block-start: var(--space-2);
+    gap: var(--isl-space-2);
+    margin-block-start: var(--isl-space-2);
 }
 
 .payment-status__refunds,

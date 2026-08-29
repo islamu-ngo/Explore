@@ -1,0 +1,25 @@
+// ABOUTME: Draft tenant directory-operator identity payload for typed document storage.
+// ABOUTME: Stores explicitly public accountability facts without credentials, addresses, or legal documents.
+
+namespace Explore.Domain.Settings.Documents.Payloads;
+
+public sealed record TenantDirectoryOperatorIdentitySettings
+{
+    public string? PublicName { get; init; }
+
+    public string? LegalName { get; init; }
+
+    public string? OperatorKindCode { get; init; }
+
+    public string? JurisdictionCountryCode { get; init; }
+
+    public string? RegistrationIdentifier { get; init; }
+
+    public string? PublicContactEmail { get; init; }
+
+    public string? LegalNoticeUrl { get; init; }
+
+    public string? TermsUrl { get; init; }
+
+    public string? PrivacyUrl { get; init; }
+}

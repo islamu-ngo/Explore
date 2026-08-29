@@ -34,9 +34,30 @@ public sealed class PaidOrderAcceptanceFreshnessServiceTests
             CreateSubject();
         (string PropertyName, object? ChangedValue)[] changes =
         [
+            (nameof(PaidOrderAcceptanceSnapshot.OrganizerActorId), Guid.CreateVersion7()),
+            (nameof(PaidOrderAcceptanceSnapshot.OrganizerPaymentProviderConnectionId), Guid.CreateVersion7()),
+            (nameof(PaidOrderAcceptanceSnapshot.ConnectPlatformId), "platform-live-us"),
+            (nameof(PaidOrderAcceptanceSnapshot.ExternalAccountId), "acct_changed"),
+            (nameof(PaidOrderAcceptanceSnapshot.MerchantCountryCode), "FR"),
+            (nameof(PaidOrderAcceptanceSnapshot.AcceptanceTemplateIdentifier), "paid-order-acceptance.v2"),
+            (nameof(PaidOrderAcceptanceSnapshot.AcceptanceTemplateText), "Changed template"),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorDocumentId), Guid.CreateVersion7()),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorRevisionId), Guid.CreateVersion7()),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorPublicName), "Changed directory"),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorLegalName), "Changed Directory ASBL"),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorKindCode), "public_body"),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorCountryCode), "FR"),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorRegistrationIdentifier), "FR 123"),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorPublicContactEmail), "changed@example.test"),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorLegalNoticeUrl), "https://changed.example.test/legal"),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorTermsUrl), "https://changed.example.test/terms"),
+            (nameof(PaidOrderAcceptanceSnapshot.TenantDirectoryOperatorPrivacyUrl), "https://changed.example.test/privacy"),
             (nameof(PaidOrderAcceptanceSnapshot.InstancePolicyVersionId), Guid.CreateVersion7()),
             (nameof(PaidOrderAcceptanceSnapshot.TenantPolicyVersionId), Guid.CreateVersion7()),
             (nameof(PaidOrderAcceptanceSnapshot.OperatorId), Guid.CreateVersion7()),
+            (nameof(PaidOrderAcceptanceSnapshot.OperatorLegalName), "Changed Operator ASBL"),
+            (nameof(PaidOrderAcceptanceSnapshot.OperatorKindCode), "public_body"),
+            (nameof(PaidOrderAcceptanceSnapshot.OperatorRegistrationIdentifier), "FR 123"),
             (nameof(PaidOrderAcceptanceSnapshot.CurrencyCode), "USD"),
             (nameof(PaidOrderAcceptanceSnapshot.OrganizerAmountMinor), 999L),
             (nameof(PaidOrderAcceptanceSnapshot.PlatformFeeMinor), 74L),
@@ -223,7 +244,13 @@ public sealed class PaidOrderAcceptanceFreshnessServiceTests
                 null,
                 null,
                 null,
-                new PaidOrderAcceptanceAuthorityFacts(snapshot.OperatorId, instancePolicyId, null)));
+                new PaidOrderAcceptanceAuthorityFacts(
+                    snapshot.OrganizerActorId,
+                    snapshot.OperatorId,
+                    snapshot.TenantDirectoryOperatorDocumentId,
+                    snapshot.TenantDirectoryOperatorRevisionId,
+                    instancePolicyId,
+                    null)));
         return (snapshot, attempt, new PaidOrderAcceptanceFreshnessService(orders, acceptances), authoritativeDisclosure);
     }
 
@@ -255,12 +282,12 @@ public sealed class PaidOrderAcceptanceFreshnessServiceTests
             snapshot.RegistrationOrderId,
             OrganizerPaymentRecipientSnapshot.Create(
                 snapshot.TenantId,
-                Guid.CreateVersion7(),
-                Guid.CreateVersion7(),
+                snapshot.OrganizerActorId,
+                snapshot.OrganizerPaymentProviderConnectionId,
                 "stripe",
-                "platform-live-eu",
-                "acct_123",
-                "BE",
+                snapshot.ConnectPlatformId,
+                snapshot.ExternalAccountId,
+                snapshot.MerchantCountryCode,
                 "EUR",
                 snapshot.InstancePolicyVersionId,
                 snapshot.TenantPolicyVersionId,

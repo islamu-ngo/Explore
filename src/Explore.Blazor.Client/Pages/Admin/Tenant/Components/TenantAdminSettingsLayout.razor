@@ -16,6 +16,7 @@
 @inject IPublicExperienceService PublicExperienceService
 @inject ITenantPublicExperienceAdminService TenantPublicExperienceAdminService
 @inject ITenantBrandingSettingsAdminService TenantBrandingSettingsAdminService
+@inject ITenantDirectoryOperatorIdentityAdminService TenantDirectoryOperatorIdentityAdminService
 @inject ITenantStorageSettingsAdminService TenantStorageSettingsAdminService
 @inject ITranslationService Translations
 @inject AiAssistantState AiAssistantState
@@ -116,6 +117,10 @@
                                           Text="Branding"
                                           Class="@GetNavItemClass("branding")"
                                           OnClick="@(() => SelectSection("branding"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Badge"
+                                         Text="Legal Identity"
+                                         Class="@GetNavItemClass("legal-identity")"
+                                         OnClick="@(() => SelectSection("legal-identity"))" />
                             <MudListItem Icon="@Icons.Material.Filled.Announcement"
                                            Text="Announcement Bar"
                                            Class="@GetNavItemClass("announcement-bar")"
@@ -229,6 +234,10 @@
                         else if (_currentSection == "branding")
                         {
                             <TenantBrandingSection Model="_brandingModel" />
+                        }
+                        else if (_currentSection == "legal-identity")
+                        {
+                            <TenantDirectoryOperatorIdentitySection Model="_directoryOperatorIdentityModel" />
                         }
                         else if (_currentSection == "announcement-bar")
                         {
@@ -457,6 +466,7 @@
 @code {
     private TenantPolicySettingsDto _model = new();
     private TenantBrandingSettingsAdminModel _brandingModel = new();
+    private TenantDirectoryOperatorIdentityAdminModel _directoryOperatorIdentityModel = new();
     private HalResourceOfTenantStorageSettingsDto _storageModel = new();
     private TenantPublicExperienceAdminModel _publicExperienceModel = new();
     private TenantPublicExperienceSection? _publicExperienceSection;
@@ -510,6 +520,8 @@
         await TenantPublicExperienceAdminService.ApplyAnnouncementBarSettingsAsync(_model);
         _hasAnnouncementBar = HasUsableAnnouncementBar(_model);
         _brandingModel = await TenantBrandingSettingsAdminService.GetAsync();
+        _directoryOperatorIdentityModel =
+            await TenantDirectoryOperatorIdentityAdminService.GetAsync();
         _publicExperienceModel = await TenantPublicExperienceAdminService.GetSettingsAsync();
         if (_model.CanOverrideStorage == true)
         {

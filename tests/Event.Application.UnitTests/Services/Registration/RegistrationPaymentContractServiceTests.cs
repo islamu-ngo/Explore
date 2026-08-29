@@ -244,10 +244,13 @@ public sealed class RegistrationPaymentContractServiceTests
             Substitute.For<IEventTicketCatalogRepository>(),
             Substitute.For<IEventRepository>(),
             Substitute.For<IPaidEventPolicyRepository>(),
+            ReadyInstanceIdentity(),
             ReadyGovernance(),
+            Substitute.For<ITenantDirectoryOperatorReadinessEvaluator>(),
+            Substitute.For<IOrganizerPaymentProviderConnectionRepository>(),
+            Substitute.For<IOrganizerPaymentCommerceConfiguration>(),
             Substitute.For<IPaidCheckoutActivationService>(),
             Substitute.For<IPaymentProviderDescriptor>(),
-            Substitute.For<ITypedSettingsDocumentResolver>(),
             new FixedTimeProvider(UtcNow));
         return new(
             _attempts,
@@ -292,6 +295,22 @@ public sealed class RegistrationPaymentContractServiceTests
         return governance;
     }
 
+    private static IInstanceOperatorIdentity ReadyInstanceIdentity()
+    {
+        var identity = Substitute.For<IInstanceOperatorIdentity>();
+        identity.OperatorId.Returns(Guid.CreateVersion7());
+        identity.PublicName.Returns("Independent Operator");
+        identity.IsOfficialInstance.Returns(false);
+        identity.OfficialOrigin.Returns("https://events.example.test");
+        identity.JurisdictionCountryCode.Returns("BE");
+        identity.PublicContactEmail.Returns("contact@example.test");
+        identity.WebsiteUrl.Returns("https://events.example.test");
+        identity.LegalNoticeUrl.Returns("https://events.example.test/legal");
+        identity.TermsUrl.Returns("https://events.example.test/terms");
+        identity.PrivacyUrl.Returns("https://events.example.test/privacy");
+        return identity;
+    }
+
     private PaymentAttempt CreateRequiresActionAttempt()
     {
         OrganizerPaymentRecipientSnapshot recipient = OrganizerPaymentRecipientSnapshot.Create(
@@ -312,7 +331,7 @@ public sealed class RegistrationPaymentContractServiceTests
         attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
             _tenantId, _orderId, Guid.CreateVersion7(), "composition-a",
             recipient.InstancePolicyVersionId, recipient.TenantPolicyVersionId,
-            1_000, 75, 125, UtcNow));
+            1_000, 75, 125, UtcNow, recipient));
         attempt.MarkDispatchPending(UtcNow.AddSeconds(1), null);
         attempt.MarkRequiresAction("cs_exact", UtcNow.AddSeconds(2), null);
         return attempt;

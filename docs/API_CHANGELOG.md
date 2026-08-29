@@ -3,6 +3,32 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-28
+
+- **Breaking: legal identity is structured and responsibility-specific.**
+  Tenant admins now use the HAL-gated
+  `GET/PATCH /api/tenant/settings/documents/directory-operator-identity`
+  resource with grouped PATCH presence and optimistic concurrency. Anonymous
+  public settings/shell expose separate `directoryOperator` and
+  `instanceOperator` objects and return non-cacheable RFC 7807 `503` with
+  `tenant_identity_unavailable` when tenant disclosure identity is unavailable.
+- **Breaking: paid disclosures no longer expose branding-derived prose or
+  flattened operator fields.** Checkout composition exposes structured
+  `directoryOperator`; paid acceptance groups `organizerMerchant`,
+  `tenantDirectoryOperator`, `instanceOperator`, and `paymentOperations` and
+  carries a versioned acceptance template. The immutable server-side snapshot
+  additionally fences the exact organizer payment connection, Connect
+  platform, external account, and merchant country before claim or provider
+  handoff. Consumers must regenerate from the canonical OpenAPI document; no
+  compatibility alias is provided.
+- **Breaking: tenant onboarding completion now carries identity explicitly.**
+  `POST /api/tenant/onboarding/complete` accepts
+  `CompleteTenantOnboardingRequest`, grouping policy settings with the required
+  directory-operator identity and the expected current identity concurrency
+  stamp. Existing identity updates without the exact stamp conflict rather
+  than overwrite; new identities, policy, branding, and onboarding completion
+  commit atomically.
+
 ## 2026-08-26
 
 - **Additive: check-in identity and incident controls are explicit in the initial Phase 21 surface.** Successful single and batch check-ins include the persisted UUIDv7 `checkInId`; undo is bound to that exact active fact, and HAL embeds per-result undo affordances only while valid. `GET /api/events/{eventId}/admission/check-ins/{checkInId}` returns bounded fact detail. Authenticated health, stop, restore, and reconcile routes operate on one body/query `targetId`, use closed reason codes, and expose permission-matched HAL relations. Scanner issuance rejects missing, cross-event, stopped, or non-`PlatformManaged` targets before secret material is created.

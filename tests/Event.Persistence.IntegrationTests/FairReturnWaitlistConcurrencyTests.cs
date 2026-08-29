@@ -1322,14 +1322,16 @@ public sealed class FairReturnWaitlistConcurrencyTests(
                     "EUR",
                     UtcNow,
                     UtcNow.AddMinutes(30));
+            OrganizerPaymentRecipientSnapshot originalRecipient =
+                PaymentRecipient(
+                    waitlist.TenantId,
+                    waitlist.EventId);
             PaymentAttempt original =
                 PaymentAttempt.Create(
                     originalPaymentId,
                     waitlist.TenantId,
                     originalOrder.Id,
-                    PaymentRecipient(
-                        waitlist.TenantId,
-                        waitlist.EventId),
+                    originalRecipient,
                     "OrganizerDirect",
                     "2026-08-20.acacia",
                     "fair-return",
@@ -1349,7 +1351,8 @@ public sealed class FairReturnWaitlistConcurrencyTests(
                     1_000,
                     75,
                     0,
-                    UtcNow);
+                    UtcNow,
+                    recipient: originalRecipient);
             original.AttachAcceptance(acceptance);
             original.MarkSucceeded(
                 $"pi_{originalPaymentId:N}",

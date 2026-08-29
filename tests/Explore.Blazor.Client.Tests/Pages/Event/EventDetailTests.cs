@@ -467,7 +467,7 @@ public sealed class EventDetailTests : IDisposable
     public void Dispose() => _ctx.Dispose();
 
     [Test]
-    public async Task PaidEventDirectoryDisclaimer_RendersForPaidPlatformManagedEvent()
+    public async Task DirectoryOperatorDisclosure_RendersForPaidPlatformManagedEvent()
     {
         EventDto eventDto = CreateEventDto("PUBLISHED", "Published", "start-registration") with
         {
@@ -481,24 +481,26 @@ public sealed class EventDetailTests : IDisposable
         };
         RegisterEventDetailServices(eventDto);
         var publicExperience = Substitute.For<IPublicExperienceService>();
-        publicExperience.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
+        publicExperience.GetCachedShellAsync().Returns(new PublicExperienceShellDto
         {
-            PaidEventDirectoryDisclaimer = "Tenant Events provides an event discovery and management directory only."
+            DirectoryOperator = DirectoryOperator()
         });
         _ctx.Services.AddSingleton(publicExperience);
 
         var cut = _ctx.RenderMudComponent<EventDetail>();
 
-        var notice = cut.WaitForElement("[data-testid='event-detail-paid-event-directory-disclaimer']");
+        var notice = cut.WaitForElement("[data-testid='event-detail-directory-operator-disclosure']");
 
         await Assert.That(notice.TextContent)
-            .Contains("Tenant Events provides an event discovery and management directory only.");
-        await Assert.That(notice.GetAttribute("dir")).IsNull();
-        await Assert.That(notice.QuerySelectorAll("[lang='en'][dir='ltr']").Length).IsEqualTo(2);
+            .Contains("Community Directory Foundation");
+        await Assert.That(notice.QuerySelector("a[href='https://directory.example.test/legal']"))
+            .IsNotNull();
+        await Assert.That(notice.QuerySelector("a[href='https://directory.example.test/privacy']"))
+            .IsNotNull();
     }
 
     [Test]
-    public void PaidEventDirectoryDisclaimer_DoesNotRenderForFreeEvent()
+    public void DirectoryOperatorDisclosure_DoesNotRenderForFreeEvent()
     {
         EventDto eventDto = CreateEventDto("PUBLISHED", "Published", "start-registration") with
         {
@@ -511,9 +513,9 @@ public sealed class EventDetailTests : IDisposable
         };
         RegisterEventDetailServices(eventDto);
         var publicExperience = Substitute.For<IPublicExperienceService>();
-        publicExperience.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsDto
+        publicExperience.GetCachedShellAsync().Returns(new PublicExperienceShellDto
         {
-            PaidEventDirectoryDisclaimer = "Tenant Events provides an event discovery and management directory only."
+            DirectoryOperator = DirectoryOperator()
         });
         _ctx.Services.AddSingleton(publicExperience);
 
@@ -521,8 +523,72 @@ public sealed class EventDetailTests : IDisposable
 
         cut.WaitForElement("a[href*='/registration/events/'][href$='/tickets']");
         cut.WaitForAssertion(() =>
-            Assert.That(cut.FindAll("[data-testid='event-detail-paid-event-directory-disclaimer']")).IsEmpty());
+            Assert.That(cut.FindAll("[data-testid='event-detail-directory-operator-disclosure']")).IsEmpty());
     }
+
+    [Test]
+    [Arguments("SLIDING_SCALE")]
+    [Arguments("MIXED")]
+    [Arguments("MIXED_WITH_FREE")]
+    public async Task MissingDirectoryOperator_BlocksEveryNonFreeRegistrationSummary(
+        string summaryCode)
+    {
+        EventDto eventDto = CreateEventDto("PUBLISHED", "Published", "start-registration") with
+        {
+            TicketPriceSummary = new TicketPriceSummary
+            {
+                SummaryCode = summaryCode,
+                CurrencyCode = "EUR",
+                FromAmountMinor = 500
+            }
+        };
+        RegisterEventDetailServices(eventDto);
+        var publicExperience = Substitute.For<IPublicExperienceService>();
+        publicExperience.GetCachedShellAsync().Returns(new PublicExperienceShellDto());
+        _ctx.Services.AddSingleton(publicExperience);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+
+        cut.WaitForElement("[data-testid='event-detail-paid-identity-unavailable']");
+        await Assert.That(cut.FindAll($"a[href='/registration/events/{eventDto.Id}/tickets']")).IsEmpty();
+    }
+
+    [Test]
+    public async Task CancelledPaidEvent_PrioritizesCancellationOverIdentityWarning()
+    {
+        EventDto eventDto = CreateEventDto("CANCELLED", "Cancelled", "start-registration") with
+        {
+            TicketPriceSummary = new TicketPriceSummary
+            {
+                SummaryCode = "MIXED_WITH_FREE",
+                CurrencyCode = "EUR",
+                FromAmountMinor = 500
+            }
+        };
+        RegisterEventDetailServices(eventDto);
+        var publicExperience = Substitute.For<IPublicExperienceService>();
+        publicExperience.GetCachedShellAsync().Returns(new PublicExperienceShellDto());
+        _ctx.Services.AddSingleton(publicExperience);
+
+        var cut = _ctx.RenderMudComponent<EventDetail>();
+
+        cut.WaitForElement("[data-testid='event-detail-cancelled']");
+        await Assert.That(cut.FindAll("[data-testid='event-detail-paid-identity-unavailable']")).IsEmpty();
+    }
+
+    private static TenantDirectoryOperatorPublicDto DirectoryOperator() => new()
+    {
+        DocumentRevision = Guid.Parse("018e4e5c-7f00-7000-8000-000000000101"),
+        PublicName = "Community Directory",
+        LegalName = "Community Directory Foundation",
+        OperatorKindCode = "NONPROFIT",
+        JurisdictionCountryCode = "BE",
+        RegistrationIdentifier = "BE 0123.456.789",
+        PublicContactEmail = "directory@example.test",
+        LegalNoticeUrl = "https://directory.example.test/legal",
+        TermsUrl = "https://directory.example.test/terms",
+        PrivacyUrl = "https://directory.example.test/privacy"
+    };
 
     private void RegisterEventDetailServices(
         EventDto eventDto,

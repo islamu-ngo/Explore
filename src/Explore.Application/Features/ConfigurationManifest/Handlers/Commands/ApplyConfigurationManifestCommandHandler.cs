@@ -16,6 +16,7 @@ using Explore.Application.Responses;
 using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Documents;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -266,16 +267,17 @@ public sealed class ApplyConfigurationManifestCommandHandler(
         await tenantCreationService.CreateInCurrentTransactionAsync(
             new TenantCreationRequest(
                 tenant.PlannedTenantId,
-                tenant.BrandingDocument.DocumentId,
                 tenant.DisplayName,
                 tenant.Slug,
                 (int)TenantStatusEnum.Provisioning,
                 ActorUserId: null,
                 plan.OccurredAt,
-                tenant.BrandingDocument.DocumentKey,
-                tenant.BrandingDocument.SchemaVersion,
-                tenant.BrandingDocument.DefaultsVersion,
-                tenant.BrandingDocument.PayloadJson),
+                new TenantBrandingDocumentSeed(
+                    tenant.BrandingDocument.DocumentId,
+                    tenant.BrandingDocument.SchemaVersion,
+                    tenant.BrandingDocument.DefaultsVersion,
+                    tenant.BrandingDocument.PayloadJson),
+                CreateDirectoryOperatorSeed(tenant.PlannedTenantId, tenant.DisplayName)),
             cancellationToken);
 
         if (tenant.PaidEventPolicy is not null)
@@ -341,6 +343,19 @@ public sealed class ApplyConfigurationManifestCommandHandler(
                 cancellationToken);
         }
 
+    }
+
+    private static TenantDirectoryOperatorIdentityDocumentSeed CreateDirectoryOperatorSeed(
+        Guid tenantId,
+        string displayName)
+    {
+        TenantSettingsDocument document =
+            TenantDirectoryOperatorIdentityDocumentDefaults.Create(tenantId, displayName);
+        return new(
+            Guid.CreateVersion7(),
+            document.SchemaVersion,
+            document.DefaultsVersion,
+            document.PayloadJson);
     }
 
     private async Task ApplyInstanceSettingsAsync(

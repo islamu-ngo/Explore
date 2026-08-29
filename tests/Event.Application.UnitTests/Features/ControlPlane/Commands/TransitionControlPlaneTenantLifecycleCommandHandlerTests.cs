@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.ControlPlane.Handlers.Commands;
@@ -98,6 +99,61 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         await Assert.That(result.IsSuccess).IsFalse();
         await Assert.That(result.Message).Contains("Cannot transition tenant from Purged to Active.");
         await tenantRepository.DidNotReceiveWithAnyArgs().TryTransitionStatusAsync(default, default, default, default, default, default);
+        await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Test]
+    public async Task Handle_WhenProvisioningIdentityIsIncomplete_RejectsActivationBeforeCompareAndSwap()
+    {
+        var tenant = CreateTenant(TenantStatusEnum.Provisioning);
+        var tenantRepository = Substitute.For<ITenantRepository>();
+        var lifecycleLogRepository = Substitute.For<ITenantLifecycleLogRepository>();
+        tenantRepository.GetByIdAsNoTrackingAsync(tenant.Id, Arg.Any<CancellationToken>())
+            .Returns(tenant);
+        tenantRepository.TryTransitionStatusAsync(
+                tenant.Id,
+                (int)TenantStatusEnum.Provisioning,
+                (int)TenantStatusEnum.Active,
+                Arg.Any<DateTime>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+        lifecycleLogRepository.CreateAsync(
+                Arg.Any<TenantLifecycleLog>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => Task.FromResult(call.Arg<TenantLifecycleLog>()));
+        var readiness = Substitute.For<ITenantDirectoryOperatorReadinessEvaluator>();
+        readiness.EvaluateAsync(
+                tenant.Id,
+                Explore.Domain.ValueObjects.TenantDirectoryOperatorIdentityCapability.Activation,
+                Arg.Any<CancellationToken>())
+            .Returns(TenantDirectoryOperatorReadinessAssessment.Incomplete(
+                [
+                    "tenant_directory_operator_identity_legal_name_missing",
+                    "HOSTILE-name@example.test/registration/secret"
+                ],
+                Guid.CreateVersion7()));
+        var handler = CreateSut(
+            tenantRepository,
+            lifecycleLogRepository,
+            directoryOperatorReadiness: readiness);
+
+        BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto> result =
+            await handler.Handle(
+                new TransitionControlPlaneTenantLifecycleCommand(
+                    tenant.Id,
+                    TenantStatusEnum.Active,
+                    reason: null),
+                CancellationToken.None);
+
+        await Assert.That(result.IsSuccess).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("tenant_directory_operator_identity_incomplete");
+        await Assert.That(result.Errors).IsEquivalentTo(
+            ["tenant_directory_operator_identity_legal_name_missing"]);
+        await Assert.That(string.Join('|', result.Errors ?? [])).DoesNotContain("HOSTILE");
+        await tenantRepository.DidNotReceiveWithAnyArgs()
+            .TryTransitionStatusAsync(default, default, default, default, default, default);
         await lifecycleLogRepository.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
     }
 
@@ -308,7 +364,8 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
         ITenantRepository tenantRepository,
         ITenantLifecycleLogRepository lifecycleLogRepository,
         Guid? operatorId = null,
-        IEmailDispatchOutboxRepository? emailDispatchOutboxRepository = null)
+        IEmailDispatchOutboxRepository? emailDispatchOutboxRepository = null,
+        ITenantDirectoryOperatorReadinessEvaluator? directoryOperatorReadiness = null)
     {
         var currentUserService = Substitute.For<ICurrentUserService>();
         currentUserService.UserId.Returns(operatorId ?? Guid.NewGuid());
@@ -322,18 +379,37 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandlerTests
                 return operation(callInfo.Arg<CancellationToken>());
             });
 
+        var readiness = directoryOperatorReadiness;
+        if (readiness is null)
+        {
+            readiness = Substitute.For<ITenantDirectoryOperatorReadinessEvaluator>();
+            readiness.EvaluateAsync(
+                    Arg.Any<Guid>(),
+                    Arg.Any<Explore.Domain.ValueObjects.TenantDirectoryOperatorIdentityCapability>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(TenantDirectoryOperatorReadinessAssessment.Missing);
+        }
+
+        var mutationLock = Substitute.For<ISettingMutationLock>();
+        mutationLock.ExecuteManyAsync(
+                Arg.Any<IEnumerable<string>>(),
+                Arg.Any<Func<CancellationToken, Task<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Func<CancellationToken, Task<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>>>()(
+                call.ArgAt<CancellationToken>(2)));
+
         return new TransitionControlPlaneTenantLifecycleCommandHandler(
             tenantRepository,
             lifecycleLogRepository,
             emailDispatchOutboxRepository ?? Substitute.For<IEmailDispatchOutboxRepository>(),
             currentUserService,
-            unitOfWork,
-            Substitute.For<ISettingMutationLock>(),
+            mutationLock,
             new TenantActivationCapacityPolicy(
                 Substitute.For<IInstanceBootstrapStateRepository>(),
                 tenantRepository,
                 Substitute.For<IManagedTenantProvisioningOperationRepository>(),
-                Microsoft.Extensions.Options.Options.Create(new ManagedControlPlaneOptions())));
+                Microsoft.Extensions.Options.Options.Create(new ManagedControlPlaneOptions())),
+            readiness);
     }
 
     private static Tenant CreateTenant(TenantStatusEnum status)

@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.PublicExperience.Handlers.Queries;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using Explore.Application.Models;
@@ -19,6 +20,7 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Settings.Documents;
 using Explore.Domain.Settings.Documents.Payloads;
+using Explore.Domain.ValueObjects;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Features.PublicExperience.Queries;
@@ -36,9 +38,10 @@ public class GetPublicExperienceSettingsQueryHandlerTests
     private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
     private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
-    private readonly IPaidEventPolicyRepository _paidEventPolicyRepository;
     private readonly IFooterLinkGroupRepository _footerLinkGroupRepository;
     private readonly IMapper _mapper;
+    private readonly ITenantDirectoryOperatorReadinessEvaluator _directoryOperatorReadiness;
+    private readonly IInstanceOperatorIdentity _instanceOperatorIdentity;
     private readonly GetPublicExperienceSettingsQueryHandler _handler;
 
     public GetPublicExperienceSettingsQueryHandlerTests()
@@ -56,7 +59,6 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             .Returns(new AnalyticsRuntimeProfile());
         _hierarchicalSettingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _typedSettingsDocumentResolver = Substitute.For<ITypedSettingsDocumentResolver>();
-        _paidEventPolicyRepository = Substitute.For<IPaidEventPolicyRepository>();
         _hierarchicalSettingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
             Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(new AnalyticsSettingGroup());
@@ -77,6 +79,23 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(new AppearanceSettingGroup());
         _mapper = Substitute.For<IMapper>();
+        _directoryOperatorReadiness =
+            Substitute.For<ITenantDirectoryOperatorReadinessEvaluator>();
+        TenantDirectoryOperatorIdentity identity =
+            TenantDirectoryOperatorIdentity.Evaluate(
+                CompleteDirectoryIdentity(),
+                TenantDirectoryOperatorIdentityCapability.PublicDisclosure)
+                .Identity!;
+        _directoryOperatorReadiness.EvaluateAsync(
+                Arg.Any<Guid>(),
+                TenantDirectoryOperatorIdentityCapability.PublicDisclosure,
+                Arg.Any<CancellationToken>())
+            .Returns(TenantDirectoryOperatorReadinessAssessment.Ready(
+                identity,
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7()));
+        _instanceOperatorIdentity = Substitute.For<IInstanceOperatorIdentity>();
+        ConfigureInstanceIdentity(_instanceOperatorIdentity);
         _mapper.Map<List<global::Explore.Application.DTOs.Footer.FooterLinkGroupDto>>(Arg.Any<object>())
             .Returns([]);
 
@@ -92,13 +111,14 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             _runtimeProfileResolver,
             _hierarchicalSettingsResolver,
             _typedSettingsDocumentResolver,
-            _paidEventPolicyRepository,
             _footerLinkGroupRepository,
-            _mapper);
+            _mapper,
+            _directoryOperatorReadiness,
+            _instanceOperatorIdentity);
     }
 
     [Test]
-    public async Task Handle_WhenPaidEventsAreEffective_ExposesTenantBrandedDirectoryDisclaimer()
+    public async Task Handle_WhenIdentityIsReady_ExposesSeparateStructuredAuthorities()
     {
         Guid tenantId = Guid.CreateVersion7();
         _tenantContext.TenantId.Returns(tenantId);
@@ -118,32 +138,69 @@ public class GetPublicExperienceSettingsQueryHandlerTests
                 SourceScopeId = tenantId,
                 ConcurrencyStamp = Guid.CreateVersion7()
             });
-        _paidEventPolicyRepository.GetActiveInstanceAsync(Arg.Any<CancellationToken>())
-            .Returns(EnabledInstancePolicy());
-
         PublicExperienceSettingsDto result = await _handler.Handle(
             new GetPublicExperienceSettingsQuery(),
             CancellationToken.None);
 
-        await Assert.That(result.PaidEventDirectoryDisclaimer).StartsWith(
-            "Tenant Events provides an event discovery and management directory only.");
+        await Assert.That(result.IsAvailable).IsTrue();
+        await Assert.That(result.UnavailableCode).IsNull();
+        await Assert.That(result.DirectoryOperator).IsNotNull();
+        await Assert.That(result.DirectoryOperator!.LegalName)
+            .IsEqualTo("Community Events ASBL");
+        await Assert.That(result.InstanceOperator).IsNotNull();
+        await Assert.That(result.InstanceOperator!.LegalName)
+            .IsEqualTo("Independent Operator ASBL");
     }
 
     [Test]
-    public async Task Handle_WhenInstanceDisablesPaidEvents_OmitsDirectoryDisclaimer()
+    public async Task Handle_WhenDirectoryIdentityIsMissing_ReturnsUnavailableWithoutFallback()
     {
         Guid tenantId = Guid.CreateVersion7();
         _tenantContext.TenantId.Returns(tenantId);
-        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
-        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>()).Returns([]);
-        _paidEventPolicyRepository.GetActiveInstanceAsync(Arg.Any<CancellationToken>())
-            .Returns(PaidEventPolicyVersion.CreateDefaultInstance());
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId)
+            .Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns([]);
+        _directoryOperatorReadiness.EvaluateAsync(
+                tenantId,
+                TenantDirectoryOperatorIdentityCapability.PublicDisclosure,
+                Arg.Any<CancellationToken>())
+            .Returns(TenantDirectoryOperatorReadinessAssessment.Missing);
 
         PublicExperienceSettingsDto result = await _handler.Handle(
             new GetPublicExperienceSettingsQuery(),
             CancellationToken.None);
 
-        await Assert.That(result.PaidEventDirectoryDisclaimer).IsNull();
+        await Assert.That(result.IsAvailable).IsFalse();
+        await Assert.That(result.UnavailableCode).IsEqualTo("tenant_identity_unavailable");
+        await Assert.That(result.DirectoryOperator).IsNull();
+    }
+
+    private static TenantDirectoryOperatorIdentitySettings CompleteDirectoryIdentity() => new()
+    {
+        PublicName = "Community Events",
+        LegalName = "Community Events ASBL",
+        OperatorKindCode = TenantDirectoryOperatorKinds.RegisteredOrganization,
+        JurisdictionCountryCode = "BE",
+        PublicContactEmail = "contact@example.test",
+        LegalNoticeUrl = "https://example.test/legal",
+        PrivacyUrl = "https://example.test/privacy"
+    };
+
+    private static void ConfigureInstanceIdentity(IInstanceOperatorIdentity identity)
+    {
+        identity.OperatorId.Returns(Guid.CreateVersion7());
+        identity.PublicName.Returns("Independent Operator");
+        identity.LegalName.Returns("Independent Operator ASBL");
+        identity.IsOfficialInstance.Returns(false);
+        identity.OfficialOrigin.Returns("https://instance.example.test");
+        identity.OperatorKindCode.Returns(TenantDirectoryOperatorKinds.RegisteredOrganization);
+        identity.JurisdictionCountryCode.Returns("BE");
+        identity.PublicContactEmail.Returns("contact@instance.example.test");
+        identity.WebsiteUrl.Returns("https://instance.example.test");
+        identity.LegalNoticeUrl.Returns("https://instance.example.test/legal");
+        identity.TermsUrl.Returns("https://instance.example.test/terms");
+        identity.PrivacyUrl.Returns("https://instance.example.test/privacy");
     }
 
     [Test]
@@ -592,18 +649,4 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         };
     }
 
-    private static PaidEventPolicyVersion EnabledInstancePolicy()
-    {
-        PaidEventPolicyVersion policy = PaidEventPolicyVersion.CreateDefaultInstance();
-        return policy.CreateRevision(
-            true,
-            policy.AllowedOrganizerKinds,
-            policy.RequiresLocalVerification,
-            policy.AllowedCurrencyCodes,
-            policy.DefaultCurrencyCode,
-            policy.RefundProtections,
-            policy.CurrencyRiskLimits,
-            policy.RequiresFirstPaidEventReview,
-            policy.FarFutureReviewThresholdDays);
-    }
 }

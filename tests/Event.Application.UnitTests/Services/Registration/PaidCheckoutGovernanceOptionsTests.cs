@@ -1,5 +1,5 @@
-// ABOUTME: Verifies startup-owned operator identity, ownership, legal links, and activation status fail closed.
-// ABOUTME: Confirms browser-facing configuration has no sale-control lists or mutable official-status DTO path.
+// ABOUTME: Verifies startup-owned payment operations and activation status fail closed.
+// ABOUTME: Confirms checkout governance no longer owns general instance legal-identity fields.
 
 using Explore.Application.Contracts.Services;
 using TUnit.Assertions;
@@ -16,7 +16,7 @@ public sealed class PaidCheckoutGovernanceOptionsTests
 
         await Assert.That(options.IsComplete()).IsFalse();
         await Assert.That(options.IsActivated).IsFalse();
-        await Assert.That(options.IsOfficialInstance).IsFalse();
+        await Assert.That(options.ChargeType).IsEqualTo("direct-charge");
     }
 
     [Test]
@@ -32,15 +32,6 @@ public sealed class PaidCheckoutGovernanceOptionsTests
 
     private static PaidCheckoutGovernanceOptions Complete() => new()
     {
-        OperatorId = Guid.CreateVersion7(),
-        OperatorDisplayName = "Independent Operator",
-        OfficialOrigin = "https://events.example.test",
-        OperatorRegionCode = "BE",
-        OperatorWebsiteUrl = "https://events.example.test",
-        OperatorLegalNoticeUrl = "https://events.example.test/legal",
-        OperatorTermsUrl = "https://events.example.test/terms",
-        OperatorPrivacyUrl = "https://events.example.test/privacy",
-        ComplaintContact = "complaints@example.test",
         ComplaintOwner = "Trust and Safety",
         RefundOwner = "Payments Operations",
         DisputeOwner = "Dispute Operations",

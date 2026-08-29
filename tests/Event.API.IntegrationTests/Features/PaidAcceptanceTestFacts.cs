@@ -19,7 +19,14 @@ internal static class PaidAcceptanceTestFacts
         long platformContributionMinor,
         DateTime acceptedAt) => PaidOrderAcceptanceSnapshot.Create(
             Guid.CreateVersion7(), tenantId, tenantId, orderId, eventId, compositionRevision, "disclosure",
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateIdentifier,
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateText,
+            Guid.CreateVersion7(),
             "Example Organizer, legal merchant for this order",
+            PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
+                Guid.CreateVersion7(), Guid.CreateVersion7(), "Community Events", "Community Events ASBL",
+                "registered_organization", "BE", null, "contact@example.test", "https://example.test/legal",
+                "https://example.test/terms", "https://example.test/privacy"),
             PaidCheckoutOperatorDisclosure.Create(
                 Guid.CreateVersion7(), "Independent Operator", false, "https://events.example.test", "BE",
                 "https://events.example.test", "https://events.example.test/legal", "https://events.example.test/terms",

@@ -343,7 +343,7 @@ public sealed class RefundAttemptPersistenceTests
             .Where(value => value.TenantId == tenantId)
             .MaxAsync(value => (long?)value.CampaignCursor) ?? 0;
         payment.AssignCampaignCursor(lastCursor + 1);
-        payment.AttachAcceptance(Acceptance(tenantId, paymentId, orderId));
+        payment.AttachAcceptance(Acceptance(tenantId, paymentId, orderId, recipient));
         payment.MarkSucceeded(PaymentProviderId(paymentId), UtcNow.AddSeconds(1), "req_payment");
         context.RegistrationOrders.Add(order);
         context.PaymentAttempts.Add(payment);
@@ -352,21 +352,43 @@ public sealed class RefundAttemptPersistenceTests
 
     private static string PaymentProviderId(Guid paymentId) => $"pi_{paymentId:N}";
 
-    private static PaidOrderAcceptanceSnapshot Acceptance(Guid tenantId, Guid paymentId, Guid orderId) =>
+    private static PaidOrderAcceptanceSnapshot Acceptance(
+        Guid tenantId,
+        Guid paymentId,
+        Guid orderId,
+        OrganizerPaymentRecipientSnapshot? recipient = null) =>
         PaidOrderAcceptanceSnapshot.Create(
             paymentId, tenantId, tenantId, orderId, Guid.CreateVersion7(), "refund-fixture", "disclosure-1",
-            "Example Organizer", PaidCheckoutOperatorDisclosure.Create(
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateIdentifier,
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateText,
+            recipient?.OrganizerActorId ?? Guid.CreateVersion7(),
+            "Example Organizer",
+            PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
+                Guid.CreateVersion7(), Guid.CreateVersion7(), "Community Events", "Community Events ASBL",
+                "registered_organization", "BE", null, "contact@example.test", "https://example.test/legal",
+                "https://example.test/terms", "https://example.test/privacy"),
+            PaidCheckoutOperatorDisclosure.Create(
                 Guid.CreateVersion7(), "Example Operator", false, "https://events.example.test", "BE",
                 "https://events.example.test", "https://events.example.test/legal", "https://events.example.test/terms",
                 "https://events.example.test/privacy", "complaints@example.test", "Trust and Safety", "Payments Operations",
                 "Dispute Operations", "Payment Reconciliation", "approved"),
             PaidOrderDeliverySnapshot.Create(
                 DateTimeOffset.Parse("2026-09-10T17:00:00Z"), DateTimeOffset.Parse("2026-09-10T20:00:00Z"), "Europe/Brussels"),
-            "EUR", 1_000, 75, 0, 1_000, Guid.CreateVersion7(), 7,
+            "EUR", 1_000, 75, 0, 1_000,
+            recipient?.InstancePolicyVersionId ?? Guid.CreateVersion7(), 7,
             "Refunds follow accepted policy v7.", "en-GB", "support@example.test",
             PaidCheckoutProviderDisclosure.Create(
-                "stripe", "OrganizerDirect", "direct-charge", "EXAMPLE EVENT", "test", "instance-operator"),
-            [PaidOrderAcceptanceLineFact.Create(orderId, "Admission", 1, 1_000, 0, 1_000)], UtcNow);
+                recipient?.ProviderCode ?? "stripe",
+                recipient?.ProfileCode ?? "OrganizerDirect",
+                "direct-charge", "EXAMPLE EVENT", "test", "instance-operator"),
+            [PaidOrderAcceptanceLineFact.Create(orderId, "Admission", 1, 1_000, 0, 1_000)],
+            UtcNow,
+            tenantPolicyVersionId: recipient?.TenantPolicyVersionId,
+            organizerPaymentProviderConnectionId:
+                recipient?.OrganizerPaymentProviderConnectionId ?? Guid.CreateVersion7(),
+            connectPlatformId: recipient?.ConnectPlatformId ?? "platform-live-eu",
+            externalAccountId: recipient?.ExternalAccountId ?? "acct_original",
+            merchantCountryCode: recipient?.MerchantCountryCode ?? "BE");
 
     private static DbContextOptions<ExploreDbContext> Options(SqliteConnection connection) =>
         new DbContextOptionsBuilder<ExploreDbContext>()

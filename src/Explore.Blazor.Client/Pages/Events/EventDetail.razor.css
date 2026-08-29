@@ -25,7 +25,13 @@
     border-inline-start: var(--isl-space-1) solid var(--isl-color-info);
     border-radius: var(--isl-radius-card);
     overflow-wrap: anywhere;
-    background: color-mix(in srgb, var(--isl-color-info) 8%, var(--isl-color-surface));
+    background: color-mix(in oklch, var(--isl-color-info) 8%, var(--isl-color-surface));
+}
+
+.event-registration-card__directory-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--isl-space-2) var(--isl-space-3);
 }
 
 .event-detail-container {

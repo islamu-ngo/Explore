@@ -1,15 +1,14 @@
 // ABOUTME: Verifies exact server-authored schedule, operator, provider, typed line, and acceptance revisions.
 // ABOUTME: Ensures incomplete startup governance or fabricated schedule evidence fails closed.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Payments;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
-using Explore.Application.Settings;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
-using Explore.Domain.Settings.Documents;
 using Explore.Domain.Settings.Documents.Payloads;
 using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
@@ -25,12 +24,29 @@ public sealed class PaidOrderAcceptanceServiceTests
     private static readonly DateTime UtcNow = new(2026, 8, 24, 12, 0, 0, DateTimeKind.Utc);
     private readonly Guid _tenantId = Guid.CreateVersion7();
     private readonly Guid _eventId = Guid.CreateVersion7();
+    private readonly Guid _organizerActorId = Guid.CreateVersion7();
     private readonly IEventTicketCatalogRepository _catalogs = Substitute.For<IEventTicketCatalogRepository>();
     private readonly IEventRepository _events = Substitute.For<IEventRepository>();
     private readonly IPaidEventPolicyRepository _policies = Substitute.For<IPaidEventPolicyRepository>();
     private readonly IPaymentProviderDescriptor _provider = Substitute.For<IPaymentProviderDescriptor>();
     private readonly IPaidCheckoutActivationService _activation = Substitute.For<IPaidCheckoutActivationService>();
-    private readonly ITypedSettingsDocumentResolver _settings = Substitute.For<ITypedSettingsDocumentResolver>();
+    private readonly IOrganizerPaymentProviderConnectionRepository _connections =
+        Substitute.For<IOrganizerPaymentProviderConnectionRepository>();
+    private readonly IOrganizerPaymentCommerceConfiguration _commerce =
+        Substitute.For<IOrganizerPaymentCommerceConfiguration>();
+    private readonly ITenantDirectoryOperatorReadinessEvaluator _directoryReadiness =
+        Substitute.For<ITenantDirectoryOperatorReadinessEvaluator>();
+
+    public PaidOrderAcceptanceServiceTests()
+    {
+        _commerce.ProviderCode.Returns("stripe");
+        _commerce.ConnectPlatformId.Returns("platform-live-eu");
+        _directoryReadiness.EvaluateAsync(
+                Arg.Any<Guid>(),
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                Arg.Any<CancellationToken>())
+            .Returns(DirectoryIdentityReadiness());
+    }
 
     [Test]
     public async Task DescribeAndAcceptUseExactScheduleOperatorProviderAndTypedLineFacts()
@@ -46,19 +62,46 @@ public sealed class PaidOrderAcceptanceServiceTests
             DisclosureRevision = described.Disclosure!.DisclosureRevision
         }, UtcNow, CancellationToken.None);
 
-        await Assert.That(described.Disclosure!.MerchantDisclosureText).Contains("legal merchant");
-        await Assert.That(described.Disclosure.PaidEventDirectoryDisclaimer).IsEqualTo(
-            "Tenant Events provides an event discovery and management directory only. " +
-            "Tenant Events does not process ticket sales or act as event organizer. " +
-            "Any financial transaction or contract is strictly between the attendee and the external organizer.");
+        string disclosureJson = JsonSerializer.Serialize(
+            described.Disclosure!,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await Assert.That(disclosureJson).Contains("\"organizerMerchant\"");
+        await Assert.That(disclosureJson).Contains("\"tenantDirectoryOperator\"");
+        await Assert.That(disclosureJson).Contains("\"instanceOperator\"");
+        await Assert.That(disclosureJson).DoesNotContain("\"paidEventDirectoryDisclaimer\"");
         await Assert.That(described.Disclosure.DeliveryStartsAtUtc).IsEqualTo(DateTimeOffset.Parse("2026-09-10T17:00:00Z"));
         await Assert.That(described.Disclosure.DeliveryEndsAtUtc).IsEqualTo(DateTimeOffset.Parse("2026-09-10T20:00:00Z"));
         await Assert.That(described.Disclosure.EventTimeZoneId).IsEqualTo("Europe/Brussels");
-        await Assert.That(described.Disclosure.ProviderEnvironment).IsEqualTo("test");
-        await Assert.That(described.Disclosure.ProviderCredentialOwner).IsEqualTo("instance-operator");
-        await Assert.That(described.Disclosure.ComplaintOwner).IsEqualTo("Trust and Safety");
+        await Assert.That(described.Disclosure.OrganizerMerchant.ProviderEnvironment).IsEqualTo("test");
+        await Assert.That(described.Disclosure.OrganizerMerchant.ProviderCredentialOwner).IsEqualTo("instance-operator");
+        await Assert.That(described.Disclosure.PaymentOperations.ComplaintOwner).IsEqualTo("Trust and Safety");
         await Assert.That(accepted.Snapshot!.Lines.Count).IsEqualTo(1);
         await Assert.That(accepted.Snapshot.Lines.Single().OrderLineId).IsEqualTo(order.Lines.Single().Id);
+        string snapshotJson = JsonSerializer.Serialize(
+            accepted.Snapshot,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await Assert.That(snapshotJson).Contains("\"tenantDirectoryOperatorRevisionId\"");
+        await Assert.That(snapshotJson).Contains("\"organizerActorId\"");
+    }
+
+    [Test]
+    public async Task DescribeAsync_MissingDirectoryIdentityFailsBeforeAcceptanceComposition()
+    {
+        (RegistrationOrder order, EventTicketCatalogVersion catalog) = OrderAndCatalog();
+        ConfigureCurrentFacts(order, catalog);
+        _directoryReadiness.EvaluateAsync(
+                order.TenantId,
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                Arg.Any<CancellationToken>())
+            .Returns(TenantDirectoryOperatorReadinessAssessment.Missing);
+
+        PaidOrderAcceptanceResult result = await Service(Governance())
+            .DescribeAsync(order, CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("tenant_directory_operator_identity_unavailable");
+        await Assert.That(result.Disclosure).IsNull();
     }
 
     [Test]
@@ -75,23 +118,26 @@ public sealed class PaidOrderAcceptanceServiceTests
     }
 
     [Test]
-    public async Task DisclosureRevisionChangesWhenEffectiveTenantBrandChanges()
+    public async Task DisclosureRevisionChangesWhenDirectoryIdentityRevisionChanges()
     {
         (RegistrationOrder order, EventTicketCatalogVersion catalog) = OrderAndCatalog();
         ConfigureCurrentFacts(order, catalog);
-        _settings.ResolveTenantDocumentAsync<BrandingSettings>(
-                Arg.Any<SettingsResolutionContext>(),
-                SettingsDocumentKeys.Tenant.Branding,
+        PaidOrderAcceptanceResult first = await Service(Governance())
+            .DescribeAsync(order, CancellationToken.None);
+        TenantDirectoryOperatorReadinessAssessment current = DirectoryIdentityReadiness();
+        _directoryReadiness.EvaluateAsync(
+                order.TenantId,
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
                 Arg.Any<CancellationToken>())
-            .Returns(Branding("Tenant Events"), Branding("Renamed Events"));
-        PaidOrderAcceptanceService service = Service(Governance());
+            .Returns(TenantDirectoryOperatorReadinessAssessment.Ready(
+                current.Identity!,
+                Guid.CreateVersion7(),
+                current.DocumentId!.Value));
 
-        PaidOrderAcceptanceResult first = await service.DescribeAsync(order, CancellationToken.None);
-        PaidOrderAcceptanceResult changed = await service.DescribeAsync(order, CancellationToken.None);
+        PaidOrderAcceptanceResult changed = await Service(Governance())
+            .DescribeAsync(order, CancellationToken.None);
 
-        await Assert.That(changed.Disclosure!.PaidEventDirectoryDisclaimer)
-            .StartsWith("Renamed Events provides");
-        await Assert.That(changed.Disclosure.DisclosureRevision)
+        await Assert.That(changed.Disclosure!.DisclosureRevision)
             .IsNotEqualTo(first.Disclosure!.DisclosureRevision);
     }
 
@@ -287,7 +333,18 @@ public sealed class PaidOrderAcceptanceServiceTests
     {
         _activation.EvaluateAsync(Arg.Any<PaidCheckoutActivationRequest>(), Arg.Any<CancellationToken>())
             .Returns(new PaidCheckoutActivationResult(true, null, "active"));
-        return new(_catalogs, _events, _policies, governance, _activation, _provider, _settings, new FixedTimeProvider(UtcNow));
+        return new(
+            _catalogs,
+            _events,
+            _policies,
+            InstanceIdentity(),
+            governance,
+            _directoryReadiness,
+            _connections,
+            _commerce,
+            _activation,
+            _provider,
+            new FixedTimeProvider(UtcNow));
     }
 
     private void ConfigureCurrentFacts(RegistrationOrder order, EventTicketCatalogVersion catalog, DomainEvent? eventTarget = null)
@@ -298,11 +355,13 @@ public sealed class PaidOrderAcceptanceServiceTests
         _policies.GetActiveInstanceAsync(Arg.Any<CancellationToken>()).Returns(EnabledPolicy());
         _provider.Describe().Returns(new PaymentProviderDescriptor(
             "stripe", "OrganizerDirect", "2026-07-29.dahlia", "test", "instance-operator"));
-        _settings.ResolveTenantDocumentAsync<BrandingSettings>(
-                Arg.Any<SettingsResolutionContext>(),
-                SettingsDocumentKeys.Tenant.Branding,
-                Arg.Any<CancellationToken>())
-            .Returns(Branding("Tenant Events"));
+        OrganizerPaymentProviderConnection connection = OrganizerPaymentProviderConnection.Create(
+            Guid.CreateVersion7(), _tenantId, _organizerActorId, "stripe", "platform-live-eu", "acct_123", UtcNow);
+        typeof(OrganizerPaymentProviderConnection).GetProperty(nameof(OrganizerPaymentProviderConnection.MerchantCountryCode))!
+            .SetValue(connection, "BE");
+        _connections.GetActiveByScopeAsync(
+            _tenantId, _organizerActorId, "stripe", "platform-live-eu", Arg.Any<CancellationToken>())
+            .Returns(connection);
     }
 
     private (RegistrationOrder Order, EventTicketCatalogVersion Catalog) OrderAndCatalog(bool includeSecondLine = false)
@@ -356,7 +415,8 @@ public sealed class PaidOrderAcceptanceServiceTests
         EventFormat = null!,
         FirstSessionStartUtc = withSchedule ? DateTimeOffset.Parse("2026-09-10T17:00:00Z") : null,
         LastSessionEndUtc = withSchedule ? DateTimeOffset.Parse("2026-09-10T20:00:00Z") : null,
-        EventTimeZoneId = withSchedule ? "Europe/Brussels" : null
+        EventTimeZoneId = withSchedule ? "Europe/Brussels" : null,
+        OrganizerActorId = _organizerActorId
     };
 
     private static PaidEventPolicyVersion EnabledPolicy()
@@ -382,15 +442,6 @@ public sealed class PaidOrderAcceptanceServiceTests
     private static IPaidCheckoutGovernance Governance(string activationStatus = "approved")
     {
         var governance = Substitute.For<IPaidCheckoutGovernance>();
-        governance.OperatorId.Returns(Guid.CreateVersion7());
-        governance.OperatorDisplayName.Returns("Independent Operator");
-        governance.OfficialOrigin.Returns("https://events.example.test");
-        governance.OperatorRegionCode.Returns("BE");
-        governance.OperatorWebsiteUrl.Returns("https://events.example.test");
-        governance.OperatorLegalNoticeUrl.Returns("https://events.example.test/legal");
-        governance.OperatorTermsUrl.Returns("https://events.example.test/terms");
-        governance.OperatorPrivacyUrl.Returns("https://events.example.test/privacy");
-        governance.ComplaintContact.Returns("complaints@example.test");
         governance.ComplaintOwner.Returns("Trust and Safety");
         governance.RefundOwner.Returns("Payments Operations");
         governance.DisputeOwner.Returns("Dispute Operations");
@@ -404,14 +455,46 @@ public sealed class PaidOrderAcceptanceServiceTests
         return governance;
     }
 
-    private ResolvedSettingsDocument<BrandingSettings> Branding(string displayName) => new()
+    private static IInstanceOperatorIdentity InstanceIdentity() =>
+        InstanceOperatorIdentity.Create(new InstanceOperatorIdentityOptions
+        {
+            OperatorId = Guid.CreateVersion7(),
+            PublicName = "Independent Operator",
+            LegalName = "Independent Operator ASBL",
+            IsOfficialInstance = false,
+            OfficialOrigin = "https://events.example.test",
+            OperatorKindCode = "registered_organization",
+            JurisdictionCountryCode = "BE",
+            RegistrationIdentifier = "BE 0123.456.789",
+            PublicContactEmail = "complaints@example.test",
+            WebsiteUrl = "https://events.example.test",
+            LegalNoticeUrl = "https://events.example.test/legal",
+            TermsUrl = "https://events.example.test/terms",
+            PrivacyUrl = "https://events.example.test/privacy"
+        });
+
+    private static TenantDirectoryOperatorReadinessAssessment DirectoryIdentityReadiness()
     {
-        DocumentKey = SettingsDocumentKeys.Tenant.Branding,
-        SchemaVersion = 1,
-        DefaultsVersion = "1",
-        Payload = new BrandingSettings { DisplayName = displayName },
-        Source = SettingsDocumentSource.Tenant,
-        SourceScopeId = _tenantId,
-        ConcurrencyStamp = Guid.CreateVersion7()
-    };
+        TenantDirectoryOperatorIdentity identity =
+            TenantDirectoryOperatorIdentity.Evaluate(
+                new TenantDirectoryOperatorIdentitySettings
+                {
+                    PublicName = "Community Events",
+                    LegalName = "Community Events ASBL",
+                    OperatorKindCode =
+                        TenantDirectoryOperatorKinds.RegisteredOrganization,
+                    JurisdictionCountryCode = "BE",
+                    PublicContactEmail = "contact@example.test",
+                    LegalNoticeUrl = "https://example.test/legal",
+                    TermsUrl = "https://example.test/terms",
+                    PrivacyUrl = "https://example.test/privacy"
+                },
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce)
+                .Identity!;
+        return TenantDirectoryOperatorReadinessAssessment.Ready(
+            identity,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7());
+    }
+
 }

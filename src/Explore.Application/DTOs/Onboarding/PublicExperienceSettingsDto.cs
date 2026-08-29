@@ -2,6 +2,7 @@
 // ABOUTME: Powers home-page routing and white-label branding without requiring admin permissions.
 
 using Explore.Application.DTOs.Footer;
+using Explore.Application.DTOs.PublicExperience;
 
 namespace Explore.Application.DTOs.Onboarding;
 
@@ -10,11 +11,14 @@ public sealed record PublicExperienceSettingsDto
     private IReadOnlyList<string> _enabledModules = Array.AsReadOnly(Array.Empty<string>());
 
     public Guid TenantId { get; init; }
+    public bool IsAvailable { get; init; }
+    public string? UnavailableCode { get; init; }
+    public TenantDirectoryOperatorPublicDto? DirectoryOperator { get; init; }
+    public InstanceOperatorPublicDto? InstanceOperator { get; init; }
     public Explore.Application.Models.PublicExperienceMode Mode { get; init; } = Explore.Application.Models.PublicExperienceMode.DiscoveryCentric;
     public string DeploymentMode { get; init; } = "SingleTenant";
     public string PreferredHomePage { get; init; } = "EventList";
     public string BrandDisplayName { get; init; } = string.Empty;
-    public string? PaidEventDirectoryDisclaimer { get; init; }
     public string BrandLogoUrl { get; init; } = string.Empty;
     public string BrandFaviconUrl { get; init; } = string.Empty;
     public string BrandCustomCssUrl { get; init; } = string.Empty;

@@ -5,6 +5,22 @@ ABOUTME: Covers server-side enforcement, Cerbos/fallback behavior, and claim-rel
 
 This document consolidates all authorization-related knowledge for the platform.
 
+## Tenant Directory-Operator Identity Resource
+
+`GET /api/tenant/settings/documents/directory-operator-identity` and
+`PATCH /api/tenant/settings/documents/directory-operator-identity` are
+authenticated tenant-admin resources. Server authorization, exact tenant
+binding, CQRS validation, and optimistic concurrency remain authoritative.
+Cross-tenant body IDs are not accepted because tenant scope comes from the
+trusted request context.
+
+The resource assembler emits `_links.edit` only when the caller may patch the
+document. Blazor treats that exact relation and its `PATCH` method as the sole
+Save affordance authority; DTO booleans, roles, claims, source type, and
+case-insensitive relation guesses do not authorize UI actions. Anonymous public
+settings expose only normalized public facts and never the edit resource,
+concurrency stamp, audit actor, or readiness blocker payload.
+
 ## Table of Contents
 
 1.  [Overview](#1-overview)

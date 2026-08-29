@@ -872,7 +872,7 @@ public sealed class RegistrationPaymentCheckoutDispatchServiceTests
         attempt.AttachAcceptance(PaidAcceptanceTestFacts.Create(
             TenantId, OrderId, Guid.CreateVersion7(), "composition-1",
             recipient.InstancePolicyVersionId, recipient.TenantPolicyVersionId,
-            10_00, 2_00, 2_50, UtcNow.AddMinutes(-1)));
+            10_00, 2_00, 2_50, UtcNow.AddMinutes(-1), recipient));
         return attempt;
     }
 

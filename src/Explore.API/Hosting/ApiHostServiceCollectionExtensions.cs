@@ -140,7 +140,9 @@ public static class ApiHostServiceCollectionExtensions
         builder.Services.AddScoped<IManagedEventHealthProbe, ManagedEventHealthProbe>();
         builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
-        builder.Services.ConfigureApplicationServices(builder.Configuration);
+        builder.Services.ConfigureApplicationServices(
+            builder.Configuration,
+            validateInstanceOperatorIdentityOnStart: !isOpenApiGeneration);
         builder.Services.ConfigureInfrastructureServices(builder.Configuration, builder.Environment);
         builder.Services.Configure<CerbosPolicyBootSyncOptions>(
             builder.Configuration.GetSection(CerbosPolicyBootSyncOptions.SectionName));

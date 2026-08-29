@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -22,6 +23,36 @@ public sealed class PaidCheckoutActivationServiceTests
     private readonly IPaidCheckoutActivationRepository _repository = Substitute.For<IPaidCheckoutActivationRepository>();
     private readonly IPaidEventPolicyRepository _policies = Substitute.For<IPaidEventPolicyRepository>();
     private readonly IEventRepository _events = Substitute.For<IEventRepository>();
+    private readonly ITenantDirectoryOperatorReadinessEvaluator _directoryReadiness =
+        Substitute.For<ITenantDirectoryOperatorReadinessEvaluator>();
+
+    public PaidCheckoutActivationServiceTests()
+    {
+        _directoryReadiness.EvaluateAsync(
+                Arg.Any<Guid>(),
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                Arg.Any<CancellationToken>())
+            .Returns(ReadyDirectoryIdentity());
+    }
+
+    [Test]
+    public async Task MissingDirectoryIdentityStopsPaidSaleBeforeControlReads()
+    {
+        _directoryReadiness.EvaluateAsync(
+                _tenantId,
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                Arg.Any<CancellationToken>())
+            .Returns(TenantDirectoryOperatorReadinessAssessment.Missing);
+
+        PaidCheckoutActivationResult result = await Service()
+            .EvaluateSaleControlAsync(_tenantId, _eventId, CancellationToken.None);
+
+        await Assert.That(result.IsActive).IsFalse();
+        await Assert.That(result.FailureCode)
+            .IsEqualTo("tenant_directory_operator_identity_unavailable");
+        await _repository.DidNotReceiveWithAnyArgs()
+            .GetSaleControlAsync(default, default, default, default);
+    }
 
     [Test]
     public async Task ConfiguredCeilingAllowsBelowLimitAndBlocksOnlyConservativeWouldExceed()
@@ -248,7 +279,37 @@ public sealed class PaidCheckoutActivationServiceTests
     }
 
     private PaidCheckoutActivationService Service(IPaidCheckoutGovernance? governance = null) =>
-        new(_repository, _policies, _events, governance ?? Governance());
+        new(
+            _repository,
+            _policies,
+            _events,
+            _directoryReadiness,
+            governance ?? Governance());
+
+    private static TenantDirectoryOperatorReadinessAssessment ReadyDirectoryIdentity()
+    {
+        TenantDirectoryOperatorIdentity identity =
+            TenantDirectoryOperatorIdentity.Evaluate(
+                new Explore.Domain.Settings.Documents.Payloads
+                    .TenantDirectoryOperatorIdentitySettings
+                    {
+                        PublicName = "Community Events",
+                        LegalName = "Community Events ASBL",
+                        OperatorKindCode =
+                            TenantDirectoryOperatorKinds.RegisteredOrganization,
+                        JurisdictionCountryCode = "BE",
+                        PublicContactEmail = "contact@example.test",
+                        LegalNoticeUrl = "https://example.test/legal",
+                        TermsUrl = "https://example.test/terms",
+                        PrivacyUrl = "https://example.test/privacy"
+                    },
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce)
+                .Identity!;
+        return TenantDirectoryOperatorReadinessAssessment.Ready(
+            identity,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7());
+    }
 
     private void Configure(PaidEventPolicyVersion policy, PaidCheckoutReservedExposure exposure)
     {

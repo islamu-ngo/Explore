@@ -3,6 +3,22 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 
 # Security
 
+## Legal-Identity Trust Boundaries
+
+Tenant directory identity is tenant-scoped untrusted input until the Application
+handler validates and normalizes it. The authenticated API derives tenant and
+actor scope from trusted request context, uses optimistic concurrency, and
+never accepts a body-supplied tenant authority. Public DTOs expose only the
+normalized facts required for accountability; audit actors, concurrency
+metadata, and blocker payloads stay private.
+
+Capability failures use stable reason codes and telemetry must not include
+legal names, registration identifiers, emails, or URLs. Anonymous settings and
+shell composition fail closed rather than crossing tenant, branding, or
+instance boundaries. Paid acceptance is replay-safe because the server
+recomposes identity, organizer-recipient, provider, policy, schedule, line, and
+money evidence and compares the exact disclosure revision before handoff.
+
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Security
@@ -11,7 +27,19 @@ ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and f
 
 ## Paid Commerce Trust Boundary
 
-Paid acceptance is tenant-qualified immutable evidence, not a browser claim. Official-instance status and operator identity come only from instance-owned server configuration; merchant/organizer identity remains separate. Every new claim and provider handoff requires a current acceptance revision and the exact persisted provider/policy/composition facts. Missing evidence, policy review requirements, or global/event stop-sale removes HAL sale affordances and blocks direct endpoints. Existing signed webhook intake, reconciliation, support, refund paths, and reads intentionally remain available during stop-sale.
+Paid acceptance is tenant-qualified immutable evidence, not a browser claim.
+Official-instance status and legal identity come only from instance-owned
+server configuration; payment operations are a separate authority, and the
+merchant/organizer remains separate from both. Every new claim and provider
+handoff requires a current acceptance revision plus the exact persisted
+organizer actor, payment-connection ID, Connect platform ID, external account
+ID, merchant country, tenant directory document/revision, instance identity,
+payment operations, provider, policy, and composition facts. Claim validation
+compares this recipient lineage before creating a payment attempt or dispatch
+write. Missing or changed evidence, policy review requirements, or global/event
+stop-sale removes HAL sale affordances and blocks direct endpoints. Existing
+signed webhook intake, reconciliation, support, refund paths, and reads
+intentionally remain available during stop-sale.
 
 ### Purchase Authority Boundary
 

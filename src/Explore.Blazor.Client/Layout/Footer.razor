@@ -1,10 +1,21 @@
-@* ABOUTME: Footer orchestrator component using template dispatch pattern (ADR-005).
-   ABOUTME: Loads footer config from PublicExperienceService and delegates rendering to template components. *@
+@* ABOUTME: Footer orchestrator for cosmetic templates and structured operator disclosures.
+   ABOUTME: Keeps tenant directory and instance platform authorities visibly separate. *@
 @using Explore.Blazor.Client.Layout.FooterTemplates
 @inject IPublicExperienceService PublicExperienceService
 @inject CookieConsentStateService CookieConsentState
+@inject ITranslationService Translation
 
-@if (_footerEnabled)
+@if (_initialized && _identityUnavailable)
+{
+    <footer class="site-footer" data-testid="footer-identity-unavailable">
+        <MudContainer MaxWidth="MaxWidth.Large" Class="site-footer__container">
+            <div role="alert" aria-live="assertive">
+                @T("footer.identityUnavailable", "Operator information is unavailable. Footer links are hidden until both accountable identities can be verified.")
+            </div>
+        </MudContainer>
+    </footer>
+}
+else if (_initialized && _footerEnabled)
 {
     <div class="site-footer-root">
     <footer class="site-footer">
@@ -65,14 +76,69 @@
                     break;
             }
 
-            @if (!string.IsNullOrWhiteSpace(_paidEventDirectoryDisclaimer))
+            @if (_directoryOperator is not null || _instanceOperator is not null)
             {
-                <aside class="site-footer__directory-notice"
-                       role="note"
-                       aria-label="Paid event directory notice"
-                       data-testid="footer-paid-event-directory-disclaimer">
-                    <MudText Typo="Typo.body2" HtmlTag="p"><span lang="en" dir="ltr">@_paidEventDirectoryDisclaimer</span></MudText>
-                </aside>
+                <section class="site-footer__operator-disclosures"
+                         aria-label="@T("footer.operatorAccountability", "Operator accountability")">
+                    @if (_directoryOperator is not null)
+                    {
+                        <article class="site-footer__operator-disclosure"
+                                 data-testid="footer-directory-operator">
+                            <MudText Typo="Typo.subtitle2" HtmlTag="h2">@T("footer.directoryOperator", "Directory operator")</MudText>
+                            <MudText Typo="Typo.body2" HtmlTag="p">
+                                <bdi dir="auto">@_directoryOperator.PublicName</bdi>
+                                <span class="site-footer__operator-legal-name">
+                                    (<bdi dir="auto">@_directoryOperator.LegalName</bdi>)
+                                </span>
+                            </MudText>
+                            <MudText Typo="Typo.caption" HtmlTag="p">
+                                <bdi dir="ltr" lang="en">@_directoryOperator.JurisdictionCountryCode</bdi>
+                                @if (!string.IsNullOrWhiteSpace(_directoryOperator.RegistrationIdentifier))
+                                {
+                                    <span dir="ltr" lang="en" data-testid="footer-directory-registration-identifier"> · @_directoryOperator.RegistrationIdentifier</span>
+                                }
+                            </MudText>
+                            <div class="site-footer__operator-links">
+                                <a href="mailto:@_directoryOperator.PublicContactEmail" dir="ltr" aria-label="@($"{T("footer.contact", "Contact")} {_directoryOperator.PublicName}")">@T("footer.contact", "Contact")</a>
+                                <a href="@_directoryOperator.LegalNoticeUrl" dir="ltr" rel="noopener" aria-label="@($"{T("footer.legalNotice", "Legal notice")} {_directoryOperator.PublicName}")">@T("footer.legalNotice", "Legal notice")</a>
+                                @if (!string.IsNullOrWhiteSpace(_directoryOperator.TermsUrl))
+                                {
+                                    <a href="@_directoryOperator.TermsUrl" dir="ltr" rel="noopener" aria-label="@($"{T("footer.terms", "Terms")} {_directoryOperator.PublicName}")">@T("footer.terms", "Terms")</a>
+                                }
+                                <a href="@_directoryOperator.PrivacyUrl" dir="ltr" rel="noopener" aria-label="@($"{T("footer.privacy", "Privacy")} {_directoryOperator.PublicName}")">@T("footer.privacy", "Privacy")</a>
+                            </div>
+                        </article>
+                    }
+
+                    @if (_instanceOperator is not null)
+                    {
+                        <article class="site-footer__operator-disclosure"
+                                 data-testid="footer-instance-operator">
+                            <MudText Typo="Typo.subtitle2" HtmlTag="h2">@T("footer.platformOperator", "Platform operator")</MudText>
+                            <MudText Typo="Typo.body2" HtmlTag="p">
+                                <bdi dir="auto">@_instanceOperator.PublicName</bdi>
+                                <span class="site-footer__operator-legal-name">
+                                    (<bdi dir="auto">@_instanceOperator.LegalName</bdi>)
+                                </span>
+                            </MudText>
+                            <MudText Typo="Typo.caption" HtmlTag="p">
+                                @(_instanceOperator.IsOfficialInstance ? T("footer.officialInstance", "Official ISLAMU instance") : T("footer.independentInstance", "Independent instance"))
+                                · <bdi dir="ltr" lang="en">@_instanceOperator.JurisdictionCountryCode</bdi>
+                                @if (!string.IsNullOrWhiteSpace(_instanceOperator.RegistrationIdentifier))
+                                {
+                                    <span dir="ltr" lang="en" data-testid="footer-instance-registration-identifier"> · @_instanceOperator.RegistrationIdentifier</span>
+                                }
+                            </MudText>
+                            <div class="site-footer__operator-links">
+                                <a href="mailto:@_instanceOperator.PublicContactEmail" dir="ltr" aria-label="@($"{T("footer.contact", "Contact")} {_instanceOperator.PublicName}")">@T("footer.contact", "Contact")</a>
+                                <a href="@_instanceOperator.WebsiteUrl" dir="ltr" rel="noopener" aria-label="@($"{T("footer.website", "Website")} {_instanceOperator.PublicName}")">@T("footer.website", "Website")</a>
+                                <a href="@_instanceOperator.LegalNoticeUrl" dir="ltr" rel="noopener" aria-label="@($"{T("footer.legalNotice", "Legal notice")} {_instanceOperator.PublicName}")">@T("footer.legalNotice", "Legal notice")</a>
+                                <a href="@_instanceOperator.TermsUrl" dir="ltr" rel="noopener" aria-label="@($"{T("footer.terms", "Terms")} {_instanceOperator.PublicName}")">@T("footer.terms", "Terms")</a>
+                                <a href="@_instanceOperator.PrivacyUrl" dir="ltr" rel="noopener" aria-label="@($"{T("footer.privacy", "Privacy")} {_instanceOperator.PublicName}")">@T("footer.privacy", "Privacy")</a>
+                            </div>
+                        </article>
+                    }
+                </section>
             }
         </MudContainer>
     </footer>
@@ -92,17 +158,27 @@
     private bool _showCookieSettingsLink = true;
     private List<FooterLinkGroupDto> _linkGroups = [];
     private bool _showCommunityGuidelinesLink;
-    private string? _paidEventDirectoryDisclaimer;
+    private TenantDirectoryOperatorPublicDto? _directoryOperator;
+    private InstanceOperatorPublicDto? _instanceOperator;
+    private bool _initialized;
+    private bool _identityUnavailable;
 
     protected override async Task OnInitializedAsync()
     {
         var settings = await PublicExperienceService.GetCachedSettingsAsync();
-        if (settings is null)
+        var shell = await PublicExperienceService.GetCachedShellAsync();
+        _initialized = true;
+        if (settings is null || shell?.DirectoryOperator is null || shell.InstanceOperator is null)
+        {
+            _identityUnavailable = true;
             return;
+        }
 
+        _identityUnavailable = false;
         _brandDisplayName = settings.BrandDisplayName ?? string.Empty;
         _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
-        _paidEventDirectoryDisclaimer = settings.PaidEventDirectoryDisclaimer;
+        _directoryOperator = shell?.DirectoryOperator;
+        _instanceOperator = shell?.InstanceOperator;
 
         var footer = settings.FooterConfig;
         var footerSettings = footer?.Settings;
@@ -129,4 +205,6 @@
     {
         await CookieConsentState.RequestReopenAsync();
     }
+
+    private string T(string key, string fallback) => Translation.T(key, fallback);
 }

@@ -11,6 +11,7 @@ using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLin
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.ActorSubscription;
 using Explore.Application.DTOs.Admissions;
+using Explore.Application.DTOs.EventAddOns;
 using Explore.Application.DTOs.Ai;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.ControlPlane;
@@ -198,6 +199,10 @@ public static class HateoasAssemblerRegistration
 
         // Tenant typed settings documents
         services.AddHalResource<TenantBrandingSettingsDocumentDto, TenantBrandingSettingsDocumentLinkPolicy, TenantBrandingSettingsDocumentCollectionLinkPolicy>();
+        services.AddHalResource<
+            TenantDirectoryOperatorIdentityDocumentDto,
+            TenantDirectoryOperatorIdentityDocumentLinkPolicy,
+            TenantDirectoryOperatorIdentityDocumentCollectionLinkPolicy>();
 
         services.AddHalResource<TenantFooterSettingsDto, TenantFooterSettingsLinkPolicy, TenantFooterSettingsCollectionLinkPolicy>();
 
@@ -255,6 +260,15 @@ public static class HateoasAssemblerRegistration
         // Custom Property Projection Admin (D2 Operability)
         services.AddHalResource<ProjectionStatusDto, ProjectionStatusDetailLinkPolicy, ProjectionStatusCollectionLinkPolicy>();
         services.AddHalResource<ProjectionDirtyScopeDto, ProjectionDirtyScopeDetailLinkPolicy, ProjectionDirtyScopeCollectionLinkPolicy>();
+
+        // Event-bound add-on catalog and private order lifecycle
+        services.AddHalResource<EventAddOnCatalogDto, EventAddOnCatalogLinkPolicy, EventAddOnCatalogCollectionLinkPolicy>();
+        services.AddScoped<RegistrationOrderAddOnLineLinkPolicy>();
+        services.AddHalResourceWithAssembler<
+            RegistrationOrderAddOnSummaryDto,
+            RegistrationOrderAddOnLinkPolicy,
+            RegistrationOrderAddOnCollectionLinkPolicy,
+            RegistrationOrderAddOnResourceAssembler>();
         services.AddScoped<ILinkPolicy<RebuildProjectionResponseDto>, RebuildProjectionResponseLinkPolicy>();
         services.AddScoped<ILinkPolicy<DrainDirtyScopesResponseDto>, DrainDirtyScopesResponseLinkPolicy>();
 

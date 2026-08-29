@@ -1,0 +1,357 @@
+@* ABOUTME: Tenant administration form for the typed directory-operator identity document. *@
+@* ABOUTME: Groups legal facts and HAL-gates the single optimistic-concurrency save action. *@
+
+@using Explore.Blazor.Client.Components.Common
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@inject ITenantDirectoryOperatorIdentityAdminService IdentityService
+@inject IAccessibilityFocusService Focus
+@inject ITranslationService Translation
+
+<section class="tenant-operator-identity"
+         aria-labelledby="tenant-operator-identity-heading"
+         data-testid="tenant-directory-operator-identity-section">
+    <div class="tenant-operator-identity__header">
+        <MudText Id="tenant-operator-identity-heading"
+                 Typo="Typo.h5"
+                 HtmlTag="h2">
+            @T("operator.heading", "Directory operator identity")
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @T("operator.description", "Identify the organization accountable for this tenant's event directory. Cosmetic branding does not change these legal facts.")
+        </MudText>
+    </div>
+
+    @if (_validationErrors.Count > 0)
+    {
+        <div class="tenant-operator-identity__validation"
+             role="alert"
+             aria-live="assertive"
+             data-testid="operator-validation-summary">
+            <strong>@T("operator.validationSummary", "Please correct the highlighted fields.")</strong>
+            <ul>
+                @foreach (string error in _validationErrors.Values)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (!Model.Exists)
+    {
+        <MudAlert Severity="Severity.Warning" role="alert">@MessageFor(Model.MessageCode)</MudAlert>
+    }
+    else
+    {
+        @if (!Model.CanEdit)
+        {
+            <MudAlert Severity="Severity.Info">
+                @T("operator.readOnly", "This identity is read-only because the API did not emit the exact edit action.")
+            </MudAlert>
+        }
+
+        <fieldset class="tenant-operator-identity__group">
+            <legend>@T("operator.legalIdentity", "Legal identity")</legend>
+            <AppTextField T="string"
+                          Label="@T("operator.publicName", "Public name")"
+                          Id="operator-public-name"
+                          @bind-Value="Model.PublicName"
+                          Disabled="@_saving"
+                          ReadOnly="@IsReadOnly"
+                          Error="@HasError(nameof(Model.PublicName))"
+                          ErrorText="@ErrorFor(nameof(Model.PublicName))"
+                          aria-invalid="@AriaInvalid(nameof(Model.PublicName))"
+                          Required="true"
+                          FullWidth="true"
+                          HelperText="@T("operator.publicNameHelp", "Name shown to visitors as the directory operator.")" />
+            <AppTextField T="string"
+                          Label="@T("operator.legalName", "Legal name")"
+                          Id="operator-legal-name"
+                          @bind-Value="Model.LegalName"
+                          Disabled="@_saving"
+                          ReadOnly="@IsReadOnly"
+                          Error="@HasError(nameof(Model.LegalName))"
+                          ErrorText="@ErrorFor(nameof(Model.LegalName))"
+                          aria-invalid="@AriaInvalid(nameof(Model.LegalName))"
+                          Required="true"
+                          FullWidth="true" />
+            <div class="tenant-operator-identity__legal-grid">
+                <AppTextField T="string"
+                              Label="@T("operator.kindCode", "Operator kind code")"
+                              Id="operator-kind-code"
+                              @bind-Value="Model.OperatorKindCode"
+                              Disabled="@_saving"
+                              ReadOnly="@IsReadOnly"
+                              Error="@HasError(nameof(Model.OperatorKindCode))"
+                              ErrorText="@ErrorFor(nameof(Model.OperatorKindCode))"
+                              aria-invalid="@AriaInvalid(nameof(Model.OperatorKindCode))"
+                              Required="true"
+                              FullWidth="true"
+                              dir="ltr" />
+                <AppTextField T="string"
+                              Label="@T("operator.jurisdictionCountryCode", "Jurisdiction country code")"
+                              Id="operator-jurisdiction-country-code"
+                              @bind-Value="Model.JurisdictionCountryCode"
+                              Disabled="@_saving"
+                              ReadOnly="@IsReadOnly"
+                              Error="@HasError(nameof(Model.JurisdictionCountryCode))"
+                              ErrorText="@ErrorFor(nameof(Model.JurisdictionCountryCode))"
+                              aria-invalid="@AriaInvalid(nameof(Model.JurisdictionCountryCode))"
+                              Required="true"
+                              FullWidth="true"
+                              MaxLength="2"
+                              dir="ltr" />
+            </div>
+            <AppTextField T="string"
+                          Label="@T("operator.registrationIdentifier", "Registration identifier")"
+                          Id="operator-registration-identifier"
+                          @bind-Value="Model.RegistrationIdentifier"
+                          Disabled="@_saving"
+                          ReadOnly="@IsReadOnly"
+                          FullWidth="true"
+                          dir="ltr" />
+        </fieldset>
+
+        <fieldset class="tenant-operator-identity__group">
+            <legend>@T("operator.contactSupport", "Contact and support")</legend>
+            <AppTextField T="string"
+                          Label="@T("operator.publicContactEmail", "Public contact email")"
+                          Id="operator-public-contact-email"
+                          @bind-Value="Model.PublicContactEmail"
+                          Disabled="@_saving"
+                          ReadOnly="@IsReadOnly"
+                          Error="@HasError(nameof(Model.PublicContactEmail))"
+                          ErrorText="@ErrorFor(nameof(Model.PublicContactEmail))"
+                          aria-invalid="@AriaInvalid(nameof(Model.PublicContactEmail))"
+                          Required="true"
+                          FullWidth="true"
+                          InputType="InputType.Email"
+                          dir="ltr" />
+        </fieldset>
+
+        <fieldset class="tenant-operator-identity__group">
+            <legend>@T("operator.legalDisclosureLinks", "Legal and disclosure links")</legend>
+            <AppTextField T="string"
+                          Label="@T("operator.legalNoticeUrl", "Legal notice URL")"
+                          Id="operator-legal-notice-url"
+                          @bind-Value="Model.LegalNoticeUrl"
+                          Disabled="@_saving"
+                          ReadOnly="@IsReadOnly"
+                          Error="@HasError(nameof(Model.LegalNoticeUrl))"
+                          ErrorText="@ErrorFor(nameof(Model.LegalNoticeUrl))"
+                          aria-invalid="@AriaInvalid(nameof(Model.LegalNoticeUrl))"
+                          Required="true"
+                          FullWidth="true"
+                          InputType="InputType.Url"
+                          dir="ltr" />
+            <AppTextField T="string"
+                          Label="@T("operator.termsUrl", "Terms URL")"
+                          Id="operator-terms-url"
+                          @bind-Value="Model.TermsUrl"
+                          Disabled="@_saving"
+                          ReadOnly="@IsReadOnly"
+                          FullWidth="true"
+                          InputType="InputType.Url"
+                          dir="ltr" />
+            <AppTextField T="string"
+                          Label="@T("operator.privacyUrl", "Privacy URL")"
+                          Id="operator-privacy-url"
+                          @bind-Value="Model.PrivacyUrl"
+                          Disabled="@_saving"
+                          ReadOnly="@IsReadOnly"
+                          Error="@HasError(nameof(Model.PrivacyUrl))"
+                          ErrorText="@ErrorFor(nameof(Model.PrivacyUrl))"
+                          aria-invalid="@AriaInvalid(nameof(Model.PrivacyUrl))"
+                          Required="true"
+                          FullWidth="true"
+                          InputType="InputType.Url"
+                          dir="ltr" />
+        </fieldset>
+
+        <section class="tenant-operator-identity__readiness"
+                 aria-labelledby="tenant-operator-identity-readiness-heading">
+            <MudText Id="tenant-operator-identity-readiness-heading"
+                     Typo="Typo.subtitle1"
+                     HtmlTag="h3">
+                @T("operator.commerceReadiness", "Commerce readiness")
+            </MudText>
+            <ul>
+                <li>@T("operator.tenantActivation", "Tenant activation"): @ReadyLabel(Model.IsActivationReady)</li>
+                <li>@T("operator.publicDisclosure", "Public disclosure"): @ReadyLabel(Model.IsPublicDisclosureReady)</li>
+                <li>@T("operator.paidCommerce", "Paid commerce"): @ReadyLabel(Model.IsPaidCommerceReady)</li>
+            </ul>
+        </section>
+
+        @if (Model.CanEdit)
+        {
+            <div class="tenant-operator-identity__actions">
+                <AppButton OnClick="SaveAsync"
+                           Disabled="_saving"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           data-testid="save-tenant-directory-operator-identity">
+                    @(_saving ? T("operator.savingAction", "Saving...") : T("operator.save", "Save"))
+                </AppButton>
+            </div>
+        }
+    }
+
+    @if (_authoritativeConflict is not null)
+    {
+        <section id="operator-conflict-alert"
+                 class="tenant-operator-identity__conflict"
+                 role="alert"
+                 aria-live="assertive"
+                 tabindex="-1"
+                 data-testid="operator-concurrency-conflict">
+            <strong>@_errorMessage</strong>
+            <p>@T("operator.conflictAuthoritative", "Current authoritative values (your pending edits are preserved):")</p>
+            <dl>
+                <dt>@T("operator.publicName", "Public name")</dt><dd><bdi dir="auto">@_authoritativeConflict.PublicName</bdi></dd>
+                <dt>@T("operator.legalName", "Legal name")</dt><dd><bdi dir="auto">@_authoritativeConflict.LegalName</bdi></dd>
+                <dt>@T("operator.revision", "Revision")</dt><dd dir="ltr" lang="en">@_authoritativeConflict.ConcurrencyStamp</dd>
+            </dl>
+        </section>
+    }
+    <div role="status" aria-live="polite" aria-atomic="true">@_statusMessage</div>
+    <div role="alert">@(_authoritativeConflict is null ? _errorMessage : null)</div>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public TenantDirectoryOperatorIdentityAdminModel Model { get; set; } = null!;
+
+    private bool _saving;
+    private string? _statusMessage;
+    private string? _errorMessage;
+    private TenantDirectoryOperatorIdentityAdminModel? _authoritativeConflict;
+    private readonly Dictionary<string, string> _validationErrors = new(StringComparer.Ordinal);
+    private bool IsReadOnly => _saving || !Model.CanEdit;
+
+    private async Task SaveAsync()
+    {
+        if (_saving || !Model.CanEdit)
+        {
+            return;
+        }
+
+        if (!Validate())
+        {
+            await Focus.FocusAsync($"#{FirstInvalidId()}");
+            return;
+        }
+
+        _saving = true;
+        _statusMessage = T("operator.saving", "Saving directory-operator identity...");
+        _errorMessage = null;
+        _authoritativeConflict = null;
+        try
+        {
+            TenantDirectoryOperatorIdentitySaveResult result =
+                await IdentityService.SaveAsync(Model);
+            if (result.Success && result.Model is not null)
+            {
+                Model.Apply(result.Model);
+                _statusMessage = MessageFor(result.MessageCode);
+                return;
+            }
+
+            _statusMessage = null;
+            _errorMessage = MessageFor(result.MessageCode);
+            if (result.IsConcurrencyConflict && result.Model is { Exists: true })
+            {
+                _authoritativeConflict = result.Model;
+                Model.ConcurrencyStamp = result.Model.ConcurrencyStamp;
+                await InvokeAsync(StateHasChanged);
+                await Focus.FocusAsync("#operator-conflict-alert");
+            }
+        }
+        catch (Exception)
+        {
+            _statusMessage = null;
+            _errorMessage = T("operator.saveFailed", "The directory-operator identity could not be saved.");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private bool Validate()
+    {
+        _validationErrors.Clear();
+        Required(nameof(Model.PublicName), Model.PublicName, T("operator.publicNameRequired", "Public name is required."));
+        Required(nameof(Model.LegalName), Model.LegalName, T("operator.legalNameRequired", "Legal name is required."));
+        Required(nameof(Model.OperatorKindCode), Model.OperatorKindCode, T("operator.kindRequired", "Operator kind code is required."));
+        if (string.IsNullOrWhiteSpace(Model.JurisdictionCountryCode) || Model.JurisdictionCountryCode.Trim().Length != 2)
+            _validationErrors[nameof(Model.JurisdictionCountryCode)] = T("operator.countryInvalid", "Enter a two-letter jurisdiction country code.");
+        if (!Uri.TryCreate($"mailto:{Model.PublicContactEmail}", UriKind.Absolute, out var mail) || string.IsNullOrWhiteSpace(mail.UserInfo))
+            _validationErrors[nameof(Model.PublicContactEmail)] = T("operator.emailInvalid", "Enter a valid public contact email.");
+        ValidHttpsUrl(nameof(Model.LegalNoticeUrl), Model.LegalNoticeUrl, T("operator.legalUrlInvalid", "Enter a valid HTTPS legal notice URL."));
+        ValidHttpsUrl(nameof(Model.PrivacyUrl), Model.PrivacyUrl, T("operator.privacyUrlInvalid", "Enter a valid HTTPS privacy URL."));
+        return _validationErrors.Count == 0;
+    }
+
+    private void Required(string key, string? value, string message)
+    {
+        if (string.IsNullOrWhiteSpace(value)) _validationErrors[key] = message;
+    }
+
+    private void ValidHttpsUrl(string key, string? value, string message)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out Uri? uri) || uri.Scheme != Uri.UriSchemeHttps)
+            _validationErrors[key] = message;
+    }
+
+    private bool HasError(string key) => _validationErrors.ContainsKey(key);
+    private string? ErrorFor(string key) => _validationErrors.GetValueOrDefault(key);
+    private string AriaInvalid(string key) => HasError(key) ? "true" : "false";
+    private static readonly (string Key, string Id)[] ValidationFocusOrder =
+    [
+        (nameof(Model.PublicName), "operator-public-name"),
+        (nameof(Model.LegalName), "operator-legal-name"),
+        (nameof(Model.OperatorKindCode), "operator-kind-code"),
+        (nameof(Model.JurisdictionCountryCode), "operator-jurisdiction-country-code"),
+        (nameof(Model.PublicContactEmail), "operator-public-contact-email"),
+        (nameof(Model.LegalNoticeUrl), "operator-legal-notice-url"),
+        (nameof(Model.PrivacyUrl), "operator-privacy-url")
+    ];
+
+    private string FirstInvalidId()
+    {
+        foreach ((string key, string id) in ValidationFocusOrder)
+        {
+            if (_validationErrors.ContainsKey(key))
+            {
+                return id;
+            }
+        }
+
+        return "operator-privacy-url";
+    }
+    private string T(string key, string fallback) => Translation.T(key, fallback);
+    private string ReadyLabel(bool ready) =>
+        ready ? T("operator.ready", "Ready") : T("operator.incomplete", "Incomplete");
+
+    private string MessageFor(TenantDirectoryOperatorIdentityAdminMessageCode code) =>
+        code switch
+        {
+            TenantDirectoryOperatorIdentityAdminMessageCode.NotInitialized =>
+                T("operator.notInitialized", "The directory-operator identity has not been initialized."),
+            TenantDirectoryOperatorIdentityAdminMessageCode.LoadFailed =>
+                T("operator.loadFailed", "The directory-operator identity could not be loaded."),
+            TenantDirectoryOperatorIdentityAdminMessageCode.EditUnavailable =>
+                T("operator.editUnavailable", "The API did not expose a directory-operator identity edit affordance."),
+            TenantDirectoryOperatorIdentityAdminMessageCode.SaveFailed =>
+                T("operator.saveFailed", "The directory-operator identity could not be saved."),
+            TenantDirectoryOperatorIdentityAdminMessageCode.Saved =>
+                T("operator.saved", "Directory-operator identity saved."),
+            TenantDirectoryOperatorIdentityAdminMessageCode.Conflict =>
+                T("operator.conflict", "Directory-operator identity changed elsewhere. Review the authoritative values before saving your preserved edits again."),
+            TenantDirectoryOperatorIdentityAdminMessageCode.None => string.Empty,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(code),
+                code,
+                "Unsupported directory-operator identity message code.")
+        };
+}

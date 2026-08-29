@@ -10,10 +10,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Explore.Persistence.Migrations.MySql.Migrations
+namespace Explore.Persistence.Migrations.MariaDb.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260828151228_Init")]
+    [Migration("20260829104915_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -18911,6 +18911,18 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("id");
 
+                    b.Property<string>("AcceptanceTemplateIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)")
+                        .HasColumnName("acceptance_template_identifier");
+
+                    b.Property<string>("AcceptanceTemplateText")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)")
+                        .HasColumnName("acceptance_template_text");
+
                     b.Property<DateTime>("AcceptedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("accepted_at");
@@ -18944,6 +18956,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("varchar(80)")
                         .HasColumnName("composition_revision");
+
+                    b.Property<string>("ConnectPlatformId")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)")
+                        .HasColumnName("connect_platform_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
@@ -18989,6 +19007,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("event_time_zone_id");
 
+                    b.Property<string>("ExternalAccountId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("external_account_id");
+
                     b.Property<Guid>("InstancePolicyVersionId")
                         .HasColumnType("char(36)")
                         .HasColumnName("instance_policy_version_id");
@@ -18996,6 +19020,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.Property<bool>("IsOfficialInstance")
                         .HasColumnType("tinyint(1)")
                         .HasColumnName("is_official_instance");
+
+                    b.Property<string>("MerchantCountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("varchar(2)")
+                        .HasColumnName("merchant_country_code");
 
                     b.Property<string>("MerchantDisclosureText")
                         .IsRequired()
@@ -19019,6 +19049,18 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("operator_id");
 
+                    b.Property<string>("OperatorKindCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)")
+                        .HasColumnName("operator_kind_code");
+
+                    b.Property<string>("OperatorLegalName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)")
+                        .HasColumnName("operator_legal_name");
+
                     b.Property<string>("OperatorLegalNoticeUrl")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -19037,6 +19079,11 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("varchar(8)")
                         .HasColumnName("operator_region_code");
 
+                    b.Property<string>("OperatorRegistrationIdentifier")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)")
+                        .HasColumnName("operator_registration_identifier");
+
                     b.Property<string>("OperatorTermsUrl")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -19049,9 +19096,17 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("varchar(500)")
                         .HasColumnName("operator_website_url");
 
+                    b.Property<Guid>("OrganizerActorId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("organizer_actor_id");
+
                     b.Property<long>("OrganizerAmountMinor")
                         .HasColumnType("bigint")
                         .HasColumnName("organizer_amount_minor");
+
+                    b.Property<Guid>("OrganizerPaymentProviderConnectionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("organizer_payment_provider_connection_id");
 
                     b.Property<long>("PlatformContributionMinor")
                         .HasColumnType("bigint")
@@ -19128,6 +19183,67 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("varchar(320)")
                         .HasColumnName("support_contact");
+
+                    b.Property<string>("TenantDirectoryOperatorCountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("varchar(2)")
+                        .HasColumnName("tenant_directory_operator_country_code");
+
+                    b.Property<Guid>("TenantDirectoryOperatorDocumentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_directory_operator_document_id");
+
+                    b.Property<string>("TenantDirectoryOperatorKindCode")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)")
+                        .HasColumnName("tenant_directory_operator_kind_code");
+
+                    b.Property<string>("TenantDirectoryOperatorLegalName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)")
+                        .HasColumnName("tenant_directory_operator_legal_name");
+
+                    b.Property<string>("TenantDirectoryOperatorLegalNoticeUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("tenant_directory_operator_legal_notice_url");
+
+                    b.Property<string>("TenantDirectoryOperatorPrivacyUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("tenant_directory_operator_privacy_url");
+
+                    b.Property<string>("TenantDirectoryOperatorPublicContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("varchar(320)")
+                        .HasColumnName("tenant_directory_operator_public_contact_email");
+
+                    b.Property<string>("TenantDirectoryOperatorPublicName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("tenant_directory_operator_public_name");
+
+                    b.Property<string>("TenantDirectoryOperatorRegistrationIdentifier")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)")
+                        .HasColumnName("tenant_directory_operator_registration_identifier");
+
+                    b.Property<Guid>("TenantDirectoryOperatorRevisionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_directory_operator_revision_id");
+
+                    b.Property<string>("TenantDirectoryOperatorTermsUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("tenant_directory_operator_terms_url");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("char(36)")

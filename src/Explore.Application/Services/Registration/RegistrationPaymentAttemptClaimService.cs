@@ -135,6 +135,16 @@ public sealed class RegistrationPaymentAttemptClaimService(
                     "Payment disclosures changed. Review and acknowledge the current facts.");
             }
 
+            if (acceptance.OrganizerPaymentProviderConnectionId != recipient.OrganizerPaymentProviderConnectionId ||
+                !string.Equals(acceptance.ConnectPlatformId, recipient.ConnectPlatformId, StringComparison.Ordinal) ||
+                !string.Equals(acceptance.ExternalAccountId, recipient.ExternalAccountId, StringComparison.Ordinal) ||
+                !string.Equals(acceptance.MerchantCountryCode, recipient.MerchantCountryCode, StringComparison.Ordinal))
+            {
+                return RegistrationPaymentAttemptClaimResult.Failure(
+                    "payment_acceptance_stale",
+                    "Payment disclosures changed. Review and acknowledge the current facts.");
+            }
+
             if (request.TerminalAttemptId is { } terminalAttemptId)
             {
                 (PaymentAttempt Attempt, CheckoutDispatchEffect DispatchEffect)? latest = await attempts.GetLatestByOrderAsync(

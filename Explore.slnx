@@ -43,6 +43,7 @@
   <Folder Name="/Test/">
     <Project Path="tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj" />
     <Project Path="tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" />
+    <Project Path="tests/Event.Application.LegalIdentity.MutationTests/Event.Application.LegalIdentity.MutationTests.csproj" />
     <Project Path="tests/Event.Application.Phase20.MutationTests/Event.Application.Phase20.MutationTests.csproj" />
     <Project Path="tests/Event.Application.TicketingLifecycle.MutationTests/Event.Application.TicketingLifecycle.MutationTests.csproj" />
     <Project Path="tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj" />

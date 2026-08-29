@@ -6,10 +6,10 @@ Project islamu_event {
   Note: 'ISLAMU Event multi-tenant platform with ATProto federation and modular event composition. This is the logical unprefixed model: PostgreSQL and SQL Server place these names in the configured schema; SQLite, MariaDB, and MySQL materialize them with the fixed ie_ prefix.'
 }
 
-// Generated application lifecycle heads (2026-08-28):
-// PostgreSQL 20260828035010, SQLite 20260828040252,
-// SQL Server 20260828040310, MariaDB 20260828040320,
-// MySQL 20260828040329. Physical identifier shortening is provider-owned;
+// Generated application lifecycle heads (2026-08-29):
+// PostgreSQL 20260829001843, SQLite 20260829002111,
+// SQL Server 20260829002119, MariaDB 20260829002127,
+// MySQL 20260829002134. Physical identifier shortening is provider-owned;
 // this DBML remains the logical unprefixed model.
 
 // ============================================================
@@ -6409,12 +6409,46 @@ Table "paid_order_acceptance_snapshots" {
   "event_id" uuid [not null]
   "composition_revision" varchar(80) [not null]
   "disclosure_revision" varchar(80) [not null]
-  "merchant_display_name" varchar(200) [not null]
+  "acceptance_template_identifier" varchar(80) [not null]
+  "acceptance_template_text" varchar(2000) [not null]
+  "organizer_actor_id" uuid [not null]
+  "organizer_payment_provider_connection_id" uuid [not null]
+  "connect_platform_id" varchar(120) [not null]
+  "external_account_id" varchar(200) [not null]
+  "merchant_country_code" varchar(2) [not null]
+  "merchant_disclosure_text" varchar(2000) [not null]
+  "tenant_directory_operator_document_id" uuid [not null]
+  "tenant_directory_operator_revision_id" uuid [not null]
+  "tenant_directory_operator_public_name" varchar(200) [not null]
+  "tenant_directory_operator_legal_name" varchar(300) [not null]
+  "tenant_directory_operator_kind_code" varchar(80) [not null]
+  "tenant_directory_operator_country_code" varchar(2) [not null]
+  "tenant_directory_operator_registration_identifier" varchar(120)
+  "tenant_directory_operator_public_contact_email" varchar(320) [not null]
+  "tenant_directory_operator_legal_notice_url" varchar(500) [not null]
+  "tenant_directory_operator_terms_url" varchar(500) [not null]
+  "tenant_directory_operator_privacy_url" varchar(500) [not null]
   "operator_id" uuid [not null]
   "operator_display_name" varchar(200) [not null]
+  "operator_legal_name" varchar(300) [not null]
+  "operator_kind_code" varchar(80) [not null]
+  "operator_registration_identifier" varchar(120)
   "is_official_instance" boolean [not null]
   "official_origin" varchar(500) [not null]
-  "delivery_milestone" varchar(2000) [not null]
+  "operator_region_code" varchar(8) [not null]
+  "operator_website_url" varchar(500) [not null]
+  "operator_legal_notice_url" varchar(500) [not null]
+  "operator_terms_url" varchar(500) [not null]
+  "operator_privacy_url" varchar(500) [not null]
+  "complaint_contact" varchar(320) [not null]
+  "complaint_owner" varchar(200) [not null]
+  "refund_owner" varchar(200) [not null]
+  "dispute_owner" varchar(200) [not null]
+  "reconciliation_owner" varchar(200) [not null]
+  "activation_status" varchar(32) [not null]
+  "delivery_starts_at_utc" timestamptz [not null]
+  "delivery_ends_at_utc" timestamptz [not null]
+  "event_time_zone_id" varchar(100) [not null]
   "currency_code" varchar(3) [not null]
   "organizer_amount_minor" bigint [not null]
   "platform_fee_minor" bigint [not null]
@@ -6426,12 +6460,12 @@ Table "paid_order_acceptance_snapshots" {
   "refund_policy_text" varchar(2000) [not null]
   "refund_policy_language_tag" varchar(35) [not null]
   "support_contact" varchar(320) [not null]
-  "complaint_contact" varchar(320) [not null]
   "provider_code" varchar(40) [not null]
   "provider_profile_code" varchar(40) [not null]
   "charge_type" varchar(40) [not null]
   "statement_descriptor" varchar(22) [not null]
-  "line_facts_json" varchar(16000) [not null]
+  "provider_environment" varchar(16) [not null]
+  "provider_credential_owner" varchar(80) [not null]
   "accepted_at" timestamptz [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
@@ -6444,7 +6478,26 @@ Table "paid_order_acceptance_snapshots" {
     (tenant_id, event_id, accepted_at) [name: 'ix_paid_order_acceptance_snapshots_tenant_event_accepted']
   }
 
-  Note: 'Immutable exact buyer-accepted merchant, independent operator, delivery, line/money, refund, complaint, provider, and statement facts. No historical payment attempt is backfilled.'
+  Note: 'Immutable exact buyer-accepted template, organizer merchant, tenant directory document/revision, instance operator, delivery, line/money, refund, complaint, provider, and statement facts. No historical payment attempt is backfilled.'
+}
+
+Table "paid_order_acceptance_lines" {
+  "tenant_id" uuid [not null]
+  "paid_order_acceptance_snapshot_id" uuid [not null]
+  "ordinal" int [not null]
+  "order_line_id" uuid [not null]
+  "name" varchar(300) [not null]
+  "quantity" int [not null]
+  "unit_amount_minor" bigint [not null]
+  "discount_amount_minor" bigint [not null]
+  "line_total_minor" bigint [not null]
+
+  indexes {
+    (tenant_id, paid_order_acceptance_snapshot_id, ordinal) [pk]
+    (tenant_id, paid_order_acceptance_snapshot_id, order_line_id) [unique, name: 'ix_paid_order_acceptance_lines_tenant_acceptance_order_line']
+  }
+
+  Note: 'Normalized immutable order-line facts accepted by the buyer; amounts satisfy quantity and discount shape constraints.'
 }
 
 Table "payment_attempts" {
@@ -7477,6 +7530,7 @@ Ref: "organizer_payment_provider_connection_supported_currencies".("tenant_id", 
 Ref: "paid_order_acceptance_snapshots"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "paid_order_acceptance_snapshots".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "paid_order_acceptance_snapshots".("tenant_id", "event_id") > "events".("tenant_id", "id") [delete: restrict]
+Ref: "paid_order_acceptance_lines".("tenant_id", "paid_order_acceptance_snapshot_id") > "paid_order_acceptance_snapshots".("tenant_id", "id") [delete: restrict]
 Ref: "payment_attempts"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "payment_attempts".("tenant_id", "registration_order_id") > "registration_orders".("tenant_id", "id") [delete: restrict]
 Ref: "payment_attempts".("tenant_id", "paid_order_acceptance_snapshot_id") - "paid_order_acceptance_snapshots".("tenant_id", "id") [delete: restrict]

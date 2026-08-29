@@ -82,7 +82,8 @@ public static class ApplicationServicesRegistration
 {
     public static IServiceCollection ConfigureApplicationServices(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        bool validateInstanceOperatorIdentityOnStart = true)
     {
         PrivacyErasureDurabilityOptions erasureDurability =
             PrivacyErasureDurabilityOptions.FromConfiguration(configuration);
@@ -182,6 +183,18 @@ public static class ApplicationServicesRegistration
             .Bind(configuration.GetSection(OrganizerPaymentCommerceOptions.SectionName));
         services.AddOptions<PaidCheckoutGovernanceOptions>()
             .Bind(configuration.GetSection(PaidCheckoutGovernanceOptions.SectionName));
+        services.AddSingleton<IValidateOptions<InstanceOperatorIdentityOptions>, InstanceOperatorIdentityOptionsValidator>();
+        OptionsBuilder<InstanceOperatorIdentityOptions> instanceIdentityOptions =
+            services.AddOptions<InstanceOperatorIdentityOptions>()
+                .Bind(configuration.GetSection(InstanceOperatorIdentityOptions.SectionName));
+        if (validateInstanceOperatorIdentityOnStart)
+        {
+            instanceIdentityOptions.ValidateOnStart();
+        }
+        services.AddSingleton<TenantDirectoryOperatorReadinessTelemetry>();
+        services.AddScoped<
+            ITenantDirectoryOperatorReadinessEvaluator,
+            TenantDirectoryOperatorReadinessEvaluator>();
         services.AddOptions<PromotionCodeLookupOptions>()
             .Bind(configuration.GetSection(PromotionCodeLookupOptions.SectionName))
             .Validate(
@@ -257,6 +270,9 @@ public static class ApplicationServicesRegistration
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OrganizerPaymentCommerceOptions>>().Value);
         services.AddScoped<IPaidCheckoutGovernance>(provider =>
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<PaidCheckoutGovernanceOptions>>().Value);
+        services.AddSingleton<IInstanceOperatorIdentity>(provider =>
+            InstanceOperatorIdentity.Create(
+                provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<InstanceOperatorIdentityOptions>>().Value));
         services.AddSingleton<IValidateOptions<OrganizerPaymentReadinessReconciliationOptions>, OrganizerPaymentReadinessReconciliationOptionsValidator>();
         services.AddOptions<RegistrationFileAnswerOptions>()
             .Bind(configuration.GetSection(RegistrationFileAnswerOptions.SectionName));

@@ -109,6 +109,29 @@ public class GetPublicExperienceShellQueryHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenIdentityIsUnavailable_StopsShellComposition()
+    {
+        _settingsHandler.Handle(
+                Arg.Any<GetPublicExperienceSettingsQuery>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new PublicExperienceSettingsDto
+            {
+                IsAvailable = false,
+                UnavailableCode = "tenant_identity_unavailable"
+            });
+
+        PublicExperienceShellDto result = await _handler.Handle(
+            new GetPublicExperienceShellQuery(),
+            CancellationToken.None);
+
+        await Assert.That(result.IsAvailable).IsFalse();
+        await Assert.That(result.UnavailableCode)
+            .IsEqualTo("tenant_identity_unavailable");
+        await _navigationLinksHandler.DidNotReceiveWithAnyArgs()
+            .Handle(default!, default);
+    }
+
+    [Test]
     public async Task Handle_WhenRailVisibilityIsAlways_ReturnsResolvedPublicRailPolicy()
     {
         var tenantId = Guid.NewGuid();
@@ -524,6 +547,33 @@ public class GetPublicExperienceShellQueryHandlerTests
         return new PublicExperienceSettingsDto
         {
             TenantId = tenantId,
+            IsAvailable = true,
+            DirectoryOperator = new TenantDirectoryOperatorPublicDto
+            {
+                DocumentRevision = Guid.CreateVersion7(),
+                PublicName = "Community Events",
+                LegalName = "Community Events ASBL",
+                OperatorKindCode = "registered_organization",
+                JurisdictionCountryCode = "BE",
+                PublicContactEmail = "contact@example.test",
+                LegalNoticeUrl = "https://example.test/legal",
+                PrivacyUrl = "https://example.test/privacy"
+            },
+            InstanceOperator = new InstanceOperatorPublicDto
+            {
+                OperatorId = Guid.CreateVersion7(),
+                PublicName = "Independent Operator",
+                LegalName = "Independent Operator ASBL",
+                IsOfficialInstance = false,
+                OfficialOrigin = "https://instance.example.test",
+                OperatorKindCode = "registered_organization",
+                JurisdictionCountryCode = "BE",
+                PublicContactEmail = "contact@instance.example.test",
+                WebsiteUrl = "https://instance.example.test",
+                LegalNoticeUrl = "https://instance.example.test/legal",
+                TermsUrl = "https://instance.example.test/terms",
+                PrivacyUrl = "https://instance.example.test/privacy"
+            },
             PreferredHomePage = "EventList",
             BrandDisplayName = "Tenant brand",
             BrandLogoUrl = "/brand.svg",

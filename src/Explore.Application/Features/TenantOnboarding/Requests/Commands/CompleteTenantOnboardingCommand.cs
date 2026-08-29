@@ -2,6 +2,7 @@
 // ABOUTME: Persists tenant policy overrides and marks tenant onboarding as completed.
 
 using Explore.Application.DTOs.TenantPolicy;
+using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Responses;
 using MediatR;
 
@@ -11,4 +12,6 @@ public sealed record CompleteTenantOnboardingCommand : IRequest<BaseCommandRespo
 {
     public Guid UserId { get; init; }
     public required UpdateTenantPolicyRequest Settings { get; init; } = new();
+    public required TenantDirectoryOperatorIdentityInputDto DirectoryOperatorIdentity { get; init; }
+    public Guid? ExpectedDirectoryOperatorIdentityConcurrencyStamp { get; init; }
 }

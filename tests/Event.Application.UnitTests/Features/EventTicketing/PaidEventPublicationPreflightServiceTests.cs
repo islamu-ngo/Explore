@@ -32,6 +32,8 @@ public sealed class PaidEventPublicationPreflightServiceTests
     private readonly IAuthorizationProvider _authorization = Substitute.For<IAuthorizationProvider>();
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly IOrganizerPaymentCommerceConfiguration _commerceConfiguration = Substitute.For<IOrganizerPaymentCommerceConfiguration>();
+    private readonly ITenantDirectoryOperatorReadinessEvaluator _directoryReadiness =
+        Substitute.For<ITenantDirectoryOperatorReadinessEvaluator>();
 
     public PaidEventPublicationPreflightServiceTests()
     {
@@ -40,6 +42,11 @@ public sealed class PaidEventPublicationPreflightServiceTests
         _commerceConfiguration.ConnectPlatformId.Returns("platform-live-eu");
         _authorization.AuthorizeAsync(Arg.Any<AuthorizationRequest>(), Arg.Any<CancellationToken>())
             .Returns(AuthorizationDecision.Allow(AuthorizationProviderMetadata.Runtime));
+        _directoryReadiness.EvaluateAsync(
+                Arg.Any<Guid>(),
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                Arg.Any<CancellationToken>())
+            .Returns(ReadyDirectoryIdentity());
     }
 
     [Test]
@@ -57,6 +64,30 @@ public sealed class PaidEventPublicationPreflightServiceTests
         await Assert.That(result.IsPaidCatalog).IsTrue();
         await Assert.That(result.IsReady).IsTrue();
         await Assert.That(result.Blockers).IsEmpty();
+    }
+
+    [Test]
+    public async Task Assess_WhenDirectoryIdentityIsMissing_ReturnsPaidPublicationBlocker()
+    {
+        Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
+        EventTicketCatalogVersion draft = CreatePaidDraft("USD");
+        draft.UpdateCommercialDisclosures("Merchant", "Refund", "Support");
+        ConfigureReadyFacts(organizer, ["USD"]);
+        _directoryReadiness.EvaluateAsync(
+                _tenantId,
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                Arg.Any<CancellationToken>())
+            .Returns(TenantDirectoryOperatorReadinessAssessment.Missing);
+
+        PaidEventPublicationPreflightDto result = await CreateService().AssessAsync(
+            _eventId,
+            CreateEvent(organizer),
+            draft,
+            CancellationToken.None);
+
+        await Assert.That(result.IsReady).IsFalse();
+        await Assert.That(Codes(result))
+            .Contains("tenant_directory_operator_identity_unavailable");
     }
 
     [Test]
@@ -192,7 +223,253 @@ public sealed class PaidEventPublicationPreflightServiceTests
         await Assert.That(result.OrganizerOrganizationId).IsEqualTo(organizer.OrganizationId);
     }
 
-    private PaidEventPublicationPreflightService CreateService() => new(
+    [Test]
+    public async Task Assess_LoadsPersistedEventAndDraftBeforeEvaluating()
+    {
+        Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
+        DomainEvent eventTarget = CreateEvent(organizer);
+        EventTicketCatalogVersion draft = CreateReadyPaidDraft();
+        ConfigureReadyFacts(organizer, ["USD"]);
+        _events.GetEventWithDetails(_eventId).Returns(eventTarget);
+        _catalogs.GetDraftCatalogForUpdateAsync(
+                _eventId,
+                _tenantId,
+                Arg.Any<CancellationToken>())
+            .Returns(draft);
+
+        PaidEventPublicationPreflightDto result =
+            await CreateService().AssessAsync(_eventId, CancellationToken.None);
+
+        await Assert.That(result.IsReady).IsTrue();
+        _ = await _events.Received(1).GetEventWithDetails(_eventId);
+        _ = await _catalogs.Received(1).GetDraftCatalogForUpdateAsync(
+            _eventId,
+            _tenantId,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Assess_MissingCrossTenantOrMissingDraft_FailsClosed()
+    {
+        Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
+        DomainEvent validEvent = CreateEvent(organizer);
+        DomainEvent crossTenantEvent = CreateEvent(organizer);
+        crossTenantEvent.TenantId = Guid.CreateVersion7();
+        EventTicketCatalogVersion draft = CreateReadyPaidDraft();
+
+        foreach ((DomainEvent? eventTarget, EventTicketCatalogVersion? candidateDraft) in
+                 new[]
+                 {
+                     ((DomainEvent?)null, (EventTicketCatalogVersion?)draft),
+                     ((DomainEvent?)crossTenantEvent, (EventTicketCatalogVersion?)draft),
+                     ((DomainEvent?)validEvent, (EventTicketCatalogVersion?)null)
+                 })
+        {
+            PaidEventPublicationPreflightDto result = await CreateService().AssessAsync(
+                _eventId,
+                eventTarget,
+                candidateDraft,
+                CancellationToken.None);
+
+            await Assert.That(result.IsReady).IsFalse();
+            await Assert.That(result.IsPaidCatalog).IsFalse();
+            await Assert.That(Codes(result)).Contains("ticketing_not_found");
+        }
+    }
+
+    [Test]
+    public async Task Assess_FreeCatalogBypassesPaidCommerceChecks()
+    {
+        Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
+        EventTicketCatalogVersion freeDraft =
+            EventTicketCatalogVersion.Create(_tenantId, _eventId, "USD", 1);
+
+        PaidEventPublicationPreflightDto result = await CreateService().AssessAsync(
+            _eventId,
+            CreateEvent(organizer),
+            freeDraft,
+            CancellationToken.None);
+
+        await Assert.That(result.IsPaidCatalog).IsFalse();
+        await Assert.That(result.IsReady).IsTrue();
+        _ = _directoryReadiness.DidNotReceiveWithAnyArgs().EvaluateAsync(
+            default,
+            default,
+            default);
+    }
+
+    [Test]
+    public async Task Assess_InactiveSaleControlReturnsItsBoundedBlocker()
+    {
+        Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
+        var activation = Substitute.For<IPaidCheckoutActivationService>();
+        activation.EvaluateSaleControlAsync(
+                _tenantId,
+                _eventId,
+                Arg.Any<CancellationToken>())
+            .Returns(new PaidCheckoutActivationResult(
+                false,
+                "sale_control_blocked",
+                "Sale control blocked."));
+
+        PaidEventPublicationPreflightDto result = await CreateService(activation).AssessAsync(
+            _eventId,
+            CreateEvent(organizer),
+            CreateReadyPaidDraft(),
+            CancellationToken.None);
+
+        await Assert.That(result.IsReady).IsFalse();
+        await Assert.That(Codes(result)).Contains("sale_control_blocked");
+        _ = await _policies.DidNotReceiveWithAnyArgs().GetActiveInstanceAsync(default);
+    }
+
+    [Test]
+    public async Task Assess_MissingOrganizerIdOrEntityFailsClosed()
+    {
+        Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
+        ConfigureReadyFacts(organizer, ["USD"]);
+        DomainEvent eventTarget = CreateEvent(organizer);
+        eventTarget.OrganizerActorId = null;
+
+        PaidEventPublicationPreflightDto missingId = await CreateService().AssessAsync(
+            _eventId,
+            eventTarget,
+            CreateReadyPaidDraft(),
+            CancellationToken.None);
+
+        eventTarget.OrganizerActorId = organizer.Id;
+        eventTarget.OrganizerActor = null;
+        PaidEventPublicationPreflightDto missingEntity = await CreateService().AssessAsync(
+            _eventId,
+            eventTarget,
+            CreateReadyPaidDraft(),
+            CancellationToken.None);
+
+        await Assert.That(Codes(missingId)).Contains("organizer_missing");
+        await Assert.That(Codes(missingEntity)).Contains("organizer_missing");
+    }
+
+    [Test]
+    public async Task Assess_MissingEitherCommerceCoordinateFailsClosed()
+    {
+        Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
+        ConfigureReadyFacts(organizer, ["USD"]);
+
+        _commerceConfiguration.ProviderCode.Returns((string?)null);
+        PaidEventPublicationPreflightDto missingProvider = await CreateService().AssessAsync(
+            _eventId,
+            CreateEvent(organizer),
+            CreateReadyPaidDraft(),
+            CancellationToken.None);
+
+        _commerceConfiguration.ProviderCode.Returns("stripe");
+        _commerceConfiguration.ConnectPlatformId.Returns((string?)null);
+        PaidEventPublicationPreflightDto missingPlatform = await CreateService().AssessAsync(
+            _eventId,
+            CreateEvent(organizer),
+            CreateReadyPaidDraft(),
+            CancellationToken.None);
+
+        await Assert.That(Codes(missingProvider)).Contains("payment_platform_not_configured");
+        await Assert.That(Codes(missingPlatform)).Contains("payment_platform_not_configured");
+        _ = await _connections.DidNotReceiveWithAnyArgs().GetActiveByScopeAsync(
+            default,
+            default,
+            default!,
+            default!,
+            default);
+    }
+
+    [Test]
+    public async Task Assess_EachCommercialDisclosureIsIndependentlyRequired()
+    {
+        Actor organizer = CreateOrganizer(ActorTypeEnum.Organization);
+        ConfigureReadyFacts(organizer, ["USD"]);
+
+        foreach (string propertyName in new[]
+                 {
+                     nameof(EventTicketCatalogVersion.MerchantDisclosureText),
+                     nameof(EventTicketCatalogVersion.RefundPolicyDisclosureText),
+                     nameof(EventTicketCatalogVersion.SupportContactDisclosureText)
+                 })
+        {
+            EventTicketCatalogVersion draft = CreateReadyPaidDraft();
+            typeof(EventTicketCatalogVersion).GetProperty(propertyName)!.SetValue(draft, null);
+
+            PaidEventPublicationPreflightDto result = await CreateService().AssessAsync(
+                _eventId,
+                CreateEvent(organizer),
+                draft,
+                CancellationToken.None);
+
+            await Assert.That(Codes(result)).Contains("commercial_disclosures_missing");
+        }
+    }
+
+    [Test]
+    public async Task Assess_LocallyVerifiedUserAndGroupRequireExactEligibilityFacts()
+    {
+        Actor user = CreateOrganizer(ActorTypeEnum.User);
+        ConfigureInstancePolicy(
+            allowedOrganizerKinds: [ActorTypeEnum.User],
+            requiresLocalVerification: true,
+            currencies: ["USD"]);
+        ConfigureConnectionAndAuthorization(user, ["USD"]);
+        PaidEventPublicationPreflightDto verifiedUser = await CreateService().AssessAsync(
+            _eventId,
+            CreateEvent(user),
+            CreateReadyPaidDraft(),
+            CancellationToken.None);
+        await Assert.That(verifiedUser.IsReady).IsTrue();
+
+        Actor group = CreateOrganizer(ActorTypeEnum.Group);
+        ConfigureInstancePolicy(
+            allowedOrganizerKinds: [ActorTypeEnum.Group],
+            requiresLocalVerification: true,
+            currencies: ["USD"]);
+        ConfigureConnectionAndAuthorization(group, ["USD"]);
+        GroupTenant validParticipation =
+            CreateGroupParticipation(group.GroupId!.Value);
+        _groupTenants.GetByGroupAndTenant(
+                group.GroupId.Value,
+                _tenantId,
+                Arg.Any<CancellationToken>())
+            .Returns(validParticipation);
+
+        PaidEventPublicationPreflightDto verifiedGroup = await CreateService().AssessAsync(
+            _eventId,
+            CreateEvent(group),
+            CreateReadyPaidDraft(),
+            CancellationToken.None);
+
+        await Assert.That(verifiedGroup.IsReady).IsTrue();
+
+        foreach (GroupTenant invalidParticipation in new[]
+                 {
+                     CreateGroupParticipation(group.GroupId.Value, isDeleted: true),
+                     CreateGroupParticipation(group.GroupId.Value, isSuspended: true),
+                     CreateGroupParticipation(group.GroupId.Value, isOrganizerEligible: false),
+                     CreateGroupParticipation(group.GroupId.Value, isApproved: false)
+                 })
+        {
+            _groupTenants.GetByGroupAndTenant(
+                    group.GroupId.Value,
+                    _tenantId,
+                    Arg.Any<CancellationToken>())
+                .Returns(invalidParticipation);
+
+            PaidEventPublicationPreflightDto invalid = await CreateService().AssessAsync(
+                _eventId,
+                CreateEvent(group),
+                CreateReadyPaidDraft(),
+                CancellationToken.None);
+
+            await Assert.That(Codes(invalid)).Contains("organizer_verification_required");
+        }
+    }
+
+    private PaidEventPublicationPreflightService CreateService(
+        IPaidCheckoutActivationService? activation = null) => new(
         _events,
         _catalogs,
         _policies,
@@ -202,7 +479,33 @@ public sealed class PaidEventPublicationPreflightServiceTests
         _authorization,
         _tenant,
         _commerceConfiguration,
-        ReadyCheckoutActivation());
+        _directoryReadiness,
+        activation ?? ReadyCheckoutActivation());
+
+    private static TenantDirectoryOperatorReadinessAssessment ReadyDirectoryIdentity()
+    {
+        TenantDirectoryOperatorIdentity identity =
+            TenantDirectoryOperatorIdentity.Evaluate(
+                new Explore.Domain.Settings.Documents.Payloads
+                    .TenantDirectoryOperatorIdentitySettings
+                    {
+                        PublicName = "Community Events",
+                        LegalName = "Community Events ASBL",
+                        OperatorKindCode =
+                            TenantDirectoryOperatorKinds.RegisteredOrganization,
+                        JurisdictionCountryCode = "BE",
+                        PublicContactEmail = "contact@example.test",
+                        LegalNoticeUrl = "https://example.test/legal",
+                        TermsUrl = "https://example.test/terms",
+                        PrivacyUrl = "https://example.test/privacy"
+                    },
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce)
+                .Identity!;
+        return TenantDirectoryOperatorReadinessAssessment.Ready(
+            identity,
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7());
+    }
 
     private static IPaidCheckoutActivationService ReadyCheckoutActivation()
     {
@@ -351,6 +654,24 @@ public sealed class PaidEventPublicationPreflightServiceTests
             "ready-1"));
         return connection;
     }
+
+    private GroupTenant CreateGroupParticipation(
+        Guid groupId,
+        bool isDeleted = false,
+        bool isSuspended = false,
+        bool isOrganizerEligible = true,
+        bool isApproved = true) => new()
+        {
+            TenantId = _tenantId,
+            Tenant = null!,
+            GroupId = groupId,
+            Group = null!,
+            ApprovalStatus = null!,
+            IsDeleted = isDeleted,
+            IsSuspended = isSuspended,
+            IsOrganizerEligible = isOrganizerEligible,
+            ApprovedAt = isApproved ? DateTime.UtcNow : null
+        };
 
     private static string[] Codes(PaidEventPublicationPreflightDto result) => result.Blockers.Select(blocker => blocker.Code).ToArray();
 

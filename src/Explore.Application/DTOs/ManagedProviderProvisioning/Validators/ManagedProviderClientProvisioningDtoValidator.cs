@@ -2,6 +2,8 @@
 // ABOUTME: Enforces stable external IDs and tenant slug shape while keeping organizer creation optional.
 
 using FluentValidation;
+using Explore.Application.DTOs.TenantSettings.Validators;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Application.DTOs.ManagedProviderProvisioning.Validators;
 
@@ -29,6 +31,15 @@ public class ManagedProviderClientProvisioningDtoValidator : AbstractValidator<M
             .NotEmpty().WithMessage("Tenant slug is required")
             .MaximumLength(500).WithMessage("Tenant slug cannot exceed 500 characters")
             .Matches("^[a-z0-9-]+$").WithMessage("Tenant slug must contain only lowercase letters, numbers, and hyphens");
+
+        When(x => x.ActivateTenant, () =>
+        {
+            RuleFor(x => x.DirectoryOperatorIdentity)
+                .NotNull()
+                .WithMessage("Directory operator identity is required when managed provisioning activates a tenant.")
+                .SetValidator(new TenantDirectoryOperatorIdentityInputDtoValidator(
+                    TenantDirectoryOperatorIdentityCapability.Activation)!);
+        });
 
         RuleFor(x => x.ExternalAdmin).NotNull().WithMessage("External admin identity is required");
         When(x => x.ExternalAdmin != null, () =>

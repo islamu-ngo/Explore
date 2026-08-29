@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Npgsql;
 using TUnit.Assertions.Enums;
 
@@ -47,6 +48,44 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
         await Assert.That(migrations).HasSingleItem();
         await Assert.That(migrations[0]).EndsWith("_Init");
         await Assert.That(HasPendingModelChanges(context)).IsFalse();
+    }
+
+    [Test]
+    [Arguments("PostgreSql")]
+    [Arguments("Sqlite")]
+    [Arguments("SqlServer")]
+    [Arguments("MariaDb")]
+    [Arguments("MySql")]
+    public async Task ProviderInitEmbedsRequiredLegalIdentityConstraints(string provider)
+    {
+        await using ExploreDbContext context = CreateModelContext(provider);
+        IMigrationsAssembly migrations = context.GetService<IMigrationsAssembly>();
+        string migrationId = context.Database.GetMigrations().Single();
+        Migration init = migrations.CreateMigration(
+            migrations.Migrations[migrationId],
+            context.Database.ProviderName);
+        string tableName = provider is "Sqlite" or "MariaDb" or "MySql"
+            ? "ie_paid_order_acceptance_snapshots"
+            : "paid_order_acceptance_snapshots";
+        CreateTableOperation acceptance = init.UpOperations
+            .OfType<CreateTableOperation>()
+            .Single(operation => operation.Name == tableName);
+
+        await AssertRequiredColumnAsync(acceptance, "organizer_actor_id");
+        await AssertRequiredColumnAsync(
+            acceptance,
+            "organizer_payment_provider_connection_id");
+        await AssertRequiredColumnAsync(
+            acceptance,
+            "tenant_directory_operator_document_id");
+        await AssertRequiredColumnAsync(
+            acceptance,
+            "tenant_directory_operator_revision_id");
+        await AssertRequiredColumnAsync(acceptance, "connect_platform_id", 120);
+        await AssertRequiredColumnAsync(acceptance, "external_account_id", 200);
+        await AssertRequiredColumnAsync(acceptance, "merchant_country_code", 2);
+        await AssertRequiredColumnAsync(acceptance, "operator_legal_name", 300);
+        await AssertRequiredColumnAsync(acceptance, "operator_kind_code", 80);
     }
 
     [Test]
@@ -207,6 +246,20 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
         IModel initialized = context.GetService<IModelRuntimeInitializer>()
             .Initialize(snapshot, designTime: true, validationLogger: null);
         return differ.HasDifferences(initialized.GetRelationalModel(), runtime.GetRelationalModel());
+    }
+
+    private static async Task AssertRequiredColumnAsync(
+        CreateTableOperation table,
+        string columnName,
+        int? maxLength = null)
+    {
+        AddColumnOperation column = table.Columns.Single(candidate =>
+            candidate.Name == columnName);
+        await Assert.That(column.IsNullable).IsFalse();
+        if (maxLength is not null)
+        {
+            await Assert.That(column.MaxLength).IsEqualTo(maxLength);
+        }
     }
 
     private static async Task InsertLegacyGraphAsync(ExploreDbContext context)

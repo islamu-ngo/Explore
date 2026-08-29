@@ -1,5 +1,5 @@
-// ABOUTME: Focused API controller for tenant typed settings document reads during settings cutover.
-// ABOUTME: Keeps typed document endpoints separate from scalar settings endpoints.
+// ABOUTME: Authenticated API controller for tenant branding and directory-operator typed documents.
+// ABOUTME: Exposes HAL-gated reads and optimistic patches without scalar fallback or read-time provisioning.
 
 using Asp.Versioning;
 using Explore.API.Attributes;
@@ -29,7 +29,11 @@ public sealed class TenantSettingsDocumentsController(
     IMediator mediator,
     ITenantContext tenantContext,
     ITenantBrandingSettingsDocumentLockService lockService,
-    IResourceAssembler<TenantBrandingSettingsDocumentDto, TenantBrandingSettingsDocumentDto> resourceAssembler)
+    IResourceAssembler<TenantBrandingSettingsDocumentDto, TenantBrandingSettingsDocumentDto>
+        brandingResourceAssembler,
+    IResourceAssembler<
+        TenantDirectoryOperatorIdentityDocumentDto,
+        TenantDirectoryOperatorIdentityDocumentDto> directoryIdentityResourceAssembler)
     : ExploreControllerBase
 {
     private static readonly ApiValidationProblemDescriptor PatchBrandingValidationProblem = new(
@@ -40,6 +44,15 @@ public sealed class TenantSettingsDocumentsController(
     private static readonly ApiNotFoundProblemDescriptor BrandingDocumentNotFoundProblem = new(
         "Tenant branding settings document not found",
         "Tenant branding settings document not found.");
+
+    private static readonly ApiValidationProblemDescriptor PatchDirectoryIdentityValidationProblem = new(
+        "tenantDirectoryOperatorIdentityDocument",
+        "Tenant directory operator identity validation failed",
+        "Tenant directory operator identity patch failed.");
+
+    private static readonly ApiNotFoundProblemDescriptor DirectoryIdentityNotFoundProblem = new(
+        "Tenant directory operator identity not found",
+        "Tenant directory operator identity not found.");
 
     [HttpGet("branding", Name = RouteNames.GetTenantBrandingSettingsDocument)]
     [EndpointSummary("Get Tenant Branding Settings Document")]
@@ -57,7 +70,7 @@ public sealed class TenantSettingsDocumentsController(
             return this.ToNotFoundProblem(BrandingDocumentNotFoundProblem);
         }
 
-        var resource = await resourceAssembler.ToResource(document, HttpContext);
+        var resource = await brandingResourceAssembler.ToResource(document, HttpContext);
         return Ok(resource);
     }
 
@@ -104,7 +117,89 @@ public sealed class TenantSettingsDocumentsController(
 
         await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
 
-        var resource = await resourceAssembler.ToResource(updated, HttpContext);
+        var resource = await brandingResourceAssembler.ToResource(updated, HttpContext);
+        return Ok(resource);
+    }
+
+    [HttpGet(
+        "directory-operator-identity",
+        Name = RouteNames.GetTenantDirectoryOperatorIdentityDocument)]
+    [EndpointSummary("Get Tenant Directory Operator Identity")]
+    [EndpointDescription(
+        "Returns the current tenant-owned directory operator identity without provisioning or fallback.")]
+    [ProducesResponseType(
+        typeof(HalResource<TenantDirectoryOperatorIdentityDocumentDto>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<TenantDirectoryOperatorIdentityDocumentDto>>>
+        GetDirectoryOperatorIdentity(CancellationToken cancellationToken = default)
+    {
+        TenantDirectoryOperatorIdentityDocumentDto? document = await mediator.Send(
+            new GetTenantDirectoryOperatorIdentityDocumentQuery(tenantContext.TenantId),
+            cancellationToken);
+        if (document is null)
+        {
+            return this.ToNotFoundProblem(DirectoryIdentityNotFoundProblem);
+        }
+
+        HalResource<TenantDirectoryOperatorIdentityDocumentDto> resource =
+            await directoryIdentityResourceAssembler.ToResource(document, HttpContext);
+        return Ok(resource);
+    }
+
+    [HttpPatch(
+        "directory-operator-identity",
+        Name = RouteNames.PatchTenantDirectoryOperatorIdentityDocument)]
+    [EndpointSummary("Patch Tenant Directory Operator Identity")]
+    [EndpointDescription(
+        "Patches supplied legal-identity groups with optimistic concurrency while preserving omitted fields.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(
+        typeof(HalResource<TenantDirectoryOperatorIdentityDocumentDto>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HalResource<TenantDirectoryOperatorIdentityDocumentDto>>>
+        PatchDirectoryOperatorIdentity(
+            [FromBody] PatchTenantDirectoryOperatorIdentityDocumentDto patch,
+            [FromServices] IOutputCacheStore cacheStore,
+            CancellationToken cancellationToken = default)
+    {
+        BaseCommandResponse<TenantDirectoryOperatorIdentityDocumentDto> response =
+            await mediator.Send(
+                new PatchTenantDirectoryOperatorIdentityDocumentCommand
+                {
+                    TenantId = tenantContext.TenantId,
+                    Patch = patch
+                },
+                cancellationToken);
+        if (!response.IsSuccess)
+        {
+            if (response.FailureCode == FailureCodes.NotFound)
+            {
+                return this.ToNotFoundProblem(DirectoryIdentityNotFoundProblem);
+            }
+
+            return this.ToCommandValidationProblem(
+                response,
+                PatchDirectoryIdentityValidationProblem);
+        }
+
+        TenantDirectoryOperatorIdentityDocumentDto? updated = await mediator.Send(
+            new GetTenantDirectoryOperatorIdentityDocumentQuery(tenantContext.TenantId),
+            cancellationToken);
+        if (updated is null)
+        {
+            return this.ToNotFoundProblem(DirectoryIdentityNotFoundProblem);
+        }
+
+        await cacheStore.EvictByTagAsync("public-experience-shell", cancellationToken);
+        HalResource<TenantDirectoryOperatorIdentityDocumentDto> resource =
+            await directoryIdentityResourceAssembler.ToResource(updated, HttpContext);
         return Ok(resource);
     }
 }

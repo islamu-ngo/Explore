@@ -25,14 +25,20 @@ public interface ITenantOnboardingService
 
 public class TenantOnboardingService : ITenantOnboardingService
 {
+    public const string DirectoryOperatorIdentityUnavailableCode =
+        "tenant_directory_operator_identity_unavailable";
+
     private readonly IEventApiClient _api;
+    private readonly ITenantDirectoryOperatorIdentityAdminService _directoryOperatorIdentity;
     private readonly ILogger<TenantOnboardingService> _logger;
 
     public TenantOnboardingService(
         IEventApiClient api,
+        ITenantDirectoryOperatorIdentityAdminService directoryOperatorIdentity,
         ILogger<TenantOnboardingService> logger)
     {
         _api = api;
+        _directoryOperatorIdentity = directoryOperatorIdentity;
         _logger = logger;
     }
 
@@ -117,9 +123,39 @@ public class TenantOnboardingService : ITenantOnboardingService
             cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> CompleteAsync(TenantPolicySettingsDto settings) =>
-        SendCommandAsync(() => _api.CompleteTenantOnboardingAsync(
-            ToRequest(settings, false),
-            cancellationToken: CancellationToken.None));
+        SendCommandAsync(async () =>
+        {
+            TenantDirectoryOperatorIdentityAdminModel identity =
+                await _directoryOperatorIdentity.GetAsync(CancellationToken.None);
+            if (identity.MessageCode != TenantDirectoryOperatorIdentityAdminMessageCode.None)
+            {
+                return new BaseCommandResponseOfGuid
+                {
+                    Success = false,
+                    Message = DirectoryOperatorIdentityUnavailableCode
+                };
+            }
+
+            return await _api.CompleteTenantOnboardingAsync(
+                new CompleteTenantOnboardingRequest
+                {
+                    Settings = ToRequest(settings, false),
+                    DirectoryOperatorIdentity = new TenantDirectoryOperatorIdentityInputDto
+                    {
+                        PublicName = identity.PublicName,
+                        LegalName = identity.LegalName,
+                        OperatorKindCode = identity.OperatorKindCode,
+                        JurisdictionCountryCode = identity.JurisdictionCountryCode,
+                        RegistrationIdentifier = identity.RegistrationIdentifier,
+                        PublicContactEmail = identity.PublicContactEmail,
+                        LegalNoticeUrl = identity.LegalNoticeUrl,
+                        TermsUrl = identity.TermsUrl,
+                        PrivacyUrl = identity.PrivacyUrl
+                    },
+                    ExpectedDirectoryOperatorIdentityConcurrencyStamp = identity.ConcurrencyStamp
+                },
+                cancellationToken: CancellationToken.None);
+        });
 
     public async Task<IReadOnlyList<AiAssistantModelDto>> GetAiModelsAsync(string endpointUrl, string? apiKey)
     {

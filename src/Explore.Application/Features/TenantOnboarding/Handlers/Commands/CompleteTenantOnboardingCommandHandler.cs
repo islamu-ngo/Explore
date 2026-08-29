@@ -1,14 +1,17 @@
-// ABOUTME: Handles completion of tenant onboarding by persisting tenant policy choices.
-// ABOUTME: Restricts completion to tenant/instance admins and provisions typed branding during completion.
+// ABOUTME: Completes tenant onboarding with policy, branding, and explicit directory identity.
+// ABOUTME: Refuses to mark Identity complete unless the tenant-owned payload is activation-ready.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Application.Notifications;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Settings.Documents;
+using Explore.Domain.ValueObjects;
 using MediatR;
 
 namespace Explore.Application.Features.TenantOnboarding.Handlers.Commands;
@@ -20,6 +23,8 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly ITenantBrandingSettingsDocumentProvisioningService _tenantBrandingProvisioningService;
+    private readonly ITenantSettingsDocumentRepository _tenantSettingsDocumentRepository;
+    private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
     private readonly IMediator _mediator;
@@ -30,6 +35,8 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         IAdminContext adminContext,
         ITenantPolicySettingService policySettingService,
         ITenantBrandingSettingsDocumentProvisioningService tenantBrandingProvisioningService,
+        ITenantSettingsDocumentRepository tenantSettingsDocumentRepository,
+        ITypedSettingsDocumentResolver typedSettingsDocumentResolver,
         IUnitOfWork unitOfWork,
         IHierarchicalSettingsResolver hierarchicalSettingsResolver,
         IMediator mediator)
@@ -39,6 +46,8 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
         _adminContext = adminContext;
         _policySettingService = policySettingService;
         _tenantBrandingProvisioningService = tenantBrandingProvisioningService;
+        _tenantSettingsDocumentRepository = tenantSettingsDocumentRepository;
+        _typedSettingsDocumentResolver = typedSettingsDocumentResolver;
         _unitOfWork = unitOfWork;
         _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
         _mediator = mediator;
@@ -54,12 +63,39 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
                 "Only tenant administrators or instance administrators can complete tenant onboarding.");
         }
 
+        if (request.DirectoryOperatorIdentity is null)
+        {
+            return BaseCommandResponse.Failure<Guid>(
+                "tenant_directory_operator_identity_incomplete",
+                "Tenant directory operator identity is not ready.");
+        }
+
+        TenantDirectoryOperatorIdentityReadiness identityReadiness =
+            TenantDirectoryOperatorIdentity.Evaluate(
+                request.DirectoryOperatorIdentity.ToPayload(),
+                TenantDirectoryOperatorIdentityCapability.Activation);
+        if (!identityReadiness.IsReady)
+        {
+            return BaseCommandResponse.Failure<Guid>(
+                "tenant_directory_operator_identity_incomplete",
+                "Tenant directory operator identity is not ready.",
+                identityReadiness.ReasonCodes);
+        }
+
         // Pre-read for create-or-update decision — BEFORE transaction (fast rejection, no write)
         var existingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
 
-        // Atomic writes: policy settings + typed branding document + onboarding state
+        // The identity revision is checked before any write; its mandatory save remains last so a
+        // failure proves every preceding write participates in this transaction.
         var outcome = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
+            (TenantSettingsDocument Document, bool IsNew) identityWrite =
+                await PrepareDirectoryOperatorIdentityWriteAsync(
+                    tenantId,
+                    request.UserId,
+                    request.ExpectedDirectoryOperatorIdentityConcurrencyStamp,
+                    identityReadiness.Identity!,
+                    ct);
             IReadOnlyList<SettingChangedNotification> notifications =
                 await _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings, ct);
             await _tenantBrandingProvisioningService.EnsureTenantBrandingDocumentAsync(tenantId, cancellationToken: ct);
@@ -78,6 +114,7 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
                     CompletedAt = DateTime.UtcNow,
                     CompletedByUserId = request.UserId
                 });
+                await PersistIdentityWriteAsync(identityWrite);
                 return (OnboardingStateId: created.Id, Notifications: notifications);
             }
 
@@ -89,10 +126,14 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
             existingState.CompletedAt = DateTime.UtcNow;
             existingState.CompletedByUserId = request.UserId;
             await _tenantOnboardingStateRepository.Update(existingState);
+            await PersistIdentityWriteAsync(identityWrite);
             return (OnboardingStateId: existingState.Id, Notifications: notifications);
         }, cancellationToken);
 
         _hierarchicalSettingsResolver.InvalidateCache(Explore.Domain.Settings.SettingScope.Tenant, tenantId);
+        _typedSettingsDocumentResolver.InvalidateTenantDocumentCache(
+            tenantId,
+            SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity);
         foreach (SettingChangedNotification notification in outcome.Notifications)
         {
             await _mediator.Publish(notification, cancellationToken);
@@ -102,6 +143,57 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
             outcome.OnboardingStateId,
             "Tenant onboarding completed successfully.");
     }
+
+    private async Task<(TenantSettingsDocument Document, bool IsNew)> PrepareDirectoryOperatorIdentityWriteAsync(
+        Guid tenantId,
+        Guid actorUserId,
+        Guid? expectedConcurrencyStamp,
+        TenantDirectoryOperatorIdentity identity,
+        CancellationToken cancellationToken)
+    {
+        TenantSettingsDocument replacement =
+            TenantDirectoryOperatorIdentityDocumentDefaults.Create(
+                tenantId,
+                identity.ToSettings());
+        TenantSettingsDocument? existing =
+            await _tenantSettingsDocumentRepository.GetTrackedByTenantAndDocumentKey(
+                tenantId,
+                SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity,
+                cancellationToken);
+        DateTime changedAt = DateTime.UtcNow;
+        if (existing is null)
+        {
+            replacement.Id = Guid.CreateVersion7();
+            replacement.CreatedAt = changedAt;
+            replacement.CreatedBy = actorUserId;
+            replacement.ConcurrencyStamp = Guid.CreateVersion7();
+            return (replacement, true);
+        }
+
+        if (!expectedConcurrencyStamp.HasValue
+            || existing.ConcurrencyStamp != expectedConcurrencyStamp.Value)
+        {
+            throw new ConcurrencyConflictException(
+                ConcurrencyConflictException.ConcurrentUpdate,
+                "Tenant directory-operator identity changed since it was loaded.",
+                "tenant_settings_document",
+                existing.Id.ToString());
+        }
+
+        existing.UpdatePayload(
+            replacement.SchemaVersion,
+            replacement.DefaultsVersion,
+            replacement.PayloadJson);
+        existing.ConcurrencyStamp = Guid.CreateVersion7();
+        existing.UpdatedAt = changedAt;
+        existing.UpdatedBy = actorUserId;
+        return (existing, false);
+    }
+
+    private Task PersistIdentityWriteAsync((TenantSettingsDocument Document, bool IsNew) identityWrite)
+        => identityWrite.IsNew
+            ? _tenantSettingsDocumentRepository.Create(identityWrite.Document)
+            : _tenantSettingsDocumentRepository.Update(identityWrite.Document);
 
     private async Task<bool> IsUserAuthorizedAsync(Guid tenantId, CancellationToken cancellationToken)
     {

@@ -3,6 +3,25 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 
 # Operations
 
+## Legal-Identity Readiness And Repair
+
+- Runtime API/Standalone startup validates `Instance:OperatorIdentity` and
+  stops on incomplete or malformed public operator facts.
+- Tenant activation/reactivation evaluates the exact
+  `tenant.directory-operator-identity` document for `Activation`.
+- Anonymous settings/shell evaluate `PublicDisclosure`; unavailable identity
+  returns non-cacheable `503` with `tenant_identity_unavailable`.
+- Paid publication and Checkout activation evaluate `PaidCommerce` before any
+  provider handoff.
+
+Repair the authoritative source: environment configuration for instance
+identity, the tenant identity admin document for directory identity, organizer
+payment onboarding for merchant lineage, or Checkout governance for payment
+operations. Never repair by editing a generated migration/snapshot, inserting a
+branding fallback, or changing historical acceptance evidence. Development
+databases built from the prior unapplied Init migrations must be recreated after
+the five provider catalogs are regenerated.
+
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Mixed
 > **Owner:** Platform/Ops
@@ -2372,3 +2391,45 @@ Operational logs and metrics may record stable failure codes, operation IDs,
 tenant IDs, lock outcomes, and revision numbers. Never record manifest payloads,
 provider credentials, buyer acceptance data, payment references, email
 addresses, or other PII.
+
+## Event Add-On Operational Contract
+
+Event-bound add-ons use six tenant-qualified persistence concepts:
+
+- versioned catalog and catalog item;
+- immutable registration-order add-on line;
+- finite inventory allocation;
+- fulfillment outcome;
+- refund allocation.
+
+Inventory mutation follows the canonical
+`catalog-item > order > line > inventory > fulfillment > refund` fence order.
+The PostgreSQL one-winner test uses independent contexts and an exact event
+barrier; it contains no sleeps or timing-based pass condition. Serialization
+failures may retry the entire transaction, so all IDs and timestamps are
+created before entering retryable work.
+
+Operational interpretation:
+
+- `InsufficientInventory` means no line/allocation/effect survived;
+- fulfillment replay returns the existing outcome and never delivers twice;
+- `allocated_pending_provider` is a local refund allocation, not provider
+  success;
+- `provider_failed` reopens refundable quantity without releasing stock;
+- `provider_confirmed_inventory_release_pending` preserves confirmed provider
+  truth while recovery repairs the stock-release anomaly;
+- add-on refund allocation, canonical `RefundAttempt`, and dispatch outbox
+  commit atomically under the payment-capacity and add-on fence order;
+- a local refund allocation never releases stock; only a later
+  provider-confirmed refund transition may return add-on stock, and it never
+  returns ticket capacity;
+- tenant mismatch and missing resources converge on generic unavailable
+  responses;
+- BFF responses are private/no-store, write routes require cookie
+  authentication plus antiforgery, and raw bearer tokens never reach the
+  browser.
+
+Troubleshooting must inspect stable operation IDs, outcome codes, and counts.
+Never log capability headers, buyer identity, item descriptions, fulfillment
+notes, refund payloads, or whole HAL resources. No add-on row, endpoint, job,
+or recovery path has authority over admission tables.

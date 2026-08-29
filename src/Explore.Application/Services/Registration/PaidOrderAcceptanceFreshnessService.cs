@@ -53,9 +53,17 @@ public sealed class PaidOrderAcceptanceFreshnessService(
         PaidOrderAcceptanceAuthorityFacts authority,
         RegistrationOrder order,
         PaymentAttempt attempt) =>
+        snapshot.OrganizerActorId == authority.OrganizerActorId &&
+        snapshot.OrganizerActorId == attempt.RecipientSnapshot.OrganizerActorId &&
+        snapshot.OrganizerPaymentProviderConnectionId == attempt.RecipientSnapshot.OrganizerPaymentProviderConnectionId &&
+        snapshot.ConnectPlatformId == attempt.RecipientSnapshot.ConnectPlatformId &&
+        snapshot.ExternalAccountId == attempt.RecipientSnapshot.ExternalAccountId &&
+        snapshot.MerchantCountryCode == attempt.RecipientSnapshot.MerchantCountryCode &&
         snapshot.InstancePolicyVersionId == authority.InstancePolicyVersionId &&
         snapshot.TenantPolicyVersionId == authority.TenantPolicyVersionId &&
         snapshot.OperatorId == authority.OperatorId &&
+        snapshot.TenantDirectoryOperatorDocumentId == authority.TenantDirectoryOperatorDocumentId &&
+        snapshot.TenantDirectoryOperatorRevisionId == authority.TenantDirectoryOperatorRevisionId &&
         snapshot.CurrencyCode == attempt.CurrencyCode &&
         snapshot.OrganizerAmountMinor == attempt.OrganizerAmountMinor &&
         snapshot.PlatformFeeMinor == attempt.PlatformFeeMinor &&
@@ -63,16 +71,37 @@ public sealed class PaidOrderAcceptanceFreshnessService(
         snapshot.TotalMinor == attempt.TotalMinor &&
         snapshot.DisclosureRevision == disclosure.DisclosureRevision &&
         snapshot.CompositionRevision == order.ConcurrencyStamp.ToString("N") &&
-        snapshot.MerchantDisclosureText == disclosure.MerchantDisclosureText &&
-        snapshot.OperatorDisplayName == disclosure.OperatorDisplayName &&
-        snapshot.IsOfficialInstance == disclosure.IsOfficialInstance &&
-        snapshot.OfficialOrigin == disclosure.OfficialOrigin &&
-        snapshot.OperatorRegionCode == disclosure.OperatorRegionCode &&
-        snapshot.OperatorWebsiteUrl == disclosure.OperatorWebsiteUrl &&
-        snapshot.OperatorLegalNoticeUrl == disclosure.OperatorLegalNoticeUrl &&
-        snapshot.OperatorTermsUrl == disclosure.OperatorTermsUrl &&
-        snapshot.OperatorPrivacyUrl == disclosure.OperatorPrivacyUrl &&
-        snapshot.ActivationStatus == disclosure.OperatorActivationStatus &&
+        snapshot.AcceptanceTemplateIdentifier == disclosure.AcceptanceTemplateIdentifier &&
+        snapshot.AcceptanceTemplateText == disclosure.AcceptanceTemplateText &&
+        snapshot.MerchantDisclosureText == disclosure.OrganizerMerchant.MerchantDisclosureText &&
+        snapshot.OrganizerActorId == disclosure.OrganizerMerchant.OrganizerActorId &&
+        snapshot.OrganizerPaymentProviderConnectionId == disclosure.OrganizerMerchant.OrganizerPaymentProviderConnectionId &&
+        snapshot.ConnectPlatformId == disclosure.OrganizerMerchant.ConnectPlatformId &&
+        snapshot.ExternalAccountId == disclosure.OrganizerMerchant.ExternalAccountId &&
+        snapshot.MerchantCountryCode == disclosure.OrganizerMerchant.MerchantCountryCode &&
+        snapshot.TenantDirectoryOperatorDocumentId == disclosure.TenantDirectoryOperator.DocumentId &&
+        snapshot.TenantDirectoryOperatorRevisionId == disclosure.TenantDirectoryOperator.RevisionId &&
+        snapshot.TenantDirectoryOperatorPublicName == disclosure.TenantDirectoryOperator.PublicName &&
+        snapshot.TenantDirectoryOperatorLegalName == disclosure.TenantDirectoryOperator.LegalName &&
+        snapshot.TenantDirectoryOperatorKindCode == disclosure.TenantDirectoryOperator.OperatorKindCode &&
+        snapshot.TenantDirectoryOperatorCountryCode == disclosure.TenantDirectoryOperator.JurisdictionCountryCode &&
+        snapshot.TenantDirectoryOperatorRegistrationIdentifier == disclosure.TenantDirectoryOperator.RegistrationIdentifier &&
+        snapshot.TenantDirectoryOperatorPublicContactEmail == disclosure.TenantDirectoryOperator.PublicContactEmail &&
+        snapshot.TenantDirectoryOperatorLegalNoticeUrl == disclosure.TenantDirectoryOperator.LegalNoticeUrl &&
+        snapshot.TenantDirectoryOperatorTermsUrl == disclosure.TenantDirectoryOperator.TermsUrl &&
+        snapshot.TenantDirectoryOperatorPrivacyUrl == disclosure.TenantDirectoryOperator.PrivacyUrl &&
+        snapshot.OperatorDisplayName == disclosure.InstanceOperator.PublicName &&
+        snapshot.OperatorLegalName == disclosure.InstanceOperator.LegalName &&
+        snapshot.OperatorKindCode == disclosure.InstanceOperator.OperatorKindCode &&
+        snapshot.OperatorRegistrationIdentifier == disclosure.InstanceOperator.RegistrationIdentifier &&
+        snapshot.IsOfficialInstance == disclosure.InstanceOperator.IsOfficialInstance &&
+        snapshot.OfficialOrigin == disclosure.InstanceOperator.OfficialOrigin &&
+        snapshot.OperatorRegionCode == disclosure.InstanceOperator.JurisdictionCountryCode &&
+        snapshot.OperatorWebsiteUrl == disclosure.InstanceOperator.WebsiteUrl &&
+        snapshot.OperatorLegalNoticeUrl == disclosure.InstanceOperator.LegalNoticeUrl &&
+        snapshot.OperatorTermsUrl == disclosure.InstanceOperator.TermsUrl &&
+        snapshot.OperatorPrivacyUrl == disclosure.InstanceOperator.PrivacyUrl &&
+        snapshot.ActivationStatus == disclosure.PaymentOperations.ActivationStatus &&
         snapshot.DeliveryStartsAtUtc == disclosure.DeliveryStartsAtUtc &&
         snapshot.DeliveryEndsAtUtc == disclosure.DeliveryEndsAtUtc &&
         snapshot.EventTimeZoneId == disclosure.EventTimeZoneId &&
@@ -85,15 +114,17 @@ public sealed class PaidOrderAcceptanceFreshnessService(
         snapshot.RefundPolicyText == disclosure.RefundPolicyText &&
         snapshot.RefundPolicyLanguageTag == disclosure.RefundPolicyLanguageTag &&
         snapshot.SupportContact == disclosure.SupportContact &&
-        snapshot.ComplaintContact == disclosure.ComplaintContact &&
-        snapshot.ComplaintOwner == disclosure.ComplaintOwner &&
-        snapshot.RefundOwner == disclosure.RefundOwner &&
-        snapshot.DisputeOwner == disclosure.DisputeOwner &&
-        snapshot.ReconciliationOwner == disclosure.ReconciliationOwner &&
-        snapshot.ProviderCode == disclosure.ProviderCode &&
-        snapshot.ProviderProfileCode == disclosure.ProviderProfileCode &&
-        snapshot.ProviderEnvironment == disclosure.ProviderEnvironment &&
-        snapshot.ProviderCredentialOwner == disclosure.ProviderCredentialOwner &&
-        snapshot.ChargeType == disclosure.ChargeType &&
-        snapshot.StatementDescriptor == disclosure.StatementDescriptor;
+        snapshot.ComplaintContact == disclosure.PaymentOperations.ComplaintContact &&
+        snapshot.ComplaintOwner == disclosure.PaymentOperations.ComplaintOwner &&
+        snapshot.RefundOwner == disclosure.PaymentOperations.RefundOwner &&
+        snapshot.DisputeOwner == disclosure.PaymentOperations.DisputeOwner &&
+        snapshot.ReconciliationOwner == disclosure.PaymentOperations.ReconciliationOwner &&
+        snapshot.ProviderCode == attempt.RecipientSnapshot.ProviderCode &&
+        snapshot.ProviderProfileCode == attempt.RecipientSnapshot.ProfileCode &&
+        snapshot.ProviderCode == disclosure.OrganizerMerchant.ProviderCode &&
+        snapshot.ProviderProfileCode == disclosure.OrganizerMerchant.ProviderProfileCode &&
+        snapshot.ProviderEnvironment == disclosure.OrganizerMerchant.ProviderEnvironment &&
+        snapshot.ProviderCredentialOwner == disclosure.OrganizerMerchant.ProviderCredentialOwner &&
+        snapshot.ChargeType == disclosure.OrganizerMerchant.ChargeType &&
+        snapshot.StatementDescriptor == disclosure.OrganizerMerchant.StatementDescriptor;
 }

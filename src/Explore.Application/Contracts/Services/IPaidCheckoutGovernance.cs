@@ -1,20 +1,10 @@
-// ABOUTME: Server-owned instance operator identity and operational ownership required for paid Checkout activation.
-// ABOUTME: Official and activation status remain startup-governance facts outside tenant and browser mutation surfaces.
+// ABOUTME: Startup-owned payment operations and activation governance for paid Checkout.
+// ABOUTME: Keeps refund, dispute, reconciliation, and provider handoff facts separate from instance legal identity.
 
 namespace Explore.Application.Contracts.Services;
 
 public interface IPaidCheckoutGovernance
 {
-    Guid OperatorId { get; }
-    string OperatorDisplayName { get; }
-    bool IsOfficialInstance { get; }
-    string OfficialOrigin { get; }
-    string OperatorRegionCode { get; }
-    string OperatorWebsiteUrl { get; }
-    string OperatorLegalNoticeUrl { get; }
-    string OperatorTermsUrl { get; }
-    string OperatorPrivacyUrl { get; }
-    string ComplaintContact { get; }
     string ComplaintOwner { get; }
     string RefundOwner { get; }
     string DisputeOwner { get; }
@@ -31,16 +21,6 @@ public sealed class PaidCheckoutGovernanceOptions : IPaidCheckoutGovernance
 {
     public const string SectionName = "Payments:CheckoutGovernance";
 
-    public Guid OperatorId { get; set; }
-    public string OperatorDisplayName { get; set; } = string.Empty;
-    public bool IsOfficialInstance { get; set; }
-    public string OfficialOrigin { get; set; } = string.Empty;
-    public string OperatorRegionCode { get; set; } = string.Empty;
-    public string OperatorWebsiteUrl { get; set; } = string.Empty;
-    public string OperatorLegalNoticeUrl { get; set; } = string.Empty;
-    public string OperatorTermsUrl { get; set; } = string.Empty;
-    public string OperatorPrivacyUrl { get; set; } = string.Empty;
-    public string ComplaintContact { get; set; } = string.Empty;
     public string ComplaintOwner { get; set; } = string.Empty;
     public string RefundOwner { get; set; } = string.Empty;
     public string DisputeOwner { get; set; } = string.Empty;
@@ -53,20 +33,14 @@ public sealed class PaidCheckoutGovernanceOptions : IPaidCheckoutGovernance
     public bool IsConfigured => IsComplete();
     public bool IsActivated => IsComplete() && string.Equals(ActivationStatus, "approved", StringComparison.OrdinalIgnoreCase);
 
-    public bool IsComplete()
-    {
-        try
-        {
-            _ = Explore.Domain.PaidCheckoutOperatorDisclosure.Create(
-                OperatorId, OperatorDisplayName, IsOfficialInstance, OfficialOrigin, OperatorRegionCode,
-                OperatorWebsiteUrl, OperatorLegalNoticeUrl, OperatorTermsUrl, OperatorPrivacyUrl,
-                ComplaintContact, ComplaintOwner, RefundOwner, DisputeOwner, ReconciliationOwner, ActivationStatus);
-            return !string.IsNullOrWhiteSpace(RefundPolicyLanguageTag) &&
-                !string.IsNullOrWhiteSpace(StatementDescriptor) && !string.IsNullOrWhiteSpace(ChargeType);
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-    }
+    public bool IsComplete() =>
+        !string.IsNullOrWhiteSpace(ComplaintOwner)
+        && !string.IsNullOrWhiteSpace(RefundOwner)
+        && !string.IsNullOrWhiteSpace(DisputeOwner)
+        && !string.IsNullOrWhiteSpace(ReconciliationOwner)
+        && (ActivationStatus.Equals("approved", StringComparison.OrdinalIgnoreCase)
+            || ActivationStatus.Equals("suspended", StringComparison.OrdinalIgnoreCase))
+        && !string.IsNullOrWhiteSpace(RefundPolicyLanguageTag)
+        && !string.IsNullOrWhiteSpace(StatementDescriptor)
+        && ChargeType.Equals("direct-charge", StringComparison.Ordinal);
 }

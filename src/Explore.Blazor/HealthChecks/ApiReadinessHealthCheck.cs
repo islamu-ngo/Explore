@@ -1,7 +1,6 @@
 // ABOUTME: Blazor BFF readiness health check for the downstream Explore API dependency.
 // ABOUTME: Uses a scoped generated API client probe so readiness follows the isolated backend boundary.
 
-using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Explore.Blazor.HealthChecks;
@@ -15,12 +14,11 @@ public sealed class ApiReadinessHealthCheck(IServiceScopeFactory scopeFactory) :
         try
         {
             await using var scope = scopeFactory.CreateAsyncScope();
-            var apiClient = scope.ServiceProvider.GetRequiredService<IEventApiClient>();
-            _ = await apiClient.GetInstanceResolverConfigurationAsync(
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+            var probe = scope.ServiceProvider.GetRequiredService<IExploreApiReadinessProbe>();
+            await probe.EnsureReadyAsync(cancellationToken).ConfigureAwait(false);
             return HealthCheckResult.Healthy("Explore API generated-client probe succeeded.");
         }
-        catch (ApiException ex)
+        catch (Explore.Blazor.Client.Clients.ApiException ex)
         {
             return HealthCheckResult.Unhealthy(
                 "Explore API generated-client probe returned a non-success status code.",

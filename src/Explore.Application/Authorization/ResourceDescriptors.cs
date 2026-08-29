@@ -131,6 +131,16 @@ public static class ResourceDescriptors
         dto => new TenantSettingAuthorizationFacts(dto.SourceScopeId, dto.DocumentKey, dto.IsLockedByInstance),
         dto => new AuthorizationScope(TenantId: dto.SourceScopeId.ToString()));
 
+    public static readonly ResourceDescriptor<TenantDirectoryOperatorIdentityDocumentDto>
+        TenantDirectoryOperatorIdentityDocument = new(
+            ResourceKinds.TenantSetting,
+            dto => $"{dto.SourceScopeId}:{dto.DocumentKey}",
+            dto => new TenantSettingAuthorizationFacts(
+                dto.SourceScopeId,
+                dto.DocumentKey,
+                IsLockedByInstance: false),
+            dto => new AuthorizationScope(TenantId: dto.SourceScopeId.ToString()));
+
     public static readonly ResourceDescriptor<TenantUserRoleGrantDto> TenantUserRoleGrant = new(
         ResourceKinds.TenantUserRoleGrant,
         dto => dto.Id.ToString(),

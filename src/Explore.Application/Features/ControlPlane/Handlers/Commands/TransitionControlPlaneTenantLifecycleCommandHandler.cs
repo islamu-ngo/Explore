@@ -3,11 +3,13 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.ControlPlane.Requests.Commands;
 using Explore.Application.Features.Management;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -20,9 +22,9 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
     ITenantLifecycleLogRepository lifecycleLogRepository,
     IEmailDispatchOutboxRepository emailDispatchOutboxRepository,
     ICurrentUserService currentUserService,
-    IUnitOfWork unitOfWork,
     ISettingMutationLock mutationLock,
-    TenantActivationCapacityPolicy capacityPolicy)
+    TenantActivationCapacityPolicy capacityPolicy,
+    ITenantDirectoryOperatorReadinessEvaluator directoryOperatorReadiness)
     : IRequestHandler<TransitionControlPlaneTenantLifecycleCommand, BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>>
 {
     public async Task<BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto>> Handle(
@@ -78,6 +80,24 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
             var newStatusId = (int)request.TargetStatus;
             if (request.TargetStatus == TenantStatusEnum.Active)
             {
+                TenantDirectoryOperatorReadinessAssessment identity =
+                    await directoryOperatorReadiness.EvaluateAsync(
+                        tenant.Id,
+                        Explore.Domain.ValueObjects
+                            .TenantDirectoryOperatorIdentityCapability.Activation,
+                        ct);
+                if (!identity.IsReady)
+                {
+                    string[] repairCodes = identity.ReasonCodes
+                        .Where(TenantDirectoryOperatorReadinessReasonCodePolicy.IsClosedCode)
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray();
+                    return Failure(
+                        "Tenant directory operator identity is not ready.",
+                        identity.FailureCode,
+                        repairCodes.Length == 0 ? null : repairCodes);
+                }
+
                 TenantActivationCapacityAssessment capacity = await capacityPolicy.EvaluateAsync(
                     requireMultiTenant: false,
                     cancellationToken: ct);
@@ -138,12 +158,15 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
                     : "Tenant lifecycle status updated.");
         }
 
-        return capacityPolicy.IsEnforced
-            ? await mutationLock.ExecuteAsync(
-                GovernanceSettingKeys.Deployment.Mode,
-                TransitionAsync,
-                cancellationToken)
-            : await unitOfWork.ExecuteInTransactionAsync(TransitionAsync, cancellationToken);
+        string identityLockKey =
+            TenantDirectoryOperatorIdentityMutationLockKeys.ForTenant(request.TenantId);
+        string[] lockKeys = capacityPolicy.IsEnforced
+            ? [GovernanceSettingKeys.Deployment.Mode, identityLockKey]
+            : [identityLockKey];
+        return await mutationLock.ExecuteManyAsync(
+            lockKeys,
+            TransitionAsync,
+            cancellationToken);
     }
 
     private static bool RequiresReason(TenantStatusEnum targetStatus) =>
@@ -180,7 +203,8 @@ public sealed class TransitionControlPlaneTenantLifecycleCommandHandler(
 
     private static BaseCommandResponse<ControlPlaneTenantLifecycleTransitionDto> Failure(
         string message,
-        string? failureCode = null) => failureCode is null
+        string? failureCode = null,
+        IEnumerable<string>? errors = null) => failureCode is null
             ? BaseCommandResponse.Validation<ControlPlaneTenantLifecycleTransitionDto>([message], message)
-            : BaseCommandResponse.Failure<ControlPlaneTenantLifecycleTransitionDto>(failureCode, message, [message]);
+            : BaseCommandResponse.Failure<ControlPlaneTenantLifecycleTransitionDto>(failureCode, message, errors ?? [message]);
 }

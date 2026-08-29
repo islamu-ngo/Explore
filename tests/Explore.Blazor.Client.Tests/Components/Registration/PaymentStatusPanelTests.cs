@@ -76,8 +76,14 @@ public sealed class PaymentStatusPanelTests : IDisposable
         await Assert.That(start.HasAttribute("disabled")).IsTrue();
         await Assert.That(cut.Markup).Contains("Localized payment review");
         await Assert.That(cut.Markup).DoesNotContain("Review before payment");
-        await Assert.That(cut.Find("[data-testid='payment-acceptance-paid-event-directory-disclaimer']").TextContent)
-            .Contains("Tenant Events provides an event discovery and management directory only.");
+        await Assert.That(cut.Find("[data-testid='payment-acceptance-organizer-merchant']").TextContent)
+            .Contains("Example Organizer, legal merchant");
+        await Assert.That(cut.Find("[data-testid='payment-acceptance-directory-operator']").TextContent)
+            .Contains("Community Directory Foundation");
+        await Assert.That(cut.Find("[data-testid='payment-acceptance-instance-operator']").TextContent)
+            .Contains("Independent Operator");
+        await Assert.That(cut.Markup)
+            .DoesNotContain("provides an event discovery and management directory only");
         await Assert.That(cut.Markup).Contains("Independent Operator");
         await Assert.That(cut.Markup).Contains("EUR 10.00");
         await Assert.That(cut.Markup).Contains("Europe/Brussels");
@@ -497,17 +503,57 @@ public sealed class PaymentStatusPanelTests : IDisposable
     private static PaidOrderAcceptanceDisclosureDto Acceptance() => new()
     {
         DisclosureRevision = "revision",
-        MerchantDisclosureText = "Example Organizer, legal merchant",
-        PaidEventDirectoryDisclaimer = "Tenant Events provides an event discovery and management directory only.",
-        OperatorDisplayName = "Independent Operator",
-        IsOfficialInstance = false,
-        OfficialOrigin = "https://events.example.test",
-        OperatorRegionCode = "BE",
-        OperatorWebsiteUrl = "https://events.example.test",
-        OperatorLegalNoticeUrl = "https://events.example.test/legal",
-        OperatorTermsUrl = "https://events.example.test/terms",
-        OperatorPrivacyUrl = "https://events.example.test/privacy",
-        OperatorActivationStatus = "approved",
+        AcceptanceTemplateIdentifier = "paid-order-acceptance-v1",
+        AcceptanceTemplateText = "I accept the identified merchant, directory, and platform roles.",
+        OrganizerMerchant = new PaidOrderAcceptanceOrganizerMerchantDto
+        {
+            OrganizerActorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000103"),
+            MerchantDisclosureText = "Example Organizer, legal merchant",
+            ProviderCode = "stripe",
+            ProviderProfileCode = "OrganizerDirect",
+            ProviderEnvironment = "test",
+            ProviderCredentialOwner = "instance-operator",
+            ChargeType = "direct-charge",
+            StatementDescriptor = "EXAMPLE EVENT"
+        },
+        TenantDirectoryOperator = new PaidOrderAcceptanceTenantDirectoryOperatorDto
+        {
+            DocumentId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000104"),
+            RevisionId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000105"),
+            PublicName = "Community Directory",
+            LegalName = "Community Directory Foundation",
+            OperatorKindCode = "NONPROFIT",
+            JurisdictionCountryCode = "BE",
+            RegistrationIdentifier = "BE 0123.456.789",
+            PublicContactEmail = "directory@example.test",
+            LegalNoticeUrl = "https://directory.example.test/legal",
+            TermsUrl = "https://directory.example.test/terms",
+            PrivacyUrl = "https://directory.example.test/privacy"
+        },
+        InstanceOperator = new PaidOrderAcceptanceInstanceOperatorDto
+        {
+            OperatorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000106"),
+            PublicName = "Independent Operator",
+            LegalName = "Independent Operator ASBL",
+            IsOfficialInstance = false,
+            OfficialOrigin = "https://events.example.test",
+            OperatorKindCode = "registered_organization",
+            JurisdictionCountryCode = "BE",
+            RegistrationIdentifier = "BE 0987.654.321",
+            WebsiteUrl = "https://events.example.test",
+            LegalNoticeUrl = "https://events.example.test/legal",
+            TermsUrl = "https://events.example.test/terms",
+            PrivacyUrl = "https://events.example.test/privacy"
+        },
+        PaymentOperations = new PaidOrderAcceptancePaymentOperationsDto
+        {
+            ComplaintContact = "complaints@example.test",
+            ComplaintOwner = "Trust and Safety",
+            RefundOwner = "Payments Operations",
+            DisputeOwner = "Dispute Operations",
+            ReconciliationOwner = "Payment Reconciliation",
+            ActivationStatus = "approved"
+        },
         DeliveryStartsAtUtc = DateTimeOffset.Parse("2026-09-10T17:00:00Z"),
         DeliveryEndsAtUtc = DateTimeOffset.Parse("2026-09-10T20:00:00Z"),
         EventTimeZoneId = "Europe/Brussels",
@@ -521,17 +567,6 @@ public sealed class PaymentStatusPanelTests : IDisposable
         RefundPolicyText = "Refund policy",
         RefundPolicyLanguageTag = "ar",
         SupportContact = "support@example.test",
-        ComplaintContact = "complaints@example.test",
-        ComplaintOwner = "Trust and Safety",
-        RefundOwner = "Payments Operations",
-        DisputeOwner = "Dispute Operations",
-        ReconciliationOwner = "Payment Reconciliation",
-        ProviderCode = "stripe",
-        ProviderProfileCode = "OrganizerDirect",
-        ProviderEnvironment = "test",
-        ProviderCredentialOwner = "instance-operator",
-        ChargeType = "direct-charge",
-        StatementDescriptor = "EXAMPLE EVENT",
         Lines =
         [
             new PaidOrderAcceptanceLineDto

@@ -1029,6 +1029,210 @@ intents:
       mandatory_reviewers:
         - security-privacy-agent
 
+  - id: legal-identity-authority-change
+    title: "Implement tenant, instance, and paid legal-identity authority"
+    category: cross-cutting
+    triggers:
+      - "legal identity authority"
+      - "tenant directory operator identity"
+      - "instance operator identity"
+      - "structured legal disclosure"
+      - "branding legal identity"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/ARCHITECTURE.md
+      - docs/DOMAIN.md
+      - docs/API.md
+      - docs/AUTHORIZATION.md
+      - docs/SECURITY-MODEL.md
+      - docs/MULTI_TENANCY.md
+      - docs/PAYMENTS.md
+      - docs/FOOTER_MANAGEMENT.md
+      - docs/CONFIGURATION.md
+      - docs/OPERATIONS.md
+      - docs/TESTING.md
+      - docs/legal/IP_GOVERNANCE.md
+      - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
+      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-plan.md
+      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-context.md
+      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-tasks.md
+    load_skills:
+      - clean-architecture-rules
+      - cqrs-mediatr-guidelines
+      - dotnet-efcore-guidelines
+      - auth-patterns
+      - blazor-ui-conventions
+      - accessibility
+      - footer-management
+      - error-tracking
+      - criticality-guardrail
+      - i-vsd
+      - ip-clean-room
+    load_rules:
+      - .agents/rules/domain.md
+      - .agents/rules/application-layer.md
+      - .agents/rules/efcore-persistence.md
+      - .agents/rules/efcore-migrations.md
+      - .agents/rules/api-controllers.md
+      - .agents/rules/api-hateoas.md
+      - .agents/rules/blazor-client.md
+      - .agents/rules/payments-commerce.md
+      - .agents/rules/tests.md
+      - .agents/rules/ip-clean-room.md
+    paths_in_scope:
+      - ".agents/contract/intents.yaml"
+      - "src/Explore.Domain/**/*.cs"
+      - "src/Explore.Application/**/*.cs"
+      - "src/Explore.Persistence/**/*.cs"
+      - "src/Explore.Persistence.Migrations.Sqlite/**/*.cs"
+      - "src/Explore.Persistence.Migrations.SqlServer/**/*.cs"
+      - "src/Explore.Persistence.Migrations.MariaDb/**/*.cs"
+      - "src/Explore.Persistence.Migrations.MySql/**/*.cs"
+      - "src/Explore.Infrastructure/**/*.cs"
+      - "src/Explore.API/**/*.cs"
+      - "src/Explore.Blazor.Client/**/*.cs"
+      - "src/Explore.Blazor.Client/**/*.razor"
+      - "src/Explore.Blazor.Client/**/*.razor.css"
+      - "src/Explore.Blazor.Client/**/*.resx"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "tests/Event.Domain.UnitTests/**/*.cs"
+      - "tests/Event.Application.UnitTests/**/*.cs"
+      - "tests/Event.Persistence.IntegrationTests/**/*.cs"
+      - "tests/Explore.Infrastructure.Tests/**/*.cs"
+      - "tests/Event.API.IntegrationTests/**/*.cs"
+      - "tests/Explore.Blazor.Client.Tests/**/*.cs"
+      - "tests/Explore.Blazor.IntegrationTests/**/*.cs"
+      - "tests/Explore.Secrets.UnitTests/**/*.cs"
+      - "tests/Event.Architecture.Tests/**/*.cs"
+      - "schemas/openapi_islamu-event.json"
+      - "schemas/islamu-event.md"
+      - ".env.example"
+      - "docs/MULTI_TENANCY.md"
+      - "docs/PAYMENTS.md"
+      - "docs/FOOTER_MANAGEMENT.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/OPERATIONS.md"
+      - "docs/DOMAIN.md"
+      - "docs/API.md"
+      - "docs/API_CHANGELOG.md"
+      - "docs/API_CONTRACT_INVENTORY.md"
+      - "docs/AUTHORIZATION.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/TROUBLESHOOTING.md"
+      - "docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md"
+      - "docs/releases/changes/CHG-*.yaml"
+      - "islamic-value-sensitive-design/i-vsd-branding-legal-identity-authority.md"
+      - "dev/active/branding-legal-identity-authority/**"
+    paths_forbidden:
+      - ".claude/settings*.json"
+      - ".design-sync/**"
+      - "dev/next/**"
+      - "dev/report/**"
+      - "src/Explore.Persistence.DataProtection.Migrations*/**"
+      - "src/Explore.Persistence.PrivacyErasureAuthority.Migrations*/**"
+    minimum_tests:
+      - Event.Domain.UnitTests
+      - Event.Application.UnitTests
+      - Event.Persistence.IntegrationTests
+      - Explore.Infrastructure.Tests
+      - Event.API.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Explore.Blazor.IntegrationTests
+      - Explore.Secrets.UnitTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/MULTI_TENANCY.md
+      - docs/PAYMENTS.md
+      - docs/FOOTER_MANAGEMENT.md
+      - docs/CONFIGURATION.md
+      - docs/OPERATIONS.md
+      - docs/DOMAIN.md
+      - docs/API.md
+      - docs/API_CHANGELOG.md
+      - docs/API_CONTRACT_INVENTORY.md
+      - docs/AUTHORIZATION.md
+      - docs/SECURITY-MODEL.md
+      - docs/SELF_HOSTING.md
+      - docs/TROUBLESHOOTING.md
+      - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
+      - schemas/islamu-event.md
+      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-plan.md
+      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-context.md
+      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-tasks.md
+    unique_acceptance:
+      - "Cosmetic branding, tenant directory operator, instance operator, and organizer merchant remain independent authoritative roles"
+      - "Every tenant creation path atomically creates both canonical typed documents and cannot bypass identity readiness when requesting Active"
+      - "Activation, public disclosure, paid publication, checkout, and acceptance fail closed with stable payload-free reason codes"
+      - "Paid acceptance snapshots exact structured tenant, instance, organizer, provider, policy, and money facts without rewriting history"
+      - "HAL, authorization, OpenAPI, generated client, and Blazor affordances converge without local role inference"
+      - "Generated migrations cover all five application providers and generated artifacts are never hand-edited"
+    pr_checklist:
+      - "Failing-first invariant tests cover every direct activation path, cross-tenant mutation, malformed identity, public 503 behavior, paid publication, checkout, and acceptance replay"
+      - "Repositories return entities or typed documents, handlers map DTOs, validators are manually instantiated, and tenant filters remain active"
+      - "No branding value, literal product name, instance identity, organizer identity, or compatibility alias substitutes for missing tenant identity"
+      - "Logs, metrics, traces, health, and ProblemDetails contain only bounded codes and approved identifiers, never legal names, registration identifiers, emails, or URLs"
+      - "OpenAPI, contract inventory, generated client, five provider migrations, canonical docs, I-VSD evidence, and release fragment match the shipped contract"
+    forbidden_without_approval:
+      - "Creating or reactivating an Active tenant outside the shared identity and capacity readiness boundary"
+      - "Inferring legal identity from branding, tenant name, instance configuration, organizer data, or payment recipient data"
+      - "Adding compatibility aliases, dual reads, dual writes, deprecated prose properties, or old configuration fallbacks"
+      - "Hand-editing generated migrations, model snapshots, OpenAPI, contract inventory, or NSwag client output"
+      - "Changing OrganizerDirect recipient authority, connected-account fencing, integer money, payment idempotency, or historical acceptance"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - presentation-engineer-agent
+      - platform-operations-agent
+      - security-privacy-agent
+      - quality-verifier-agent
+      - change-reviewer-agent
+    criticality:
+      tier: sovereign
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: tenant_isolated
+      rollback_strategy: expand_contract
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "atomic_tenant_identity_provisioning"
+        - "fail_closed_identity_readiness"
+        - "immutable_multi_party_acceptance"
+        - "transactional_outbox_pairing"
+        - "zero_pii_in_telemetry"
+        - "hal_authorization_parity"
+        - "multi_provider_generated_migrations"
+      mandatory_reviewers:
+        - security-privacy-agent
+        - quality-verifier-agent
+    related_intents:
+      - add-get-endpoint
+      - add-write-endpoint
+      - add-hal-link
+      - add-cqrs-handler
+      - add-ef-migration
+      - blazor-component-affordance
+      - cerbos-policy-change
+      - openapi-contract-change
+      - external-infrastructure-bootstrap
+      - registration-data-collection
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+
   - id: registration-data-collection
     title: "Implement registration data collection, participation, ticketing, and provider channels"
     category: cross-cutting

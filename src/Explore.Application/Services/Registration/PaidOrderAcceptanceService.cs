@@ -9,17 +9,17 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
-using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Services.Registration;
-using Explore.Domain.Settings.Documents;
-using Explore.Domain.Settings.Documents.Payloads;
 using Explore.Domain.ValueObjects;
 
 namespace Explore.Application.Services.Registration;
 
 public sealed record PaidOrderAcceptanceAuthorityFacts(
+    Guid OrganizerActorId,
     Guid OperatorId,
+    Guid TenantDirectoryOperatorDocumentId,
+    Guid TenantDirectoryOperatorRevisionId,
     Guid InstancePolicyVersionId,
     Guid? TenantPolicyVersionId);
 
@@ -55,12 +55,18 @@ public sealed class PaidOrderAcceptanceService(
     IEventTicketCatalogRepository catalogs,
     IEventRepository events,
     IPaidEventPolicyRepository policies,
+    IInstanceOperatorIdentity instanceOperatorIdentity,
     IPaidCheckoutGovernance governance,
+    ITenantDirectoryOperatorReadinessEvaluator directoryOperatorReadiness,
+    IOrganizerPaymentProviderConnectionRepository connections,
+    IOrganizerPaymentCommerceConfiguration commerceConfiguration,
     IPaidCheckoutActivationService activation,
     IPaymentProviderDescriptor providerDescriptor,
-    ITypedSettingsDocumentResolver settingsDocumentResolver,
     TimeProvider timeProvider) : IPaidOrderAcceptanceService
 {
+    private readonly ITenantDirectoryOperatorReadinessEvaluator _directoryOperatorReadiness =
+        directoryOperatorReadiness;
+
     public Task<PaidOrderAcceptanceResult> DescribeAsync(
         RegistrationOrder order,
         CancellationToken cancellationToken) => DescribeAsync(order, null, cancellationToken);
@@ -71,6 +77,20 @@ public sealed class PaidOrderAcceptanceService(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(order);
+        TenantDirectoryOperatorReadinessAssessment directoryReadiness =
+            await _directoryOperatorReadiness.EvaluateAsync(
+                order.TenantId,
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                cancellationToken);
+        if (!directoryReadiness.IsReady || directoryReadiness.Identity is not { } directoryIdentity ||
+            directoryReadiness.DocumentId is not Guid directoryDocumentId || directoryDocumentId == Guid.Empty ||
+            directoryReadiness.DocumentRevision is not { } directoryRevision)
+        {
+            return Failure(
+                "tenant_directory_operator_identity_unavailable",
+                "Tenant directory operator identity is unavailable for paid commerce.");
+        }
+
         PaidCheckoutActivationResult activationResult = await activation.EvaluateAsync(
             new(order.TenantId, order.EventId, order.CurrencyCode, order.TotalDueMinorSnapshot,
                 timeProvider.GetUtcNow().UtcDateTime, reservedPaymentAttemptId), cancellationToken);
@@ -88,7 +108,8 @@ public sealed class PaidOrderAcceptanceService(
         PaidEventPolicyVersion? instancePolicy = await policies.GetActiveInstanceAsync(cancellationToken);
         PaidEventPolicyVersion? tenantPolicy = await policies.GetActiveTenantAsync(order.TenantId, cancellationToken);
         PaymentProviderDescriptor provider = providerDescriptor.Describe();
-        if (catalog is null || eventTarget?.TenantId != order.TenantId || instancePolicy is null ||
+        if (catalog is null || eventTarget?.TenantId != order.TenantId ||
+            eventTarget.OrganizerActorId is not Guid organizerActorId || instancePolicy is null ||
             !instancePolicy.IsActive || !instancePolicy.IsPaymentsEnabled || instancePolicy.TenantId is not null ||
             !governance.IsConfigured || !governance.IsActivated || string.IsNullOrWhiteSpace(catalog.MerchantDisclosureText) ||
             string.IsNullOrWhiteSpace(catalog.RefundPolicyDisclosureText) || string.IsNullOrWhiteSpace(catalog.SupportContactDisclosureText) ||
@@ -96,6 +117,15 @@ public sealed class PaidOrderAcceptanceService(
             string.IsNullOrWhiteSpace(eventTarget.EventTimeZoneId) || order.Lines.Count == 0)
         {
             return Failure("payment_acceptance_unavailable", "Complete current payment disclosures are unavailable.");
+        }
+
+        OrganizerPaymentProviderConnection? connection = await connections.GetActiveByScopeAsync(
+            order.TenantId, organizerActorId, commerceConfiguration.ProviderCode,
+            commerceConfiguration.ConnectPlatformId, cancellationToken);
+        if (connection?.MerchantCountryCode is not { } merchantCountryCode ||
+            !string.Equals(connection.ProviderCode, provider.ProviderCode, StringComparison.OrdinalIgnoreCase))
+        {
+            return Failure("payment_connection_unavailable", "The organizer payment connection is not ready.");
         }
 
         if (tenantPolicy is not null)
@@ -135,26 +165,34 @@ public sealed class PaidOrderAcceptanceService(
             return Failure("payment_acceptance_unavailable", "Complete current payment disclosures are unavailable.");
         }
 
-        ResolvedSettingsDocument<BrandingSettings>? branding = await settingsDocumentResolver
-            .ResolveTenantDocumentAsync<BrandingSettings>(
-                new SettingsResolutionContext(
-                    order.TenantId,
-                    RequestedDocuments: [SettingsDocumentKeys.Tenant.Branding]),
-                SettingsDocumentKeys.Tenant.Branding,
-                cancellationToken);
-        string paidEventDirectoryDisclaimer = PaidEventDisclaimerFormatter.Format(branding?.Payload.DisplayName);
-
+        PaidCheckoutTenantDirectoryOperatorDisclosure directoryDisclosure;
         PaidCheckoutOperatorDisclosure operatorDisclosure;
         PaidOrderDeliverySnapshot delivery;
         PaidCheckoutProviderDisclosure providerDisclosure;
         try
         {
+            directoryDisclosure = PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
+                directoryDocumentId,
+                directoryRevision,
+                directoryIdentity.PublicName,
+                directoryIdentity.LegalName,
+                directoryIdentity.OperatorKindCode,
+                directoryIdentity.JurisdictionCountryCode,
+                directoryIdentity.RegistrationIdentifier,
+                directoryIdentity.PublicContactEmail,
+                directoryIdentity.LegalNoticeUrl,
+                directoryIdentity.TermsUrl!,
+                directoryIdentity.PrivacyUrl);
             operatorDisclosure = PaidCheckoutOperatorDisclosure.Create(
-                governance.OperatorId, governance.OperatorDisplayName, governance.IsOfficialInstance, governance.OfficialOrigin,
-                governance.OperatorRegionCode, governance.OperatorWebsiteUrl, governance.OperatorLegalNoticeUrl,
-                governance.OperatorTermsUrl, governance.OperatorPrivacyUrl, governance.ComplaintContact,
+                instanceOperatorIdentity.OperatorId, instanceOperatorIdentity.PublicName,
+                instanceOperatorIdentity.IsOfficialInstance, instanceOperatorIdentity.OfficialOrigin,
+                instanceOperatorIdentity.JurisdictionCountryCode, instanceOperatorIdentity.WebsiteUrl,
+                instanceOperatorIdentity.LegalNoticeUrl, instanceOperatorIdentity.TermsUrl,
+                instanceOperatorIdentity.PrivacyUrl, instanceOperatorIdentity.PublicContactEmail,
                 governance.ComplaintOwner, governance.RefundOwner, governance.DisputeOwner,
-                governance.ReconciliationOwner, governance.ActivationStatus);
+                governance.ReconciliationOwner, governance.ActivationStatus,
+                instanceOperatorIdentity.LegalName, instanceOperatorIdentity.OperatorKindCode,
+                instanceOperatorIdentity.RegistrationIdentifier);
             delivery = PaidOrderDeliverySnapshot.Create(deliveryStart, deliveryEnd, eventTarget.EventTimeZoneId);
             providerDisclosure = PaidCheckoutProviderDisclosure.Create(
                 provider.ProviderCode, provider.ProfileCode, governance.ChargeType, governance.StatementDescriptor,
@@ -172,9 +210,21 @@ public sealed class PaidOrderAcceptanceService(
             catalog.ConcurrencyStamp.ToString("N"),
             instancePolicy.Id.ToString("N"),
             tenantPolicy?.Id.ToString("N") ?? "none",
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateIdentifier,
+            PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateText,
+            organizerActorId.ToString("N"),
+            connection.Id.ToString("N"), connection.ConnectPlatformId,
+            connection.ExternalAccountId, merchantCountryCode,
             catalog.MerchantDisclosureText,
-            paidEventDirectoryDisclaimer,
+            directoryDisclosure.DocumentId.ToString("N"),
+            directoryDisclosure.DocumentRevisionId.ToString("N"),
+            directoryDisclosure.PublicName, directoryDisclosure.LegalName,
+            directoryDisclosure.OperatorKindCode, directoryDisclosure.JurisdictionCountryCode,
+            directoryDisclosure.RegistrationIdentifier ?? "none", directoryDisclosure.PublicContactEmail,
+            directoryDisclosure.LegalNoticeUrl, directoryDisclosure.TermsUrl, directoryDisclosure.PrivacyUrl,
             operatorDisclosure.OperatorId.ToString("N"), operatorDisclosure.OperatorDisplayName,
+            operatorDisclosure.LegalName, operatorDisclosure.OperatorKindCode,
+            operatorDisclosure.RegistrationIdentifier ?? "none",
             operatorDisclosure.IsOfficialInstance.ToString(), operatorDisclosure.OfficialOrigin,
             operatorDisclosure.RegionCode, operatorDisclosure.WebsiteUrl, operatorDisclosure.LegalNoticeUrl,
             operatorDisclosure.TermsUrl, operatorDisclosure.PrivacyUrl, operatorDisclosure.ComplaintContact,
@@ -197,17 +247,61 @@ public sealed class PaidOrderAcceptanceService(
         return new(new PaidOrderAcceptanceDisclosureDto
         {
             DisclosureRevision = revision,
-            MerchantDisclosureText = catalog.MerchantDisclosureText,
-            PaidEventDirectoryDisclaimer = paidEventDirectoryDisclaimer,
-            OperatorDisplayName = operatorDisclosure.OperatorDisplayName,
-            IsOfficialInstance = operatorDisclosure.IsOfficialInstance,
-            OfficialOrigin = operatorDisclosure.OfficialOrigin,
-            OperatorRegionCode = operatorDisclosure.RegionCode,
-            OperatorWebsiteUrl = operatorDisclosure.WebsiteUrl,
-            OperatorLegalNoticeUrl = operatorDisclosure.LegalNoticeUrl,
-            OperatorTermsUrl = operatorDisclosure.TermsUrl,
-            OperatorPrivacyUrl = operatorDisclosure.PrivacyUrl,
-            OperatorActivationStatus = operatorDisclosure.ActivationStatus,
+            AcceptanceTemplateIdentifier = PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateIdentifier,
+            AcceptanceTemplateText = PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateText,
+            OrganizerMerchant = new PaidOrderAcceptanceOrganizerMerchantDto
+            {
+                OrganizerActorId = organizerActorId,
+                MerchantDisclosureText = catalog.MerchantDisclosureText,
+                ProviderCode = providerDisclosure.ProviderCode,
+                ProviderProfileCode = providerDisclosure.ProfileCode,
+                ProviderEnvironment = providerDisclosure.Environment,
+                ProviderCredentialOwner = providerDisclosure.CredentialOwner,
+                ChargeType = providerDisclosure.ChargeType,
+                StatementDescriptor = providerDisclosure.StatementDescriptor,
+                OrganizerPaymentProviderConnectionId = connection.Id,
+                ConnectPlatformId = connection.ConnectPlatformId,
+                ExternalAccountId = connection.ExternalAccountId,
+                MerchantCountryCode = merchantCountryCode
+            },
+            TenantDirectoryOperator = new PaidOrderAcceptanceTenantDirectoryOperatorDto
+            {
+                DocumentId = directoryDisclosure.DocumentId,
+                RevisionId = directoryDisclosure.DocumentRevisionId,
+                PublicName = directoryDisclosure.PublicName,
+                LegalName = directoryDisclosure.LegalName,
+                OperatorKindCode = directoryDisclosure.OperatorKindCode,
+                JurisdictionCountryCode = directoryDisclosure.JurisdictionCountryCode,
+                RegistrationIdentifier = directoryDisclosure.RegistrationIdentifier,
+                PublicContactEmail = directoryDisclosure.PublicContactEmail,
+                LegalNoticeUrl = directoryDisclosure.LegalNoticeUrl,
+                TermsUrl = directoryDisclosure.TermsUrl,
+                PrivacyUrl = directoryDisclosure.PrivacyUrl
+            },
+            InstanceOperator = new PaidOrderAcceptanceInstanceOperatorDto
+            {
+                OperatorId = operatorDisclosure.OperatorId,
+                PublicName = operatorDisclosure.OperatorDisplayName,
+                LegalName = operatorDisclosure.LegalName,
+                OperatorKindCode = operatorDisclosure.OperatorKindCode,
+                RegistrationIdentifier = operatorDisclosure.RegistrationIdentifier,
+                IsOfficialInstance = operatorDisclosure.IsOfficialInstance,
+                OfficialOrigin = operatorDisclosure.OfficialOrigin,
+                JurisdictionCountryCode = operatorDisclosure.RegionCode,
+                WebsiteUrl = operatorDisclosure.WebsiteUrl,
+                LegalNoticeUrl = operatorDisclosure.LegalNoticeUrl,
+                TermsUrl = operatorDisclosure.TermsUrl,
+                PrivacyUrl = operatorDisclosure.PrivacyUrl
+            },
+            PaymentOperations = new PaidOrderAcceptancePaymentOperationsDto
+            {
+                ComplaintContact = operatorDisclosure.ComplaintContact,
+                ComplaintOwner = operatorDisclosure.ComplaintOwner,
+                RefundOwner = operatorDisclosure.RefundOwner,
+                DisputeOwner = operatorDisclosure.DisputeOwner,
+                ReconciliationOwner = operatorDisclosure.ReconciliationOwner,
+                ActivationStatus = operatorDisclosure.ActivationStatus
+            },
             DeliveryStartsAtUtc = delivery.StartsAtUtc,
             DeliveryEndsAtUtc = delivery.EndsAtUtc,
             EventTimeZoneId = delivery.TimeZoneId,
@@ -221,20 +315,12 @@ public sealed class PaidOrderAcceptanceService(
             RefundPolicyText = catalog.RefundPolicyDisclosureText,
             RefundPolicyLanguageTag = governance.RefundPolicyLanguageTag,
             SupportContact = catalog.SupportContactDisclosureText,
-            ComplaintContact = operatorDisclosure.ComplaintContact,
-            ComplaintOwner = operatorDisclosure.ComplaintOwner,
-            RefundOwner = operatorDisclosure.RefundOwner,
-            DisputeOwner = operatorDisclosure.DisputeOwner,
-            ReconciliationOwner = operatorDisclosure.ReconciliationOwner,
-            ProviderCode = providerDisclosure.ProviderCode,
-            ProviderProfileCode = providerDisclosure.ProfileCode,
-            ProviderEnvironment = providerDisclosure.Environment,
-            ProviderCredentialOwner = providerDisclosure.CredentialOwner,
-            ChargeType = providerDisclosure.ChargeType,
-            StatementDescriptor = providerDisclosure.StatementDescriptor,
             Lines = lines
         }, null, null, null, new(
-            governance.OperatorId,
+            organizerActorId,
+            instanceOperatorIdentity.OperatorId,
+            directoryDisclosure.DocumentId,
+            directoryDisclosure.DocumentRevisionId,
             instancePolicy.Id,
             tenantPolicy?.Id));
     }
@@ -265,26 +351,51 @@ public sealed class PaidOrderAcceptanceService(
             return Failure("payment_acceptance_stale", "Payment disclosures changed. Review and acknowledge the current facts.");
         }
 
+        PaidOrderAcceptanceOrganizerMerchantDto organizerMerchant = disclosure.OrganizerMerchant;
+        PaidOrderAcceptanceTenantDirectoryOperatorDto directoryOperator = disclosure.TenantDirectoryOperator;
+        PaidOrderAcceptanceInstanceOperatorDto instanceOperator = disclosure.InstanceOperator;
         PaidOrderAcceptanceSnapshot snapshot = PaidOrderAcceptanceSnapshot.Create(
             Guid.CreateVersion7(), order.TenantId, order.TenantId, order.Id, order.EventId,
-            order.ConcurrencyStamp.ToString("N"), disclosure.DisclosureRevision, disclosure.MerchantDisclosureText,
+            order.ConcurrencyStamp.ToString("N"), disclosure.DisclosureRevision,
+            disclosure.AcceptanceTemplateIdentifier, disclosure.AcceptanceTemplateText,
+            authority.OrganizerActorId, organizerMerchant.MerchantDisclosureText,
+            PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
+                authority.TenantDirectoryOperatorDocumentId,
+                authority.TenantDirectoryOperatorRevisionId,
+                directoryOperator.PublicName,
+                directoryOperator.LegalName,
+                directoryOperator.OperatorKindCode,
+                directoryOperator.JurisdictionCountryCode,
+                directoryOperator.RegistrationIdentifier,
+                directoryOperator.PublicContactEmail,
+                directoryOperator.LegalNoticeUrl,
+                directoryOperator.TermsUrl,
+                directoryOperator.PrivacyUrl),
             PaidCheckoutOperatorDisclosure.Create(
-                authority.OperatorId, disclosure.OperatorDisplayName, disclosure.IsOfficialInstance, disclosure.OfficialOrigin,
-                disclosure.OperatorRegionCode, disclosure.OperatorWebsiteUrl, disclosure.OperatorLegalNoticeUrl,
-                disclosure.OperatorTermsUrl, disclosure.OperatorPrivacyUrl, disclosure.ComplaintContact,
-                disclosure.ComplaintOwner, disclosure.RefundOwner, disclosure.DisputeOwner,
-                disclosure.ReconciliationOwner, disclosure.OperatorActivationStatus),
+                authority.OperatorId, instanceOperator.PublicName, instanceOperator.IsOfficialInstance,
+                instanceOperator.OfficialOrigin, instanceOperator.JurisdictionCountryCode,
+                instanceOperator.WebsiteUrl, instanceOperator.LegalNoticeUrl,
+                instanceOperator.TermsUrl, instanceOperator.PrivacyUrl, disclosure.PaymentOperations.ComplaintContact,
+                disclosure.PaymentOperations.ComplaintOwner, disclosure.PaymentOperations.RefundOwner,
+                disclosure.PaymentOperations.DisputeOwner, disclosure.PaymentOperations.ReconciliationOwner,
+                disclosure.PaymentOperations.ActivationStatus, instanceOperator.LegalName,
+                instanceOperator.OperatorKindCode, instanceOperator.RegistrationIdentifier),
             PaidOrderDeliverySnapshot.Create(disclosure.DeliveryStartsAtUtc, disclosure.DeliveryEndsAtUtc, disclosure.EventTimeZoneId),
             disclosure.CurrencyCode, disclosure.OrganizerAmountMinor, disclosure.PlatformFeeMinor,
             disclosure.PlatformContributionMinor, disclosure.TotalMinor, authority.InstancePolicyVersionId, disclosure.RefundPolicyVersion,
             disclosure.RefundPolicyText, disclosure.RefundPolicyLanguageTag, disclosure.SupportContact,
             PaidCheckoutProviderDisclosure.Create(
-                disclosure.ProviderCode, disclosure.ProviderProfileCode, disclosure.ChargeType,
-                disclosure.StatementDescriptor, disclosure.ProviderEnvironment, disclosure.ProviderCredentialOwner),
+                organizerMerchant.ProviderCode, organizerMerchant.ProviderProfileCode, organizerMerchant.ChargeType,
+                organizerMerchant.StatementDescriptor, organizerMerchant.ProviderEnvironment,
+                organizerMerchant.ProviderCredentialOwner),
             disclosure.Lines.Select(line => PaidOrderAcceptanceLineFact.Create(
                 line.OrderLineId, line.Name, line.Quantity, line.UnitAmountMinor,
                 line.DiscountAmountMinor, line.LineTotalMinor)).ToArray(),
-            acceptedAt, authority.TenantPolicyVersionId);
+            acceptedAt, authority.TenantPolicyVersionId,
+            organizerMerchant.OrganizerPaymentProviderConnectionId,
+            organizerMerchant.ConnectPlatformId,
+            organizerMerchant.ExternalAccountId,
+            organizerMerchant.MerchantCountryCode);
         return current with { Snapshot = snapshot };
     }
 

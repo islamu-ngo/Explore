@@ -7,6 +7,26 @@ This project stores most entities directly under `Explore.Domain/` (not in an `E
 
 For Domain value semantics, entity-versus-record selection, and the scalar EF persistence boundary, see [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md).
 
+## Legal-Identity Authority
+
+Legal identity is split by responsibility:
+
+- `TenantDirectoryOperatorIdentity` is the normalized tenant-owned directory
+  authority stored in the canonical typed settings document;
+- `InstanceOperatorIdentity` is immutable startup configuration for the
+  general platform operator;
+- organizer merchant identity comes from the event organizer actor and current
+  provider recipient lineage;
+- `PaidCheckoutGovernanceOptions` owns payment operations, not identity.
+
+`TenantDirectoryOperatorReadinessEvaluator` evaluates the exact document for
+`Activation`, `PublicDisclosure`, or `PaidCommerce` and returns stable blocker
+codes without identity payloads. `PaidOrderAcceptanceSnapshot` stores immutable
+structured evidence: acceptance-template identity/text, organizer actor,
+tenant directory document/revision and normalized facts, instance operator,
+provider recipient, policies, schedule, lines, and money. Historical snapshots
+are never rewritten when any authority changes.
+
 ## Core Aggregates
 
 1. Tenant and access scope:

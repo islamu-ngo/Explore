@@ -3,6 +3,17 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 
 # Troubleshooting
 
+## Legal Identity And Readiness
+
+| Symptom | Likely authority | Repair |
+|---|---|---|
+| API or Standalone stops with `Instance:OperatorIdentity` validation failure | Missing or malformed `INSTANCE__OPERATORIDENTITY__*` startup values | Correct the exact `.env` values and restart; do not move them into appsettings, branding, or Checkout governance |
+| Tenant activation/reactivation is blocked | Tenant document is incomplete for `Activation` | Open Tenant Settings -> Legal Identity, complete the grouped legal/contact/link fields, and save using the current revision |
+| Anonymous settings/shell returns `503` and `tenant_identity_unavailable` | Exact tenant document is missing, corrupt, or incomplete for `PublicDisclosure` | Repair the tenant identity document; do not add a public cache or branding fallback |
+| Paid publication or Checkout activation is blocked | `PaidCommerce` intersection is incomplete | Repair the reported tenant identity, instance identity, organizer payment connection, policy, or payment-operation authority |
+| Admin save reports a conflict | Another writer changed the document revision | Review the automatically reloaded authoritative values, reapply the intended edit, and save again |
+| Earlier buyer acceptance becomes stale | Identity, organizer/provider lineage, policy, schedule, line, or money facts changed | Present the newly composed disclosure and collect a new explicit acknowledgement |
+
 > **Audience:** Operators | Contributors | Admins
 > **Status:** Implemented
 > **Owner:** Platform/Ops

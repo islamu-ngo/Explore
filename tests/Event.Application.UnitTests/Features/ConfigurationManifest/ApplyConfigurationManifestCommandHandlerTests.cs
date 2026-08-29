@@ -1811,11 +1811,17 @@ public sealed class ApplyConfigurationManifestCommandHandlerTests
                     };
                     TenantSettingsDocument branding = TenantSettingsDocument.Create(
                         request.TenantId,
-                        request.BrandingDocumentKey,
-                        request.BrandingSchemaVersion,
-                        request.BrandingDefaultsVersion,
-                        request.BrandingPayloadJson);
-                    return new TenantCreationOutcome(tenant, branding);
+                        SettingsDocumentKeys.Tenant.Branding,
+                        request.Branding.SchemaVersion,
+                        request.Branding.DefaultsVersion,
+                        request.Branding.PayloadJson);
+                    TenantSettingsDocument identity = TenantSettingsDocument.Create(
+                        request.TenantId,
+                        SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity,
+                        request.DirectoryOperatorIdentity.SchemaVersion,
+                        request.DirectoryOperatorIdentity.DefaultsVersion,
+                        request.DirectoryOperatorIdentity.PayloadJson);
+                    return new TenantCreationOutcome(tenant, branding, identity);
                 });
             PolicyBoundary.ApplyTenantInCurrentTransactionAsync(
                     Arg.Any<PublicationPolicyTenantMutationRequest>(),

@@ -18,6 +18,7 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
     private readonly IInstanceOnboardingService _instanceOnboardingService;
     private readonly ITenantPublicExperienceAdminService _publicExperienceAdminService;
     private readonly ITenantBrandingSettingsAdminService _brandingSettingsAdminService;
+    private readonly ITenantDirectoryOperatorIdentityAdminService _directoryOperatorIdentityAdminService;
     private readonly ITenantStorageSettingsAdminService _storageSettingsAdminService;
     private readonly ISupportAccessClientService _supportAccessClientService;
     private readonly IAccessibilityAnnouncerService _announcer;
@@ -32,6 +33,8 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
         _instanceOnboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
         _brandingSettingsAdminService = _ctx.AddMockService<ITenantBrandingSettingsAdminService>();
+        _directoryOperatorIdentityAdminService =
+            _ctx.AddMockService<ITenantDirectoryOperatorIdentityAdminService>();
         _storageSettingsAdminService = _ctx.AddMockService<ITenantStorageSettingsAdminService>();
         _supportAccessClientService = _ctx.AddMockService<ISupportAccessClientService>();
         _announcer = Substitute.For<IAccessibilityAnnouncerService>();
@@ -172,6 +175,11 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
             .Returns(Task.FromResult(new TenantPublicExperienceAdminModel()));
         _brandingSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new TenantBrandingSettingsAdminModel { Exists = true, CanReplace = true }));
+        _directoryOperatorIdentityAdminService.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new TenantDirectoryOperatorIdentityAdminModel
+            {
+                Exists = true
+            }));
         _storageSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new HalResourceOfTenantStorageSettingsDto()));
         _supportAccessClientService.GetSessionsAsync(_tenantId, Arg.Any<int>(), Arg.Any<CancellationToken>())

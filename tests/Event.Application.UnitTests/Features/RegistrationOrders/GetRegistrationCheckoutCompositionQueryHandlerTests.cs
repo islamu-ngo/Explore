@@ -1,14 +1,14 @@
 // ABOUTME: Tests public registration checkout composition and server-authored sliding-scale amounts.
 // ABOUTME: Verifies public eligibility and organizer earnings remain Application-owned.
 
+using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.RegistrationOrders.Handlers.Queries;
 using Explore.Application.Features.RegistrationOrders.Requests.Queries;
-using Explore.Application.Settings;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Services.Registration;
 using Explore.Domain;
-using Explore.Domain.Settings.Documents;
 using Explore.Domain.Settings.Documents.Payloads;
 using Explore.Domain.ValueObjects;
 using Explore.Domain.Enums;
@@ -29,8 +29,7 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandlerTests
         var events = Substitute.For<IEventRepository>();
         var catalogs = Substitute.For<IEventTicketCatalogRepository>();
         var feePolicies = Substitute.For<IPlatformFeePolicyRepository>();
-        var paidEventPolicies = Substitute.For<IPaidEventPolicyRepository>();
-        var settings = Substitute.For<ITypedSettingsDocumentResolver>();
+        var directoryReadiness = Substitute.For<ITenantDirectoryOperatorReadinessEvaluator>();
         var eventTarget = new DomainEvent(EventStatusEnum.Published)
         {
             Id = eventId,
@@ -65,28 +64,29 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandlerTests
         events.IsPubliclyEligibleAsync(tenantId, eventId, Arg.Any<CancellationToken>()).Returns(true);
         catalogs.GetPublishedCatalogAsync(eventId, tenantId, Arg.Any<CancellationToken>()).Returns(catalog);
         feePolicies.GetActiveAsync(Arg.Any<CancellationToken>()).Returns((PlatformFeePolicy?)null);
-        paidEventPolicies.GetActiveInstanceAsync(Arg.Any<CancellationToken>())
-            .Returns(EnabledInstancePolicy());
-        settings.ResolveTenantDocumentAsync<BrandingSettings>(
-                Arg.Any<SettingsResolutionContext>(),
-                SettingsDocumentKeys.Tenant.Branding,
-                Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSettingsDocument<BrandingSettings>
+        TenantDirectoryOperatorIdentity identity = TenantDirectoryOperatorIdentity.Evaluate(
+            new TenantDirectoryOperatorIdentitySettings
             {
-                DocumentKey = SettingsDocumentKeys.Tenant.Branding,
-                SchemaVersion = 1,
-                DefaultsVersion = "1",
-                Payload = new BrandingSettings { DisplayName = "Tenant Events" },
-                Source = SettingsDocumentSource.Tenant,
-                SourceScopeId = tenantId,
-                ConcurrencyStamp = Guid.CreateVersion7()
-            });
+                PublicName = "Community Events",
+                LegalName = "Community Events ASBL",
+                OperatorKindCode = TenantDirectoryOperatorKinds.RegisteredOrganization,
+                JurisdictionCountryCode = "BE",
+                PublicContactEmail = "contact@example.test",
+                LegalNoticeUrl = "https://example.test/legal",
+                TermsUrl = "https://example.test/terms",
+                PrivacyUrl = "https://example.test/privacy"
+            },
+            TenantDirectoryOperatorIdentityCapability.PaidCommerce).Identity!;
+        directoryReadiness.EvaluateAsync(
+                tenantId,
+                TenantDirectoryOperatorIdentityCapability.PaidCommerce,
+                Arg.Any<CancellationToken>())
+            .Returns(TenantDirectoryOperatorReadinessAssessment.Ready(identity, Guid.CreateVersion7(), Guid.CreateVersion7()));
         var handler = new GetRegistrationCheckoutCompositionQueryHandler(
             events,
             catalogs,
             feePolicies,
-            paidEventPolicies,
-            settings,
+            directoryReadiness,
             new OrganizerEarningsCalculator());
 
         var result = await handler.Handle(new GetRegistrationCheckoutCompositionQuery(eventId), CancellationToken.None);
@@ -96,22 +96,11 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandlerTests
         await Assert.That(options.First().BuyerPriceMinor).IsEqualTo(500);
         await Assert.That(options.Last().BuyerPriceMinor).IsEqualTo(1000);
         await Assert.That(options.All(option => option.OrganizerEarningsMinor == option.BuyerPriceMinor)).IsTrue();
-        await Assert.That(result.PaidEventDirectoryDisclaimer).StartsWith(
-            "Tenant Events provides an event discovery and management directory only.");
+        string json = JsonSerializer.Serialize(
+            result,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await Assert.That(json).Contains("\"directoryOperator\"");
+        await Assert.That(json).DoesNotContain("\"paidEventDirectoryDisclaimer\"");
     }
 
-    private static PaidEventPolicyVersion EnabledInstancePolicy()
-    {
-        PaidEventPolicyVersion policy = PaidEventPolicyVersion.CreateDefaultInstance();
-        return policy.CreateRevision(
-            true,
-            policy.AllowedOrganizerKinds,
-            policy.RequiresLocalVerification,
-            policy.AllowedCurrencyCodes,
-            policy.DefaultCurrencyCode,
-            policy.RefundProtections,
-            policy.CurrencyRiskLimits,
-            policy.RequiresFirstPaidEventReview,
-            policy.FarFutureReviewThresholdDays);
-    }
 }

@@ -9,6 +9,16 @@ namespace Explore.API.Hateoas;
 /// </summary>
 public static class RouteNames
 {
+    public const string GetEventAddOnCatalog = "GetEventAddOnCatalog";
+    public const string GetEventAddOnManagement = "GetEventAddOnManagement";
+    public const string CreateEventAddOnCatalogDraft = "CreateEventAddOnCatalogDraft";
+    public const string AddEventAddOnCatalogItem = "AddEventAddOnCatalogItem";
+    public const string PublishEventAddOnCatalog = "PublishEventAddOnCatalog";
+    public const string RetireEventAddOnCatalog = "RetireEventAddOnCatalog";
+    public const string GetRegistrationOrderAddOns = "GetRegistrationOrderAddOns";
+    public const string ReserveRegistrationOrderAddOns = "ReserveRegistrationOrderAddOns";
+    public const string FulfillRegistrationOrderAddOn = "FulfillRegistrationOrderAddOn";
+    public const string RefundRegistrationOrderAddOn = "RefundRegistrationOrderAddOn";
     public const string RequestAdmissionTicketRecovery = "RequestAdmissionTicketRecovery";
     public const string ConsumeAdmissionTicketRecovery = "ConsumeAdmissionTicketRecovery";
     public const string GetCurrentAdmissionTickets = "GetCurrentAdmissionTickets";
@@ -652,6 +662,10 @@ public static class RouteNames
 
     public const string GetTenantBrandingSettingsDocument = "GetTenantBrandingSettingsDocument";
     public const string PatchTenantBrandingSettingsDocument = "PatchTenantBrandingSettingsDocument";
+    public const string GetTenantDirectoryOperatorIdentityDocument =
+        "GetTenantDirectoryOperatorIdentityDocument";
+    public const string PatchTenantDirectoryOperatorIdentityDocument =
+        "PatchTenantDirectoryOperatorIdentityDocument";
     public const string GetTenantStorageSettings = "GetTenantStorageSettings";
     public const string PatchTenantStorageSettings = "PatchTenantStorageSettings";
     public const string TestTenantStorageConnection = "TestTenantStorageConnection";

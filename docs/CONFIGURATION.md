@@ -3,6 +3,27 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 
 # Configuration
 
+## Legal-Identity Configuration Boundaries
+
+General instance accountability is startup-bound at
+`Instance:OperatorIdentity`. The `.env` representation uses
+`INSTANCE__OPERATORIDENTITY__*` and includes the UUIDv7 operator ID, public and
+legal names, official-instance flag/origin, operator kind, jurisdiction,
+optional registration identifier, public contact email, website, legal notice,
+terms, and privacy URLs. API and Standalone hosts validate this section at
+runtime startup and fail closed when it is incomplete or malformed. OpenAPI
+generation uses its explicit build-time mode and does not weaken runtime hosts.
+
+Tenant directory identity is not an environment setting. Each tenant owns one
+canonical `tenant.directory-operator-identity` typed settings document created
+atomically with the tenant and branding document. `Payments:CheckoutGovernance`
+contains payment operations only: complaint/refund/dispute/reconciliation
+owners, activation status, refund language, statement descriptor, and charge
+type. Legacy operator identity keys under Checkout governance are unsupported.
+
+Cosmetic branding remains independently configurable and is never a legal
+identity fallback.
+
 > **Audience:** Operators | Contributors | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops

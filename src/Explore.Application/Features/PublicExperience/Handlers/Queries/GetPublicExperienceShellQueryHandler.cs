@@ -31,6 +31,15 @@ public class GetPublicExperienceShellQueryHandler(
     public async Task<PublicExperienceShellDto> Handle(GetPublicExperienceShellQuery request, CancellationToken cancellationToken)
     {
         var settings = await settingsHandler.Handle(new GetPublicExperienceSettingsQuery(), cancellationToken);
+        if (!settings.IsAvailable)
+        {
+            return new PublicExperienceShellDto
+            {
+                IsAvailable = false,
+                UnavailableCode = settings.UnavailableCode
+            };
+        }
+
         var navigationLinks = await navigationLinksHandler.Handle(new GetTenantNavLinksQuery(), cancellationToken);
         var tenantId = tenantContext.TenantId;
         var settingContext = new SettingContext(TenantId: tenantId);
@@ -67,6 +76,9 @@ public class GetPublicExperienceShellQueryHandler(
         return new PublicExperienceShellDto
         {
             SchemaVersion = 1,
+            IsAvailable = true,
+            DirectoryOperator = settings.DirectoryOperator,
+            InstanceOperator = settings.InstanceOperator,
             Revision = BuildRevision(
                 settings,
                 parsedMode,

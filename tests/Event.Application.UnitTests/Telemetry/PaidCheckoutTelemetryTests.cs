@@ -44,6 +44,21 @@ public sealed class PaidCheckoutTelemetryTests
         await Assert.That(measurement.ReasonCategory).IsEqualTo("none");
     }
 
+    [Test]
+    public async Task DirectoryOperatorIdentityUnavailableUsesExplicitCategory()
+    {
+        using var signal = new ActivationMeasurementSignal();
+        using var telemetry = new PaidCheckoutTelemetry();
+
+        telemetry.RecordActivation(PaidCheckoutActivationResult.Failure(
+            "tenant_directory_operator_identity_unavailable",
+            "Tenant directory operator identity is unavailable for paid commerce."));
+
+        ActivationMeasurement measurement = await signal.Measurement.WaitAsync(TimeSpan.FromSeconds(5));
+        await Assert.That(measurement.Outcome).IsEqualTo("blocked");
+        await Assert.That(measurement.ReasonCategory).IsEqualTo("directory_operator_identity");
+    }
+
     private sealed class ActivationMeasurementSignal : IDisposable
     {
         private readonly TaskCompletionSource<ActivationMeasurement> _measurement =

@@ -16,10 +16,6 @@ Operator references: [Self-hosting](docs/SELF_HOSTING.md) ·
 [Configuration](docs/CONFIGURATION.md) · [Secrets](docs/SECRETS.md) ·
 [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-Operator references: [Self-hosting](docs/SELF_HOSTING.md) ·
-[Configuration](docs/CONFIGURATION.md) · [Secrets](docs/SECRETS.md) ·
-[Troubleshooting](docs/TROUBLESHOOTING.md)
-
 ![GitHub Workflow Status][github-workflow-status-shield]
 [![GitHub License][github-license-shield]][github-license-link]
 [![GitHub Repo Stars][github-stars-shield]][github-stars-link]

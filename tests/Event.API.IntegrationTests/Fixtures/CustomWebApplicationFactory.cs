@@ -1,3 +1,6 @@
+// ABOUTME: Configures the API integration host with deterministic in-memory infrastructure.
+// ABOUTME: Supplies non-secret startup identity so runtime validation remains active in tests.
+
 using System.Threading.Channels;
 using Explore.Domain.Constants;
 using Explore.Persistence;
@@ -18,6 +21,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         // Set environment to "Testing"
         builder.UseEnvironment("Testing");
+        TestInstanceOperatorIdentityConfiguration.Apply(builder);
 
         // Force configuration to be available immediately
         builder.ConfigureAppConfiguration((context, config) =>
@@ -43,7 +47,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 {"S3Settings:SecretAccessKey", "test-secret"},
                 {"S3Settings:Endpoint", "https://s3.example.com"},
                 {"Deployment:Mode", "SingleTenant"},
-                {"Deployment:DefaultTenantId", PlatformDefaults.DefaultTenantId.ToString()}
+                {"Deployment:DefaultTenantId", PlatformDefaults.DefaultTenantId.ToString()},
             };
             config.AddInMemoryCollection(inMemoryConfig);
         });

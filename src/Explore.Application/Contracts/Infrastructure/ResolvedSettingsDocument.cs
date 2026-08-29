@@ -6,6 +6,8 @@ namespace Explore.Application.Contracts.Infrastructure;
 public sealed record ResolvedSettingsDocument<TPayload>
     where TPayload : notnull
 {
+    public Guid? DocumentId { get; init; }
+
     public required string DocumentKey { get; init; }
 
     public required int SchemaVersion { get; init; }

@@ -1,0 +1,6 @@
+<!-- ABOUTME: Focused solution boundary for legal-identity Application mutation testing. -->
+<!-- ABOUTME: Prevents unrelated test projects from entering the Stryker discovery set. -->
+<Solution>
+  <Project Path="../../src/Explore.Application/Explore.Application.csproj" />
+  <Project Path="Event.Application.LegalIdentity.MutationTests.csproj" />
+</Solution>

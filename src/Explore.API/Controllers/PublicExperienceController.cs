@@ -42,10 +42,13 @@ public class PublicExperienceController : ControllerBase
     [EndpointSummary("Get Public Experience Settings")]
     [EndpointDescription("Returns effective home-page and white-label settings for the current tenant context.")]
     [ProducesResponseType(typeof(PublicExperienceSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<PublicExperienceSettingsDto>> GetSettings(CancellationToken cancellationToken = default)
     {
         var settings = await _mediator.Send(new GetPublicExperienceSettingsQuery(), cancellationToken);
-        return Ok(settings);
+        return settings.IsAvailable
+            ? Ok(settings)
+            : IdentityUnavailable(settings.UnavailableCode);
     }
 
     [HttpGet("shell", Name = RouteNames.GetPublicExperienceShell)]
@@ -53,11 +56,14 @@ public class PublicExperienceController : ControllerBase
     [EndpointSummary("Get Public Experience Shell")]
     [EndpointDescription("Returns the typed public shell read model for the current tenant context.")]
     [ProducesResponseType(typeof(PublicExperienceShellDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     [OutputCache(PolicyName = "PublicExperienceShell")]
     public async Task<ActionResult<PublicExperienceShellDto>> GetShell(CancellationToken cancellationToken = default)
     {
         var shell = await _mediator.Send(new GetPublicExperienceShellQuery(), cancellationToken);
-        return Ok(shell);
+        return shell.IsAvailable
+            ? Ok(shell)
+            : IdentityUnavailable(shell.UnavailableCode);
     }
 
     [HttpGet("~/api/public-experience/home", Name = RouteNames.GetHomeDiscovery)]
@@ -76,6 +82,19 @@ public class PublicExperienceController : ControllerBase
         var home = await _mediator.Send(new GetHomeDiscoveryQuery(areaId, mode), cancellationToken);
         AddSourceLinks(home);
         return Ok(home);
+    }
+
+    private ObjectResult IdentityUnavailable(string? code)
+    {
+        const string fallbackCode = "tenant_identity_unavailable";
+        Response.Headers.CacheControl = "no-store";
+        return Problem(
+            statusCode: StatusCodes.Status503ServiceUnavailable,
+            title: "Public experience identity is unavailable.",
+            extensions: new Dictionary<string, object?>
+            {
+                ["code"] = string.IsNullOrWhiteSpace(code) ? fallbackCode : code
+            });
     }
 
     private void AddSourceLinks(HomeDiscoveryDto home)

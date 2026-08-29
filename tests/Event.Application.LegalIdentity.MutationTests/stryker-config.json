@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.Core/Stryker.Core/stryker-config.schema.json",
+  "stryker-config": {
+    "project": "Explore.Application.csproj",
+    "test-runner": "mtp",
+    "thresholds": {
+      "high": 90,
+      "low": 86,
+      "break": 86
+    },
+    "reporters": [
+      "json"
+    ],
+    "mutate": [
+      "**/TenantDirectoryOperatorReadinessEvaluator.cs",
+      "**/PaidCheckoutActivationService.cs",
+      "**/PaidOrderAcceptanceService.cs",
+      "**/PaidOrderAcceptanceFreshnessService.cs",
+      "**/RegistrationPaymentAttemptClaimService.cs",
+      "**/PaidEventPublicationPreflightService.cs"
+    ],
+    "ignore-mutations": [
+      "string"
+    ],
+    "coverage-analysis": "all",
+    "disable-bail": false,
+    "concurrency": 4
+  }
+}

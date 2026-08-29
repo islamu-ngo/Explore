@@ -324,7 +324,15 @@ public sealed class StripeRefundWebhookTests
 
     private static PaidOrderAcceptanceSnapshot Acceptance() => PaidOrderAcceptanceSnapshot.Create(
         Guid.CreateVersion7(), TenantId, TenantId, Guid.CreateVersion7(), Guid.CreateVersion7(),
-        "composition-1", "disclosure-1", "Example Organizer",
+        "composition-1", "disclosure-1",
+        PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateIdentifier,
+        PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateText,
+        Guid.CreateVersion7(),
+        "Example Organizer",
+        PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
+            Guid.CreateVersion7(), Guid.CreateVersion7(), "Community Events", "Community Events ASBL",
+            "registered_organization", "BE", null, "contact@example.test", "https://example.test/legal",
+            "https://example.test/terms", "https://example.test/privacy"),
         PaidCheckoutOperatorDisclosure.Create(
             Guid.CreateVersion7(), "Example Operator", false, "https://events.example.test", "BE",
             "https://events.example.test", "https://events.example.test/legal", "https://events.example.test/terms",

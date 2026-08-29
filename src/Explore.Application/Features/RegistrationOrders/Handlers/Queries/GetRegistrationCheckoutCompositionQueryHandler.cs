@@ -5,12 +5,10 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.RegistrationOrders;
+using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.RegistrationOrders.Requests.Queries;
-using Explore.Application.Settings;
 using Explore.Domain.Enums;
-using Explore.Domain.Services.Registration;
-using Explore.Domain.Settings.Documents;
-using Explore.Domain.Settings.Documents.Payloads;
+using Explore.Domain.ValueObjects;
 using MediatR;
 
 namespace Explore.Application.Features.RegistrationOrders.Handlers.Queries;
@@ -19,8 +17,7 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandler(
     IEventRepository events,
     IEventTicketCatalogRepository catalogs,
     IPlatformFeePolicyRepository feePolicies,
-    IPaidEventPolicyRepository paidEventPolicies,
-    ITypedSettingsDocumentResolver settingsDocumentResolver,
+    ITenantDirectoryOperatorReadinessEvaluator directoryOperatorReadiness,
     IOrganizerEarningsCalculator earningsCalculator)
     : IRequestHandler<GetRegistrationCheckoutCompositionQuery, RegistrationCheckoutCompositionDto?>
 {
@@ -48,24 +45,33 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandler(
             .Where(ticketType => !ticketType.IsDeleted)
             .ToArray();
         var feePolicy = await feePolicies.GetActiveAsync(cancellationToken);
-        string? paidEventDirectoryDisclaimer = null;
+        TenantDirectoryOperatorPublicDto? directoryOperator = null;
         if (ticketTypes.Any(ticketType => ticketType.TicketPricingModeId != (int)TicketPricingModeEnum.Free))
         {
-            var instancePolicy = await paidEventPolicies.GetActiveInstanceAsync(cancellationToken);
-            var tenantPolicy = instancePolicy is null
-                ? null
-                : await paidEventPolicies.GetActiveTenantAsync(@event.TenantId, cancellationToken);
-            if (instancePolicy is not null &&
-                PaidEventPolicyRules.GetEffectiveCurrencyCodes(instancePolicy, tenantPolicy).Count > 0)
-            {
-                var branding = await settingsDocumentResolver.ResolveTenantDocumentAsync<BrandingSettings>(
-                    new SettingsResolutionContext(
-                        @event.TenantId,
-                        RequestedDocuments: [SettingsDocumentKeys.Tenant.Branding]),
-                    SettingsDocumentKeys.Tenant.Branding,
+            TenantDirectoryOperatorReadinessAssessment readiness =
+                await directoryOperatorReadiness.EvaluateAsync(
+                    @event.TenantId,
+                    TenantDirectoryOperatorIdentityCapability.PaidCommerce,
                     cancellationToken);
-                paidEventDirectoryDisclaimer = PaidEventDisclaimerFormatter.Format(branding?.Payload.DisplayName);
+            if (!readiness.IsReady || readiness.Identity is not { } identity ||
+                readiness.DocumentRevision is not { } revision)
+            {
+                return null;
             }
+
+            directoryOperator = new TenantDirectoryOperatorPublicDto
+            {
+                DocumentRevision = revision,
+                PublicName = identity.PublicName,
+                LegalName = identity.LegalName,
+                OperatorKindCode = identity.OperatorKindCode,
+                JurisdictionCountryCode = identity.JurisdictionCountryCode,
+                RegistrationIdentifier = identity.RegistrationIdentifier,
+                PublicContactEmail = identity.PublicContactEmail,
+                LegalNoticeUrl = identity.LegalNoticeUrl,
+                TermsUrl = identity.TermsUrl,
+                PrivacyUrl = identity.PrivacyUrl
+            };
         }
 
         return new RegistrationCheckoutCompositionDto
@@ -73,7 +79,7 @@ public sealed class GetRegistrationCheckoutCompositionQueryHandler(
             EventId = @event.Id,
             TicketCatalogVersionId = catalog.Id,
             CurrencyCode = catalog.CurrencyCode,
-            PaidEventDirectoryDisclaimer = paidEventDirectoryDisclaimer,
+            DirectoryOperator = directoryOperator,
             TicketTypes = ticketTypes
                 .Select(ticketType => new RegistrationCheckoutTicketTypeDto
                     {

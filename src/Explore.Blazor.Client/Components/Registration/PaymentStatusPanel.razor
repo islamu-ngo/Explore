@@ -28,18 +28,28 @@
         {
             <section class="payment-acceptance" aria-labelledby="payment-acceptance-heading" data-testid="payment-acceptance" lang="@Translations.CurrentLanguage" dir="@Direction">
                 <MudText Id="payment-acceptance-heading" Typo="Typo.h6" HtmlTag="h3">@T("payment.acceptance.heading", "Review before payment")</MudText>
+                <MudText Typo="Typo.body2" HtmlTag="p">@_acceptance.AcceptanceTemplateText</MudText>
                 <dl>
-                    <dt>@T("payment.acceptance.merchant", "Merchant disclosure")</dt><dd>@_acceptance.MerchantDisclosureText</dd>
-                    <dt>@T("payment.acceptance.platformRole", "Platform role")</dt><dd lang="en" dir="ltr" data-testid="payment-acceptance-paid-event-directory-disclaimer">@_acceptance.PaidEventDirectoryDisclaimer</dd>
-                    <dt>@T("payment.acceptance.operator", "Instance operator")</dt><dd>@_acceptance.OperatorDisplayName (@(_acceptance.IsOfficialInstance == true ? T("payment.operator.official", "official") : T("payment.operator.independent", "independent"))), @_acceptance.OperatorRegionCode</dd>
-                    <dt>@T("payment.acceptance.officialOrigin", "Operator origin")</dt><dd data-testid="acceptance-official-origin">@_acceptance.OfficialOrigin</dd>
-                    <dt>@T("payment.acceptance.activationStatus", "Operator activation status")</dt><dd data-testid="acceptance-activation-status">@_acceptance.OperatorActivationStatus</dd>
+                    <dt>@T("payment.acceptance.merchant", "Organizer merchant")</dt><dd data-testid="payment-acceptance-organizer-merchant">@_acceptance.OrganizerMerchant.MerchantDisclosureText</dd>
+                    <dt>@T("payment.acceptance.directoryOperator", "Directory operator")</dt><dd data-testid="payment-acceptance-directory-operator">@_acceptance.TenantDirectoryOperator.PublicName (@_acceptance.TenantDirectoryOperator.LegalName), @_acceptance.TenantDirectoryOperator.JurisdictionCountryCode</dd>
+                    <dt>@T("payment.acceptance.directoryLinks", "Directory legal information")</dt>
+                    <dd class="payment-acceptance__links">
+                        <a href="@_acceptance.TenantDirectoryOperator.LegalNoticeUrl" rel="noopener">@T("payment.operator.legal", "Legal notice")</a>
+                        @if (!string.IsNullOrWhiteSpace(_acceptance.TenantDirectoryOperator.TermsUrl))
+                        {
+                            <a href="@_acceptance.TenantDirectoryOperator.TermsUrl" rel="noopener">@T("payment.operator.terms", "Terms")</a>
+                        }
+                        <a href="@_acceptance.TenantDirectoryOperator.PrivacyUrl" rel="noopener">@T("payment.operator.privacy", "Privacy")</a>
+                    </dd>
+                    <dt>@T("payment.acceptance.operator", "Instance operator")</dt><dd data-testid="payment-acceptance-instance-operator">@_acceptance.InstanceOperator.PublicName (@(_acceptance.InstanceOperator.IsOfficialInstance == true ? T("payment.operator.official", "official") : T("payment.operator.independent", "independent"))), @_acceptance.InstanceOperator.JurisdictionCountryCode</dd>
+                    <dt>@T("payment.acceptance.officialOrigin", "Operator origin")</dt><dd data-testid="acceptance-official-origin">@_acceptance.InstanceOperator.OfficialOrigin</dd>
+                    <dt>@T("payment.acceptance.activationStatus", "Payment activation status")</dt><dd data-testid="acceptance-activation-status">@_acceptance.PaymentOperations.ActivationStatus</dd>
                     <dt>@T("payment.acceptance.operatorLinks", "Operator legal information")</dt>
                     <dd class="payment-acceptance__links">
-                        <a href="@_acceptance.OperatorWebsiteUrl" rel="noopener">@T("payment.operator.website", "Website")</a>
-                        <a href="@_acceptance.OperatorLegalNoticeUrl" rel="noopener">@T("payment.operator.legal", "Legal notice")</a>
-                        <a href="@_acceptance.OperatorTermsUrl" rel="noopener">@T("payment.operator.terms", "Terms")</a>
-                        <a href="@_acceptance.OperatorPrivacyUrl" rel="noopener">@T("payment.operator.privacy", "Privacy")</a>
+                        <a href="@_acceptance.InstanceOperator.WebsiteUrl" rel="noopener">@T("payment.operator.website", "Website")</a>
+                        <a href="@_acceptance.InstanceOperator.LegalNoticeUrl" rel="noopener">@T("payment.operator.legal", "Legal notice")</a>
+                        <a href="@_acceptance.InstanceOperator.TermsUrl" rel="noopener">@T("payment.operator.terms", "Terms")</a>
+                        <a href="@_acceptance.InstanceOperator.PrivacyUrl" rel="noopener">@T("payment.operator.privacy", "Privacy")</a>
                     </dd>
                     <dt>@T("payment.acceptance.delivery", "Event schedule")</dt><dd>@FormatSchedule(_acceptance)</dd>
                     <dt>@T("payment.acceptance.organizerAmount", "Organizer amount")</dt><dd>@FormatMoney(_acceptance.OrganizerAmountMinor, _acceptance)</dd>
@@ -48,10 +58,10 @@
                     <dt>@T("payment.acceptance.total", "Total")</dt><dd><strong>@FormatMoney(_acceptance.TotalMinor, _acceptance)</strong></dd>
                     <dt>@string.Format(Culture, T("payment.acceptance.refundPolicy", "Refund policy (version {0})"), _acceptance.RefundPolicyVersion)</dt><dd lang="@_acceptance.RefundPolicyLanguageTag" dir="auto">@_acceptance.RefundPolicyText</dd>
                     <dt>@T("payment.acceptance.support", "Support")</dt><dd>@_acceptance.SupportContact</dd>
-                    <dt>@T("payment.acceptance.complaints", "Complaints")</dt><dd>@_acceptance.ComplaintContact (@_acceptance.ComplaintOwner)</dd>
-                    <dt>@T("payment.acceptance.operations", "Operational ownership")</dt><dd>@_acceptance.RefundOwner; @_acceptance.DisputeOwner; @_acceptance.ReconciliationOwner</dd>
-                    <dt>@T("payment.acceptance.payment", "Payment")</dt><dd>@_acceptance.ProviderCode (@_acceptance.ProviderEnvironment), @_acceptance.ChargeType, @T("payment.acceptance.credentialOwner", "credential owner") @_acceptance.ProviderCredentialOwner, @T("payment.acceptance.statementDescriptor", "statement descriptor") @_acceptance.StatementDescriptor</dd>
-                    <dt>@T("payment.acceptance.providerProfile", "Provider profile")</dt><dd data-testid="acceptance-provider-profile">@_acceptance.ProviderProfileCode</dd>
+                    <dt>@T("payment.acceptance.complaints", "Complaints")</dt><dd>@_acceptance.PaymentOperations.ComplaintContact (@_acceptance.PaymentOperations.ComplaintOwner)</dd>
+                    <dt>@T("payment.acceptance.operations", "Payment operations")</dt><dd>@_acceptance.PaymentOperations.RefundOwner; @_acceptance.PaymentOperations.DisputeOwner; @_acceptance.PaymentOperations.ReconciliationOwner</dd>
+                    <dt>@T("payment.acceptance.payment", "Payment")</dt><dd>@_acceptance.OrganizerMerchant.ProviderCode (@_acceptance.OrganizerMerchant.ProviderEnvironment), @_acceptance.OrganizerMerchant.ChargeType, @T("payment.acceptance.credentialOwner", "credential owner") @_acceptance.OrganizerMerchant.ProviderCredentialOwner, @T("payment.acceptance.statementDescriptor", "statement descriptor") @_acceptance.OrganizerMerchant.StatementDescriptor</dd>
+                    <dt>@T("payment.acceptance.providerProfile", "Provider profile")</dt><dd data-testid="acceptance-provider-profile">@_acceptance.OrganizerMerchant.ProviderProfileCode</dd>
                 </dl>
                 <section class="payment-acceptance__lines" aria-labelledby="payment-acceptance-lines-heading">
                     <MudText Id="payment-acceptance-lines-heading" Typo="Typo.subtitle2" HtmlTag="h4">@T("payment.acceptance.lines", "Accepted ticket lines")</MudText>

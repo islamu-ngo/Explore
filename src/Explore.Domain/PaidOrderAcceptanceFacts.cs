@@ -5,6 +5,28 @@ using Explore.Domain.ValueObjects;
 
 namespace Explore.Domain;
 
+public sealed record PaidCheckoutInstanceOperatorDisclosure(
+    Guid OperatorId,
+    string PublicName,
+    string LegalName,
+    string OperatorKindCode,
+    string? RegistrationIdentifier,
+    bool IsOfficialInstance,
+    string OfficialOrigin,
+    string JurisdictionCountryCode,
+    string WebsiteUrl,
+    string LegalNoticeUrl,
+    string TermsUrl,
+    string PrivacyUrl);
+
+public sealed record PaidCheckoutPaymentOperationsDisclosure(
+    string ComplaintContact,
+    string ComplaintOwner,
+    string RefundOwner,
+    string DisputeOwner,
+    string ReconciliationOwner,
+    string ActivationStatus);
+
 public sealed record PaidOrderDeliverySnapshot
 {
     private PaidOrderDeliverySnapshot(DateTimeOffset startsAtUtc, DateTimeOffset endsAtUtc, string timeZoneId)
@@ -35,6 +57,88 @@ public sealed record PaidOrderDeliverySnapshot
         PaidCheckoutDisclosureValidation.Required(value, parameterName, maxLength);
 }
 
+public sealed record PaidCheckoutTenantDirectoryOperatorDisclosure
+{
+    private PaidCheckoutTenantDirectoryOperatorDisclosure(
+        Guid documentId,
+        Guid documentRevisionId,
+        string publicName,
+        string legalName,
+        string operatorKindCode,
+        string jurisdictionCountryCode,
+        string? registrationIdentifier,
+        string publicContactEmail,
+        string legalNoticeUrl,
+        string termsUrl,
+        string privacyUrl)
+    {
+        DocumentId = documentId;
+        DocumentRevisionId = documentRevisionId;
+        PublicName = publicName;
+        LegalName = legalName;
+        OperatorKindCode = operatorKindCode;
+        JurisdictionCountryCode = jurisdictionCountryCode;
+        RegistrationIdentifier = registrationIdentifier;
+        PublicContactEmail = publicContactEmail;
+        LegalNoticeUrl = legalNoticeUrl;
+        TermsUrl = termsUrl;
+        PrivacyUrl = privacyUrl;
+    }
+
+    public Guid DocumentId { get; }
+    public Guid DocumentRevisionId { get; }
+    public string PublicName { get; }
+    public string LegalName { get; }
+    public string OperatorKindCode { get; }
+    public string JurisdictionCountryCode { get; }
+    public string? RegistrationIdentifier { get; }
+    public string PublicContactEmail { get; }
+    public string LegalNoticeUrl { get; }
+    public string TermsUrl { get; }
+    public string PrivacyUrl { get; }
+
+    public static PaidCheckoutTenantDirectoryOperatorDisclosure Create(
+        Guid documentId,
+        Guid documentRevisionId,
+        string publicName,
+        string legalName,
+        string operatorKindCode,
+        string jurisdictionCountryCode,
+        string? registrationIdentifier,
+        string publicContactEmail,
+        string legalNoticeUrl,
+        string termsUrl,
+        string privacyUrl)
+    {
+        if (documentId == Guid.Empty || documentRevisionId == Guid.Empty)
+        {
+            throw new ArgumentException("Directory operator document lineage is invalid.");
+        }
+
+        string country = PaidCheckoutDisclosureValidation.Required(
+            jurisdictionCountryCode, nameof(jurisdictionCountryCode), 2).ToUpperInvariant();
+        if (country.Length != 2 || country.Any(character => character is < 'A' or > 'Z'))
+        {
+            throw new ArgumentException("Directory operator country must be an ISO alpha-2 code.", nameof(jurisdictionCountryCode));
+        }
+
+        return new(
+            documentId,
+            documentRevisionId,
+            PaidCheckoutDisclosureValidation.Required(publicName, nameof(publicName), 200),
+            PaidCheckoutDisclosureValidation.Required(legalName, nameof(legalName), 300),
+            PaidCheckoutDisclosureValidation.Required(operatorKindCode, nameof(operatorKindCode), 80).ToLowerInvariant(),
+            country,
+            string.IsNullOrWhiteSpace(registrationIdentifier)
+                ? null
+                : PaidCheckoutDisclosureValidation.Required(registrationIdentifier, nameof(registrationIdentifier), 120),
+            PaidCheckoutDisclosureValidation.Required(publicContactEmail, nameof(publicContactEmail), 320).ToLowerInvariant(),
+            PaidCheckoutDisclosureValidation.HttpsUrl(legalNoticeUrl, nameof(legalNoticeUrl)),
+            PaidCheckoutDisclosureValidation.HttpsUrl(termsUrl, nameof(termsUrl)),
+            PaidCheckoutDisclosureValidation.HttpsUrl(privacyUrl, nameof(privacyUrl)));
+    }
+}
+
 public sealed record PaidCheckoutOperatorDisclosure
 {
     private PaidCheckoutOperatorDisclosure(
@@ -52,7 +156,10 @@ public sealed record PaidCheckoutOperatorDisclosure
         string refundOwner,
         string disputeOwner,
         string reconciliationOwner,
-        string activationStatus)
+        string activationStatus,
+        string legalName,
+        string operatorKindCode,
+        string? registrationIdentifier)
     {
         OperatorId = operatorId;
         OperatorDisplayName = operatorDisplayName;
@@ -69,6 +176,9 @@ public sealed record PaidCheckoutOperatorDisclosure
         DisputeOwner = disputeOwner;
         ReconciliationOwner = reconciliationOwner;
         ActivationStatus = activationStatus;
+        LegalName = legalName;
+        OperatorKindCode = operatorKindCode;
+        RegistrationIdentifier = registrationIdentifier;
     }
 
     public Guid OperatorId { get; }
@@ -86,6 +196,9 @@ public sealed record PaidCheckoutOperatorDisclosure
     public string DisputeOwner { get; }
     public string ReconciliationOwner { get; }
     public string ActivationStatus { get; }
+    public string LegalName { get; }
+    public string OperatorKindCode { get; }
+    public string? RegistrationIdentifier { get; }
 
     public static PaidCheckoutOperatorDisclosure Create(
         Guid operatorId,
@@ -102,7 +215,10 @@ public sealed record PaidCheckoutOperatorDisclosure
         string refundOwner,
         string disputeOwner,
         string reconciliationOwner,
-        string activationStatus)
+        string activationStatus,
+        string? legalName = null,
+        string? operatorKindCode = null,
+        string? registrationIdentifier = null)
     {
         if (operatorId == Guid.Empty)
         {
@@ -137,7 +253,12 @@ public sealed record PaidCheckoutOperatorDisclosure
             PaidCheckoutDisclosureValidation.Required(refundOwner, nameof(refundOwner), 200),
             PaidCheckoutDisclosureValidation.Required(disputeOwner, nameof(disputeOwner), 200),
             PaidCheckoutDisclosureValidation.Required(reconciliationOwner, nameof(reconciliationOwner), 200),
-            activation);
+            activation,
+            PaidCheckoutDisclosureValidation.Required(legalName ?? operatorDisplayName, nameof(legalName), 300),
+            PaidCheckoutDisclosureValidation.Required(operatorKindCode ?? "independent_operator", nameof(operatorKindCode), 80).ToLowerInvariant(),
+            string.IsNullOrWhiteSpace(registrationIdentifier)
+                ? null
+                : PaidCheckoutDisclosureValidation.Required(registrationIdentifier, nameof(registrationIdentifier), 120));
     }
 }
 

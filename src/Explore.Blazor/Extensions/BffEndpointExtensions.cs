@@ -24,6 +24,7 @@ public static class BffEndpointExtensions
         app.MapParticipantReadinessEndpoints();
         app.MapTicketTransferEndpoints();
         app.MapFairReturnWaitlistEndpoints();
+        app.MapEventAddOnBff();
         app.MapAdmissionRecoveryEndpoints();
         app.MapAtprotoOAuthEndpoints();
 

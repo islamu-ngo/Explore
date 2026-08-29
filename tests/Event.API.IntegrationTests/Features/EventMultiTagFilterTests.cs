@@ -26,6 +26,7 @@ public class EventMultiTagFilterTests : IAsyncDisposable
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Testing");
+            TestInstanceOperatorIdentityConfiguration.Apply(builder);
             builder.ConfigureServices(services =>
             {
                 services.RemoveExploreDbContextRegistrations();

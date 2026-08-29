@@ -308,6 +308,33 @@ public sealed class TenantOnboardingTests : IDisposable
     }
 
     [Test]
+    public async Task DirectoryIdentityFailureCode_IsTranslatedBeforeRenderingAndAnnouncement()
+    {
+        const string code = TenantOnboardingService.DirectoryOperatorIdentityUnavailableCode;
+        _tenantOnboardingService.GetStatusAsync().Returns(CreateStatus(Guid.NewGuid()));
+        _tenantOnboardingService.CompleteAsync(Arg.Any<TenantPolicySettingsDto>())
+            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = code });
+
+        IRenderedComponent<TenantOnboarding> cut = Render();
+        cut.WaitForAssertion(() => RequireContains(cut.Markup, "Complete tenant onboarding"));
+
+        ClickButton(cut, "Complete tenant onboarding");
+
+        cut.WaitForAssertion(() =>
+        {
+            RequireDoesNotContain(cut.Markup, code);
+            if (!cut.FindAll("[role='alert']").Any(alert => !string.IsNullOrWhiteSpace(alert.TextContent)))
+            {
+                throw new InvalidOperationException("Expected a translated non-empty onboarding alert.");
+            }
+        });
+        _ = _announcer.Received(1).AnnounceAssertiveAsync(
+            Arg.Is<string>(message =>
+                !string.IsNullOrWhiteSpace(message)
+                && !string.Equals(message, code, StringComparison.Ordinal)));
+    }
+
+    [Test]
     public async Task Refresh_RefetchesStatusAndSettingsAndDeduplicatesOverlap()
     {
         Guid tenantId = Guid.NewGuid();

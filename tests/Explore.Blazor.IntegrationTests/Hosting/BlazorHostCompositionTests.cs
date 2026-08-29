@@ -3,13 +3,16 @@
 
 using System.Net;
 using Explore.Blazor.Extensions;
+using Explore.Blazor.HealthChecks;
 using Explore.Blazor.Hosting;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 using Yarp.ReverseProxy.Configuration;
 
 namespace Explore.Blazor.IntegrationTests.Hosting;
@@ -95,6 +98,49 @@ public sealed class BlazorHostCompositionTests
             new GracefulShutdownState());
 
         await Assert.That(act).Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task InitializeBlazorHostAsync_Split_FailsBeforeServingWhenApiStartupProbeFails()
+    {
+        var builder = CreateBuilder();
+        builder.Configuration["Blazor:RequireApiReadyOnStart"] = "true";
+        builder.AddBlazorHostServices(BlazorHostProfile.Split, new GracefulShutdownState());
+        var probe = Substitute.For<IExploreApiReadinessProbe>();
+        probe.EnsureReadyAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new HttpRequestException("HOSTILE downstream detail")));
+        builder.Services.Replace(ServiceDescriptor.Singleton(probe));
+        await using var app = builder.Build();
+
+        InvalidOperationException? failure = null;
+        try
+        {
+            await app.InitializeBlazorHostAsync(BlazorHostProfile.Split);
+        }
+        catch (InvalidOperationException exception)
+        {
+            failure = exception;
+        }
+
+        await Assert.That(failure).IsNotNull();
+        await Assert.That(failure!.Message)
+            .IsEqualTo("The split Blazor host cannot start because the Explore API is not ready.");
+        await Assert.That(failure.InnerException).IsTypeOf<HttpRequestException>();
+    }
+
+    [Test]
+    public async Task InitializeBlazorHostAsync_Combined_DoesNotProbeRemoteApi()
+    {
+        var builder = CreateBuilder();
+        builder.Configuration["Blazor:RequireApiReadyOnStart"] = "true";
+        builder.AddBlazorHostServices(BlazorHostProfile.Combined, new GracefulShutdownState());
+        var probe = Substitute.For<IExploreApiReadinessProbe>();
+        builder.Services.Replace(ServiceDescriptor.Singleton(probe));
+        await using var app = builder.Build();
+
+        await app.InitializeBlazorHostAsync(BlazorHostProfile.Combined);
+
+        await probe.DidNotReceive().EnsureReadyAsync(Arg.Any<CancellationToken>());
     }
 
     private static WebApplicationBuilder CreateBuilder()

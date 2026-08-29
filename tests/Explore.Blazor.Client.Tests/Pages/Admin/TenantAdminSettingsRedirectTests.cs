@@ -15,6 +15,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     private readonly IInstanceOnboardingService _onboardingService;
     private readonly ITenantOnboardingService _tenantOnboardingService;
     private readonly ITenantBrandingSettingsAdminService _tenantBrandingSettingsAdminService;
+    private readonly ITenantDirectoryOperatorIdentityAdminService _tenantDirectoryOperatorIdentityAdminService;
     private readonly ITenantPublicExperienceAdminService _publicExperienceAdminService;
     private readonly ITenantStorageSettingsAdminService _tenantStorageSettingsAdminService;
     private readonly IPaidEventPolicyService _paidEventPolicyService;
@@ -32,6 +33,8 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _publicExperienceAdminService = _ctx.AddMockService<ITenantPublicExperienceAdminService>();
         _tenantStorageSettingsAdminService = _ctx.AddMockService<ITenantStorageSettingsAdminService>();
         _tenantBrandingSettingsAdminService = _ctx.AddMockService<ITenantBrandingSettingsAdminService>();
+        _tenantDirectoryOperatorIdentityAdminService =
+            _ctx.AddMockService<ITenantDirectoryOperatorIdentityAdminService>();
         _paidEventPolicyService = _ctx.AddMockService<IPaidEventPolicyService>();
         _ctx.AddMockService<IOrganizationService>();
         _ctx.AddMockService<IUiShellContextService>();
@@ -40,6 +43,11 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             .Returns(new TenantPublicExperienceAdminModel());
         _tenantStorageSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfTenantStorageSettingsDto());
+        _tenantDirectoryOperatorIdentityAdminService.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new TenantDirectoryOperatorIdentityAdminModel
+            {
+                Exists = true
+            });
 
         _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         _nav.NavigateTo("/settings/admin");

@@ -3,6 +3,30 @@ ABOUTME: Prioritizes runtime rules from TenantContext, query filters, and govern
 
 # Multi-Tenancy
 
+## Tenant Directory-Operator Identity
+
+Every tenant has a canonical typed directory-operator identity document,
+`tenant.directory-operator-identity`. Tenant creation writes the tenant,
+branding document, and directory identity document in the caller-owned
+transaction. Active creation requires explicit complete identity input before
+any write; draft creation may persist an incomplete draft but cannot activate.
+
+Readiness is capability-specific:
+
+- `Activation` gates initial activation and every later reactivation;
+- `PublicDisclosure` gates anonymous settings and shell composition;
+- `PaidCommerce` gates paid publication and Checkout activation.
+
+Evaluation is exact-tenant and fail closed. Missing, malformed, cross-tenant, or
+incomplete identity returns stable payload-free reason codes; no branding,
+instance identity, or scalar setting is used as a substitute. Tenant onboarding
+marks its Identity step complete only from the readiness evaluator.
+
+Authenticated administrators read and patch the document through its dedicated
+CQRS/API resource. Optimistic concurrency uses the document revision, and the
+Blazor Save action is rendered only when the exact HAL `_links.edit` relation
+with `PATCH` is present.
+
 ## Deployment Modes
 
 First-run onboarding mode:
@@ -203,7 +227,7 @@ Tenants store overrides in `TenantSetting` with the same `routing.render_policy.
 
 See [RENDER_POLICIES.md](RENDER_POLICIES.md) for full delegation details.
 
-## Branding Governance, Single-to-Multi-Tenant Transition & Legal Disclosures
+## Branding Governance, Single-to-Multi-Tenant Transition, And Legal Identity
 
 ### 1. Why Instance Branding Exists
 Even in a tenant-centric platform, Instance Branding (`GovernanceSettingKeys.Branding.*`) is architecturally mandatory for surfaces that operate outside or above an individual tenant boundary:
@@ -221,16 +245,26 @@ Even in a tenant-centric platform, Instance Branding (`GovernanceSettingKeys.Bra
   * When provisioning additional tenancies (2nd, 3rd, etc.), the tenant creation flow initializes `BrandingSettings.DisplayName` from the provided tenant name (e.g., `"Dallas Muslim Center"`).
   * If white-labeling is permitted (`Tenants.WhiteLabelingEnabled = true`), tenant administrators can independently manage their display name, logo, favicon, and custom stylesheet.
 
-### 3. Fallback Philosophy: Defensive Graceful Degradation
-In multi-tenant mode, resolving `BrandDisplayName` falls back to the instance name (and ultimately `"ISLAMU"`) if a tenant's display name is unconfigured or locked by instance governance. This is **not a defect**; it is an essential architectural safety net ensuring public pages, notification emails, and SEO metadata never render blank strings or crash during onboarding or misconfiguration.
+### 3. Cosmetic Branding Fallback
+In multi-tenant mode, resolving `BrandDisplayName` may fall back to the instance
+name (and ultimately `"ISLAMU"`) if a tenant's cosmetic display name is
+unconfigured or locked. This fallback applies only to visual/copy surfaces. It
+never satisfies activation, public disclosure, paid commerce, or buyer
+acceptance identity requirements.
 
-### 4. Legal Disclosures: Tenant Directory vs. Instance Operator
-Multi-tenant e-commerce and legal disclosures are strictly partitioned:
+### 4. Structured Directory, Platform, And Merchant Roles
+Multi-tenant public and paid disclosures are strictly partitioned:
 
-* **Tenant Directory Disclaimer**: Buyer-facing directory notices (e.g., *"{TenantBrand} provides an event discovery and management directory only..."*) dynamically interpolate the **Tenant Brand** to clarify that the local directory host is not the event organizer.
-* **Instance Operator Disclosure**: Statutory e-commerce, payment-processing, and Stripe Connect disclosures use the **Instance Operator Identity** (`IPaidCheckoutGovernance`), clearly naming the platform entity operating the technical payment infrastructure.
+* **Tenant directory operator** comes from the exact tenant typed identity
+  document and carries the public/legal names, jurisdiction, registration,
+  contact, and links.
+* **Instance platform operator** comes from `Instance:OperatorIdentity`; payment
+  operations remain separately configured under `Payments:CheckoutGovernance`.
+* **Organizer merchant** comes from the event organizer actor and connected
+  provider recipient lineage.
 
-See [PAYMENTS.md](PAYMENTS.md#3-legal-disclaimers-multi-party-responsibilities--dynamic-branding) for the full sequence flow and presentation matrix.
+See [PAYMENTS.md](PAYMENTS.md#3-structured-legal-identity-and-paid-acceptance)
+for the readiness and immutable acceptance flow.
 
 ## Related
 

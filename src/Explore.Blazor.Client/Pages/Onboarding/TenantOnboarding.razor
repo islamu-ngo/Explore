@@ -424,9 +424,7 @@
             if (response.Success != true)
             {
                 await SetErrorAsync(
-                    string.IsNullOrWhiteSpace(response.Message)
-                        ? T("ui.onboarding.tenant.error.complete", "Tenant onboarding could not be completed.")
-                        : response.Message,
+                    CompletionErrorMessage(response.Message),
                     announce: true);
                 return;
             }
@@ -482,6 +480,18 @@
             }
         }
     }
+
+    private string CompletionErrorMessage(string? message) =>
+        string.Equals(
+            message,
+            Explore.Blazor.Client.Services.TenantOnboardingService.DirectoryOperatorIdentityUnavailableCode,
+            StringComparison.Ordinal)
+            ? T(
+                "ui.onboarding.tenant.error.directoryOperatorIdentityUnavailable",
+                "Directory-operator identity is unavailable.")
+            : string.IsNullOrWhiteSpace(message)
+                ? T("ui.onboarding.tenant.error.complete", "Tenant onboarding could not be completed.")
+                : message;
 
     private async Task<bool> LoadAuthoritativeStateAsync(
         bool loadSettingsWhenIncomplete,

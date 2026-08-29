@@ -9,14 +9,15 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.PublicExperience;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using Explore.Application.Settings;
 using Explore.Application.Settings.Groups;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums.Analytics;
-using Explore.Domain.Services.Registration;
 using Explore.Domain.Settings.Documents;
 using Explore.Domain.Settings.Documents.Payloads;
+using Explore.Domain.ValueObjects;
 using MediatR;
 
 namespace Explore.Application.Features.PublicExperience.Handlers.Queries;
@@ -34,9 +35,10 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
     private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
     private readonly ITypedSettingsDocumentResolver _typedSettingsDocumentResolver;
-    private readonly IPaidEventPolicyRepository _paidEventPolicyRepository;
     private readonly IFooterLinkGroupRepository _footerLinkGroupRepository;
     private readonly IMapper _mapper;
+    private readonly ITenantDirectoryOperatorReadinessEvaluator _directoryOperatorReadiness;
+    private readonly IInstanceOperatorIdentity _instanceOperatorIdentity;
 
     public GetPublicExperienceSettingsQueryHandler(
         ITenantContext tenantContext,
@@ -50,9 +52,10 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         IAnalyticsRuntimeProfileResolver runtimeProfileResolver,
         IHierarchicalSettingsResolver hierarchicalSettingsResolver,
         ITypedSettingsDocumentResolver typedSettingsDocumentResolver,
-        IPaidEventPolicyRepository paidEventPolicyRepository,
         IFooterLinkGroupRepository footerLinkGroupRepository,
-        IMapper mapper)
+        IMapper mapper,
+        ITenantDirectoryOperatorReadinessEvaluator directoryOperatorReadiness,
+        IInstanceOperatorIdentity instanceOperatorIdentity)
     {
         _tenantContext = tenantContext;
         _systemSettingRepository = systemSettingRepository;
@@ -65,24 +68,35 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         _runtimeProfileResolver = runtimeProfileResolver;
         _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
         _typedSettingsDocumentResolver = typedSettingsDocumentResolver;
-        _paidEventPolicyRepository = paidEventPolicyRepository;
         _footerLinkGroupRepository = footerLinkGroupRepository;
         _mapper = mapper;
+        _directoryOperatorReadiness = directoryOperatorReadiness;
+        _instanceOperatorIdentity = instanceOperatorIdentity;
     }
 
     public async Task<PublicExperienceSettingsDto> Handle(GetPublicExperienceSettingsQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _tenantContext.TenantId;
+        TenantDirectoryOperatorReadinessAssessment directoryAssessment =
+            await _directoryOperatorReadiness.EvaluateAsync(
+                tenantId,
+                TenantDirectoryOperatorIdentityCapability.PublicDisclosure,
+                cancellationToken);
+        if (!directoryAssessment.IsReady
+            || directoryAssessment.Identity is null
+            || directoryAssessment.DocumentRevision is not { } documentRevision
+            || documentRevision == Guid.Empty)
+        {
+            return new PublicExperienceSettingsDto
+            {
+                TenantId = tenantId,
+                IsAvailable = false,
+                UnavailableCode = "tenant_identity_unavailable"
+            };
+        }
+
         var effectiveTenantSettings = await _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId);
         var brandingDocument = await ResolveTypedBrandingAsync(tenantId, cancellationToken);
-        var instancePaidEventPolicy = await _paidEventPolicyRepository.GetActiveInstanceAsync(cancellationToken);
-        var tenantPaidEventPolicy = instancePaidEventPolicy is null
-            ? null
-            : await _paidEventPolicyRepository.GetActiveTenantAsync(tenantId, cancellationToken);
-        string? paidEventDirectoryDisclaimer = instancePaidEventPolicy is not null &&
-            PaidEventPolicyRules.GetEffectiveCurrencyCodes(instancePaidEventPolicy, tenantPaidEventPolicy).Count > 0
-                ? PaidEventDisclaimerFormatter.Format(brandingDocument?.Payload.DisplayName)
-                : null;
         var enabledModulesInfo = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
         var enabledModuleKeys = enabledModulesInfo.Select(m => m.ModuleKey).ToList();
         var governanceSettings = await _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId);
@@ -141,11 +155,13 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         return new PublicExperienceSettingsDto
         {
             TenantId = tenantId,
+            IsAvailable = true,
+            DirectoryOperator = MapDirectoryOperator(directoryAssessment.Identity, documentRevision),
+            InstanceOperator = MapInstanceOperator(_instanceOperatorIdentity),
             Mode = Explore.Application.Models.PublicExperienceMode.DiscoveryCentric,
             DeploymentMode = deploymentMode,
             PreferredHomePage = effectiveTenantSettings.PreferredHomePage,
             BrandDisplayName = brandingDocument?.Payload.DisplayName ?? string.Empty,
-            PaidEventDirectoryDisclaimer = paidEventDirectoryDisclaimer,
             BrandLogoUrl = brandingDocument?.Payload.LogoUrl ?? string.Empty,
             BrandFaviconUrl = brandingDocument?.Payload.FaviconUrl ?? string.Empty,
             BrandCustomCssUrl = brandingDocument?.Payload.CustomCssUrl ?? string.Empty,
@@ -200,6 +216,41 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             ClientPickerEnabled = translationConfiguration.ClientPickerEnabled,
         };
     }
+
+    private static TenantDirectoryOperatorPublicDto MapDirectoryOperator(
+        TenantDirectoryOperatorIdentity identity,
+        Guid documentRevision) =>
+        new()
+        {
+            DocumentRevision = documentRevision,
+            PublicName = identity.PublicName,
+            LegalName = identity.LegalName,
+            OperatorKindCode = identity.OperatorKindCode,
+            JurisdictionCountryCode = identity.JurisdictionCountryCode,
+            RegistrationIdentifier = identity.RegistrationIdentifier,
+            PublicContactEmail = identity.PublicContactEmail,
+            LegalNoticeUrl = identity.LegalNoticeUrl,
+            TermsUrl = identity.TermsUrl,
+            PrivacyUrl = identity.PrivacyUrl
+        };
+
+    private static InstanceOperatorPublicDto MapInstanceOperator(IInstanceOperatorIdentity identity) =>
+        new()
+        {
+            OperatorId = identity.OperatorId,
+            PublicName = identity.PublicName,
+            LegalName = identity.LegalName,
+            IsOfficialInstance = identity.IsOfficialInstance,
+            OfficialOrigin = identity.OfficialOrigin,
+            OperatorKindCode = identity.OperatorKindCode,
+            JurisdictionCountryCode = identity.JurisdictionCountryCode,
+            RegistrationIdentifier = identity.RegistrationIdentifier,
+            PublicContactEmail = identity.PublicContactEmail,
+            WebsiteUrl = identity.WebsiteUrl,
+            LegalNoticeUrl = identity.LegalNoticeUrl,
+            TermsUrl = identity.TermsUrl,
+            PrivacyUrl = identity.PrivacyUrl
+        };
 
     private Task<ResolvedSettingsDocument<BrandingSettings>?> ResolveTypedBrandingAsync(
         Guid tenantId,
