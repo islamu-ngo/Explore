@@ -13,7 +13,6 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionGroup;
 using Explore.Application.Hateoas;
-using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Domain.Services.Lifecycle;
 using Explore.Domain.Services.Registration;
@@ -301,7 +300,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     HttpMethods.Post,
                     "Check in admissions",
                     RequiresAuth: true)
-                .RequirePermission(PermissionCodes.EventCheckInManage, ResourceDescriptors.Event, dto);
+                .RequirePermission(AuthorizationActions.Events.EventCheckInManage, ResourceDescriptors.Event, dto);
             yield return new LinkDefinition(
                     LinkRelations.AdmissionCheckInSummary,
                     RouteNames.GetAdmissionCheckInSummary,
@@ -309,7 +308,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     HttpMethods.Get,
                     "Admission check-in summary",
                     RequiresAuth: true)
-                .RequirePermission(PermissionCodes.EventCheckInView, ResourceDescriptors.Event, dto);
+                .RequirePermission(AuthorizationActions.Events.EventCheckInView, ResourceDescriptors.Event, dto);
             yield return new LinkDefinition(
                     LinkRelations.AdmissionCheckInAudit,
                     RouteNames.GetAdmissionCheckInAudit,
@@ -317,7 +316,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     HttpMethods.Get,
                     "Admission check-in audit",
                     RequiresAuth: true)
-                .RequirePermission(PermissionCodes.EventCheckInView, ResourceDescriptors.Event, dto);
+                .RequirePermission(AuthorizationActions.Events.EventCheckInView, ResourceDescriptors.Event, dto);
             yield return new LinkDefinition(
                     LinkRelations.AdmissionCheckInHealth,
                     RouteNames.GetAdmissionCheckInHealth,
@@ -325,7 +324,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     HttpMethods.Get,
                     "Admission check-in health",
                     RequiresAuth: true)
-                .RequirePermission(PermissionCodes.EventCheckInView, ResourceDescriptors.Event, dto);
+                .RequirePermission(AuthorizationActions.Events.EventCheckInView, ResourceDescriptors.Event, dto);
             yield return new LinkDefinition(
                     LinkRelations.StopAdmissionCheckIn,
                     RouteNames.StopAdmissionCheckIn,
@@ -333,7 +332,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     HttpMethods.Post,
                     "Stop admission check-in",
                     RequiresAuth: true)
-                .RequirePermission(PermissionCodes.EventCheckInManage, ResourceDescriptors.Event, dto);
+                .RequirePermission(AuthorizationActions.Events.EventCheckInManage, ResourceDescriptors.Event, dto);
             yield return new LinkDefinition(
                     LinkRelations.RestoreAdmissionCheckIn,
                     RouteNames.RestoreAdmissionCheckIn,
@@ -341,7 +340,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     HttpMethods.Post,
                     "Restore admission check-in",
                     RequiresAuth: true)
-                .RequirePermission(PermissionCodes.EventCheckInManage, ResourceDescriptors.Event, dto);
+                .RequirePermission(AuthorizationActions.Events.EventCheckInManage, ResourceDescriptors.Event, dto);
             yield return new LinkDefinition(
                     LinkRelations.ReconcileAdmissionCheckIn,
                     RouteNames.ReconcileAdmissionCheckIn,
@@ -349,7 +348,7 @@ public sealed class EventDetailLinkPolicy : ILinkPolicy<EventDto>
                     HttpMethods.Post,
                     "Reconcile admission check-in",
                     RequiresAuth: true)
-                .RequirePermission(PermissionCodes.EventCheckInManage, ResourceDescriptors.Event, dto);
+                .RequirePermission(AuthorizationActions.Events.EventCheckInManage, ResourceDescriptors.Event, dto);
 
             if (dto.IsManagementView)
             {

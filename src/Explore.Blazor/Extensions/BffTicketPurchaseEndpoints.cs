@@ -2,11 +2,16 @@
 // ABOUTME: Creates operation identity server-side and forwards no caller-controlled tenant or quantity facts.
 
 using Explore.Blazor.Client.Clients;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.Blazor.Extensions;
 
 public static class BffTicketPurchaseEndpoints
 {
+    private const string BasePath =
+        "/bff/events/{eventId:guid}/registration-orders";
+    private const string CapabilityHeader =
+        "X-Registration-Order-Capability";
     private const int VerifiedContactAccessMode = 2;
     private const int NameOnlyAccessMode = 3;
 
@@ -14,7 +19,7 @@ public static class BffTicketPurchaseEndpoints
         this WebApplication app)
     {
         app.MapPost(
-                "/bff/ticket-purchases/authenticated",
+                $"{BasePath}/{{orderId:guid}}/purchase-authority",
                 HandleAuthenticatedAsync)
             .RequireAuthorization()
             .RequireRateLimiting(
@@ -22,7 +27,7 @@ public static class BffTicketPurchaseEndpoints
                     .TicketPurchaseAuthorityPolicy)
             .ValidateAntiforgeryBeforeRateLimiting();
         app.MapPost(
-                "/bff/ticket-purchases/guest",
+                $"{BasePath}/guest/{{orderId:guid}}/purchase-authority",
                 HandleGuestAsync)
             .RequireRateLimiting(
                 RateLimitingExtensions
@@ -32,11 +37,13 @@ public static class BffTicketPurchaseEndpoints
     }
 
     private static async Task<IResult> HandleAuthenticatedAsync(
-        BffTicketPurchaseRequest request,
+        Guid eventId,
+        Guid orderId,
+        ReserveTicketPurchaseRequest request,
         IEventApiClient api,
         CancellationToken cancellationToken)
     {
-        if (!HasRequiredLineage(request))
+        if (!HasRequiredLineage(eventId, orderId))
         {
             return Results.BadRequest();
         }
@@ -49,21 +56,24 @@ public static class BffTicketPurchaseEndpoints
         };
         return await ForwardAsync(
             () => api.ReserveAuthenticatedPurchaseAuthorityAsync(
-                request.EventId,
-                request.OrderId,
+                eventId,
+                orderId,
                 CreateOperationKey(),
                 body: body,
                 cancellationToken: cancellationToken));
     }
 
     private static async Task<IResult> HandleGuestAsync(
-        BffTicketPurchaseRequest request,
+        Guid eventId,
+        Guid orderId,
+        ReserveTicketPurchaseRequest request,
+        [FromHeader(Name = CapabilityHeader)]
+        string? capability,
         IEventApiClient api,
         CancellationToken cancellationToken)
     {
-        if (!HasRequiredLineage(request)
-            || string.IsNullOrWhiteSpace(
-                request.GuestCapability)
+        if (!HasRequiredLineage(eventId, orderId)
+            || string.IsNullOrWhiteSpace(capability)
             || request.AccessMode is not (
                 VerifiedContactAccessMode
                 or NameOnlyAccessMode))
@@ -78,10 +88,10 @@ public static class BffTicketPurchaseEndpoints
         };
         return await ForwardAsync(
             () => api.ReserveGuestPurchaseAuthorityAsync(
-                request.EventId,
-                request.OrderId,
+                eventId,
+                orderId,
                 CreateOperationKey(),
-                request.GuestCapability,
+                capability,
                 body: body,
                 cancellationToken: cancellationToken));
     }
@@ -109,19 +119,11 @@ public static class BffTicketPurchaseEndpoints
     }
 
     private static bool HasRequiredLineage(
-        BffTicketPurchaseRequest request) =>
-        request.EventId != Guid.Empty
-        && request.OrderId != Guid.Empty;
+        Guid eventId,
+        Guid orderId) =>
+        eventId != Guid.Empty
+        && orderId != Guid.Empty;
 
     private static string CreateOperationKey() =>
         Guid.CreateVersion7().ToString("N");
-}
-
-public sealed record BffTicketPurchaseRequest
-{
-    public Guid EventId { get; init; }
-    public Guid OrderId { get; init; }
-    public int AccessMode { get; init; }
-    public Guid? RequestedPurchaserActorId { get; init; }
-    public string? GuestCapability { get; init; }
 }

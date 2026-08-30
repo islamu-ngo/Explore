@@ -3,7 +3,7 @@
 
 # I-VSD Event Ticketing Lifecycle Planning Review
 
-Last Updated: 2026-08-29
+Last Updated: 2026-08-30
 
 ## Review Metadata
 
@@ -13,10 +13,11 @@ Last Updated: 2026-08-29
 - Report kind: implementation-planning review
 - Report status: current
 - Disposition: plan-aligned
-- Evidence cutoff: 2026-08-29
-- Evidence-packet revision: SHA-256 source-packet manifest `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`
-- Reviewed input revision: plan SHA-256 `3f08e54af01d3b9e9825f67b8ce82c85311cb980bc17442be5e801ae2576b1fa`; tasks SHA-256 `75adc80bb9d2ae13df36004e72bd607a695ec6afb5f23f03112f8eeda5d041c7`
-- Revalidation result: every accepted finding and mitigation remains mapped to S1-S7/WB-1 and Tasks 1.1-9.4; Phase 7 keeps add-ons optional and admission-independent, Phase 8 rotates restored bearer authority and resolves provider ambiguity before reopening, and Phase 9 keeps all externally gated capabilities test-only while protected delayed payout remains disabled
+- Evidence cutoff: 2026-08-30
+- Evidence-packet revision: SHA-256 source-packet manifest `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`; clean-room packet SHA-256 `1278f35ba1e2f37eed08c5de000033c8b696331180868350537ee5f442dafb97`; SSO/provenance review SHA-256 `0c93ec86a4396829c9b37854ee27627e56f97775ef4f86815320128a40a5f338`
+- Reviewed input revision: plan SHA-256 `4bdc14e27bf08291fa173f6660ebb2608e0bec0311b57369a173d476db9174b5`; tasks SHA-256 `7b528e212ba42493b0ff7943b7f3f33bf642893d40314a4ea59513ef806e9971`; final-verification evidence SHA-256 `84842e41fc26713b4f956b70ba6b1376c5b943f9a5e7a4c05c9c5f64d384b634`
+- Revalidation result: every accepted finding and mitigation remains mapped to S1-S7/WB-1 and the repository-complete Phase 0-9 ledger. The 2026-08-30 implementation audit restored the recovery-operator contract, registered ticketing add-on name copies in the typed PII inventory, removed duplicate ticketing authority entries, and did not widen provider authority, production status, monetization, resale, or protected payout.
+- Approval boundary: every externally gated ticketing capability remains test-only and is not approved, enabled, or claimed for production. Protected delayed payout stays disabled and structurally absent, with no runtime source, configuration, migration, scheduler, API/HAL/client surface, or escrow wording. Both boundaries hold until separately owned provider, legal, scholarly, and operator launch evidence is delivered and reviewed on its own authority.
 - Refresh trigger: any material change to access/ceiling authority, participant consent, transfer/resale, waitlist/refund priority, add-on admission separation, recovery/key custody, monetization/payout, or mapped scenarios/tasks
 - Supersedes: future-work mappings F6–F13 in `i-vsd-registration-data-collection.md`; that report remains authoritative for completed registration/forms/commerce/admission findings F1–F5
 
@@ -97,7 +98,7 @@ Qualified Sunni scholarly authority owns religious-legal conclusions. Legal, pro
 - Principle and domain: transparency, freedom from coercion, bounded provider responsibility; commerce and fulfillment
 - Stakeholders: buyers, attendees, organizers, fulfillment staff
 - Provider-controlled decision: optionality, price/refund/fulfillment disclosure, inventory, admission separation, specialist-system boundary
-- Evidence: predecessor finding F8; ADR-022/024; R5/S5-A/B/C and Tasks 7.1-7.6; prospective Phase 7 RED/GREEN persistence, API, BFF, and component evidence dated 2026-08-29
+- Evidence: predecessor finding F8; ADR-022/024; R5/S5-A/B/C and Tasks 7.1-7.6; landed Phase 7 RED/GREEN persistence, API, BFF, and component evidence dated 2026-08-29
 - Validation level: implemented repository/API/BFF/component contracts and real PostgreSQL concurrency evidence; production buyer/operator validation missing
 - Mitigation: `IVSD-M005`
 - Owner / next validation: Phase 7 / Tasks 7.1-7.6
@@ -288,8 +289,11 @@ Without evidence, the affected surface remains disabled/narrowed and no certific
 ## Evidence Reviewed
 
 - Source-packet manifest SHA-256 `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`
-- Successor plan SHA-256 `3e1d8d0f42a7739e22a685bfc677a8d3e7db82ea00cddd4cd0caefcee1141986`
-- Successor tasks SHA-256 `d395d927043a639d2ff1f7b75a5f857c7102615212290ddd40ef7b91b1bdf669`
+- Current successor plan SHA-256 `4bdc14e27bf08291fa173f6660ebb2608e0bec0311b57369a173d476db9174b5`
+- Current successor tasks SHA-256 `7b528e212ba42493b0ff7943b7f3f33bf642893d40314a4ea59513ef806e9971`
+- Final-verification evidence SHA-256 `84842e41fc26713b4f956b70ba6b1376c5b943f9a5e7a4c05c9c5f64d384b634`
+- Clean-room packet SHA-256 `1278f35ba1e2f37eed08c5de000033c8b696331180868350537ee5f442dafb97`
+- SSO/provenance review SHA-256 `0c93ec86a4396829c9b37854ee27627e56f97775ef4f86815320128a40a5f338`
 - `i-vsd-registration-data-collection.md` SHA-256 `d7723403e6d8b1a70854599a3c4812091290cf505bea7ea0a4558a5e6532d237`
 - `i-vsd-paid-event-payments-consultation.md` SHA-256 `44e90e5ccb88ba7e98503f0f1b98c00b7bdfaf85d623aff8f7ff882a2a90cb36`
 - Predecessor plan SHA-256 `42ef4342117d07097a06dd2d22c4892a5f18d67f73a0082950dc3811d355494a`
@@ -297,12 +301,12 @@ Without evidence, the affected surface remains disabled/narrowed and no certific
 - Predecessor clean-room handoff SHA-256 `035d7d706169cb0a2b1ff1da8ee35709f8112c361d7b07073588faee2f8f2843`
 - ADR-016 through ADR-018 and ADR-022 through ADR-024
 - Repository graph blast radius, current aggregate/middleware/scheduler paths, and bounded test inventory dated 2026-08-27
-- Bounded 2026-08-28 `src`/`tests` filename search confirming no current add-on implementation and the Phase 7 R5/S5-A/B/C task contracts
+- Bounded 2026-08-28 `src`/`tests` filename search recording the pre-implementation RED baseline, when no add-on implementation existed, alongside the Phase 7 R5/S5-A/B/C task contracts. Phase 7 landed on 2026-08-29, so that search is historical chronology and not current repository state.
 - Official Microsoft, OWASP, W3C, EU, EDPB, and Stripe documentation recorded in the clean-room evidence
 
 ## Missing Evidence
 
-No production stakeholder studies, incident history, legal opinion, qualified scholarly decision, live Stripe account/control evidence, independent accessibility/privacy/security audit, or real restore exercise was available. No implemented add-on catalog, organizer-management workflow, buyer-selection surface, fulfillment mode, or post-purchase/add-on-only lifecycle exists to validate. Exact product decisions for post-purchase ordering, add-on-only checkout, variants/bundles, fulfillment modes, and explicitly unlimited inventory remain open.
+No production stakeholder studies, incident history, legal opinion, qualified scholarly decision, live Stripe account/control evidence, independent accessibility/privacy/security audit, or real restore exercise was available. The add-on catalog, organizer-management workflow, and buyer-selection surface are implemented in the repository, but they carry no production buyer or organizer validation evidence. Fulfillment modes, variants, bundles, scheduled fulfillment, explicitly unlimited inventory, and any post-purchase or add-on-only lifecycle remain unimplemented and unavailable, so there's nothing to validate for them. Exact product decisions for post-purchase ordering, add-on-only checkout, variants/bundles, fulfillment modes, and explicitly unlimited inventory remain open.
 
 ## Context Inventory
 
@@ -334,10 +338,10 @@ No production stakeholder studies, incident history, legal opinion, qualified sc
 
 - Workstream: `event-ticketing-lifecycle`
 - Status: current
-- Evidence-packet revision: SHA-256 source-packet manifest `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`
-- Reviewed input revision: plan SHA-256 `3f08e54af01d3b9e9825f67b8ce82c85311cb980bc17442be5e801ae2576b1fa`; tasks SHA-256 `75adc80bb9d2ae13df36004e72bd607a695ec6afb5f23f03112f8eeda5d041c7`
+- Evidence-packet revision: SHA-256 source-packet manifest `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`; clean-room packet SHA-256 `1278f35ba1e2f37eed08c5de000033c8b696331180868350537ee5f442dafb97`; SSO/provenance review SHA-256 `0c93ec86a4396829c9b37854ee27627e56f97775ef4f86815320128a40a5f338`
+- Reviewed input revision: plan SHA-256 `4bdc14e27bf08291fa173f6660ebb2608e0bec0311b57369a173d476db9174b5`; tasks SHA-256 `7b528e212ba42493b0ff7943b7f3f33bf642893d40314a4ea59513ef806e9971`; final-verification evidence SHA-256 `84842e41fc26713b4f956b70ba6b1376c5b943f9a5e7a4c05c9c5f64d384b634`
 - Findings and mitigations: `IVSD-F001`→`IVSD-M001`, `IVSD-F002`→`IVSD-M002`, `IVSD-F003`→`IVSD-M003`, `IVSD-F004`→`IVSD-M004`, `IVSD-F005`→`IVSD-M005`, `IVSD-F006`→`IVSD-M006`, `IVSD-F007`→`IVSD-M007`
-- Required plan mappings: F001/M001→S1-A/B/C→Tasks 1.1-2.6; F002/M002→S2-A/B/C→Tasks 3.1-4.6; F003/M003→S3-A/B/C→Tasks 5.1-5.6; F004/M004→S4-A/B/C/D/E/F and WB-1→Tasks 6.1-6.8 and 8.1-8.4; F005/M005→S5-A/B/C→Tasks 7.1-7.6; F006/M006→S6-A/B/C and WB-1→Tasks 8.1-9.4; F007/M007→S7-A→Tasks 9.1-9.4
+- Required plan mappings: F001/M001→S1-A/B/C→completed Phase 1-2; F002/M002→S2-A/B/C→completed Phase 3-4; F003/M003→S3-A/B/C→completed Phase 5; F004/M004→S4-A/B/C/D/E/F and WB-1→completed Phase 6 and 8; F005/M005→S5-A/B/C→completed Phase 7; F006/M006→S6-A/B/C and WB-1→completed Phase 8-9; F007/M007→S7-A→completed Phase 9. External launch evidence remains independently gated.
 - Phase 7 interpretation: one event-owned multi-item catalog; explicit zero-or-more buyer selection; immutable add-on lines; checked minor-unit totals; tenant-qualified one-winner inventory; durable replay-safe fulfillment/refund; exact refund conservation; and a hard no-admission-mutation ratchet
 - Open Phase 7 product decision: original-checkout-only versus post-purchase/add-on-only ordering. Until decided, planning and implementation remain bounded to optional selection in the original mixed ticket checkout.
 - Escalations required before: production claims or enabling the affected capability; protected delayed payout before any separate planning approval or implementation
@@ -355,3 +359,6 @@ No production stakeholder studies, incident history, legal opinion, qualified sc
 | 2026-08-28 | current / plan-aligned | current / plan-aligned | User required the full Phase 7 add-on model to be durable I-VSD evidence before implementation | Expanded IVSD-F005/M005; plan `3e1d8d0f...`; tasks `d395d927...` |
 | 2026-08-29 | current / plan-aligned | current / plan-aligned | Phase 7 implemented the bounded catalog, optional selection, inventory, fulfillment, refund-allocation, HAL, BFF, and accessible UI contract | Prospective Task 7.1/7.3/7.5 RED plus Task 7.2/7.4/7.6 GREEN evidence |
 | 2026-08-30 | current / plan-aligned | current / plan-aligned | Test evidence governance replaced mutation-score gates with named public-seam invariant breakers without changing provider responsibility, scenarios, or task mappings | Plan `3f08e54a...`; tasks `75adc80b...`; historical mutation artifacts remain non-gating |
+| 2026-08-30 | current / plan-aligned | stale / changes-required | Senior CTO rewrite replaced the prospective execution ledger with a repository-complete closeout mapping and exact review-rebinding sequence | Independent planning-mode revalidation of the rewritten plan/tasks, then fresh read-only CTO review |
+| 2026-08-30 | stale / changes-required | current / plan-aligned | Fresh implementation audit verified Phase 0-9, restored recovery-operator coverage, and corrected ticketing PII inventory ownership without changing provider responsibility | Plan `4bdc14e2...`; tasks `09afd94c...`; fresh read-only CTO review required |
+| 2026-08-30 | current / plan-aligned | current / plan-aligned | Final fresh governance review bound the current closeout ledger, 212/212 focused evidence, 66/66 PostgreSQL evidence, stable generated artifacts, clean-room packet, and parseable SSO review without widening authority or production status | Plan `4bdc14e2...`; tasks `7b528e21...`; final evidence `84842e41...`; clean-room `1278f35b...`; SSO `0c93ec86...` |

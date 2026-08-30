@@ -4,7 +4,9 @@
 using Explore.Application.DTOs.EventAddOns;
 using MediatR;
 
-namespace Explore.Application.Features.EventAddOns.Requests;
+namespace Explore.Application.Features.EventAddOns.Requests.Commands;
+
+public sealed record EventAddOnSelection(Guid CatalogItemId, int Quantity);
 
 public sealed record CreateEventAddOnCatalogDraftCommand(
     Guid EventId,

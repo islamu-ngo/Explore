@@ -20,23 +20,34 @@ public sealed class TicketPurchaseGovernanceService(
             bool authenticated,
             CancellationToken cancellationToken)
     {
-        string path = authenticated
-            ? "/bff/ticket-purchases/authenticated"
-            : "/bff/ticket-purchases/guest";
-        var request = new TicketPurchaseBffRequest(
-            eventId,
-            orderId,
-            accessMode,
-            requestedPurchaserActorId,
-            authenticated ? null : guestCapability);
+        string path =
+            $"/bff/events/{eventId:D}/registration-orders/" +
+            (authenticated
+                ? $"{orderId:D}/purchase-authority"
+                : $"guest/{orderId:D}/purchase-authority");
+        var request = new ReserveTicketPurchaseRequest
+        {
+            AccessMode = accessMode,
+            RequestedPurchaserActorId =
+                requestedPurchaserActorId,
+        };
         HalResourceOfTicketPurchaseGovernanceResource? resource =
-            await bff.SendAsync<
-                TicketPurchaseBffRequest,
-                HalResourceOfTicketPurchaseGovernanceResource>(
-                HttpMethod.Post,
-                path,
-                request,
-                cancellationToken);
+            authenticated
+                ? await bff.SendAsync<
+                    ReserveTicketPurchaseRequest,
+                    HalResourceOfTicketPurchaseGovernanceResource>(
+                    HttpMethod.Post,
+                    path,
+                    request,
+                    cancellationToken)
+                : await bff.SendWithRegistrationOrderCapabilityAsync<
+                    ReserveTicketPurchaseRequest,
+                    HalResourceOfTicketPurchaseGovernanceResource>(
+                    HttpMethod.Post,
+                    path,
+                    request,
+                    guestCapability,
+                    cancellationToken);
         return resource is null
             ? new TicketPurchaseGovernanceSubmission(
                 false,
@@ -47,11 +58,4 @@ public sealed class TicketPurchaseGovernanceService(
                 resource.SupportsHardCrossOrderCeiling,
                 resource.EnforcementScopeCode);
     }
-
-    private sealed record TicketPurchaseBffRequest(
-        Guid EventId,
-        Guid OrderId,
-        int AccessMode,
-        Guid? RequestedPurchaserActorId,
-        string? GuestCapability);
 }

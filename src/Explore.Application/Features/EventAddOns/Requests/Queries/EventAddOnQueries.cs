@@ -4,7 +4,7 @@
 using Explore.Application.DTOs.EventAddOns;
 using MediatR;
 
-namespace Explore.Application.Features.EventAddOns.Requests;
+namespace Explore.Application.Features.EventAddOns.Requests.Queries;
 
 public sealed record GetEventAddOnCatalogQuery(
     Guid EventId,

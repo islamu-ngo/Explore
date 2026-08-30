@@ -27,7 +27,7 @@ public sealed class TicketPurchaseGovernanceBffTests
                 AllowAutoRedirect = false,
             });
         using HttpRequestMessage request = PurchaseRequest(
-            "/bff/ticket-purchases/authenticated",
+            guest: false,
             guestCapability: null);
         request.Headers.Add(
             TestAuthHandler.AuthHeaderName,
@@ -64,7 +64,7 @@ public sealed class TicketPurchaseGovernanceBffTests
         BrowserSession session =
             await IssueBrowserSessionAsync(client);
         using HttpRequestMessage request = PurchaseRequest(
-            "/bff/ticket-purchases/authenticated",
+            guest: false,
             guestCapability: null);
         AddBrowserSession(request, session);
 
@@ -81,6 +81,7 @@ public sealed class TicketPurchaseGovernanceBffTests
     {
         Guid eventId = Guid.CreateVersion7();
         Guid orderId = Guid.CreateVersion7();
+        Guid purchaserActorId = Guid.CreateVersion7();
         IEventApiClient api = SuccessfulApi(orderId);
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
@@ -97,10 +98,11 @@ public sealed class TicketPurchaseGovernanceBffTests
                 client,
                 authentication);
         using HttpRequestMessage request = PurchaseRequest(
-            "/bff/ticket-purchases/authenticated",
+            guest: false,
             guestCapability: null,
             eventId,
-            orderId);
+            orderId,
+            purchaserActorId);
         request.Headers.Add(
             TestAuthHandler.AuthHeaderName,
             authentication);
@@ -124,7 +126,9 @@ public sealed class TicketPurchaseGovernanceBffTests
                 null,
                 null,
                 Arg.Is<ReserveTicketPurchaseRequest>(body =>
-                    body.RequestedPurchaserActorId == null),
+                    body.AccessMode == 1
+                    && body.RequestedPurchaserActorId ==
+                        purchaserActorId),
                 Arg.Any<CancellationToken>());
     }
 
@@ -146,10 +150,12 @@ public sealed class TicketPurchaseGovernanceBffTests
         BrowserSession session =
             await IssueBrowserSessionAsync(client);
         using HttpRequestMessage request = PurchaseRequest(
-            "/bff/ticket-purchases/guest",
+            guest: true,
             capability,
             eventId,
-            orderId);
+            orderId,
+            requestedPurchaserActorId:
+                Guid.CreateVersion7());
         AddBrowserSession(request, session);
 
         using HttpResponseMessage response =
@@ -171,30 +177,46 @@ public sealed class TicketPurchaseGovernanceBffTests
                 null,
                 null,
                 Arg.Is<ReserveTicketPurchaseRequest>(body =>
-                    body.AccessMode == 3),
+                    body.AccessMode == 3
+                    && body.RequestedPurchaserActorId == null),
                 Arg.Any<CancellationToken>());
     }
 
     private static HttpRequestMessage PurchaseRequest(
-        string path,
+        bool guest,
         string? guestCapability,
         Guid? eventId = null,
-        Guid? orderId = null)
+        Guid? orderId = null,
+        Guid? requestedPurchaserActorId = null)
     {
-        return new HttpRequestMessage(HttpMethod.Post, path)
+        Guid resolvedEventId =
+            eventId ?? Guid.CreateVersion7();
+        Guid resolvedOrderId =
+            orderId ?? Guid.CreateVersion7();
+        string path =
+            $"/bff/events/{resolvedEventId:D}/registration-orders/" +
+            (guest
+                ? $"guest/{resolvedOrderId:D}/purchase-authority"
+                : $"{resolvedOrderId:D}/purchase-authority");
+        var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            path)
         {
-            Content = JsonContent.Create(new
-            {
-                eventId = eventId ?? Guid.CreateVersion7(),
-                orderId = orderId ?? Guid.CreateVersion7(),
-                accessMode = 3,
-                requestedPurchaserActorId =
-                    (Guid?)null,
-                guestCapability,
-                tenantId = Guid.CreateVersion7(),
-                quantity = 1,
-            }),
+            Content = JsonContent.Create(
+                new ReserveTicketPurchaseRequest
+                {
+                    AccessMode = 3,
+                    RequestedPurchaserActorId =
+                        requestedPurchaserActorId,
+                }),
         };
+        if (!string.IsNullOrWhiteSpace(guestCapability))
+        {
+            request.Headers.Add(
+                "X-Registration-Order-Capability",
+                guestCapability);
+        }
+        return request;
     }
 
     private static IEventApiClient SuccessfulApi(

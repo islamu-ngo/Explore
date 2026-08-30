@@ -9,7 +9,7 @@ using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.EventAddOns;
-using Explore.Application.Features.EventAddOns.Requests;
+using Explore.Application.Features.EventAddOns.Requests.Queries;
 using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

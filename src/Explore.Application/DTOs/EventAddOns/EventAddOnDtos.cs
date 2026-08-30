@@ -81,5 +81,3 @@ public sealed record RegistrationOrderAddOnLineDto
     [JsonIgnore]
     public bool CanRefund { get; init; }
 }
-
-public sealed record EventAddOnSelection(Guid CatalogItemId, int Quantity);
