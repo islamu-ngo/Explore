@@ -8,6 +8,9 @@ using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Features.PaidEventPolicies;
 using Explore.Application.Features.ConfigurationManifest.Preflight;
 using Explore.Application.Features.ConfigurationManifest.Handlers.Commands;
+using Explore.Application.Features.ConfigurationManifest.LegalDocuments;
+using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Application.Features.ConfigurationManifest.Managed;
 using Explore.Application.Services;
 using Explore.Application.Settings;
 using MediatR;
@@ -55,6 +58,18 @@ public static class ConfigurationManifestApplicationServicesRegistration
         services.TryAddScoped<ApplyConfigurationManifestCommandHandler>();
         services.TryAddScoped<IConfigurationManifestApplier>(provider =>
             provider.GetRequiredService<ApplyConfigurationManifestCommandHandler>());
+        services.TryAddSingleton<LegalDocumentRenderingService>();
+        services.TryAddSingleton<ConfigurationImportArtifactParser>();
+        services.TryAddSingleton<ConfigurationImportPreviewComposer>();
+        services.TryAddScoped<ConfigurationImportSessionManager>();
+        services.TryAddScoped<ConfigurationImportSessionApplicationService>();
+        services.TryAddScoped<IConfigurationImportTenantIdentityMutationBoundary,
+            ConfigurationImportTenantIdentityMutationBoundary>();
+        services.TryAddScoped<ConfigurationImportSectionApplier>();
+        services.TryAddScoped<ConfigurationImportApplyService>();
+        services.TryAddScoped<ConfigurationDirectTransferService>();
+        services.TryAddScoped<IConfigurationImportEffectDelivery,
+            ConfigurationImportEffectDelivery>();
 
         if (effectDeliveryMode == ConfigurationManifestEffectDeliveryMode.DeferredToRuntime)
         {

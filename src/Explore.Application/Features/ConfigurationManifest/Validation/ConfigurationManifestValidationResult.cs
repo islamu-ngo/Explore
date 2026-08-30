@@ -12,6 +12,8 @@ public static class ConfigurationManifestFailureCodes
         "configuration_manifest_sensitive_key_forbidden";
     public const string ValueInvalid = "configuration_manifest_value_invalid";
     public const string DocumentInvalid = "configuration_manifest_document_invalid";
+    public const string LegalDocumentInvalid =
+        "configuration_manifest_legal_document_invalid";
     public const string CrossReferenceInvalid =
         "configuration_manifest_cross_reference_invalid";
 }

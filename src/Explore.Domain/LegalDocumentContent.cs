@@ -120,7 +120,8 @@ public sealed class LegalDocumentLocalizedSource
             throw new ArgumentOutOfRangeException(nameof(markdown));
         }
 
-        MarkdownShape shape = ValidateMarkdown(normalizedMarkdown);
+        LegalMarkdownInspection shape =
+            LegalMarkdownContract.Inspect(normalizedMarkdown);
         return new LegalDocumentLocalizedSource
         {
             Id = Guid.CreateVersion7(),
@@ -143,91 +144,6 @@ public sealed class LegalDocumentLocalizedSource
 
         LegalDocumentVersionId = versionId;
         LegalDocumentVersion = version;
-    }
-
-    private static MarkdownShape ValidateMarkdown(string markdown)
-    {
-        if (markdown.Contains('<', StringComparison.Ordinal)
-            || markdown.Contains('>', StringComparison.Ordinal))
-        {
-            throw new ArgumentException("Raw HTML and autolinks are not allowed.", nameof(markdown));
-        }
-
-        if (markdown.Contains("![", StringComparison.Ordinal))
-            throw new ArgumentException("Embedded resources are not allowed.", nameof(markdown));
-
-        int linkCount = 0;
-        int cursor = 0;
-        while ((cursor = markdown.IndexOf("](", cursor, StringComparison.Ordinal)) >= 0)
-        {
-            int urlStart = cursor + 2;
-            int urlEnd = markdown.IndexOf(')', urlStart);
-            if (urlEnd < 0)
-                throw new ArgumentException("Markdown link is incomplete.", nameof(markdown));
-
-            string url = markdown[urlStart..urlEnd];
-            ValidateLink(url);
-            linkCount++;
-            if (linkCount > LegalDocumentContentLimits.MaximumLinksPerLocale)
-                throw new ArgumentOutOfRangeException(nameof(markdown));
-            cursor = urlEnd + 1;
-        }
-
-        var placeholders = new HashSet<string>(StringComparer.Ordinal);
-        int placeholderCursor = 0;
-        while (true)
-        {
-            int start = markdown.IndexOf(
-                "{{",
-                placeholderCursor,
-                StringComparison.Ordinal);
-            if (start < 0)
-                break;
-
-            int end = markdown.IndexOf("}}", start + 2, StringComparison.Ordinal);
-            if (end < 0)
-                throw new ArgumentException("Legal identity placeholder is incomplete.", nameof(markdown));
-
-            string placeholder = markdown[(start + 2)..end];
-            if (placeholder.Length is < 1 or > 100
-                || placeholder.Any(character =>
-                    !char.IsAsciiLetterOrDigit(character)
-                    && character is not '_' and not '-' and not '.'))
-            {
-                throw new ArgumentException("Legal identity placeholder is invalid.", nameof(markdown));
-            }
-
-            placeholders.Add(placeholder);
-            if (placeholders.Count >
-                LegalDocumentContentLimits.MaximumPlaceholdersPerLocale)
-            {
-                throw new ArgumentOutOfRangeException(nameof(markdown));
-            }
-
-            placeholderCursor = end + 2;
-        }
-
-        if (markdown.IndexOf(
-                "}}",
-                placeholderCursor,
-                StringComparison.Ordinal) >= 0)
-            throw new ArgumentException("Legal identity placeholder is malformed.", nameof(markdown));
-
-        return new MarkdownShape(linkCount, placeholders.Count);
-    }
-
-    private static void ValidateLink(string value)
-    {
-        if (value.Length is < 1 or > LegalDocumentContentLimits.MaximumLinkLength
-            || !Uri.TryCreate(value, UriKind.Absolute, out Uri? uri)
-            || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-            || string.IsNullOrWhiteSpace(uri.Host)
-            || !string.IsNullOrEmpty(uri.UserInfo)
-            || !string.IsNullOrEmpty(uri.Query)
-            || !string.IsNullOrEmpty(uri.Fragment))
-        {
-            throw new ArgumentException("Legal Markdown link is unsafe.", nameof(value));
-        }
     }
 
     private static string NormalizeLanguageTag(string languageTag)
@@ -275,6 +191,4 @@ public sealed class LegalDocumentLocalizedSource
             throw new ArgumentOutOfRangeException(parameterName);
         return normalized;
     }
-
-    private sealed record MarkdownShape(int LinkCount, int PlaceholderCount);
 }

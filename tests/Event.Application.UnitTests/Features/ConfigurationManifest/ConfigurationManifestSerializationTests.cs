@@ -40,7 +40,8 @@ public sealed class ConfigurationManifestSerializationTests
               "spec": {
                 "instance": {
                   "settings": {},
-                  "documents": {}
+                  "documents": {},
+                  "legalDocuments": {}
                 },
                 "tenants": []
               },

@@ -3,6 +3,7 @@
 
 namespace Explore.Domain;
 
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Explore.Domain.Interfaces;
@@ -135,8 +136,10 @@ public sealed class LegalDocument : IAuditableEntity, IConcurrencyAware
         EnsureState(LegalDocumentLifecycleState.Approved);
         EnsureUtc(effectiveAt, nameof(effectiveAt));
         EnsureUtc(occurredAt, nameof(occurredAt));
-        if (effectiveAt < occurredAt)
-            throw new ArgumentOutOfRangeException(nameof(effectiveAt));
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            effectiveAt,
+            occurredAt,
+            nameof(effectiveAt));
 
         Current().Schedule(effectiveAt);
         SetState(LegalDocumentLifecycleState.Scheduled, occurredAt);
@@ -216,6 +219,39 @@ public sealed class LegalDocument : IAuditableEntity, IConcurrencyAware
         CurrentVersion = version.Version;
         AccountableIdentityReference = null;
         SetState(LegalDocumentLifecycleState.Draft, occurredAt);
+        return version;
+    }
+
+    public LegalDocumentVersion CreateImportedRevision(
+        LegalDocumentAudience audience,
+        IReadOnlyList<LegalDocumentLocalizedSource> sources,
+        LegalDocumentTemplateProvenance? templateProvenance,
+        string sourceOrigin,
+        bool requiresFreshAcceptance,
+        DateTime occurredAt)
+    {
+        if (State is not (LegalDocumentLifecycleState.Published
+            or LegalDocumentLifecycleState.Retired))
+        {
+            throw new InvalidOperationException(
+                "An imported revision cannot replace an unpublished legal draft.");
+        }
+
+        EnsureUtc(occurredAt, nameof(occurredAt));
+        LegalDocumentVersion version = LegalDocumentVersion.Create(
+            Id,
+            checked(CurrentVersion + 1),
+            audience,
+            sources,
+            templateProvenance,
+            NormalizeRequired(sourceOrigin, 200, nameof(sourceOrigin)),
+            requiresFreshAcceptance,
+            LegalDocumentLifecycleState.ReviewRequired,
+            occurredAt);
+        _versions.Add(version);
+        CurrentVersion = version.Version;
+        AccountableIdentityReference = null;
+        SetState(LegalDocumentLifecycleState.ReviewRequired, occurredAt);
         return version;
     }
 
@@ -441,7 +477,9 @@ public sealed class LegalDocumentVersion
     private static string ComputeDigest(LegalDocumentVersion version)
     {
         var canonical = new StringBuilder();
-        Append(canonical, ((int)version.Audience).ToString());
+        Append(
+            canonical,
+            ((int)version.Audience).ToString(CultureInfo.InvariantCulture));
         Append(canonical, version.SourceOrigin ?? string.Empty);
         Append(canonical, version.RequiresFreshAcceptance ? "1" : "0");
         Append(canonical, version.TemplateId ?? string.Empty);

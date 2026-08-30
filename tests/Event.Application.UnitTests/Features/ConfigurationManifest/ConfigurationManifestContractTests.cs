@@ -92,7 +92,8 @@ public sealed class ConfigurationManifestContractTests
               "spec": {
                 "instance": {
                   "settings": {},
-                  "documents": {}
+                  "documents": {},
+                  "legalDocuments": {}
                 },
                 "tenants": [
                   {
@@ -100,7 +101,8 @@ public sealed class ConfigurationManifestContractTests
                     "spec": {
                       "displayName": "Primary Community",
                       "settings": {},
-                      "documents": {}
+                      "documents": {},
+                      "legalDocuments": {}
                     }
                   }
                 ]
@@ -213,7 +215,8 @@ public sealed class ConfigurationManifestContractTests
               "spec": {
                 "instance": {
                   "settings": {},
-                  "documents": {}{{instanceUnknown}}
+                  "documents": {},
+                  "legalDocuments": {}{{instanceUnknown}}
                 },
                 "tenants": [
                   {
@@ -221,7 +224,8 @@ public sealed class ConfigurationManifestContractTests
                     "spec": {
                       "displayName": "Primary Community",
                       "settings": {},
-                      "documents": {}{{tenantUnknown}}
+                      "documents": {},
+                      "legalDocuments": {}{{tenantUnknown}}
                     }
                   }
                 ]

@@ -1,0 +1,354 @@
+// ABOUTME: Coordinates destination-approved direct-transfer staging and promotion into ordinary import sessions.
+// ABOUTME: Preserves target authority, bounded resumability, replay safety, and mandatory preview/apply separation.
+
+namespace Explore.Application.Features.ConfigurationManifest.Managed;
+
+using System.Net;
+using System.Security.Cryptography;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Domain;
+
+public interface IConfigurationDirectTransferRepository
+{
+    Task AddAsync(
+        ConfigurationDirectTransferSession session,
+        CancellationToken cancellationToken);
+
+    Task<ConfigurationDirectTransferSession?> GetForUpdateAsync(
+        Guid sessionId,
+        string targetAuthorityKey,
+        CancellationToken cancellationToken);
+
+    Task UpdateAsync(
+        ConfigurationDirectTransferSession session,
+        CancellationToken cancellationToken);
+}
+
+public interface IConfigurationDirectTransferChunkStore
+{
+    Task<bool> AddAsync(
+        Guid sessionId,
+        int offset,
+        ReadOnlyMemory<byte> bytes,
+        string digest,
+        DateTime expiresAt,
+        CancellationToken cancellationToken);
+
+    Task<ReadOnlyMemory<byte>> AssembleAsync(
+        Guid sessionId,
+        int expectedByteLength,
+        CancellationToken cancellationToken);
+}
+
+public interface IConfigurationTransferDestinationResolver
+{
+    Task<IReadOnlyCollection<IPAddress>> ResolveAsync(
+        string host,
+        CancellationToken cancellationToken);
+}
+
+public sealed record ConfigurationDirectTransferCreated(
+    Guid SessionId,
+    string Nonce,
+    string DestinationProof,
+    DateTime ExpiresAt,
+    int NextOffset)
+{
+    public override string ToString() => nameof(ConfigurationDirectTransferCreated);
+}
+
+public sealed record ConfigurationDirectTransferProgress(
+    Guid SessionId,
+    ConfigurationDirectTransferStatus Status,
+    int NextOffset,
+    int ArtifactByteLength,
+    DateTime ExpiresAt)
+{
+    public override string ToString() => nameof(ConfigurationDirectTransferProgress);
+}
+
+public sealed class ConfigurationDirectTransferService(
+    IConfigurationDirectTransferRepository sessions,
+    IConfigurationDirectTransferChunkStore chunks,
+    IConfigurationTransferDestinationResolver destinations,
+    ConfigurationImportSessionApplicationService imports,
+    IUnitOfWork unitOfWork,
+    ICurrentUserService currentUser,
+    TimeProvider timeProvider)
+{
+    public const int MaximumChunkBytes = 256 * 1024;
+    private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(30);
+
+    public async Task<ConfigurationDirectTransferCreated> CreateAsync(
+        ConfigurationImportTarget target,
+        string sourceAuthority,
+        Uri destinationOrigin,
+        string artifactDigest,
+        int artifactByteLength,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        IReadOnlyCollection<IPAddress> addresses = await destinations.ResolveAsync(
+            destinationOrigin.Host,
+            cancellationToken);
+        _ = ConfigurationDirectTransferPolicy.ValidateDestinationOrigin(
+            destinationOrigin,
+            addresses);
+
+        Guid actorUserId = Actor();
+        DateTime now = UtcNow();
+        DateTime expiresAt = now.Add(Lifetime);
+        string nonce = Token();
+        string proof = Token();
+        var session = ConfigurationDirectTransferSession.Create(
+            Guid.CreateVersion7(),
+            sourceAuthority,
+            target.AuthorityKey,
+            target.TenantId,
+            ConfigurationImportDigest.Compute([destinationOrigin.GetLeftPart(UriPartial.Authority)]),
+            Digest(proof),
+            Digest(nonce),
+            artifactDigest,
+            artifactByteLength,
+            now,
+            expiresAt);
+        session.ApproveDestination(actorUserId, Digest(proof), now);
+        await unitOfWork.ExecuteInTransactionAsync(
+            async token =>
+            {
+                ConfigurationDirectTransferSession? existing =
+                    await sessions.GetForUpdateAsync(
+                        session.Id,
+                        target.AuthorityKey,
+                        token);
+                if (existing is null)
+                    await sessions.AddAsync(session, token);
+            },
+            cancellationToken);
+        return new ConfigurationDirectTransferCreated(
+            session.Id,
+            nonce,
+            proof,
+            expiresAt,
+            session.NextOffset);
+    }
+
+    public async Task<ConfigurationDirectTransferProgress> ApproveSourceAsync(
+        Guid sessionId,
+        ConfigurationImportTarget target,
+        string nonce,
+        string destinationProof,
+        CancellationToken cancellationToken) =>
+        await MutateAsync(
+            sessionId,
+            target,
+            nonce,
+            destinationProof,
+            session => session.ApproveSource(Actor(), UtcNow()),
+            cancellationToken);
+
+    public async Task<ConfigurationDirectTransferProgress> AppendAsync(
+        Guid sessionId,
+        ConfigurationImportTarget target,
+        string nonce,
+        string destinationProof,
+        int offset,
+        ReadOnlyMemory<byte> bytes,
+        string chunkDigest,
+        CancellationToken cancellationToken)
+    {
+        if (bytes.IsEmpty
+            || bytes.Length > MaximumChunkBytes
+            || !string.Equals(
+                ConfigurationImportDigest.ComputeBytes(bytes.Span),
+                chunkDigest,
+                StringComparison.Ordinal))
+        {
+            throw new ConfigurationImportSessionException(
+                ConfigurationImportFailureCodes.ArtifactIntegrityInvalid);
+        }
+
+        return await unitOfWork.ExecuteInTransactionAsync(
+            async token =>
+            {
+                ConfigurationDirectTransferSession session =
+                    await AuthorizedAsync(
+                        sessionId,
+                        target,
+                        nonce,
+                        destinationProof,
+                        token);
+                bool accepted = session.AcceptChunk(
+                    offset,
+                    bytes.Length,
+                    chunkDigest,
+                    Digest(nonce),
+                    UtcNow());
+                if (accepted)
+                {
+                    bool stored = await chunks.AddAsync(
+                        session.Id,
+                        offset,
+                        bytes,
+                        chunkDigest,
+                        session.ExpiresAt,
+                        token);
+                    if (!stored)
+                    {
+                        throw new ConfigurationImportSessionException(
+                            ConfigurationImportFailureCodes.ArtifactIntegrityInvalid);
+                    }
+                    await sessions.UpdateAsync(session, token);
+                }
+                return Progress(session);
+            },
+            cancellationToken);
+    }
+
+    public async Task<ConfigurationDirectTransferProgress> CompleteAsync(
+        Guid sessionId,
+        ConfigurationImportTarget target,
+        string nonce,
+        string destinationProof,
+        CancellationToken cancellationToken) =>
+        await unitOfWork.ExecuteInTransactionAsync(
+            async token =>
+            {
+                ConfigurationDirectTransferSession session =
+                    await AuthorizedAsync(
+                        sessionId,
+                        target,
+                        nonce,
+                        destinationProof,
+                        token);
+                ReadOnlyMemory<byte> artifact = await chunks.AssembleAsync(
+                    session.Id,
+                    session.ArtifactByteLength,
+                    token);
+                string digest = ConfigurationImportDigest.ComputeBytes(artifact.Span);
+                session.Complete(digest, Digest(nonce), UtcNow());
+                await sessions.UpdateAsync(session, token);
+                return Progress(session);
+            },
+            cancellationToken);
+
+    public async Task<ConfigurationImportSessionCreatedResult> PromoteAsync(
+        Guid sessionId,
+        ConfigurationImportTarget target,
+        string nonce,
+        string destinationProof,
+        CancellationToken cancellationToken)
+    {
+        ConfigurationDirectTransferSession session = await AuthorizedAsync(
+            sessionId,
+            target,
+            nonce,
+            destinationProof,
+            cancellationToken);
+        if (session.Status != ConfigurationDirectTransferStatus.Received)
+        {
+            throw new ConfigurationImportSessionException(
+                ConfigurationImportFailureCodes.ApplyBlocked);
+        }
+        ReadOnlyMemory<byte> artifact = await chunks.AssembleAsync(
+            session.Id,
+            session.ArtifactByteLength,
+            cancellationToken);
+        return target.Scope == ConfigurationImportScope.Instance
+            ? await imports.CreateInstanceAsync(artifact, cancellationToken)
+            : await imports.CreateTenantAsync(
+                target.TenantId!.Value,
+                artifact,
+                cancellationToken);
+    }
+
+    public async Task<ConfigurationDirectTransferProgress> CancelAsync(
+        Guid sessionId,
+        ConfigurationImportTarget target,
+        string nonce,
+        string destinationProof,
+        CancellationToken cancellationToken) =>
+        await MutateAsync(
+            sessionId,
+            target,
+            nonce,
+            destinationProof,
+            session => session.Cancel(UtcNow()),
+            cancellationToken);
+
+    private async Task<ConfigurationDirectTransferProgress> MutateAsync(
+        Guid sessionId,
+        ConfigurationImportTarget target,
+        string nonce,
+        string destinationProof,
+        Action<ConfigurationDirectTransferSession> mutate,
+        CancellationToken cancellationToken) =>
+        await unitOfWork.ExecuteInTransactionAsync(
+            async token =>
+            {
+                ConfigurationDirectTransferSession session =
+                    await AuthorizedAsync(
+                        sessionId,
+                        target,
+                        nonce,
+                        destinationProof,
+                        token);
+                mutate(session);
+                await sessions.UpdateAsync(session, token);
+                return Progress(session);
+            },
+            cancellationToken);
+
+    private async Task<ConfigurationDirectTransferSession> AuthorizedAsync(
+        Guid sessionId,
+        ConfigurationImportTarget target,
+        string nonce,
+        string destinationProof,
+        CancellationToken cancellationToken)
+    {
+        ConfigurationDirectTransferSession session =
+            await sessions.GetForUpdateAsync(
+                sessionId,
+                target.AuthorityKey,
+                cancellationToken)
+            ?? throw new ConfigurationImportSessionException(
+                ConfigurationImportFailureCodes.ArtifactMissing);
+        if (session.TargetTenantId != target.TenantId
+            || !CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(session.NonceDigest),
+                Convert.FromHexString(Digest(nonce)))
+            || !CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(session.DestinationProofDigest),
+                Convert.FromHexString(Digest(destinationProof))))
+        {
+            throw new ConfigurationImportSessionException(
+                ConfigurationImportFailureCodes.TokenInvalid);
+        }
+        return session;
+    }
+
+    private Guid Actor() =>
+        currentUser.IsAuthenticated && currentUser.UserId is { } id && id != Guid.Empty
+            ? id
+            : throw new UnauthorizedAccessException();
+
+    private DateTime UtcNow() => timeProvider.GetUtcNow().UtcDateTime;
+
+    private static ConfigurationDirectTransferProgress Progress(
+        ConfigurationDirectTransferSession session) =>
+        new(
+            session.Id,
+            session.Status,
+            session.NextOffset,
+            session.ArtifactByteLength,
+            session.ExpiresAt);
+
+    private static string Token() =>
+        Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+    private static string Digest(string value) =>
+        Convert.ToHexStringLower(
+            SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value)));
+}

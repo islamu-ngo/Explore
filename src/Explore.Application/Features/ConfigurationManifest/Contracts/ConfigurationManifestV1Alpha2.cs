@@ -47,6 +47,7 @@ public static class ConfigurationManifestExportMetadataValues
     public const string OverridesView = "Overrides";
     public const string PortableView = "Portable";
     public const string InstanceAndTenantsAuthorityScope = "InstanceAndTenants";
+    public const string TenantAuthorityScope = "Tenant";
 }
 
 public static class ConfigurationManifestDocumentKeys

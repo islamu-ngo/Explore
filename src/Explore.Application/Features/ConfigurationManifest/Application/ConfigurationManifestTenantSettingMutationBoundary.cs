@@ -21,6 +21,10 @@ public interface IConfigurationManifestTenantSettingMutationBoundary
     Task CreateInCurrentTransactionAsync(
         ConfigurationManifestTenantSettingMutationInput input,
         CancellationToken cancellationToken = default);
+
+    Task ApplyInCurrentTransactionAsync(
+        ConfigurationManifestTenantSettingMutationInput input,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class ConfigurationManifestTenantSettingMutationBoundary(
@@ -30,6 +34,38 @@ public sealed class ConfigurationManifestTenantSettingMutationBoundary(
     public async Task CreateInCurrentTransactionAsync(
         ConfigurationManifestTenantSettingMutationInput input,
         CancellationToken cancellationToken = default)
+    {
+        List<TenantSettingOverrideUpsert> writes = Compile(input);
+        if (writes.Count == 0)
+            return;
+
+        await tenantSettings.CreateManyForTenantAsync(
+            input.TenantId,
+            writes,
+            input.ActorUserId,
+            input.OccurredAtUtc,
+            cancellationToken);
+    }
+
+    public async Task ApplyInCurrentTransactionAsync(
+        ConfigurationManifestTenantSettingMutationInput input,
+        CancellationToken cancellationToken = default)
+    {
+        List<TenantSettingOverrideUpsert> writes = Compile(input);
+        Guid actorUserId = input.ActorUserId
+            ?? throw new InvalidOperationException(
+                "Authenticated actor is required for Day 2 tenant import.");
+        if (writes.Count == 0)
+            return;
+        await tenantSettings.UpsertManyForTenantAsync(
+            input.TenantId,
+            writes,
+            actorUserId,
+            cancellationToken);
+    }
+
+    private static List<TenantSettingOverrideUpsert> Compile(
+        ConfigurationManifestTenantSettingMutationInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(input.Mutations);
@@ -43,8 +79,7 @@ public sealed class ConfigurationManifestTenantSettingMutationBoundary(
 
         var seenKeys = new HashSet<string>(StringComparer.Ordinal);
         var writes = new List<TenantSettingOverrideUpsert>(input.Mutations.Count);
-        foreach (ConfigurationManifestTenantSettingMutation mutation
-                 in input.Mutations)
+        foreach (ConfigurationManifestTenantSettingMutation mutation in input.Mutations)
         {
             ArgumentNullException.ThrowIfNull(mutation);
             if (!seenKeys.Add(mutation.Key)
@@ -63,15 +98,6 @@ public sealed class ConfigurationManifestTenantSettingMutationBoundary(
                 mutation.SerializedValue,
                 IsLocked: false));
         }
-
-        if (writes.Count == 0)
-            return;
-
-        await tenantSettings.CreateManyForTenantAsync(
-            input.TenantId,
-            writes,
-            input.ActorUserId,
-            input.OccurredAtUtc,
-            cancellationToken);
+        return writes;
     }
 }

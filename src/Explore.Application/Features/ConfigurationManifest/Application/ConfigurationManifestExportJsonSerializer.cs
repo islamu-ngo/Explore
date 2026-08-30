@@ -7,7 +7,6 @@ using System.Text.Json;
 using Explore.Application.Features.ConfigurationManifest.Contracts;
 using Explore.Application.Features.ConfigurationManifest.Serialization;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
 
 internal static class ConfigurationManifestExportJsonSerializer
 {

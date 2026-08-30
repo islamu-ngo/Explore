@@ -77,6 +77,126 @@ public static class ConfigurationManifestValidator
         return new ConfigurationManifestValidationResult(errors.AsReadOnly());
     }
 
+    public static ConfigurationManifestValidationResult Validate(
+        TenantConfigurationPackageV1Alpha2 package)
+    {
+        ArgumentNullException.ThrowIfNull(package);
+
+        var errors = new List<ConfigurationManifestValidationError>();
+        if (!string.Equals(
+                package.Schema,
+                TenantConfigurationPackageContractMetadata.SchemaId,
+                StringComparison.Ordinal))
+        {
+            AddContractError(errors, "$.$schema");
+        }
+        if (!string.Equals(
+                package.ApiVersion,
+                TenantConfigurationPackageContractMetadata.ApiVersion,
+                StringComparison.Ordinal))
+        {
+            AddContractError(errors, "$.apiVersion");
+        }
+        if (!string.Equals(
+                package.Kind,
+                TenantConfigurationPackageContractMetadata.Kind,
+                StringComparison.Ordinal))
+        {
+            AddContractError(errors, "$.kind");
+        }
+        if (package.Metadata is null
+            || !IsMachineName(package.Metadata.Name, 100, allowDot: true)
+            || package.Metadata.Source is null
+            || !IsMachineName(
+                package.Metadata.Source.TenantName,
+                100,
+                allowDot: false)
+            || package.Metadata.Source.InstanceName is { } instanceName
+                && !IsMachineName(instanceName, 100, allowDot: true))
+        {
+            AddContractError(errors, "$.metadata");
+        }
+        else
+        {
+            ValidateTenantPackageExport(package.Metadata.Export, errors);
+        }
+
+        if (package.Spec is null)
+        {
+            AddContractError(errors, "$.spec");
+            return new ConfigurationManifestValidationResult(errors.AsReadOnly());
+        }
+
+        if (string.IsNullOrWhiteSpace(package.Spec.DisplayName)
+            || package.Spec.DisplayName.Length > 500)
+        {
+            AddContractError(errors, "$.spec.displayName");
+        }
+        if (package.Spec.Settings is null)
+        {
+            AddContractError(errors, "$.spec.settings");
+        }
+        else
+        {
+            ValidateTenantSettings(package.Spec.Settings, "$.spec.settings", errors);
+            ValidatePublicationPolicy(package.Spec.Settings, "$.spec.settings", errors);
+        }
+        if (package.Spec.Documents is null)
+        {
+            AddContractError(errors, "$.spec.documents");
+        }
+        else
+        {
+            ValidateDocuments(package.Spec.Documents, "$.spec.documents", errors);
+        }
+        if (package.Spec.LegalDocuments is null)
+        {
+            AddContractError(errors, "$.spec.legalDocuments");
+        }
+        else
+        {
+            ValidateLegalDocuments(
+                package.Spec.LegalDocuments,
+                LegalDocumentScope.Tenant,
+                "$.spec.legalDocuments",
+                errors);
+        }
+
+        return new ConfigurationManifestValidationResult(errors.AsReadOnly());
+    }
+
+    private static void ValidateTenantPackageExport(
+        ConfigurationManifestExportMetadataV1Alpha2? export,
+        List<ConfigurationManifestValidationError> errors)
+    {
+        if (export is null)
+            return;
+
+        bool isOverrides = string.Equals(
+            export.View,
+            ConfigurationManifestExportMetadataValues.OverridesView,
+            StringComparison.Ordinal);
+        bool isPortable = string.Equals(
+            export.View,
+            ConfigurationManifestExportMetadataValues.PortableView,
+            StringComparison.Ordinal);
+        if ((!isOverrides && !isPortable)
+            || export.EffectiveValuesFlattened != isPortable
+            || !export.SensitiveValuesOmitted
+            || !string.Equals(
+                export.AuthorityScope,
+                ConfigurationManifestExportMetadataValues.TenantAuthorityScope,
+                StringComparison.Ordinal)
+            || !export.SovereignValuesOmitted
+            || export.SovereignLockedFields is null
+            || !export.SovereignLockedFields.SequenceEqual(
+                PaidEventPolicyAuthorityMetadata.SovereignLockedFields,
+                StringComparer.Ordinal))
+        {
+            AddContractError(errors, "$.metadata.export");
+        }
+    }
+
     private static void ValidateEnvelope(
         ConfigurationManifestV1Alpha2 manifest,
         List<ConfigurationManifestValidationError> errors)
@@ -167,6 +287,19 @@ public static class ConfigurationManifestValidator
             return null;
         }
 
+        if (instance.LegalDocuments is null)
+        {
+            AddContractError(errors, "$.spec.instance.legalDocuments");
+        }
+        else
+        {
+            ValidateLegalDocuments(
+                instance.LegalDocuments,
+                LegalDocumentScope.Instance,
+                "$.spec.instance.legalDocuments",
+                errors);
+        }
+
         return ValidateInstanceDocuments(
             instance.Documents,
             "$.spec.instance.documents",
@@ -252,8 +385,123 @@ public static class ConfigurationManifestValidator
                     $"{tenantPath}.spec.documents",
                     errors);
             }
+
+            if (tenant.Spec.LegalDocuments is null)
+            {
+                AddContractError(errors, $"{tenantPath}.spec.legalDocuments");
+            }
+            else
+            {
+                ValidateLegalDocuments(
+                    tenant.Spec.LegalDocuments,
+                    LegalDocumentScope.Tenant,
+                    $"{tenantPath}.spec.legalDocuments",
+                    errors);
+            }
         }
     }
+
+    private static void ValidateLegalDocuments(
+        IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>
+            documents,
+        LegalDocumentScope scope,
+        string path,
+        List<ConfigurationManifestValidationError> errors)
+    {
+        if (documents.Count > LegalDocumentContentLimits.MaximumDocumentsPerScope)
+        {
+            AddLegalDocumentError(errors, path);
+            return;
+        }
+
+        foreach ((
+                     string key,
+                     ConfigurationManifestLegalDocumentV1Alpha2? document)
+                 in documents)
+        {
+            string documentPath = $"{path}.{key}";
+            if (document is null
+                || !Enum.TryParse(
+                    document.Kind,
+                    ignoreCase: false,
+                    out LegalDocumentKind kind)
+                || !Enum.IsDefined(kind)
+                || !string.Equals(key, document.Kind, StringComparison.Ordinal)
+                || LegalDocumentKindCatalog.Get(kind).Scope != scope
+                || !Enum.TryParse(
+                    document.Audience,
+                    ignoreCase: false,
+                    out LegalDocumentAudience _)
+                || document.LifecycleIntent is not (
+                    "Draft" or "ReviewRequired" or "ProposedPublication")
+                || document.ProposedEffectiveAt is { Kind: not DateTimeKind.Utc }
+                || document.AccountableIdentityReference?.Length > 200
+                || document.ChangeSummary?.Length > 500
+                || document.JurisdictionAssumptions is null
+                || document.JurisdictionAssumptions.Count > 16
+                || document.JurisdictionAssumptions.Any(value =>
+                    string.IsNullOrWhiteSpace(value) || value.Length > 100)
+                || document.Localizations is null
+                || document.Localizations.Count is < 1 or >
+                    LegalDocumentContentLimits.MaximumLocalesPerDocument
+                || document.Localizations.Any(localization =>
+                    localization is null))
+            {
+                AddLegalDocumentError(errors, documentPath);
+                continue;
+            }
+
+            try
+            {
+                string[] languages = document.Localizations
+                    .Select(localization => LegalDocumentLocalizedSource.Create(
+                        localization.LanguageTag,
+                        localization.Title,
+                        localization.Summary,
+                        localization.Markdown).LanguageTag)
+                    .ToArray();
+                if (languages.Distinct(StringComparer.OrdinalIgnoreCase).Count()
+                    != languages.Length)
+                {
+                    throw new ArgumentException(
+                        "Legal document locales must be unique.");
+                }
+
+                if (document.TemplateProvenance is { } provenance)
+                {
+                    if (!Enum.TryParse(
+                            provenance.SourceKind,
+                            ignoreCase: false,
+                            out LegalDocumentTemplateSourceKind sourceKind))
+                    {
+                        throw new ArgumentException(
+                            "Legal template source kind is invalid.");
+                    }
+
+                    _ = LegalDocumentTemplateProvenance.Create(
+                        provenance.TemplateId,
+                        provenance.TemplateVersion,
+                        sourceKind,
+                        provenance.LicenseExpression,
+                        provenance.ReviewReference);
+                }
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException
+                    or InvalidOperationException)
+            {
+                AddLegalDocumentError(errors, documentPath);
+            }
+        }
+    }
+
+    private static void AddLegalDocumentError(
+        List<ConfigurationManifestValidationError> errors,
+        string path) =>
+        errors.Add(new ConfigurationManifestValidationError(
+            ConfigurationManifestFailureCodes.LegalDocumentInvalid,
+            path,
+            "The portable legal document source is invalid."));
 
     private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha2?
         ValidateInstanceDocuments(

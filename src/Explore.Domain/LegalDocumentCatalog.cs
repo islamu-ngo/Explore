@@ -78,12 +78,19 @@ public enum LegalDocumentKind
 public sealed record LegalDocumentKindDescriptor(
     LegalDocumentKind Kind,
     LegalDocumentScope Scope,
-    LegalDocumentOwnerRole OwnerRole);
+    LegalDocumentOwnerRole OwnerRole)
+{
+    public string Code => LegalDocumentKindCatalog.CodeFor(Kind);
+}
 
 public static class LegalDocumentKindCatalog
 {
     private static readonly FrozenDictionary<LegalDocumentKind, LegalDocumentKindDescriptor>
         KindEntries = Create();
+    private static readonly FrozenDictionary<string, LegalDocumentKindDescriptor>
+        CodeEntries = KindEntries.Values.ToFrozenDictionary(
+            descriptor => descriptor.Code,
+            StringComparer.Ordinal);
 
     public static IReadOnlyDictionary<LegalDocumentKind, LegalDocumentKindDescriptor>
         Entries => KindEntries;
@@ -92,6 +99,59 @@ public static class LegalDocumentKindCatalog
         KindEntries.TryGetValue(kind, out LegalDocumentKindDescriptor? descriptor)
             ? descriptor
             : throw new ArgumentOutOfRangeException(nameof(kind));
+
+    public static bool TryGet(
+        string code,
+        out LegalDocumentKindDescriptor? descriptor)
+    {
+        descriptor = null;
+        return !string.IsNullOrWhiteSpace(code)
+            && CodeEntries.TryGetValue(code, out descriptor);
+    }
+
+    public static string CodeFor(LegalDocumentKind kind) => kind switch
+    {
+        LegalDocumentKind.TermsOfService => "terms-of-service",
+        LegalDocumentKind.PrivacyNotice => "privacy-notice",
+        LegalDocumentKind.CookiePolicy => "cookie-policy",
+        LegalDocumentKind.AcceptableUsePolicy => "acceptable-use-policy",
+        LegalDocumentKind.CommunityGuidelines => "community-guidelines",
+        LegalDocumentKind.ModerationReportingAppealPolicy =>
+            "moderation-reporting-appeal-policy",
+        LegalDocumentKind.AccessibilityStatement => "accessibility-statement",
+        LegalDocumentKind.LegalNotice => "legal-notice",
+        LegalDocumentKind.SecurityDisclosurePolicy => "security-disclosure-policy",
+        LegalDocumentKind.RetentionErasurePortabilityNotice =>
+            "retention-erasure-portability-notice",
+        LegalDocumentKind.SubprocessorNotice => "subprocessor-notice",
+        LegalDocumentKind.OpenSourceAttribution => "open-source-attribution",
+        LegalDocumentKind.ApiDeveloperTerms => "api-developer-terms",
+        LegalDocumentKind.FederationNotice => "federation-notice",
+        LegalDocumentKind.PaymentResponsibilities => "payment-responsibilities",
+        LegalDocumentKind.SupportAvailabilityEolMigrationNotice =>
+            "support-availability-eol-migration-notice",
+        LegalDocumentKind.TenantTerms => "tenant-terms",
+        LegalDocumentKind.TenantPrivacyNotice => "tenant-privacy-notice",
+        LegalDocumentKind.TenantCodeOfConduct => "tenant-code-of-conduct",
+        LegalDocumentKind.OrganizerSubmissionTerms => "organizer-submission-terms",
+        LegalDocumentKind.EventPublicationModerationPolicy =>
+            "event-publication-moderation-policy",
+        LegalDocumentKind.CancellationRefundPolicy => "cancellation-refund-policy",
+        LegalDocumentKind.RegistrationParticipantPrivacyNotice =>
+            "registration-participant-privacy-notice",
+        LegalDocumentKind.MediaPhotographyNotice => "media-photography-notice",
+        LegalDocumentKind.SafeguardingMinorParticipationPolicy =>
+            "safeguarding-minor-participation-policy",
+        LegalDocumentKind.VenueAccessibilityPolicy =>
+            "venue-accessibility-policy",
+        LegalDocumentKind.ComplaintCorrectionCopyrightNotice =>
+            "complaint-correction-copyright-notice",
+        LegalDocumentKind.SponsorshipPartnerDisclosure =>
+            "sponsorship-partner-disclosure",
+        LegalDocumentKind.TenantRetentionContactSharingNotice =>
+            "tenant-retention-contact-sharing-notice",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
 
     private static FrozenDictionary<LegalDocumentKind, LegalDocumentKindDescriptor>
         Create() =>

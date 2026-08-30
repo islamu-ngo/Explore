@@ -5,13 +5,20 @@ namespace Event.Persistence.IntegrationTests.ConfigurationManifest;
 
 using Explore.Domain;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
+using Explore.Application.Features.ConfigurationManifest.LegalDocuments;
+using Explore.Application.Features.LegalDocuments.Handlers.Queries;
+using Explore.Application.Features.LegalDocuments.Requests.Queries;
 using Explore.Persistence;
 using Explore.Persistence.Database;
+using Explore.Persistence.Repositories;
 using Explore.Secrets.Database;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Explore.Domain.ValueObjects;
 
 public sealed class LegalDocumentPersistenceTests
 {
@@ -57,7 +64,11 @@ public sealed class LegalDocumentPersistenceTests
     [Test]
     public async Task Sqlite_RoundTripPreservesPublishedEvidenceAndLocalizedSource()
     {
-        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await using var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = ":memory:"
+            }.ToString());
         await connection.OpenAsync();
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseSqlite(connection)
@@ -122,6 +133,103 @@ public sealed class LegalDocumentPersistenceTests
     }
 
     [Test]
+    public async Task Repository_TargetCoordinatesPreventCrossTenantReads()
+    {
+        await using var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = ":memory:"
+            }.ToString());
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseSqlite(connection)
+            .UseSnakeCaseNamingConvention()
+            .Options;
+        await using var context = new ExploreDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        var repository = new LegalDocumentRepository(context);
+        Guid firstTenantId = Guid.CreateVersion7();
+        Guid secondTenantId = Guid.CreateVersion7();
+        LegalDocument first = PublishedTenantDocument(firstTenantId);
+        LegalDocument second = PublishedTenantDocument(secondTenantId);
+        await repository.AddAsync(first, CancellationToken.None);
+        await repository.AddAsync(second, CancellationToken.None);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        LegalDocument? firstRead = await repository.GetPublishedAsync(
+            LegalDocumentScope.Tenant,
+            firstTenantId,
+            LegalDocumentKind.TenantTerms,
+            CancellationToken.None);
+        LegalDocument? crossTenantRead = await repository.GetByIdForUpdateAsync(
+            first.Id,
+            LegalDocumentScope.Tenant,
+            secondTenantId,
+            CancellationToken.None);
+
+        await Assert.That(firstRead?.Id).IsEqualTo(first.Id);
+        await Assert.That(crossTenantRead).IsNull();
+    }
+
+    [Test]
+    public async Task PublicQuery_ComposesPersistedPublicationWithTargetIdentity()
+    {
+        await using var connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder
+            {
+                DataSource = ":memory:"
+            }.ToString());
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseSqlite(connection)
+            .UseSnakeCaseNamingConvention()
+            .Options;
+        await using var context = new ExploreDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        var repository = new LegalDocumentRepository(context);
+        LegalDocument document = PublishedInstanceDocument();
+        await repository.AddAsync(document, CancellationToken.None);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        InstanceOperatorIdentity identity = InstanceOperatorIdentity.Create(
+            new InstanceOperatorIdentityOptions
+            {
+                OperatorId = Guid.CreateVersion7(),
+                PublicName = "Community Operator",
+                LegalName = "Operator & Community",
+                IsOfficialInstance = false,
+                OfficialOrigin = "https://example.test",
+                OperatorKindCode = TenantDirectoryOperatorKinds.RegisteredOrganization,
+                JurisdictionCountryCode = "BE",
+                RegistrationIdentifier = "registry-reference",
+                PublicContactEmail = "public@example.test",
+                WebsiteUrl = "https://example.test",
+                LegalNoticeUrl = "https://example.test/legal",
+                TermsUrl = "https://example.test/terms",
+                PrivacyUrl = "https://example.test/privacy"
+            });
+        var handler = new GetPublicLegalDocumentQueryHandler(
+            repository,
+            new LegalDocumentRenderingService(),
+            new FixedTenantContext(Guid.CreateVersion7()),
+            new UnexpectedTenantIdentityEvaluator(),
+            identity);
+
+        PublicLegalDocumentQueryResult result = await handler.Handle(
+            new GetPublicLegalDocumentQuery("terms-of-service", "en"),
+            CancellationToken.None);
+
+        await Assert.That(result.IsAvailable).IsTrue();
+        await Assert.That(result.Document?.OwnerRoleCode)
+            .IsEqualTo("instance_operator");
+        await Assert.That(result.Document?.RenderedHtml)
+            .Contains("Operator &amp; Community");
+        await Assert.That(result.Document?.RenderedHtml)
+            .DoesNotContain("instance-identity:v1");
+    }
+
+    [Test]
     [Arguments(PrimaryDatabaseProvider.PostgreSql)]
     [Arguments(PrimaryDatabaseProvider.Sqlite)]
     [Arguments(PrimaryDatabaseProvider.SqlServer)]
@@ -183,6 +291,36 @@ public sealed class LegalDocumentPersistenceTests
         return document;
     }
 
+    private static LegalDocument PublishedInstanceDocument()
+    {
+        var document = LegalDocument.CreateDraft(
+            LegalDocumentScope.Instance,
+            tenantId: null,
+            LegalDocumentKind.TermsOfService,
+            LegalDocumentAudience.Public,
+            [
+                LegalDocumentLocalizedSource.Create(
+                    "en",
+                    "Published Terms",
+                    "Reviewed public terms.",
+                    "# Terms\n\nAccountable operator: {{accountable_identity}}.")
+            ],
+            templateProvenance: null,
+            "instance-identity:v1",
+            requiresFreshAcceptance: false,
+            OccurredAt);
+        document.SubmitForReview(OccurredAt.AddMinutes(1));
+        document.Approve(
+            Guid.CreateVersion7(),
+            "review-evidence:test",
+            OccurredAt.AddMinutes(2));
+        document.Schedule(
+            OccurredAt.AddMinutes(4),
+            OccurredAt.AddMinutes(3));
+        document.Publish(OccurredAt.AddMinutes(4));
+        return document;
+    }
+
     private static ExploreDbContext CreateModelContext(
         PrimaryDatabaseProvider provider)
     {
@@ -231,5 +369,21 @@ public sealed class LegalDocumentPersistenceTests
                 _ => null
             }
         };
+    }
+
+    private sealed class FixedTenantContext(Guid tenantId) : ITenantContext
+    {
+        public Guid TenantId { get; } = tenantId;
+    }
+
+    private sealed class UnexpectedTenantIdentityEvaluator :
+        ITenantDirectoryOperatorReadinessEvaluator
+    {
+        public Task<TenantDirectoryOperatorReadinessAssessment> EvaluateAsync(
+            Guid tenantId,
+            TenantDirectoryOperatorIdentityCapability capability,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException(
+                "Instance legal composition must not resolve tenant identity.");
     }
 }

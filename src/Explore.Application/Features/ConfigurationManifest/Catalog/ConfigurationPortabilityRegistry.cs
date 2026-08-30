@@ -96,16 +96,18 @@ public static class ConfigurationPortabilityRegistry
             PortableTenant("tenant.settings", "Settings"),
             PortableTenant("tenant.documents", "Typed documents"),
             PortableTenant("tenant.legal_documents", "Legal documents"),
-            PortableTenant("tenant.footer", "Footer"),
-            PortableTenant("tenant.navigation", "Navigation"),
-            PortableTenant("tenant.templates", "Templates"),
-            MappedTenant("tenant.lookups", "Lookup configuration"),
-            MappedTenant(
+            UnavailableTenant("tenant.footer", "Footer"),
+            UnavailableTenant("tenant.navigation", "Navigation"),
+            UnavailableTenant("tenant.templates", "Templates"),
+            UnavailableTenant("tenant.lookups", "Lookup configuration"),
+            UnavailableTenant(
                 "tenant.custom_property_definitions",
                 "Custom property definitions"),
-            PortableTenant("tenant.localization", "Localization"),
-            PortableTenant("tenant.registration_policy", "Registration policy"),
-            PortableTenant("tenant.modules", "Module governance"),
+            UnavailableTenant("tenant.localization", "Localization"),
+            UnavailableTenant(
+                "tenant.registration_policy",
+                "Registration policy"),
+            UnavailableTenant("tenant.modules", "Module governance"),
             new(
                 "extensions",
                 ConfigurationPortabilityScope.Shared,
@@ -115,15 +117,15 @@ public static class ConfigurationPortabilityRegistry
                 NoDependencies,
                 NoReferences,
                 ManifestAndTenantPackage,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
                 false,
-                string.Empty,
-                string.Empty,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                "configuration_portability_extension_pack_required",
+                "configuration_portability_extension_pack_required",
                 "docs/EXTENSIBILITY.md",
                 "Extension registry"),
             Excluded(
@@ -183,15 +185,28 @@ public static class ConfigurationPortabilityRegistry
             ManifestAndTenantPackage,
             owner);
 
-    private static ConfigurationPortabilitySectionDescriptor MappedTenant(
+    private static ConfigurationPortabilitySectionDescriptor UnavailableTenant(
         string key,
         string owner) =>
-        Portable(
+        new(
             key,
             ConfigurationPortabilityScope.Tenant,
             ConfigurationPortabilityAuthority.TenantAdministrator,
             ConfigurationPortabilityClass.PortableWithMapping,
-            ManifestAndTenantPackage,
+            1,
+            NoDependencies,
+            NoReferences,
+            NoArtifacts,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            "configuration_portability_section_not_serialized",
+            "configuration_portability_section_not_serialized",
+            "docs/CONFIGURATION_MANIFEST.md#section-coverage",
             owner);
 
     private static ConfigurationPortabilitySectionDescriptor Portable(

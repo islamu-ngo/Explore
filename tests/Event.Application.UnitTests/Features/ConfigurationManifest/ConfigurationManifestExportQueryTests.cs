@@ -130,6 +130,9 @@ public sealed class ConfigurationManifestExportQueryTests
                      "buyerEmail",
                      "providerAccountId",
                      "secretBinding",
+                     "inlineCiphertext",
+                     "infisicalPath",
+                     "environmentVariableName",
                      "reconciliationState",
                      "acceptanceEvidence"
                  })

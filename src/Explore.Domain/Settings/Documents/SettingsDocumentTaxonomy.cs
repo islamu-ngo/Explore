@@ -15,6 +15,7 @@ public static class SettingsDocumentTaxonomy
         InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
         InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
         InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword,
+        Explore.Domain.Secrets.SecretDefinitionRegistry.Keys.Analytics.PersonalApiKey,
         InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret,
         InfrastructureSecretSettingKeys.Authentication.GoogleClientSecret,
     };
