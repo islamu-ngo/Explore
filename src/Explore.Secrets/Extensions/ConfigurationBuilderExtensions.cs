@@ -1,5 +1,5 @@
-// ABOUTME: Adds Infisical and database-backed secret sources to IConfigurationBuilder.
-// ABOUTME: Owns the API-side startup configuration implementation for Explore.Secrets consumers.
+// ABOUTME: Adds the isolated Infisical authority source to IConfigurationBuilder.
+// ABOUTME: Contains no database-backed or lower-authority fallback source.
 
 namespace Explore.Secrets.Extensions;
 
@@ -98,28 +98,4 @@ public static class ConfigurationBuilderExtensions
         return builder.Add(source);
     }
 
-    /// <summary>
-    /// Adds database configuration provider for encrypted AppSettings.
-    /// </summary>
-    /// <param name="builder">The configuration builder.</param>
-    /// <param name="connectionString">Database connection string.</param>
-    /// <param name="encryptionOptions">Encryption options for decrypting values.</param>
-    /// <param name="configure">Optional action to configure additional options.</param>
-    /// <returns>The configuration builder for chaining.</returns>
-    public static IConfigurationBuilder AddDatabaseConfiguration(
-        this IConfigurationBuilder builder,
-        string connectionString,
-        EncryptionOptions encryptionOptions,
-        Action<DbConfigurationSource>? configure = null)
-    {
-        var source = new DbConfigurationSource
-        {
-            ConnectionString = connectionString,
-            EncryptionOptions = encryptionOptions
-        };
-
-        configure?.Invoke(source);
-
-        return builder.Add(source);
-    }
 }

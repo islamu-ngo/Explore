@@ -136,10 +136,6 @@ public static class ServiceCollectionExtensions
         services.AddOptions<SecretRefreshOptions>()
             .Bind(configuration.GetSection(SecretRefreshOptions.SectionName));
 
-        // Bind encryption options
-        services.AddOptions<EncryptionOptions>()
-            .Bind(configuration.GetSection(EncryptionOptions.SectionName));
-
         // Add observability
         services.AddSecretObservability(enableAuditing);
 
@@ -183,10 +179,6 @@ public static class ServiceCollectionExtensions
         {
             refreshOptionsBuilder.Configure(configureRefresh);
         }
-
-        // Bind encryption options
-        services.AddOptions<EncryptionOptions>()
-            .Bind(configuration.GetSection(EncryptionOptions.SectionName));
 
         return services;
     }
@@ -317,89 +309,6 @@ public static class ServiceCollectionExtensions
     {
         services.AddHostedService<SecretRefreshService>();
         return services;
-    }
-
-    /// <summary>
-    /// Adds encryption service for database settings with key versioning support.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The configuration root.</param>
-    /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddEncryptionService(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        // Bind encryption options
-        services.AddOptions<EncryptionOptions>()
-            .Bind(configuration.GetSection(EncryptionOptions.SectionName));
-
-        // Register encryption service
-        services.TryAddSingleton<IEncryptionService>(sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<EncryptionOptions>>();
-            var logger = sp.GetService<ILogger<AesEncryptionService>>();
-            return new AesEncryptionService(options, logger);
-        });
-
-        return services;
-    }
-
-    /// <summary>
-    /// Adds encryption service with explicit options configuration.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configure">Action to configure encryption options.</param>
-    /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddEncryptionService(
-        this IServiceCollection services,
-        Action<EncryptionOptions> configure)
-    {
-        services.AddOptions<EncryptionOptions>()
-            .Configure(configure);
-
-        services.TryAddSingleton<IEncryptionService>(sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<EncryptionOptions>>();
-            var logger = sp.GetService<ILogger<AesEncryptionService>>();
-            return new AesEncryptionService(options, logger);
-        });
-
-        return services;
-    }
-
-    /// <summary>
-    /// Adds key rotation service for re-encrypting settings with new keys.
-    /// Requires encryption service to be registered first.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddKeyRotationService(this IServiceCollection services)
-    {
-        services.TryAddSingleton(sp =>
-        {
-            var encryptionService = sp.GetRequiredService<IEncryptionService>();
-            var logger = sp.GetService<ILogger<KeyRotationService>>();
-            return new KeyRotationService(encryptionService, logger);
-        });
-
-        return services;
-    }
-
-    /// <summary>
-    /// Adds database configuration provider to load encrypted settings from AppSettings table.
-    /// </summary>
-    /// <param name="builder">The configuration builder.</param>
-    /// <param name="connectionString">Database connection string.</param>
-    /// <param name="encryptionOptions">Encryption options for decrypting values.</param>
-    /// <param name="configure">Optional action to configure additional options.</param>
-    /// <returns>The configuration builder for chaining.</returns>
-    public static IConfigurationBuilder AddDatabaseSettings(
-        this IConfigurationBuilder builder,
-        string connectionString,
-        EncryptionOptions encryptionOptions,
-        Action<DbConfigurationSource>? configure = null)
-    {
-        return builder.AddDatabaseConfiguration(connectionString, encryptionOptions, configure);
     }
 
     /// <summary>
