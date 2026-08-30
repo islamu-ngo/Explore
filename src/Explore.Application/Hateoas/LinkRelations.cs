@@ -9,6 +9,27 @@ namespace Explore.Application.Hateoas;
 /// </summary>
 public static class LinkRelations
 {
+    public const string CreateConfigurationImportSession =
+        "create-configuration-import-session";
+    public const string ExportTenantConfigurationPackage =
+        "export-tenant-configuration-package";
+    public const string PreviewConfigurationImport =
+        "preview-configuration-import";
+    public const string RefreshConfigurationImportPreview =
+        "refresh-configuration-import-preview";
+    public const string CancelConfigurationImport =
+        "cancel-configuration-import";
+    public const string ApplyConfigurationImport =
+        "apply-configuration-import";
+    public const string ConfigurationImportHistory =
+        "configuration-import-history";
+    public const string ConfigurationImportReceipt =
+        "configuration-import-receipt";
+    public const string CreateConfigurationImportRollback =
+        "create-configuration-import-rollback";
+    public const string CreateConfigurationDirectTransfer =
+        "create-configuration-direct-transfer";
+
     public const string ManageEventAddOns = "manage-event-add-ons";
     public const string CreateEventAddOnCatalogDraft = "create-event-add-on-catalog-draft";
     public const string AddEventAddOnCatalogItem = "add-event-add-on-catalog-item";

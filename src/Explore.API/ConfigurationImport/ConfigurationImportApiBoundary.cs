@@ -1,0 +1,23 @@
+// ABOUTME: Defines canonical HTTP size, capability-token, rate, timeout, and ProblemDetails contracts.
+// ABOUTME: Keeps import failures bounded to status, stable code, and optional retry metadata.
+
+namespace Explore.API.ConfigurationImport;
+
+using Explore.Application.Features.ConfigurationManifest.Contracts;
+
+public static class ConfigurationImportApiBoundary
+{
+    public const int MaximumUploadBytes =
+        ConfigurationManifestContentLimits.MaximumArtifactUtf8Bytes;
+    public const string AccessTokenHeader =
+        "X-Configuration-Import-Token";
+    public const string UploadRateLimitPolicy =
+        "ConfigurationImportUpload";
+    public const string UploadRequestTimeoutPolicy =
+        "ConfigurationImportUpload";
+}
+
+public sealed record ConfigurationImportProblem(
+    int Status,
+    string Code,
+    int? RetryAfterSeconds);

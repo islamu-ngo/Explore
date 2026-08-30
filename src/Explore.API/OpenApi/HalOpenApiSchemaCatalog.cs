@@ -218,6 +218,12 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.StorageObject.StorageObjectDto),
         typeof(Explore.Application.DTOs.StorageObject.StorageObjectListDto),
         typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOverviewDto),
+        typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportSessionCreatedResult),
+        typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportPreviewResult),
+        typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportPreviewItem),
+        typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportOperationResult),
+        typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportHistoryResult),
+        typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportRollbackSessionCreatedResult),
         typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneDomainOverviewDto),
         typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneDnsRecordDto),
         typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOperationsDto),
@@ -395,6 +401,16 @@ internal static class HalOpenApiSchemaCatalog
         ["HalResourceOfStorageObjectListDto"] = typeof(Explore.Application.DTOs.StorageObject.StorageObjectListDto),
         ["HalResourceOfStudioContextDto"] = typeof(Explore.Application.DTOs.Studio.StudioContextDto),
         ["HalResourceOfControlPlaneOverviewDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOverviewDto),
+        ["HalResourceOfConfigurationImportSessionCreatedResult"] =
+            typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportSessionCreatedResult),
+        ["HalResourceOfConfigurationImportPreviewResult"] =
+            typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportPreviewResult),
+        ["HalResourceOfConfigurationImportOperationResult"] =
+            typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportOperationResult),
+        ["HalResourceOfConfigurationImportHistoryResult"] =
+            typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportHistoryResult),
+        ["HalResourceOfConfigurationImportRollbackSessionCreatedResult"] =
+            typeof(Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportRollbackSessionCreatedResult),
         ["HalResourceOfControlPlaneDomainOverviewDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneDomainOverviewDto),
         ["HalResourceOfControlPlaneOperationsDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneOperationsDto),
         ["HalResourceOfControlPlaneDeploymentModeRunbookDto"] = typeof(Explore.Application.DTOs.ControlPlane.ControlPlaneDeploymentModeRunbookDto),

@@ -27,6 +27,7 @@ public static class ExceptionHandlingExtensions
         });
 
         services.AddExceptionHandler<ValidationExceptionHandler>();
+        services.AddExceptionHandler<ConfigurationImportExceptionHandler>();
         services.AddExceptionHandler<GlobalExceptionHandler>();
 
         return services;

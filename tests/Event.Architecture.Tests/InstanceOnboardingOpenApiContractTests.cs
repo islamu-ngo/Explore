@@ -225,23 +225,17 @@ public sealed class InstanceOnboardingOpenApiContractTests
     }
 
     [Test]
-    public async Task SensitiveInstanceReadContracts_MustExposeConfiguredFlagsInsteadOfSecrets()
+    public async Task SensitiveInstanceReadContracts_MustOmitSecretInputs()
     {
-        string smtpJson = JsonSerializer.Serialize(new InstanceSmtpSettingsDto
-        {
-            Username = "secret-user",
-            Password = "secret-password",
-            UsernameConfigured = true,
-            PasswordConfigured = true
-        }, JsonSerializerOptions.Web);
+        string smtpJson = JsonSerializer.Serialize(new InstanceSmtpSettingsDto(), JsonSerializerOptions.Web);
         string aiJson = JsonSerializer.Serialize(new AiAssistantGovernanceSettingsDto
         {
             ApiKey = "secret-api-key",
             ApiKeyConfigured = true
         }, JsonSerializerOptions.Web);
 
-        await Assert.That(smtpJson).DoesNotContain("secret-user", StringComparison.Ordinal);
-        await Assert.That(smtpJson).DoesNotContain("secret-password", StringComparison.Ordinal);
+        await Assert.That(smtpJson).DoesNotContain("username", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(smtpJson).DoesNotContain("password", StringComparison.OrdinalIgnoreCase);
         await Assert.That(aiJson).DoesNotContain("secret-api-key", StringComparison.Ordinal);
 
         var repositoryRoot = ResolveRepositoryRoot();
@@ -254,8 +248,8 @@ public sealed class InstanceOnboardingOpenApiContractTests
 
         await Assert.That(smtpProperties.TryGetProperty("username", out _)).IsFalse();
         await Assert.That(smtpProperties.TryGetProperty("password", out _)).IsFalse();
-        await Assert.That(smtpProperties.TryGetProperty("usernameConfigured", out _)).IsTrue();
-        await Assert.That(smtpProperties.TryGetProperty("passwordConfigured", out _)).IsTrue();
+        await Assert.That(smtpProperties.TryGetProperty("usernameConfigured", out _)).IsFalse();
+        await Assert.That(smtpProperties.TryGetProperty("passwordConfigured", out _)).IsFalse();
         await Assert.That(aiProperties.TryGetProperty("apiKey", out _)).IsFalse();
         await Assert.That(aiProperties.TryGetProperty("apiKeyConfigured", out _)).IsTrue();
         await Assert.That(aiProviderWriteProperties.TryGetProperty("apiKey", out _)).IsTrue();

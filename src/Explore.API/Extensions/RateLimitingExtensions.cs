@@ -6,6 +6,7 @@ using System.Net;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Explore.API.Authentication;
+using Explore.API.ConfigurationImport;
 using Explore.API.ExceptionHandling;
 using Explore.API.Filters;
 using Explore.Application.Authentication;
@@ -112,6 +113,10 @@ public static class RateLimitingExtensions
             section.GetValue("AddressSuggestions:PermitLimit", 30);
         var addressSuggestionsWindowSeconds =
             section.GetValue("AddressSuggestions:WindowSeconds", 60);
+        var configurationImportUploadPermitLimit =
+            section.GetValue("ConfigurationImportUpload:PermitLimit", 5);
+        var configurationImportUploadWindowSeconds =
+            section.GetValue("ConfigurationImportUpload:WindowSeconds", 60);
 
         if (environment.EnvironmentName == "Testing")
         {
@@ -156,6 +161,9 @@ public static class RateLimitingExtensions
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(AddressSuggestionsPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(
+                    ConfigurationImportApiBoundary.UploadRateLimitPolicy,
+                    _ => RateLimitPartition.GetNoLimiter<string>("test"));
             });
         }
         else
@@ -464,6 +472,23 @@ public static class RateLimitingExtensions
                     });
             });
 
+            options.AddPolicy(
+                ConfigurationImportApiBoundary.UploadRateLimitPolicy,
+                httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        $"configuration-import-upload:{GetAuthenticatedPartitionKey(httpContext)}",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit =
+                                configurationImportUploadPermitLimit,
+                            Window = TimeSpan.FromSeconds(
+                                configurationImportUploadWindowSeconds),
+                            QueueProcessingOrder =
+                                QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0,
+                            AutoReplenishment = true
+                        }));
+
             options.AddPolicy(ControlPlanePolicy, httpContext =>
             {
                 var userId = GetAuthenticatedPartitionKey(httpContext);
@@ -580,6 +605,8 @@ public static class RateLimitingExtensions
             AiAssistantPolicy => aiAssistantPermitLimit,
             ControlPlanePolicy => controlPlanePermitLimit,
             EventOpenGraphImagePolicy => ResolveEventOpenGraphImageConcurrencyLimit(),
+            ConfigurationImportApiBoundary.UploadRateLimitPolicy =>
+                configurationImportUploadPermitLimit,
             _ => globalTokenLimit
         };
 
@@ -640,6 +667,11 @@ public static class RateLimitingExtensions
 
         string? endpointPolicy = context.GetEndpoint()?
             .Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
+        if (endpointPolicy ==
+            ConfigurationImportApiBoundary.UploadRateLimitPolicy)
+        {
+            return ConfigurationImportApiBoundary.UploadRateLimitPolicy;
+        }
         if (endpointPolicy is AdmissionTicketRecoveryPolicy
             or AdmissionCheckInPolicy
             or AdmissionScannerCapabilityPolicy

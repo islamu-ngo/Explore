@@ -1,10 +1,11 @@
-// ABOUTME: Shapes the canonical configuration manifest response as one binary OpenAPI download.
-// ABOUTME: Removes versioned JSON byte-array variants so NSwag generates a typed file response.
+// ABOUTME: Shapes canonical instance and tenant configuration exports as binary OpenAPI downloads.
+// ABOUTME: Removes versioned JSON byte-array variants so NSwag generates typed file responses.
 
 namespace Explore.API.OpenApi;
 
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
+using Explore.Application.Features.ConfigurationManifest.Contracts;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -16,11 +17,15 @@ public sealed class ConfigurationManifestExportResponseTransformer
         OpenApiOperationTransformerContext context,
         CancellationToken cancellationToken)
     {
-        if (!string.Equals(
-                operation.OperationId,
-                RouteNames.ExportConfigurationManifest,
-                StringComparison.Ordinal)
-            || operation.Responses is null
+        string? mediaType = operation.OperationId switch
+        {
+            RouteNames.ExportConfigurationManifest =>
+                ConfigurationManifestExportApiContract.MediaType,
+            RouteNames.ExportTenantConfigurationPackage =>
+                TenantConfigurationPackageContractMetadata.MediaType,
+            _ => null
+        };
+        if (mediaType is null || operation.Responses is null
             || !operation.Responses.TryGetValue("200", out IOpenApiResponse? response)
             || response.Content is null)
         {
@@ -28,7 +33,7 @@ public sealed class ConfigurationManifestExportResponseTransformer
         }
 
         response.Content.Clear();
-        response.Content[ConfigurationManifestExportApiContract.MediaType] =
+        response.Content[mediaType] =
             new OpenApiMediaType
             {
                 Schema = new OpenApiSchema

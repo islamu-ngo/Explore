@@ -4,6 +4,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Persistence;
@@ -14,6 +15,9 @@ using Explore.Application.DTOs.Location;
 using Explore.Application.DTOs.ManagedProviderProvisioning;
 using Explore.Application.DTOs.OrganizationTenantEvidence;
 using Explore.Application.DTOs.Settings;
+using Explore.Application.Features.ConfigurationManifest.Catalog;
+using Explore.Application.Features.ConfigurationManifest.Contracts;
+using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using Explore.Application.Features.EventReporting.Models;
 using Explore.Application.Models;
@@ -36,6 +40,15 @@ internal static class OpenApiStringEnumSchemaCatalog
     private static IReadOnlyCollection<Type> EagerNestedEnumTypes { get; } =
     [
         typeof(AddressProviderOutcome),
+        typeof(AdmissionCheckInDependencyStatus),
+        typeof(AdmissionCheckInOperationalAction),
+        typeof(AdmissionCheckInOperationalStatus),
+        typeof(ConfigurationImportPreviewCategory),
+        typeof(ConfigurationImportOperationKind),
+        typeof(ConfigurationImportOperationStatus),
+        typeof(ConfigurationImportEffectStatus),
+        typeof(ConfigurationImportScope),
+        typeof(ConfigurationImportSessionState),
         typeof(LocationAddressSourceEnum),
         typeof(LocationAddressVisibilityEnum)
     ];
@@ -43,9 +56,23 @@ internal static class OpenApiStringEnumSchemaCatalog
     public static IReadOnlyCollection<Type> EnumTypes { get; } =
     [
         typeof(AddressProviderOutcome),
+        typeof(AdmissionCheckInAction),
+        typeof(AdmissionCheckInDependencyStatus),
+        typeof(AdmissionCheckInOperationalAction),
+        typeof(AdmissionCheckInOperationalReasonCode),
+        typeof(AdmissionCheckInOperationalStatus),
+        typeof(AdmissionCheckInUndoReasonCodeEnum),
         typeof(CustomPropertyProjectionScopeType),
         typeof(CustomPropertyProjectionState),
         typeof(CustomPropertyFilterOperator),
+        typeof(ConfigurationImportApplyMode),
+        typeof(ConfigurationImportOperationKind),
+        typeof(ConfigurationImportOperationStatus),
+        typeof(ConfigurationImportEffectStatus),
+        typeof(ConfigurationImportPreviewCategory),
+        typeof(ConfigurationImportScope),
+        typeof(ConfigurationImportSessionState),
+        typeof(ConfigurationPortabilityClass),
         typeof(ConfigurationManifestExportView),
         typeof(DeclineBehavior),
         typeof(EmailDispatchUnknownReconciliationOutcome),

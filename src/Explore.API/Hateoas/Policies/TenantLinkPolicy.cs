@@ -9,6 +9,9 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Hateoas;
+using Explore.Application.Features.ConfigurationManifest.Requests.Commands;
+using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
+using Microsoft.AspNetCore.Http;
 
 /// <summary>
 /// Link policy for TenantDto (detail view).
@@ -62,6 +65,36 @@ public sealed class TenantDetailLinkPolicy : ILinkPolicy<TenantDto>
             "Delete tenant",
             RequiresAuth: true)
             .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.Tenant, dto);
+
+        yield return new LinkDefinition(
+                LinkRelations.CreateConfigurationImportSession,
+                RouteNames.CreateTenantConfigurationImportSession,
+                new { tenantId = dto.Id },
+                HttpMethods.Post,
+                "Import tenant configuration package",
+                RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.TenantSettings.Update,
+                ResourceKinds.TenantSetting,
+                CreateTenantConfigurationImportSessionCommand.ResourceKey,
+                facts: new TenantSettingAuthorizationFacts(
+                    dto.Id,
+                    CreateTenantConfigurationImportSessionCommand.ResourceKey));
+
+        yield return new LinkDefinition(
+                LinkRelations.ExportTenantConfigurationPackage,
+                RouteNames.ExportTenantConfigurationPackage,
+                new { tenantId = dto.Id },
+                HttpMethods.Get,
+                "Export tenant configuration package",
+                RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.TenantSettings.View,
+                ResourceKinds.TenantSetting,
+                ExportTenantConfigurationPackageQuery.ResourceKey,
+                facts: new TenantSettingAuthorizationFacts(
+                    dto.Id,
+                    ExportTenantConfigurationPackageQuery.ResourceKey));
     }
 }
 

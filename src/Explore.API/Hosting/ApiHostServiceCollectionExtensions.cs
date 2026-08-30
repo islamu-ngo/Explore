@@ -86,7 +86,7 @@ public static class ApiHostServiceCollectionExtensions
 
         builder.AddDistributedCacheReadinessCheck();
         builder.AddOidcDiscoveryReadinessCheck();
-        builder.Configuration.AddInfisicalCompatibility();
+        builder.Configuration.AddSecretAuthorityConfiguration();
         builder.Services.AddSecretManagement(
             builder.Configuration,
             enableAuditing: true,
@@ -271,6 +271,7 @@ public static class ApiHostServiceCollectionExtensions
             options.AddDocumentTransformer<PrivacyErasureReceiptOpenApiSecurityTransformer>();
             options.AddDocumentTransformer<AdmissionScannerOpenApiSecurityTransformer>();
             options.AddDocumentTransformer<HalDtoSchemaTransformer>();
+            options.AddDocumentTransformer<QuotaExceededDetailsOpenApiTransformer>();
             options.AddDocumentTransformer<OpenApiStringEnumDocumentTransformer>();
             options.AddDocumentTransformer<OperationIdInvariantTransformer>();
             options.AddOperationTransformer<EndpointClassificationTransformer>();
@@ -279,6 +280,7 @@ public static class ApiHostServiceCollectionExtensions
             options.AddOperationTransformer<PrivacyErasureReceiptOpenApiSecurityTransformer>();
             options.AddOperationTransformer<AdmissionScannerOpenApiSecurityTransformer>();
             options.AddOperationTransformer<StorageUploadRequestBodyTransformer>();
+            options.AddOperationTransformer<ConfigurationImportRequestBodyTransformer>();
             options.AddOperationTransformer<EventOpenGraphImageResponseTransformer>();
             options.AddOperationTransformer<ConfigurationManifestExportResponseTransformer>();
         });

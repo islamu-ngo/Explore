@@ -8,6 +8,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
+using Explore.Application.Features.ConfigurationManifest.Requests.Commands;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
 using Explore.Application.Hateoas;
 using Microsoft.AspNetCore.Http;
@@ -75,6 +76,45 @@ public sealed class ControlPlaneOverviewLinkPolicy : ILinkPolicy<ControlPlaneOve
         yield return ConfigurationManifestExportLink(
             LinkRelations.ExportConfigurationPortable,
             ConfigurationManifestExportView.Portable);
+
+        yield return new LinkDefinition(
+                LinkRelations.CreateConfigurationImportSession,
+                RouteNames.CreateInstanceConfigurationImportSession,
+                null,
+                HttpMethods.Post,
+                "Import configuration manifest",
+                RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.InstanceSettings.Update,
+                ResourceKinds.InstanceSetting,
+                CreateInstanceConfigurationImportSessionCommand.ResourceKey,
+                facts: InstanceScopedAuthorizationFacts.Instance);
+
+        yield return new LinkDefinition(
+                LinkRelations.ConfigurationImportHistory,
+                RouteNames.ListInstanceConfigurationImportHistory,
+                null,
+                HttpMethods.Get,
+                "Configuration import history",
+                RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.InstanceSettings.View,
+                ResourceKinds.InstanceSetting,
+                CreateInstanceConfigurationImportSessionCommand.ResourceKey,
+                facts: InstanceScopedAuthorizationFacts.Instance);
+
+        yield return new LinkDefinition(
+                LinkRelations.CreateConfigurationDirectTransfer,
+                RouteNames.CreateInstanceConfigurationTransfer,
+                null,
+                HttpMethods.Post,
+                "Create direct configuration transfer",
+                RequiresAuth: true)
+            .RequirePermission(
+                AuthorizationActions.InstanceSettings.Update,
+                ResourceKinds.InstanceSetting,
+                CreateInstanceConfigurationImportSessionCommand.ResourceKey,
+                facts: InstanceScopedAuthorizationFacts.Instance);
     }
 
     private static LinkDefinition ConfigurationManifestExportLink(

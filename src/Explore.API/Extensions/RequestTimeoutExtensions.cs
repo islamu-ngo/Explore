@@ -1,6 +1,7 @@
 // ABOUTME: Registers named request timeout policies for different endpoint categories.
 // ABOUTME: Provides default, lookup, complex, and control-plane timeout tiers.
 
+using Explore.API.ConfigurationImport;
 using Microsoft.AspNetCore.Http.Timeouts;
 
 namespace Explore.API.Extensions;
@@ -21,6 +22,8 @@ public static class RequestTimeoutExtensions
     public const string LookupPolicy = "Lookup";
     public const string ComplexPolicy = "Complex";
     public const string ControlPlanePolicy = "ControlPlane";
+    public const string ConfigurationImportUploadPolicy =
+        ConfigurationImportApiBoundary.UploadRequestTimeoutPolicy;
 
     public static IServiceCollection AddApiRequestTimeouts(
         this IServiceCollection services, IConfiguration configuration)
@@ -31,6 +34,9 @@ public static class RequestTimeoutExtensions
         var lookupSeconds = section.GetValue("LookupSeconds", 10);
         var complexSeconds = section.GetValue("ComplexSeconds", 60);
         var controlPlaneSeconds = section.GetValue("ControlPlaneSeconds", 20);
+        var configurationImportUploadSeconds = section.GetValue(
+            "ConfigurationImportUploadSeconds",
+            60);
 
         services.AddRequestTimeouts(options =>
         {
@@ -60,6 +66,15 @@ public static class RequestTimeoutExtensions
                 Timeout = TimeSpan.FromSeconds(controlPlaneSeconds),
                 TimeoutStatusCode = StatusCodes.Status504GatewayTimeout
             });
+
+            options.AddPolicy(
+                ConfigurationImportUploadPolicy,
+                new RequestTimeoutPolicy
+                {
+                    Timeout = TimeSpan.FromSeconds(
+                        configurationImportUploadSeconds),
+                    TimeoutStatusCode = StatusCodes.Status504GatewayTimeout
+                });
         });
 
         return services;

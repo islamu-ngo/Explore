@@ -307,7 +307,6 @@ public static class RouteNames
     public const string GetListmonkIntegrationSettings = "GetListmonkIntegrationSettings";
     public const string ResolveIntegrationSyncAmbiguity = "ResolveIntegrationSyncAmbiguity";
     public const string UpdateListmonkIntegrationSettings = "UpdateListmonkIntegrationSettings";
-    public const string RotateListmonkIntegrationCredentials = "RotateListmonkIntegrationCredentials";
     public const string TestListmonkIntegrationConnection = "TestListmonkIntegrationConnection";
 
     #endregion
@@ -523,6 +522,7 @@ public static class RouteNames
     public const string GetPublicExperienceSettings = "GetPublicExperienceSettings";
     public const string GetPublicExperienceShell = "GetPublicExperienceShell";
     public const string GetHomeDiscovery = "GetHomeDiscovery";
+    public const string GetPublicLegalDocument = "GetPublicLegalDocument";
     public const string RelayAnalyticsEvent = "RelayAnalyticsEvent";
     public const string GetTranslationByLanguage = "GetTranslationByLanguage";
     public const string GetAvailableTranslationLanguages = "GetAvailableTranslationLanguages";
@@ -829,7 +829,6 @@ public static class RouteNames
     public const string ImportLocalizationBundle = "ImportLocalizationBundle";
     public const string ExportLocalizationFromTms = "ExportLocalizationFromTms";
     public const string UpdateLocalizationGovernance = "UpdateLocalizationGovernance";
-    public const string RotateLocalizationTmsApiKey = "RotateLocalizationTmsApiKey";
     public const string TestLocalizationTmsConnection = "TestLocalizationTmsConnection";
 
     #endregion
@@ -1056,6 +1055,64 @@ public static class RouteNames
     public const string InterruptSchedulerJob = "InterruptSchedulerJob";
 
     public const string GetControlPlaneOverview = "GetControlPlaneOverview";
+    public const string CreateInstanceConfigurationImportSession =
+        "CreateInstanceConfigurationImportSession";
+    public const string PreviewInstanceConfigurationImportSession =
+        "PreviewInstanceConfigurationImportSession";
+    public const string RefreshInstanceConfigurationImportSession =
+        "RefreshInstanceConfigurationImportSession";
+    public const string CancelInstanceConfigurationImportSession =
+        "CancelInstanceConfigurationImportSession";
+    public const string ApplyInstanceConfigurationImportSession =
+        "ApplyInstanceConfigurationImportSession";
+    public const string ListInstanceConfigurationImportHistory =
+        "ListInstanceConfigurationImportHistory";
+    public const string GetInstanceConfigurationImportReceipt =
+        "GetInstanceConfigurationImportReceipt";
+    public const string CreateInstanceConfigurationRollbackSession =
+        "CreateInstanceConfigurationRollbackSession";
+    public const string CreateTenantConfigurationImportSession =
+        "CreateTenantConfigurationImportSession";
+    public const string ExportTenantConfigurationPackage =
+        "ExportTenantConfigurationPackage";
+    public const string PreviewTenantConfigurationImportSession =
+        "PreviewTenantConfigurationImportSession";
+    public const string RefreshTenantConfigurationImportSession =
+        "RefreshTenantConfigurationImportSession";
+    public const string CancelTenantConfigurationImportSession =
+        "CancelTenantConfigurationImportSession";
+    public const string ApplyTenantConfigurationImportSession =
+        "ApplyTenantConfigurationImportSession";
+    public const string ListTenantConfigurationImportHistory =
+        "ListTenantConfigurationImportHistory";
+    public const string GetTenantConfigurationImportReceipt =
+        "GetTenantConfigurationImportReceipt";
+    public const string CreateTenantConfigurationRollbackSession =
+        "CreateTenantConfigurationRollbackSession";
+    public const string CreateInstanceConfigurationTransfer =
+        "CreateInstanceConfigurationTransfer";
+    public const string CreateTenantConfigurationTransfer =
+        "CreateTenantConfigurationTransfer";
+    public const string ApproveInstanceConfigurationTransferSource =
+        "ApproveInstanceConfigurationTransferSource";
+    public const string ApproveTenantConfigurationTransferSource =
+        "ApproveTenantConfigurationTransferSource";
+    public const string AppendInstanceConfigurationTransferChunk =
+        "AppendInstanceConfigurationTransferChunk";
+    public const string AppendTenantConfigurationTransferChunk =
+        "AppendTenantConfigurationTransferChunk";
+    public const string CompleteInstanceConfigurationTransfer =
+        "CompleteInstanceConfigurationTransfer";
+    public const string CompleteTenantConfigurationTransfer =
+        "CompleteTenantConfigurationTransfer";
+    public const string PromoteInstanceConfigurationTransfer =
+        "PromoteInstanceConfigurationTransfer";
+    public const string PromoteTenantConfigurationTransfer =
+        "PromoteTenantConfigurationTransfer";
+    public const string CancelInstanceConfigurationTransfer =
+        "CancelInstanceConfigurationTransfer";
+    public const string CancelTenantConfigurationTransfer =
+        "CancelTenantConfigurationTransfer";
     public const string GetControlPlaneDomains = "GetControlPlaneDomains";
     public const string GetControlPlaneOperations = "GetControlPlaneOperations";
     public const string GetControlPlaneDeploymentModeRunbook = "GetControlPlaneDeploymentModeRunbook";

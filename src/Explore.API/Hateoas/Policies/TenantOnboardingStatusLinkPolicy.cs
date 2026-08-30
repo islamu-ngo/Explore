@@ -7,6 +7,9 @@ using System.Security.Claims;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.Features.ConfigurationManifest.Contracts;
+using Explore.Application.Features.ConfigurationManifest.Requests.Commands;
+using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
 using Explore.Application.Hateoas;
 
@@ -43,6 +46,70 @@ public sealed class TenantOnboardingStatusLinkPolicy : ILinkPolicy<TenantOnboard
                     $"{dto.TenantId}:{TenantOnboardingSettingKey}",
                     new AuthorizationScope(TenantId: dto.TenantId.ToString()),
                     new TenantSettingAuthorizationFacts(dto.TenantId, TenantOnboardingSettingKey, IsLockedByInstance: false));
+
+            yield return new LinkDefinition(
+                    LinkRelations.CreateConfigurationImportSession,
+                    RouteNames.CreateTenantConfigurationImportSession,
+                    new { tenantId = dto.TenantId },
+                    HttpMethods.Post,
+                    "Import tenant configuration package",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.TenantSettings.Update,
+                    ResourceKinds.TenantSetting,
+                    CreateTenantConfigurationImportSessionCommand.ResourceKey,
+                    facts: new TenantSettingAuthorizationFacts(
+                        dto.TenantId,
+                        CreateTenantConfigurationImportSessionCommand.ResourceKey));
+
+            yield return new LinkDefinition(
+                    LinkRelations.ExportTenantConfigurationPackage,
+                    RouteNames.ExportTenantConfigurationPackage,
+                    new
+                    {
+                        tenantId = dto.TenantId,
+                        view = ConfigurationManifestExportView.Overrides
+                    },
+                    HttpMethods.Get,
+                    "Export tenant configuration package",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.TenantSettings.View,
+                    ResourceKinds.TenantSetting,
+                    ExportTenantConfigurationPackageQuery.ResourceKey,
+                    facts: new TenantSettingAuthorizationFacts(
+                        dto.TenantId,
+                        ExportTenantConfigurationPackageQuery.ResourceKey));
+
+            yield return new LinkDefinition(
+                    LinkRelations.ConfigurationImportHistory,
+                    RouteNames.ListTenantConfigurationImportHistory,
+                    new { tenantId = dto.TenantId },
+                    HttpMethods.Get,
+                    "Tenant configuration import history",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.TenantSettings.View,
+                    ResourceKinds.TenantSetting,
+                    CreateTenantConfigurationImportSessionCommand.ResourceKey,
+                    facts: new TenantSettingAuthorizationFacts(
+                        dto.TenantId,
+                        CreateTenantConfigurationImportSessionCommand.ResourceKey));
+
+            yield return new LinkDefinition(
+                    LinkRelations.CreateConfigurationDirectTransfer,
+                    RouteNames.CreateTenantConfigurationTransfer,
+                    new { tenantId = dto.TenantId },
+                    HttpMethods.Post,
+                    "Create direct tenant configuration transfer",
+                    RequiresAuth: true)
+                .RequirePermission(
+                    AuthorizationActions.TenantSettings.Update,
+                    ResourceKinds.TenantSetting,
+                    CreateTenantConfigurationImportSessionCommand.ResourceKey,
+                    facts: new TenantSettingAuthorizationFacts(
+                        dto.TenantId,
+                        CreateTenantConfigurationImportSessionCommand.ResourceKey));
 
             if (!dto.IsCompleted)
             {
