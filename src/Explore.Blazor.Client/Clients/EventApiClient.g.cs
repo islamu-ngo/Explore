@@ -109365,6 +109365,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109444,6 +109445,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109518,6 +109520,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109586,6 +109589,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109621,6 +109625,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109655,6 +109660,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -109758,6 +109764,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109810,6 +109817,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -109954,6 +109962,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110015,6 +110024,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110050,6 +110060,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110078,6 +110089,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -110119,6 +110131,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110145,6 +110158,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -110219,6 +110233,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110248,6 +110263,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -110308,6 +110324,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110366,6 +110383,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110412,6 +110430,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -110491,6 +110510,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110544,6 +110564,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -110667,6 +110688,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110709,6 +110731,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -110780,6 +110803,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110850,6 +110874,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110916,6 +110941,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110941,6 +110967,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -110987,6 +111014,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111081,6 +111109,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111134,6 +111163,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111238,6 +111268,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111337,6 +111368,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111393,6 +111425,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111469,6 +111502,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111540,6 +111574,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111645,6 +111680,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111812,6 +111848,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111855,6 +111892,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111890,6 +111928,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111924,6 +111963,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111985,6 +112025,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112252,6 +112293,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112290,6 +112332,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112331,6 +112374,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112370,6 +112414,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112411,6 +112456,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112451,6 +112497,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112490,6 +112537,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112567,6 +112615,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112606,6 +112655,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112644,6 +112694,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112685,6 +112736,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112724,6 +112776,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112765,6 +112818,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112805,6 +112859,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112843,6 +112898,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112885,6 +112941,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113009,6 +113066,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113049,6 +113107,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113084,6 +113143,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113115,6 +113175,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113149,6 +113210,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113222,6 +113284,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113407,6 +113470,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113438,6 +113502,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113480,6 +113545,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113518,6 +113584,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113584,6 +113651,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113637,6 +113705,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113670,6 +113739,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113698,6 +113768,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113736,6 +113807,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113788,6 +113860,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113849,6 +113922,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113883,6 +113957,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113944,6 +114019,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113995,6 +114071,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -114068,6 +114145,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114120,6 +114198,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114154,6 +114233,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -114208,6 +114288,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114234,6 +114315,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -114263,6 +114345,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -114320,6 +114403,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114375,6 +114459,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -116140,6 +116225,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -116888,6 +116974,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -116927,6 +117014,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117139,6 +117227,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117290,6 +117379,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117359,6 +117449,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117464,6 +117555,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117499,6 +117591,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117533,6 +117626,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117611,6 +117705,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117711,6 +117806,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117774,6 +117870,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117823,6 +117920,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117848,6 +117946,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117896,6 +117995,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117952,6 +118052,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118070,6 +118171,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118133,6 +118235,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118164,6 +118267,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118209,6 +118313,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118249,6 +118354,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118399,6 +118505,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118458,6 +118565,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118549,6 +118657,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118597,6 +118706,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118659,6 +118769,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118704,6 +118815,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118752,6 +118864,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119023,6 +119136,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119054,6 +119168,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119090,6 +119205,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119124,6 +119240,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119176,6 +119293,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119374,6 +119492,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119403,6 +119522,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119462,6 +119582,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119510,6 +119631,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119581,6 +119703,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119642,6 +119765,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119671,6 +119795,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119729,6 +119854,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119801,6 +119927,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119888,6 +120015,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119928,6 +120056,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119989,6 +120118,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120048,6 +120178,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120127,6 +120258,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120155,6 +120287,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120188,6 +120321,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120234,6 +120368,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120268,6 +120403,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120342,6 +120478,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120370,6 +120507,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120406,6 +120544,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120440,6 +120579,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120506,6 +120646,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120597,6 +120738,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120660,6 +120802,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120718,6 +120861,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120774,6 +120918,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120876,6 +121021,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120911,6 +121057,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120957,6 +121104,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120991,6 +121139,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121028,6 +121177,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121178,6 +121328,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121237,6 +121388,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121328,6 +121480,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121376,6 +121529,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121545,6 +121699,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121615,6 +121770,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121681,6 +121837,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121758,6 +121915,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121807,6 +121965,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121855,6 +122014,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122057,6 +122217,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122101,6 +122262,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122136,6 +122298,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122170,6 +122333,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122241,6 +122405,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122296,6 +122461,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122374,6 +122540,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122409,6 +122576,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122443,6 +122611,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122508,6 +122677,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122560,6 +122730,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122632,6 +122803,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122688,6 +122860,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122766,6 +122939,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122821,6 +122995,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122856,6 +123031,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122890,6 +123066,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123051,6 +123228,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123127,6 +123305,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123166,6 +123345,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123217,6 +123397,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123250,6 +123431,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123319,6 +123501,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123354,6 +123537,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123379,6 +123563,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123449,6 +123634,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123481,6 +123667,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123556,6 +123743,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123599,6 +123787,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123766,6 +123955,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123844,6 +124034,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123896,6 +124087,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123931,6 +124123,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123965,6 +124158,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -124082,6 +124276,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -124126,6 +124321,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -124165,6 +124361,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -139085,6 +139282,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -139139,6 +139337,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -139182,6 +139381,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -139387,6 +139587,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -139436,6 +139637,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -139506,6 +139708,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -139712,6 +139915,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -139753,6 +139957,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -139835,6 +140040,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -139876,6 +140082,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140097,6 +140304,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140125,6 +140333,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140203,6 +140412,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140237,6 +140447,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140282,6 +140493,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140316,6 +140528,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140384,6 +140597,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140468,6 +140682,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140520,6 +140735,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140580,6 +140796,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140615,6 +140832,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140649,6 +140867,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140816,6 +141035,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140871,6 +141091,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141044,6 +141265,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141088,6 +141310,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141142,6 +141365,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141183,6 +141407,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141217,6 +141442,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141253,6 +141479,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141284,6 +141511,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141340,6 +141568,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141445,6 +141674,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141778,6 +142008,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141805,6 +142036,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141962,6 +142194,7 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Message { get; init; } = default!;
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141998,6 +142231,7 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("blockerCode")]
         public string? BlockerCode { get; init; } = default!;
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142069,6 +142303,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142154,6 +142389,7 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("assessedAt")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.DateTimeOffset AssessedAt { get; init; } = default!;
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142241,6 +142477,7 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("isLocked")]
         public bool IsLocked { get; init; } = default!;
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142268,6 +142505,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142334,6 +142572,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142426,6 +142665,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142478,6 +142718,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142707,6 +142948,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142836,6 +143078,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142871,6 +143114,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142908,6 +143152,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142937,6 +143182,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142962,6 +143208,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143014,6 +143261,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143039,6 +143287,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143129,6 +143378,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143188,6 +143438,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143265,6 +143516,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143295,6 +143547,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143339,6 +143592,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143362,6 +143616,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143424,6 +143679,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143522,6 +143778,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143613,6 +143870,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143660,6 +143918,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143698,6 +143957,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143729,6 +143989,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143824,6 +144085,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144279,6 +144541,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -144405,6 +144668,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -144442,6 +144706,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144544,6 +144809,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -144598,6 +144864,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144661,6 +144928,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -144695,6 +144963,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144740,6 +145009,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144803,6 +145073,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -144841,6 +145112,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144974,6 +145246,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145018,6 +145291,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145064,6 +145338,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145108,6 +145383,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145154,6 +145430,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145198,6 +145475,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145259,6 +145537,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145312,6 +145591,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145410,6 +145690,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145444,6 +145725,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145576,6 +145858,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145642,6 +145925,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145689,6 +145973,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145758,6 +146043,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145801,6 +146087,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145865,6 +146152,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145923,6 +146211,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147208,6 +147497,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147245,6 +147535,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147336,6 +147627,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147390,6 +147682,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147433,6 +147726,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147492,6 +147786,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147543,6 +147838,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147610,6 +147906,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147656,6 +147953,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147719,6 +148017,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147814,6 +148113,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147895,6 +148195,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147948,6 +148249,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147995,6 +148297,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148035,6 +148338,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148095,6 +148399,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148130,6 +148435,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148179,6 +148485,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148236,6 +148543,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148271,6 +148579,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148300,6 +148609,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148342,6 +148652,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148576,6 +148887,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148642,6 +148954,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148757,6 +149070,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148819,6 +149133,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148966,6 +149281,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149015,6 +149331,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149059,6 +149376,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149119,6 +149437,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149194,6 +149513,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149252,6 +149572,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149313,6 +149634,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149373,6 +149695,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149400,6 +149723,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149452,6 +149776,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149567,6 +149892,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149783,6 +150109,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149826,6 +150153,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150008,6 +150336,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150041,6 +150370,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150110,6 +150440,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150222,6 +150553,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150306,6 +150638,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150437,6 +150770,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150524,6 +150858,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150558,6 +150893,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150615,6 +150951,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150649,6 +150986,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150732,6 +151070,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150772,6 +151111,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150868,6 +151208,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150915,6 +151256,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150976,6 +151318,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151013,6 +151356,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151043,6 +151387,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151095,6 +151440,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151136,6 +151482,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151220,6 +151567,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151307,6 +151655,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151374,6 +151723,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151514,6 +151864,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151663,6 +152014,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151741,6 +152093,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151792,6 +152145,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151913,6 +152267,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151993,6 +152348,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152083,6 +152439,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152392,6 +152749,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -152440,6 +152798,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152522,6 +152881,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152664,6 +153024,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -152703,6 +153064,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152766,6 +153128,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152848,6 +153211,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -152879,6 +153243,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153142,6 +153507,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -153242,6 +153608,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153385,6 +153752,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -153419,6 +153787,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153508,6 +153877,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -153557,6 +153927,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153624,6 +153995,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -153661,6 +154033,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153746,6 +154119,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154083,6 +154457,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154139,6 +154514,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154169,6 +154545,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154191,6 +154568,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154229,6 +154607,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154293,6 +154672,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154394,6 +154774,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154541,6 +154922,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154612,6 +154994,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154814,6 +155197,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154851,6 +155235,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154873,6 +155258,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155109,6 +155495,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155198,6 +155585,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155245,6 +155633,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155270,6 +155659,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155305,6 +155695,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155335,6 +155726,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155371,6 +155763,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155402,6 +155795,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155436,6 +155830,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155495,6 +155890,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155535,6 +155931,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155643,6 +156040,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155759,6 +156157,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155859,6 +156258,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155892,6 +156292,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155956,6 +156357,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155989,6 +156391,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156030,6 +156433,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156061,6 +156465,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156113,6 +156518,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156198,6 +156604,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156230,6 +156637,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156253,6 +156661,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156425,6 +156834,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156483,6 +156893,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156509,6 +156920,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156751,6 +157163,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156834,6 +157247,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156907,6 +157321,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156964,6 +157379,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157025,6 +157441,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157061,6 +157478,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157124,6 +157542,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157151,6 +157570,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157202,6 +157622,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157229,6 +157650,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157292,6 +157714,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157333,6 +157756,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157367,6 +157791,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157423,6 +157848,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157471,6 +157897,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157568,6 +157995,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157620,6 +158048,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -161937,6 +162366,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -161970,6 +162400,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162002,6 +162433,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162053,6 +162485,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162137,6 +162570,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162165,6 +162599,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162223,6 +162658,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162276,6 +162712,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162310,6 +162747,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162435,6 +162873,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162513,6 +162952,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162619,6 +163059,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162717,6 +163158,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162857,6 +163299,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162895,6 +163338,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162955,6 +163399,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163026,6 +163471,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163075,6 +163521,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163105,6 +163552,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163163,6 +163611,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163339,6 +163788,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163365,6 +163815,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163399,6 +163850,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163430,6 +163882,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163463,6 +163916,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163503,6 +163957,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163534,6 +163989,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163575,6 +164031,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163600,6 +164057,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163641,6 +164099,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163680,6 +164139,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163717,6 +164177,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163780,6 +164241,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163811,6 +164273,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163844,6 +164307,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163870,6 +164334,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163906,6 +164371,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163937,6 +164403,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163992,6 +164459,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164069,6 +164537,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164097,6 +164566,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164149,6 +164619,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164183,6 +164654,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164244,6 +164716,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164285,6 +164758,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164320,6 +164794,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164372,6 +164847,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164400,6 +164876,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164441,6 +164918,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164469,6 +164947,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164499,6 +164978,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164527,6 +165007,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164567,6 +165048,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164690,6 +165172,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164812,6 +165295,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164851,6 +165335,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164882,6 +165367,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164923,6 +165409,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164948,6 +165435,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164989,6 +165477,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165028,6 +165517,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165065,6 +165555,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165128,6 +165619,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165159,6 +165651,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165192,6 +165685,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165218,6 +165712,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165254,6 +165749,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165285,6 +165781,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165341,6 +165838,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165393,6 +165891,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165422,6 +165921,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165450,6 +165950,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165502,6 +166003,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165536,6 +166038,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165597,6 +166100,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165631,6 +166135,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165692,6 +166197,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165733,6 +166239,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165768,6 +166275,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165820,6 +166328,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165848,6 +166357,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165889,6 +166399,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165917,6 +166428,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165947,6 +166459,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165975,6 +166488,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166015,6 +166529,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166138,6 +166653,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166260,6 +166776,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166296,6 +166813,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166344,6 +166862,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166432,6 +166951,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166474,6 +166994,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166514,6 +167035,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166584,6 +167106,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166630,6 +167153,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166702,6 +167226,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166771,6 +167296,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166836,6 +167362,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166918,6 +167445,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166983,6 +167511,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167053,6 +167582,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167096,6 +167626,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167141,6 +167672,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167183,6 +167715,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167228,6 +167761,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167270,6 +167804,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167321,6 +167856,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167359,6 +167895,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167393,6 +167930,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167444,6 +167982,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167475,6 +168014,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167511,6 +168051,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167536,6 +168077,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167563,6 +168105,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167594,6 +168137,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167631,6 +168175,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167680,6 +168225,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167724,6 +168270,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167770,6 +168317,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167814,6 +168362,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167843,6 +168392,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167871,6 +168421,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167903,6 +168454,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167951,6 +168503,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167979,6 +168532,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168067,6 +168621,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168113,6 +168668,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168155,6 +168711,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168195,6 +168752,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168233,6 +168791,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168287,6 +168846,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168329,6 +168889,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168369,6 +168930,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168439,6 +169001,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168485,6 +169048,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168557,6 +169121,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168626,6 +169191,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168691,6 +169257,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168773,6 +169340,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168838,6 +169406,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168908,6 +169477,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168951,6 +169521,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168996,6 +169567,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169038,6 +169610,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169083,6 +169656,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169125,6 +169699,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169176,6 +169751,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169214,6 +169790,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169248,6 +169825,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169299,6 +169877,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169330,6 +169909,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169366,6 +169946,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169391,6 +169972,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169418,6 +170000,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169449,6 +170032,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169495,6 +170079,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169531,6 +170116,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169580,6 +170166,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169624,6 +170211,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169670,6 +170258,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169714,6 +170303,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169743,6 +170333,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169771,6 +170362,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169803,6 +170395,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169851,6 +170444,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169879,6 +170473,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169918,6 +170513,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169972,6 +170568,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170018,6 +170615,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170060,6 +170658,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170100,6 +170699,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170129,6 +170729,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170188,6 +170789,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170245,6 +170847,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170304,6 +170907,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170361,6 +170965,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170420,6 +171025,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170478,6 +171084,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170525,6 +171132,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170574,6 +171182,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170603,6 +171212,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170662,6 +171272,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170719,6 +171330,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170778,6 +171390,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170835,6 +171448,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170894,6 +171508,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170952,6 +171567,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170999,6 +171615,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171048,6 +171665,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171078,6 +171696,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171117,6 +171736,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171160,6 +171780,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171198,6 +171819,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171234,6 +171856,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171281,6 +171904,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171325,6 +171949,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171368,6 +171993,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171398,6 +172024,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171438,6 +172065,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171476,6 +172104,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171519,6 +172148,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171557,6 +172187,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171593,6 +172224,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171640,6 +172272,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171684,6 +172317,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171727,6 +172361,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171765,6 +172400,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171802,6 +172438,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171848,6 +172485,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171893,6 +172531,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171923,6 +172562,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171963,6 +172603,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171997,6 +172638,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172102,6 +172744,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172147,6 +172790,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172181,6 +172825,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172286,6 +172931,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172331,6 +172977,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172369,6 +173016,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172406,6 +173054,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172452,6 +173101,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172497,6 +173147,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172537,6 +173188,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172575,6 +173227,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172612,6 +173265,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172658,6 +173312,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172703,6 +173358,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172743,6 +173399,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172781,6 +173438,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172818,6 +173476,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172864,6 +173523,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172908,6 +173568,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172954,6 +173615,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172992,6 +173654,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173029,6 +173692,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173075,6 +173739,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173120,6 +173785,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173158,6 +173824,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173195,6 +173862,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173241,6 +173909,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173286,6 +173955,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173324,6 +173994,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173361,6 +174032,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173407,6 +174079,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173451,6 +174124,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173497,6 +174171,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173542,6 +174217,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173580,6 +174256,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173617,6 +174294,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173663,6 +174341,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173707,6 +174386,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173753,6 +174433,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173791,6 +174472,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173828,6 +174510,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173874,6 +174557,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173918,6 +174602,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173964,6 +174649,7 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174008,6 +174694,7 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
