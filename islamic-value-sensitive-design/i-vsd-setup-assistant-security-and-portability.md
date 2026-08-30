@@ -3,19 +3,20 @@
 
 # I-VSD Consultancy Report: Setup Assistant Security And Portability
 
-Last Updated: 2026-08-29
+Last Updated: 2026-08-30
 
 ## Review Metadata
 
-- Mode: standalone
+- Mode: planning
 - Subject: ISLAMU Event Setup Assistant
-- Workstream: none
+- Workstream: setup-assistant-security-and-portability
 - Report kind: consultancy-report
 - Report status: current
-- Disposition: ready-for-planning
-- Evidence cutoff: 2026-08-29
-- Reviewed input revision: `sha256:b053b7f69ca3822efbd1dc2333d2138d6361df8dd5eade311a2f43e2532b17ef`
-- Supersedes: none
+- Disposition: plan-aligned
+- Evidence cutoff: 2026-08-30
+- Reviewed input revision: `sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637`
+- Supersedes: standalone revision
+  `sha256:b053b7f69ca3822efbd1dc2333d2138d6361df8dd5eade311a2f43e2532b17ef`
 
 ## Scope
 
@@ -128,8 +129,10 @@ boundary.
 12. The user requires relevant-only output: required secret keys for selected
     capabilities remain empty in no-secret mode; irrelevant variables and
     defaulted settings are omitted.
-13. Current Terms of Service and Privacy Policy pages contain static,
-    repository-authored prose rather than instance/tenant-owned typed content.
+13. The active ConfigurationManifest worktree now contains typed
+    instance/tenant legal documents, constrained rendering, an anonymous
+    last-published API, and role-labelled Terms/Privacy pages. The Setup
+    Assistant still has no legal editor or approved template library.
 14. Current public footer contracts already distinguish tenant directory
     operator links from instance platform-operator links; legal text must
     preserve that role separation.
@@ -143,6 +146,20 @@ boundary.
     GPL/AGPL and other free licenses may be considered.
 18. The Setup Assistant browser source remains open and auditable. Only
     generated `wwwroot`, build, publish, and release artifacts are ignored.
+19. The user closed ConfigurationManifest for archival on 2026-08-30. Its
+    frozen current baseline contains v1alpha2 contracts, a closed 21-entry
+    portability registry, typed legal documents, constrained legal Markdown,
+    protected import sessions, semantic preview, and scope-safe
+    HTTP/HAL/BFF/generated-client contracts. Retired later phases are not
+    implementation evidence.
+20. `Event.Wire.Contracts` is an existing package-free inner project for
+    versioned codecs and values shared across server and isolated clients.
+21. Official package metadata on 2026-08-30 identifies Avalonia `12.1.1` and
+    Terminal.Gui `2.4.17` as current stable candidates. They are not approved
+    dependencies until exact target graphs pass repository policy.
+22. Official Avalonia documentation classifies browser/WASM accessibility as
+    partial and Arch/other unlisted Linux distributions as Tier 3, so shared
+    code cannot justify uniform support claims.
 
 ## Requested Direction Coverage
 
@@ -247,6 +264,13 @@ small pure library should own:
 Server runtime validation remains authoritative for current instance state,
 tenant authority, locks, policy ceilings, reference mapping, and transactional
 import. Offline static validation must never claim to prove those runtime facts.
+
+Planning revalidation refines the ownership without weakening this finding:
+the existing package-free `Event.Wire.Contracts` owns exact versioned
+manifest/package wire contracts and constrained legal Markdown, while the new
+`Event.Setup.Core` owns environment metadata, dotenv, offline validation,
+diffs, readiness, and workflow state. Both remain headless; the split prevents
+the offline product from referencing all of `Explore.Application`.
 
 ### IVSD-F003 — Hosted Web Secret Entry Always Trusts The Origin
 
@@ -897,6 +921,9 @@ src/Event.SetupAssistant.Browser/
 src/Event.SetupAssistant.Cli/
 ```
 
+- Existing `src/Event.Wire.Contracts/` is the package-free inner contract
+  dependency reused by the five new projects and server static validation; it
+  is not a sixth Setup product executable.
 - `Event.Setup.Core` is pure, deterministic, headless, trim/AOT-friendly, and
   contains no network, persistence, provider SDK, UI, or secret storage.
 - `Event.SetupAssistant` contains shared Avalonia views, view models, resource
@@ -1939,7 +1966,10 @@ Domain review:
 
 ## Validation Gaps
 
-- No Setup Assistant implementation or plan exists.
+- A plan now exists, but no Setup Assistant implementation exists.
+- The archived ConfigurationManifest baseline must be pinned before
+  extraction; closure does not prove its retired atomic-apply, managed
+  ownership, migration UI, or direct-transfer phases.
 - No Avalonia version has been selected or pinned.
 - The resolved Avalonia and Terminal.Gui runtime/native graphs have not passed
   FOSS and target-outbound compatibility review.
@@ -1956,9 +1986,9 @@ Domain review:
   SBOM, or attestation pipeline exists for this product.
 - No legal review has approved the official web trust disclosure, privacy
   statement, or trademark wording.
-- No legal-document aggregate, typed kind catalogue, Markdown profile,
-  lifecycle, acceptance boundary, or template library exists.
-- Current Terms and Privacy pages are static application prose.
+- Server-side legal aggregates, a typed kind catalogue, constrained Markdown,
+  lifecycle, publication evidence, and public rendering now exist; no Setup
+  legal editor or approved template library exists.
 - No legal-template provenance or qualified legal review exists.
 - No content-size analysis proves realistic localized legal documents fit the
   next manifest/package limits.
@@ -1975,7 +2005,8 @@ traceability only. It does not establish stakeholder or operational validation.
 
 ## Escalation Needed
 
-- Security threat model before planning approval.
+- Revision-bound security threat-model review of plan Sections 3, 10, and 14
+  before implementation approval.
 - Independent security review before enabling online-hosted secret entry.
 - IP/legal dependency review after pinning the complete Avalonia and packaging
   graph, Terminal.Gui graph, and any reciprocal-license target.
@@ -2015,7 +2046,7 @@ traceability only. It does not establish stakeholder or operational validation.
 | E017 | `LICENSE` and `islamic-value-sensitive-design/i-vsd-licensing-and-commercial-strategy.md` | AGPL network-service and open-source governance context |
 | E022 | `docs/ACCESSIBILITY.md` | WCAG 2.2 AA-aligned repository standards |
 | E023 | `docs/LOCALIZATION.md` | Localization, offline bundles, and RTL behavior |
-| E024 | `src/Explore.Blazor.Client/Pages/Legal/TermsOfService.razor` and `PrivacyPolicy.razor` | Current static legal-text implementation |
+| E024 | `src/Explore.Blazor.Client/Pages/Legal/TermsOfService.razor`, `PrivacyPolicy.razor`, and the active legal-document feature | Current role-labelled last-published legal rendering |
 | E025 | `docs/FOOTER_MANAGEMENT.md` | Existing instance/tenant legal-link and operator-role separation |
 | E026 | `islamic-value-sensitive-design/i-vsd-branding-legal-identity-authority.md` | Legal identity, operator attribution, and no-fallback boundaries |
 | E027 | `docs/DUAL_VERSIONING.md`, `docs/legal/IP_GOVERNANCE.md`, and `legal/CLA.md` | FOSS/commercial distinction, dependency obligations, and alternative outbound paths |
@@ -2069,6 +2100,24 @@ User decisions on 2026-08-29 additionally establish:
 - Terminal.Gui TUI plus versioned CLI commands;
 - an external agentic skill instead of embedded AI.
 
+Planning revalidation on 2026-08-30 additionally reviewed:
+
+- `dev/active/setup-assistant-security-and-portability/`
+  `setup-assistant-security-and-portability-clean-room-evidence.md`;
+- the plan, context, and task triad for the same workstream;
+- the current active ConfigurationManifest context/tasks and v1alpha2 contract,
+  portability registry, import-preview, legal Markdown, and shared
+  `Event.Wire.Contracts` boundaries;
+- current official Avalonia WebAssembly, supported-platform, accessibility, and
+  licensing documentation;
+- current official Terminal.Gui documentation and package metadata;
+- .NET 10 CSP and Unix file-mode documentation, Windows SignTool, Apple
+  notarization, SLSA provenance, and Flatpak sandbox/portal guidance.
+
+The planning reviewed-input revision is the SHA-256 digest of the source-free
+clean-room evidence packet. The completed triad was rechecked against that
+packet; repeated review-state metadata is not part of the digest.
+
 ## Missing Evidence
 
 - exact Avalonia package/version/lock graph;
@@ -2076,7 +2125,7 @@ User decisions on 2026-08-29 additionally establish:
 - authoritative license record for every transitive/native artifact;
 - approved environment catalogue;
 - full key/default/activation mapping from current source;
-- threat model and misuse cases;
+- independent review of the planned threat model and exact-build misuse cases;
 - official host deployment architecture;
 - browser compatibility matrix;
 - main-document/release reproducibility proof;
@@ -2087,8 +2136,7 @@ User decisions on 2026-08-29 additionally establish:
 - accessibility and RTL audits;
 - legal privacy/trademark/source-offer review;
 - incident and vulnerability response capacity for the new product;
-- approved legal-document kind/authority matrix;
-- legal Markdown schema and sanitizer;
+- approved Setup template/authority handoff matrix;
 - legal template provenance and counsel review;
 - legal publication/acceptance migration semantics;
 - localized legal-content size and usability evidence;
@@ -2106,7 +2154,7 @@ Reviewed:
   documentation;
 - current `.env.example` and Compose deployment surface;
 - secret registry and manifest portability report;
-- current static Terms and Privacy pages;
+- current typed legal documents and role-labelled Terms/Privacy pages;
 - solution/project/package structure;
 - official Avalonia WebAssembly, Linux, macOS, Native AOT, storage, and license
   documentation;
@@ -2162,6 +2210,32 @@ mitigation into:
 Planning owns architecture sequencing and task status. This report owns
 provider-responsibility constraints and refresh triggers.
 
+## Planning Handoff
+
+- **Workstream:** `setup-assistant-security-and-portability`
+- **Status:** current
+- **Reviewed input revision:**
+  `sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637`
+- **Findings and mitigations:** `IVSD-F001` through `IVSD-F036` remain accepted
+  and map one-to-one to `IVSD-M001` through `IVSD-M036`.
+- **Required plan mappings:** Plan Section 9 maps every finding/mitigation to
+  named Scenarios 3.1–3.12 and tasks SA-110 through SA-850.
+- **Disposition:** `plan-aligned`.
+- **Escalations required before implementation:** user approval and
+  revision-bound Senior CTO review. SA-110 must pin the archived
+  ConfigurationManifest v1alpha2/schema/registry/import-preview baseline and
+  fail on drift or capability overclaim.
+- **Escalations required before release:** exact-graph dependency/license
+  review, security review for hosted secret mode, legal review for origin and
+  template claims, target accessibility evidence, and release-engineering
+  signing/package approval. Missing evidence leaves the exact capability or
+  target disabled.
+- **Refresh triggers:** product scope, stakeholder authority, environment
+  relevance/default semantics, secret flows, browser origin/CSP/storage,
+  desktop persistence, legal kinds/templates/publication, CLI/schema/TUI,
+  agent approval, embedded-AI boundary, dependency license, package support,
+  signing/provenance, or a mapped task mitigation changes materially.
+
 ## Review Lifecycle
 
 | Date | Previous status | New status | Trigger | Evidence/replacement |
@@ -2170,6 +2244,8 @@ provider-responsibility constraints and refresh triggers.
 | 2026-08-29 | draft | current / ready-for-planning | User selected default no-secret web mode plus optional trusted official-host secret mode | Initial report revision |
 | 2026-08-29 | current / ready-for-planning | current / ready-for-planning | User added portable instance/tenant legal texts, templates, Markdown editing, and broader legal-content QoL | This revision, reviewed input `sha256:b4ebca52a625ba32daaefd6f2517b0f41ffc3833e2bcda023de608e953b96c11` |
 | 2026-08-29 | current / ready-for-planning | current / ready-for-planning | User confirmed open browser source, broadened to compatible FOSS, and added Terminal.Gui CLI/TUI plus an external agentic skill | This revision, reviewed input `sha256:b053b7f69ca3822efbd1dc2333d2138d6361df8dd5eade311a2f43e2532b17ef` |
+| 2026-08-30 | current / ready-for-planning | current / plan-aligned | Repository-grounded implementation plan, clean-room evidence, scenarios, architecture, tasks, and release gates completed | Workstream evidence `sha256:c76acd050aa7b0bf1e49a2bb1cc7634e470566489be828f7610586c49cdc27aa` |
+| 2026-08-30 | current / plan-aligned | current / plan-aligned | User closed ConfigurationManifest for archival; Setup now pins the frozen current baseline and rejects capability overclaim | Workstream evidence `sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637` |
 
 Refresh this report when:
 
