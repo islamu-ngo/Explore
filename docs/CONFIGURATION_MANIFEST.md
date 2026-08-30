@@ -6,11 +6,13 @@
 > **Audience:** Operators | Self-hosters | Contributors | Admins | AI agents
 > **Status:** Implemented
 > **Owner:** Platform/Ops
-> **Last Verified:** 2026-08-29
-> **Source Anchors:** `src/Explore.Application/Features/ConfigurationManifest/`, `src/Explore.Infrastructure/ConfigurationManifest/`, `src/Explore.Persistence/Repositories/ConfigurationManifestOperationRepository.cs`, `src/Explore.API/Controllers/ConfigurationManifestExportsController.cs`, `docker-compose.yml`, `schemas/configuration-manifest-v1alpha1.schema.json`
+> **Last Verified:** 2026-08-30
+> **Source Anchors:** `src/Explore.Application/Features/ConfigurationManifest/`, `src/Explore.Domain/ConfigurationImportOperation.cs`, `src/Explore.Domain/ConfigurationDirectTransferSession.cs`, `src/Explore.Infrastructure/ConfigurationManifest/`, `src/Explore.Persistence/Repositories/ConfigurationImportOperationRepository.cs`, `src/Explore.API/Controllers/ConfigurationImportSessionsControllerBase.cs`, `src/Explore.Blazor.Client/Pages/Admin/Components/ConfigurationPortabilityWorkspace.razor`, `schemas/configuration-manifest-v1alpha2.schema.json`, `schemas/tenant-configuration-package-v1alpha2.schema.json`
 
-The `ConfigurationManifest` is the strict, non-secret Day 0 bootstrap contract
-for one ISLAMU Event instance and one or more tenants.
+The `ConfigurationManifest` is the strict, non-secret contract for Day 0
+bootstrap and reviewed Day 2 configuration portability. Tenant administrators
+use the separate `TenantConfigurationPackage`; neither artifact grants target
+authority from source identities.
 
 ## Start Here
 
@@ -24,6 +26,8 @@ Choose the path that matches your task:
 | Add tenants later | [Rerun behavior](#bootstrap-state-and-rerun-behavior) |
 | Recover from a failure | [Recovery matrix](#recovery-matrix) |
 | Export current configuration | [Whole-instance export](#whole-instance-export) |
+| Import or roll back configuration | [Day 2 import](#day-2-import-and-tenant-migration), [Recovery matrix](#recovery-matrix) |
+| Move tenant configuration | [Day 2 import](#day-2-import-and-tenant-migration), [Section coverage](#section-coverage) |
 | Add a setting or document | [Contributor guide](#contributor-guide) |
 | Find the owning code and tests | [Implementation map](#implementation-map), [Verification map](#verification-map) |
 
@@ -34,7 +38,7 @@ Keep these distinctions explicit:
 | The manifest is... | The manifest is not... |
 |---|---|
 | One versioned JSON document for one deployment instance | A separate manifest family for each tenant |
-| Day 0 bootstrap for approved instance values and absent tenants | Continuous desired-state reconciliation |
+| Day 0 bootstrap plus reviewed Day 2 preview/apply/rollback | Continuous desired-state reconciliation without explicit managed ownership |
 | A strict allowlist of non-secret settings and typed documents | A projection of every setting in `SettingRegistry` |
 | Atomic instance-plus-tenant initialization | A patch mechanism for existing tenants |
 | The same contract in single-tenant and multi-tenant deployments | A deployment-topology selector |
@@ -42,9 +46,10 @@ Keep these distinctions explicit:
 
 The most important rule is:
 
-> Bootstrap establishes initial state. Day 2 APIs and administration UI own
-> subsequent changes. A rerun never silently restores historical manifest
-> values over current Day 2 state.
+> Bootstrap establishes initial state. Day 2 imports always create a bounded
+> session, recompute a server-authoritative preview, and apply selected sections
+> atomically. A bootstrap rerun never restores historical values over current
+> Day 2 state.
 
 ## Contract Identity
 
@@ -52,11 +57,11 @@ The public identity is exact and case-sensitive:
 
 | Field | Required value |
 |---|---|
-| `$schema` | `https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json` |
-| `apiVersion` | `configuration.islamu.org/v1alpha1` |
+| `$schema` | `https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json` |
+| `apiVersion` | `configuration.islamu.org/v1alpha2` |
 | `kind` | `ConfigurationManifest` |
-| Schema artifact | `schemas/configuration-manifest-v1alpha1.schema.json` |
-| Media type | `application/vnd.islamu.configuration-manifest.v1alpha1+json` |
+| Schema artifact | `schemas/configuration-manifest-v1alpha2.schema.json` |
+| Media type | `application/vnd.islamu.configuration-manifest.v1alpha2+json` |
 | Conventional container path | `/etc/islamu-event/bootstrap/configuration-manifest.json` |
 
 The schema URI is an immutable identifier. It is not currently a promise that
@@ -69,8 +74,8 @@ required.
 
 ```json
 {
-  "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json",
-  "apiVersion": "configuration.islamu.org/v1alpha1",
+  "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json",
+  "apiVersion": "configuration.islamu.org/v1alpha2",
   "kind": "ConfigurationManifest",
   "metadata": {
     "name": "primary-instance"
@@ -78,7 +83,8 @@ required.
   "spec": {
     "instance": {
       "settings": {},
-      "documents": {}
+        "documents": {},
+        "legalDocuments": {}
     },
     "tenants": [
       {
@@ -88,7 +94,8 @@ required.
         "spec": {
           "displayName": "Primary Community",
           "settings": {},
-          "documents": {}
+          "documents": {},
+          "legalDocuments": {}
         }
       }
     ]
@@ -108,8 +115,8 @@ topology.
 
 ```json
 {
-  "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json",
-  "apiVersion": "configuration.islamu.org/v1alpha1",
+  "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json",
+  "apiVersion": "configuration.islamu.org/v1alpha2",
   "kind": "ConfigurationManifest",
   "metadata": {
     "name": "community-production"
@@ -123,7 +130,8 @@ topology.
         "modules.islamic_enabled": true,
         "modules.tech_enabled": true
       },
-      "documents": {}
+      "documents": {},
+      "legalDocuments": {}
     },
     "tenants": [
       {
@@ -148,7 +156,8 @@ topology.
                 "customCssUrl": null
               }
             }
-          }
+          },
+          "legalDocuments": {}
         }
       }
     ]
@@ -514,7 +523,7 @@ A split API waits for successful completion of the one-shot migration service.
 1. Create `deploy/bootstrap/configuration-manifest.json`.
 2. Start from the [minimal manifest](#minimal-valid-manifest).
 3. Use a schema-aware editor with
-   `schemas/configuration-manifest-v1alpha1.schema.json`.
+   `schemas/configuration-manifest-v1alpha2.schema.json`.
 4. Keep the source in operator-controlled version control or a protected
    configuration repository.
 5. Do not put secret values in the file.
@@ -684,7 +693,100 @@ An export is suitable as a reviewed starting point for another bootstrap. It is
 not sufficient to restore users, events, registrations, orders, payments,
 secrets, outbox state, audit history, or provider state.
 
+## Day 2 Import And Tenant Migration
+
+Instance administrators import a v1alpha2 `ConfigurationManifest`; tenant
+administrators import a v1alpha2 `TenantConfigurationPackage` into the tenant
+selected by the authenticated route. Source tenant names and instance metadata
+are provenance only and never select target authority.
+
+The administration workspace follows one server-owned state machine:
+
+1. Upload an artifact of at most 4 MiB to create an expiring session. Keep the
+   returned access token in the request header only.
+2. Select only the section keys returned by the session, supply stable mappings
+   and required approval codes, then request preview.
+3. Resolve every blocking, warning, external-setup, and legal-review item. A
+   stale or expired preview must be refreshed; it cannot be forced through.
+4. Apply only through the advertised HAL relation. The server reacquires
+   ordered mutation locks, re-exports current target state, and verifies the
+   exact preview binding inside one serializable transaction.
+5. Retain the receipt. It records selected sections, snapshot availability,
+   fidelity digest, omissions, and typed post-commit effect status without
+   configuration values.
+
+An apply commits all selected canonical mutations, the protected pre-apply
+snapshot, append-only operation evidence, and the payload-free effect outbox or
+commits none of them. Cache refresh and other effects may remain `Pending`; the
+configuration transaction is not replayed to repair an effect.
+
+Rollback is forward recovery. The receipt advertises a rollback relation only
+while its protected snapshot is available. Creating it produces a new import
+session; an administrator must preview and apply that session against current
+authority. History is never rewritten, and rollback never bypasses a newer
+governance lock or paid-policy ceiling.
+
+Tenant migration uses the tenant package export and import surfaces. Creating a
+new target tenant remains a separate, explicitly authorized control-plane
+action. The clone helper may link those two operations, but it does not grant
+source authority, delete the source tenant, or migrate users, events,
+registrations, orders, payments, secrets, or operational state.
+
+## Section Coverage
+
+`ConfigurationPortabilityRegistry` is the machine-readable authority for these
+statuses. The standard v1alpha2 artifacts currently project only the six
+implemented sections; unavailable sections fail closed instead of becoming
+silent no-ops.
+
+| Classification | Sections | v1alpha2 behavior |
+|---|---|---|
+| Supported instance | `instance.settings`, `instance.documents`, `instance.legal_documents` | Export, preview, diff, selected atomic apply, fidelity verification, forward rollback |
+| Supported tenant | `tenant.settings`, `tenant.documents`, `tenant.legal_documents` | Whole-instance or tenant-package export, tenant-authorized preview/apply, fidelity verification, forward rollback |
+| Declared but not serialized | `tenant.footer`, `tenant.navigation`, `tenant.templates`, `tenant.lookups`, `tenant.custom_property_definitions`, `tenant.localization`, `tenant.registration_policy`, `tenant.modules` | Omitted with `configuration_portability_section_not_serialized`; cannot be selected |
+| Governed extension boundary | `extensions` | Base artifacts do not carry extension code; separately signed declarative packs require trusted issuer, license, compatibility, and payload validation |
+| Secret/environment authority | `excluded.secrets`, `excluded.provider_bindings`, `excluded.deployment_topology` | Never exported or imported; configure target Infisical/`.env`, provider bindings, and deployment topology separately |
+| Private/application authority | `excluded.pii`, `excluded.application_data`, `excluded.operational_state` | Never exported or imported; use privacy, application-data migration, and backup/recovery workflows |
+
+Legal documents carry bounded localized Markdown source and provenance, never
+publication or acceptance history. Import creates a draft revision for target
+legal review. Raw HTML, remote resources, unsafe links, unresolved required
+placeholders, and oversized content fail validation.
+
+Managed ownership is opt-in and separate from ordinary import. Drift-only plans
+preserve unmanaged fields; set, delete, relinquish, and takeover actions require
+explicit ownership and consent. Scheduled apply requires distinct uploader,
+reviewer, and applier identities and a fresh revision. The ordinary
+`ReconcileManaged` import mode remains blocked until an approved ownership plan
+is integrated, preventing accidental continuous overwrite.
+
+Direct transfer is an optional staging protocol, not a trust shortcut. It
+requires distinct source and destination approvals, an HTTPS public destination
+on port 443, nonce/proof/artifact binding, bounded resumable chunks, expiry,
+cancellation, and replay-safe completion. Promotion only creates the ordinary
+import session above; preview and apply remain mandatory, and source deletion is
+never automatic.
+
 ## Recovery Matrix
+
+### Day 2 session and operation recovery
+
+| Condition | Safe action |
+|---|---|
+| Session or preview expired | Create a new session from the retained source artifact and preview against current target authority |
+| Preview is stale | Refresh it; review changed categories, mappings, approvals, and target revision before applying |
+| Apply failed | Selected state was rolled back. Keep the failure operation ID, repair the named dependency, and start from a fresh preview |
+| Receipt effect is `Pending` or `Processing` | Keep the committed operation; restore outbox processing and observe the same receipt rather than replaying configuration writes |
+| Receipt effect is `DeadLettered` | Diagnose the bounded effect failure, repair its dependency, and use the outbox recovery procedure; do not reapply the import |
+| Forward rollback relation exists | Create the rollback session, preview the protected snapshot against current authority, and apply it as a new operation |
+| Snapshot is unavailable or expired | Do not fabricate or edit history. Use a retained artifact plus current-state review, or restore the database and artifact authority from one consistent recovery point |
+| Transfer is interrupted | Resume from the server-reported next offset with the same bounded session; cancel and restart if binding or expiry changed |
+| Transfer completed but was not promoted | Promote it once into a normal import session, then preview and apply; never delete source state automatically |
+
+Retain source artifacts and receipts according to the deployment's protected
+configuration-record policy. The application retains rollback snapshots only
+for the bounded `ConfigurationImportSessionLimits.SnapshotRetention` window;
+operators must not treat that window as backup retention.
 
 ### Source and ingestion failures
 
@@ -841,25 +943,27 @@ Preserve:
 - HAL-only UI affordances;
 - generated OpenAPI and NSwag ownership.
 
-Do not reintroduce tenant-shaped partial manifest routes or aliases.
+Tenant-scoped portability uses the distinct `TenantConfigurationPackage`
+contract; do not weaken a whole-instance manifest into a caller-selected
+partial instance export.
 
 ## Implementation Map
 
 | Layer | Responsibility | Primary sources |
 |---|---|---|
-| Domain | Immutable operation/tenant-result evidence and paid-policy invariants | `src/Explore.Domain/ConfigurationManifestOperation.cs`, `src/Explore.Domain/ConfigurationManifestTenantResult.cs`, `src/Explore.Domain/PaidEventPolicyVersion.cs` |
-| Application contract | Exact envelope, metadata, typed documents, media identity | `src/Explore.Application/Features/ConfigurationManifest/Contracts/ConfigurationManifestV1Alpha1.cs` |
+| Domain | Immutable bootstrap/import evidence, forward rollback, transfer approval, and paid-policy invariants | `src/Explore.Domain/ConfigurationManifestOperation.cs`, `src/Explore.Domain/ConfigurationImportOperation.cs`, `src/Explore.Domain/ConfigurationDirectTransferSession.cs`, `src/Explore.Domain/PaidEventPolicyVersion.cs` |
+| Application contract | Exact envelopes, typed documents, legal Markdown, and media identities | `src/Explore.Application/Features/ConfigurationManifest/Contracts/ConfigurationManifestV1Alpha2.cs` |
 | Application catalog | Independent explicit instance/tenant allowlists | `src/Explore.Application/Features/ConfigurationManifest/Catalog/ConfigurationManifestCatalog.cs` |
 | Validation | Envelope, types, sensitivity, cross-policy checks | `src/Explore.Application/Features/ConfigurationManifest/Validation/ConfigurationManifestValidator.cs` |
 | Compilation | Typed plans, deterministic ordering, instance-section digest | `src/Explore.Application/Features/ConfigurationManifest/Compilation/` |
 | Preflight | Existing-tenant disposition, lifecycle, locks, current policy | `src/Explore.Application/Features/ConfigurationManifest/Preflight/ConfigurationManifestPreflight.cs` |
-| Apply | Lock hierarchy, serializable transaction, canonical boundaries, audit/outbox | `src/Explore.Application/Features/ConfigurationManifest/Handlers/Commands/ApplyConfigurationManifestCommandHandler.cs` |
-| Persistence | Entity-first repositories, append-only evidence, isolated failure recorder | `src/Explore.Persistence/Repositories/ConfigurationManifestOperationRepository.cs`, `src/Explore.Persistence/Repositories/ConfigurationManifestFailureRepository.cs` |
+| Apply | Lock hierarchy, serializable transaction, canonical boundaries, snapshots, receipts, and effect outbox | `src/Explore.Application/Features/ConfigurationManifest/Handlers/Commands/ApplyConfigurationManifestCommandHandler.cs`, `src/Explore.Application/Features/ConfigurationManifest/Importing/ConfigurationImportApplyService.cs` |
+| Persistence | Entity-first repositories, protected artifacts, append-only evidence, isolated failure recorder | `src/Explore.Persistence/Repositories/ConfigurationManifestOperationRepository.cs`, `src/Explore.Persistence/Repositories/ConfigurationImportOperationRepository.cs`, `src/Explore.Persistence/Repositories/ConfigurationImportArtifactStore.cs` |
 | Infrastructure | Options, strict reader/scanner, startup runner | `src/Explore.Infrastructure/ConfigurationManifest/` |
 | Hosts | One-owner post-migration/pre-traffic ordering | `src/Event.MigrationService/Worker.cs`, `src/Event.Standalone/Program.cs`, `src/Explore.AppHost/AppHost.cs` |
-| API/export | Instance-authorized whole-instance file | `src/Explore.API/Controllers/ConfigurationManifestExportsController.cs`, `src/Explore.Application/Features/ConfigurationManifest/Handlers/Queries/ExportConfigurationManifestQueryHandler.cs` |
-| BFF/client | HAL revalidation, fixed same-origin download, accessible UI | `src/Explore.Blazor/Extensions/BffConfigurationManifestEndpoints.cs`, `src/Explore.Blazor.Client/Pages/Admin/Instance/Components/ConfigurationManifestExportSection.razor` |
-| Generated schema | Closed deterministic editor/runtime contract | `eng/configuration-manifest-schema/`, `schemas/configuration-manifest-v1alpha1.schema.json` |
+| API/export/import | Authority-scoped export, session, preview, apply, history, rollback, and transfer routes | `src/Explore.API/Controllers/ConfigurationManifestExportsController.cs`, `src/Explore.API/Controllers/ConfigurationImportSessionsControllerBase.cs`, `src/Explore.API/Controllers/ConfigurationDirectTransferController.cs` |
+| BFF/client | HAL revalidation, fixed same-origin downloads, and accessible portability workspace | `src/Explore.Blazor/Extensions/BffConfigurationManifestEndpoints.cs`, `src/Explore.Blazor.Client/Pages/Admin/Components/ConfigurationPortabilityWorkspace.razor` |
+| Generated schema | Closed deterministic editor/runtime contracts | `eng/configuration-manifest-schema/`, `schemas/configuration-manifest-v1alpha2.schema.json`, `schemas/tenant-configuration-package-v1alpha2.schema.json` |
 
 ## Verification Map
 
@@ -898,12 +1002,22 @@ Generate or verify the schema:
 dotnet run \
   --project eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj \
   --configuration Release -- \
-  --write schemas/configuration-manifest-v1alpha1.schema.json
+  --write manifest schemas/configuration-manifest-v1alpha2.schema.json
 
 dotnet run \
   --project eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj \
   --configuration Release -- \
-  --check schemas/configuration-manifest-v1alpha1.schema.json
+  --write tenant-package schemas/tenant-configuration-package-v1alpha2.schema.json
+
+dotnet run \
+  --project eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj \
+  --configuration Release -- \
+  --check manifest schemas/configuration-manifest-v1alpha2.schema.json
+
+dotnet run \
+  --project eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj \
+  --configuration Release -- \
+  --check tenant-package schemas/tenant-configuration-package-v1alpha2.schema.json
 ```
 
 Never hand-edit:
@@ -923,15 +1037,14 @@ evidence.
 
 The following behavior is intentionally not implemented:
 
-- managed `Reconcile` mode;
-- field ownership or takeover;
-- drift/diff reporting;
-- deletion or pruning;
+- automatic managed-reconciliation execution from the standard import route;
+- deletion or pruning without an explicit ownership plan and takeover consent;
 - YAML;
 - remote URL ingestion;
 - directory or multi-file composition;
 - secret references;
-- tenant-shaped partial exports;
+- remote source-to-target discovery or automatic source deletion after direct
+  transfer;
 - manifest-owned payment sale control, handoff, reconciliation, disputes,
   liability, or refund execution.
 

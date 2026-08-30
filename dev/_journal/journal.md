@@ -1177,3 +1177,54 @@ or design an explicit retry for the resulting unique conflict.
 - [ ] Stays in journal only (one-off debugging lesson)
 
 ---
+
+[2026-08-30 Europe/Brussels] — A clean-room register needs a recording pass per source and a named reviewer decision
+
+**Context**: Independent read-only audit `st_01a0534e` checked the `event-ticketing-lifecycle`
+workstream against its explicit web-research requirement and `.omo/rules/ip-clean-room.md` rule 6.
+
+**Symptom / Observation**: The substance was sound — fifteen official sources, all reachable, all
+predecessor provenance digests recomputing exactly, no dependency or outbound-licensing delta, and a
+register holding only behavioral constraints — yet the packet could not be re-audited. It had no
+per-source recording date, no reviewer identity, date, or explicit decision, no completed SSO
+checklist, and no evidence links; the CTO review scored architecture without ever binding the IP
+packet; and no phase closeout manifest referenced the clean-room artifact.
+
+**Root Cause**: Rule 6's evidence bundle was satisfied in prose rather than as retrievable records.
+The predecessor packet's per-row `Accessed` column and `Evidence Links` section were silently dropped
+when the successor packet was authored, and the workstream landed straight on `develop`, so the
+habitual "link the PR" step produced nothing and was skipped instead of substituted.
+
+**Resolution**: The register now carries a `Recorded` column tied to the 2026-08-27, 2026-08-29, and
+2026-08-30 passes and the commits that introduced each row, plus a 2026-08-30 reachability
+re-verification (15/15 HTTP 200; titles confirmed for the five server-rendered pages, canonical path
+only for client-rendered Stripe/Learn pages). An `Identity And Review Decision` section names the
+reviewer, date, `pass` decision, and its scope; `evidence/clean-room-sso-provenance-review.yaml`
+holds the completed checklist with constrained similarities and the dependency record; an
+`Evidence Links` section records plan, tasks, context, CTO review, I-VSD, change fragment, commits,
+and `PR: none`. The CTO metadata gained a post-decision provenance addendum carrying the packet hash
+without touching the reviewed plan/tasks/I-VSD hashes.
+
+**Why This Matters for Future Work**: Provenance is only as durable as its weakest retrievable field.
+Give every register row the pass that recorded it, keep declared retrieval limitations explicit
+(no search transcript exists, so the outage narrative is a reviewer statement, not tool output), and
+when work lands on a trunk branch, record the commits as the PR substitute rather than leaving the
+field blank. Bind a packet hash forward into new or still-open records only; writing it backward into
+closed phase manifests manufactures evidence that pass never produced.
+
+**References**:
+- `dev/active/event-ticketing-lifecycle/event-ticketing-lifecycle-clean-room-evidence.md`
+- `dev/active/event-ticketing-lifecycle/evidence/clean-room-sso-provenance-review.yaml`
+- `dev/active/event-ticketing-lifecycle/event-ticketing-lifecycle-cto-review.md`
+- `.agents/skills/ip-clean-room/resources/sso-and-provenance-review.md`
+- `docs/legal/IP_GOVERNANCE.md`
+- PR / commit: no PR; workstream commits `216e21838`, `e030e0d47`, `ba851e198`
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `ip-clean-room` (per-source recording pass; trunk-commit substitute for a PR link)
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off audit lesson)
+
+---

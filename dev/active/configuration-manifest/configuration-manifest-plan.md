@@ -13,19 +13,30 @@ Last Updated: 2026-08-30 Europe/Brussels
   migration, preview/diff/mapping/approval, atomic apply/rollback, typed legal
   documents, extensible section coverage, and advanced operational quality.
 - **Task directory:** `dev/active/configuration-manifest/`
-- **Planning status:** Phases 9–16 are implemented; Phases 17–23 remain
-  unimplemented.
+- **Planning status:** Closed for archival by explicit user directive on
+  2026-08-30. Implementation evidence reaches CM-1830; Phases 19–23 are
+  retired, not represented as implemented.
 - **Change classification:** Behavioral Delta. This revision adds new artifact,
   authorization, import-session, migration, legal-publication, recovery,
   extension, API/BFF, and Blazor administration behavior.
 - **Current implementation reality:** strict v1alpha2
   `ConfigurationManifest` and `TenantConfigurationPackage` record/schema
   contracts plus the closed portability registry are implemented.
+  Typed role-owned legal aggregates, acceptance-free portable legal source,
+  append-only publication evidence, target-isolated repositories, and
+  generated five-provider persistence migrations are also implemented. One
+  deterministic non-fetching Markdown contract now serves preview, API, and
+  role-labeled `/terms`/`/privacy` pages from last-published evidence. Bounded
+  target-scoped import sessions, strict parsing, encrypted temporary bytes,
+  registry-derived semantic preview/coverage, freshness binding, stable
+  mapping, and expiry/cancellation cleanup are implemented behind Application
+  and Persistence boundaries.
   ConfigurationManifest continues to support instance-plus-tenant startup
-  bootstrap and instance-admin whole-instance export. There is no HTTP/UI
-  import, tenant-package operation surface, cross-instance mapping workflow,
-  rollback snapshot, typed portable legal-document aggregate, or managed drift
-  ownership.
+  bootstrap and instance-admin whole-instance export. Scope-safe instance and
+  tenant upload/preview/refresh/cancel HTTP, HAL, BFF, OpenAPI, and generated
+  client surfaces are implemented. Tenant-package operation/apply, cross-
+  instance migration, rollback snapshots, managed drift ownership, and direct
+  transfer remain retired design, not implementation evidence.
 - **Primary matched intent:** `external-infrastructure-bootstrap`.
 - **Criticality:** Tier 1 Security because the file crosses instance authority,
   tenant isolation, startup, filesystem, and persistence boundaries. Any
@@ -51,14 +62,18 @@ Last Updated: 2026-08-30 Europe/Brussels
   pre-v1; v1alpha2 replaces v1alpha1 without aliases, dual reads, converters,
   deprecated routes, or migration shims.
 - **I-VSD:** [i-vsd-configuration-manifest.md](../../../islamic-value-sensitive-design/i-vsd-configuration-manifest.md)
-- **I-VSD reviewed input:** `sha256:21ae0c2feee79a79a7c2e724dfb909a6d24456d75df4c238bf51a0f52a6c8ea7`
-- **I-VSD status/disposition:** `current` / `plan-aligned`. The 2026-08-30
+- **I-VSD reviewed input:** `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`
+- **I-VSD status/disposition:** `superseded` /
+  `closed-by-user-directive`. The 2026-08-30
   planning-mode review maps IVSD-F001 through IVSD-F024 to Phases 16-23 and
-  confirms IVSD-F025 through IVSD-F030 are explicitly deferred.
+  confirms IVSD-F025 through IVSD-F030 are explicitly deferred. Those mappings
+  are retained as historical design evidence, not completion claims.
 - **CTO review:** Phases 16–23 are approved by the revision-bound
   [Senior CTO review](configuration-manifest-cto-review.md).
 - **User approval:** scope boundary and implementation start approved on
-  2026-08-30.
+  2026-08-30; the user explicitly closed the workstream for archival on
+  2026-08-30 and directed Setup Assistant planning to consume the frozen
+  current baseline.
 - **Grill-Me intake:** resolved by direct user decisions: no backward
   compatibility; configuration-manifest work completes first; Avalonia,
   Terminal.Gui, CLI, `.env` generation, and agentic skill planning are deferred

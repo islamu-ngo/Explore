@@ -3,6 +3,65 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-30
+
+- **Breaking (pre-v1): admission write bodies now use canonical DTO schema names.** Check-in, undo, batch-item, batch, scanner check-in/undo/batch, and scanner-capability issue/revoke request schemas now end in `RequestDto`. The former unsuffixed schema names and generated client types are removed without aliases; payload shapes and routes are unchanged. Regenerate clients from `schemas/openapi_islamu-event.json`.
+
+- **Additive: bounded configuration import sessions now have separate instance
+  and tenant APIs.** Instance administrators upload strict v1alpha2
+  `ConfigurationManifest` bytes through
+  `POST /api/control-plane/configuration-import/sessions`; tenant
+  administrators upload strict `TenantConfigurationPackage` bytes through
+  `POST /api/tenants/{tenantId}/configuration-import/sessions`. Uploads use the
+  exact artifact media type, a 4 MiB raw-binary ceiling, a dedicated rate and
+  timeout policy, and private no-store responses. The one-time response
+  capability is supplied only through `X-Configuration-Import-Token` for
+  preview, refresh, and cancellation. Request bodies can select sections,
+  mappings, apply mode, and granted approvals but cannot select target,
+  revision, digest, or snapshot authority. Missing, wrong-scope, and invalid
+  capabilities are indistinguishable; stale, expired, cancelled, replayed, and
+  integrity-invalid sessions fail through stable value-safe RFC 7807 codes.
+  Control-plane and tenant HAL resources advertise creation only after exact
+  instance- or tenant-setting authorization. Regenerate clients from
+  `schemas/openapi_islamu-event.json`; no compatibility aliases exist.
+
+- **Breaking (pre-v1): configuration portability is v1alpha2-only and now
+  includes reviewed apply, tenant packages, receipts, and forward rollback.**
+  The v1alpha1 schema/media identities are removed. Instance and tenant session
+  routes expose server-authored selectable sections, preview/refresh, atomic
+  apply, bounded history, operation receipts, cancellation, and snapshot-backed
+  rollback sessions. Tenant administrators export a distinct
+  `TenantConfigurationPackage` from
+  `GET /api/tenants/{tenantId}/configuration-package/export`; source metadata
+  never selects the target tenant. Operation results expose typed effect state,
+  retry count, fidelity verification/digest, and named omissions without values.
+  All write affordances remain authorization- and HAL-gated; stale previews,
+  unavailable snapshots, and unsupported sections fail closed.
+
+- **Additive: mutually approved direct configuration transfer stages artifacts
+  without bypassing import authority.** Instance and tenant routes under
+  `/api/configuration-transfers` bind public HTTPS/443 destination proof,
+  nonce, digest, size, expiry, distinct source/destination actors, and bounded
+  resumable chunks. Completion is replay-safe; promotion creates an ordinary
+  import session that still requires preview and apply. The protocol never
+  deletes source state or transports secrets, application data, or backup
+  authority.
+
+- **Additive: role-labeled published legal documents are available through one
+  anonymous rendering contract.** `GET /api/legal-documents/{kindCode}` selects
+  only the target scope's latest active immutable publication, resolves the
+  negotiated locale and reviewed operator identity, and returns deterministic
+  constrained-Markdown HTML with publication version, effective time, and
+  content digest. Unknown, unpublished, retired, non-public, unresolved, or
+  integrity-invalid content fails closed through value-safe RFC 7807 responses.
+  The response cache varies by tenant host and `Accept-Language`; the generated
+  client operation is `GetPublicLegalDocument`.
+- **Breaking (pre-v1): `/terms` and `/privacy` no longer contain static legal
+  prose.** Both pages consume the generated API contract and identify the
+  instance or tenant operator responsible for the publication. If no reviewed
+  version exists, they show a neutral unavailable state rather than inventing
+  substitute terms or privacy claims.
+
 ## 2026-08-29
 
 - **Added: machine-readable ticketing deployment capability status.**
@@ -63,7 +122,7 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 - **Breaking (pre-v1): location address acquisition is now provider-neutral and token-authorized.** `CreateLocationDto`, `UpdateLocationDto`, and nested event location writes no longer accept caller-authored coordinates or current-tenant authority. Create/update may instead carry an opaque, short-lived `addressSelectionToken`; the server binds it to tenant, actor, optional organization, write purpose, location target, expected concurrency stamp, provider configuration, and Photon dataset revision before applying the normalized address and coordinate pair atomically. The optional self-hosted Photon adapter is disabled by default, uses bounded resilience and query-free readiness, and never exposes its endpoint or exact coordinates to the browser. Address suggestions remain useful with local-only results when Photon is disabled, limited, unavailable, or timed out. Generated clients must consume typed HAL `_embedded.items` and `AddressProviderOutcome`, preserve provider attribution, and gate autocomplete/create/edit/delete/approval actions solely from advertised HAL links. Apply the generated address-governance migrations for the configured database provider and regenerate clients from `schemas/openapi_islamu-event.json`; no compatibility reader or alias is provided.
 
 - **Breaking (pre-v1): location writes no longer accept raw coordinates.** `CreateLocationDto`, `UpdateLocationDto`, and nested event creation's `CreateEventLocationDto` remove `latitude` and `longitude` without aliases or compatibility readers. Generated-client and browser consumers must remove raw coordinate controls, assignments, and defaults. Manual address create/update transitions carry address data only and clear previously derived coordinates on change. Authorized coordinate reads remain available through `LocationDto` and the existing purpose-specific event-location disclosure contracts; routes, operation IDs, HAL capabilities, GET/write authorization, private-home classification/ownership consent, ETag/`If-Match` concurrency, and provider-selection seams are unchanged. Regenerate in order with `dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore`, the `ApiContractInventory_Generate_WritesMarkdownToDocs` integration-test filter, and `dotnet msbuild src/Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1`.
-- **Breaking (pre-v1): ConfigurationManifest export is one explicit whole-instance download resource.** Authenticated instance administrators export the current deployment from `/api/control-plane/configuration-manifest/export`. The operation defaults `view=Overrides`, accepts explicit `view=Portable`, returns `application/vnd.islamu.configuration-manifest.v1alpha1+json` attachments, and exposes permission-filtered `export-configuration-overrides` / `export-configuration-portable` HAL relations. Each file contains the approved instance section and all active tenant sections, declares sensitive-value omission, and never represents credentials or backup state. Tenant administrators have no partial manifest export. Regenerate clients from `schemas/openapi_islamu-event.json`; there is no compatibility window before v1.0.
+- **Breaking (pre-v1): ConfigurationManifest export is one explicit whole-instance download resource.** Authenticated instance administrators export the current deployment from `/api/control-plane/configuration-manifest/export`. The operation defaults `view=Overrides`, accepts explicit `view=Portable`, returns `application/vnd.islamu.configuration-manifest.v1alpha2+json` attachments, and exposes permission-filtered `export-configuration-overrides` / `export-configuration-portable` HAL relations. Each file contains the approved instance section and all active tenant sections, declares sensitive-value omission, and never represents credentials or backup state. Tenant administrators use the separate tenant-package contract and never receive a partial instance manifest. Regenerate clients from `schemas/openapi_islamu-event.json`; there is no compatibility window before v1.0.
 
 - **Breaking (pre-v1): reporting-intake administration is now a dedicated server-authored policy resource.** Authenticated current-tenant clients read and update `/api/tenant/settings/reporting-intake` through stable `GetTenantReportingIntakePolicy` and `UpdateTenantReportingIntakePolicy` operations. The response owns effective `enabled`, source, instance-lock, `canDisable`, and reason metadata; the update body accepts only `enabled`, with tenant and actor identity derived by the server. Clients must gate mutation through the HAL `edit` relation rather than local role, lock, or publication-safety calculations. Instance locks and unsafe disablement return stable RFC 7807 conflict codes.
 - **Breaking (pre-v1): eight create/import request bodies no longer accept current-tenant authority.** `CreateCategoryDto`, `ImportEventRequestDto`, `CreateEventSessionDto`, `CreateEventSessionAgendaItemDto`, `CreateEventSessionLanguageDto`, `CreateEventSessionSpeakerDto`, `CreateLocationDto`, and `CreateTagDto` omit `tenantId`. Controllers derive tenant identity from `ITenantContext` or the route-selected persisted session/event context; sending the removed property now fails closed as an unsupported JSON field with a 400 validation ProblemDetails response. Routes, operation IDs, HAL relations, and authorized success behavior are unchanged. Regenerated clients must stop populating these tenant properties; no compatibility alias or reader is provided.

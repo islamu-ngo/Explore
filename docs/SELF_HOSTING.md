@@ -601,15 +601,15 @@ The primary file must not be `/app/data/privacy_erasure_authority.db`.
 | `MCP_ENABLED` | `true` | Enable/disable the MCP adapter at `/mcp` |
 | `WEBHOOKS_PROVIDER` | `Local` | `Local`, `Svix`, or `Composite` |
 | `REPORTING_MODE` | `LocalOnly` | Reporting mode |
-| `SECRET_PROVIDER` | `None` | Set `Infisical` to enable Infisical secret loading |
+| `SECRET_PROVIDER` | required | Explicit authority: `Environment` or `Infisical`; no cross-source fallback |
 
 For the complete variable reference, see [CONFIGURATION.md](CONFIGURATION.md).
 
-Promotion codes require the native non-secret setting `Promotions__CodeLookup__ActiveKeyVersion` (default `1`) plus an instance `SecretBinding` for `promotions.code_lookup_hmac_key` with the matching qualifier, such as `v1`. An environment-backed initial binding may point at `PROMOTIONS_CODE_LOOKUP_HMAC_KEY`; its value is standard Base64 for at least 32 random bytes. Infisical uses `/promotions/PROMOTIONS_CODE_LOOKUP_HMAC_KEY`, and application-managed deployments may instead use an inline-encrypted binding.
+Promotion codes require the native non-secret setting `Promotions__CodeLookup__ActiveKeyVersion` (default `1`) plus an instance `SecretBinding` for `promotions.code_lookup_hmac_key` with the matching qualifier, such as `v1`. An Environment deployment may point the binding at `PROMOTIONS_CODE_LOOKUP_HMAC_KEY`; its value is standard Base64 for at least 32 random bytes. An Infisical deployment uses `/promotions/PROMOTIONS_CODE_LOOKUP_HMAC_KEY`. The selected deployment authority is exclusive and the database stores metadata only.
 
 The checked-in Split Compose file passes an explicit environment allow-list and does not currently forward these promotion names from `.env`. Setting them in `.env` alone therefore has no effect: provision the binding through the secret control plane, or explicitly inject the native option and chosen version-specific secret variable into the API container in your deployment configuration. Standalone/direct-process deployments may supply the native names directly. The resolver deliberately has no source fallback. Missing bindings, missing values, invalid Base64, and values shorter than 32 bytes fail closed when a code is published, rotated, or applied.
 
-For HMAC-key rotation, create a distinct source coordinate for the new value, add the new qualified binding first, change the active version, restart API replicas, and keep every older key whose version is still referenced by an active promotion code. Do not overwrite a key in place or point overlapping qualifiers at one mutable environment variable. Organizer-facing code rotation is separate: it retires the old code and shows the replacement plaintext once in Studio. Neither flow enables Stripe capture or any Phase 18 payment runtime.
+For HMAC-key rotation, create a distinct source coordinate for the new value, add the new qualified binding first, change the active version, and collect the same value-free activation attempt from every API replica. Keep every older key whose version is still referenced by an active promotion code. A missing acknowledgement remains pending; at the stale deadline drain the replica and fail the rollout closed. Do not overwrite a key in place or point overlapping qualifiers at one mutable environment variable. Organizer-facing code rotation is separate: it retires the old code and shows the replacement plaintext once in Studio. Neither flow enables Stripe capture or any payment runtime.
 
 ---
 
@@ -1084,6 +1084,7 @@ operator-provided broker and set
 | `storage-reconciliation` | Healthy in dry-run mode; degraded if disabled |
 | `atproto-authentication` | Disabled AT Protocol login is healthy dormant state |
 | `idempotency-cleanup` | Healthy in delete or dry-run mode |
+| `secret-resolver` | Healthy when the selected source is available or intentionally unconfigured; degraded on configured-provider failure with only a bounded remediation code |
 
 ### Background Scheduler Monitoring
 
@@ -1325,7 +1326,7 @@ complete successfully.
    `./deploy/bootstrap/configuration-manifest.json`, or set
    `CONFIGURATION_MANIFEST_HOST_DIRECTORY` to another existing host directory.
 3. Validate against
-   `schemas/configuration-manifest-v1alpha1.schema.json`.
+   `schemas/configuration-manifest-v1alpha2.schema.json`.
 4. Set `CONFIGURATION_MANIFEST_MODE=ValidateOnly` and run the migration service.
 5. After validation succeeds, set the mode to `Bootstrap` and start the stack.
 
@@ -1424,14 +1425,36 @@ manifest or base-image change and record both digests in the release evidence.
 Only instance/Control Plane authority may export the whole deployment. The
 canonical **Overrides** and **Portable** views include approved instance
 configuration and all active tenants in one bounded, deterministic file.
-Tenant administrators do not receive a manifest-shaped partial export. HAL is
-the sole affordance gate; absent export relations mean the browser does not
-offer the action.
+Tenant administrators receive the separate, tenant-authorized
+`TenantConfigurationPackage` v1alpha2 artifact rather than a partial instance
+manifest. HAL is the sole affordance gate; absent export relations mean the
+browser does not offer the action.
 
 Both views omit secrets, PII, provider credentials, and operational/sovereign
 state. Portable values remain constrained by the target instance's current
 authority. Keep Infisical or `.env` material and database backups independent;
 export is neither secret recovery nor database recovery.
+
+### Day 2 Migration Between Instances
+
+Export the tenant package from the source tenant, create or select the target
+tenant through target-side authority, and upload the package in the target
+tenant's Configuration Portability workspace. The target route chooses the
+tenant; source metadata cannot redirect the import. Review the server-generated
+section list, mappings, legal drafts, setup blockers, and approval codes before
+apply.
+
+Configure target secrets, providers, deployment topology, legal identity, and
+other environment-bound requirements independently. A successful fidelity
+receipt proves only the selected portable configuration sections. It does not
+prove application-data migration, secret recovery, provider readiness, or a
+restorable backup.
+
+Optional direct transfer stages the same artifact with mutual approval and
+public HTTPS/443 destination validation. It supports bounded resume and cancel,
+but promotion still produces the ordinary preview/apply session. Keep the
+source deployment and retained export until target verification and operational
+acceptance are complete; the product never deletes the source.
 
 ### Self-hosted paid-policy documents
 

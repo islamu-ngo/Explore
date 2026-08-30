@@ -93,6 +93,13 @@ Control-plane UI primitives live under `Explore.Blazor.Client/Components/Control
 
 The embedded instance console owns the public tenant-plan workflows. `/admin/instance/plans` creates structured plan drafts and `/admin/instance/plans/{key}` creates or edits version drafts, validates drafts, previews setting diffs, publishes or archives versions with typed confirmation, and clones published versions. Version lifecycle relations live on each `versions[]` resource, never on the root plan. `/admin/instance/tenants/{tenantId}/configuration` switches published plan assignments and applies or rolls them back with typed confirmation; rollback uses the separately returned eligible previous assignment. Every mutation is exposed only from the matching server-emitted HAL relation and matches the resource identifier in the advertised link before rendering or dispatch.
 
+The existing control-plane overview provider grid also renders one server-derived
+secret-authority card. Its contract is limited to provider name, bounded status,
+and remediation code; it never exposes values, binding identifiers, paths, keys,
+URLs, or provider diagnostics. No secret mutation control is rendered because the
+overview advertises no such HAL action; deployment-owned recovery stays in the
+operator runbook.
+
 Domain inventory remains an Event-owned read model. The domain page follows its HAL `settings` or `edit` relation into `/settings/instance?section=domain`; DNS-provider verification and certificate probing are operator-managed because Event does not expose verification, test, or retry endpoints for that resource.
 
 Whole-instance configuration export lives at
@@ -464,8 +471,8 @@ Personal Settings has a separate in-page information architecture. `/settings/pe
 
 `BffTicketPurchaseEndpoints` owns the same-origin browser boundary:
 
-- `/bff/ticket-purchases/authenticated` requires cookie authentication and antiforgery;
-- `/bff/ticket-purchases/guest` requires antiforgery and forwards the opaque order capability;
+- `/bff/events/{eventId}/registration-orders/{orderId}/purchase-authority` requires cookie authentication and antiforgery;
+- `/bff/events/{eventId}/registration-orders/guest/{orderId}/purchase-authority` requires antiforgery and forwards the opaque order capability from `X-Registration-Order-Capability`;
 - both create UUIDv7 idempotency keys server-side, apply a partitioned rate limit, ignore unknown tenant/quantity/policy fields, and return private/no-store responses;
 - OAuth bearer tokens remain in the BFF handler chain and never enter browser code.
 

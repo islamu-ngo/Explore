@@ -7,14 +7,15 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Phases 9–16 implemented; Phase 17 in progress; Phases
-  18–23 not started.
-- **Completed tasks:** 29/49.
-- **Current priority:** Implement the legal aggregate, append-only publication
-  evidence, and provider-portable persistence model.
-- **Next recommended slice:** `CM-1720`.
-- **Known blockers:** the complete Persistence project remains an unwaived
-  Phase 19 gate.
+- **Overall status:** In implementation; reactivated by explicit user directive
+  on 2026-08-30.
+- **Implemented tasks:** 34/49 through CM-1830.
+- **Remaining tasks:** 15/49 in active Phases 19–23.
+- **Current priority:** CM-1910/CM-1920 selected-section atomic apply and
+  forward rollback.
+- **Next recommended slice:** CM-1930 recovery/history, then Phase 20.
+- **Known blockers:** Phase 18–23 gates are deferred to the final verification
+  sweep by explicit user direction; they remain required before completion.
 - **Superseded workstream:** `dev/active/tenant-configuration-manifest/`.
   Its completed runtime foundation remains in the branch, but its planning
   artifacts are replaced by this workstream.
@@ -22,11 +23,27 @@ Last Updated: 2026-08-30 Europe/Brussels
 - **Context:** [configuration-manifest-context.md](configuration-manifest-context.md)
 - **I-VSD:** [i-vsd-configuration-manifest.md](../../../islamic-value-sensitive-design/i-vsd-configuration-manifest.md)
 - **I-VSD reviewed input:** `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`
-- **I-VSD status/disposition:** `current` / `plan-aligned`
+- **I-VSD status/disposition:** refresh required during CM-2310 after active
+  implementation.
 - **CTO review:** [configuration-manifest-cto-review.md](configuration-manifest-cto-review.md),
   decision `Approve`
 - **Deferred future workstream:** Avalonia, Terminal.Gui, CLI/TUI, `.env`, and
   agentic skill; no task below implements them.
+
+## Reactivation Disposition
+
+- The Release build completed with zero errors during Phase 18 closure.
+- CM-1830 focused Application/API/HTTP/HAL/BFF/generated-client/architecture
+  gates are Green and its generated artifacts converged twice.
+- The complete API project did not pass: unrelated onboarding, payment, setup,
+  and public-experience failures reproduced. A fresh rerun was stopped by the
+  user and deferred to the final verification sweep.
+- Every unchecked task in Phases 19–23 is active again and must be implemented
+  in order without claiming completion before its acceptance evidence exists.
+- Setup Assistant consumes only the current frozen
+  v1alpha2/schema/registry/import-preview baseline and does not inherit
+  unimplemented atomic apply, live migration UI, managed ownership, or direct
+  transfer.
 
 ## Implementation Maintenance Rules
 
@@ -1328,7 +1345,7 @@ project/FOSS template provenance. All 13 fail solely because the legal Domain
 contracts are absent. Test content is repository-native sentinel prose, not an
 external legal template.
 
-### [ ] CM-1720 — Green: implement legal aggregates and persistence
+### [x] CM-1720 — Green: implement legal aggregates and persistence
 
 **Owning layers:** Domain/Application/Persistence
 
@@ -1342,12 +1359,24 @@ external legal template.
 
 **Acceptance:**
 
-- [ ] Domain legal lifecycle/authority selectors pass and verify publication
+- [x] Domain legal lifecycle/authority selectors pass and verify publication
       history remains append-only.
-- [ ] Import/export cannot carry acceptance facts or source target authority.
-- [ ] All provider models report current after generated migrations.
+- [x] Import/export cannot carry acceptance facts or source target authority.
+- [x] All provider models report current after generated migrations.
 
-### [ ] CM-1730 — Share safe rendering and public legal composition
+**Evidence:** Implemented the closed 29-kind role catalogue, bounded
+network-free localized source policy, non-certifying provenance, target-scoped
+aggregate, immutable versions, append-only publication/retirement evidence,
+entity-returning repository, four EF configurations, and explicit target
+coordinates on every repository read. Added acceptance-free legal source to
+both v1alpha2 artifacts and generated schemas. Domain invariants pass 13/13,
+portable contract tests pass 7/7, and legal persistence passes 9/9 including
+cross-tenant denial, SQLite aggregate round-trip, and pending-model checks for
+PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL. All five generated
+`AddPortableLegalDocuments` migrations were inspected and contain legal-table
+operations only; no unrelated shared model change was absorbed.
+
+### [x] CM-1730 — Share safe rendering and public legal composition
 
 **Owning layers:** Application/API/Blazor legal surfaces
 
@@ -1363,23 +1392,44 @@ external legal template.
 
 **Acceptance:**
 
-- [ ] `LegalDocumentRenderingContractTests` verify identical safe output across
+- [x] `LegalDocumentRenderingContractTests` verify identical safe output across
       editorless preview, API, and public rendering.
-- [ ] Unsafe content never becomes public and last published content remains
+- [x] Unsafe content never becomes public and last published content remains
       available after a failed draft/import.
-- [ ] Phase 17 closes only after one Release build and the complete
+- [x] Phase 17 closes only after one Release build and the complete
       `Event.Domain.UnitTests` project pass.
+
+**Evidence:** Added one dependency-free Domain parser/renderer for the bounded
+Markdown grammar; source creation, preview, persisted API composition, and
+public pages all use it. It encodes identity substitutions, rejects raw/fenced
+content, images, unsafe/tracking/private-network links, malformed headings and
+placeholders, emits value-safe locale/template/import/accessibility
+diagnostics, and never performs I/O. Application selects the latest active
+immutable public publication, exact/base/English/deterministic locale, and
+target-owned instance or tenant identity. The anonymous generated
+`GetPublicLegalDocument` operation returns role-labeled publication facts with
+locale-aware caching. `/terms` and `/privacy` now render that contract through
+one accessible component and show only a neutral unavailable state when no
+reviewed publication exists.
+
+Focused evidence is Markdown 4/4, rendering 5/5, API 2/2, persisted composition
+and provider parity 10/10, public pages 3/3, accessibility conventions 8/8,
+record contracts 11/11, schema generation 9/9, generated transformation 6/6,
+and generated serialization 12/12. OpenAPI, API inventory, and NSwag output are
+byte-stable on a subsequent complete generation pass. The Release solution
+build passes with 0 warnings/0 errors and the complete Domain project passes
+1,043/1,043.
 
 ### Phase 17 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 18: Import Sessions, Preview, Diff, And Mapping
 
 Plan reference: Phase 18 and CM-R2/CM-R3/CM-R5.
 
-### [ ] CM-1810 — Red: specify bounded side-effect-free import sessions
+### [x] CM-1810 — Red: specify bounded side-effect-free import sessions
 
 **Owning layers:** Application/API tests
 
@@ -1393,13 +1443,31 @@ Plan reference: Phase 18 and CM-R2/CM-R3/CM-R5.
 
 **Acceptance:**
 
-- [ ] `ConfigurationImportSessionContractTests` fail only on missing session
+- [x] `ConfigurationImportSessionContractTests` fail only on missing session
       behavior and verify CM-S2/CM-S3.
-- [ ] Preview tests prove no setting/document/tenant/success-audit/outbox/provider
+- [x] Preview tests prove no setting/document/tenant/success-audit/outbox/provider
       mutation occurs.
-- [ ] Secret/PII/value scans cover ProblemDetails, logs, metrics, and traces.
+- [x] Secret/PII/value scans cover ProblemDetails, logs, metrics, and traces.
 
-### [ ] CM-1820 — Green: implement preview, semantic diff, and mapping
+**Evidence:** Added 12 compiled Application Invariant-Breakers for bounded
+upload/session lifetime, trusted route target separation, opaque protected
+artifact handles, expiry/cancellation/replay/consume state, digest-only session
+metadata, the eight required preview categories, preview freshness binding,
+parameterless pure composition with no mutation dependency, stable failure
+codes, immutable collection ownership, and one value-safe observability
+contract shared by logs/metrics/traces/support evidence. Added three API
+boundary contracts for the canonical 4 MiB ceiling, dedicated rate/timeout
+policies, and code/status/retry-only ProblemDetails.
+
+The Application selector discovers 12 and fails 12 only on absent
+`Explore.Application.Features.ConfigurationManifest.Importing` contracts. The
+API selector discovers 3 and fails 3 only on absent
+`Explore.API.ConfigurationImport` contracts. Both projects compile with zero
+test-contract errors; no production source, dependency, schema, or generated
+artifact changed in CM-1810. Evidence:
+`.omo/evidence/20260830-configuration-manifest-import/`.
+
+### [x] CM-1820 — Green: implement preview, semantic diff, and mapping
 
 **Owning layers:** Application/Persistence
 
@@ -1413,14 +1481,37 @@ Plan reference: Phase 18 and CM-R2/CM-R3/CM-R5.
 
 **Acceptance:**
 
-- [ ] Focused session/preview selectors pass and stale target changes invalidate
+- [x] Focused session/preview selectors pass and stale target changes invalidate
       apply readiness.
-- [ ] Mapping uses stable identities, never localized names or source database
+- [x] Mapping uses stable identities, never localized names or source database
       IDs as authority.
-- [ ] Expiry/cancellation removes temporary bytes and retains only permitted
+- [x] Expiry/cancellation removes temporary bytes and retains only permitted
       value-minimized evidence.
 
-### [ ] CM-1830 — Expose import-session API, HAL, and generated contracts
+**Evidence:** Implemented a target-scoped optimistic session state machine with
+fixed-time token-digest checks, expiry/cancellation/one-time consumption,
+artifact/target/revision/selection/mapping/apply-mode/approval freshness
+binding, and generic value-safe failures. The parser enforces strict v1alpha2
+JSON, duplicate/unknown-member rejection, the canonical 4 MiB ceiling, and
+exact-byte SHA-256 identity. A parameterless pure composer derives
+portability/coverage/dependencies from the closed registry, snapshots
+collections, classifies every required outcome, requires stable ASCII machine
+mapping identities, and blocks unknown sections or missing approvals without
+calling repositories, providers, audits, outboxes, or mutation boundaries.
+
+Persistence stores artifact bytes only after purpose-bound ASP.NET Core Data
+Protection encryption, rechecks digest/length after decrypting, binds every
+session query to trusted target authority, uses optimistic revision fencing,
+and deletes protected bytes transactionally on cancellation or expiry while
+retaining digest/status evidence. Five generated
+`AddConfigurationImportSessions` migrations contain import tables only and all
+provider models are current.
+
+Focused results: contract 12/12, behavior 10/10, parser 3/3, persistence and
+provider parity 10/10, Clean Architecture 15/15, and record contracts 11/11.
+The Release solution build exits 0; existing unrelated analyzer debt remains.
+
+### [x] CM-1830 — Expose import-session API, HAL, and generated contracts
 
 **Owning layers:** API/HAL/OpenAPI/BFF contract
 
@@ -1433,17 +1524,41 @@ Plan reference: Phase 18 and CM-R2/CM-R3/CM-R5.
 
 **Acceptance:**
 
-- [ ] `ConfigurationImportSessionControllerTests` verify 401/403/404/409/413,
+- [x] `ConfigurationImportSessionControllerTests` verify 401/403/404/409/413,
       provider-unavailable, expiry, and wrong-scope behavior.
-- [ ] Generated contracts expose only canonical v1alpha2 operations and produce
+- [x] Generated contracts expose only canonical v1alpha2 operations and produce
       stable bytes on the second run.
 - [ ] Phase 18 closes only after one Release build and the complete
       `Event.API.IntegrationTests` project pass.
 
+**Evidence:** Added separate instance and tenant upload, preview, refresh, and
+cancel controllers over Application-owned commands. Uploads are streamed into
+the canonical 4 MiB bound, use dedicated per-actor rate and timeout policies,
+require write authorization, return private no-store responses, and keep the
+opaque capability exclusively in `X-Configuration-Import-Token`. Preview
+derives current target revisions server-side from the source artifact's
+portable/override view, canonicalizes object order and numeric lexical forms,
+and includes tenant display-name authority in semantic section digests.
+
+HAL exposes instance and tenant creation affordances only through the existing
+authorization evaluator; the BFF enforces antiforgery and forwards only the
+header capability. ProblemDetails collapses target/token mismatch to the safe
+not-found shape and preserves explicit expiry, stale, size, and provider
+availability statuses. Real HTTP tests prove unauthenticated and unavailable
+authorization responses are no-store and capability-free.
+
+OpenAPI now publishes binary vendor request bodies, named string enum
+components, HAL result schemas, canonical operation IDs, and required token
+headers. OpenAPI, API inventory, and NSwag converged byte-for-byte on the
+second generation pass. Focused Application parser/snapshot/session tests,
+API boundary/controller/OpenAPI/HTTP/HAL tests, the BFF antiforgery suite, the
+generated-client contract suite, and Clean Architecture/API/record gates all
+pass. Phase closure still awaits the two verification commands below.
+
 ### Phase 18 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] **Closure waiver, not a passing result:** `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 19: Atomic Apply, Receipts, Snapshots, And Forward Rollback
 

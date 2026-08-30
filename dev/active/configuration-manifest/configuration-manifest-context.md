@@ -26,6 +26,35 @@ Last Updated: 2026-08-30 Europe/Brussels
 - Completed CM-1710 with 13 public Domain Invariant-Breakers. Every case fails
   only because the closed legal catalog, bounded localized source, provenance,
   aggregate lifecycle, and publication evidence contracts do not exist.
+- Completed CM-1720: Domain lifecycle passes 13/13, legal artifact contracts
+  pass 7/7, persistence/target isolation passes 9/9, and legal-only migrations
+  are generated with current models for all five providers.
+- Completed CM-1730 and Phase 17: one Domain Markdown contract now owns
+  validation/rendering; the Application serves last-published role-labeled
+  instance/tenant evidence; the anonymous API and generated client are stable;
+  `/terms` and `/privacy` no longer contain static legal authority. The Release
+  build is clean and Domain passes 1,043/1,043.
+- Completed CM-1810 Red: 12 Application and three API Invariant-Breakers
+  compile and fail exclusively on missing bounded session, pure preview,
+  freshness, protected-storage, observability, size/rate/timeout, and
+  ProblemDetails contracts. No production code changed in the Red slice.
+- Completed CM-1820 Green: strict parsing, protected durable bytes, target-bound
+  optimistic sessions, pure registry-derived preview/diff/coverage, stable
+  machine mappings, approval/revision freshness, and transactional
+  cancellation/expiry cleanup are implemented. Application selectors pass
+  12/12, 10/10, and 3/3; persistence/provider parity passes 10/10.
+- Completed CM-1830: scope-safe instance/tenant import APIs, HAL affordances,
+  antiforgery-preserving BFF proxying, bounded upload/rate/timeout/no-store
+  containment, safe ProblemDetails, server-derived semantic target revisions,
+  and canonical generated clients are implemented. Two-pass OpenAPI,
+  inventory, and NSwag generation converges; focused Application, API, HTTP,
+  HAL, BFF, client-contract, and architecture gates pass.
+- The prior closure directive was superseded by the user on 2026-08-30.
+  Implementation resumes from Phase 19 while all incomplete phase gates remain
+  deferred to the final verification sweep and are not represented as passing.
+- Updated the successor Setup Assistant plan to pin the current
+  v1alpha2/schema/registry/import-preview baseline and to reject capability
+  overclaim for retired work.
 - Re-baselined the workstream after the user required whole-instance UI import,
   tenant-admin import/export, cross-instance migration, typed portable legal
   documents, extensible configuration coverage, and broad migration/recovery
@@ -50,39 +79,36 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 ### IN PROGRESS
 
-- CM-1720: legal aggregate, publication evidence, and multi-provider
-  persistence.
+- Phase 19 implementation, beginning with CM-1910/CM-1920 selected-section
+  atomic apply and forward rollback.
 
 ### NEXT
 
-1. Implement CM-1720 Domain behavior from the 13 failing invariants.
-2. Add EF configurations and generate every provider migration.
-3. Run the focused Domain selector and persistence model-current checks.
+1. Implement CM-1910 through CM-2330 in order.
+2. Run every deferred phase gate in the final verification sweep before
+   marking any phase complete.
 
 ### BLOCKERS
 
-- The complete `Event.Persistence.IntegrationTests` project remains an
-  unwaived phase-gate blocker from the implemented foundation; Phase 19 cannot
-  close until the baseline is repaired or explicitly waived.
-- No ConfigurationManifest product decision is delegated to the future Setup
-  Assistant plan; that plan consumes this workstream’s final contracts only.
+- Phase 18–23 gates are intentionally deferred to the final verification sweep
+  by explicit user direction; none is waived as a passing result.
 
 ## Quick Resume — Current
 
-- **Status:** Phases 9–16 implemented; Phases 17–23 planned and unchecked.
-- **Current phase:** Phase 17 — Typed Legal Documents And Safe Content.
-- **Current task:** `CM-1720`.
+- **Status:** Active implementation; implemented evidence reaches CM-1830.
+- **Current phase:** Phase 19 — Atomic Apply, Receipts, Snapshots, And Forward
+  Rollback.
+- **Current task:** CM-1910/CM-1920.
 - **CTO review:** [configuration-manifest-cto-review.md](configuration-manifest-cto-review.md),
   decision `Approve`.
-- **Read first:** this section, then CM-1610 in
-  `configuration-manifest-tasks.md`, then plan Sections 3.6–3.8, 5, 6 Phase 16,
-  and 9.1.
+- **Read first:** this active section, the current task, and only the current
+  plan phase.
 - **Hard boundary:** no Avalonia, Terminal.Gui, CLI/TUI, `.env`, or agent-skill
   work in this workstream.
 - **I-VSD:** [i-vsd-configuration-manifest.md](../../../islamic-value-sensitive-design/i-vsd-configuration-manifest.md),
   reviewed input
   `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`,
-  status `current`, disposition `plan-aligned`.
+  status/disposition to be refreshed during CM-2310 after implementation.
 
 ## SESSION PROGRESS (2026-08-26 Europe/Brussels)
 

@@ -173,7 +173,7 @@ Use `Not applicable` only when the change has no release-impact category. If the
 ## CI/CD Evidence Contract
 
 - [ ] OpenAPI drift artifacts are clean, or generated `openapi.json` / NSwag client changes are reviewed and committed.
-- [ ] `schemas/configuration-manifest-v1alpha1.schema.json` passes the generator `--check` command, is staged with release contract assets, and its exact SHA-256 is included in durable release evidence.
+- [ ] `schemas/configuration-manifest-v1alpha2.schema.json` passes the generator `--check` command, is staged with release contract assets, and its exact SHA-256 is included in durable release evidence.
 - [ ] Intentional breaking API contract changes include a matching `docs/API_CHANGELOG.md` entry with affected route/schema/client method, old/new behavior, affected clients, migration guidance, release target, and retained OpenAPI / advisory `oasdiff` evidence links when available.
 - [ ] Container image digest, immutable promotion tag evidence, Docker base image digest pins, SBOM/provenance, Trivy scan output, attestation verification JSON, checksum manifest, and image tag evidence are recorded when images are published.
 - [ ] Deployment evidence includes environment, component, commit SHA, expected immutable image tag, expected image digest, promotion evidence path, webhook result, smoke-check result, whether smoke was required, deployment-freeze state, override reason if any, workflow run link, and rollback note.
@@ -187,7 +187,7 @@ Expected artifact names:
 - `test-results-fast`
 - `test-results-integration`
 - `openapi-contract-guard`
-- `configuration-manifest-v1alpha1.schema.json`
+- `configuration-manifest-v1alpha2.schema.json`
 - `security-test-evidence`
 - `cerbos-policy-evidence`
 - `cerbos-policy-publish-evidence`

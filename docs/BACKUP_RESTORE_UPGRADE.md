@@ -306,7 +306,7 @@ restored PII is not a recovery path.
 | Backward-compatible migration ran | Revert images only if release notes say the old version tolerates the new schema. |
 | Destructive or non-reversible migration ran | Restore database/object-storage backups and then revert images. |
 | Storage reconciliation mutations ran against the wrong object store | Stop write traffic, disable destructive reconciliation flags, restore database and object-storage backups from the same manifest, then restart with dry-run reconciliation. |
-| Secret/key rotation changed runtime identity | Restore matching secret-provider values before restarting old images. Rotation is restart-based today; do not claim live reload. |
+| Secret/key rotation changed runtime identity | Restore matching secret-provider values before restarting old images. Only versioned HMAC/key-ring and explicitly options-driven HTTP consumers support overlap; all other credential families require a coordinated restart. A local acknowledgement is not deployment convergence. |
 | Removed pre-v1 development application history is present | Keep the service offline; recreate only disposable application state or perform a separately reviewed export/restore transition. Never stamp the new initial as already applied. |
 
 If release notes do not explicitly state that a rollback is image-only safe, assume a database restore is required.
@@ -330,6 +330,7 @@ If release notes do not explicitly state that a rollback is image-only safe, ass
 - [ ] Storage reconciliation is either dry-run/healthy or intentionally disabled/degraded, and destructive flags match the release plan.
 - [ ] Cerbos readiness is healthy when `authz` profile/provider is enabled.
 - [ ] Release notes and docs impact are complete.
+- [ ] Rotation evidence names one attempt and every declared replica; the previous credential remains valid until convergence, and stale/missing replicas are drained or the rollout is failed closed before revocation.
 
 ## Related
 

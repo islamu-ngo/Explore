@@ -354,11 +354,11 @@ To reset only the local app database while keeping the persistent Postgres conta
 
 Secret and connection priority:
 
-- `local-full` forces `SecretProvider__Provider=None` for child projects, clears Infisical bootstrap identifiers, and supplies local Keycloak, Cerbos, MinIO, Svix, Coop, Mailpit SMTP, storage, and database settings. Contributors should not need Infisical credentials.
+- `local-full` uses the explicit Environment authority, clears Infisical bootstrap identifiers, and forwards only canonical environment names. Optional local services require their credentials in `.env`; AppHost does not generate or hard-code them.
 - AppHost injects structured `Database__*` fields and only the credential role
   required by each process. Raw application connection strings are not a
   deployment input.
-- Mailpit SMTP is local in every Aspire profile. Non-isolated runs use the configured development Mailpit ports; isolated runs use Aspire-assigned dynamic ports. Development database seeding uses `MAIL_SMTP_*` values, then `SMTP_*` aliases, then local defaults when `email.smtp_host` is empty or still set to the retired `mailpit.openislamu.org` default. In `ISLAMU_ASPIRE_MODE=FullLocal`, seeding refreshes those Development SMTP rows on each run so persistent local database volumes follow the current isolated Mailpit port.
+- Mailpit SMTP is local in every Aspire profile. Non-isolated runs use configured development ports; isolated runs use Aspire-assigned dynamic ports. Development seeding may refresh only non-secret `email.*` governance. SMTP credentials remain in the selected authority and have no alias or database fallback.
 - Self-hosted local Keycloak may also be configured to use Mailpit or shared SMTP for Keycloak realm email. That is Keycloak realm SMTP plumbing, not product Basic Dispatch configuration: identity lifecycle emails still come from Keycloak and do not create `EmailDispatchOutbox` rows.
 - Explicit structured `Database:*` values are authoritative. Infisical loads
   primary database configuration directly from `/database` with `DATABASE_*` keys.
@@ -395,7 +395,7 @@ The three application composition roots keep one route contract: API calls use `
 
 The Blazor BFF resolves the API through Aspire service discovery (`services__explore-api__https__0` / `services__explore-api__http__0`) or `ExploreApi:BaseUrl`. Compose uses `API_ENDPOINT`, defaulting to the internal `islamu-event-api:8080` service. Do not hardcode the Compose/API host port into AppHost documentation.
 
-Aspire local development uses the local filesystem storage provider by default unless a profile supplies S3-compatible settings. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` under the repository root and keeps `StorageReconciliation:DryRun=true`; local platform profiles also supply MinIO-compatible `S3Settings` for workflows that exercise S3 behavior, and bootstrap the `explore` bucket before the API starts. With the default `WEBHOOKS_PROVIDER=Local`, AppHost does not register `svix` or `svix-postgres`, does not inject Svix configuration, and does not add a Svix startup dependency. Explicit `Svix` or `Composite` selection adds pinned `svix/svix-server:v1.96.1`, configures Redis for both `SVIX_QUEUE_TYPE` and `SVIX_CACHE_TYPE`, injects the proven `self-hosted`/`1.96.1`/`svix-self-hosted-1.96.1-v1` tuple, and waits for Svix. Its application token and operational callback secret remain sourced only from the intentionally blank `.env`/`.env.example` fields until an operator enables self-hosted Svix. Local Coop uses an isolated PostgreSQL container plus development-only `DATABASE_*`, `SESSION_SECRET`, `OTEL_SERVICE_NAME`, placeholder Scylla client settings, and no-op warehouse/analytics settings so the review-queue provider can boot without external ClickHouse or production secrets.
+Aspire local development uses the local filesystem storage provider by default. Optional MinIO uses non-secret `storage.*` governance plus credentials supplied through `.env` under Environment authority; AppHost does not define credential defaults. AppHost sets `Storage:Local:RootPath` to `storage-data/aspire-local` and keeps `StorageReconciliation:DryRun=true`. With `WEBHOOKS_PROVIDER=Local`, AppHost omits Svix resources. Explicit `Svix` or `Composite` selection adds the pinned self-hosted resources, while tokens remain sourced from the selected external authority.
 
 Cerbos local infrastructure uses the repository `cerbos/` folder as its source of truth. Aspire and Docker Compose mount `cerbos/config/.cerbos.yaml` into the Cerbos container, mount `cerbos/policies/` read-only for derived roles, policies, and `_schemas`, and initialize the local Cerbos PostgreSQL store from `cerbos/init/cerbos-schema.sql`. The local Cerbos PostgreSQL container uses the Postgres 18 parent data mount (`/var/lib/postgresql`) rather than the legacy direct `data` mount. Do not copy policy files into container images for local development; update the repo-owned `cerbos/` tree and restart or sync the local Cerbos service.
 
@@ -480,7 +480,7 @@ topology matrix, operator workflow, and contributor guide.
 Use this sequence:
 
 1. Validate the file against
-   `schemas/configuration-manifest-v1alpha1.schema.json` and mount it read-only
+   `schemas/configuration-manifest-v1alpha2.schema.json` and mount it read-only
    at `/etc/islamu-event/bootstrap/configuration-manifest.json`.
 2. Start the topology owner with `ValidateOnly`. It completes its normal
    migration/seed phase, then performs bounded file, UTF-8 JSON, contract,
@@ -510,6 +510,42 @@ control plane. Export is capped at 4 MiB and intentionally omits secrets,
 credentials, topology, PII, payment execution, and application data. Treat it
 as bootstrap configuration, not as a database, secret, or disaster-recovery
 backup.
+
+### Configuration portability Day 2 runbook
+
+Use the instance or tenant administration workspace for reviewed migration;
+do not place Day 2 artifacts in the startup bootstrap path. Upload creates a
+private, no-store session with a header-only access token and bounded expiry.
+The server returns the selectable section keys, computes the diff from current
+target authority, and advertises apply through HAL only when no blocking or
+external-setup item remains and required approvals are present.
+
+Apply reacquires the configuration lock hierarchy and recomputes the preview
+inside one serializable transaction. The operation receipt is the authority for
+fidelity, named omissions, snapshot availability, and post-commit effect state.
+Use it as follows:
+
+| Receipt/session state | Operator action |
+|---|---|
+| Expired or stale preview | Upload again or refresh; review the new target revision and approvals |
+| Failed apply | No selected section committed. Repair the stable failure condition and create a fresh preview |
+| `Pending` / `Processing` effect | Restore outbox workers or dependencies; do not replay the import |
+| `DeadLettered` effect | Follow outbox recovery using the operation ID; configuration remains committed |
+| Snapshot available | Create the advertised forward-rollback session, preview it against current authority, then apply |
+| Snapshot unavailable | Use a retained artifact and current-state review, or restore all authorities from one consistent backup point |
+
+Rollback snapshots have bounded application retention and are not backups.
+Retain source artifacts, receipts, and legal review evidence under the
+deployment's protected records policy. Tenant packages never carry target
+authority, secrets, users, events, orders, payments, provider state, or backup
+data. Configure omitted environment and provider requirements on the target
+before apply.
+
+Direct transfer is opt-in staging only. The destination must be a public HTTPS
+origin on port 443; distinct source and destination actors approve a
+nonce/proof/artifact-bound, expiring session. Resume only from the reported
+offset. Completion is replay-safe, promotion creates an ordinary import
+session, and source deletion is never part of the protocol.
 
 In deployed environments, `Event.MigrationService` owns the primary application
 and Data Protection schemas. It binds `Database:Migrator`, selects the closed
@@ -2415,7 +2451,7 @@ Before deploying a manifest containing `instance.paid_event_policy` or
 3. do not add
    provider, operator, buyer, refund-execution, or sale-control data;
 4. validate against
-   `schemas/configuration-manifest-v1alpha1.schema.json`;
+   `schemas/configuration-manifest-v1alpha2.schema.json`;
 5. mount the immutable file through the documented manifest path and run the
    one-shot migration/startup owner;
 6. verify the scope-qualified operation audit and the instance/tenant

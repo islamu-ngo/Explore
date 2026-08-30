@@ -7,12 +7,12 @@ Last Updated: 2026-08-30
 
 ## Review Metadata
 
-- Mode: planning
+- Mode: implementation-review
 - Subject: configuration-manifest portability and administration
 - Workstream: configuration-manifest
 - Report kind: project-case-review
-- Report status: current
-- Disposition: plan-aligned
+- Report status: plan-aligned
+- Disposition: active-continuation
 - Evidence cutoff: 2026-08-30
 - Reviewed input revision: `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`
 - Supersedes: the 2026-08-26 revision of this report
@@ -45,10 +45,13 @@ for ISLAMU Event. It covers:
   instance/tenant authority boundaries;
 - a clean development-mode contract replacement with no compatibility layer.
 
-The current implementation is evidence of a secure export/bootstrap foundation,
-not evidence that the expanded product exists. Current code has whole-instance
-export and startup file application, but no UI import flow and no tenant-admin
-configuration-package import/export surface.
+The current implementation includes the secure export/bootstrap foundation,
+v1alpha2 instance and tenant artifacts, typed legal Markdown, preview-first
+sessions, selected atomic apply, receipts, forward rollback, tenant migration,
+HAL-gated administration, declarative extension validation, managed-ownership
+planning, and opt-in direct-transfer staging. Final generated-artifact,
+criticality, and phase gates still determine completion; this report does not
+treat implementation presence as release proof.
 
 The active ConfigurationManifest plan now maps IVSD-F001 through IVSD-F024 into
 Phases 16-23. IVSD-F025 through IVSD-F030 remain accepted future-product
@@ -125,7 +128,7 @@ conclusions require qualified legal review.
 | IVSD-F021 | accepted | High | Template-governance concern | Truthfulness, Avoiding Gharar; Design/Governance | Legal templates can be mistaken for legal advice or automatic compliance | E018; design validation | IVSD-M021 | Legal + Product |
 | IVSD-F022 | accepted | Critical | Markdown-safety requirement | Non-Harm, Amanah; Technical/Design | Unrestricted Markdown/HTML can execute, track, deceive, or render inaccessible public content | E015-E018; implementation traceability | IVSD-M022 | Security + Accessibility |
 | IVSD-F023 | accepted | High | Portability requirement | Promise-Keeping, Ihsan; Strategic/Technical | Exporting only legal URLs leaves migrated deployments dependent on source origins | E015-E018; implementation traceability | IVSD-M023 | Product + Architecture |
-| IVSD-F024 | accepted | High | Bounded-content requirement | Amanah, Ihsan; Technical/Operational | Localized legal source can exceed compact v1alpha1 string/file limits and overwhelm diff UX | E001, E015-E018; implementation traceability | IVSD-M024 | Architecture + UX |
+| IVSD-F024 | accepted | High | Bounded-content requirement | Amanah, Ihsan; Technical/Operational | Localized legal source can exceed bounded v1alpha2 content/file limits and overwhelm diff UX | E001, E015-E018; implementation traceability | IVSD-M024 | Architecture + UX |
 | IVSD-F025 | accepted | High | Access/parity requirement | Justice, Ihsan; Design/Technical | GUI-only portability excludes remote-shell, terminal-first, CI, and automation users | E018-E020; functional/documentation evidence | IVSD-M025 | Product + CLI |
 | IVSD-F026 | accepted | Critical | Automation-contract requirement | Truthfulness, Amanah; Technical | Agents cannot safely automate full-screen TUI state or localized prose | E018-E020; design validation | IVSD-M026 | CLI + Tooling |
 | IVSD-F027 | accepted | Blocker | Agent secret boundary | Amanah, Avoiding Spying; Technical/Governance | A skill can lead agents to read, request, log, or transmit secret-bearing `.env` values | E018-E020; design validation | IVSD-M027 | Security + Agent Governance |
@@ -418,14 +421,11 @@ authority. Import permission should be section-aware:
 
 ### IVSD-F016 — The Existing Plan Must Be Re-Baselined
 
-The current plan and implementation deliberately removed tenant-scoped export
-and implement no UI import. The new direction is a material product,
-authorization, contract, UX, persistence, and operations change.
-
-The report is current relative to the new direction, but the active
-implementation plan is not. It must not be called plan-aligned until it adds
-new scenarios, phases, red/green tasks, contract generation, authorization,
-concurrency, accessibility, migration, and operational evidence.
+The previous plan deliberately removed tenant-scoped export and implemented no
+UI import. The active re-baseline corrected that gap with explicit v1alpha2
+artifact, authorization, UX, persistence, concurrency, accessibility,
+migration, generation, and operations tasks. Alignment remains conditional on
+the named phase gates; no phase is complete merely because code exists.
 
 ### IVSD-F017 — Configuration Portability Is Not Data Migration Or Backup
 
@@ -1549,7 +1549,7 @@ release escalation.
 ## Planning Handoff
 
 - Workstream: configuration-manifest
-- Status: current
+- Status: plan-aligned / active
 - Reviewed input revision:
   `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`
 - Findings and mitigations: IVSD-F001 through IVSD-F030 retain their matching
@@ -1563,6 +1563,11 @@ release escalation.
 - Refresh triggers: artifact authority, import modes, legal ownership/evidence,
   deletion/managed ownership, secret/PII/payment scope, direct-transfer trust,
   application-data migration, or any mapped mitigation/task materially changes.
+- Continuation disposition: the later user instruction supersedes the archived
+  wording. Configuration Manifest remains active until its unwaived Phase
+  18-23 gates and Definition of Done pass. The future Setup Assistant consumes
+  only the frozen v1alpha2 wire/extraction/no-secret/Markdown contract and is
+  not implemented by this workstream.
 
 ## Review Lifecycle
 
@@ -1574,6 +1579,8 @@ release escalation.
 | 2026-08-29 | current / changes-required | current / changes-required | User added instance/tenant legal texts, templates, Markdown editing, and broader legal QoL | This revision, reviewed input `sha256:b247ad694150d750cfbd1f63d4090c2bfdd74ad988298b7d75dff703a9e51ceb` |
 | 2026-08-29 | current / changes-required | current / changes-required | User added Terminal.Gui CLI/TUI parity, compatible-FOSS policy, external-agent skill, and no embedded AI | This revision, reviewed input `sha256:21ae0c2feee79a79a7c2e724dfb909a6d24456d75df4c238bf51a0f52a6c8ea7` |
 | 2026-08-30 | current / changes-required | current / plan-aligned | Active triad re-baselined with Phases 16-23, exact IVSD-F001-F024 task mappings, and explicit IVSD-F025-F030 deferment | Reviewed input `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d` |
+| 2026-08-30 | current / plan-aligned | superseded / closed-by-user-directive | User declared the workstream completely finished for archival and directed Setup Assistant planning to pin the frozen implemented baseline | Archived triad plus successor Setup plan |
+| 2026-08-30 | superseded / closed-by-user-directive | current / plan-aligned | Latest user instruction reactivated continuation from Phase 18 verification through CM-2330 | Active triad, v1alpha2 implementation, and deferred final gates |
 
 Refresh this report when:
 

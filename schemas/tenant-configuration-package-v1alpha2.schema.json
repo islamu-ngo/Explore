@@ -73,6 +73,78 @@
         }
       }
     },
+    "legalDocumentLocalizedSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "languageTag",
+        "markdown",
+        "summary",
+        "title"
+      ],
+      "properties": {
+        "languageTag": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 35,
+          "pattern": "^(?:[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*|x(?:-[A-Za-z0-9]{1,8})+)$"
+        },
+        "markdown": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 262144
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "legalTemplateProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "licenseExpression",
+        "reviewReference",
+        "sourceKind",
+        "templateId",
+        "templateVersion"
+      ],
+      "properties": {
+        "licenseExpression": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "reviewReference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "sourceKind": {
+          "enum": [
+            "ProjectOwned",
+            "ApprovedFoss"
+          ]
+        },
+        "templateId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "templateVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        }
+      }
+    },
     "manifestExportMetadata": {
       "type": "object",
       "additionalProperties": false,
@@ -307,6 +379,936 @@
         }
       }
     },
+    "tenantLegalDocuments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "TenantTerms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "TenantTerms"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "TenantPrivacyNotice": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "TenantPrivacyNotice"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "TenantCodeOfConduct": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "TenantCodeOfConduct"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "OrganizerSubmissionTerms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "OrganizerSubmissionTerms"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "EventPublicationModerationPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "EventPublicationModerationPolicy"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "CancellationRefundPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "CancellationRefundPolicy"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "RegistrationParticipantPrivacyNotice": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "RegistrationParticipantPrivacyNotice"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "MediaPhotographyNotice": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "MediaPhotographyNotice"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "SafeguardingMinorParticipationPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "SafeguardingMinorParticipationPolicy"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "VenueAccessibilityPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "VenueAccessibilityPolicy"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "ComplaintCorrectionCopyrightNotice": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "ComplaintCorrectionCopyrightNotice"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "SponsorshipPartnerDisclosure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "SponsorshipPartnerDisclosure"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        },
+        "TenantRetentionContactSharingNotice": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "audience",
+            "jurisdictionAssumptions",
+            "kind",
+            "lifecycleIntent",
+            "localizations",
+            "requiresFreshAcceptance"
+          ],
+          "properties": {
+            "accountableIdentityReference": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "audience": {
+              "enum": [
+                "Public",
+                "RegisteredUsers",
+                "Administrators",
+                "Developers",
+                "EventParticipants"
+              ]
+            },
+            "changeSummary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "jurisdictionAssumptions": {
+              "type": "array",
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "kind": {
+              "const": "TenantRetentionContactSharingNotice"
+            },
+            "lifecycleIntent": {
+              "enum": [
+                "Draft",
+                "ReviewRequired",
+                "ProposedPublication"
+              ]
+            },
+            "localizations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "$ref": "#/$defs/legalDocumentLocalizedSource"
+              }
+            },
+            "proposedEffectiveAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "requiresFreshAcceptance": {
+              "type": "boolean"
+            },
+            "templateProvenance": {
+              "$ref": "#/$defs/legalTemplateProvenance"
+            }
+          }
+        }
+      }
+    },
     "tenantPackageMetadata": {
       "type": "object",
       "additionalProperties": false,
@@ -359,6 +1361,7 @@
       "required": [
         "displayName",
         "documents",
+        "legalDocuments",
         "settings"
       ],
       "properties": {
@@ -369,6 +1372,9 @@
         },
         "documents": {
           "$ref": "#/$defs/tenantDocuments"
+        },
+        "legalDocuments": {
+          "$ref": "#/$defs/tenantLegalDocuments"
         },
         "settings": {
           "$ref": "#/$defs/tenantSettings"
