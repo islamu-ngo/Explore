@@ -343,7 +343,7 @@ public static class PersistenceServicesRegistration
             ConfigurationImportSessionRepository>();
         services.AddScoped<
             IConfigurationImportArtifactStore,
-            ConfigurationImportArtifactStore>();
+            ConfigurationImportArtifactRepository>();
         services.AddScoped<
             IConfigurationImportOperationRepository,
             ConfigurationImportOperationRepository>();
@@ -352,7 +352,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IConfigurationDirectTransferRepository,
             ConfigurationDirectTransferRepository>();
         services.AddScoped<IConfigurationDirectTransferChunkStore,
-            ConfigurationDirectTransferChunkStore>();
+            ConfigurationDirectTransferChunkRepository>();
 
         // Event Aspect Repositories
         services.AddScoped<IEventIslamicAspectRepository, EventIslamicAspectRepository>();

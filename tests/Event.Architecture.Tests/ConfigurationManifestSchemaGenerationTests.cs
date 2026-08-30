@@ -9,6 +9,8 @@ using System.Text.Json;
 using Explore.Application.DTOs.PaidEventPolicies;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
 using Explore.Application.Features.ConfigurationManifest.Contracts;
+using Explore.Domain;
+using Explore.Domain.Settings;
 using Explore.Domain.Settings.Definitions;
 using ISLAMU.ConfigurationManifest.SchemaGenerator;
 
@@ -260,7 +262,13 @@ public sealed class ConfigurationManifestSchemaGenerationTests
     {
         var unsafeEntry = new ConfigurationManifestSettingCatalogEntry(
             ConfigurationManifestScope.Tenant,
-            EmailSettingDefinitions.SmtpPassword);
+            new SettingDefinition(
+                "test.sensitive",
+                SettingValueType.String,
+                "\"\"",
+                "Test",
+                "Synthetic sensitive setting",
+                IsSensitive: true));
         InvalidOperationException? exception = null;
 
         try

@@ -347,6 +347,7 @@ public sealed class ConfigurationExtensionsTests
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values)
     {
+        values.TryAdd("SecretProvider:Provider", "Environment");
         var builder = new ConfigurationBuilder()
             .AddInMemoryCollection(values);
 

@@ -28,6 +28,8 @@ using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.NotificationFanout;
 using Explore.Infrastructure.Webhooks;
 using Explore.Persistence;
+using Explore.Secrets.Abstractions;
+using Explore.Secrets.Configuration;
 using Explore.Secrets.Extensions;
 using Explore.ServiceDefaults.Configuration;
 using Explore.ServiceDefaults.HealthChecks;
@@ -86,6 +88,13 @@ public static class ApiHostServiceCollectionExtensions
 
         builder.AddDistributedCacheReadinessCheck();
         builder.AddOidcDiscoveryReadinessCheck();
+        if (isOpenApiGeneration || builder.Environment.IsEnvironment("Testing"))
+        {
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{SecretProviderOptions.SectionName}:Provider"] = nameof(SecretProviderType.Environment)
+            });
+        }
         builder.Configuration.AddSecretAuthorityConfiguration();
         builder.Services.AddSecretManagement(
             builder.Configuration,

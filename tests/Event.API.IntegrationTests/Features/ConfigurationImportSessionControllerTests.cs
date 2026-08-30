@@ -351,7 +351,7 @@ public sealed class ConfigurationImportSessionControllerTests
             .Where(method =>
                 method.GetCustomAttributes<HttpMethodAttribute>().Any())
             .ToArray();
-        await Assert.That(actions.Length).IsEqualTo(4);
+        await Assert.That(actions.Length).IsEqualTo(8);
         foreach (MethodInfo action in actions)
         {
             await Assert.That(
@@ -360,7 +360,8 @@ public sealed class ConfigurationImportSessionControllerTests
             ParameterInfo? accessToken = action.GetParameters()
                 .SingleOrDefault(parameter =>
                     parameter.Name == "accessToken");
-            if (action.Name != "Create")
+            if (action.GetParameters().Any(parameter =>
+                    parameter.Name == "sessionId"))
             {
                 await Assert.That(accessToken).IsNotNull();
                 await Assert.That(

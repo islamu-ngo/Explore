@@ -132241,18 +132241,6 @@
           "s3BucketName": {
             "type": "string"
           },
-          "s3AccessKeyId": {
-            "type": "string"
-          },
-          "s3SecretAccessKey": {
-            "type": "string"
-          },
-          "s3AccessKeyConfigured": {
-            "type": "boolean"
-          },
-          "s3SecretAccessKeyConfigured": {
-            "type": "boolean"
-          },
           "s3Region": {
             "type": "string"
           },
@@ -140095,18 +140083,6 @@
           "s3BucketName": {
             "type": "string"
           },
-          "s3AccessKeyId": {
-            "type": "string"
-          },
-          "s3SecretAccessKey": {
-            "type": "string"
-          },
-          "s3AccessKeyConfigured": {
-            "type": "boolean"
-          },
-          "s3SecretAccessKeyConfigured": {
-            "type": "boolean"
-          },
           "s3Region": {
             "type": "string"
           },
@@ -142310,12 +142286,6 @@
           "bucketName": {
             "type": "string"
           },
-          "accessKeyId": {
-            "type": "string"
-          },
-          "secretAccessKey": {
-            "type": "string"
-          },
           "region": {
             "type": "string"
           },
@@ -142345,12 +142315,6 @@
               "string"
             ],
             "format": "int32"
-          },
-          "username": {
-            "type": "string"
-          },
-          "password": {
-            "type": "string"
           },
           "security": {
             "type": "string"
@@ -142387,12 +142351,6 @@
               "string"
             ],
             "format": "int32"
-          },
-          "usernameConfigured": {
-            "type": "boolean"
-          },
-          "passwordConfigured": {
-            "type": "boolean"
           },
           "security": {
             "type": "string"
@@ -142615,18 +142573,6 @@
           },
           "s3BucketName": {
             "type": "string"
-          },
-          "s3AccessKeyId": {
-            "type": "string"
-          },
-          "s3SecretAccessKey": {
-            "type": "string"
-          },
-          "s3AccessKeyConfigured": {
-            "type": "boolean"
-          },
-          "s3SecretAccessKeyConfigured": {
-            "type": "boolean"
           },
           "s3Region": {
             "type": "string"
@@ -151848,12 +151794,6 @@
             "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "bucketName": {
-            "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          },
-          "accessKeyId": {
-            "$ref": "#/components/schemas/OptionalUpdateOfstring"
-          },
-          "secretAccessKey": {
             "$ref": "#/components/schemas/OptionalUpdateOfstring"
           },
           "region": {
@@ -162254,18 +162194,6 @@
           },
           "s3BucketName": {
             "type": "string"
-          },
-          "s3AccessKeyId": {
-            "type": "string"
-          },
-          "s3SecretAccessKey": {
-            "type": "string"
-          },
-          "s3AccessKeyConfigured": {
-            "type": "boolean"
-          },
-          "s3SecretAccessKeyConfigured": {
-            "type": "boolean"
           },
           "s3Region": {
             "type": "string"

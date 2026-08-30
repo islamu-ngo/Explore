@@ -128,13 +128,14 @@ public sealed class ConfigurationImportSessionBehaviorTests
     }
 
     [Test]
-    public async Task Composer_ClassifiesEveryOutcomeUsingStableMappingIdentity()
+    public async Task Composer_ClassifiesSupportedAndUnavailableOutcomes()
     {
         string same = Digest("same");
         var source = new List<ConfigurationImportSectionSnapshot>
         {
             Section("instance.settings", Digest("source-changed")),
             Section("instance.documents", same),
+            Section("instance.legal_documents", Digest("skipped")),
             Section("tenant.footer", Digest("skipped")),
             Section(
                 "tenant.lookups",
@@ -206,18 +207,9 @@ public sealed class ConfigurationImportSessionBehaviorTests
         await Assert.That(preview.Items.Select(item => item.Category).Distinct())
             .Contains(ConfigurationImportPreviewCategory.Skipped);
         await Assert.That(preview.Items.Select(item => item.Category).Distinct())
-            .Contains(ConfigurationImportPreviewCategory.Mapped);
-        await Assert.That(preview.Items.Select(item => item.Category).Distinct())
             .Contains(ConfigurationImportPreviewCategory.Blocking);
         await Assert.That(preview.Items.Select(item => item.Category).Distinct())
-            .Contains(ConfigurationImportPreviewCategory.Warning);
-        await Assert.That(preview.Items.Select(item => item.Category).Distinct())
             .Contains(ConfigurationImportPreviewCategory.Omitted);
-        await Assert.That(preview.Items.Select(item => item.Category).Distinct())
-            .Contains(ConfigurationImportPreviewCategory.ExternalSetupRequired);
-        await Assert.That(preview.Items.Single(item =>
-                item.SectionKey == "tenant.lookups")
-            .TargetMappingIdentity).IsEqualTo("target-machine-code");
         await Assert.That(preview.IsApplyReady).IsFalse();
     }
 

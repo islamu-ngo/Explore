@@ -29,6 +29,7 @@ public static class ConfigurationManifestValidator
             "analytics.api_key",
             "auth.google_client_secret",
             "auth.keycloak_client_secret",
+            "email.smtp_password",
             "localization.tms_api_key",
             "management.control_plane_registration_credentials"
         };

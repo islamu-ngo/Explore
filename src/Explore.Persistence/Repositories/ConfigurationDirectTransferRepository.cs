@@ -16,9 +16,12 @@ public sealed class ConfigurationDirectTransferRepository(ExploreDbContext dbCon
 {
     public async Task AddAsync(
         ConfigurationDirectTransferSession session,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken)
+    {
         await dbContext.Set<ConfigurationDirectTransferSession>()
             .AddAsync(session, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public Task<ConfigurationDirectTransferSession?> GetForUpdateAsync(
         Guid sessionId,
@@ -30,17 +33,16 @@ public sealed class ConfigurationDirectTransferRepository(ExploreDbContext dbCon
                     && session.TargetAuthorityKey == targetAuthorityKey,
                 cancellationToken);
 
-    public Task UpdateAsync(
+    public async Task UpdateAsync(
         ConfigurationDirectTransferSession session,
         CancellationToken cancellationToken)
     {
-        _ = cancellationToken;
         dbContext.Update(session);
-        return Task.CompletedTask;
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 }
 
-public sealed class ConfigurationDirectTransferChunkStore(
+public sealed class ConfigurationDirectTransferChunkRepository(
     ExploreDbContext dbContext,
     IDataProtectionProvider dataProtectionProvider)
     : IConfigurationDirectTransferChunkStore
@@ -87,6 +89,7 @@ public sealed class ConfigurationDirectTransferChunkStore(
                 protectedPayload,
                 expiresAt),
             cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
 

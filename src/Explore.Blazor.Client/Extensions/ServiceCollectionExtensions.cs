@@ -77,7 +77,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IControlPlanePlanCatalogService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IControlPlaneTenantConfigurationService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IConfigurationManifestExportService, ConfigurationManifestExportService>();
-        services.AddScoped<ConfigurationPortabilityService>();
+        services.AddScoped<IConfigurationPortabilityService, ConfigurationPortabilityService>();
         services.AddScoped<ISchedulerAdminService, SchedulerAdminApiAdapter>();
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IWebhookManagementService, WebhookManagementService>();

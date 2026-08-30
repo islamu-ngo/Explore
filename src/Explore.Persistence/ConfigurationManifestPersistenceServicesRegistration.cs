@@ -44,7 +44,7 @@ public static class ConfigurationManifestPersistenceServicesRegistration
         services.TryAddScoped<IConfigurationDirectTransferRepository,
             ConfigurationDirectTransferRepository>();
         services.TryAddScoped<IConfigurationDirectTransferChunkStore,
-            ConfigurationDirectTransferChunkStore>();
+            ConfigurationDirectTransferChunkRepository>();
 
         return services;
     }

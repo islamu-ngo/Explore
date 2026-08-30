@@ -7,6 +7,8 @@ using System.Text;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
 using Explore.Application.Features.ConfigurationManifest.Contracts;
 using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Application.Features.ConfigurationManifest.Managed;
+using Explore.Domain;
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
@@ -25,7 +27,7 @@ public sealed class ConfigurationImportPersistenceTests
     public async Task ProtectedStore_EncryptsRoundTripsAndDeletesArtifactBytes()
     {
         await using TestDatabase database = await TestDatabase.CreateAsync();
-        var store = new ConfigurationImportArtifactStore(
+        var store = new ConfigurationImportArtifactRepository(
             database.Context,
             new EphemeralDataProtectionProvider());
         byte[] plaintext =
@@ -60,6 +62,64 @@ public sealed class ConfigurationImportPersistenceTests
     }
 
     [Test]
+    public async Task DirectTransferRepositories_CommitSessionAndEncryptedChunk()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        var sessions = new ConfigurationDirectTransferRepository(database.Context);
+        var chunks = new ConfigurationDirectTransferChunkRepository(
+            database.Context,
+            new EphemeralDataProtectionProvider());
+        var unitOfWork = new EfCoreUnitOfWork(database.Context);
+        byte[] artifact = Encoding.UTF8.GetBytes("portable-transfer-artifact");
+        string digest = ConfigurationImportDigest.ComputeBytes(artifact);
+        var session = ConfigurationDirectTransferSession.Create(
+            Guid.CreateVersion7(),
+            "source-instance",
+            "instance",
+            targetTenantId: null,
+            digest,
+            digest,
+            digest,
+            digest,
+            artifact.Length,
+            OccurredAt,
+            OccurredAt.AddMinutes(30));
+
+        await unitOfWork.ExecuteInTransactionAsync(
+            token => sessions.AddAsync(session, token),
+            CancellationToken.None);
+        database.Context.ChangeTracker.Clear();
+        ConfigurationDirectTransferSession? persisted =
+            await sessions.GetForUpdateAsync(
+                session.Id,
+                "instance",
+                CancellationToken.None);
+
+        await Assert.That(persisted?.Id).IsEqualTo(session.Id);
+
+        await unitOfWork.ExecuteInTransactionAsync(
+            async token =>
+            {
+                bool stored = await chunks.AddAsync(
+                    session.Id,
+                    0,
+                    artifact,
+                    digest,
+                    OccurredAt.AddMinutes(30),
+                    token);
+                await Assert.That(stored).IsTrue();
+            },
+            CancellationToken.None);
+        database.Context.ChangeTracker.Clear();
+
+        ReadOnlyMemory<byte> assembled = await chunks.AssembleAsync(
+            session.Id,
+            artifact.Length,
+            CancellationToken.None);
+        await Assert.That(assembled.ToArray()).IsEquivalentTo(artifact);
+    }
+
+    [Test]
     public async Task Repository_RequiresMatchingTrustedTarget()
     {
         await using TestDatabase database = await TestDatabase.CreateAsync();
@@ -91,7 +151,7 @@ public sealed class ConfigurationImportPersistenceTests
     public async Task Manager_CancellationDeletesProtectedBytes()
     {
         await using TestDatabase database = await TestDatabase.CreateAsync();
-        var store = new ConfigurationImportArtifactStore(
+        var store = new ConfigurationImportArtifactRepository(
             database.Context,
             new EphemeralDataProtectionProvider());
         var manager = new ConfigurationImportSessionManager(
@@ -132,7 +192,7 @@ public sealed class ConfigurationImportPersistenceTests
     public async Task Manager_ExpiryDeletesBytesAndRetainsOnlySessionEvidence()
     {
         await using TestDatabase database = await TestDatabase.CreateAsync();
-        var store = new ConfigurationImportArtifactStore(
+        var store = new ConfigurationImportArtifactRepository(
             database.Context,
             new EphemeralDataProtectionProvider());
         var repository =
@@ -177,7 +237,7 @@ public sealed class ConfigurationImportPersistenceTests
     public async Task Manager_PreviewMutatesOnlySessionMetadata()
     {
         await using TestDatabase database = await TestDatabase.CreateAsync();
-        var store = new ConfigurationImportArtifactStore(
+        var store = new ConfigurationImportArtifactRepository(
             database.Context,
             new EphemeralDataProtectionProvider());
         var manager = new ConfigurationImportSessionManager(

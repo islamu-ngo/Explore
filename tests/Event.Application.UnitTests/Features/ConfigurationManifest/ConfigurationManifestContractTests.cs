@@ -53,7 +53,11 @@ public sealed class ConfigurationManifestContractTests
         await AssertClosedRequiredProperties(specType, "Instance", "Tenants");
 
         Type instanceType = RequiredProperty(specType, "Instance").PropertyType;
-        await AssertClosedRequiredProperties(instanceType, "Settings", "Documents");
+        await AssertClosedRequiredProperties(
+            instanceType,
+            "Settings",
+            "Documents",
+            "LegalDocuments");
         await Assert.That(RequiredProperty(instanceType, "Settings").PropertyType)
             .IsEqualTo(typeof(IReadOnlyDictionary<string, JsonElement>));
 
@@ -70,7 +74,8 @@ public sealed class ConfigurationManifestContractTests
             tenantSpecType,
             "DisplayName",
             "Settings",
-            "Documents");
+            "Documents",
+            "LegalDocuments");
         await Assert.That(RequiredProperty(tenantSpecType, "Settings").PropertyType)
             .IsEqualTo(typeof(IReadOnlyDictionary<string, JsonElement>));
     }
@@ -187,9 +192,10 @@ public sealed class ConfigurationManifestContractTests
         foreach (string name in expectedNames)
         {
             PropertyInfo property = RequiredProperty(type, name);
-            await Assert.That(
-                    property.GetCustomAttribute<RequiredMemberAttribute>())
-                .IsNotNull();
+            bool isRequired =
+                property.GetCustomAttribute<RequiredMemberAttribute>() is not null
+                || property.GetCustomAttribute<JsonRequiredAttribute>() is not null;
+            await Assert.That(isRequired).IsTrue();
         }
     }
 

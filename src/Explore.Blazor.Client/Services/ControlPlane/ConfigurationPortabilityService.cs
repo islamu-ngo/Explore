@@ -53,11 +53,63 @@ internal sealed record ConfigurationImportOperationView(
     DateTimeOffset CompletedAt,
     bool CanRollback);
 
+internal interface IConfigurationPortabilityService
+{
+    Task<ConfigurationPortabilityCapabilities> GetCapabilitiesAsync(
+        ConfigurationImportScope scope,
+        CancellationToken cancellationToken);
+
+    Task<bool> DownloadAsync(
+        ConfigurationImportScope scope,
+        Guid? tenantId,
+        ConfigurationManifestExportView view,
+        CancellationToken cancellationToken);
+
+    Task<ConfigurationImportClientSession> CreateSessionAsync(
+        ConfigurationImportScope scope,
+        Guid? tenantId,
+        IBrowserFile file,
+        CancellationToken cancellationToken);
+
+    Task<ConfigurationImportPreviewView> PreviewAsync(
+        ConfigurationImportClientSession session,
+        IReadOnlyCollection<string> selectedSections,
+        IReadOnlyDictionary<string, string> mappings,
+        IReadOnlyCollection<string> approvalCodes,
+        ConfigurationImportApplyMode applyMode,
+        CancellationToken cancellationToken);
+
+    Task<ConfigurationImportOperationView> ApplyAsync(
+        ConfigurationImportClientSession session,
+        IReadOnlyCollection<string> selectedSections,
+        IReadOnlyDictionary<string, string> mappings,
+        IReadOnlyCollection<string> approvalCodes,
+        ConfigurationImportApplyMode applyMode,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ConfigurationImportOperationView>> HistoryAsync(
+        ConfigurationImportScope scope,
+        Guid? tenantId,
+        CancellationToken cancellationToken);
+
+    Task<ConfigurationImportOperationView> GetReceiptAsync(
+        ConfigurationImportScope scope,
+        Guid? tenantId,
+        Guid operationId,
+        CancellationToken cancellationToken);
+
+    Task<ConfigurationImportClientSession> CreateRollbackSessionAsync(
+        ConfigurationImportScope scope,
+        Guid? tenantId,
+        Guid operationId,
+        CancellationToken cancellationToken);
+}
+
 internal sealed class ConfigurationPortabilityService(
     IEventApiClient api,
     IConfigurationManifestExportService manifestExports,
     IBrowserActionInterop browserActions,
-    NavigationManager navigation)
+    NavigationManager navigation) : IConfigurationPortabilityService
 {
     private const long MaximumArtifactBytes = 4L * 1024 * 1024;
 

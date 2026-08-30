@@ -138118,18 +138118,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("s3BucketName")]
         public string? S3BucketName { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("s3AccessKeyId")]
-        public string? S3AccessKeyId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3SecretAccessKey")]
-        public string? S3SecretAccessKey { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3AccessKeyConfigured")]
-        public bool? S3AccessKeyConfigured { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3SecretAccessKeyConfigured")]
-        public bool? S3SecretAccessKeyConfigured { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("s3Region")]
         public string? S3Region { get; set; } = default!;
 
@@ -142514,18 +142502,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("s3BucketName")]
         public string? S3BucketName { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("s3AccessKeyId")]
-        public string? S3AccessKeyId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3SecretAccessKey")]
-        public string? S3SecretAccessKey { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3AccessKeyConfigured")]
-        public bool? S3AccessKeyConfigured { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3SecretAccessKeyConfigured")]
-        public bool? S3SecretAccessKeyConfigured { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("s3Region")]
         public string? S3Region { get; set; } = default!;
 
@@ -144129,12 +144105,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("bucketName")]
         public string? BucketName { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("accessKeyId")]
-        public string? AccessKeyId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("secretAccessKey")]
-        public string? SecretAccessKey { get; set; } = default!;
-
         [System.Text.Json.Serialization.JsonPropertyName("region")]
         public string? Region { get; set; } = default!;
 
@@ -144166,12 +144136,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("port")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? Port { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("username")]
-        public string? Username { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("password")]
-        public string? Password { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("security")]
         public string? Security { get; set; } = default!;
@@ -144210,12 +144174,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("port")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? Port { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("usernameConfigured")]
-        public bool? UsernameConfigured { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("passwordConfigured")]
-        public bool? PasswordConfigured { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("security")]
         public string? Security { get; set; } = default!;
@@ -144396,18 +144354,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("s3BucketName")]
         public string? S3BucketName { get; init; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3AccessKeyId")]
-        public string? S3AccessKeyId { get; init; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3SecretAccessKey")]
-        public string? S3SecretAccessKey { get; init; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3AccessKeyConfigured")]
-        public bool? S3AccessKeyConfigured { get; init; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3SecretAccessKeyConfigured")]
-        public bool? S3SecretAccessKeyConfigured { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("s3Region")]
         public string? S3Region { get; init; } = default!;
@@ -151650,12 +151596,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("bucketName")]
         public OptionalUpdateOfstring? BucketName { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("accessKeyId")]
-        public OptionalUpdateOfstring? AccessKeyId { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("secretAccessKey")]
-        public OptionalUpdateOfstring? SecretAccessKey { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("region")]
         public OptionalUpdateOfstring? Region { get; set; } = default!;
@@ -161421,18 +161361,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("s3BucketName")]
         public string? S3BucketName { get; init; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3AccessKeyId")]
-        public string? S3AccessKeyId { get; init; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3SecretAccessKey")]
-        public string? S3SecretAccessKey { get; init; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3AccessKeyConfigured")]
-        public bool? S3AccessKeyConfigured { get; init; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("s3SecretAccessKeyConfigured")]
-        public bool? S3SecretAccessKeyConfigured { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("s3Region")]
         public string? S3Region { get; init; } = default!;

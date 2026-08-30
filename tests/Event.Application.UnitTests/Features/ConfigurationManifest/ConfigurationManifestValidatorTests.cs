@@ -8,6 +8,7 @@ using Explore.Application.DTOs.PaidEventPolicies;
 using Explore.Application.Features.ConfigurationManifest.Contracts;
 using Explore.Application.Features.ConfigurationManifest.Validation;
 using Explore.Application.Settings;
+using Explore.Domain.Constants;
 using Explore.Domain.Settings.Definitions;
 using Explore.Domain.Settings.Documents;
 
@@ -89,7 +90,7 @@ public sealed class ConfigurationManifestValidatorTests
         const string suppliedValue = "must-not-appear";
         var settings = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
         {
-            ["email.smtp_password"] = ConfigurationManifestTestData.Json($"\"{suppliedValue}\"")
+            [InfrastructureSecretSettingKeys.Reporting.OspreyApiKey] = ConfigurationManifestTestData.Json($"\"{suppliedValue}\"")
         };
 
         ConfigurationManifestValidationResult result =

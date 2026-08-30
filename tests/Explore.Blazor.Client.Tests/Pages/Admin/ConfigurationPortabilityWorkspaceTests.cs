@@ -61,7 +61,7 @@ public sealed class ConfigurationManifestImportAdministrationTests : IDisposable
     internal static void Register(BlazorTestContext context, IEventApiClient api)
     {
         context.Services.AddSingleton(api);
-        context.Services.AddSingleton(provider =>
+        context.Services.AddSingleton<IConfigurationPortabilityService>(provider =>
             new ConfigurationPortabilityService(
                 api,
                 Substitute.For<IConfigurationManifestExportService>(),

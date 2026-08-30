@@ -237,6 +237,8 @@ internal static class UserPiiInventory
         Local("EventReportEvidence.TextBodyEncrypted", "EventReportEvidence.CreatedByUserId", "Event report intake", UserPiiDisposition.HardDelete),
         Local("ConfigurationChangeLog.UserId", "ConfigurationChangeLog.UserId", "Configuration governance service", UserPiiDisposition.Anonymize,
             "Configuration accountability", "Configured change-log retention horizon"),
+        Local("ConfigurationImportOperation.ActorUserId", "ConfigurationImportOperation.ActorUserId", "Configuration import apply service", UserPiiDisposition.Anonymize,
+            "Configuration import accountability", "Configuration import receipt retention horizon"),
         Local("IdempotencyRecord.UserId", "IdempotencyRecord.UserId", "Idempotency middleware", UserPiiDisposition.HardDelete),
         Local("IdempotencyRecord.ResponseBody", "IdempotencyRecord.UserId", "Idempotency middleware", UserPiiDisposition.HardDelete),
 

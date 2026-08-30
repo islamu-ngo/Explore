@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Persistence.Entities;
 
-public sealed class ConfigurationImportArtifactStore(
+public sealed class ConfigurationImportArtifactRepository(
     ExploreDbContext dbContext,
     IDataProtectionProvider dataProtectionProvider)
     : IConfigurationImportArtifactStore
