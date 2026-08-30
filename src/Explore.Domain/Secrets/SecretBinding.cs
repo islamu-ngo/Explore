@@ -1,5 +1,5 @@
 // ABOUTME: Secret binding entity - the DB control-plane record describing WHERE a secret value lives.
-// ABOUTME: Never stores the active secret except for InlineEncrypted ciphertext; metadata is normalized per source type.
+// ABOUTME: Stores only normalized opaque references; secret values never enter application persistence.
 
 using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
@@ -13,14 +13,11 @@ namespace Explore.Domain.Secrets;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The settings table is metadata and resolution control, NOT the secret value itself. Only bindings with
-/// <see cref="SourceType"/> = <see cref="SecretSourceType.InlineEncrypted"/> store an encrypted value inline
-/// (via ASP.NET Core Data Protection). All other source types hold only references:
+/// The settings table is metadata and resolution control, never the secret value itself. Bindings hold only references:
 /// </para>
 /// <list type="bullet">
 ///   <item><description><see cref="SecretSourceType.Infisical"/>: <see cref="InfisicalEnvironment"/> + <see cref="InfisicalPath"/> + <see cref="InfisicalKey"/></description></item>
 ///   <item><description><see cref="SecretSourceType.EnvironmentVariable"/>: <see cref="EnvironmentVariableName"/></description></item>
-///   <item><description><see cref="SecretSourceType.InlineEncrypted"/>: <see cref="InlineCiphertext"/> + <see cref="InlineCiphertextVersion"/></description></item>
 /// </list>
 /// <para>
 /// Exactly one metadata group is populated per row. This is enforced by DB CHECK constraints and by the
@@ -92,18 +89,6 @@ public partial class SecretBinding : IAuditableEntity
 
     /// <summary>Name of the environment variable to read. Populated only when <see cref="SourceType"/> = <see cref="SecretSourceType.EnvironmentVariable"/>.</summary>
     public string? EnvironmentVariableName { get; set; }
-
-    /// <summary>
-    /// Data-Protection ciphertext (bytes produced by <c>IDataProtector.Protect(plaintext)</c>). Populated only when
-    /// <see cref="SourceType"/> = <see cref="SecretSourceType.InlineEncrypted"/>. Never log, never expose.
-    /// </summary>
-    public byte[]? InlineCiphertext { get; set; }
-
-    /// <summary>
-    /// Purpose-string version used when encrypting <see cref="InlineCiphertext"/>. Populated only when
-    /// <see cref="SourceType"/> = <see cref="SecretSourceType.InlineEncrypted"/>.
-    /// </summary>
-    public int? InlineCiphertextVersion { get; set; }
 
     /// <summary>
     /// When true, tenant-scope rows cannot override this instance-scope binding. Enforced by command handlers

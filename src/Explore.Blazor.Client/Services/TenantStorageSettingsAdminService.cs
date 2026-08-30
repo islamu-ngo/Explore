@@ -10,7 +10,6 @@ public interface ITenantStorageSettingsAdminService
     Task<HalResourceOfTenantStorageSettingsDto> GetAsync(CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> PatchPolicyAsync(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> PatchS3Async(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid> PatchS3CredentialsAsync(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
     Task<InstanceStorageProviderStatusDto> TestProviderAsync(HalResourceOfTenantStorageSettingsDto settings, CancellationToken cancellationToken = default);
 }
 
@@ -41,23 +40,6 @@ public sealed class TenantStorageSettingsAdminService(
         HalResourceOfTenantStorageSettingsDto settings,
         CancellationToken cancellationToken = default) =>
         PatchAsync(settings, settings.ToS3PatchRequest(), "S3", cancellationToken);
-
-    public Task<BaseCommandResponseOfGuid> PatchS3CredentialsAsync(
-        HalResourceOfTenantStorageSettingsDto settings,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(settings.S3AccessKeyId)
-            || string.IsNullOrWhiteSpace(settings.S3SecretAccessKey))
-        {
-            return Task.FromResult(new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = "Both S3 credential values are required."
-            });
-        }
-
-        return PatchAsync(settings, settings.ToS3CredentialsPatchRequest(), "S3 credentials", cancellationToken);
-    }
 
     public async Task<InstanceStorageProviderStatusDto> TestProviderAsync(
         HalResourceOfTenantStorageSettingsDto settings,

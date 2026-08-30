@@ -1,10 +1,12 @@
-// ABOUTME: Resolves SMTP configuration from the hierarchical settings engine.
-// Supports SaaS multi-tenant hierarchy: instance admin can lock settings or let tenants override.
+// ABOUTME: Resolves non-secret SMTP policy from governance and credentials from the selected authority.
+// ABOUTME: Database settings never supply SMTP usernames or passwords.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Secrets;
 using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;
+using Explore.Domain.Secrets;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -25,6 +27,7 @@ public class SmtpConfigResolver : ISmtpConfigResolver
     private readonly ITenantContext _tenantContext;
     private readonly IMemoryCache _cache;
     private readonly ILogger<SmtpConfigResolver> _logger;
+    private readonly ISecretResolver _secretResolver;
 
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
     private const string CacheKeyPrefix = "SmtpConfig:";
@@ -33,11 +36,13 @@ public class SmtpConfigResolver : ISmtpConfigResolver
         IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         IMemoryCache cache,
+        ISecretResolver secretResolver,
         ILogger<SmtpConfigResolver> logger)
     {
         _resolver = resolver;
         _tenantContext = tenantContext;
         _cache = cache;
+        _secretResolver = secretResolver;
         _logger = logger;
     }
 
@@ -108,8 +113,14 @@ public class SmtpConfigResolver : ISmtpConfigResolver
         {
             Host = host,
             Port = port > 0 ? port : 587,
-            Username = await _resolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpUsername, ctx, cancellationToken),
-            Password = await _resolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpPassword, ctx, cancellationToken),
+            Username = await ResolveOptionalSecretAsync(
+                SecretDefinitionRegistry.Keys.Smtp.Username,
+                tenantId,
+                cancellationToken),
+            Password = await ResolveOptionalSecretAsync(
+                SecretDefinitionRegistry.Keys.Smtp.Password,
+                tenantId,
+                cancellationToken),
             Security = Enum.TryParse<SmtpSecurityMode>(securityStr, ignoreCase: true, out var security)
                 ? security
                 : SmtpSecurityMode.StartTls,
@@ -117,6 +128,23 @@ public class SmtpConfigResolver : ISmtpConfigResolver
             FromName = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Email.FromName, ctx, cancellationToken) ?? "Explore",
             TimeoutSeconds = timeout > 0 ? timeout : 30,
             SkipCertificateValidation = await _resolver.ResolveAsync<bool>(GovernanceSettingKeys.Email.SmtpSkipCertValidation, ctx, cancellationToken)
+        };
+    }
+
+    private async Task<string?> ResolveOptionalSecretAsync(
+        string settingKey,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        SecretResolutionResult result = await _secretResolver.ResolveAsync(
+            settingKey,
+            tenantId,
+            cancellationToken);
+        return result.Status switch
+        {
+            SecretResolutionStatus.Resolved => result.Value,
+            SecretResolutionStatus.Unconfigured => null,
+            _ => throw new InvalidOperationException("smtp_secret_unavailable")
         };
     }
 }

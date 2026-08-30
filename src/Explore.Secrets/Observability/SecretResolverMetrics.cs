@@ -4,13 +4,14 @@
 namespace Explore.Secrets.Observability;
 
 using System.Diagnostics.Metrics;
+using Explore.Application.Contracts.Secrets;
 using Explore.Domain.Enums;
 
 /// <summary>
 /// Centralized metrics for the secret resolver pipeline.
 /// Metric names follow OpenTelemetry semantic conventions (dot.separated, lowercase).
 /// The meter is registered as a singleton and consumed by <c>SecretResolver</c>
-/// and <c>AuditingSecretResolverDecorator</c>. Values are never attached as tags.
+/// Values and source coordinates are never attached as tags.
 /// </summary>
 public sealed class SecretResolverMetrics : IDisposable
 {
@@ -62,23 +63,21 @@ public sealed class SecretResolverMetrics : IDisposable
             description: "Wall-clock time for a single ResolveAsync call, excluding decorators.");
     }
 
-    public void RecordSuccess(string settingKey, SecretSourceType source) =>
-        _resolveSuccess.Add(1, Tag("setting_key", settingKey), Tag("source", source.ToString()));
+    public void RecordSuccess(SecretSourceType source) =>
+        _resolveSuccess.Add(1, Tag("source", source.ToString()));
 
-    public void RecordMiss(string settingKey, SecretSourceType? source) =>
-        _resolveMiss.Add(1, Tag("setting_key", settingKey), Tag("source", source?.ToString() ?? "unbound"));
+    public void RecordMiss(SecretSourceType? source) =>
+        _resolveMiss.Add(1, Tag("source", source?.ToString() ?? "unbound"));
 
-    public void RecordError(string settingKey, SecretSourceType source) =>
-        _resolveError.Add(1, Tag("setting_key", settingKey), Tag("source", source.ToString()));
+    public void RecordError(SecretSourceType source, SecretResolutionStatus status) =>
+        _resolveError.Add(1, Tag("source", source.ToString()), Tag("status", status.ToString()));
 
-    public void RecordCacheHit(string settingKey) =>
-        _cacheHit.Add(1, Tag("setting_key", settingKey));
+    public void RecordCacheHit() => _cacheHit.Add(1);
 
-    public void RecordCacheMiss(string settingKey) =>
-        _cacheMiss.Add(1, Tag("setting_key", settingKey));
+    public void RecordCacheMiss() => _cacheMiss.Add(1);
 
-    public void RecordDuration(string settingKey, double elapsedMs) =>
-        _resolveDuration.Record(elapsedMs, Tag("setting_key", settingKey));
+    public void RecordDuration(SecretResolutionStatus status, double elapsedMs) =>
+        _resolveDuration.Record(elapsedMs, Tag("status", status.ToString()));
 
     private static KeyValuePair<string, object?> Tag(string key, string? value) => new(key, value);
 

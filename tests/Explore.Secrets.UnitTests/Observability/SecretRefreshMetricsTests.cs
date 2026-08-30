@@ -65,9 +65,9 @@ public class SecretRefreshMetricsTests : IDisposable
     public async Task RecordRefreshFailure_ShouldIncrementConsecutiveFailures()
     {
         // Act
-        _metrics.RecordRefreshFailure(SecretProviderType.Vault, 1.0);
-        _metrics.RecordRefreshFailure(SecretProviderType.Vault, 1.5);
-        _metrics.RecordRefreshFailure(SecretProviderType.Vault, 2.0);
+        _metrics.RecordRefreshFailure(SecretProviderType.Environment, 1.0);
+        _metrics.RecordRefreshFailure(SecretProviderType.Environment, 1.5);
+        _metrics.RecordRefreshFailure(SecretProviderType.Environment, 2.0);
 
         // Assert
         await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(3);
@@ -90,7 +90,7 @@ public class SecretRefreshMetricsTests : IDisposable
     public async Task StartRefreshOperation_Complete_ShouldRecordSuccess()
     {
         // Arrange
-        using var operation = _metrics.StartRefreshOperation(SecretProviderType.AzureKeyVault);
+        using var operation = _metrics.StartRefreshOperation(SecretProviderType.Infisical);
 
         // Act
         operation.Complete();
@@ -105,7 +105,7 @@ public class SecretRefreshMetricsTests : IDisposable
     public async Task StartRefreshOperation_Fail_ShouldRecordFailure()
     {
         // Arrange
-        using var operation = _metrics.StartRefreshOperation(SecretProviderType.AwsSecretsManager);
+        using var operation = _metrics.StartRefreshOperation(SecretProviderType.Environment);
 
         // Act
         operation.Fail("timeout");
@@ -143,7 +143,7 @@ public class SecretRefreshMetricsTests : IDisposable
     {
         // Act - Failures on different providers
         _metrics.RecordRefreshFailure(SecretProviderType.Infisical, 0.1);
-        _metrics.RecordRefreshFailure(SecretProviderType.Vault, 0.1);
+        _metrics.RecordRefreshFailure(SecretProviderType.Environment, 0.1);
 
         // Assert - All failures counted together (single metrics instance)
         await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(2);

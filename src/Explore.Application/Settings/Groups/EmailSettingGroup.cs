@@ -1,5 +1,5 @@
 // ABOUTME: Strongly-typed Email/SMTP setting group resolved via batch loading.
-// ABOUTME: Keys align to EmailSettingDefinitions and InfrastructureSecretSettingKeys.Email.
+// ABOUTME: Contains governance-only SMTP settings; credentials resolve through ISecretResolver.
 
 namespace Explore.Application.Settings.Groups;
 
@@ -14,8 +14,6 @@ public class EmailSettingGroup : ISettingGroup
 {
     public string? SmtpHost { get; private set; }
     public int SmtpPort { get; private set; } = 587;
-    public string? SmtpUsername { get; private set; }
-    public string? SmtpPassword { get; private set; }
     public string SmtpSecurity { get; private set; } = "StartTls";
     public string? FromAddress { get; private set; }
     public string FromName { get; private set; } = "Explore";
@@ -26,8 +24,6 @@ public class EmailSettingGroup : ISettingGroup
     [
         GovernanceSettingKeys.Email.SmtpHost,
         GovernanceSettingKeys.Email.SmtpPort,
-        InfrastructureSecretSettingKeys.Email.SmtpUsername,
-        InfrastructureSecretSettingKeys.Email.SmtpPassword,
         GovernanceSettingKeys.Email.SmtpSecurity,
         GovernanceSettingKeys.Email.FromAddress,
         GovernanceSettingKeys.Email.FromName,
@@ -41,10 +37,6 @@ public class EmailSettingGroup : ISettingGroup
             SmtpHost = SettingValueSerializer.DeserializeString(host.Value);
         if (settings.TryGetValue(GovernanceSettingKeys.Email.SmtpPort, out var port))
             SmtpPort = SettingValueSerializer.Deserialize(port.Value, 587);
-        if (settings.TryGetValue(InfrastructureSecretSettingKeys.Email.SmtpUsername, out var user))
-            SmtpUsername = SettingValueSerializer.DeserializeString(user.Value);
-        if (settings.TryGetValue(InfrastructureSecretSettingKeys.Email.SmtpPassword, out var pass))
-            SmtpPassword = SettingValueSerializer.DeserializeString(pass.Value);
         if (settings.TryGetValue(GovernanceSettingKeys.Email.SmtpSecurity, out var sec))
             SmtpSecurity = SettingValueSerializer.Deserialize(sec.Value, "StartTls");
         if (settings.TryGetValue(GovernanceSettingKeys.Email.FromAddress, out var from))

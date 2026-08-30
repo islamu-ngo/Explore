@@ -20,54 +20,44 @@ public static class ConfigurationBuilderExtensions
     /// <param name="configure">Optional action to configure additional options.</param>
     /// <returns>The configuration builder for chaining.</returns>
     /// <remarks>
-    /// Expected configuration keys (typically from user secrets):
-    /// - Infisical:Url - Server URL (optional, defaults to app.infisical.com)
-    /// - Infisical:ProjectId - Project ID (required)
-    /// - Infisical:ClientId - Universal Auth client ID (required)
-    /// - Infisical:ClientSecret - Universal Auth client secret (required)
-    /// - Infisical:Environment - Environment slug (optional, defaults to "dev")
-    /// - Infisical:Paths:0, Infisical:Paths:1, etc. - Secret paths to load
+    /// Expected deployment keys use <c>SecretProvider:Infisical:*</c> (or the
+    /// documented <c>INFISICAL_*</c> environment bootstrap inputs). Appsettings and
+    /// .NET User Secrets are not supported secret origins.
     /// </remarks>
     public static IConfigurationBuilder AddInfisical(
         this IConfigurationBuilder builder,
         IConfiguration configuration,
         Action<InfisicalConfigurationSource>? configure = null)
     {
-        var projectId = configuration["Infisical:ProjectId"]
-            ?? configuration["SecretProvider:Infisical:ProjectId"]
+        var projectId = configuration["SecretProvider:Infisical:ProjectId"]
             ?? configuration["INFISICAL_PROJECT_ID"];
-        var clientId = configuration["Infisical:ClientId"]
-            ?? configuration["SecretProvider:Infisical:ClientId"]
+        var clientId = configuration["SecretProvider:Infisical:ClientId"]
             ?? configuration["INFISICAL_CLIENT_ID"];
-        var clientSecret = configuration["Infisical:ClientSecret"]
-            ?? configuration["SecretProvider:Infisical:ClientSecret"]
+        var clientSecret = configuration["SecretProvider:Infisical:ClientSecret"]
             ?? configuration["INFISICAL_CLIENT_SECRET"];
 
         if (string.IsNullOrEmpty(projectId)
             || string.IsNullOrEmpty(clientId)
             || string.IsNullOrEmpty(clientSecret))
         {
-            Console.WriteLine("[Infisical] Skipping: Infisical credentials not configured in user secrets.");
-            Console.WriteLine("[Infisical] Set Infisical:ProjectId (or INFISICAL_PROJECT_ID), Infisical:ClientId (or INFISICAL_CLIENT_ID), and Infisical:ClientSecret (or INFISICAL_CLIENT_SECRET) to enable.");
-            return builder;
+            throw new InvalidOperationException(
+                "Infisical authority requires its project and universal-auth credentials.");
         }
 
         var source = new InfisicalConfigurationSource
         {
-            Url = configuration["Infisical:Url"]
-                ?? configuration["SecretProvider:Infisical:Url"]
+            Url = configuration["SecretProvider:Infisical:Url"]
                 ?? configuration["INFISICAL_URL"]
                 ?? "https://app.infisical.com",
             ProjectId = projectId,
             ClientId = clientId,
             ClientSecret = clientSecret,
-            Environment = configuration["Infisical:Environment"]
-                ?? configuration["SecretProvider:Infisical:Environment"]
+            Environment = configuration["SecretProvider:Infisical:Environment"]
                 ?? configuration["INFISICAL_ENV"]
                 ?? "dev",
         };
 
-        var paths = configuration.GetSection("Infisical:Paths").Get<List<string>>();
+        var paths = configuration.GetSection("SecretProvider:Infisical:Paths").Get<List<string>>();
         if (paths is { Count: > 0 })
         {
             source.Paths.Clear();

@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Secrets;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -41,19 +42,21 @@ public class AuthorizationProviderConfigurationServiceTests
     }
 
     [Test]
-    public async Task ReadConfigurationAsync_WhenAdminApiCredentialsComeFromConfiguration_ReturnsConfiguredFlagsWithoutSecrets()
+    public async Task ReadConfigurationAsync_WhenAdminApiCredentialsResolve_ReturnsConfiguredFlagsWithoutSecrets()
     {
         var repository = Substitute.For<ISystemSettingRepository>();
         repository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider)
             .Returns(CreateSetting(GovernanceSettingKeys.Security.AuthorizationProvider, "cerbos"));
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Cerbos:AdminApi:AdminUsername"] = "cerbos",
-                ["Cerbos:AdminApi:AdminPassword"] = "server-side-secret"
-            })
-            .Build();
-        var service = CreateService(repository, configuration: configuration);
+        var secretResolver = Substitute.For<ISecretResolver>();
+        secretResolver.ResolveAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(call => SecretResolutionResult.Resolved(new ResolvedSecret(
+                call.ArgAt<string>(0),
+                Guid.NewGuid().ToString("N"),
+                Explore.Domain.Enums.SecretSourceType.EnvironmentVariable,
+                Explore.Domain.Enums.SecretScope.Instance,
+                null,
+                DateTimeOffset.UtcNow)));
+        var service = CreateService(repository, secretResolver: secretResolver);
 
         var result = await service.ReadConfigurationAsync();
 
@@ -491,15 +494,23 @@ public class AuthorizationProviderConfigurationServiceTests
         ISystemSettingRepository repository,
         IAuthorizationProviderModeCacheInvalidator? invalidator = null,
         ICerbosConfigResolver? cerbosConfigResolver = null,
+        ISecretResolver? secretResolver = null,
         IConfiguration? configuration = null,
         IPolicyPackageService? packageService = null,
         AuthorizationProviderBootstrapState? bootstrapState = null)
     {
         configuration ??= new ConfigurationBuilder().Build();
+        if (secretResolver is null)
+        {
+            secretResolver = Substitute.For<ISecretResolver>();
+            secretResolver.ResolveAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+                .Returns(SecretResolutionResult.Unconfigured);
+        }
         var options = Options.Create(new CerbosPolicyPackageOptions());
         return new AuthorizationProviderConfigurationService(
             repository,
             configuration,
+            secretResolver,
             new CerbosAdminEndpointValidator(options),
             invalidator ?? Substitute.For<IAuthorizationProviderModeCacheInvalidator>(),
             cerbosConfigResolver ?? Substitute.For<ICerbosConfigResolver>(),

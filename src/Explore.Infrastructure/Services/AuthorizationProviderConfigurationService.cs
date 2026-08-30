@@ -5,6 +5,7 @@ using System.Text.Json;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Secrets;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Secrets;
@@ -12,6 +13,7 @@ using Explore.Application.Utilities;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Grpc.Core;
 using Grpc.Health.V1;
 using Grpc.Net.Client;
@@ -25,6 +27,7 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 {
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly IConfiguration _configuration;
+    private readonly ISecretResolver _secretResolver;
     private readonly CerbosAdminEndpointValidator _adminEndpointValidator;
     private readonly IAuthorizationProviderModeCacheInvalidator _providerModeCacheInvalidator;
     private readonly ICerbosConfigResolver _cerbosConfigResolver;
@@ -36,6 +39,7 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
     public AuthorizationProviderConfigurationService(
         ISystemSettingRepository systemSettingRepository,
         IConfiguration configuration,
+        ISecretResolver secretResolver,
         CerbosAdminEndpointValidator adminEndpointValidator,
         IAuthorizationProviderModeCacheInvalidator providerModeCacheInvalidator,
         ICerbosConfigResolver cerbosConfigResolver,
@@ -46,6 +50,7 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
     {
         _systemSettingRepository = systemSettingRepository;
         _configuration = configuration;
+        _secretResolver = secretResolver;
         _adminEndpointValidator = adminEndpointValidator;
         _providerModeCacheInvalidator = providerModeCacheInvalidator;
         _cerbosConfigResolver = cerbosConfigResolver;
@@ -89,8 +94,12 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
             grpcEndpoint = rawEnvEndpoint;
         }
 
-        var configuredAdminUsernameConfigured = !string.IsNullOrWhiteSpace(_configuration["Cerbos:AdminApi:AdminUsername"]);
-        var configuredAdminPasswordConfigured = !string.IsNullOrWhiteSpace(_configuration["Cerbos:AdminApi:AdminPassword"]);
+        var configuredAdminUsernameConfigured = (await _secretResolver.ResolveAsync(
+            SecretDefinitionRegistry.Keys.Cerbos.CustomAdminUsername,
+            null)).IsResolved;
+        var configuredAdminPasswordConfigured = (await _secretResolver.ResolveAsync(
+            SecretDefinitionRegistry.Keys.Cerbos.CustomAdminPassword,
+            null)).IsResolved;
         var adminCredentialsConfigured = configuredAdminUsernameConfigured && configuredAdminPasswordConfigured;
 
         return new AuthorizationProviderConfigurationDto

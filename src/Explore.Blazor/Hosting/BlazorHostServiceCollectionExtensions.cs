@@ -79,7 +79,7 @@ public static class BlazorHostServiceCollectionExtensions
             builder.AddOidcDiscoveryReadinessCheck();
         }
 
-        builder.Configuration.AddInfisicalBlazorCompatibility();
+        builder.Configuration.AddSecretAuthorityConfiguration();
 
         builder.Services.AddMudServices(config =>
         {

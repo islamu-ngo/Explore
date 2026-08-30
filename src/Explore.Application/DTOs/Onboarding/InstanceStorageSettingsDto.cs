@@ -26,10 +26,6 @@ public sealed record InstanceStorageSettingsDto
     public string S3Endpoint { get; set; } = string.Empty;
     public string S3PublicEndpoint { get; set; } = string.Empty;
     public string S3BucketName { get; set; } = string.Empty;
-    public string S3AccessKeyId { get; set; } = string.Empty;
-    public string S3SecretAccessKey { get; set; } = string.Empty;
-    public bool S3AccessKeyConfigured { get; init; }
-    public bool S3SecretAccessKeyConfigured { get; init; }
     public string S3Region { get; set; } = string.Empty;
     public bool S3ForcePathStyle { get; set; } = true;
     public int S3UploadUrlExpirationMinutes { get; set; } = 60;

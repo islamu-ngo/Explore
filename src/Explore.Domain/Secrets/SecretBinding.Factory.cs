@@ -47,40 +47,6 @@ public partial class SecretBinding
     }
 
     /// <summary>
-    /// Creates a binding that stores an already-encrypted ciphertext inline in the settings database.
-    /// The caller is responsible for producing <paramref name="ciphertext"/> via Data Protection.
-    /// </summary>
-    /// <exception cref="ArgumentException">Bootstrap secrets forbid InlineEncrypted; DB cannot decrypt a secret it needs to unlock.</exception>
-    public static SecretBinding CreateInlineEncrypted(
-        string settingKey,
-        SecretScope scope,
-        Guid? scopeId,
-        byte[] ciphertext,
-        int ciphertextVersion,
-        bool isLocked = false,
-        string? qualifier = null)
-    {
-        GetValidDefinition(settingKey, scope, scopeId, SecretSourceTypeEnum.InlineEncrypted);
-
-        if (ciphertext is null || ciphertext.Length == 0)
-            throw new ArgumentException("Inline ciphertext must be non-empty.", nameof(ciphertext));
-        if (ciphertextVersion < 1)
-            throw new ArgumentOutOfRangeException(nameof(ciphertextVersion), "Ciphertext version must be >= 1.");
-
-        return new SecretBinding
-        {
-            SettingKey = settingKey,
-            Qualifier = NormalizeQualifier(qualifier),
-            Scope = scope,
-            ScopeId = scopeId,
-            SourceType = SecretSourceTypeEnum.InlineEncrypted,
-            InlineCiphertext = ciphertext,
-            InlineCiphertextVersion = ciphertextVersion,
-            IsLocked = isLocked,
-        };
-    }
-
-    /// <summary>
     /// Creates a binding that points at a process environment variable.
     /// </summary>
     public static SecretBinding CreateEnvironmentVariable(
@@ -128,26 +94,6 @@ public partial class SecretBinding
         InfisicalEnvironment = environment;
         InfisicalPath = path;
         InfisicalKey = key;
-        ResetValidation();
-    }
-
-    /// <summary>
-    /// Switches this binding to store an inline-encrypted ciphertext, resetting all competing metadata
-    /// and clearing the last-validation state.
-    /// </summary>
-    public void SwitchToInlineEncrypted(byte[] ciphertext, int ciphertextVersion)
-    {
-        GetValidDefinition(SettingKey, Scope, ScopeId, SecretSourceTypeEnum.InlineEncrypted);
-
-        if (ciphertext is null || ciphertext.Length == 0)
-            throw new ArgumentException("Inline ciphertext must be non-empty.", nameof(ciphertext));
-        if (ciphertextVersion < 1)
-            throw new ArgumentOutOfRangeException(nameof(ciphertextVersion), "Ciphertext version must be >= 1.");
-
-        ClearMetadata();
-        SourceType = SecretSourceTypeEnum.InlineEncrypted;
-        InlineCiphertext = ciphertext;
-        InlineCiphertextVersion = ciphertextVersion;
         ResetValidation();
     }
 
@@ -219,17 +165,6 @@ public partial class SecretBinding
 
         if (!definition.AllowedSources.Contains(sourceType))
         {
-            // Bootstrap secrets cannot be InlineEncrypted - this is a domain invariant
-            // (the DB cannot unlock itself). That is an InvalidOperationException (business rule),
-            // not an ArgumentException (caller error).
-            if (definition.IsBootstrapSecret && sourceType == SecretSourceTypeEnum.InlineEncrypted)
-            {
-                throw new InvalidOperationException(
-                    $"Bootstrap secret '{settingKey}' cannot be InlineEncrypted. " +
-                    $"The database cannot unlock its own connection-string secrets. " +
-                    $"Allowed sources: {string.Join(", ", definition.AllowedSources)}.");
-            }
-
             throw new ArgumentException(
                 $"Source '{sourceType}' is not allowed for secret '{settingKey}'. " +
                 $"Allowed: {string.Join(", ", definition.AllowedSources)}.",
@@ -254,8 +189,6 @@ public partial class SecretBinding
         InfisicalPath = null;
         InfisicalKey = null;
         EnvironmentVariableName = null;
-        InlineCiphertext = null;
-        InlineCiphertextVersion = null;
     }
 
     /// <summary>Resets validation state to NotValidated; switching source always forces a re-validate.</summary>

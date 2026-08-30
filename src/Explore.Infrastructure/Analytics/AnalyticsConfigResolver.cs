@@ -1,12 +1,14 @@
-// ABOUTME: Resolves analytics configuration from the hierarchical settings engine with short-lived cache.
-// ABOUTME: Uses system defaults with tenant overrides and lock semantics through IHierarchicalSettingsResolver.
+// ABOUTME: Resolves public analytics settings from governance and private admin keys from secret authority.
+// ABOUTME: Keeps private analytics credentials out of hierarchical database settings.
 
 using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Secrets;
 using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -27,6 +29,7 @@ public class AnalyticsConfigResolver : IAnalyticsConfigResolver
     private readonly ITenantContext _tenantContext;
     private readonly IMemoryCache _cache;
     private readonly ILogger<AnalyticsConfigResolver> _logger;
+    private readonly ISecretResolver _secretResolver;
 
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
     private const string CacheKeyPrefix = "AnalyticsConfig:";
@@ -35,11 +38,13 @@ public class AnalyticsConfigResolver : IAnalyticsConfigResolver
         IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         IMemoryCache cache,
+        ISecretResolver secretResolver,
         ILogger<AnalyticsConfigResolver> logger)
     {
         _resolver = resolver;
         _tenantContext = tenantContext;
         _cache = cache;
+        _secretResolver = secretResolver;
         _logger = logger;
     }
 
@@ -84,7 +89,10 @@ public class AnalyticsConfigResolver : IAnalyticsConfigResolver
         var transportMode = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.TransportMode, ctx, cancellationToken);
         var apiKey = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.ApiKey, ctx, cancellationToken);
         var endpointUrl = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.EndpointUrl, ctx, cancellationToken);
-        var personalApiKey = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.PersonalApiKey, ctx, cancellationToken);
+        SecretResolutionResult personalApiKey = await _secretResolver.ResolveAsync(
+            SecretDefinitionRegistry.Keys.Analytics.PersonalApiKey,
+            tenantId,
+            cancellationToken);
 
         var provider = ParseProvider(providerStr);
 
@@ -99,7 +107,12 @@ public class AnalyticsConfigResolver : IAnalyticsConfigResolver
             TransportMode = ParseTransportMode(transportMode),
             ApiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey,
             EndpointUrl = string.IsNullOrWhiteSpace(endpointUrl) ? null : endpointUrl,
-            PersonalApiKey = string.IsNullOrWhiteSpace(personalApiKey) ? null : personalApiKey
+            PersonalApiKey = personalApiKey.Status switch
+            {
+                SecretResolutionStatus.Resolved => personalApiKey.Value,
+                SecretResolutionStatus.Unconfigured => null,
+                _ => throw new InvalidOperationException("analytics_secret_unavailable")
+            }
         };
     }
 

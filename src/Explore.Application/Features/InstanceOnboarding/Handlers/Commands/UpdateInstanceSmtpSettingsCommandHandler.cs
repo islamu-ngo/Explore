@@ -45,8 +45,6 @@ public class UpdateInstanceSmtpSettingsCommandHandler : IRequestHandler<UpdateIn
         var settings = await _smtpSettingService.ReadSettingsAsync();
         settings.Host = patch.Host;
         settings.Port = patch.Port;
-        settings.Username = patch.Username;
-        settings.Password = patch.Password;
         settings.Security = patch.Security;
         settings.FromAddress = patch.FromAddress;
         settings.FromName = patch.FromName;

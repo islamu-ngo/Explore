@@ -37,4 +37,28 @@ public sealed class SecretResolverHealthCheckTests
         await Assert.That(result.Data["databaseConfiguration"]).IsEqualTo("invalid");
         await Assert.That(result.Description).DoesNotContain("credential-canary");
     }
+
+    [Test]
+    public async Task CheckHealthAsync_WhenConfiguredProviderFails_ReturnsBoundedDegradedState()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "Sqlite",
+            ["Database:Database"] = "health-check.db"
+        }).Build();
+        var factory = Substitute.For<IInfisicalClientFactory>();
+        factory.GetClientAsync(Arg.Any<CancellationToken>())
+            .Returns<Task<IInfisicalClient?>>(_ => throw new InvalidOperationException("provider-secret-canary"));
+        var check = new SecretResolverHealthCheck(
+            Substitute.For<ISecretResolver>(),
+            factory,
+            configuration,
+            Substitute.For<ILogger<SecretResolverHealthCheck>>());
+
+        var result = await check.CheckHealthAsync(new HealthCheckContext());
+
+        await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+        await Assert.That(result.Data["providerState"]).IsEqualTo("unavailable");
+        await Assert.That(result.Description).DoesNotContain("provider-secret-canary");
+    }
 }

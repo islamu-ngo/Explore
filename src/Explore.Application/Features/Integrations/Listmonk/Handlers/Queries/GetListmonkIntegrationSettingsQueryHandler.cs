@@ -67,8 +67,8 @@ public sealed class GetListmonkIntegrationSettingsQueryHandler(
                 GovernanceSettingKeys.Integrations.Listmonk.SyncOnRegistration,
                 context,
                 cancellationToken),
-            ApiUsernameConfigured = apiUsername is not null && !string.IsNullOrWhiteSpace(apiUsername.Value),
-            ApiKeyConfigured = apiKey is not null && !string.IsNullOrWhiteSpace(apiKey.Value),
+            ApiUsernameConfigured = apiUsername.IsResolved,
+            ApiKeyConfigured = apiKey.IsResolved,
             CanEdit = canEdit
         };
     }

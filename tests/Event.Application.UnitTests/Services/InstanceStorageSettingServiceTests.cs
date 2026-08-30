@@ -100,8 +100,6 @@ public sealed class InstanceStorageSettingServiceTests
         S3Endpoint = "https://s3.example.test",
         S3PublicEndpoint = "https://public.example.test",
         S3BucketName = "events",
-        S3AccessKeyId = string.Empty,
-        S3SecretAccessKey = string.Empty,
         S3Region = "fsn1",
         S3ForcePathStyle = true,
         S3UploadUrlExpirationMinutes = 60

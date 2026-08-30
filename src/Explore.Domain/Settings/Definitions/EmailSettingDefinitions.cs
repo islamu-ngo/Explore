@@ -1,5 +1,5 @@
-// ABOUTME: Setting definitions for email/SMTP configuration including server, credentials, and sending behavior.
-// ABOUTME: Sensitive keys (username, password) are flagged with IsSensitive = true.
+// ABOUTME: Setting definitions for non-secret email and SMTP delivery governance.
+// ABOUTME: Authentication credentials are intentionally absent and externally resolved.
 
 namespace Explore.Domain.Settings.Definitions;
 
@@ -20,24 +20,6 @@ public static class EmailSettingDefinitions
         Category: "Email",
         Description: "SMTP server port (587 for StartTLS, 465 for SSL, 25 for unencrypted)",
         MaxScope: SettingScope.Tenant);
-
-    public static readonly SettingDefinition SmtpUsername = new(
-        Key: "email.smtp_username",
-        ValueType: SettingValueType.String,
-        DefaultValue: "\"\"",
-        Category: "Email",
-        Description: "SMTP authentication username",
-        MaxScope: SettingScope.Tenant,
-        IsSensitive: true);
-
-    public static readonly SettingDefinition SmtpPassword = new(
-        Key: "email.smtp_password",
-        ValueType: SettingValueType.String,
-        DefaultValue: "\"\"",
-        Category: "Email",
-        Description: "SMTP authentication password (stored encrypted)",
-        MaxScope: SettingScope.Tenant,
-        IsSensitive: true);
 
     public static readonly SettingDefinition SmtpSecurity = new(
         Key: "email.smtp_security",
@@ -82,7 +64,7 @@ public static class EmailSettingDefinitions
 
     public static IReadOnlyList<SettingDefinition> All =>
     [
-        SmtpHost, SmtpPort, SmtpUsername, SmtpPassword, SmtpSecurity,
+        SmtpHost, SmtpPort, SmtpSecurity,
         FromAddress, FromName, SmtpTimeoutSeconds, SmtpSkipCertValidation
     ];
 }

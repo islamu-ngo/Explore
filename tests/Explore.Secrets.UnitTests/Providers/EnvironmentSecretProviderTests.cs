@@ -23,7 +23,7 @@ public class EnvironmentSecretProviderTests
     [Test]
     public async Task ProviderType_ShouldReturnNone()
     {
-        await Assert.That(_provider.ProviderType).IsEqualTo(SecretProviderType.None);
+        await Assert.That(_provider.ProviderType).IsEqualTo(SecretProviderType.Environment);
     }
 
     [Test]
@@ -167,7 +167,7 @@ public class EnvironmentSecretProviderTests
 
         // Assert
         await Assert.That(health.IsHealthy).IsTrue();
-        await Assert.That(health.ProviderType).IsEqualTo(SecretProviderType.None);
+        await Assert.That(health.ProviderType).IsEqualTo(SecretProviderType.Environment);
         await Assert.That(health.ConsecutiveFailures).IsEqualTo(0);
     }
 

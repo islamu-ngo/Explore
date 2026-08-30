@@ -11,21 +11,15 @@ x-keycloak-env: &keycloak-env
   KEYCLOAK_INTERNAL_URL: http://keycloak:8080
   Keycloak__RequireHttpsMetadata: ${KEYCLOAK_REQUIRE_HTTPS_METADATA:-false}
 
-# Secret management bootstrap configuration (optional).
-# If Infisical__* values are non-empty, AddInfisicalCompatibility loads raw Infisical secrets.
-# If SecretProvider__Provider=Infisical, ISecretResolver also uses the Infisical provider.
+# One explicit deployment-owned secret authority. Environment never contacts Infisical;
+# Infisical never falls back to the lower environment values below.
 x-secrets-env: &secrets-env
-  SecretProvider__Provider: ${SECRET_PROVIDER:-None}
+  SecretProvider__Provider: ${SECRET_PROVIDER:?Set SECRET_PROVIDER to Environment or Infisical}
   SecretProvider__Infisical__Url: ${INFISICAL_URL:-}
   SecretProvider__Infisical__ProjectId: ${INFISICAL_PROJECT_ID:-}
   SecretProvider__Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
   SecretProvider__Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
   SecretProvider__Infisical__Environment: ${INFISICAL_ENV:-dev}
-  Infisical__Url: ${INFISICAL_URL:-}
-  Infisical__ProjectId: ${INFISICAL_PROJECT_ID:-}
-  Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
-  Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
-  Infisical__Environment: ${INFISICAL_ENV:-dev}
 
 x-postgres-env: &postgres-env
   POSTGRES_USER: ${DATABASE_MIGRATOR_USERNAME-explore}
@@ -107,14 +101,12 @@ x-s3-env: &s3-env
   STORAGE_S3_PUBLIC_ENDPOINT: ${STORAGE_S3_PUBLIC_ENDPOINT:-http://minio.localhost:9005}
   STORAGE_S3_REGION: ${STORAGE_S3_REGION:-us-east-1}
   STORAGE_S3_BUCKET_NAME: ${STORAGE_S3_BUCKET_NAME:-explore}
-  STORAGE_S3_ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY_ID:-minioadmin}
-  STORAGE_S3_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:-minioadmin}
+  STORAGE_S3_ACCESS_KEY_ID: ${STORAGE_S3_ACCESS_KEY_ID:-}
+  STORAGE_S3_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:-}
   S3Settings__Endpoint: ${STORAGE_S3_ENDPOINT:-http://minio:9000}
   S3Settings__PublicEndpoint: ${STORAGE_S3_PUBLIC_ENDPOINT:-http://minio.localhost:9005}
   S3Settings__Region: ${STORAGE_S3_REGION:-us-east-1}
   S3Settings__BucketName: ${STORAGE_S3_BUCKET_NAME:-explore}
-  S3Settings__AccessKeyId: ${STORAGE_S3_ACCESS_KEY_ID:-minioadmin}
-  S3Settings__SecretAccessKey: ${STORAGE_S3_SECRET_ACCESS_KEY:-minioadmin}
 
 x-api-runtime-env: &api-runtime-env
   DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-}
@@ -122,6 +114,9 @@ x-api-runtime-env: &api-runtime-env
   SETUP_SECRET: ${SETUP_SECRET:-}
   SETUP_SECRET_FILE: ${SETUP_SECRET_FILE:-/app/bootstrap/setup-secret}
   SETUP_SECRET_REQUIRED: ${SETUP_SECRET_REQUIRED:-true}
+  Hosting__ReplicaCount: ${HOSTING_REPLICA_COUNT:-1}
+  Promotions__CodeLookup__ActiveKeyVersion: ${PROMOTIONS_CODE_LOOKUP_ACTIVE_KEY_VERSION:-1}
+  PROMOTIONS_CODE_LOOKUP_HMAC_KEY: ${PROMOTIONS_CODE_LOOKUP_HMAC_KEY:-}
   USE_COMMERCIAL_LUCKYPENNY: ${USE_COMMERCIAL_LUCKYPENNY:-false}
   LUCKYPENNY_LICENSE_KEY: ${LUCKYPENNY_LICENSE_KEY:-}
   AUTOMAPPER_COMMERCIAL_VERSION: ${AUTOMAPPER_COMMERCIAL_VERSION:-false}
@@ -474,10 +469,9 @@ services:
       Cerbos__PlaintextMode: ${CERBOS_PLAINTEXT_MODE:-true}
       Cerbos__PolicyPackagePath: /app/cerbos/policies
       Cerbos__AdminApi__Endpoints__0: ${CERBOS_HTTP_ENDPOINT:-http://cerbos:3592}
-      Cerbos__AdminApi__AdminUsername: ${CERBOS_ADMIN_USERNAME:-cerbos}
-      Cerbos__AdminApi__AdminPassword: ${CERBOS_ADMIN_PASSWORD:-}
-      Cerbos__AdminUsername: ${CERBOS_ADMIN_USERNAME:-cerbos}
       Cerbos__AdminPasswordHash: ${CERBOS_ADMIN_PASSWORD_HASH:-}
+      CERBOS_ADMIN_USERNAME: ${CERBOS_ADMIN_USERNAME:-}
+      CERBOS_ADMIN_PASSWORD: ${CERBOS_ADMIN_PASSWORD:-}
     ports:
       - "${API_HTTP_PORT:-7039}:8080"
     healthcheck:
@@ -566,8 +560,8 @@ services:
     profiles: ["storage"] # Opt-in only
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${STORAGE_S3_ACCESS_KEY_ID:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${STORAGE_S3_SECRET_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${STORAGE_S3_ACCESS_KEY_ID:?Set STORAGE_S3_ACCESS_KEY_ID for the storage profile}
+      MINIO_ROOT_PASSWORD: ${STORAGE_S3_SECRET_ACCESS_KEY:?Set STORAGE_S3_SECRET_ACCESS_KEY for the storage profile}
       MINIO_SERVER_URL: ${STORAGE_S3_PUBLIC_ENDPOINT:-http://minio.localhost:9005}
     volumes:
       - minio_data:/data
@@ -590,7 +584,7 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${STORAGE_S3_ACCESS_KEY_ID:-minioadmin} ${STORAGE_S3_SECRET_ACCESS_KEY:-minioadmin};
+      mc alias set local http://minio:9000 ${STORAGE_S3_ACCESS_KEY_ID:?Set STORAGE_S3_ACCESS_KEY_ID for the storage profile} ${STORAGE_S3_SECRET_ACCESS_KEY:?Set STORAGE_S3_SECRET_ACCESS_KEY for the storage profile};
       mc mb --ignore-existing local/${STORAGE_S3_BUCKET_NAME:-explore};
       mc anonymous set public local/${STORAGE_S3_BUCKET_NAME:-explore};
       "
@@ -601,7 +595,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${CERBOS_POSTGRES_USER:-cerbos_user}
-      POSTGRES_PASSWORD: ${CERBOS_POSTGRES_PASSWORD:-cerbos_password}
+      POSTGRES_PASSWORD: ${CERBOS_POSTGRES_PASSWORD:?Set CERBOS_POSTGRES_PASSWORD for the authz profile}
       POSTGRES_DB: ${CERBOS_POSTGRES_DB:-cerbos}
     volumes:
       - cerbos_data:/var/lib/postgresql
@@ -622,7 +616,7 @@ services:
     environment:
       CERBOS_ADMIN_USER: ${CERBOS_ADMIN_USERNAME:-cerbos}
       CERBOS_ADMIN_PASSWORD_HASH: ${CERBOS_ADMIN_PASSWORD_HASH:-}
-      CERBOS_PG_URL: ${CERBOS_PG_URL:-postgres://cerbos_user:cerbos_password@cerbos-db:5432/cerbos?search_path=cerbos&sslmode=disable}
+      CERBOS_PG_URL: ${CERBOS_PG_URL:?Set CERBOS_PG_URL for the authz profile}
     volumes:
       # Repository-owned Cerbos runtime config and bundled policies/schemas.
       - ./cerbos/config/.cerbos.yaml:/config/.cerbos.yaml:ro

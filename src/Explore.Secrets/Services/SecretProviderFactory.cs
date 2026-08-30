@@ -42,11 +42,8 @@ public sealed class SecretProviderFactory
 
         return options.Provider switch
         {
-            SecretProviderType.None => CreateEnvironmentProvider(),
+            SecretProviderType.Environment => CreateEnvironmentProvider(),
             SecretProviderType.Infisical => CreateInfisicalProvider(),
-            SecretProviderType.Vault => CreateVaultProvider(),
-            SecretProviderType.AzureKeyVault => CreateAzureKeyVaultProvider(),
-            SecretProviderType.AwsSecretsManager => CreateAwsSecretsManagerProvider(),
             _ => throw new SecretProviderException(
                 $"Unsupported secret provider type: {options.Provider}",
                 options.Provider,
@@ -67,33 +64,4 @@ public sealed class SecretProviderFactory
         return new InfisicalSecretProvider(logger, _options);
     }
 
-    private ISecretProvider CreateVaultProvider()
-    {
-        // Will be implemented in Phase 5A
-        throw new SecretProviderException(
-            "Vault provider not yet implemented. Use 'None' for environment variables.",
-            SecretProviderType.Vault,
-            "Create",
-            isTransient: false);
-    }
-
-    private ISecretProvider CreateAzureKeyVaultProvider()
-    {
-        // Will be implemented in Phase 5B
-        throw new SecretProviderException(
-            "Azure Key Vault provider not yet implemented. Use 'None' for environment variables.",
-            SecretProviderType.AzureKeyVault,
-            "Create",
-            isTransient: false);
-    }
-
-    private ISecretProvider CreateAwsSecretsManagerProvider()
-    {
-        // Will be implemented in Phase 5C
-        throw new SecretProviderException(
-            "AWS Secrets Manager provider not yet implemented. Use 'None' for environment variables.",
-            SecretProviderType.AwsSecretsManager,
-            "Create",
-            isTransient: false);
-    }
 }

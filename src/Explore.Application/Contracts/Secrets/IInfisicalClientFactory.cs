@@ -12,7 +12,7 @@ public interface IInfisicalClientFactory
     /// <summary>
     /// Returns a ready-to-use client. Returns <c>null</c> when the Infisical integration is not
     /// configured (missing client id/secret/site URL) so the caller can surface a clean "not configured"
-    /// error rather than an authentication failure.
+    /// error rather than an authentication failure. Provider failures are thrown for typed translation.
     /// </summary>
     Task<IInfisicalClient?> GetClientAsync(CancellationToken cancellationToken = default);
 }

@@ -1,24 +1,12 @@
-// ABOUTME: Contract for resolving S3 storage configuration from the cascading settings engine.
-// Supports the SaaS multi-tenant hierarchy: Instance admin → Tenant admin.
+// ABOUTME: Contract for composing S3 governance with externally resolved credentials.
+// ABOUTME: Supports tenant governance without allowing database-backed credential overrides.
 
 using Explore.Application.Models;
 
 namespace Explore.Application.Contracts.Infrastructure;
 
 /// <summary>
-/// Resolves S3 storage configuration from the cascading settings engine.
-/// <para>
-/// Resolution order:
-/// 1. Check if settings are locked at system level (instance admin enforces SaaS-wide storage)
-/// 2. Check for tenant-specific override (tenant brings their own S3 storage)
-/// 3. Fall back to system default
-/// </para>
-/// <para>
-/// This enables flexible SaaS scenarios:
-/// - Instance admin locks S3 settings → all tenants use the SaaS provider's storage
-/// - Instance admin unlocks S3 settings → tenants can override with their own credentials
-/// - Default S3 config is set at instance level → tenants use it unless they override
-/// </para>
+/// Resolves non-secret S3 policy from governance and credentials from ISecretResolver.
 /// </summary>
 public interface IS3ConfigResolver
 {

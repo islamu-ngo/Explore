@@ -3,6 +3,7 @@
 // Includes observability setup with metrics, health checks, and audit logging.
 
 using Explore.Secrets.Abstractions;
+using Explore.Application.Contracts.Secrets;
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Observability;
 using Explore.Secrets.Providers;
@@ -72,6 +73,7 @@ public static class ServiceCollectionExtensions
 
             return provider;
         });
+        services.TryAddSingleton<ISecretAuthorityStatusReader, SecretAuthorityStatusReader>();
 
         return services;
     }

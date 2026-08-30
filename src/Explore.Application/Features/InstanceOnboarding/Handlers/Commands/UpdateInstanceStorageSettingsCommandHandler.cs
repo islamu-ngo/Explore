@@ -65,14 +65,6 @@ public class UpdateInstanceStorageSettingsCommandHandler : IRequestHandler<Updat
             settings.S3Endpoint = s3.Endpoint;
             settings.S3PublicEndpoint = s3.PublicEndpoint;
             settings.S3BucketName = s3.BucketName;
-            if (!string.IsNullOrWhiteSpace(s3.AccessKeyId))
-            {
-                settings.S3AccessKeyId = s3.AccessKeyId;
-            }
-            if (!string.IsNullOrWhiteSpace(s3.SecretAccessKey))
-            {
-                settings.S3SecretAccessKey = s3.SecretAccessKey;
-            }
             settings.S3Region = s3.Region;
             settings.S3ForcePathStyle = s3.ForcePathStyle;
             settings.S3UploadUrlExpirationMinutes = s3.UploadUrlExpirationMinutes;

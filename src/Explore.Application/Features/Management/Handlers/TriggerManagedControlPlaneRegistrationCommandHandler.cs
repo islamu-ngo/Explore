@@ -1,5 +1,5 @@
 // ABOUTME: Creates and retries one durable Event-to-Control-Plane registration attempt outside database transactions.
-// ABOUTME: Protects both directional secrets before transport so an ambiguous response can replay safely.
+// ABOUTME: Uses deployment-owned directional credentials referenced by SecretBinding metadata.
 
 using System.Security.Cryptography;
 using System.Text;
@@ -26,11 +26,9 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
     IManagedControlPlaneRegistrationRepository registrationRepository,
     IInstanceBootstrapStateRepository bootstrapStateRepository,
     ISecretBindingRepository secretBindingRepository,
-    IInlineSecretProtector secretProtector,
     ISecretResolver secretResolver,
     IDeploymentModeProvider deploymentModeProvider,
     IManagedControlPlaneRegistrationClient registrationClient,
-    IUnitOfWork unitOfWork,
     ILogger<TriggerManagedControlPlaneRegistrationCommandHandler> logger)
     : IRequestHandler<TriggerManagedControlPlaneRegistrationCommand, TriggerManagedRegistrationResultDto>
 {
@@ -55,12 +53,13 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
             return Failure("Revoked", "registration_revoked", registration.Id);
         }
 
-        registration ??= await CreatePendingRegistrationAsync(settings, cancellationToken);
         var secrets = await ResolveSecretsAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(secrets.ControlPlaneToEventSecret))
         {
             return Failure("Pending", "registration_secret_unavailable", registration.Id);
         }
+
+        registration ??= await CreatePendingRegistrationAsync(settings, secrets, cancellationToken);
 
         var callbackRequest = new CompleteManagedInstanceRegistrationRequestDto(
             registration.Id,
@@ -99,7 +98,7 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
                 return Failure("Pending", "invalid_registration_ack", registration.Id);
             }
 
-            await MarkRegisteredAsync(registration, secrets, cancellationToken);
+            await MarkRegisteredAsync(registration, cancellationToken);
             return Success(registration);
         }
         catch (HttpRequestException)
@@ -119,6 +118,7 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
 
     private async Task<ManagedControlPlaneRegistration> CreatePendingRegistrationAsync(
         ManagedControlPlaneOptions settings,
+        RegistrationSecrets secrets,
         CancellationToken cancellationToken)
     {
         var bootstrap = await bootstrapStateRepository.GetCurrent(cancellationToken);
@@ -132,12 +132,10 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
         var expiresAt = now.Add(settings.CredentialLifetime);
         var mode = await deploymentModeProvider.GetCurrentModeAsync(cancellationToken);
         var eventToControlPlaneKeyId = ApiKeyHashing.CreateKeyId();
-        var eventToControlPlaneSecret = ApiKeyHashing.CreateSecret();
         var controlPlaneToEventKeyId = ApiKeyHashing.CreateKeyId();
-        var controlPlaneToEventSecret = ApiKeyHashing.CreateSecret();
         var registrationId = Guid.CreateVersion7();
-        var eventToControlPlaneSecretHash = ApiKeyHashing.ComputeHash(eventToControlPlaneSecret);
-        var controlPlaneToEventSecretHash = ApiKeyHashing.ComputeHash(controlPlaneToEventSecret);
+        var eventToControlPlaneSecretHash = ApiKeyHashing.ComputeHash(secrets.EventToControlPlaneSecret);
+        var controlPlaneToEventSecretHash = ApiKeyHashing.ComputeHash(secrets.ControlPlaneToEventSecret!);
         var requestHash = ComputeRequestHash(
             registrationId,
             settings.ManagedInstanceId,
@@ -149,17 +147,12 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
             controlPlaneToEventSecretHash,
             expiresAt,
             expiresAt);
-        var protectedSecrets = secretProtector.Protect(JsonSerializer.Serialize(new RegistrationSecrets(
-            eventToControlPlaneSecret,
-            controlPlaneToEventSecret)));
-        var binding = SecretBinding.CreateInlineEncrypted(
+        SecretBinding binding = await secretBindingRepository.GetByKeyAndScopeAsync(
             ManagedControlPlaneContract.CredentialSecretSettingKey,
             SecretScope.Instance,
             null,
-            protectedSecrets.Ciphertext.ToArray(),
-            protectedSecrets.Version,
-            isLocked: true);
-        binding.CreatedAt = now;
+            cancellationToken)
+            ?? throw new InvalidOperationException("Managed registration credential binding is missing.");
 
         var registration = new ManagedControlPlaneRegistration
         {
@@ -181,17 +174,8 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
             CreatedAt = now
         };
 
-        await unitOfWork.ExecuteInTransactionAsync(async _ =>
-        {
-            await secretBindingRepository.Create(binding);
-            registration.CredentialSecretBindingId = binding.Id;
-            await registrationRepository.Create(registration);
-        }, cancellationToken);
-        await secretResolver.InvalidateAsync(
-            ManagedControlPlaneContract.CredentialSecretSettingKey,
-            SecretScope.Instance,
-            null,
-            cancellationToken);
+        registration.CredentialSecretBindingId = binding.Id;
+        await registrationRepository.Create(registration);
 
         return registration;
     }
@@ -202,7 +186,7 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
             ManagedControlPlaneContract.CredentialSecretSettingKey,
             null,
             cancellationToken);
-        return resolved is null
+        return !resolved.IsResolved
             ? throw new InvalidOperationException("Managed registration credentials could not be resolved.")
             : JsonSerializer.Deserialize<RegistrationSecrets>(resolved.Value)
                 ?? throw new InvalidOperationException("Managed registration credentials are malformed.");
@@ -210,32 +194,10 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
 
     private async Task MarkRegisteredAsync(
         ManagedControlPlaneRegistration registration,
-        RegistrationSecrets secrets,
         CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
-        var binding = await secretBindingRepository.GetByKeyAndScopeAsync(
-            ManagedControlPlaneContract.CredentialSecretSettingKey,
-            SecretScope.Instance,
-            null,
-            cancellationToken)
-            ?? throw new InvalidOperationException("Managed registration credential binding is missing.");
-        var protectedSecrets = secretProtector.Protect(JsonSerializer.Serialize(
-            secrets with { ControlPlaneToEventSecret = null }));
-        binding.SwitchToInlineEncrypted(protectedSecrets.Ciphertext.ToArray(), protectedSecrets.Version);
-        binding.UpdatedAt = now;
-        registration.MarkRegistered(now);
-
-        await unitOfWork.ExecuteInTransactionAsync(async _ =>
-        {
-            await secretBindingRepository.Update(binding);
-            await registrationRepository.Update(registration);
-        }, cancellationToken);
-        await secretResolver.InvalidateAsync(
-            ManagedControlPlaneContract.CredentialSecretSettingKey,
-            SecretScope.Instance,
-            null,
-            cancellationToken);
+        registration.MarkRegistered(DateTime.UtcNow);
+        await registrationRepository.Update(registration);
     }
 
     private async Task RecordFailureAsync(

@@ -131,7 +131,7 @@ public sealed class SvixWebhookProviderHealthCheck(
 
         await using var scope = scopeFactory.CreateAsyncScope();
         var secretResolver = scope.ServiceProvider.GetRequiredService<ISecretResolver>();
-        ResolvedSecret? authToken;
+        SecretResolutionResult authToken;
         try
         {
             authToken = await secretResolver.ResolveAsync(authTokenSettingKey, tenantId: null, cancellationToken);
@@ -148,8 +148,9 @@ public sealed class SvixWebhookProviderHealthCheck(
                     data: data),
                 WebhookTelemetryOutcome.Unhealthy);
         }
-        var authTokenResolved = authToken is not null && !string.IsNullOrWhiteSpace(authToken.Value);
+        var authTokenResolved = authToken.IsResolved && !string.IsNullOrWhiteSpace(authToken.Value);
         data["authTokenResolved"] = authTokenResolved;
+        data["authTokenState"] = authToken.Status.ToString();
         if (!authTokenResolved)
         {
             return Report(
@@ -168,8 +169,8 @@ public sealed class SvixWebhookProviderHealthCheck(
                     operationalWebhookSettingKey,
                     tenantId: null,
                     cancellationToken);
-                data["operationalWebhookSecretResolved"] = operationalSecret is not null
-                    && !string.IsNullOrWhiteSpace(operationalSecret.Value);
+                data["operationalWebhookSecretResolved"] = operationalSecret.IsResolved;
+                data["operationalWebhookSecretState"] = operationalSecret.Status.ToString();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -178,6 +179,7 @@ public sealed class SvixWebhookProviderHealthCheck(
             catch (Exception)
             {
                 data["operationalWebhookSecretResolved"] = false;
+                data["operationalWebhookSecretState"] = SecretResolutionStatus.Unavailable.ToString();
             }
         }
 

@@ -195,35 +195,11 @@
                                       Immediate="true"
                                       Disabled="@ControlsDisabled" />
                     </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudTextField T="string" Label="Access Key ID"
-                                      Variant="Variant.Outlined"
-                                      Value="@Model.S3AccessKeyId"
-                                      ValueChanged="OnS3AccessKeyChanged"
-                                      Immediate="true"
-                                      Disabled="@(ControlsDisabled || _credentialSavePending)"
-                                      HelperText="@ConfiguredText(Model.S3AccessKeyConfigured, "access key")" />
-                    </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudTextField T="string" Label="Secret Access Key"
-                                      Variant="Variant.Outlined"
-                                      Value="@Model.S3SecretAccessKey"
-                                      ValueChanged="OnS3SecretAccessKeyChanged"
-                                      Immediate="true"
-                                      InputType="InputType.Password"
-                                      Disabled="@(ControlsDisabled || _credentialSavePending)"
-                                      HelperText="@ConfiguredText(Model.S3SecretAccessKeyConfigured, "secret key")" />
-                    </MudItem>
                 </MudGrid>
 
-                <MudButton Elevation="0"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Key"
-                           OnClick="UpdateS3CredentialsAsync"
-                           Disabled="@(!CanUpdateS3Credentials)">
-                    Update S3 credentials
-                </MudButton>
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    S3 credentials are managed by the selected external secret authority.
+                </MudAlert>
 
                 @if (Model.HasLink("provider-test"))
                 {
@@ -308,25 +284,17 @@
     private long _s3SaveVersion;
     private string? _saveStatusMessage;
     private string? _saveErrorMessage;
-    private bool _credentialSavePending;
     private bool _isTesting;
     private InstanceStorageProviderStatusDto? _testedProviderStatus;
     private bool _disposed;
 
     private bool ControlsDisabled => !Model.IsEditable();
-    private bool SavePending => _credentialSavePending
-        || _isTesting
+    private bool SavePending => _isTesting
         || _saveLock.CurrentCount == 0
         || _policyDebounceCts is not null
         || _s3DebounceCts is not null;
-    private bool CanUpdateS3Credentials => !ControlsDisabled
-        && !SavePending
-        && !string.IsNullOrWhiteSpace(Model.S3AccessKeyId)
-        && !string.IsNullOrWhiteSpace(Model.S3SecretAccessKey);
     private bool CanTestProvider => Model.HasLink("provider-test")
-        && !SavePending
-        && string.IsNullOrWhiteSpace(Model.S3AccessKeyId)
-        && string.IsNullOrWhiteSpace(Model.S3SecretAccessKey);
+        && !SavePending;
 
     private string Provider
     {
@@ -400,18 +368,6 @@
     private void OnS3PublicEndpointChanged(string value) => ChangeS3Text(value, updated => Model.S3PublicEndpoint = updated);
     private void OnS3BucketNameChanged(string value) => ChangeS3Text(value, updated => Model.S3BucketName = updated);
     private void OnS3RegionChanged(string value) => ChangeS3Text(value, updated => Model.S3Region = updated);
-    private void OnS3AccessKeyChanged(string? value)
-    {
-        if (ControlsDisabled || _credentialSavePending) return;
-        Model.S3AccessKeyId = value ?? string.Empty;
-    }
-
-    private void OnS3SecretAccessKeyChanged(string? value)
-    {
-        if (ControlsDisabled || _credentialSavePending) return;
-        Model.S3SecretAccessKey = value ?? string.Empty;
-    }
-
     private void ChangeS3Text(string? value, Action<string> apply)
     {
         if (ControlsDisabled) return;
@@ -457,60 +413,6 @@
 
     private async Task SaveS3Async(long version, CancellationToken cancellationToken) =>
         await SaveAsync(() => StorageSettingsService.PatchS3Async(Model, cancellationToken), version, cancellationToken);
-
-    private async Task UpdateS3CredentialsAsync()
-    {
-        if (!CanUpdateS3Credentials) return;
-
-        _credentialSavePending = true;
-        long version = BeginSave();
-        var lockTaken = false;
-        try
-        {
-            await _saveLock.WaitAsync(_lifetimeCts.Token);
-            lockTaken = true;
-            BaseCommandResponseOfGuid response = await StorageSettingsService.PatchS3CredentialsAsync(Model, _lifetimeCts.Token);
-            if (_disposed) return;
-
-            if (response.Success == true)
-            {
-                HalResourceOfTenantStorageSettingsDto redacted = await StorageSettingsService.GetAsync(_lifetimeCts.Token);
-                if (_disposed) return;
-
-                Model.S3AccessKeyId = string.Empty;
-                Model.S3SecretAccessKey = string.Empty;
-                Model.S3AccessKeyConfigured = redacted.S3AccessKeyConfigured;
-                Model.S3SecretAccessKeyConfigured = redacted.S3SecretAccessKeyConfigured;
-                if (version == _saveVersion)
-                {
-                    _saveStatusMessage = "S3 credentials updated.";
-                    _saveErrorMessage = null;
-                }
-            }
-            else if (version == _saveVersion)
-            {
-                _saveStatusMessage = null;
-                _saveErrorMessage = response.Message ?? "S3 credentials could not be updated.";
-            }
-        }
-        catch (OperationCanceledException) when (_lifetimeCts.IsCancellationRequested)
-        {
-        }
-        catch (Exception)
-        {
-            if (!_disposed && version == _saveVersion)
-            {
-                _saveStatusMessage = null;
-                _saveErrorMessage = "S3 credentials could not be updated.";
-            }
-        }
-        finally
-        {
-            if (lockTaken) _saveLock.Release();
-            _credentialSavePending = false;
-            if (!_disposed) await InvokeAsync(StateHasChanged);
-        }
-    }
 
     private async Task TestProviderAsync()
     {

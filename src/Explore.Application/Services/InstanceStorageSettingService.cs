@@ -19,7 +19,6 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
 {
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly IStoragePolicyResolver _storagePolicyResolver;
-    private readonly IS3ConfigResolver? _s3ConfigResolver;
     private readonly IStorageUsageCounterRepository _usageCounterRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -31,12 +30,10 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
         IStorageUsageCounterRepository usageCounterRepository,
         IStorageObjectRepository storageObjectRepository,
         IUnitOfWork unitOfWork,
-        BusinessMetrics metrics,
-        IS3ConfigResolver? s3ConfigResolver = null)
+        BusinessMetrics metrics)
     {
         _systemSettingRepository = systemSettingRepository;
         _storagePolicyResolver = storagePolicyResolver;
-        _s3ConfigResolver = s3ConfigResolver;
         _usageCounterRepository = usageCounterRepository;
         _storageObjectRepository = storageObjectRepository;
         _unitOfWork = unitOfWork;
@@ -54,14 +51,11 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
         var endpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Endpoint, cancellationToken);
         var publicEndpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.PublicEndpoint, cancellationToken);
         var bucketName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.BucketName, cancellationToken);
-        var accessKeyId = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.AccessKeyId, cancellationToken);
-        var secretAccessKey = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.SecretAccessKey, cancellationToken);
         var region = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Region, cancellationToken);
         var forcePathStyle = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.ForcePathStyle, cancellationToken);
         var uploadExpiration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes, cancellationToken);
 
         var policy = await _storagePolicyResolver.ResolveAsync(null, cancellationToken);
-        var envBackedS3Config = _s3ConfigResolver is null ? null : await _s3ConfigResolver.ResolveAsync(cancellationToken);
         var providerStatus = await TestProviderAsync(testWritePermissions: false, cancellationToken);
         var usage = await ReadUsageAsync(cancellationToken);
 
@@ -76,11 +70,7 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
             S3Endpoint = DeserializeString(endpoint?.Value, string.Empty),
             S3PublicEndpoint = DeserializeString(publicEndpoint?.Value, string.Empty),
             S3BucketName = DeserializeString(bucketName?.Value, string.Empty),
-            S3AccessKeyId = string.Empty,
-            S3SecretAccessKey = string.Empty,
-            S3AccessKeyConfigured = !string.IsNullOrWhiteSpace(DeserializeString(accessKeyId?.Value, string.Empty)) || !string.IsNullOrWhiteSpace(envBackedS3Config?.AccessKeyId),
-            S3SecretAccessKeyConfigured = !string.IsNullOrWhiteSpace(DeserializeString(secretAccessKey?.Value, string.Empty)) || !string.IsNullOrWhiteSpace(envBackedS3Config?.SecretAccessKey),
-            S3Region = DeserializeString(region?.Value, envBackedS3Config?.Region ?? "fsn1"),
+            S3Region = DeserializeString(region?.Value, "fsn1"),
             S3ForcePathStyle = DeserializeBoolean(forcePathStyle?.Value, true),
             S3UploadUrlExpirationMinutes = DeserializeInt(uploadExpiration?.Value, 60),
             EffectivePolicy = MapPolicy(policy),
@@ -133,20 +123,6 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
             await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.BucketName,
                 JsonSerializer.Serialize(settings.S3BucketName.Trim()), SettingValueType.String, false,
                 "ObjectStorage", 9, "S3 bucket name for object storage");
-
-            if (!string.IsNullOrWhiteSpace(settings.S3AccessKeyId))
-            {
-                await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.AccessKeyId,
-                    JsonSerializer.Serialize(settings.S3AccessKeyId.Trim()), SettingValueType.String, false,
-                    "ObjectStorage", 10, "S3 access key ID for authentication");
-            }
-
-            if (!string.IsNullOrWhiteSpace(settings.S3SecretAccessKey))
-            {
-                await UpsertSystemSettingAsync(InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
-                    JsonSerializer.Serialize(settings.S3SecretAccessKey.Trim()), SettingValueType.String, false,
-                    "ObjectStorage", 11, "S3 secret access key for authentication");
-            }
 
             await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Region,
                 JsonSerializer.Serialize(settings.S3Region.Trim()), SettingValueType.String, false,

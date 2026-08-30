@@ -182,7 +182,6 @@ public class SettingRegistryTests
             GovernanceSettingKeys.Analytics.Enabled,
             GovernanceSettingKeys.Analytics.ApiKey,
             GovernanceSettingKeys.Analytics.EndpointUrl,
-            GovernanceSettingKeys.Analytics.PersonalApiKey,
             GovernanceSettingKeys.PublicExperience.Mode,
             GovernanceSettingKeys.PublicExperience.EventCatalogLabel,
             GovernanceSettingKeys.PublicExperience.PrimaryOrganizationId,
@@ -199,7 +198,7 @@ public class SettingRegistryTests
     }
 
     [Test]
-    public async Task Registry_CoversAllInfrastructureSecretKeys()
+    public async Task Registry_ExcludesExternalSecretKeys()
     {
         var secretKeys = new[]
         {
@@ -211,32 +210,7 @@ public class SettingRegistryTests
             InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword,
         };
 
-        var missingKeys = secretKeys
-            .Where(key => !SettingRegistry.Contains(key))
-            .ToList();
-
-        await Assert.That(missingKeys.Count).IsEqualTo(0);
-    }
-
-    [Test]
-    public async Task Registry_SensitiveKeysAreFlagged()
-    {
-        var sensitiveKeys = new[]
-        {
-            InfrastructureSecretSettingKeys.Email.SmtpUsername,
-            InfrastructureSecretSettingKeys.Email.SmtpPassword,
-            InfrastructureSecretSettingKeys.Storage.AccessKeyId,
-            InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
-            InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
-            InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword,
-        };
-
-        foreach (var key in sensitiveKeys)
-        {
-            var definition = SettingRegistry.Get(key);
-            await Assert.That(definition).IsNotNull();
-            await Assert.That(definition!.IsSensitive).IsTrue();
-        }
+        await Assert.That(secretKeys.All(key => !SettingRegistry.Contains(key))).IsTrue();
     }
 
     [Test]

@@ -18,13 +18,13 @@ public sealed class InfisicalConfigurationProviderTests
         var bootstrapConfiguration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Infisical:Url"] = "https://secrets.example.test",
-                ["Infisical:ProjectId"] = "project-id",
-                ["Infisical:ClientId"] = "client-id",
-                ["Infisical:ClientSecret"] = clientSecret,
-                ["Infisical:Environment"] = "staging",
-                ["Infisical:Paths:0"] = "/api",
-                ["Infisical:Paths:1"] = "/keycloak",
+                ["SecretProvider:Infisical:Url"] = "https://secrets.example.test",
+                ["SecretProvider:Infisical:ProjectId"] = "project-id",
+                ["SecretProvider:Infisical:ClientId"] = "client-id",
+                ["SecretProvider:Infisical:ClientSecret"] = clientSecret,
+                ["SecretProvider:Infisical:Environment"] = "staging",
+                ["SecretProvider:Infisical:Paths:0"] = "/api",
+                ["SecretProvider:Infisical:Paths:1"] = "/keycloak",
             })
             .Build();
         var builder = new ConfigurationBuilder();
@@ -49,14 +49,14 @@ public sealed class InfisicalConfigurationProviderTests
         var bootstrapConfiguration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Infisical:ProjectId"] = "project-id",
+                ["SecretProvider:Infisical:ProjectId"] = "project-id",
             })
             .Build();
         var builder = new ConfigurationBuilder();
 
-        builder.AddInfisical(bootstrapConfiguration);
+        Action act = () => builder.AddInfisical(bootstrapConfiguration);
 
-        await Assert.That(builder.Sources).IsEmpty();
+        await Assert.That(act).Throws<InvalidOperationException>();
     }
 
     [Test]

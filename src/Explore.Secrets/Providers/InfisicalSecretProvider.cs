@@ -1,5 +1,5 @@
-// ABOUTME: Secret provider that retrieves secrets from Infisical.
-// Uses Universal Auth for machine identity authentication.
+// ABOUTME: Secret provider that retrieves secrets from Infisical using Universal Auth.
+// ABOUTME: Emits bounded status codes without provider diagnostics or source coordinates.
 
 using System.Collections.Concurrent;
 using Explore.Secrets.Abstractions;
@@ -56,10 +56,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
 
             ValidateConfiguration();
 
-            _logger.LogInformation(
-                "Initializing Infisical secret provider for project {ProjectId} in {Environment}",
-                _options.ProjectId,
-                _options.Environment);
+            _logger.LogInformation("secret_provider_initializing");
 
             var settings = new InfisicalSdkSettingsBuilder()
                 .WithHostUri(_options.Url ?? "https://app.infisical.com")
@@ -81,20 +78,16 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
             _lastSuccessfulRefresh = DateTime.UtcNow;
             _consecutiveFailures = 0;
 
-            _logger.LogInformation(
-                "Infisical secret provider initialized with {Count} secrets from {PathCount} paths",
-                _secretCache.Count,
-                _options.Paths.Count);
+            _logger.LogInformation("secret_provider_initialized");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _consecutiveFailures++;
-            _logger.LogError(ex, "Failed to initialize Infisical secret provider");
+            _logger.LogError("secret_provider_initialization_failed");
             throw SecretProviderException.Permanent(
-                $"Failed to initialize Infisical provider: {ex.Message}",
+                "secret_provider_initialization_failed",
                 SecretProviderType.Infisical,
-                "Initialize",
-                ex);
+                "Initialize");
         }
         finally
         {
@@ -109,7 +102,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
 
         if (_secretCache.TryGetValue(key, out var secret))
         {
-            _logger.LogDebug("Retrieved secret from cache: {Key}", RedactKey(key));
+            _logger.LogDebug("secret_cache_hit");
             return Task.FromResult<string?>(secret.Value);
         }
 
@@ -117,11 +110,11 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
         var infisicalKey = ConvertToInfisicalKey(key);
         if (_secretCache.TryGetValue(infisicalKey, out secret))
         {
-            _logger.LogDebug("Retrieved secret from cache using Infisical key: {Key}", RedactKey(key));
+            _logger.LogDebug("secret_cache_hit");
             return Task.FromResult<string?>(secret.Value);
         }
 
-        _logger.LogDebug("Secret not found in cache: {Key}", RedactKey(key));
+        _logger.LogDebug("secret_cache_miss");
         return Task.FromResult<string?>(null);
     }
 
@@ -164,10 +157,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
             }
         }
 
-        _logger.LogDebug(
-            "Retrieved {Count} secrets with prefix: {Prefix}",
-            results.Count,
-            RedactKey(pathPrefix));
+        _logger.LogDebug("secret_provider_read_completed count={Count}", results.Count);
 
         return Task.FromResult<IReadOnlyDictionary<string, string>>(results);
     }
@@ -197,15 +187,13 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
         {
             _consecutiveFailures++;
             _logger.LogWarning(
-                ex,
-                "Failed to refresh secrets from Infisical (consecutive failures: {Failures})",
+                "secret_provider_refresh_failed consecutive_failures={Failures}",
                 _consecutiveFailures);
 
             throw SecretProviderException.Transient(
-                $"Failed to refresh secrets: {ex.Message}",
+                "secret_provider_refresh_failed",
                 SecretProviderType.Infisical,
-                "Refresh",
-                ex);
+                "Refresh");
         }
         finally
         {
@@ -255,7 +243,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
 
                 if (secrets is null)
                 {
-                    _logger.LogWarning("No secrets returned from Infisical for path: {Path}", path);
+                    _logger.LogWarning("secret_provider_path_empty");
                     continue;
                 }
 
@@ -270,12 +258,12 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
                     newSecrets[canonicalKey] = secretValue;
                     newSecrets[secret.SecretKey] = secretValue; // Also store original key
 
-                    _logger.LogTrace("Loaded secret: {Key} from path: {Path}", RedactKey(canonicalKey), path);
+                    _logger.LogTrace("secret_provider_item_loaded");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogError(ex, "Failed to load secrets from path: {Path}", path);
+                _logger.LogError("secret_provider_path_unavailable");
                 throw;
             }
         }
@@ -366,15 +354,6 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
                 SecretProviderType.Infisical,
                 "Initialize");
         }
-    }
-
-    /// <summary>
-    /// Redacts a key for safe logging.
-    /// </summary>
-    private static string RedactKey(string key)
-    {
-        var separatorIndex = key.IndexOfAny([':', '_']);
-        return separatorIndex > 0 ? key[..(separatorIndex + 1)] + "***" : key;
     }
 
     private void EnsureInitialized()

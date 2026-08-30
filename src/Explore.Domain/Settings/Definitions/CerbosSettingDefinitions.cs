@@ -36,27 +36,9 @@ public static class CerbosSettingDefinitions
         Description: "Custom Cerbos Admin API endpoint URL",
         MaxScope: SettingScope.Tenant);
 
-    public static readonly SettingDefinition CustomAdminUsername = new(
-        Key: "cerbos.custom_admin_username",
-        ValueType: SettingValueType.String,
-        DefaultValue: "\"\"",
-        Category: "Cerbos",
-        Description: "Cerbos Admin API username",
-        MaxScope: SettingScope.Tenant,
-        IsSensitive: true);
-
-    public static readonly SettingDefinition CustomAdminPassword = new(
-        Key: "cerbos.custom_admin_password",
-        ValueType: SettingValueType.String,
-        DefaultValue: "\"\"",
-        Category: "Cerbos",
-        Description: "Cerbos Admin API password",
-        MaxScope: SettingScope.Tenant,
-        IsSensitive: true);
-
     public static IReadOnlyList<SettingDefinition> All =>
     [
         TenantCustomizationEnabled, Mode, CustomEndpoint,
-        CustomAdminEndpoint, CustomAdminUsername, CustomAdminPassword
+        CustomAdminEndpoint
     ];
 }

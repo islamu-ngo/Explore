@@ -1,24 +1,12 @@
-// ABOUTME: Contract for resolving SMTP configuration from the cascading settings engine.
-// Supports the SaaS multi-tenant hierarchy: Instance admin → Tenant admin.
+// ABOUTME: Contract for composing SMTP governance with externally resolved credentials.
+// ABOUTME: Supports tenant governance without database-backed credential overrides.
 
 using Explore.Application.Models;
 
 namespace Explore.Application.Contracts.Infrastructure;
 
 /// <summary>
-/// Resolves SMTP configuration from the cascading settings engine.
-/// <para>
-/// Resolution order:
-/// 1. Check if settings are locked at system level (instance admin enforces SaaS-wide SMTP)
-/// 2. Check for tenant-specific override (tenant brings their own SMTP)
-/// 3. Fall back to system default
-/// </para>
-/// <para>
-/// This enables flexible SaaS scenarios:
-/// - Instance admin locks SMTP → all tenants use the SaaS provider's server
-/// - Instance admin unlocks SMTP → tenants can override with their own credentials
-/// - Default SMTP is set at instance level → tenants use it unless they override
-/// </para>
+/// Resolves non-secret SMTP policy from governance and credentials from ISecretResolver.
 /// </summary>
 public interface ISmtpConfigResolver
 {

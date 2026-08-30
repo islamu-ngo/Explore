@@ -64,7 +64,7 @@ public class SecretProviderHealthCheckTests : IDisposable
         // Arrange
         _provider.GetHealthAsync(Arg.Any<CancellationToken>())
             .Returns(new ProviderHealthInfo(
-                ProviderType: SecretProviderType.Vault,
+                ProviderType: SecretProviderType.Environment,
                 IsHealthy: false,
                 ConsecutiveFailures: 2, // Less than 3 = degraded
                 LastSuccessfulRefresh: SecretsTestValues.UtcNow.AddMinutes(-5),
@@ -87,7 +87,7 @@ public class SecretProviderHealthCheckTests : IDisposable
         // Arrange
         _provider.GetHealthAsync(Arg.Any<CancellationToken>())
             .Returns(new ProviderHealthInfo(
-                ProviderType: SecretProviderType.AzureKeyVault,
+                ProviderType: SecretProviderType.Infisical,
                 IsHealthy: false,
                 ConsecutiveFailures: 5, // 3+ = unhealthy
                 LastSuccessfulRefresh: SecretsTestValues.UtcNow.AddMinutes(-30),
@@ -111,7 +111,7 @@ public class SecretProviderHealthCheckTests : IDisposable
         _provider.GetHealthAsync(Arg.Any<CancellationToken>())
             .Returns<Task<ProviderHealthInfo>>(x => throw new InvalidOperationException("Provider crashed"));
 
-        _provider.ProviderType.Returns(SecretProviderType.AwsSecretsManager);
+        _provider.ProviderType.Returns(SecretProviderType.Environment);
 
         // Act
         var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
@@ -150,7 +150,7 @@ public class SecretProviderHealthCheckTests : IDisposable
         // Arrange
         _provider.GetHealthAsync(Arg.Any<CancellationToken>())
             .Returns(new ProviderHealthInfo(
-                ProviderType: SecretProviderType.None,
+                ProviderType: SecretProviderType.Environment,
                 IsHealthy: true,
                 ConsecutiveFailures: 0,
                 LastSuccessfulRefresh: null,
@@ -173,7 +173,7 @@ public class SecretProviderHealthCheckTests : IDisposable
         var lastRefresh = SecretsTestValues.UtcNow.AddMinutes(-10);
         _provider.GetHealthAsync(Arg.Any<CancellationToken>())
             .Returns(new ProviderHealthInfo(
-                ProviderType: SecretProviderType.Vault,
+                ProviderType: SecretProviderType.Environment,
                 IsHealthy: true,
                 ConsecutiveFailures: 0,
                 LastSuccessfulRefresh: lastRefresh,

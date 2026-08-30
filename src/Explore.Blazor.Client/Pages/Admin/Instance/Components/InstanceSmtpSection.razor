@@ -1,5 +1,5 @@
 @* ABOUTME: Renders SMTP settings fields for Instance Admin Settings. *@
-@* ABOUTME: Includes host, auth, sender identity, TLS mode, timeout, and connection test action. *@
+@* ABOUTME: Keeps credentials in external authority while editing only non-secret delivery policy. *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
@@ -8,7 +8,7 @@
     <div class="settings-section-header">
         <MudText Typo="Typo.h5" Style="font-weight: 700;">SMTP Configuration</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-            Configure SMTP credentials used for transactional emails and notifications.
+            Configure non-secret SMTP delivery policy. Credentials come from the selected secret authority.
         </MudText>
     </div>
     <MudStack Spacing="3">
@@ -23,18 +23,9 @@
                          Min="1"
                          Max="65535" />
 
-        <MudTextField T="string" Label="Username"
-                      Variant="Variant.Outlined"
-                      Value="Username"
-                      ValueChanged="UsernameChanged"
-                      HelperText="@(Model.UsernameConfigured == true ? "A username is configured. Leave blank to keep it." : "No username is configured.")" />
-
-        <MudTextField T="string" Label="Password"
-                      Variant="Variant.Outlined"
-                      Value="Password"
-                      ValueChanged="PasswordChanged"
-                      InputType="InputType.Password"
-                      HelperText="@(Model.PasswordConfigured == true ? "A password is configured. Leave blank to keep it." : "No password is configured.")" />
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            SMTP username and password are managed by the selected external secret authority.
+        </MudAlert>
 
         <MudSelect T="string"
                    Label="Security Mode"
@@ -127,18 +118,6 @@
 
     [Parameter]
     public Func<bool, Task<bool>>? SaveLockAsync { get; set; }
-
-    [Parameter]
-    public string Username { get; set; } = string.Empty;
-
-    [Parameter]
-    public EventCallback<string> UsernameChanged { get; set; }
-
-    [Parameter]
-    public string Password { get; set; } = string.Empty;
-
-    [Parameter]
-    public EventCallback<string> PasswordChanged { get; set; }
 
     private bool _isTesting;
     private bool _lockSavePending;

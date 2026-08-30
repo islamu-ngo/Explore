@@ -26,7 +26,7 @@ public sealed class AdmissionScannerCapabilitySecretDefinitionTests
             .IsEqualTo("ADMISSIONS_SCANNER_CAPABILITY_HMAC_KEY");
         await Assert.That(definition.AllowedScopes).IsEquivalentTo([SecretScope.Instance]);
         await Assert.That(definition.AllowedSources).Contains(SecretSourceType.Infisical);
-        await Assert.That(definition.AllowedSources).Contains(SecretSourceType.InlineEncrypted);
+        await Assert.That(definition.AllowedSources).Contains(SecretSourceType.EnvironmentVariable);
         await Assert.That(definition.AllowedSources).Contains(SecretSourceType.EnvironmentVariable);
         await Assert.That(definition.IsBootstrapSecret).IsFalse();
     }

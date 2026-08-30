@@ -1,11 +1,13 @@
-// ABOUTME: Resolves Cerbos PDP configuration from the hierarchical settings engine.
-// Supports BYO (Bring Your Own) Cerbos per tenant and instance-managed scope isolation.
+// ABOUTME: Resolves Cerbos endpoints from governance and custom Admin credentials from secret authority.
+// ABOUTME: Keeps tenant authority server-derived and fails credentialed admin operations closed.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Secrets;
 using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Application.Utilities;
 using Explore.Domain.Constants;
+using Explore.Domain.Secrets;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -30,6 +32,7 @@ public class CerbosConfigResolver : ICerbosConfigResolver
     private readonly ICerbosClientFactory _clientFactory;
     private readonly CerbosSettings _instanceSettings;
     private readonly ILogger<CerbosConfigResolver> _logger;
+    private readonly ISecretResolver _secretResolver;
 
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
     private const string CacheKeyPrefix = "CerbosConfig:";
@@ -41,6 +44,7 @@ public class CerbosConfigResolver : ICerbosConfigResolver
         CerbosConfigCacheRegistry cacheRegistry,
         ICerbosClientFactory clientFactory,
         IOptions<CerbosSettings> instanceSettings,
+        ISecretResolver secretResolver,
         ILogger<CerbosConfigResolver> logger)
     {
         _resolver = resolver;
@@ -49,6 +53,7 @@ public class CerbosConfigResolver : ICerbosConfigResolver
         _cacheRegistry = cacheRegistry;
         _clientFactory = clientFactory;
         _instanceSettings = instanceSettings.Value;
+        _secretResolver = secretResolver;
         _logger = logger;
     }
 
@@ -127,10 +132,14 @@ public class CerbosConfigResolver : ICerbosConfigResolver
         // an explicitly configured Admin API target while runtime authorization still fails closed.
         var adminEndpoint = await _resolver.ResolveAsync<string>(
             GovernanceSettingKeys.Cerbos.CustomAdminEndpoint, ctx, cancellationToken);
-        var adminUsername = await _resolver.ResolveAsync<string>(
-            InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername, ctx, cancellationToken);
-        var adminPassword = await _resolver.ResolveAsync<string>(
-            InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword, ctx, cancellationToken);
+        var adminUsername = await ResolveOptionalSecretAsync(
+            SecretDefinitionRegistry.Keys.Cerbos.CustomAdminUsername,
+            tenantId,
+            cancellationToken);
+        var adminPassword = await ResolveOptionalSecretAsync(
+            SecretDefinitionRegistry.Keys.Cerbos.CustomAdminPassword,
+            tenantId,
+            cancellationToken);
 
         if (string.IsNullOrWhiteSpace(customEndpoint))
         {
@@ -173,6 +182,23 @@ public class CerbosConfigResolver : ICerbosConfigResolver
             Endpoint = GrpcEndpointNormalizer.Normalize(_instanceSettings.GrpcEndpoint),
             Mode = CerbosMode.Instance,
             IsInstanceDefault = true
+        };
+    }
+
+    private async Task<string?> ResolveOptionalSecretAsync(
+        string settingKey,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        SecretResolutionResult result = await _secretResolver.ResolveAsync(
+            settingKey,
+            tenantId,
+            cancellationToken);
+        return result.Status switch
+        {
+            SecretResolutionStatus.Resolved => result.Value,
+            SecretResolutionStatus.Unconfigured => null,
+            _ => throw new InvalidOperationException("cerbos_admin_secret_unavailable")
         };
     }
 

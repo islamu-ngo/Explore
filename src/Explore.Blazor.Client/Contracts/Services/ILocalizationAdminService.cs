@@ -18,8 +18,6 @@ public interface ILocalizationAdminService
     /// <summary>Tests connectivity to the currently configured TMS provider.</summary>
     Task<LocalizationAdminCommandResult> TestConnectionAsync(CancellationToken ct = default);
 
-    Task<LocalizationAdminCommandResult> RotateTmsApiKeyAsync(string apiKey, CancellationToken ct = default);
-
     /// <summary>
     /// Pulls translations from the currently configured TMS for <paramref name="languageCode"/>,
     /// persists them as an on-disk bundle, and invalidates the resolver cache.

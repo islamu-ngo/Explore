@@ -284,7 +284,6 @@ public static class GovernanceSettingKeys
         public const string TransportMode = "analytics.transport_mode";
         public const string ApiKey = "analytics.api_key";
         public const string EndpointUrl = "analytics.endpoint_url";
-        public const string PersonalApiKey = "analytics.personal_api_key";
 
         // Cookie consent & storage governance
         public const string CookieConsentEnabled = "analytics.cookie_consent_enabled";

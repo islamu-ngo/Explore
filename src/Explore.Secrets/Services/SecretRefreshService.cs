@@ -1,5 +1,5 @@
-// ABOUTME: Background service that periodically refreshes secrets from external providers.
-// Uses PeriodicTimer for efficient scheduling with jitter and exponential backoff.
+// ABOUTME: Background service that refreshes one replica's provider cache with bounded backoff.
+// ABOUTME: Emits value-free local acknowledgements and never claims deployment convergence.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Configuration;
@@ -22,6 +22,7 @@ public sealed class SecretRefreshService : BackgroundService
     private readonly SecretRefreshOptions _options;
     private readonly SecretRefreshMetrics _metrics;
     private readonly ILogger<SecretRefreshService> _logger;
+    private readonly string _replicaId;
 
     private int _consecutiveFailures;
     private DateTime? _lastSuccessfulRefresh;
@@ -31,13 +32,17 @@ public sealed class SecretRefreshService : BackgroundService
         IConfiguration configuration,
         IOptions<SecretRefreshOptions> options,
         SecretRefreshMetrics metrics,
-        ILogger<SecretRefreshService> logger)
+        ILogger<SecretRefreshService> logger,
+        string? replicaId = null)
     {
         _secretProvider = secretProvider;
         _configuration = configuration as IConfigurationRoot;
         _options = options.Value;
         _metrics = metrics;
         _logger = logger;
+        _replicaId = string.IsNullOrWhiteSpace(replicaId)
+            ? Environment.GetEnvironmentVariable("HOSTNAME") ?? Environment.MachineName
+            : replicaId;
     }
 
     /// <summary>
@@ -49,6 +54,8 @@ public sealed class SecretRefreshService : BackgroundService
     /// Gets the timestamp of the last successful refresh.
     /// </summary>
     public DateTime? LastSuccessfulRefresh => _lastSuccessfulRefresh;
+
+    public SecretRotationLocalAcknowledgement? LastAcknowledgement { get; private set; }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -117,6 +124,7 @@ public sealed class SecretRefreshService : BackgroundService
 
     private async Task RefreshSecretsAsync(CancellationToken cancellationToken)
     {
+        var attemptId = Guid.CreateVersion7();
         using var operation = _metrics.StartRefreshOperation(_secretProvider.ProviderType);
 
         try
@@ -136,31 +144,30 @@ public sealed class SecretRefreshService : BackgroundService
 
             _consecutiveFailures = 0;
             _lastSuccessfulRefresh = DateTime.UtcNow;
+            LastAcknowledgement = Acknowledge(attemptId, SecretRotationLocalStatus.Activated);
             operation.Complete();
 
-            _logger.LogInformation("Secret refresh completed successfully");
+            _logger.LogInformation("secret_refresh_local_activated");
         }
         catch (SecretProviderException ex) when (ex.IsTransient)
         {
             _consecutiveFailures++;
             operation.Fail("transient");
 
+            LastAcknowledgement = Acknowledge(attemptId, SecretRotationLocalStatus.Failed);
             _logger.LogWarning(
-                ex,
-                "Transient error during secret refresh (failures: {Failures}, operation: {Operation})",
-                _consecutiveFailures,
-                ex.Operation);
+                "secret_refresh_local_failed kind=transient failures={Failures}",
+                _consecutiveFailures);
         }
-        catch (SecretProviderException ex)
+        catch (SecretProviderException)
         {
             _consecutiveFailures++;
             operation.Fail("permanent");
 
+            LastAcknowledgement = Acknowledge(attemptId, SecretRotationLocalStatus.Failed);
             _logger.LogError(
-                ex,
-                "Permanent error during secret refresh (failures: {Failures}, operation: {Operation})",
-                _consecutiveFailures,
-                ex.Operation);
+                "secret_refresh_local_failed kind=permanent failures={Failures}",
+                _consecutiveFailures);
         }
         catch (OperationCanceledException)
         {
@@ -168,14 +175,14 @@ public sealed class SecretRefreshService : BackgroundService
             _logger.LogDebug("Secret refresh cancelled");
             throw;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             _consecutiveFailures++;
             operation.Fail("unknown");
+            LastAcknowledgement = Acknowledge(attemptId, SecretRotationLocalStatus.Failed);
 
             _logger.LogError(
-                ex,
-                "Unexpected error during secret refresh (failures: {Failures})",
+                "secret_refresh_local_failed kind=unknown failures={Failures}",
                 _consecutiveFailures);
         }
     }
@@ -208,4 +215,9 @@ public sealed class SecretRefreshService : BackgroundService
 
         await base.StopAsync(cancellationToken);
     }
+
+    private SecretRotationLocalAcknowledgement Acknowledge(
+        Guid attemptId,
+        SecretRotationLocalStatus status) =>
+        new(attemptId, _replicaId, "provider-cache", status, DateTimeOffset.UtcNow);
 }

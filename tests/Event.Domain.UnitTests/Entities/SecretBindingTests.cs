@@ -1,5 +1,5 @@
-// ABOUTME: Tests the SecretBinding entity factory methods + switch + validation invariants.
-// ABOUTME: Guards the control-plane model: registry lookup, bootstrap ban on InlineEncrypted, scope/scopeId consistency.
+// ABOUTME: Tests SecretBinding factories, source switches, validation, and scope invariants.
+// ABOUTME: Guards the metadata-only control-plane model and rejects all inline secret representation.
 
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
@@ -8,6 +8,16 @@ namespace Event.Domain.UnitTests.Entities;
 
 public class SecretBindingTests
 {
+    [Test]
+    public async Task DomainCannotRepresentInlineSecretValues()
+    {
+        await Assert.That(Enum.GetNames<SecretSourceType>()).DoesNotContain("InlineEncrypted");
+        await Assert.That(typeof(SecretBinding).GetProperty("InlineCiphertext")).IsNull();
+        await Assert.That(typeof(SecretBinding).GetProperty("InlineCiphertextVersion")).IsNull();
+        await Assert.That(typeof(SecretBinding).GetMethod("CreateInlineEncrypted")).IsNull();
+        await Assert.That(typeof(SecretBinding).GetMethod("SwitchToInlineEncrypted")).IsNull();
+    }
+
     [Test]
     public async Task SecretBinding_ImplementsAuditableEntityInterface()
     {
@@ -28,49 +38,6 @@ public class SecretBindingTests
             environment: "prod",
             path: "/whatever",
             key: "WHATEVER")).Throws<ArgumentException>();
-    }
-
-    // ==================================================================================
-    // Bootstrap secrets cannot use InlineEncrypted (Oracle invariant)
-    // ==================================================================================
-
-    [Test]
-    public async Task CreateInlineEncrypted_PostgresqlPassword_Throws()
-    {
-        // postgresql.password is bootstrap — cannot live in DB it unlocks.
-        await Assert.That(() => SecretBinding.CreateInlineEncrypted(
-            settingKey: SecretDefinitionRegistry.Keys.Postgresql.Password,
-            scope: SecretScope.Instance,
-            scopeId: null,
-            ciphertext: [1, 2, 3, 4],
-            ciphertextVersion: 1)).Throws<InvalidOperationException>();
-    }
-
-    [Test]
-    public async Task CreateInlineEncrypted_SetupSecret_Throws()
-    {
-        await Assert.That(() => SecretBinding.CreateInlineEncrypted(
-            settingKey: SecretDefinitionRegistry.Keys.SetupSecret,
-            scope: SecretScope.Instance,
-            scopeId: null,
-            ciphertext: [1, 2, 3, 4],
-            ciphertextVersion: 1)).Throws<InvalidOperationException>();
-    }
-
-    [Test]
-    public async Task CreateInlineEncrypted_SmtpPassword_Succeeds()
-    {
-        // SMTP is NOT bootstrap — InlineEncrypted allowed.
-        var binding = SecretBinding.CreateInlineEncrypted(
-            settingKey: SecretDefinitionRegistry.Keys.Smtp.Password,
-            scope: SecretScope.Instance,
-            scopeId: null,
-            ciphertext: [1, 2, 3, 4],
-            ciphertextVersion: 1);
-
-        await Assert.That(binding.SourceType).IsEqualTo(SecretSourceType.InlineEncrypted);
-        await Assert.That(binding.InlineCiphertext).IsNotNull();
-        await Assert.That(binding.InlineCiphertextVersion).IsEqualTo(1);
     }
 
     // ==================================================================================
@@ -132,8 +99,6 @@ public class SecretBindingTests
         await Assert.That(binding.InfisicalEnvironment).IsEqualTo("prod");
         await Assert.That(binding.InfisicalPath).IsEqualTo("/storage");
         await Assert.That(binding.InfisicalKey).IsEqualTo("STORAGE_S3_ACCESS_KEY_ID");
-        await Assert.That(binding.InlineCiphertext).IsNull();
-        await Assert.That(binding.InlineCiphertextVersion).IsNull();
         await Assert.That(binding.EnvironmentVariableName).IsNull();
     }
 
@@ -150,8 +115,6 @@ public class SecretBindingTests
         await Assert.That(binding.InfisicalEnvironment).IsNull();
         await Assert.That(binding.InfisicalPath).IsNull();
         await Assert.That(binding.InfisicalKey).IsNull();
-        await Assert.That(binding.InlineCiphertext).IsNull();
-        await Assert.That(binding.InlineCiphertextVersion).IsNull();
     }
 
     // ==================================================================================
@@ -233,23 +196,16 @@ public class SecretBindingTests
         await Assert.That(username.DefaultInfisicalPath).IsEqualTo("/cerbos");
         await Assert.That(username.DefaultEnvironmentVariableName).IsEqualTo("CERBOS_ADMIN_USERNAME");
         await Assert.That(username.IsBootstrapSecret).IsFalse();
-        await Assert.That(username.AllowedSources.Contains(SecretSourceType.InlineEncrypted)).IsTrue();
+        await Assert.That(username.AllowedSources).IsEquivalentTo([
+            SecretSourceType.Infisical,
+            SecretSourceType.EnvironmentVariable]);
 
         await Assert.That(password.DefaultInfisicalPath).IsEqualTo("/cerbos");
         await Assert.That(password.DefaultEnvironmentVariableName).IsEqualTo("CERBOS_ADMIN_PASSWORD");
         await Assert.That(password.IsBootstrapSecret).IsFalse();
-        await Assert.That(password.AllowedSources.Contains(SecretSourceType.InlineEncrypted)).IsTrue();
-    }
-
-    [Test]
-    public async Task Registry_AllBootstrapSecrets_DisallowInlineEncrypted()
-    {
-        foreach (var definition in SecretDefinitionRegistry.All.Values.Where(d => d.IsBootstrapSecret))
-        {
-            await Assert.That(definition.AllowedSources.Contains(SecretSourceType.InlineEncrypted))
-                .IsFalse()
-                .Because($"Bootstrap secret '{definition.Key}' must not allow InlineEncrypted (chicken-and-egg: DB it unlocks).");
-        }
+        await Assert.That(password.AllowedSources).IsEquivalentTo([
+            SecretSourceType.Infisical,
+            SecretSourceType.EnvironmentVariable]);
     }
 
     [Test]

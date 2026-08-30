@@ -58,6 +58,23 @@ public class SetupSecretProviderTests
     }
 
     [Test]
+    public async Task Constructor_MultiReplicaWithoutSharedExplicitAuthorityFailsClosed()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Hosting:ReplicaCount"] = "2",
+                ["SETUP_SECRET"] = string.Empty
+            })
+            .Build();
+
+        var action = () => new SetupSecretProvider(configuration, CreateScopeFactory(null));
+
+        await Assert.That(action).Throws<InvalidOperationException>()
+            .WithMessageContaining("deployment-owned authority");
+    }
+
+    [Test]
     public async Task InitializeAsync_EmptySecretWithFilePath_PersistsGeneratedSecretOnce()
     {
         using var directory = new TemporaryDirectory();
@@ -90,6 +107,34 @@ public class SetupSecretProviderTests
         {
             await Assert.That(File.GetUnixFileMode(secretPath))
                 .IsEqualTo(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+    }
+
+    [Test]
+    public async Task InitializeAsync_ConcurrentSingleAuthorityCreationConverges()
+    {
+        using var directory = new TemporaryDirectory();
+        var secretPath = Path.Combine(directory.Path, "setup-secret");
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Hosting:ReplicaCount"] = "1",
+                ["SETUP_SECRET_FILE"] = secretPath
+            })
+            .Build();
+        SetupSecretProvider[] providers = Enumerable.Range(0, 16)
+            .Select(_ => new SetupSecretProvider(
+                configuration,
+                CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false })))
+            .ToArray();
+
+        await Task.WhenAll(providers.Select(provider => provider.InitializeAsync()));
+        string generated = (await File.ReadAllTextAsync(secretPath)).Trim();
+
+        await Assert.That(providers.All(provider => provider.ValidateSecret(generated))).IsTrue();
+        foreach (SetupSecretProvider provider in providers)
+        {
+            provider.Dispose();
         }
     }
 

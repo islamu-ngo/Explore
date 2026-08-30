@@ -1,5 +1,5 @@
-// ABOUTME: Service implementation for managing instance SMTP configuration.
-// ABOUTME: Reads/writes SMTP settings from SystemSetting records using governance keys.
+// ABOUTME: Service implementation for non-secret instance SMTP governance.
+// ABOUTME: Credentials never enter SystemSetting records or application write contracts.
 
 using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
@@ -23,8 +23,6 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
     {
         var host = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.SmtpHost);
         var port = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.SmtpPort);
-        var username = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Email.SmtpUsername);
-        var password = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Email.SmtpPassword);
         var security = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.SmtpSecurity);
         var fromAddress = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.FromAddress);
         var fromName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.FromName);
@@ -35,10 +33,6 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
         {
             Host = DeserializeString(host?.Value, string.Empty),
             Port = DeserializeInt(port?.Value, 587),
-            Username = string.Empty,
-            Password = string.Empty,
-            UsernameConfigured = !string.IsNullOrWhiteSpace(DeserializeString(username?.Value, string.Empty)),
-            PasswordConfigured = !string.IsNullOrWhiteSpace(DeserializeString(password?.Value, string.Empty)),
             Security = DeserializeString(security?.Value, "StartTls"),
             FromAddress = DeserializeString(fromAddress?.Value, string.Empty),
             FromName = DeserializeString(fromName?.Value, string.Empty),
@@ -66,30 +60,6 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             "Email",
             2,
             "SMTP server port");
-
-        if (!string.IsNullOrWhiteSpace(settings.Username))
-        {
-            await UpsertSystemSettingAsync(
-                InfrastructureSecretSettingKeys.Email.SmtpUsername,
-                JsonSerializer.Serialize(settings.Username.Trim()),
-                SettingValueType.String,
-                false,
-                "Email",
-                3,
-                "SMTP username");
-        }
-
-        if (!string.IsNullOrWhiteSpace(settings.Password))
-        {
-            await UpsertSystemSettingAsync(
-                InfrastructureSecretSettingKeys.Email.SmtpPassword,
-                JsonSerializer.Serialize(settings.Password.Trim()),
-                SettingValueType.String,
-                false,
-                "Email",
-                4,
-                "SMTP password or app token");
-        }
 
         await UpsertSystemSettingAsync(
             GovernanceSettingKeys.Email.SmtpSecurity,

@@ -32,24 +32,31 @@ identity fallback.
 
 ## Runtime Configuration Sources
 
-The system uses three configuration layers:
+The system separates ordinary configuration from secret authority:
 
-1. static app settings (`appsettings*.json`, environment variables, user secrets),
-2. secret management (`AddInfisicalCompatibility` / `AddInfisicalBlazorCompatibility` + `AddSecretManagement`),
-3. governance settings in database (`SystemSetting` + `TenantSetting`).
+1. non-secret static settings (`appsettings*.json`, environment variables),
+2. one explicit secret authority (`Environment` or `Infisical`),
+3. non-secret governance settings in database (`SystemSetting` + `TenantSetting`).
 
 Secrets have an additional ownership contract that applies across the platform:
 
-- **Application-managed** secrets/settings are saved by ISLAMU Event and editable from setup/admin UI. Saved database/application values are the runtime authority.
-- **Deployment-managed** secrets/settings are controlled by environment variables, appsettings, or a configured secret provider. UI surfaces show read-only ownership badges and changes require provider refresh or redeploy/restart.
-- **Deployment bootstrap** values may prefill onboarding/admin forms when no application-managed value exists. If the operator modifies and saves them, the saved application setting is used from then on.
+- Application-managed database settings are non-secret only.
+- Deployment-managed secret values remain in explicit environment injection or Infisical. UI surfaces show only value-free ownership/status metadata.
+- Purpose-bound setup credentials are request/job scoped and never become persisted runtime secret values.
 
-Do not treat environment variables as absolute authority forever. In application-managed mode the precedence is: explicit saved application/database setting, then deployment bootstrap value, then default. In deployment-managed mode the selected external source is authoritative and application-managed DB values for that field are ignored.
+The selected secret authority is absolute for that deployment. Infisical failure
+never falls back to environment, appsettings, User Secrets, or database values.
+Runtime consumers receive explicit `Resolved`, `Unconfigured`, `Unavailable`,
+`Unauthorized`, or `Invalid` outcomes. Required capabilities fail closed for every
+non-resolved state; optional capabilities report a bounded disabled/degraded state
+without provider coordinates. Successful resolutions are cached process-locally for
+up to five minutes and invalidated on safe binding metadata changes; failures are
+not cached as successful absence. See [Secrets Management](SECRETS.md#runtime-resolution-outcomes-and-bounded-freshness).
 
 ## Configuration Manifest Contract
 
 The governed editor and operator contract is
-[`schemas/configuration-manifest-v1alpha1.schema.json`](../schemas/configuration-manifest-v1alpha1.schema.json).
+[`schemas/configuration-manifest-v1alpha2.schema.json`](../schemas/configuration-manifest-v1alpha2.schema.json).
 It uses JSON Schema Draft 2020-12 with immutable identifier
 `https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json`.
 That URL is currently an identifier, not a promise that a public endpoint serves the
@@ -77,12 +84,12 @@ Generate or verify the artifact with the repository-pinned .NET SDK:
 dotnet run \
   --project eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj \
   --configuration Release -- \
-  --write schemas/configuration-manifest-v1alpha1.schema.json
+  --write schemas/configuration-manifest-v1alpha2.schema.json
 
 dotnet run \
   --project eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj \
   --configuration Release -- \
-  --check schemas/configuration-manifest-v1alpha1.schema.json
+  --check schemas/configuration-manifest-v1alpha2.schema.json
 ```
 
 Never hand-edit the generated artifact. JSON Schema supports editor completion and
@@ -204,7 +211,7 @@ Commonly consumed sections in code:
 - `Bff:AdminHosts` and `Bff:AdminHostAllowedIpRanges`
 - `Storage:Local:*` (deployment-managed local filesystem storage)
 - `StorageReconciliation:*` (dry-run-first storage drift sweep; runs as the `storage-reconciliation` Quartz job)
-- `S3Settings:*` (fallback source for storage resolver)
+- `storage.*` governance settings (non-secret S3 endpoint, bucket, region, and URL policy)
 - `SecretProvider:*`
 - `SecretRefresh:*`
 - `EmailDispatchProcessor:*` (Basic Dispatch Mode background worker)
@@ -688,7 +695,10 @@ Local-first storage is deployment-managed. The filesystem root is bound from sta
 | `Storage:Local:RootPath` | provider default unless Compose/Aspire overrides | API-owned local storage root. Compose sets `/app/storage-data/local` and mounts it to `local_storage_data`; Aspire sets `storage-data/aspire-local` under the repository root. |
 | `Storage:Local:CreateRootIfMissing` | `true` in Compose/Aspire overrides | Allows startup/health/provider code to create the local root when the deployment grants write permission. |
 
-Optional S3-compatible storage still uses `S3Settings:*` as the runtime fallback source. Persisted `s3.*` and `s3.access_key_id`/`s3.secret_access_key` settings take precedence through `S3ConfigResolver` when S3-compatible storage is selected.
+Optional S3-compatible storage composes non-secret `storage.*` governance with
+`storage.s3.access_key_id` and `storage.s3.secret_access_key` resolved exclusively
+through the selected Environment or Infisical authority. There is no database or
+`IConfiguration` credential fallback.
 
 `StorageReconciliation:*` controls the API-hosted drift worker and is validated at startup:
 
@@ -1034,7 +1044,10 @@ Concurrency, optional-work hysteresis, and SMTP rate state are PostgreSQL author
 
 Rate deferral is not an SMTP attempt. It releases the processing lease as `RetryScheduled` with `smtp_rate_deferred`, schedules the row at the later exhausted-bucket refill boundary, and creates no attempt, receipt, or `provider_handoff_started` evidence. Consequently rate pressure cannot consume retry budget or dead-letter a message without provider I/O.
 
-SMTP settings still come from the `email.*` governance/secret keys resolved by `SmtpConfigResolver`; the dispatch processor does not introduce new SMTP credential keys. Local development defaults are seeded from `MAIL_SMTP_*`, then `SMTP_*` aliases, then local Mailpit values when the instance SMTP host is empty. In Aspire `FullLocal` mode, Development seeding refreshes those SMTP rows on each run so persistent local database volumes follow the current `--isolated` Mailpit SMTP port. RabbitMQ Dispatch Mode is not part of Basic mode.
+SMTP host, port, security, and sender identity come from `email.*` governance.
+`smtp.username` and `smtp.password` resolve exclusively through the selected
+external authority; no database credential keys or aliases exist. Local Mailpit may
+seed only non-secret delivery governance. RabbitMQ Dispatch Mode is not part of Basic mode.
 
 The `email-dispatch` readiness payload reports active non-paused `dueDispatchCount`, `retryScheduledCount`, `staleProcessingCount`, `unknownCount`, `parkedCount`, `deadLetteredCount`, `oldestActivePendingAgeSeconds`, persisted `optionalReminderDeferralActive`, and sanitized `globalPaused`/`globalSmtpRateLimitOverrideActive` booleans. A deliberate global pause degrades readiness while backlog counts stay visible. Future retries remain informational until due, and `Parked` remains visible without degrading readiness. Public health serialization redacts tenant/user/provider identifiers, addresses, subjects, bodies, event titles, reasons, actors, and evidence.
 
@@ -1217,7 +1230,7 @@ The per-tenant retention window still comes from the governance setting `ai_assi
 
 `Explore.Secrets` binds provider config from `SecretProvider`:
 
-- `SecretProvider:Provider` (default `None`)
+- `SecretProvider:Provider` (required: `Environment` or `Infisical`)
 - `SecretProvider:FailFast`
 - `SecretProvider:Infisical:*` (project/client credentials, paths, environment)
 
@@ -1293,8 +1306,9 @@ Storage naming rules:
 
 - local filesystem runtime settings use `Storage:Local:*`;
 - local filesystem Compose/environment overrides use `Storage__Local__*`;
-- optional S3-compatible runtime settings use `S3Settings:*`;
-- optional S3-compatible Compose/environment overrides use `S3Settings__*`;
+- optional S3-compatible governance uses `storage.*` settings;
+- optional S3-compatible credentials use canonical `STORAGE_S3_ACCESS_KEY_ID` and
+  `STORAGE_S3_SECRET_ACCESS_KEY` only when Environment authority is selected;
 - reconciliation worker settings use `StorageReconciliation:*` or `StorageReconciliation__*`;
 - Infisical/domain secret definitions use the `STORAGE_S3_*` key family under storage paths;
 - do not expose or persist deployment-managed local filesystem paths through tenant/admin setting keys.
@@ -1534,7 +1548,10 @@ Post-onboarding management note:
 
 Cache behavior uses hierarchical cache keys such as `HierSettings:System` and scope-specific keys for tenant, organization, group, and user settings. The resolver honors lock flags so a higher-scope locked value prevents lower-scope overrides.
 
-Runtime resolvers may add more specific precedence. For local storage, the deployment-managed `Storage:Local:*` section is the root authority. For S3, `S3ConfigResolver` reads database settings first (`s3.*` and `s3.access_key_id`/`s3.secret_access_key`) and falls back to `IConfiguration` (`S3Settings:*`). For SMTP, `SmtpConfigResolver` reads through the hierarchical settings resolver for governance and secret-bearing email keys.
+For local storage, deployment-managed `Storage:Local:*` is the root authority.
+`S3ConfigResolver` and `SmtpConfigResolver` read non-secret policy through the
+hierarchical settings resolver and read private credentials only through
+`ISecretResolver`. Authority failures fail the owning capability closed.
 
 ## Deployment Mode Configuration
 
@@ -1775,9 +1792,9 @@ container-visible path, and host mount directory; it never contains manifest
 business values and setting a path does not mount or copy a file.
 
 The canonical JSON Schema is
-`schemas/configuration-manifest-v1alpha1.schema.json`. Container images also
+`schemas/configuration-manifest-v1alpha2.schema.json`. Container images also
 publish it at
-`/app/schemas/configuration-manifest-v1alpha1.schema.json`. Schema validation
+`/app/schemas/configuration-manifest-v1alpha2.schema.json`. Schema validation
 is an authoring aid; startup always reruns the complete server-owned validator.
 
 ## Paid-event policy manifest boundary

@@ -148,7 +148,7 @@ public sealed class AtprotoOAuthClientFactory(
             SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks,
             tenantId: null,
             cancellationToken).ConfigureAwait(false);
-        return InfrastructureAtprotoKeyRing.Parse(resolved?.Value);
+        return InfrastructureAtprotoKeyRing.Parse(resolved.Value);
     }
 
     private bool TryGetIdentity(out AtprotoClientIdentity identity) =>

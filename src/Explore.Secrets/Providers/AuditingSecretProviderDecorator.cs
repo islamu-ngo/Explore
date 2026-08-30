@@ -1,6 +1,5 @@
-// ABOUTME: Decorator that wraps ISecretProvider to provide audit logging.
-// Logs secret access with correlation ID, user context, and redacted key names.
-// Integrates with Serilog structured logging via ILogger for OpenTelemetry export.
+// ABOUTME: Audits provider initialization and refresh mutations without recording reads.
+// ABOUTME: Emits bounded failure codes and never persists values, keys, paths, or provider diagnostics.
 
 using System.Diagnostics;
 using Explore.Secrets.Abstractions;
@@ -11,8 +10,7 @@ namespace Explore.Secrets.Providers;
 
 /// <summary>
 /// Decorator that adds audit logging to any <see cref="ISecretProvider"/>.
-/// Logs all secret operations with correlation ID and user context.
-/// Redacts sensitive key names to prevent credential exposure in logs.
+/// Logs provider-state mutations with correlation ID and user context.
 /// </summary>
 public sealed class AuditingSecretProviderDecorator : ISecretProvider
 {
@@ -21,22 +19,6 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
     private readonly IHttpContextAccessor? _httpContextAccessor;
     private readonly ILogger<AuditingSecretProviderDecorator> _logger;
     private readonly TimeProvider _clock;
-
-    /// <summary>
-    /// Keys containing these patterns will have their values redacted in logs.
-    /// </summary>
-    private static readonly string[] SensitiveKeyPatterns =
-    [
-        "password",
-        "secret",
-        "key",
-        "token",
-        "credential",
-        "connectionstring",
-        "apikey",
-        "accesskey",
-        "privatekey"
-    ];
 
     public AuditingSecretProviderDecorator(
         ISecretProvider inner,
@@ -89,7 +71,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
                 _inner.ProviderType,
                 correlationId);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             await _auditLogger.LogAsync(new SecretAuditEntry(
                 Operation: SecretOperation.InitializeFailed,
@@ -99,11 +81,11 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
                 UserId: userId,
                 CorrelationId: correlationId,
                 Success: false,
-                ErrorMessage: ex.Message),
+                ErrorMessage: "secret_provider_initialization_failed"),
                 cancellationToken);
 
-            _logger.LogError(ex,
-                "Secret provider {ProviderType} initialization failed. CorrelationId: {CorrelationId}",
+            _logger.LogError(
+                "secret_provider_initialization_failed provider={ProviderType} correlation_id={CorrelationId}",
                 _inner.ProviderType,
                 correlationId);
 
@@ -112,107 +94,18 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
     }
 
     /// <inheritdoc />
-    public async Task<string?> GetSecretAsync(string key, CancellationToken cancellationToken = default)
-    {
-        var correlationId = GetCorrelationId();
-        var userId = GetUserId();
-        var redactedKey = RedactKeyForLogging(key);
-
-        _logger.LogDebug(
-            "Retrieving secret {RedactedKey} from {ProviderType}. CorrelationId: {CorrelationId}, UserId: {UserId}",
-            redactedKey,
-            _inner.ProviderType,
-            correlationId,
-            userId ?? "system");
-
-        var result = await _inner.GetSecretAsync(key, cancellationToken);
-
-        await _auditLogger.LogAsync(new SecretAuditEntry(
-            Operation: SecretOperation.Access,
-            ProviderType: _inner.ProviderType,
-            KeyPattern: redactedKey,
-            Timestamp: _clock.GetUtcNow(),
-            UserId: userId,
-            CorrelationId: correlationId,
-            Success: result is not null),
-            cancellationToken);
-
-        if (result is null)
-        {
-            _logger.LogDebug(
-                "Secret {RedactedKey} not found in {ProviderType}. CorrelationId: {CorrelationId}",
-                redactedKey,
-                _inner.ProviderType,
-                correlationId);
-        }
-
-        return result;
-    }
+    public Task<string?> GetSecretAsync(string key, CancellationToken cancellationToken = default) =>
+        _inner.GetSecretAsync(key, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<SecretValue?> GetSecretWithMetadataAsync(string key, CancellationToken cancellationToken = default)
-    {
-        var correlationId = GetCorrelationId();
-        var userId = GetUserId();
-        var redactedKey = RedactKeyForLogging(key);
-
-        _logger.LogDebug(
-            "Retrieving secret with metadata {RedactedKey} from {ProviderType}. CorrelationId: {CorrelationId}, UserId: {UserId}",
-            redactedKey,
-            _inner.ProviderType,
-            correlationId,
-            userId ?? "system");
-
-        var result = await _inner.GetSecretWithMetadataAsync(key, cancellationToken);
-
-        await _auditLogger.LogAsync(new SecretAuditEntry(
-            Operation: SecretOperation.Access,
-            ProviderType: _inner.ProviderType,
-            KeyPattern: redactedKey,
-            Timestamp: _clock.GetUtcNow(),
-            UserId: userId,
-            CorrelationId: correlationId,
-            Success: result is not null),
-            cancellationToken);
-
-        return result;
-    }
+    public Task<SecretValue?> GetSecretWithMetadataAsync(string key, CancellationToken cancellationToken = default) =>
+        _inner.GetSecretWithMetadataAsync(key, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyDictionary<string, string>> GetSecretsByPathAsync(
+    public Task<IReadOnlyDictionary<string, string>> GetSecretsByPathAsync(
         string pathPrefix,
-        CancellationToken cancellationToken = default)
-    {
-        var correlationId = GetCorrelationId();
-        var userId = GetUserId();
-
-        _logger.LogDebug(
-            "Retrieving secrets by path {PathPrefix} from {ProviderType}. CorrelationId: {CorrelationId}, UserId: {UserId}",
-            pathPrefix,
-            _inner.ProviderType,
-            correlationId,
-            userId ?? "system");
-
-        var result = await _inner.GetSecretsByPathAsync(pathPrefix, cancellationToken);
-
-        await _auditLogger.LogAsync(new SecretAuditEntry(
-            Operation: SecretOperation.Access,
-            ProviderType: _inner.ProviderType,
-            KeyPattern: $"{pathPrefix}:* ({result.Count} secrets)",
-            Timestamp: _clock.GetUtcNow(),
-            UserId: userId,
-            CorrelationId: correlationId,
-            Success: true),
-            cancellationToken);
-
-        _logger.LogDebug(
-            "Retrieved {Count} secrets from path {PathPrefix}. CorrelationId: {CorrelationId}",
-            result.Count,
-            pathPrefix,
-            correlationId);
-
-        return result;
-    }
+        CancellationToken cancellationToken = default) =>
+        _inner.GetSecretsByPathAsync(pathPrefix, cancellationToken);
 
     /// <inheritdoc />
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
@@ -244,7 +137,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
                 _inner.ProviderType,
                 correlationId);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             await _auditLogger.LogAsync(new SecretAuditEntry(
                 Operation: SecretOperation.RefreshFailed,
@@ -254,11 +147,11 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
                 UserId: userId,
                 CorrelationId: correlationId,
                 Success: false,
-                ErrorMessage: ex.Message),
+                ErrorMessage: "secret_provider_refresh_failed"),
                 cancellationToken);
 
-            _logger.LogError(ex,
-                "Secret refresh failed for {ProviderType}. CorrelationId: {CorrelationId}",
+            _logger.LogError(
+                "secret_provider_refresh_failed provider={ProviderType} correlation_id={CorrelationId}",
                 _inner.ProviderType,
                 correlationId);
 
@@ -271,35 +164,6 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
     {
         // Health checks are not audited to avoid noise
         return _inner.GetHealthAsync(cancellationToken);
-    }
-
-    /// <summary>
-    /// Redacts sensitive parts of a key for safe logging.
-    /// Example: "Database:ConnectionString" -> "Database:***"
-    /// </summary>
-    private static string RedactKeyForLogging(string key)
-    {
-        if (string.IsNullOrEmpty(key))
-            return key;
-
-        // Split by common delimiters
-        var parts = key.Split([':', '_', '.']);
-
-        if (parts.Length == 0)
-            return key;
-
-        // Check if any part is sensitive
-        var lastPart = parts[^1];
-        var isSensitive = SensitiveKeyPatterns.Any(pattern =>
-            lastPart.Contains(pattern, StringComparison.OrdinalIgnoreCase));
-
-        if (isSensitive)
-        {
-            // Redact the last part
-            return string.Join(":", parts[..^1]) + ":***";
-        }
-
-        return key;
     }
 
     /// <summary>

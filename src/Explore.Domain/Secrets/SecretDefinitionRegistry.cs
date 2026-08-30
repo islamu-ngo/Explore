@@ -49,6 +49,57 @@ public static class SecretDefinitionRegistry
         TryGet(settingKey) ?? throw new KeyNotFoundException(
             $"Unknown secret key '{settingKey}'. Add a definition to SecretDefinitionRegistry first.");
 
+    public static SecretRotationProfile GetRotationProfile(string settingKey)
+    {
+        _ = GetRequired(settingKey);
+        var mode = settingKey switch
+        {
+            Keys.SetupSecret => SecretRotationMode.UnsupportedLive,
+            Keys.Promotions.CodeLookupHmacKey
+                or Keys.Admissions.CredentialLookupHmacKey
+                or Keys.Admissions.RecoveryCapabilityHmacKey
+                or Keys.Admissions.ScannerCapabilityHmacKey
+                or Keys.Atproto.OAuthClientPrivateJwks
+                or Keys.Atproto.SessionEncryptionKeyRing
+                or Keys.Atproto.SessionJwtPrivateJwks => SecretRotationMode.OverlapRollout,
+            _ => SecretRotationMode.CoordinatedRestart,
+        };
+
+        return mode switch
+        {
+            SecretRotationMode.OverlapRollout => new(
+                OwnerFor(settingKey),
+                mode,
+                CandidateValidationRequired: true,
+                EveryReplicaAcknowledgementRequired: true,
+                StaleReplicaAction: "drain-and-fail-closed",
+                RollbackAction: "reactivate-previous-credential",
+                RevocationGate: "after-all-replica-acknowledgements",
+                BreakGlassAction: "coordinated-restart"),
+            SecretRotationMode.CoordinatedRestart => new(
+                OwnerFor(settingKey),
+                mode,
+                CandidateValidationRequired: true,
+                EveryReplicaAcknowledgementRequired: true,
+                StaleReplicaAction: "stop-before-deadline",
+                RollbackAction: "restore-previous-deployment-value-and-restart",
+                RevocationGate: "after-restart-readiness-converges",
+                BreakGlassAction: "maintenance-restart"),
+            _ => new(
+                OwnerFor(settingKey),
+                mode,
+                CandidateValidationRequired: true,
+                EveryReplicaAcknowledgementRequired: false,
+                StaleReplicaAction: "not-applicable",
+                RollbackAction: "retain-current-value",
+                RevocationGate: "manual-operator-only",
+                BreakGlassAction: "replace-and-restart"),
+        };
+    }
+
+    private static string OwnerFor(string settingKey) =>
+        settingKey[..settingKey.IndexOf(".", StringComparison.Ordinal)];
+
     // -- Canonical keys (lower.dot.case, aligned with governance/key naming convention) --
 
     public static class Keys
@@ -131,6 +182,7 @@ public static class SecretDefinitionRegistry
         {
             public const string PosthogPublicKey = "analytics.posthog.public_key";
             public const string PosthogHost = "analytics.posthog.host";
+            public const string PersonalApiKey = "analytics.personal_api_key";
         }
 
         public static class Localization
@@ -181,11 +233,11 @@ public static class SecretDefinitionRegistry
 
     private static FrozenDictionary<string, SecretDefinition> BuildDefinitions()
     {
-        // Instance-only allowed source lists (no Inline for bootstrap secrets, see IsBootstrapSecret rule).
+        // Bootstrap also owns the core-vs-optional capability classification; all
+        // non-bootstrap definitions activate only their owning capability.
         var nonBootstrapSources = new[]
         {
             SecretSourceType.Infisical,
-            SecretSourceType.InlineEncrypted,
             SecretSourceType.EnvironmentVariable,
         };
         var bootstrapSources = new[]
@@ -618,7 +670,7 @@ public static class SecretDefinitionRegistry
                 DefaultInfisicalKey = "POSTGRESQL_PASSWORD",
                 DefaultEnvironmentVariableName = "POSTGRESQL_PASSWORD",
                 IsBootstrapSecret = true,
-                Description = "PostgreSQL password (NEVER InlineEncrypted - DB unlocks itself).",
+                Description = "PostgreSQL password used to open the primary database.",
             },
 
             // --- smtp/MAIL_SMTP_* ---
@@ -712,6 +764,17 @@ public static class SecretDefinitionRegistry
                 IsBootstrapSecret = false,
                 Description = "PostHog server URL.",
             },
+            new()
+            {
+                Key = Keys.Analytics.PersonalApiKey,
+                AllowedScopes = instanceOrTenant,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/analytics",
+                DefaultInfisicalKey = "ANALYTICS_PERSONAL_API_KEY",
+                DefaultEnvironmentVariableName = "ANALYTICS_PERSONAL_API_KEY",
+                IsBootstrapSecret = false,
+                Description = "Backend-only analytics administration API key.",
+            },
 
             // --- localization/LOCALIZATION_TMS_* ---
             new()
@@ -729,7 +792,7 @@ public static class SecretDefinitionRegistry
             {
                 Key = Keys.Management.ControlPlaneRegistrationCredentials,
                 AllowedScopes = instanceOnly,
-                AllowedSources = [SecretSourceType.InlineEncrypted],
+                AllowedSources = nonBootstrapSources,
                 DefaultInfisicalPath = "/api",
                 DefaultInfisicalKey = "CONTROL_PLANE_REGISTRATION_CREDENTIALS",
                 DefaultEnvironmentVariableName = "CONTROL_PLANE_REGISTRATION_CREDENTIALS",

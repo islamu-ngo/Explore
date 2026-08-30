@@ -2,6 +2,7 @@
 // ABOUTME: Verifies tenant-specific and all-tenant refresh paths after Cerbos settings change.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Secrets;
 using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;
@@ -20,6 +21,7 @@ public sealed class CerbosConfigResolverTests : IDisposable
     private readonly MemoryCache _cache;
     private readonly CerbosConfigCacheRegistry _cacheRegistry;
     private readonly ICerbosClientFactory _clientFactory;
+    private readonly ISecretResolver _secretResolver;
     private readonly ILogger<CerbosConfigResolver> _logger;
 
     private static readonly Guid TenantId = Guid.NewGuid();
@@ -31,6 +33,7 @@ public sealed class CerbosConfigResolverTests : IDisposable
         _cache = new MemoryCache(new MemoryCacheOptions());
         _cacheRegistry = new CerbosConfigCacheRegistry();
         _clientFactory = Substitute.For<ICerbosClientFactory>();
+        _secretResolver = Substitute.For<ISecretResolver>();
         _logger = Substitute.For<ILogger<CerbosConfigResolver>>();
 
         _tenantContext.TenantId.Returns(TenantId);
@@ -49,16 +52,8 @@ public sealed class CerbosConfigResolverTests : IDisposable
                 Arg.Any<SettingContext>(),
                 Arg.Any<CancellationToken>())
             .Returns(string.Empty);
-        _settingsResolver.ResolveAsync<string>(
-                InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
-                Arg.Any<SettingContext>(),
-                Arg.Any<CancellationToken>())
-            .Returns(string.Empty);
-        _settingsResolver.ResolveAsync<string>(
-                InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword,
-                Arg.Any<SettingContext>(),
-                Arg.Any<CancellationToken>())
-            .Returns(string.Empty);
+        _secretResolver.ResolveAsync(Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(SecretResolutionResult.Unconfigured);
     }
 
     public void Dispose()
@@ -232,6 +227,7 @@ public sealed class CerbosConfigResolverTests : IDisposable
             _cacheRegistry,
             _clientFactory,
             Options.Create(new CerbosSettings { GrpcEndpoint = instanceGrpcEndpoint ?? "http://localhost:3593" }),
+            _secretResolver,
             _logger);
     }
 }

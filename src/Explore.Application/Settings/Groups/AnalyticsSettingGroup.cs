@@ -18,7 +18,6 @@ public class AnalyticsSettingGroup : ISettingGroup
     public string TransportMode { get; private set; } = "direct";
     public string? EndpointUrl { get; private set; }
     public string? ApiKey { get; private set; }
-    public string? PersonalApiKey { get; private set; }
     public bool Enabled { get; private set; }
 
     // Cookie consent & storage governance
@@ -48,7 +47,6 @@ public class AnalyticsSettingGroup : ISettingGroup
         GovernanceSettingKeys.Analytics.TransportMode,
         GovernanceSettingKeys.Analytics.EndpointUrl,
         GovernanceSettingKeys.Analytics.ApiKey,
-        GovernanceSettingKeys.Analytics.PersonalApiKey,
         GovernanceSettingKeys.Analytics.Enabled,
         GovernanceSettingKeys.Analytics.CookieConsentEnabled,
         GovernanceSettingKeys.Analytics.DeclineBehavior,
@@ -74,8 +72,6 @@ public class AnalyticsSettingGroup : ISettingGroup
             EndpointUrl = SettingValueSerializer.DeserializeString(endpointUrl.Value);
         if (settings.TryGetValue(GovernanceSettingKeys.Analytics.ApiKey, out var apiKey))
             ApiKey = SettingValueSerializer.DeserializeString(apiKey.Value);
-        if (settings.TryGetValue(GovernanceSettingKeys.Analytics.PersonalApiKey, out var personalApiKey))
-            PersonalApiKey = SettingValueSerializer.DeserializeString(personalApiKey.Value);
         if (settings.TryGetValue(GovernanceSettingKeys.Analytics.Enabled, out var enabled))
             Enabled = SettingValueSerializer.Deserialize(enabled.Value, false);
 

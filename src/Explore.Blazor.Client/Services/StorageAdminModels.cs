@@ -66,10 +66,6 @@ public static class StorageAdminExtensions
         settings.S3Endpoint ??= string.Empty;
         settings.S3PublicEndpoint ??= string.Empty;
         settings.S3BucketName ??= string.Empty;
-        settings.S3AccessKeyId ??= string.Empty;
-        settings.S3SecretAccessKey ??= string.Empty;
-        settings.S3AccessKeyConfigured ??= false;
-        settings.S3SecretAccessKeyConfigured ??= false;
         settings.S3Region ??= string.Empty;
         settings.S3ForcePathStyle ??= true;
         settings.S3UploadUrlExpirationMinutes = PositiveOrDefault(settings.S3UploadUrlExpirationMinutes, 60);
@@ -91,10 +87,6 @@ public static class StorageAdminExtensions
         settings.S3Endpoint ??= string.Empty;
         settings.S3PublicEndpoint ??= string.Empty;
         settings.S3BucketName ??= string.Empty;
-        settings.S3AccessKeyId ??= string.Empty;
-        settings.S3SecretAccessKey ??= string.Empty;
-        settings.S3AccessKeyConfigured ??= false;
-        settings.S3SecretAccessKeyConfigured ??= false;
         settings.S3Region ??= string.Empty;
         settings.S3ForcePathStyle ??= true;
         settings.S3UploadUrlExpirationMinutes = PositiveOrDefault(settings.S3UploadUrlExpirationMinutes, 60);
@@ -139,8 +131,6 @@ public static class StorageAdminExtensions
                     Endpoint = NullIfWhiteSpace(settings.S3Endpoint),
                     PublicEndpoint = NullIfWhiteSpace(settings.S3PublicEndpoint),
                     BucketName = NullIfWhiteSpace(settings.S3BucketName),
-                    AccessKeyId = NullIfWhiteSpace(settings.S3AccessKeyId),
-                    SecretAccessKey = NullIfWhiteSpace(settings.S3SecretAccessKey),
                     Region = NullIfWhiteSpace(settings.S3Region),
                     ForcePathStyle = settings.S3ForcePathStyle,
                     UploadUrlExpirationMinutes = settings.S3UploadUrlExpirationMinutes
@@ -183,16 +173,6 @@ public static class StorageAdminExtensions
                     HasValue = true,
                     Value = settings.S3UploadUrlExpirationMinutes
                 }
-            }
-        };
-
-    public static PatchTenantStorageSettingsDto ToS3CredentialsPatchRequest(
-        this HalResourceOfTenantStorageSettingsDto settings) => new()
-        {
-            S3 = new PatchTenantStorageS3Dto
-            {
-                AccessKeyId = OptionalSecret(settings.S3AccessKeyId),
-                SecretAccessKey = OptionalSecret(settings.S3SecretAccessKey)
             }
         };
 
@@ -283,9 +263,6 @@ public static class StorageAdminExtensions
         HasValue = true,
         Value = value
     };
-
-    private static OptionalUpdateOfstring? OptionalSecret(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : OptionalString(value.Trim());
 
     private static long PositiveOrDefault(long? value, long fallback) => value is > 0 ? value.Value : fallback;
     private static int PositiveOrDefault(int? value, int fallback) => value is > 0 ? value.Value : fallback;

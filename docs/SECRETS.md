@@ -1,21 +1,26 @@
-ABOUTME: Secret management abstraction with pluggable providers and automatic refresh.
-ABOUTME: Covers Explore.Secrets library configuration, health monitoring, and encryption services.
+ABOUTME: Deployment-owned Environment and Infisical secret authority with fail-closed resolution.
+ABOUTME: Covers bootstrap selection, safe diagnostics, health monitoring, and rotation boundaries.
 
 # Secrets Management
 
-The `Explore.Secrets` library provides a provider-agnostic secret management layer with automatic refresh, health monitoring, and encryption.
+`Explore.Secrets` resolves values from exactly one deployment-selected authority.
+`Environment` and `Infisical` are supported; a missing, unsupported, or failed
+authority stops required startup work and never falls back to another source.
 
 ## Provider Types
 
 | Provider | Enum | Status | Auth Method |
 |---|---|---|---|
-| None | `0` | Implemented | Environment variables only |
+| Environment | `0` | Implemented | Explicit environment injection |
 | Infisical | `1` | Implemented | Universal Auth (ClientId + ClientSecret) |
 | Vault | `2` | Not implemented | AppRole (RoleId + SecretId) |
 | Azure Key Vault | `3` | Not implemented | DefaultAzureCredential |
 | AWS Secrets Manager | `4` | Not implemented | Region-based |
 
-When `Provider = None`, secrets come exclusively from environment variables and `appsettings.json`. No external provider is contacted.
+When `Provider = Environment`, secrets come exclusively from process environment
+variables. Appsettings and .NET User Secrets are not secret origins. When
+`Provider = Infisical`, only Infisical results are authoritative; lower environment
+values are ignored when Infisical is absent, unauthorized, invalid, or unavailable.
 
 Optional Photon address geocoding does not use an API key, password, token, or
 client credential. Its endpoint and bounded runtime settings are ordinary
@@ -33,7 +38,7 @@ phase; never reuse the Photon configuration surface.
 ```json
 {
   "SecretProvider": {
-    "Provider": "None",
+    "Provider": "Environment",
     "FailFast": true,
     "Infisical": {
       "Url": "",
@@ -47,37 +52,100 @@ phase; never reuse the Photon configuration surface.
 }
 ```
 
-### Local Development User Secrets
+### Local Development Environment
 
-For local development, the projects share a unified .NET User Secrets ID defined in the `.csproj` files: `event-shared-secrets`.
-
-Maintainers using Infisical-backed Aspire profiles must create or edit the shared `secrets.json` file:
-- **Linux/macOS:** `/home/{user}/.microsoft/usersecrets/event-shared-secrets/secrets.json`
-- **Windows:** `%APPDATA%\Microsoft\UserSecrets\event-shared-secrets\secrets.json`
-
-Add the bootstrap credentials for your maintainer developer environment inside this file:
-```json
-{
-  "Infisical:Url": "https://example.com",
-  "Infisical:ProjectId": "",
-  "Infisical:Environment": "dev",
-  "Infisical:ClientId": "",
-  "Infisical:ClientSecret": ""
-}
-```
+Copy `.env.example` to the ignored repository-root `.env`. Select exactly one
+`SECRET_PROVIDER`: `Environment` or `Infisical`. Environment mode reads the
+documented process variables. Infisical mode uses only `INFISICAL_*` secret-zero
+bootstrap credentials to load provider values; it does not treat those credentials
+or any lower environment value as a fallback secret source.
 
 > [!IMPORTANT]
-> The contributor default Aspire profile is `local-full`. It starts local infrastructure and sets `SecretProvider:Provider=None` for child projects, so contributors should not need Infisical credentials.
+> The contributor default Aspire profile is `local-full`. It starts local infrastructure and sets `SecretProvider:Provider=Environment` for child projects, so contributors should not need Infisical credentials.
 > Maintainer profiles intentionally differ:
-> - `local-core` starts local PostgreSQL/Redis but loads auth, policy, storage, webhook, and provider settings from Infisical/config.
-> - `local-lite` starts the migration worker, API, and Blazor, with all infrastructure loaded from Infisical/config.
-> If Infisical is not used in a maintainer profile, supply equivalent settings through environment variables or appsettings before running the AppHost.
+> - `local-core` starts local PostgreSQL/Redis and uses the authority selected in `.env` for external platform values.
+> - `local-lite` starts the migration worker, API, and Blazor and uses the same selected authority.
+> To switch away from Infisical, explicitly select `Environment` and inject every required value through `.env` or the deployment platform.
 
 ### Docker Compose Environment Files
 
 The repository root `.env.example` mirrors the supported Infisical folder layout and documents which service consumes each key. Copy it to `.env` for local Compose runs; `.env` is intentionally ignored by git.
 
 Docker Compose uses `.env` for interpolation before starting containers. The Compose file then passes explicit `environment:` entries into each service. Do not rely on a broad `env_file: .env` import because it would place unrelated secrets into containers that do not need them.
+
+### Authority Cutover And Immediate Recovery
+
+Set `SECRET_PROVIDER=Environment` or `SECRET_PROVIDER=Infisical` in `.env`; do
+not configure a secondary source. Validate and start each supported topology with
+the normal deployment-owned inputs:
+
+```bash
+# Split Compose
+docker compose config --quiet
+docker compose up -d
+
+# Aspire local profiles
+dotnet run --project src/Explore.AppHost/Explore.AppHost.csproj --launch-profile local-full
+
+# Direct Standalone image after building it
+docker run --env-file .env islamu-event-standalone
+```
+
+For an Infisical-backed Aspire profile, select `Infisical` in `.env` and provide
+the documented `INFISICAL_URL`, `INFISICAL_PROJECT_ID`, `INFISICAL_CLIENT_ID`,
+`INFISICAL_CLIENT_SECRET`, and `INFISICAL_ENV` inputs before starting the AppHost.
+For Environment mode, leave every `INFISICAL_*` value blank and provide each
+required consumer variable directly.
+
+If startup reports `secret_authority_unauthorized`, `secret_authority_invalid`, or
+`secret_authority_unavailable`, repair the selected deployment authority and restart
+the affected host. Do not print provider responses, run commands that echo secret
+values, or add a lower-source value to make startup appear healthy. A mode change is
+an explicit deployment cutover and requires a full restart of the affected replicas.
+
+| Secret authority | Direct Standalone | Aspire Standalone | Aspire Split | Single-replica Compose | Multi-replica Split |
+|---|---|---|---|---|---|
+| `Environment` | Supported with explicit process injection | Supported in `local-core`/`local-lite`; `local-full` explicitly forces local Environment mode | Supported in `local-core`/`local-lite`; `local-full` explicitly forces local Environment mode | Supported through the explicit Compose allow-list | Supported only when the deployment injects one consistent value set and one explicit shared setup secret into every replica |
+| `Infisical` | Supported with all five `INFISICAL_*` bootstrap inputs | Supported in `local-core`/`local-lite` | Supported in `local-core`/`local-lite` | Supported with the same explicit bootstrap inputs | Supported when every replica uses the same project/environment authority and deployment-owned setup secret |
+| Vault / Azure Key Vault / AWS Secrets Manager | Fail closed | Fail closed | Fail closed | Fail closed | Fail closed |
+
+`SECRET_PROVIDER` has no deployment default. Compose and direct hosts reject a
+missing or unsupported value. Environment mode clears Infisical bootstrap inputs;
+Infisical mode requires URL, project, client ID, client secret, and environment.
+Runtime and migrator processes receive only their role-specific database credentials.
+The checked-in Compose topology is single-replica; a multi-replica split deployment
+must additionally set `Hosting:ReplicaCount` and provide one shared `SETUP_SECRET`.
+
+### Runtime resolution outcomes and bounded freshness
+
+Runtime bindings return one of five value-free outcomes. `Resolved` is the only
+outcome carrying secret material in process memory. `Unconfigured` means the
+selected authority has no usable binding/value; `Unavailable` means the selected
+provider could not be reached; `Unauthorized` means provider authentication or
+authorization failed; and `Invalid` means the binding metadata or selected source
+is incompatible with the deployment authority. Provider failures never become a
+clean miss and never activate another source.
+
+Required capabilities fail closed for every non-`Resolved` outcome. Optional
+integrations remain disabled or degraded within that capability and expose only the
+bounded outcome in health data. Logs and metrics contain source/status categories,
+not values, exception bodies, environment names, paths, keys, project identifiers,
+binding identifiers, or tenant identifiers.
+
+Successful runtime resolutions use the existing process-local memory cache for at
+most five minutes. Cache identity includes setting scope, tenant/instance identity,
+qualifier, selected source, and binding identity. A safe binding metadata mutation
+invalidates the matching entries immediately; provider failures and authorization
+failures are never cached as successful absence. Each replica owns its cache, so a
+deployment must allow the five-minute freshness bound or restart/drain replicas
+after an urgent authority change. Rotation activation and replica acknowledgement
+are documented separately with their owning runbook.
+
+The `secret-resolver` readiness check reports `providerState=unconfigured` when
+Infisical is not configured, `available` after successful initialization, and a
+value-free degraded `unavailable` state when a configured provider cannot
+initialize. Follow [Secret provider unavailable](TROUBLESHOOTING.md#secret-provider-unavailable)
+without printing provider responses or testing with commands that echo credentials.
 
 ### Primary database credentials
 
@@ -129,12 +197,11 @@ file with filesystem permissions. Its nonsecret deployment fields are
 `/app/data/privacy_erasure_authority.db`), `WriterReplicaCount=1`, and
 `BusyTimeoutSeconds=30`.
 
-There are two Infisical paths through the application:
+There is one Infisical bootstrap schema: `SecretProvider:Provider=Infisical`
+selects the authority and `SecretProvider:Infisical:*` (projected from the documented
+`INFISICAL_*` deployment inputs) supplies secret-zero Universal Auth credentials.
 
-- `SecretProvider:Provider=Infisical` controls the `ISecretResolver` provider used by settings/secret-binding resolution.
-- Non-empty bare `Infisical:*` bootstrap values enable the startup compatibility loaders that fetch Infisical paths directly into `IConfiguration`.
-
-For full local runs, keep `SECRET_PROVIDER=None` and leave `INFISICAL_*` blank
+For full local runs, keep `SECRET_PROVIDER=Environment` and leave `INFISICAL_*` blank
 so local structured `DATABASE_*`, Keycloak, Cerbos, and storage values remain
 authoritative. Infisical loads primary database configuration directly from `/database`
 using `DATABASE_*` keys mapped to the structured `Database:*` configuration section.
@@ -208,9 +275,29 @@ Changing the HMAC key value in place under an existing qualifier invalidates loo
 
 | Key | Default | Purpose |
 |---|---|---|
-| `Enabled` | `false` | Enable automatic key rotation |
-| `GracePeriod` | `00:00:30` | Overlap window during rotation |
+| `Enabled` | `false` | Enable only the existing options-driven local HTTP/database rotation boundaries |
+| `GracePeriod` | `00:00:30` | Keep the previous local HTTP client available for in-flight work after validated activation |
 | `MaxConcurrentRotations` | `5` | Parallel rotation limit |
+
+Rotation is a deployment protocol, not a successful options callback. Each local
+HTTP/database activation returns a value-free acknowledgement containing an opaque
+attempt ID, replica ID, consumer category, bounded status, and timestamp. It never
+revokes provider credentials and never claims that other replicas converged.
+
+| Consumer family | Mode | Candidate/activation evidence | Revoke and rollback rule |
+|---|---|---|---|
+| Promotion/admission HMAC versions and ATProto key rings | `overlap-rollout` | Publish a distinct version, validate it, activate locally, and require the same attempt acknowledgement from every declared replica. | Keep the previous version valid until all replicas acknowledge and pinned data/sessions no longer reference it; reactivate the previous version on any failure. |
+| Generic options-driven HTTP clients | `overlap-rollout` (local boundary only) | Validate the candidate client before atomic local swap; deployment tooling must collect every replica acknowledgement. | Keep the old provider credential valid through the grace/acknowledgement window; rollback locally on validation failure. |
+| Primary database, Keycloak database, Stripe, Svix, SMTP, S3, analytics, localization, Cerbos, registration providers, Listmonk, AI, and managed control-plane credentials | `coordinated-restart` | Validate at the source, enter maintenance, restart every consumer with one deployment attempt, and require readiness from every replica. | Restore the previous deployment value and restart on failure; revoke only after all old processes are stopped and readiness converges. |
+| First-run setup secret | `unsupported-live` | Complete/lock setup or replace the deployment-owned value while setup remains active, then restart. | Never infer live rotation from a process callback; use the setup recovery contract. |
+
+For overlap providers, missing or rejected acknowledgement leaves the rollout
+`Pending`; at the declared stale deadline it becomes `FailedClosed`, and the stale
+replica must be drained before recovery. Providers without overlap require a
+coordinated maintenance restart. One healthy replica is never convergence evidence.
+Break glass means restoring the previous provider value and restarting/draining the
+declared replica set; it does not mean adding a fallback source or revoking the old
+credential early.
 
 ## Key Mapping
 
@@ -226,7 +313,7 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/keycloak/KEYCLOAK_BLAZOR_CLIENT_SECRET` | Blazor BFF `Keycloak:ClientSecret` and Compose `keycloak-init` client-secret sync input |
 | `/keycloak/KEYCLOAK_API_CLIENT_SECRET` | Optional legacy/future Compose `keycloak-init` sync input for deployments that intentionally make the API resource-server client confidential; not needed by the current bearer-only API audience client |
 | `/keycloak/KEYCLOAK_SMTP_*` | Optional Compose `keycloak-init` realm SMTP bootstrap. Leave `KEYCLOAK_SMTP_HOST` blank to preserve existing Keycloak SMTP settings; set host/port/from to apply deployment-managed SMTP. |
-| `/api/CONTROL_PLANE_REGISTRATION_CREDENTIALS` | `management.control_plane_registration_credentials` | Directional managed control-plane registration credentials. This key is instance-only and is bound only through managed inline-encrypted application secret storage, not as a startup bootstrap key. |
+| `/api/CONTROL_PLANE_REGISTRATION_CREDENTIALS` | `management.control_plane_registration_credentials` | Directional managed control-plane registration credentials. This key is instance-only and its binding stores only deployment-owned source metadata. |
 | `/api` or `/cerbos` + `AUTHORIZATION_PROVIDER` | Non-secret `Authorization:Provider` deployment intent. Blank keeps manual Local-first onboarding; `local` or `cerbos` makes the provider deployment-owned and skips the choice page. |
 | root or AI path + `AI_TOOL_PROPOSALS_ENABLED` | `AiProvider:ToolProposalsEnabled` |
 | `/database/DATABASE_PROVIDER` | Primary database provider: `PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`, `MySql` |
@@ -276,9 +363,9 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | `/api/VAPID_SUBJECT` | `WebPush:VapidSubject` |
 | `/api/VAPID_PUBLIC_KEY` | `WebPush:VapidPublicKey` |
 | `/api/VAPID_PRIVATE_KEY` | `WebPush:VapidPrivateKey` |
-| raw process environment + `STORAGE_S3_*` | consumed directly by the S3 resolver as a compatibility fallback |
+| Environment authority + `STORAGE_S3_*` | consumed by the S3 resolver only when Environment is selected |
 
-The three ATProto rows use the same uppercase name as their default environment-variable name as well as their Infisical key. Environment variable format otherwise uses double-underscore separators for .NET keys, for example `S3Settings__Endpoint`. Storage also accepts raw `STORAGE_S3_*` variables for deployment compatibility. Primary database bootstrap uses discrete structured fields rather than a single URL-form connection string; the PostgreSQL-only compatibility loader remains a fallback for older development inputs. SMTP secret-provider defaults use the user-facing `MAIL_SMTP_*` names; local Compose also exports older `SMTP_*` aliases for compatibility with development seeding. Registration-provider credentials are tenant-scoped secret definitions and must be bound through `SecretBinding`; use the bounded `Qualifier` field when several tenant connections need distinct API tokens or webhook secrets for the same key. Connection DTOs carry binding IDs only and never carry secret values.
+The three ATProto rows use the same uppercase name as their default environment-variable name as well as their Infisical key. Private credentials use only the canonical registry names; there are no .NET double-underscore credential aliases. Storage accepts the documented `STORAGE_S3_*` variables only under Environment authority. Primary database bootstrap uses discrete structured fields rather than a connection string. SMTP uses the canonical `MAIL_SMTP_*` names. Registration-provider credentials are tenant-scoped secret definitions and must be bound through `SecretBinding`; use the bounded `Qualifier` field when several tenant connections need distinct API tokens or webhook secrets for the same key. Browser contracts never carry secret values or provider source coordinates.
 
 Stripe secrets are instance-scoped, server-only, and optional while paid events are disabled. `Payments:Stripe:Mode=Test` requires a platform key beginning `sk_test_`; `Live` requires `sk_live_`. The Connect endpoint uses only the dedicated webhook binding, never the platform key or an outgoing-webhook secret. Rotate platform and endpoint secrets deliberately with the matching Stripe mode and endpoint configuration; retain no secret value in logs, support artifacts, browser DTOs, OpenAPI, or the DBML reference.
 
@@ -290,7 +377,7 @@ External-Keycloak setup bootstrap accepts a one-time Keycloak admin or service-a
 
 Paid-event hosted onboarding never returns payment platform secrets, provider account identifiers, or connection identifiers to the browser. `Payments:OrganizerDirect:ProviderCode` and `ConnectPlatformId` are server configuration, not secret values, but are still omitted from browser readiness contracts.
 
-Keycloak onboarding and administrator reads always redact the runtime client secret. They may expose only configured/source/editability metadata plus nonsecret authority and client ID. For application-managed ownership, a stored secret wins and a deployment value is only a bootstrap fallback. For deployment-managed ownership, the deployment source is authoritative, stored database secrets are ignored, and setup writes do not persist a replacement.
+Keycloak onboarding and administrator reads always redact the runtime client secret. They may expose only configured/source/editability metadata plus nonsecret authority and client ID. Secret values remain in the selected deployment authority; database rows contain only binding metadata, and setup writes do not persist a replacement value.
 
 Keycloak configuration writes and secret rotation derive ownership/configured state from authoritative server-side configuration instead of trusting client-supplied ownership metadata. A new confidential BFF client requires a secret; a blank write is valid only when the server already resolves an effective secret that was redacted from the browser read. Deployment-managed rotation returns operator action guidance and never writes a replacement to application storage.
 
@@ -305,7 +392,7 @@ The following values must never be persisted in browser storage, returned in bro
 - temporary provider administrator usernames/passwords or service-account credentials;
 - raw provider request or response bodies.
 
-An explicit `SETUP_SECRET` is always authoritative until onboarding completes and locks setup mode. When it is empty, the API writes one random secret to `SETUP_SECRET_FILE` with `0600` permissions and logs only a `docker cp` retrieval instruction. The platform default is `/tmp/islamu-event/setup-secret`; split Compose overrides it to the `setup_data` volume at `/app/bootstrap/setup-secret`, and standalone uses `/app/data/setup-secret`. The file is deleted when onboarding completes; setting a non-empty `SETUP_SECRET` also removes and overrides any generated file. After validation, the BFF keeps the secret in a protected, HttpOnly 30-minute rolling session and requires re-entry after 30 minutes without setup activity.
+An explicit `SETUP_SECRET` is always authoritative until onboarding completes and locks setup mode. When it is empty on a declared single replica, the API writes one random secret to `SETUP_SECRET_FILE` with `0600` permissions and logs only a `docker cp` retrieval instruction. `Hosting:ReplicaCount > 1` fails startup unless one deployment-owned explicit `SETUP_SECRET` is present. The platform default is `/tmp/islamu-event/setup-secret`; split Compose overrides it to the `setup_data` volume at `/app/bootstrap/setup-secret`, and standalone uses `/app/data/setup-secret`. The file is deleted when onboarding completes; setting a non-empty `SETUP_SECRET` also removes and overrides any generated file. After validation, the BFF keeps the secret in a protected, HttpOnly 30-minute rolling session and requires re-entry after 30 minutes without setup activity.
 
 Retrieve the generated fallback only from the Docker host, copy it to an owner-protected local file, enter it at `/setup`, then remove the local copy. Do not include the generated file in backups. An unmounted temp file may be replaced with a new secret after container recreation; the old value immediately stops working. Read-only containers and rolling or multi-replica API deployments must use an explicit shared `SETUP_SECRET` from their platform secret manager.
 
@@ -320,11 +407,13 @@ Secrets use a platform-wide ownership model so environment variables and externa
 
 | Mode | Source types | UI behavior | Runtime meaning |
 |---|---|---|---|
-| Application-managed | `InlineEncrypted` / application-stored encrypted values | Editable in ISLAMU Event admin/setup UI, masked after save | Saved application settings are the runtime authority; deployment values can only prefill/import until an operator saves. |
-| Deployment-managed | `EnvironmentVariable` or `Infisical` binding, or an explicit deployment-managed key list | Read-only badge in UI; rotate outside the app | Values are controlled by environment, appsettings, or the secret provider and changes require provider refresh or redeploy/restart. |
-| Deployment bootstrap | Environment/secret-provider value exists but no application-managed value has been saved | Editable prefill with “Bootstrap from Deployment” badge | The value helps first-run setup only. If modified and saved, application-managed settings take precedence from then on. |
+| Deployment-managed | `EnvironmentVariable` or `Infisical` metadata binding | Read-only configured/source/status metadata; rotate outside the app | Values remain in the selected deployment authority and changes require provider refresh or redeploy/restart. |
+| Request/job bootstrap | Purpose-bound credential supplied for one setup request or job | Never persisted or readable through status UI | The credential expires with the request/job and cannot become a runtime fallback. |
 
-Do not merge application-managed and deployment-managed values for the same field at runtime. The `SecretResolver` dispatches through one `SecretBinding` source and intentionally does not fallback to another source after a binding is selected. For settings still migrating to the shared secret control plane, the same contract applies at the DTO/UI boundary: deployment values may prefill forms, but they do not silently override saved application settings unless that key is explicitly marked deployment-managed.
+Application databases store only non-secret binding/reference metadata. The
+`SecretResolver` dispatches through one selected source and never falls back to a
+second source after absence or failure. APIs and UI expose only value-free status;
+they do not prefill, persist, or read back deployment secret values.
 
 Reporting provider secrets are server-side tenant settings. API keys and webhook secrets for Osprey and Coop must never be returned in browser DTOs, HAL links, health checks, logs, metrics, traces, screenshots, issue templates, or support bundles; browser/control-plane surfaces may expose only configured/source/editability metadata. Routing update actions are write-only for secret values: supplying a new Osprey/Coop API key or webhook secret rotates that tenant value, while omitting the field or sending it blank preserves the currently stored secret. There is no implicit clear-secret endpoint and no readback path; confirm rotation through configured flags, provider readiness checks, and secret-provider audit trails.
 

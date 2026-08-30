@@ -55,8 +55,8 @@ public sealed class ListmonkSyncService(
             outbox.TenantId,
             cancellationToken);
 
-        if (username is null || string.IsNullOrWhiteSpace(username.Value) ||
-            apiKey is null || string.IsNullOrWhiteSpace(apiKey.Value))
+        if (!username.IsResolved || string.IsNullOrWhiteSpace(username.Value) ||
+            !apiKey.IsResolved || string.IsNullOrWhiteSpace(apiKey.Value))
         {
             return ListmonkSyncResult.Retryable("Listmonk API credentials are not configured.");
         }

@@ -9,7 +9,7 @@ namespace Explore.Blazor.IntegrationTests.Extensions;
 public sealed class BlazorConfigurationExtensionsTests
 {
     [Test]
-    public async Task AddInfisicalBlazorCompatibility_WhenAspireApiReferenceExists_DoesNotMapInfisicalApiEndpoint()
+    public async Task AddSecretAuthorityConfiguration_WhenAspireApiReferenceExists_DoesNotMapProviderApiEndpoint()
     {
         var configurationBuilder = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -21,7 +21,7 @@ public sealed class BlazorConfigurationExtensionsTests
                 ["services:explore-api:https:0"] = "https://localhost:7211"
             });
 
-        configurationBuilder.AddInfisicalBlazorCompatibility();
+        configurationBuilder.AddSecretAuthorityConfiguration();
 
         var configuration = configurationBuilder.Build();
         await Assert.That(configuration["ExploreApi:BaseUrl"]).IsNull();
@@ -29,7 +29,7 @@ public sealed class BlazorConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalBlazorCompatibility_WhenAspireApiReferenceIsMissing_MapsInfisicalApiEndpoint()
+    public async Task AddSecretAuthorityConfiguration_WhenAspireApiReferenceIsMissing_MapsProviderApiEndpoint()
     {
         var configurationBuilder = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -40,7 +40,7 @@ public sealed class BlazorConfigurationExtensionsTests
                 ["Infisical:ClientSecret"] = ""
             });
 
-        configurationBuilder.AddInfisicalBlazorCompatibility();
+        configurationBuilder.AddSecretAuthorityConfiguration();
 
         var configuration = configurationBuilder.Build();
         await Assert.That(configuration["ExploreApi:BaseUrl"]).IsEqualTo("https://localhost:7039");

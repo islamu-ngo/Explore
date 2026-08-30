@@ -1,5 +1,5 @@
 // ABOUTME: Presence-aware write contracts for specialized instance settings resources.
-// ABOUTME: Keeps credentials and provider transitions grouped while preserving omitted configuration.
+// ABOUTME: Keeps non-secret provider transitions grouped while preserving omitted configuration.
 
 using Explore.Application.DTOs.Analytics;
 using Explore.Application.DTOs.Storage;
@@ -37,8 +37,6 @@ public sealed record InstanceS3ConfigurationWriteDto
     public string Endpoint { get; init; } = string.Empty;
     public string PublicEndpoint { get; init; } = string.Empty;
     public string BucketName { get; init; } = string.Empty;
-    public string AccessKeyId { get; init; } = string.Empty;
-    public string SecretAccessKey { get; init; } = string.Empty;
     public string Region { get; init; } = string.Empty;
     public bool ForcePathStyle { get; init; }
     public int UploadUrlExpirationMinutes { get; init; }
@@ -54,8 +52,6 @@ public sealed record InstanceSmtpConfigurationWriteDto
 {
     public string Host { get; init; } = string.Empty;
     public int Port { get; init; }
-    public string Username { get; init; } = string.Empty;
-    public string Password { get; init; } = string.Empty;
     public string Security { get; init; } = string.Empty;
     public string FromAddress { get; init; } = string.Empty;
     public string FromName { get; init; } = string.Empty;

@@ -14,7 +14,7 @@ namespace Explore.Secrets.Infrastructure;
 /// Thread-safe factory that lazily constructs, authenticates, and caches a single
 /// <see cref="InfisicalClient"/> instance for the lifetime of the application. Returns
 /// <c>null</c> when the Infisical integration is not configured, so callers can report
-/// a clean "not configured" state instead of a misleading authentication failure.
+/// a clean "not configured" state. Authentication failures throw for typed translation by the source.
 /// </summary>
 public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisposable
 {
@@ -49,7 +49,7 @@ public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisp
             {
                 _notConfiguredLogged = true;
                 _logger.LogInformation(
-                    "Infisical integration is not configured; IInfisicalClientFactory will return null.");
+                    "secret_provider_unconfigured");
             }
 
             return null;
@@ -83,9 +83,7 @@ public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisp
             _facade = new InfisicalClientFacade(client, _options.ProjectId!, _logger);
             _initialized = true;
 
-            _logger.LogInformation(
-                "Infisical client authenticated for project {ProjectId}.",
-                _options.ProjectId);
+            _logger.LogInformation("secret_provider_authenticated");
 
             return _facade;
         }
@@ -93,14 +91,14 @@ public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisp
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError(ex, "Failed to authenticate Infisical client.");
             // Reset so a later call can retry.
             _client = null;
             _facade = null;
             _initialized = false;
-            return null;
+            _logger.LogError("secret_provider_authentication_failed");
+            throw;
         }
         finally
         {

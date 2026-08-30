@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for SecretProviderFactory.
-// ABOUTME: Tests factory creation based on provider type configuration.
+// ABOUTME: Unit tests for the closed Environment/Infisical provider factory.
+// ABOUTME: Verifies explicit supported selection and unspecified fail-closed behavior.
 
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Configuration;
@@ -35,7 +35,7 @@ public class SecretProviderFactoryTests
         // Arrange
         var options = Options.Create(new SecretProviderOptions
         {
-            Provider = SecretProviderType.None
+            Provider = SecretProviderType.Environment
         });
         var factory = new SecretProviderFactory(options, _loggerFactory);
 
@@ -44,7 +44,7 @@ public class SecretProviderFactoryTests
 
         // Assert
         await Assert.That(provider).IsTypeOf<EnvironmentSecretProvider>();
-        await Assert.That(provider.ProviderType).IsEqualTo(SecretProviderType.None);
+        await Assert.That(provider.ProviderType).IsEqualTo(SecretProviderType.Environment);
     }
 
     [Test]
@@ -67,12 +67,12 @@ public class SecretProviderFactoryTests
     }
 
     [Test]
-    public async Task Create_WhenProviderTypeIsVault_ShouldThrowNotImplemented()
+    public async Task Create_WhenProviderTypeIsUnspecified_ShouldFailClosed()
     {
         // Arrange
         var options = Options.Create(new SecretProviderOptions
         {
-            Provider = SecretProviderType.Vault
+            Provider = SecretProviderType.Unspecified
         });
         var factory = new SecretProviderFactory(options, _loggerFactory);
 
@@ -81,42 +81,6 @@ public class SecretProviderFactoryTests
 
         // Assert
         var exception = await Assert.That(act).Throws<SecretProviderException>();
-        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.Vault);
-    }
-
-    [Test]
-    public async Task Create_WhenProviderTypeIsAzureKeyVault_ShouldThrowNotImplemented()
-    {
-        // Arrange
-        var options = Options.Create(new SecretProviderOptions
-        {
-            Provider = SecretProviderType.AzureKeyVault
-        });
-        var factory = new SecretProviderFactory(options, _loggerFactory);
-
-        // Act
-        var act = () => factory.Create();
-
-        // Assert
-        var exception = await Assert.That(act).Throws<SecretProviderException>();
-        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.AzureKeyVault);
-    }
-
-    [Test]
-    public async Task Create_WhenProviderTypeIsAwsSecretsManager_ShouldThrowNotImplemented()
-    {
-        // Arrange
-        var options = Options.Create(new SecretProviderOptions
-        {
-            Provider = SecretProviderType.AwsSecretsManager
-        });
-        var factory = new SecretProviderFactory(options, _loggerFactory);
-
-        // Act
-        var act = () => factory.Create();
-
-        // Assert
-        var exception = await Assert.That(act).Throws<SecretProviderException>();
-        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.AwsSecretsManager);
+        await Assert.That(exception!.ProviderType).IsEqualTo(SecretProviderType.Unspecified);
     }
 }

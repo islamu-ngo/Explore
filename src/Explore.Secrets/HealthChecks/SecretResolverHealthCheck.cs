@@ -47,35 +47,50 @@ public sealed class SecretResolverHealthCheck : IHealthCheck
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
+        PrimaryDatabaseConnectionOptions database;
         try
         {
-            var database = PrimaryDatabaseConfiguration.BindRuntime(_configuration);
+            database = PrimaryDatabaseConfiguration.BindRuntime(_configuration);
+        }
+#pragma warning disable CA1031 // Do not catch general exception types - boundary check
+        catch (Exception)
+#pragma warning restore CA1031
+        {
+            _logger.LogError("secret_configuration_invalid");
+            return HealthCheckResult.Unhealthy(
+                description: "Secret resolver configuration is unavailable.",
+                data: new Dictionary<string, object> { ["databaseConfiguration"] = "invalid" });
+        }
 
-            // Probe Infisical initialization. A null client means either "not configured"
-            // (healthy for minimal deployments) or "configured but auth failed" (degraded).
-            // Both states share the null return; the factory's own logs disambiguate.
-            _ = await _infisicalFactory.GetClientAsync(cancellationToken).ConfigureAwait(false);
-
-            // The resolver is always reachable (it's an in-process object), so presence here
-            // is enough. A deep probe against a known-bound key would be too intrusive.
+        try
+        {
+            var client = await _infisicalFactory.GetClientAsync(cancellationToken).ConfigureAwait(false);
             _ = _resolver;
-
             return HealthCheckResult.Healthy(
                 "Secret resolver pipeline is available.",
-                new Dictionary<string, object> { ["databaseProvider"] = database.Provider.ToString() });
+                new Dictionary<string, object>
+                {
+                    ["databaseProvider"] = database.Provider.ToString(),
+                    ["providerState"] = client is null ? "unconfigured" : "available"
+                });
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-#pragma warning disable CA1031 // Do not catch general exception types - boundary check
-        catch (Exception ex)
+#pragma warning disable CA1031 // Provider boundary exposes a bounded health state.
+        catch (Exception)
 #pragma warning restore CA1031
         {
-            _logger.LogError("Secret resolver health probe failed with {ExceptionType}.", ex.GetType().Name);
-            return HealthCheckResult.Unhealthy(
-                description: "Secret resolver configuration is unavailable.",
-                data: new Dictionary<string, object> { ["databaseConfiguration"] = "invalid" });
+            _logger.LogError("secret_provider_unavailable");
+            return HealthCheckResult.Degraded(
+                description: "Configured secret provider is unavailable.",
+                data: new Dictionary<string, object>
+                {
+                    ["databaseProvider"] = database.Provider.ToString(),
+                    ["providerState"] = "unavailable",
+                    ["remediation"] = "docs/TROUBLESHOOTING.md#secret-provider-unavailable"
+                });
         }
     }
 }

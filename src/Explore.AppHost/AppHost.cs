@@ -8,28 +8,26 @@ using DotNetEnv;
 using Explore.Application.Configuration;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Webhooks;
+using Explore.Secrets.Abstractions;
+using Explore.Secrets.Configuration;
 using Explore.Secrets.Database;
-using Explore.Secrets.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 const string DefaultControlPlaneHost = "admin.localhost";
 const int DefaultControlPlanePort = 7002;
-const string LocalCerbosAdminSecretHash =
-    "JDJiJDEwJGxUWWVjblZpTlRseTZvUkhQS3Y5U2VKZGpwZzdqWkFRcGV2S2Ezbkxpbk55bDF5U1dEZVkyCg==";
-
 var repositoryRoot = FindRepositoryRoot(Directory.GetCurrentDirectory());
 var dotenvPath = Path.Combine(repositoryRoot, ".env");
 if (File.Exists(dotenvPath))
     Env.NoClobber().Load(dotenvPath);
 var builder = DistributedApplication.CreateBuilder(args);
-builder.Configuration.AddInfisical(builder.Configuration, source =>
-{
-    source.Paths.Clear();
-    source.Paths.AddRange(["/keycloak", "/database", "/database/erasure", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/stripe", "/integrations/listmonk"]);
-    source.ThrowOnFirstLoadFailure = false;
-});
+IConfiguration secretAuthority = SecretAuthorityConfiguration.Build(
+    builder.Configuration,
+    "/keycloak", "/database", "/database/erasure", "/api", "/blazor",
+    "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/stripe",
+    "/integrations/listmonk");
+builder.Configuration.AddConfiguration(secretAuthority);
 var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
 var hostingTopology = ParseHostingTopology(builder.Configuration["Hosting:Topology"]);
 var configurationManifestMode = ConfiguredValue(
@@ -619,13 +617,13 @@ static LocalPlatformResources AddLocalPlatform(
             () => configuredKeycloakBlazorClientSecret,
             publishValueAsDefault: false,
             secret: true);
-    var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
+    var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", string.Empty);
     var cerbosAdminCredentialHash = ConfiguredValue(
         configuration,
         "CERBOS_ADMIN_PASSWORD_HASH",
-        LocalCerbosAdminSecretHash);
+        string.Empty);
     var cerbosPostgresUser = configuration["CERBOS_POSTGRES_USER"] ?? "cerbos_user";
-    var cerbosPostgresPassword = configuration["CERBOS_POSTGRES_PASSWORD"] ?? "cerbos_password";
+    var cerbosPostgresPassword = configuration["CERBOS_POSTGRES_PASSWORD"] ?? string.Empty;
     var cerbosPostgresDatabase = configuration["CERBOS_POSTGRES_DB"] ?? "cerbos";
     var crdb = builder.AddContainer("crdb", "cockroachdb/cockroach", "v24.1.1")
         .WithArgs("start-single-node", "--insecure")
@@ -645,8 +643,8 @@ static LocalPlatformResources AddLocalPlatform(
             "--spi-email-template-provider=freemarker-plus-mustache",
             "--spi-email-template-freemarker-plus-mustache-enabled=true",
             "--spi-theme-cache-themes=false")
-        .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", configuration["KEYCLOAK_ADMIN"] ?? "admin")
-        .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", configuration["KEYCLOAK_ADMIN_PASSWORD"] ?? "admin")
+        .WithEnvironment("KC_BOOTSTRAP_ADMIN_USERNAME", configuration["KEYCLOAK_ADMIN"] ?? string.Empty)
+        .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", configuration["KEYCLOAK_ADMIN_PASSWORD"] ?? string.Empty)
         .WithEnvironment("KC_DB", "cockroach")
         .WithEnvironment("KC_DB_URL_HOST", "crdb")
         .WithEnvironment("KC_DB_URL_PORT", "26257")
@@ -678,8 +676,8 @@ static LocalPlatformResources AddLocalPlatform(
         .WithArgs("/opt/keycloak/bin/keycloak-init.sh")
         .WithEnvironment("KEYCLOAK_INTERNAL_URL", BuildHttpUri("keycloak", 8080, "/auth"))
         .WithEnvironment("KEYCLOAK_REALM", configuration["KEYCLOAK_REALM"] ?? "ISLAMU")
-        .WithEnvironment("KEYCLOAK_ADMIN", configuration["KEYCLOAK_ADMIN"] ?? "admin")
-        .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", configuration["KEYCLOAK_ADMIN_PASSWORD"] ?? "admin")
+        .WithEnvironment("KEYCLOAK_ADMIN", configuration["KEYCLOAK_ADMIN"] ?? string.Empty)
+        .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", configuration["KEYCLOAK_ADMIN_PASSWORD"] ?? string.Empty)
         .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_ID", configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor")
         .WithEnvironment("KEYCLOAK_BLAZOR_CLIENT_SECRET", keycloakBlazorClientSecret)
         .WithEnvironment("KEYCLOAK_API_CLIENT_ID", configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api")
@@ -721,8 +719,8 @@ static LocalPlatformResources AddLocalPlatform(
 
     var minio = builder.AddContainer("minio", "minio/minio", "latest")
         .WithArgs("server", "/data", "--console-address", ":9001")
-        .WithEnvironment("MINIO_ROOT_USER", configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin")
-        .WithEnvironment("MINIO_ROOT_PASSWORD", configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin")
+        .WithEnvironment("MINIO_ROOT_USER", configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? string.Empty)
+        .WithEnvironment("MINIO_ROOT_PASSWORD", configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? string.Empty)
         .WithVolume("islamu-event-minio-data", "/data")
         .WithHttpEndpoint(targetPort: 9000, port: 9005, name: "api")
         .WithHttpEndpoint(targetPort: 9001, port: 9006, name: "console")
@@ -731,7 +729,7 @@ static LocalPlatformResources AddLocalPlatform(
         .WithEntrypoint("sh")
         .WithArgs(
             "-c",
-            $"mc alias set local {BuildHttpUri("minio", 9000)} {configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin"} {configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin"} && (mc mb -p local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} || mc ls local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} >/dev/null)")
+            $"mc alias set local {BuildHttpUri("minio", 9000)} {configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? string.Empty} {configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? string.Empty} && (mc mb -p local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} || mc ls local/{configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore"} >/dev/null)")
         .WaitFor(minio);
 
     IResourceBuilder<ContainerResource>? svixDb = null;
@@ -803,7 +801,7 @@ static LocalPlatformResources AddLocalPlatform(
             .WithEnvironment("WEBLATE_SITE_DOMAIN", configuration["WEBLATE_SITE_DOMAIN"] ?? "localhost:8083")
             .WithEnvironment("WEBLATE_ADMIN_NAME", configuration["WEBLATE_ADMIN_NAME"] ?? "Admin")
             .WithEnvironment("WEBLATE_ADMIN_EMAIL", configuration["WEBLATE_ADMIN_EMAIL"] ?? "admin@openislamu.org")
-            .WithEnvironment("WEBLATE_ADMIN_PASSWORD", configuration["WEBLATE_ADMIN_PASSWORD"] ?? "admin")
+            .WithEnvironment("WEBLATE_ADMIN_PASSWORD", configuration["WEBLATE_ADMIN_PASSWORD"] ?? string.Empty)
             .WithEnvironment("POSTGRES_HOST", "weblate-postgres")
             .WithEnvironment("POSTGRES_PORT", "5432")
             .WithEnvironment("POSTGRES_USER", configuration["WEBLATE_POSTGRES_USER"] ?? "weblate")
@@ -1211,12 +1209,12 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
     var keycloakApiClientId = configuration["KEYCLOAK_API_CLIENT_ID"] ?? "islamu-event-api";
     var keycloakBlazorClientId = configuration["KEYCLOAK_BLAZOR_CLIENT_ID"] ?? "islamu-event-blazor";
     var authorizationProvider = configuration["AUTHORIZATION_PROVIDER"] ?? "cerbos";
-    var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", "cerbos");
-    var cerbosAdminPassword = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD", "cerbos");
+    var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", string.Empty);
+    var cerbosAdminPassword = ConfiguredValue(configuration, "CERBOS_ADMIN_PASSWORD", string.Empty);
     var cerbosAdminCredentialHash = ConfiguredValue(
         configuration,
         "CERBOS_ADMIN_PASSWORD_HASH",
-        LocalCerbosAdminSecretHash);
+        string.Empty);
     var keycloakBaseUrl = EndpointUrl(resources.Keycloak, "http", "/auth");
     var keycloakAuthority = EndpointUrl(resources.Keycloak, "http", $"/auth/realms/{keycloakRealm}");
     var keycloakMetadataAddress = EndpointUrl(
@@ -1251,9 +1249,6 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("Cerbos__UseTls", "false")
         .WithEnvironment("Cerbos__PlaintextMode", "true")
         .WithEnvironment("Cerbos__AdminApi__Endpoints__0", cerbosHttpEndpoint)
-        .WithEnvironment("Cerbos__AdminApi__AdminUsername", cerbosAdminUsername)
-        .WithEnvironment("Cerbos__AdminApi__AdminPassword", cerbosAdminPassword)
-        .WithEnvironment("Cerbos__AdminUsername", cerbosAdminUsername)
         .WithEnvironment("Cerbos__AdminPasswordHash", cerbosAdminCredentialHash)
         .WithEnvironment("CERBOS_ADMIN_USERNAME", cerbosAdminUsername)
         .WithEnvironment("CERBOS_ADMIN_PASSWORD", cerbosAdminPassword)
@@ -1261,8 +1256,8 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("S3Settings__PublicEndpoint", minioApiEndpoint)
         .WithEnvironment("S3Settings__Region", configuration["STORAGE_S3_REGION"] ?? "us-east-1")
         .WithEnvironment("S3Settings__BucketName", configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore")
-        .WithEnvironment("S3Settings__AccessKeyId", configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? "minioadmin")
-        .WithEnvironment("S3Settings__SecretAccessKey", configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? "minioadmin")
+        .WithEnvironment("STORAGE_S3_ACCESS_KEY_ID", configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? string.Empty)
+        .WithEnvironment("STORAGE_S3_SECRET_ACCESS_KEY", configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? string.Empty)
         .WithEnvironment("Reporting__Enabled", configuration["REPORTING_ENABLED"] ?? "true")
         .WithEnvironment("Reporting__Mode", configuration["REPORTING_MODE"] ?? "LocalOnly")
         .WithEnvironment("Reporting__SyncReports", configuration["REPORTING_SYNC_REPORTS"] ?? "true")
@@ -1656,29 +1651,40 @@ static IResourceBuilder<ProjectResource> WithProfileSecretMode(
 
     return runMode == AspireRunMode.FullLocal
         ? project
-            .WithEnvironment("SecretProvider__Provider", "None")
-            .WithEnvironment("Infisical__ProjectId", "")
-            .WithEnvironment("Infisical__ClientId", "")
-            .WithEnvironment("Infisical__ClientSecret", "")
+            .WithEnvironment("SecretProvider__Provider", nameof(SecretProviderType.Environment))
+            .WithEnvironment("SecretProvider__Infisical__Url", "")
             .WithEnvironment("SecretProvider__Infisical__ProjectId", "")
             .WithEnvironment("SecretProvider__Infisical__ClientId", "")
             .WithEnvironment("SecretProvider__Infisical__ClientSecret", "")
-        : WithInfisicalBootstrapConfiguration(project, configuration);
+            .WithEnvironment("SecretProvider__Infisical__Environment", "")
+        : WithSelectedSecretAuthority(project, configuration);
 }
 
-static IResourceBuilder<ProjectResource> WithInfisicalBootstrapConfiguration(
+static IResourceBuilder<ProjectResource> WithSelectedSecretAuthority(
     IResourceBuilder<ProjectResource> project,
     IConfiguration configuration)
 {
+    SecretProviderType provider = SecretAuthorityConfiguration.GetRequiredProvider(configuration);
+    if (provider == SecretProviderType.Environment)
+    {
+        return project
+            .WithEnvironment("SecretProvider__Provider", provider.ToString())
+            .WithEnvironment("SecretProvider__Infisical__Url", "")
+            .WithEnvironment("SecretProvider__Infisical__ProjectId", "")
+            .WithEnvironment("SecretProvider__Infisical__ClientId", "")
+            .WithEnvironment("SecretProvider__Infisical__ClientSecret", "")
+            .WithEnvironment("SecretProvider__Infisical__Environment", "");
+    }
+
     var infisical = ReadInfisicalBootstrap(configuration);
 
     return project
-        .WithEnvironment("SecretProvider__Provider", "None")
-        .WithEnvironment("Infisical__Url", infisical.Url)
-        .WithEnvironment("Infisical__ProjectId", infisical.ProjectId)
-        .WithEnvironment("Infisical__ClientId", infisical.ClientId)
-        .WithEnvironment("Infisical__ClientSecret", infisical.ClientSecret)
-        .WithEnvironment("Infisical__Environment", infisical.Environment);
+        .WithEnvironment("SecretProvider__Provider", provider.ToString())
+        .WithEnvironment("SecretProvider__Infisical__Url", infisical.Url)
+        .WithEnvironment("SecretProvider__Infisical__ProjectId", infisical.ProjectId)
+        .WithEnvironment("SecretProvider__Infisical__ClientId", infisical.ClientId)
+        .WithEnvironment("SecretProvider__Infisical__ClientSecret", infisical.ClientSecret)
+        .WithEnvironment("SecretProvider__Infisical__Environment", infisical.Environment);
 }
 
 static InfisicalBootstrapSettings ReadInfisicalBootstrap(IConfiguration configuration)
@@ -1686,18 +1692,28 @@ static InfisicalBootstrapSettings ReadInfisicalBootstrap(IConfiguration configur
     static string Read(
         IConfiguration configuration,
         string key,
-        string? fallback = null) =>
-        configuration[$"Infisical:{key}"]
-        ?? configuration[$"SecretProvider:Infisical:{key}"]
-        ?? fallback
-        ?? string.Empty;
+        string? fallback = null)
+    {
+        string environmentKey = key switch
+        {
+            "ProjectId" => "INFISICAL_PROJECT_ID",
+            "ClientId" => "INFISICAL_CLIENT_ID",
+            "ClientSecret" => "INFISICAL_CLIENT_SECRET",
+            "Environment" => "INFISICAL_ENV",
+            _ => $"INFISICAL_{key.ToUpperInvariant()}",
+        };
+        return configuration[$"SecretProvider:Infisical:{key}"]
+            ?? configuration[environmentKey]
+            ?? fallback
+            ?? string.Empty;
+    }
 
     return new InfisicalBootstrapSettings(
-        Url: Read(configuration, "Url", "https://app.infisical.com"),
+        Url: Read(configuration, "Url"),
         ProjectId: Read(configuration, "ProjectId"),
         ClientId: Read(configuration, "ClientId"),
         ClientSecret: Read(configuration, "ClientSecret"),
-        Environment: Read(configuration, "Environment", "dev"));
+        Environment: Read(configuration, "Environment"));
 }
 
 static string FindRepositoryRoot(string startDirectory)

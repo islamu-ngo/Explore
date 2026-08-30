@@ -49,7 +49,7 @@ public class StructuredSecretAuditLoggerTests
         // Arrange
         var entry = new SecretAuditEntry(
             Operation: SecretOperation.RefreshFailed,
-            ProviderType: SecretProviderType.Vault,
+            ProviderType: SecretProviderType.Environment,
             KeyPattern: null,
             Timestamp: SecretsTestValues.UtcNow,
             Success: false,
@@ -73,7 +73,7 @@ public class StructuredSecretAuditLoggerTests
         // Arrange
         var entry = new SecretAuditEntry(
             Operation: SecretOperation.Initialize,
-            ProviderType: SecretProviderType.AzureKeyVault,
+            ProviderType: SecretProviderType.Infisical,
             KeyPattern: null,
             Timestamp: SecretsTestValues.UtcNow,
             Success: true);
@@ -111,7 +111,7 @@ public class StructuredSecretAuditLoggerTests
         // Arrange
         var entry = new SecretAuditEntry(
             Operation: SecretOperation.Initialize,
-            ProviderType: SecretProviderType.None,
+            ProviderType: SecretProviderType.Environment,
             KeyPattern: null,
             Timestamp: SecretsTestValues.UtcNow,
             Success: true);
@@ -127,7 +127,7 @@ public class StructuredSecretAuditLoggerTests
         // Arrange
         var entry = new SecretAuditEntry(
             Operation: SecretOperation.Access,
-            ProviderType: SecretProviderType.AwsSecretsManager,
+            ProviderType: SecretProviderType.Environment,
             KeyPattern: "App:***",
             Timestamp: SecretsTestValues.UtcNow,
             UserId: "user-123",

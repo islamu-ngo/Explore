@@ -26,10 +26,6 @@ public sealed class StorageSettingsSectionTests : IDisposable
                 Arg.Any<HalResourceOfTenantStorageSettingsDto>(),
                 Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfGuid { Success = true });
-        _storageService.PatchS3CredentialsAsync(
-                Arg.Any<HalResourceOfTenantStorageSettingsDto>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true });
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -214,96 +210,6 @@ public sealed class StorageSettingsSectionTests : IDisposable
     }
 
     [Test]
-    public async Task TenantStorageSection_UpdateCredentials_SendsPairOnce_ThenClearsAndReloadsFlags()
-    {
-        string? sentAccessKey = null;
-        string? sentSecret = null;
-        _storageService.PatchS3CredentialsAsync(
-                Arg.Do<HalResourceOfTenantStorageSettingsDto>(model =>
-                {
-                    sentAccessKey = model.S3AccessKeyId;
-                    sentSecret = model.S3SecretAccessKey;
-                }),
-                Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true });
-        _storageService.GetAsync(Arg.Any<CancellationToken>())
-            .Returns(new HalResourceOfTenantStorageSettingsDto
-            {
-                S3AccessKeyConfigured = true,
-                S3SecretAccessKeyConfigured = true
-            });
-        var model = CreateEditableTenantModel(StorageProviderOptions.S3Compatible);
-        var cut = RenderTenantStorage(model);
-        await cut.InvokeAsync(() => TextField(cut, "Access Key ID").Instance.ValueChanged.InvokeAsync("access-key"));
-        await cut.InvokeAsync(() => TextField(cut, "Secret Access Key").Instance.ValueChanged.InvokeAsync("secret-key"));
-
-        await cut.InvokeAsync(() => CredentialButton(cut).Click());
-
-        await Assert.That(sentAccessKey).IsEqualTo("access-key");
-        await Assert.That(sentSecret).IsEqualTo("secret-key");
-        await Assert.That(model.S3AccessKeyId).IsEmpty();
-        await Assert.That(model.S3SecretAccessKey).IsEmpty();
-        await Assert.That(model.S3AccessKeyConfigured).IsTrue();
-        await Assert.That(model.S3SecretAccessKeyConfigured).IsTrue();
-        await _storageService.Received(1).PatchS3CredentialsAsync(model, Arg.Any<CancellationToken>());
-        await _storageService.Received(1).GetAsync(Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task TenantStorageSection_UpdateCredentialsFailure_RetainsBothInputs()
-    {
-        _storageService.PatchS3CredentialsAsync(
-                Arg.Any<HalResourceOfTenantStorageSettingsDto>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "Credential update failed." });
-        var model = CreateEditableTenantModel(StorageProviderOptions.S3Compatible);
-        var cut = RenderTenantStorage(model);
-        await cut.InvokeAsync(() => TextField(cut, "Access Key ID").Instance.ValueChanged.InvokeAsync("access-key"));
-        await cut.InvokeAsync(() => TextField(cut, "Secret Access Key").Instance.ValueChanged.InvokeAsync("secret-key"));
-
-        await cut.InvokeAsync(() => CredentialButton(cut).Click());
-
-        await Assert.That(model.S3AccessKeyId).IsEqualTo("access-key");
-        await Assert.That(model.S3SecretAccessKey).IsEqualTo("secret-key");
-        await Assert.That(cut.Find("[role='alert']").TextContent).Contains("Credential update failed.");
-        await _storageService.DidNotReceive().GetAsync(Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task TenantStorageSection_CredentialAction_IsDisabledWithoutEditHal()
-    {
-        var lockedModel = CreateEditableTenantModel(StorageProviderOptions.S3Compatible);
-        lockedModel._links!.Clear();
-        lockedModel.S3AccessKeyId = "access-key";
-        lockedModel.S3SecretAccessKey = "secret-key";
-        var lockedCut = RenderTenantStorage(lockedModel);
-
-        await Assert.That(CredentialButton(lockedCut).HasAttribute("disabled")).IsTrue();
-        CredentialButton(lockedCut).Click();
-        await _storageService.DidNotReceive().PatchS3CredentialsAsync(lockedModel, Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task TenantStorageSection_CredentialAction_IsDisabledWhileSavePending()
-    {
-        var pendingSave = new TaskCompletionSource<BaseCommandResponseOfGuid>();
-        _storageService.PatchS3Async(
-                Arg.Any<HalResourceOfTenantStorageSettingsDto>(),
-                Arg.Any<CancellationToken>())
-            .Returns(pendingSave.Task);
-        var editableModel = CreateEditableTenantModel(StorageProviderOptions.S3Compatible);
-        editableModel.S3AccessKeyId = "access-key";
-        editableModel.S3SecretAccessKey = "secret-key";
-        var editableCut = RenderTenantStorage(editableModel);
-
-        Task save = editableCut.InvokeAsync(() => ForcePathSwitch(editableCut).Instance.ValueChanged.InvokeAsync(false));
-        editableCut.WaitForState(() => CredentialButton(editableCut).HasAttribute("disabled"));
-
-        pendingSave.SetResult(new BaseCommandResponseOfGuid { Success = true });
-        await save;
-    }
-
-    [Test]
     public async Task TenantStorageSection_FailedSaveRetainsLocalValue_AndNewestCompletionOwnsFeedback()
     {
         var firstRelease = new TaskCompletionSource<BaseCommandResponseOfGuid>();
@@ -419,10 +325,6 @@ public sealed class StorageSettingsSectionTests : IDisposable
     private static IRenderedComponent<MudSwitch<bool>> ForcePathSwitch(IRenderedComponent<DynamicComponent> cut) =>
         cut.FindComponents<MudSwitch<bool>>().Single(item =>
             item.Markup.Contains("Force path-style URLs", StringComparison.Ordinal));
-
-    private static AngleSharp.Dom.IElement CredentialButton(IRenderedComponent<DynamicComponent> cut) =>
-        cut.FindAll("button").Single(item =>
-            item.TextContent.Contains("Update S3 credentials", StringComparison.Ordinal));
 
     private static HalResourceOfTenantStorageSettingsDto CreateEditableTenantModel(
         string provider = StorageProviderOptions.Local) => new()

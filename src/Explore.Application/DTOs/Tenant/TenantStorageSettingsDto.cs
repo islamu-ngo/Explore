@@ -26,8 +26,6 @@ public sealed record PatchTenantStorageS3Dto
     public OptionalUpdate<string> Endpoint { get; init; }
     public OptionalUpdate<string> PublicEndpoint { get; init; }
     public OptionalUpdate<string> BucketName { get; init; }
-    public OptionalUpdate<string> AccessKeyId { get; init; }
-    public OptionalUpdate<string> SecretAccessKey { get; init; }
     public OptionalUpdate<string> Region { get; init; }
     public OptionalUpdate<bool> ForcePathStyle { get; init; }
     public OptionalUpdate<int> UploadUrlExpirationMinutes { get; init; }
@@ -54,10 +52,6 @@ public sealed record TenantStorageSettingsDto
     public string S3Endpoint { get; set; } = string.Empty;
     public string S3PublicEndpoint { get; set; } = string.Empty;
     public string S3BucketName { get; set; } = string.Empty;
-    public string S3AccessKeyId { get; set; } = string.Empty;
-    public string S3SecretAccessKey { get; set; } = string.Empty;
-    public bool S3AccessKeyConfigured { get; init; }
-    public bool S3SecretAccessKeyConfigured { get; init; }
     public string S3Region { get; set; } = string.Empty;
     public bool S3ForcePathStyle { get; set; } = true;
     public int S3UploadUrlExpirationMinutes { get; set; } = 60;

@@ -22,7 +22,6 @@ public class AnalyticsSettingGroupTests
             GovernanceSettingKeys.Analytics.TransportMode,
             GovernanceSettingKeys.Analytics.EndpointUrl,
             GovernanceSettingKeys.Analytics.ApiKey,
-            GovernanceSettingKeys.Analytics.PersonalApiKey,
             GovernanceSettingKeys.Analytics.Enabled,
             GovernanceSettingKeys.Analytics.CookieConsentEnabled,
             GovernanceSettingKeys.Analytics.DeclineBehavior,
@@ -49,7 +48,6 @@ public class AnalyticsSettingGroupTests
             [GovernanceSettingKeys.Analytics.TransportMode] = CreateResolvedSetting(GovernanceSettingKeys.Analytics.TransportMode, "\"relay\"", SettingValueType.String),
             [GovernanceSettingKeys.Analytics.EndpointUrl] = CreateResolvedSetting(GovernanceSettingKeys.Analytics.EndpointUrl, "\"https://analytics.example.com\"", SettingValueType.String),
             [GovernanceSettingKeys.Analytics.ApiKey] = CreateResolvedSetting(GovernanceSettingKeys.Analytics.ApiKey, "\"pk_live\"", SettingValueType.String),
-            [GovernanceSettingKeys.Analytics.PersonalApiKey] = CreateResolvedSetting(GovernanceSettingKeys.Analytics.PersonalApiKey, "\"ph_personal\"", SettingValueType.String),
             [GovernanceSettingKeys.Analytics.Enabled] = CreateResolvedSetting(GovernanceSettingKeys.Analytics.Enabled, "true", SettingValueType.Boolean)
         };
 
@@ -62,7 +60,6 @@ public class AnalyticsSettingGroupTests
         await Assert.That(group.TransportMode).IsEqualTo("relay");
         await Assert.That(group.EndpointUrl).IsEqualTo("https://analytics.example.com");
         await Assert.That(group.ApiKey).IsEqualTo("pk_live");
-        await Assert.That(group.PersonalApiKey).IsEqualTo("ph_personal");
         await Assert.That(group.Enabled).IsTrue();
     }
 
@@ -81,7 +78,6 @@ public class AnalyticsSettingGroupTests
 
         await Assert.That(group.EndpointUrl).IsNull();
         await Assert.That(group.ApiKey).IsNull();
-        await Assert.That(group.PersonalApiKey).IsNull();
         await Assert.That(group.Provider).IsEqualTo("none");
         await Assert.That(group.ConsentMode).IsEqualTo("pseudonymous");
         await Assert.That(group.TransportMode).IsEqualTo("direct");

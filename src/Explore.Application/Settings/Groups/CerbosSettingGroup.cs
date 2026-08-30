@@ -1,5 +1,5 @@
 // ABOUTME: Strongly-typed Cerbos authorization setting group resolved via batch loading.
-// ABOUTME: Keys align to CerbosSettingDefinitions and InfrastructureSecretSettingKeys.Cerbos.
+// ABOUTME: Contains governance-only Cerbos settings; Admin credentials use ISecretResolver.
 
 namespace Explore.Application.Settings.Groups;
 
@@ -15,17 +15,13 @@ public class CerbosSettingGroup : ISettingGroup
     public string Mode { get; private set; } = "shared";
     public string? CustomEndpoint { get; private set; }
     public string? CustomAdminEndpoint { get; private set; }
-    public string? CustomAdminUsername { get; private set; }
-    public string? CustomAdminPassword { get; private set; }
 
     public static IEnumerable<string> SettingKeys =>
     [
         GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled,
         GovernanceSettingKeys.Cerbos.Mode,
         GovernanceSettingKeys.Cerbos.CustomEndpoint,
-        GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
-        InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
-        InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword
+        GovernanceSettingKeys.Cerbos.CustomAdminEndpoint
     ];
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
@@ -38,9 +34,5 @@ public class CerbosSettingGroup : ISettingGroup
             CustomEndpoint = SettingValueSerializer.DeserializeString(ep.Value);
         if (settings.TryGetValue(GovernanceSettingKeys.Cerbos.CustomAdminEndpoint, out var aep))
             CustomAdminEndpoint = SettingValueSerializer.DeserializeString(aep.Value);
-        if (settings.TryGetValue(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername, out var user))
-            CustomAdminUsername = SettingValueSerializer.DeserializeString(user.Value);
-        if (settings.TryGetValue(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword, out var pass))
-            CustomAdminPassword = SettingValueSerializer.DeserializeString(pass.Value);
     }
 }

@@ -277,81 +277,6 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         await Assert.That(factory.RotationCount).IsEqualTo(0);
     }
 
-    // ==================== Redaction Tests ====================
-
-    [Test]
-    public async Task CurrentConnectionStringRedacted_ShouldRedactPassword()
-    {
-        // Arrange
-        string password = SecretsTestValues.CreateSecret();
-        var factory = CreateFactory(new DatabaseConnectionOptions
-        {
-            ConnectionString = SecretsTestValues.CreateConnectionString(password)
-        });
-
-        // Act
-        var redacted = factory.CurrentConnectionStringRedacted;
-
-        // Assert
-        await Assert.That(redacted).DoesNotContain(password);
-        await Assert.That(redacted).Contains("password=***");
-    }
-
-    [Test]
-    public async Task CurrentConnectionStringRedacted_WithPwd_ShouldRedact()
-    {
-        // Arrange
-        string password = SecretsTestValues.CreateSecret();
-        var factory = CreateFactory(new DatabaseConnectionOptions
-        {
-            ConnectionString =
-                $"Host=localhost;Database=test;Pwd={password}"
-        });
-
-        // Act
-        var redacted = factory.CurrentConnectionStringRedacted;
-
-        // Assert
-        await Assert.That(redacted).DoesNotContain(password);
-        await Assert.That(redacted).Contains("pwd=***");
-    }
-
-    [Test]
-    public async Task CurrentConnectionStringRedacted_WithNoPassword_ShouldNotChange()
-    {
-        // Arrange
-        var connectionString = "Host=localhost;Database=test;Port=5432";
-        var factory = CreateFactory(new DatabaseConnectionOptions
-        {
-            ConnectionString = connectionString
-        });
-
-        // Act
-        var redacted = factory.CurrentConnectionStringRedacted;
-
-        // Assert
-        await Assert.That(redacted).IsEqualTo(connectionString);
-    }
-
-    [Test]
-    public async Task CurrentConnectionStringRedacted_WithNullConnectionString_ShouldReturnNull()
-    {
-        // Arrange - Use reflection to set _currentConnectionString to null
-        var factory = CreateFactory(new DatabaseConnectionOptions { ConnectionString = "initial" });
-
-        // Force null via rotation callback with null
-        _onChangeCallback?.Invoke(
-            new DatabaseConnectionOptions { ConnectionString = null },
-            null);
-
-        // The factory should have the null connection string now, but redaction of null returns null
-        // Actually, the rotation won't happen because connection string is the same... let's test differently
-
-        // For this test, we need to check that null connection returns null from redaction
-        // We can't easily test this through the factory, so let's just verify behavior
-        await Assert.That(factory).IsNotNull();
-    }
-
     // ==================== ForceRefresh Tests ====================
 
     [Test]
@@ -362,11 +287,12 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         var initialCount = factory.RotationCount;
 
         // Act
-        factory.ForceRefresh();
+        SecretRotationLocalAcknowledgement acknowledgement = factory.ForceRefresh();
 
         // Assert - ForceRefresh reads current options which hasn't changed,
         // so it won't actually increment if connection string is the same
         await Assert.That(factory.RotationCount).IsEqualTo(initialCount);
+        await Assert.That(acknowledgement.Status).IsEqualTo(SecretRotationLocalStatus.Activated);
     }
 
     [Test]

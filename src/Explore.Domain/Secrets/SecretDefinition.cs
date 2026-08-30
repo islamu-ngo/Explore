@@ -9,8 +9,8 @@ namespace Explore.Domain.Secrets;
 /// Describes a secret-backed setting the platform understands.
 /// <para>
 /// The definition is the platform's policy record: it declares which scopes the secret may be bound at,
-/// which <see cref="SecretSourceType"/>s are valid, whether the secret is required during bootstrap
-/// (which forbids <see cref="SecretSourceType.InlineEncrypted"/>), and the default Infisical folder + key
+/// which <see cref="SecretSourceType"/>s are valid, whether the secret is required during bootstrap,
+/// and the default Infisical folder + key
 /// under the user-specified layout.
 /// </para>
 /// <para>
@@ -41,12 +41,43 @@ public sealed record SecretDefinition
 
     /// <summary>
     /// True when this secret is required before the persistence layer can start
-    /// (e.g. postgresql.password). Bootstrap secrets MAY NOT be bound as
-    /// <see cref="SecretSourceType.InlineEncrypted"/> — inline storage lives in the
-    /// DB the secret itself is meant to unlock.
+    /// (e.g. postgresql.password).
     /// </summary>
     public required bool IsBootstrapSecret { get; init; }
+
+    /// <summary>
+    /// Classifies whether platform startup requires this value or only the owning
+    /// optional capability does. Capability consumers may still fail their own work
+    /// closed when an optional-capability value is unavailable.
+    /// </summary>
+    public SecretRequirement Requirement => IsBootstrapSecret
+        ? SecretRequirement.Core
+        : SecretRequirement.OptionalCapability;
 
     /// <summary>Short human-readable description shown in the admin UI alongside state metadata.</summary>
     public required string Description { get; init; }
 }
+
+/// <summary>Activation policy owned by a secret definition.</summary>
+public enum SecretRequirement
+{
+    Core,
+    OptionalCapability,
+}
+
+public enum SecretRotationMode
+{
+    OverlapRollout,
+    CoordinatedRestart,
+    UnsupportedLive,
+}
+
+public sealed record SecretRotationProfile(
+    string Owner,
+    SecretRotationMode Mode,
+    bool CandidateValidationRequired,
+    bool EveryReplicaAcknowledgementRequired,
+    string StaleReplicaAction,
+    string RollbackAction,
+    string RevocationGate,
+    string BreakGlassAction);

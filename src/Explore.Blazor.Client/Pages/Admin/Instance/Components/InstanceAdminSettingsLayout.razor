@@ -164,11 +164,7 @@
                         else if (_currentSection == "smtp")
                         {
                             <InstanceSmtpSection Model="_smtpModel" OnboardingService="InstanceOnboardingService"
-                                                Username="_smtpUsername"
-                                                UsernameChanged="@(value => _smtpUsername = value)"
-                                                Password="_smtpPassword"
-                                                 PasswordChanged="@(value => _smtpPassword = value)"
-                                                 IsSingleTenant="IsSingleTenantMode"
+                                                IsSingleTenant="IsSingleTenantMode"
                                                 LockForTenants="_delegation.LockTenantSmtp == true"
                                                 SaveLockAsync="SaveSmtpLockAsync" />
                         }
@@ -264,7 +260,8 @@
                         }
                         else if (_currentSection == "configuration-manifest")
                         {
-                            <ConfigurationManifestExportSection />
+                            <Explore.Blazor.Client.Pages.Admin.Components.ConfigurationPortabilityWorkspace
+                                Scope="ConfigurationImportScope.Instance" />
                         }
                         else if (_currentSection == "scheduler" && _schedulerAvailable)
                         {
@@ -353,8 +350,6 @@
     // Infrastructure models
     private HalResourceOfInstanceStorageSettingsDto _storageModel = new();
     private InstanceSmtpSettingsDto _smtpModel = new();
-    private string _smtpUsername = string.Empty;
-    private string _smtpPassword = string.Empty;
     private AuthProviderConfigurationDto _authProviderModel = new();
     private AuthorizationProviderConfigurationDto _authorizationProviderModel = new();
     private TenantPolicySettingsDto _tenantModel = new();
@@ -656,8 +651,6 @@
                 {
                     Host = _smtpModel.Host,
                     Port = _smtpModel.Port,
-                    Username = _smtpUsername,
-                    Password = _smtpPassword,
                     Security = _smtpModel.Security,
                     FromAddress = _smtpModel.FromAddress,
                     FromName = _smtpModel.FromName,
@@ -707,8 +700,6 @@
         }
         else if (_currentSection == "smtp")
         {
-            _smtpUsername = string.Empty;
-            _smtpPassword = string.Empty;
             _smtpModel = await InstanceOnboardingService.GetSmtpSettingsAsync();
         }
 

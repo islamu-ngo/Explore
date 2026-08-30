@@ -155,16 +155,6 @@
                 </MudItem>
             </MudGrid>
 
-            <MudButton Elevation="0"
-                       Class="mt-3"
-                       Color="Color.Primary"
-                       Variant="Variant.Outlined"
-                       StartIcon="@Icons.Material.Filled.Refresh"
-                       Disabled="@(!CanEdit || _isRotatingCredentials || CredentialsBlank)"
-                       OnClick="RotateCredentialsAsync"
-                       aria-label="Rotate Listmonk credentials">
-                @(_isRotatingCredentials ? "Updating…" : "Update Credentials")
-            </MudButton>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_lastResult))
@@ -276,31 +266,6 @@
         finally
         {
             _isSaving = false;
-        }
-    }
-
-    private async Task RotateCredentialsAsync()
-    {
-        _isRotatingCredentials = true;
-        try
-        {
-            var result = await ListmonkSettingsService.RotateCredentialsAsync(new RotateListmonkIntegrationCredentialsDto
-            {
-                ApiUsername = string.IsNullOrWhiteSpace(_apiUsername) ? null : _apiUsername,
-                ApiKey = string.IsNullOrWhiteSpace(_apiKey) ? null : _apiKey
-            });
-
-            ShowResult(result);
-            if (result.Success)
-            {
-                _apiUsername = null;
-                _apiKey = null;
-                await LoadAsync();
-            }
-        }
-        finally
-        {
-            _isRotatingCredentials = false;
         }
     }
 

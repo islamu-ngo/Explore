@@ -42,23 +42,23 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
                     _source.ReloadInterval);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException exception) when (IsBoundedReasonCode(exception.Message))
+        {
+            throw new InvalidOperationException(
+                $"{exception.Message}: Infisical startup loading failed. "
+                + "Verify the deployment-owned authority and retry.");
+        }
+        catch (Exception)
         {
             if (_source.ThrowOnFirstLoadFailure)
             {
                 throw new InvalidOperationException(
-                    $"Failed to load secrets from Infisical: {ex.Message}. " +
-                    $"Ensure Infisical credentials are configured correctly. " +
-                    $"Project: {_source.ProjectId}, Environment: {_source.Environment}",
-                    ex);
+                    "secret_authority_unavailable: Infisical startup loading failed. "
+                    + "Verify the deployment-owned authority and retry.");
             }
 
-            Console.Error.WriteLine($"[Infisical] Warning: Failed to load secrets: {ex.Message}");
-            if (ex.InnerException is not null)
-            {
-                Console.Error.WriteLine(
-                    $"[Infisical]   inner ({ex.InnerException.GetType().Name}): {ex.InnerException.Message}");
-            }
+            Console.Error.WriteLine(
+                "[Infisical] secret_authority_unavailable; verify authority configuration and retry.");
         }
     }
 
@@ -71,12 +71,6 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
     /// </summary>
     private void LoadViaRestApi()
     {
-        Console.Error.WriteLine($"[Infisical] Loading secrets via REST API...");
-        Console.Error.WriteLine($"[Infisical] URL: {_source.Url}");
-        Console.Error.WriteLine($"[Infisical] ProjectId: {_source.ProjectId}");
-        Console.Error.WriteLine($"[Infisical] Environment: {_source.Environment}");
-        Console.Error.WriteLine($"[Infisical] Paths: {string.Join(", ", _source.Paths)}");
-
         using var handler = CreateIpv4Handler();
         using var http = new HttpClient(handler, disposeHandler: false)
         {
@@ -88,8 +82,6 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
         // Authenticate if we don't have a token yet
         if (string.IsNullOrEmpty(_accessToken))
         {
-            Console.Error.WriteLine($"[Infisical] Authenticating with Universal Auth...");
-
             var loginResp = http.PostAsJsonAsync(
                 $"{effectiveUrl}/api/v1/auth/universal-auth/login",
                 new { clientId = _source.ClientId, clientSecret = _source.ClientSecret })
@@ -97,9 +89,7 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
 
             if (!loginResp.IsSuccessStatusCode)
             {
-                var body = loginResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                throw new InvalidOperationException(
-                    $"Infisical login failed HTTP {(int)loginResp.StatusCode}: {body}");
+                throw ProviderFailure(loginResp.StatusCode);
             }
 
             var loginJson = loginResp.Content
@@ -109,22 +99,16 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
             _accessToken = loginJson?.AccessToken;
             if (string.IsNullOrEmpty(_accessToken))
             {
-                throw new InvalidOperationException("Infisical login returned empty accessToken.");
+                throw new InvalidOperationException("secret_authority_invalid");
             }
-
-            Console.Error.WriteLine($"[Infisical] Authentication successful!");
         }
 
         http.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
 
         var newData = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-        var totalSecrets = 0;
-
         foreach (var path in _source.Paths)
         {
-            Console.Error.WriteLine($"[Infisical] Loading secrets from path: {path}");
-
             var listUrl =
                 $"{effectiveUrl}/api/v3/secrets/raw"
                 + $"?workspaceId={Uri.EscapeDataString(_source.ProjectId)}"
@@ -136,10 +120,7 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
 
             if (!listResp.IsSuccessStatusCode)
             {
-                var body = listResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                Console.Error.WriteLine(
-                    $"[Infisical] Warning: list-secrets HTTP {(int)listResp.StatusCode} for path {path}: {body}");
-                continue;
+                throw ProviderFailure(listResp.StatusCode);
             }
 
             var listJson = listResp.Content
@@ -148,11 +129,9 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
 
             if (listJson?.Secrets is null || listJson.Secrets.Count == 0)
             {
-                Console.Error.WriteLine($"[Infisical] No secrets found in path: {path}");
                 continue;
             }
 
-            Console.Error.WriteLine($"[Infisical] Found {listJson.Secrets.Count} secrets in path: {path}");
             foreach (var secret in listJson.Secrets)
             {
                 if (string.IsNullOrEmpty(secret.SecretKey)) continue;
@@ -178,12 +157,9 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
                     newData[$"DatabaseErasure:{suffix}"] = secretValue;
                 }
 
-                Console.Error.WriteLine($"[Infisical]   - {secret.SecretKey} -> {configKey}");
-                totalSecrets++;
             }
         }
 
-        Console.Error.WriteLine($"[Infisical] Total secrets loaded: {totalSecrets}");
         Data = newData;
     }
 
@@ -196,11 +172,22 @@ public sealed class InfisicalConfigurationProvider : ConfigurationProvider, IDis
             LoadViaRestApi();
             OnReload();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.Error.WriteLine($"[Infisical] Warning: Failed to reload secrets: {ex.Message}");
+            Console.Error.WriteLine(
+                "[Infisical] secret_authority_reload_failed; keeping the last-known-good configuration.");
         }
     }
+
+    private static InvalidOperationException ProviderFailure(HttpStatusCode statusCode) =>
+        new(statusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+            ? "secret_authority_unauthorized"
+            : "secret_authority_unavailable");
+
+    private static bool IsBoundedReasonCode(string message) => message is
+        "secret_authority_unauthorized" or
+        "secret_authority_unavailable" or
+        "secret_authority_invalid";
 
     /// <summary>
     /// Creates an HttpHandler that forces IPv4 connections.

@@ -1,5 +1,5 @@
-// ABOUTME: Secret provider that reads from environment variables.
-// Fallback provider for self-hosters and local development.
+// ABOUTME: Secret provider that reads only from process environment variables.
+// ABOUTME: Emits no key names, paths, values, or read-audit records.
 
 using Explore.Secrets.Abstractions;
 using Microsoft.Extensions.Logging;
@@ -22,7 +22,7 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
     }
 
     /// <inheritdoc />
-    public SecretProviderType ProviderType => SecretProviderType.None;
+    public SecretProviderType ProviderType => SecretProviderType.Environment;
 
     /// <inheritdoc />
     public bool SupportsRefresh => false;
@@ -51,11 +51,6 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
             {
                 value = Environment.GetEnvironmentVariable(key.Replace(":", "_"));
             }
-        }
-
-        if (value is not null)
-        {
-            _logger.LogDebug("Retrieved secret from environment variable: {Key}", RedactKey(key));
         }
 
         return Task.FromResult(value);
@@ -91,10 +86,7 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
             }
         }
 
-        _logger.LogDebug(
-            "Retrieved {Count} secrets from environment with prefix: {Prefix}",
-            results.Count,
-            RedactKey(pathPrefix));
+        _logger.LogDebug("secret_provider_read_completed count={Count}", results.Count);
 
         return Task.FromResult<IReadOnlyDictionary<string, string>>(results);
     }
@@ -113,7 +105,7 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
         // Environment provider is always healthy if initialized
         return Task.FromResult(new ProviderHealthInfo(
             IsHealthy: _initialized,
-            ProviderType: SecretProviderType.None,
+            ProviderType: SecretProviderType.Environment,
             LastSuccessfulRefresh: null, // N/A for env provider
             ConsecutiveFailures: 0));
     }
@@ -141,16 +133,6 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
         var capitalizedParts = parts.Select(p =>
             char.ToUpperInvariant(p[0]) + p[1..].ToLowerInvariant());
         return string.Join(":", capitalizedParts);
-    }
-
-    /// <summary>
-    /// Redacts a key for safe logging.
-    /// "Database:ConnectionString" -> "Database:***"
-    /// </summary>
-    private static string RedactKey(string key)
-    {
-        var colonIndex = key.IndexOf(':');
-        return colonIndex > 0 ? key[..(colonIndex + 1)] + "***" : key;
     }
 
     private void EnsureInitialized()

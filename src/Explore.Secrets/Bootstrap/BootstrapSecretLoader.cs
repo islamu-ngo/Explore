@@ -1,11 +1,9 @@
-// ABOUTME: Loads Postgres bootstrap credentials (Host/Port/Database/Username/Password)
-// ABOUTME: from Infisical -> environment variables -> IConfiguration, in that strict order.
+// ABOUTME: Loads Postgres bootstrap credentials from one explicit deployment authority.
+// ABOUTME: Supports Environment or Infisical without per-field fallback between sources.
 
 using System.Globalization;
-using System.Net;
-using System.Net.Http.Json;
-using System.Net.Sockets;
-using System.Text.Json.Serialization;
+using Explore.Secrets.Abstractions;
+using Explore.Secrets.Configuration;
 using Explore.Secrets.Database;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -22,23 +20,13 @@ namespace Explore.Secrets.Bootstrap;
 /// the DB that holds those bindings cannot unlock its own connection-string secrets
 /// (chicken-and-egg). The <c>SecretDefinitionRegistry</c> enforces the matching
 /// invariant at the domain layer by marking <c>postgresql.*</c> keys as
-/// <c>IsBootstrapSecret = true</c> and disallowing <c>InlineEncrypted</c>.
+/// <c>IsBootstrapSecret = true</c>; all values come from the selected deployment authority.
 /// </para>
 /// <para>
-/// Resolution order (first non-empty match wins, per-field, highest priority first):
+/// <c>SecretProvider:Provider</c> selects exactly one authority. Environment mode
+/// reads process environment variables; Infisical mode reads only its isolated
+/// provider configuration. Missing or failed Infisical values never fall back.
 /// </para>
-/// <list type="number">
-///   <item><description>Infisical: when <c>Infisical:ClientId</c>/<c>ClientSecret</c>
-///     are supplied (bare keys, the canonical repo-wide convention; the legacy
-///     <c>SecretProvider:Infisical:*</c> prefix is still accepted as a fallback),
-///     the <c>/postgresql</c> folder is fetched directly via <see cref="InfisicalClient"/>
-///     (no caching layer, one-shot, synchronous-adjacent) and fields are pulled from the
-///     <c>POSTGRESQL_HOST/PORT/DATABASE/USERNAME/PASSWORD</c> secrets defined by the user.</description></item>
-///   <item><description>Environment variables: <c>POSTGRESQL_HOST</c>, <c>POSTGRESQL_PORT</c>,
-///     <c>POSTGRESQL_DATABASE</c>, <c>POSTGRESQL_USERNAME</c>, <c>POSTGRESQL_PASSWORD</c>.</description></item>
-///   <item><description>IConfiguration section <c>Postgresql:*</c> (Host/Port/Database/Username/Password)
-///     fed by <c>appsettings.json</c>, user secrets, or command-line args.</description></item>
-/// </list>
 /// <para>
 /// There is no <c>POSTGRESQL_PUBLIC_URL</c> fallback. The URL form is deliberately removed
 /// so the connection string is always constructed by <see cref="NpgsqlConnectionStringBuilder"/>
@@ -46,7 +34,7 @@ namespace Explore.Secrets.Bootstrap;
 /// self-hosted operators who may or may not front Postgres with a TLS terminator).
 /// </para>
 /// <para>
-/// If any required field is missing after all three sources have been consulted, a single
+/// If any required field is missing from the selected authority, a single
 /// <see cref="InvalidOperationException"/> is thrown with an actionable message listing
 /// exactly which fields are missing. Startup fails loudly rather than silently producing
 /// a broken connection string.
@@ -107,8 +95,7 @@ public static class BootstrapSecretLoader
 
     public static void ProjectPostgresConfiguration(
         IConfigurationBuilder configBuilder,
-        PrimaryDatabaseRole role,
-        bool infisicalAlreadyLoaded = false)
+        PrimaryDatabaseRole role)
     {
         ArgumentNullException.ThrowIfNull(configBuilder);
 
@@ -128,19 +115,18 @@ public static class BootstrapSecretLoader
             return;
         }
 
-        var infisicalSecrets = infisicalAlreadyLoaded
-            ? null
-            : TryLoadInfisicalPostgresFolder(configuration, logger: null);
+        IConfiguration authority = SecretAuthorityConfiguration.Build(configuration, InfisicalPath);
+        string source = SecretAuthorityConfiguration.GetRequiredProvider(configuration).ToString();
         var (host, _) = ResolveField(
-            infisicalSecrets, InfisicalKeyHost, EnvHost, ConfigHost, configuration, infisicalAlreadyLoaded);
+            authority, EnvHost, ConfigHost, source);
         var (port, _) = ResolveField(
-            infisicalSecrets, InfisicalKeyPort, EnvPort, ConfigPort, configuration, infisicalAlreadyLoaded);
+            authority, EnvPort, ConfigPort, source);
         var (database, _) = ResolveField(
-            infisicalSecrets, InfisicalKeyDatabase, EnvDatabase, ConfigDatabase, configuration, infisicalAlreadyLoaded);
+            authority, EnvDatabase, ConfigDatabase, source);
         var (username, _) = ResolveField(
-            infisicalSecrets, InfisicalKeyUsername, EnvUsername, ConfigUsername, configuration, infisicalAlreadyLoaded);
+            authority, EnvUsername, ConfigUsername, source);
         var (password, _) = ResolveField(
-            infisicalSecrets, InfisicalKeyPassword, EnvPassword, ConfigPassword, configuration, infisicalAlreadyLoaded);
+            authority, EnvPassword, ConfigPassword, source);
 
         if (string.IsNullOrWhiteSpace(host)
             && string.IsNullOrWhiteSpace(port)
@@ -189,21 +175,19 @@ public static class BootstrapSecretLoader
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        // Infisical is optional. If bootstrap Infisical creds are present we fetch the
-        // /postgresql folder once, synchronously, and use those values as the top priority.
-        // Any Infisical failure is logged but non-fatal: env vars or config can still win.
-        var infisicalSecrets = TryLoadInfisicalPostgresFolder(configuration, logger);
+        IConfiguration authority = SecretAuthorityConfiguration.Build(configuration, InfisicalPath);
+        string source = SecretAuthorityConfiguration.GetRequiredProvider(configuration).ToString();
 
         var (host, hostSource) = ResolveField(
-            infisicalSecrets, InfisicalKeyHost, EnvHost, ConfigHost, configuration);
+            authority, EnvHost, ConfigHost, source);
         var (portRaw, portSource) = ResolveField(
-            infisicalSecrets, InfisicalKeyPort, EnvPort, ConfigPort, configuration);
+            authority, EnvPort, ConfigPort, source);
         var (database, databaseSource) = ResolveField(
-            infisicalSecrets, InfisicalKeyDatabase, EnvDatabase, ConfigDatabase, configuration);
+            authority, EnvDatabase, ConfigDatabase, source);
         var (username, usernameSource) = ResolveField(
-            infisicalSecrets, InfisicalKeyUsername, EnvUsername, ConfigUsername, configuration);
+            authority, EnvUsername, ConfigUsername, source);
         var (password, passwordSource) = ResolveField(
-            infisicalSecrets, InfisicalKeyPassword, EnvPassword, ConfigPassword, configuration);
+            authority, EnvPassword, ConfigPassword, source);
 
         var missing = new List<string>(5);
         if (string.IsNullOrWhiteSpace(host)) missing.Add(nameof(host));
@@ -216,11 +200,7 @@ public static class BootstrapSecretLoader
             throw new InvalidOperationException(
                 "Postgres bootstrap credentials are incomplete. Missing required fields: "
                 + string.Join(", ", missing)
-                + ". Provide them via Infisical (/postgresql folder: "
-                + $"{InfisicalKeyHost}/{InfisicalKeyDatabase}/{InfisicalKeyUsername}/{InfisicalKeyPassword}), "
-                + "environment variables "
-                + $"({EnvHost}/{EnvDatabase}/{EnvUsername}/{EnvPassword}), "
-                + "or appsettings.json section 'Postgresql:{Host,Database,Username,Password}'.");
+                + ". Repair the selected secret authority and restart.");
         }
 
         var port = ParsePort(portRaw, logger);
@@ -283,50 +263,16 @@ public static class BootstrapSecretLoader
     }
 
     /// <summary>
-    /// Resolves a single field from the priority chain Infisical -> env var -> IConfiguration.
-    /// Returns the value plus a human-readable label describing which source won.
+    /// Resolves a single field from the already-isolated authority configuration.
     /// </summary>
     private static (string? Value, string Source) ResolveField(
-        IReadOnlyDictionary<string, string>? infisicalSecrets,
-        string infisicalKey,
+        IConfiguration authority,
         string envKey,
         string configKey,
-        IConfiguration configuration,
-        bool mappedConfigurationFirst = false)
+        string source)
     {
-        if (infisicalSecrets is not null
-            && infisicalSecrets.TryGetValue(infisicalKey, out var infisicalValue)
-            && !string.IsNullOrWhiteSpace(infisicalValue))
-        {
-            return (infisicalValue, $"Infisical:{InfisicalPath}/{infisicalKey}");
-        }
-
-        var mappedEnvironmentValue = configuration[envKey];
-        if (mappedConfigurationFirst
-            && !string.IsNullOrWhiteSpace(mappedEnvironmentValue))
-        {
-            return (mappedEnvironmentValue, $"IConfiguration:{envKey}");
-        }
-
-        var environmentValue = Environment.GetEnvironmentVariable(envKey);
-        if (!string.IsNullOrWhiteSpace(environmentValue))
-        {
-            return (environmentValue, $"EnvironmentVariable:{envKey}");
-        }
-
-        if (!mappedConfigurationFirst
-            && !string.IsNullOrWhiteSpace(mappedEnvironmentValue))
-        {
-            return (mappedEnvironmentValue, $"IConfiguration:{envKey}");
-        }
-
-        var configValue = configuration[configKey];
-        if (!string.IsNullOrWhiteSpace(configValue))
-        {
-            return (configValue, $"IConfiguration:{configKey}");
-        }
-
-        return (null, "<unresolved>");
+        string? value = authority[envKey] ?? authority[configKey];
+        return string.IsNullOrWhiteSpace(value) ? (null, source) : (value, source);
     }
 
     private static void TryProject(
@@ -370,195 +316,4 @@ public static class BootstrapSecretLoader
         };
     }
 
-    /// <summary>
-    /// Best-effort fetch of the /postgresql Infisical folder during bootstrap. Returns null
-    /// when Infisical bootstrap credentials are absent, or when the SDK call fails (we log
-    /// and continue so env/config can still satisfy the chain).
-    /// </summary>
-    private static IReadOnlyDictionary<string, string>? TryLoadInfisicalPostgresFolder(
-        IConfiguration configuration,
-        ILogger? logger)
-    {
-        // Read bare "Infisical:*" keys - the canonical convention used by the rest of
-        // this repo (see Explore.Secrets.Extensions.ConfigurationBuilderExtensions.AddInfisical,
-        // Explore.API/Blazor/MigrationService ConfigurationExtensions, and user-secrets docs
-        // in docs/CONFIGURATION.md). We also accept the legacy "SecretProvider:Infisical:*"
-        // prefix as a secondary fallback so both shapes work.
-        var bareSection = configuration.GetSection("Infisical");
-        var prefixedSection = configuration.GetSection(
-            $"{Configuration.SecretProviderOptions.SectionName}:Infisical");
-
-        var projectId = bareSection["ProjectId"] ?? prefixedSection["ProjectId"];
-        var clientId = bareSection["ClientId"] ?? prefixedSection["ClientId"];
-        var clientSecret = bareSection["ClientSecret"] ?? prefixedSection["ClientSecret"];
-        var environment = bareSection["Environment"] ?? prefixedSection["Environment"] ?? "dev";
-        var url = bareSection["Url"] ?? prefixedSection["Url"];
-
-        if (string.IsNullOrWhiteSpace(projectId)
-            || string.IsNullOrWhiteSpace(clientId)
-            || string.IsNullOrWhiteSpace(clientSecret))
-        {
-            logger?.LogDebug(
-                "Infisical bootstrap credentials not provided; skipping Infisical for Postgres bootstrap.");
-            return null;
-        }
-
-        try
-        {
-            var effectiveUrl = (url ?? "https://app.infisical.com").TrimEnd('/');
-            Console.Error.WriteLine(
-                $"[Bootstrap] Infisical bootstrap: host={effectiveUrl} project={projectId} env={environment} clientId={clientId[..Math.Min(8, clientId.Length)]}...");
-
-            // We call Infisical's REST API directly instead of the Infisical.Sdk 3.x package:
-            // the SDK (at 3.0.4) wraps a native FFI binary whose LoginAsync hangs for 100s
-            // against self-hosted Infisical instances before erroring out, while the equivalent
-            // REST endpoints respond in <500ms. The bootstrap path MUST be fast and reliable,
-            // so we avoid the SDK here entirely.
-            //
-            // We also force IPv4 for the outbound socket: many self-hosted Infisical deployments
-            // publish both A and AAAA records but only the IPv4 address is actually reachable
-            // from operator workstations / CI runners. .NET's default Happy Eyeballs prefers
-            // IPv6 and blocks the whole request to its Timeout when AAAA is black-holed; curl
-            // survives because it tries IPv4 in parallel earlier. Pinning AddressFamily here
-            // keeps the bootstrap path deterministic across networks.
-            using var handler = new SocketsHttpHandler
-            {
-                ConnectTimeout = TimeSpan.FromSeconds(5),
-                ConnectCallback = static async (context, cancellationToken) =>
-                {
-                    var addresses = await Dns.GetHostAddressesAsync(
-                        context.DnsEndPoint.Host,
-                        AddressFamily.InterNetwork,
-                        cancellationToken).ConfigureAwait(false);
-                    if (addresses.Length == 0)
-                    {
-                        throw new SocketException((int)SocketError.HostNotFound);
-                    }
-
-                    var socket = new Socket(
-                        AddressFamily.InterNetwork,
-                        SocketType.Stream,
-                        ProtocolType.Tcp)
-                    { NoDelay = true };
-                    try
-                    {
-                        await socket.ConnectAsync(
-                            addresses,
-                            context.DnsEndPoint.Port,
-                            cancellationToken).ConfigureAwait(false);
-                        return new NetworkStream(socket, ownsSocket: true);
-                    }
-                    catch
-                    {
-                        socket.Dispose();
-                        throw;
-                    }
-                },
-            };
-            using var http = new HttpClient(handler, disposeHandler: true)
-            {
-                Timeout = TimeSpan.FromSeconds(10),
-            };
-
-            var loginResp = http.PostAsJsonAsync(
-                $"{effectiveUrl}/api/v1/auth/universal-auth/login",
-                new { clientId, clientSecret }).GetAwaiter().GetResult();
-            if (!loginResp.IsSuccessStatusCode)
-            {
-                var body = loginResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                Console.Error.WriteLine(
-                    $"[Bootstrap] Infisical login HTTP {(int)loginResp.StatusCode}: {body}");
-                return null;
-            }
-
-            var loginJson = loginResp.Content
-                .ReadFromJsonAsync<InfisicalLoginResponse>()
-                .GetAwaiter()
-                .GetResult();
-            var accessToken = loginJson?.AccessToken;
-            if (string.IsNullOrEmpty(accessToken))
-            {
-                Console.Error.WriteLine("[Bootstrap] Infisical login returned empty accessToken.");
-                return null;
-            }
-
-            http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-
-            var listUrl =
-                $"{effectiveUrl}/api/v3/secrets/raw"
-                + $"?workspaceId={Uri.EscapeDataString(projectId)}"
-                + $"&environment={Uri.EscapeDataString(environment)}"
-                + $"&secretPath={Uri.EscapeDataString(InfisicalPath)}"
-                + "&expandSecretReferences=true&recursive=false";
-
-            var listResp = http.GetAsync(listUrl).GetAwaiter().GetResult();
-            if (!listResp.IsSuccessStatusCode)
-            {
-                var body = listResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                Console.Error.WriteLine(
-                    $"[Bootstrap] Infisical list-secrets HTTP {(int)listResp.StatusCode}: {body}");
-                return null;
-            }
-
-            var listJson = listResp.Content
-                .ReadFromJsonAsync<InfisicalListSecretsResponse>()
-                .GetAwaiter()
-                .GetResult();
-            if (listJson?.Secrets is null || listJson.Secrets.Count == 0)
-            {
-                Console.Error.WriteLine(
-                    $"[Bootstrap] Infisical returned no secrets for path {InfisicalPath}.");
-                return null;
-            }
-
-            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var secret in listJson.Secrets)
-            {
-                if (!string.IsNullOrEmpty(secret.SecretKey))
-                {
-                    dict[secret.SecretKey] = secret.SecretValue ?? string.Empty;
-                }
-            }
-
-            Console.Error.WriteLine(
-                $"[Bootstrap] Infisical bootstrap loaded {dict.Count} secrets from {InfisicalPath}.");
-            logger?.LogInformation(
-                "Infisical bootstrap loaded {Count} secrets from {Path}.",
-                dict.Count,
-                InfisicalPath);
-            return dict;
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(
-                ex,
-                "Infisical bootstrap failed; falling back to environment variables and IConfiguration.");
-            // Bootstrap runs before DI/logging is wired (design-time EF tooling, Program.Main
-            // before host build). Silent Infisical failure here is the single most common cause
-            // of "no Postgres credentials could be resolved" - always surface it to stderr so the
-            // operator can see WHY the chain fell through to env/config.
-            Console.Error.WriteLine(
-                $"[Bootstrap] Infisical fetch failed ({ex.GetType().Name}): {ex.Message}");
-            if (ex.InnerException is not null)
-            {
-                Console.Error.WriteLine(
-                    $"[Bootstrap]   inner ({ex.InnerException.GetType().Name}): "
-                    + ex.InnerException.Message);
-            }
-            Console.Error.WriteLine(
-                "[Bootstrap] Falling back to environment variables and IConfiguration.");
-            return null;
-        }
-    }
-
-    private sealed record InfisicalLoginResponse(
-        [property: JsonPropertyName("accessToken")] string? AccessToken);
-
-    private sealed record InfisicalListSecretsResponse(
-        [property: JsonPropertyName("secrets")] List<InfisicalRawSecret>? Secrets);
-
-    private sealed record InfisicalRawSecret(
-        [property: JsonPropertyName("secretKey")] string? SecretKey,
-        [property: JsonPropertyName("secretValue")] string? SecretValue);
 }

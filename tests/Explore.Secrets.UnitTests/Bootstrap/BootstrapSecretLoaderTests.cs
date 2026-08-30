@@ -5,6 +5,9 @@ using Explore.Secrets.Bootstrap;
 using Explore.Secrets.Database;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using TUnit.Core;
 
 namespace Explore.Secrets.UnitTests.Bootstrap;
@@ -31,8 +34,11 @@ public class BootstrapSecretLoaderTests
         HostEnv, PortEnv, DbEnv, UserEnv, PassEnv,
     ];
 
-    private static IConfiguration BuildConfig(IDictionary<string, string?> values) =>
-        new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    private static IConfiguration BuildConfig(IDictionary<string, string?> values)
+    {
+        values.TryAdd("SecretProvider:Provider", "Environment");
+        return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    }
 
     private static void ClearEnv()
     {
@@ -45,98 +51,99 @@ public class BootstrapSecretLoaderTests
     #region Config Resolution
 
     [Test]
-    public async Task LoadPostgresConnectionString_WithAllConfigValues_ComposesCorrectConnectionString()
-    {
-        ClearEnv();
-        string password = SecretsTestValues.CreateSecret();
-
-        var config = BuildConfig(new Dictionary<string, string?>
-        {
-            [HostKey] = "db.example.com",
-            [PortKey] = "6543",
-            [DbKey] = "events",
-            [UserKey] = "svc_events",
-            [PassKey] = password,
-        });
-
-        var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
-
-        var parsed = new NpgsqlConnectionStringBuilder(credentials.ConnectionString);
-        await Assert.That(parsed.Host).IsEqualTo("db.example.com");
-        await Assert.That(parsed.Port).IsEqualTo(6543);
-        await Assert.That(parsed.Database).IsEqualTo("events");
-        await Assert.That(parsed.Username).IsEqualTo("svc_events");
-        await Assert.That(parsed.Password).IsEqualTo(password);
-        await Assert.That(parsed.SslMode).IsEqualTo(SslMode.Prefer);
-
-        await Assert.That(credentials.Source).Contains("Config");
-        await Assert.That(credentials.LoadedAt).IsNotEqualTo(default);
-        await Assert.That(credentials.LoadedAt.Offset).IsEqualTo(TimeSpan.Zero);
-    }
-
-    [Test]
-    public async Task LoadPostgresConnectionString_WithoutPort_UsesDefault5432()
-    {
-        ClearEnv();
-
-        var config = BuildConfig(new Dictionary<string, string?>
-        {
-            [HostKey] = "localhost",
-            [DbKey] = "db",
-            [UserKey] = "u",
-            [PassKey] = "p",
-        });
-
-        var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
-
-        await Assert.That(new NpgsqlConnectionStringBuilder(credentials.ConnectionString).Port).IsEqualTo(5432);
-    }
-
-    [Test]
-    public async Task LoadPostgresConnectionString_WithMalformedPort_FallsBackToDefault()
-    {
-        ClearEnv();
-
-        var config = BuildConfig(new Dictionary<string, string?>
-        {
-            [HostKey] = "localhost",
-            [PortKey] = "abc123",
-            [DbKey] = "db",
-            [UserKey] = "u",
-            [PassKey] = "p",
-        });
-
-        var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
-
-        await Assert.That(new NpgsqlConnectionStringBuilder(credentials.ConnectionString).Port).IsEqualTo(5432);
-    }
-
-    [Test]
     public async Task ProjectPostgresConfiguration_WithDiscreteFields_BindsMigratorRole()
     {
         ClearEnv();
-        string password = SecretsTestValues.CreateSecret();
-        var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        try
         {
-            [HostKey] = "migration-db.example.test",
-            [PortKey] = "6543",
-            [DbKey] = "event_db",
-            [UserKey] = "migrator_user",
-            [PassKey] = password,
+            string password = SecretsTestValues.CreateSecret();
+            Environment.SetEnvironmentVariable(HostEnv, "migration-db.example.test");
+            Environment.SetEnvironmentVariable(PortEnv, "6543");
+            Environment.SetEnvironmentVariable(DbEnv, "event_db");
+            Environment.SetEnvironmentVariable(UserEnv, "migrator_user");
+            Environment.SetEnvironmentVariable(PassEnv, password);
+            var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SecretProvider:Provider"] = "Environment",
+            });
+
+            BootstrapSecretLoader.ProjectPostgresConfiguration(builder, PrimaryDatabaseRole.Migrator);
+            var options = PrimaryDatabaseConfiguration.BindMigrator(builder.Build());
+
+            await Assert.That(options.Role).IsEqualTo(PrimaryDatabaseRole.Migrator);
+            await Assert.That(options.Provider).IsEqualTo(PrimaryDatabaseProvider.PostgreSql);
+            await Assert.That(options.Host).IsEqualTo("migration-db.example.test");
+            await Assert.That(options.Port).IsEqualTo(6543);
+            await Assert.That(options.Username).IsEqualTo("migrator_user");
+            await Assert.That(options.Password).IsEqualTo(password);
+        }
+        finally
+        {
+            ClearEnv();
+        }
+    }
+
+    #endregion
+
+    #region Deterministic Authority
+
+    [Test]
+    public async Task LoadPostgresConnectionString_InfisicalSelectedWithoutCredentials_DoesNotFallBack()
+    {
+        var configuration = InfisicalConfiguration(new Dictionary<string, string?>());
+
+        await AssertInfisicalFailureDoesNotFallBack(configuration);
+    }
+
+    [Test]
+    public async Task LoadPostgresConnectionString_InfisicalSelectedWithInvalidUrl_DoesNotFallBack()
+    {
+        string coordinateCanary = $"invalid-{Guid.CreateVersion7():N}";
+        var configuration = InfisicalConfiguration(new Dictionary<string, string?>
+        {
+            ["SecretProvider:Infisical:Url"] = coordinateCanary,
+            ["SecretProvider:Infisical:ProjectId"] = $"project-{Guid.CreateVersion7():N}",
+            ["SecretProvider:Infisical:ClientId"] = $"client-{Guid.CreateVersion7():N}",
+            ["SecretProvider:Infisical:ClientSecret"] = SecretsTestValues.CreateSecret(),
         });
 
-        BootstrapSecretLoader.ProjectPostgresConfiguration(
-            builder,
-            PrimaryDatabaseRole.Migrator,
-            infisicalAlreadyLoaded: true);
-        var options = PrimaryDatabaseConfiguration.BindMigrator(builder.Build());
+        await AssertInfisicalFailureDoesNotFallBack(configuration, coordinateCanary);
+    }
 
-        await Assert.That(options.Role).IsEqualTo(PrimaryDatabaseRole.Migrator);
-        await Assert.That(options.Provider).IsEqualTo(PrimaryDatabaseProvider.PostgreSql);
-        await Assert.That(options.Host).IsEqualTo("migration-db.example.test");
-        await Assert.That(options.Port).IsEqualTo(6543);
-        await Assert.That(options.Username).IsEqualTo("migrator_user");
-        await Assert.That(options.Password).IsEqualTo(password);
+    [Test]
+    public async Task LoadPostgresConnectionString_InfisicalSelectedButUnavailable_DoesNotFallBack()
+    {
+        string coordinateCanary = $"path-{Guid.CreateVersion7():N}";
+        string unavailableUrl = GetUnusedLoopbackUrl(coordinateCanary);
+        var configuration = InfisicalConfiguration(new Dictionary<string, string?>
+        {
+            ["SecretProvider:Infisical:Url"] = unavailableUrl,
+            ["SecretProvider:Infisical:ProjectId"] = $"project-{Guid.CreateVersion7():N}",
+            ["SecretProvider:Infisical:ClientId"] = $"client-{Guid.CreateVersion7():N}",
+            ["SecretProvider:Infisical:ClientSecret"] = SecretsTestValues.CreateSecret(),
+        });
+
+        await AssertInfisicalFailureDoesNotFallBack(configuration, coordinateCanary);
+    }
+
+    [Test]
+    public async Task LoadPostgresConnectionString_InfisicalSelectedButUnauthorized_DoesNotFallBackOrLeakProviderBody()
+    {
+        string providerBodyCanary = SecretsTestValues.CreateSecret();
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var endpoint = (IPEndPoint)listener.LocalEndpoint;
+        Task response = RespondUnauthorizedAsync(listener, providerBodyCanary);
+        var configuration = InfisicalConfiguration(new Dictionary<string, string?>
+        {
+            ["SecretProvider:Infisical:Url"] = $"http://127.0.0.1:{endpoint.Port}",
+            ["SecretProvider:Infisical:ProjectId"] = $"project-{Guid.CreateVersion7():N}",
+            ["SecretProvider:Infisical:ClientId"] = $"client-{Guid.CreateVersion7():N}",
+            ["SecretProvider:Infisical:ClientSecret"] = SecretsTestValues.CreateSecret(),
+        });
+
+        await AssertInfisicalFailureDoesNotFallBack(configuration, providerBodyCanary);
+        await response;
     }
 
     #endregion
@@ -330,4 +337,71 @@ public class BootstrapSecretLoaderTests
     }
 
     #endregion
+
+    private static IConfiguration InfisicalConfiguration(IDictionary<string, string?> values)
+    {
+        values["SecretProvider:Provider"] = "Infisical";
+        return BuildConfig(values);
+    }
+
+    private static async Task AssertInfisicalFailureDoesNotFallBack(
+        IConfiguration configuration,
+        params string[] outputCanaries)
+    {
+        ClearEnv();
+        string fallbackPassword = SecretsTestValues.CreateSecret();
+        var originalError = Console.Error;
+        using var error = new StringWriter();
+        Exception? failure = null;
+
+        try
+        {
+            Environment.SetEnvironmentVariable(HostEnv, "lower-authority-host");
+            Environment.SetEnvironmentVariable(DbEnv, "lower-authority-database");
+            Environment.SetEnvironmentVariable(UserEnv, "lower-authority-user");
+            Environment.SetEnvironmentVariable(PassEnv, fallbackPassword);
+            Console.SetError(error);
+
+            try
+            {
+                BootstrapSecretLoader.LoadPostgresConnectionString(configuration);
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        }
+        finally
+        {
+            Console.SetError(originalError);
+            ClearEnv();
+        }
+
+        await Assert.That(failure).IsNotNull();
+        await Assert.That(error.ToString()).DoesNotContain(fallbackPassword);
+        foreach (string canary in outputCanaries)
+        {
+            await Assert.That(error.ToString()).DoesNotContain(canary);
+            await Assert.That(failure!.Message).DoesNotContain(canary);
+        }
+    }
+
+    private static string GetUnusedLoopbackUrl(string path)
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        return $"http://127.0.0.1:{port}/{path}";
+    }
+
+    private static async Task RespondUnauthorizedAsync(TcpListener listener, string responseBody)
+    {
+        using TcpClient client = await listener.AcceptTcpClientAsync();
+        await using NetworkStream stream = client.GetStream();
+        byte[] body = Encoding.UTF8.GetBytes(responseBody);
+        byte[] response = Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 401 Unauthorized\r\nContent-Type: text/plain\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n");
+        await stream.WriteAsync(response);
+        await stream.WriteAsync(body);
+    }
 }

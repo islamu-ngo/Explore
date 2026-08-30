@@ -18,18 +18,23 @@ public sealed class InfisicalConfigurationProvider(InfisicalConfigurationSource 
         {
             Data = LoadSecrets();
         }
-        catch (Exception ex)
+        catch (InvalidOperationException exception) when (IsBoundedReasonCode(exception.Message))
+        {
+            throw new InvalidOperationException(
+                $"{exception.Message}: Blazor startup loading failed. "
+                + "Verify the deployment-owned authority and retry.");
+        }
+        catch (Exception)
         {
             if (source.ThrowOnFirstLoadFailure)
             {
                 throw new InvalidOperationException(
-                    $"Failed to load Blazor startup secrets from Infisical for project "
-                    + $"{source.ProjectId} in environment {source.Environment}.",
-                    ex);
+                    "secret_authority_unavailable: Blazor startup loading failed. "
+                    + "Verify the deployment-owned authority and retry.");
             }
 
             Console.Error.WriteLine(
-                $"[Infisical] Warning: Blazor startup secret loading failed ({ex.GetType().Name}).");
+                "[Infisical] secret_authority_unavailable; verify authority configuration and retry.");
         }
     }
 
@@ -89,8 +94,7 @@ public sealed class InfisicalConfigurationProvider(InfisicalConfigurationSource 
 
         if (!loginResponse.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException(
-                $"Infisical Universal Auth failed with HTTP {(int)loginResponse.StatusCode}.");
+            throw ProviderFailure(loginResponse.StatusCode);
         }
 
         var login = loginResponse.Content
@@ -100,7 +104,7 @@ public sealed class InfisicalConfigurationProvider(InfisicalConfigurationSource 
 
         if (string.IsNullOrEmpty(login?.AccessToken))
         {
-            throw new InvalidOperationException("Infisical Universal Auth returned no access token.");
+            throw new InvalidOperationException("secret_authority_invalid");
         }
 
         http.DefaultRequestHeaders.Authorization =
@@ -119,9 +123,7 @@ public sealed class InfisicalConfigurationProvider(InfisicalConfigurationSource 
             var response = http.GetAsync(requestUrl).GetAwaiter().GetResult();
             if (!response.IsSuccessStatusCode)
             {
-                Console.Error.WriteLine(
-                    $"[Infisical] Warning: HTTP {(int)response.StatusCode} while loading path {path}.");
-                continue;
+                throw ProviderFailure(response.StatusCode);
             }
 
             var payload = response.Content
@@ -143,6 +145,16 @@ public sealed class InfisicalConfigurationProvider(InfisicalConfigurationSource 
 
         return data;
     }
+
+    private static InvalidOperationException ProviderFailure(HttpStatusCode statusCode) =>
+        new(statusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+            ? "secret_authority_unauthorized"
+            : "secret_authority_unavailable");
+
+    private static bool IsBoundedReasonCode(string message) => message is
+        "secret_authority_unauthorized" or
+        "secret_authority_unavailable" or
+        "secret_authority_invalid";
 
     private static string ConvertToConfigurationKey(string secretKey, string path)
     {

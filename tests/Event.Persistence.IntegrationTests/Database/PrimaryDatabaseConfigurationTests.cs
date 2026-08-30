@@ -756,18 +756,19 @@ public sealed class PrimaryDatabaseConfigurationTests
     [Test]
     public async Task ConfigurePersistenceServices_WithProjectedDiscretePostgres_UsesSharedStructuredBinder()
     {
+        string password = $"password-{Guid.CreateVersion7():N}";
         var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["SecretProvider:Provider"] = "Environment",
             ["Postgresql:Host"] = "pg.example.test",
             ["Postgresql:Port"] = "5432",
             ["Postgresql:Database"] = "event_db",
             ["Postgresql:Username"] = "app_user",
-            ["Postgresql:Password"] = "app-secret",
+            ["Postgresql:Password"] = password,
         });
         BootstrapSecretLoader.ProjectPostgresConfiguration(
             builder,
-            PrimaryDatabaseRole.Runtime,
-            infisicalAlreadyLoaded: true);
+            PrimaryDatabaseRole.Runtime);
         var services = new ServiceCollection();
 
         Action act = () => services.ConfigurePersistenceServices(

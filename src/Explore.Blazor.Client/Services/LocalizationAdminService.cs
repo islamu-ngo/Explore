@@ -46,24 +46,6 @@ public sealed class LocalizationAdminService : ILocalizationAdminService
         }
     }
 
-    public async Task<LocalizationAdminCommandResult> RotateTmsApiKeyAsync(string apiKey, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _api.RotateLocalizationTmsApiKeyAsync(new RotateLocalizationTmsApiKeyDto
-            {
-                TmsApiKey = apiKey
-            }, cancellationToken: ct);
-
-            return MapCommandResult(response, "TMS API key updated.", "TMS API key update failed.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[LOCALIZATION ADMIN] TMS API key rotation failed");
-            return new LocalizationAdminCommandResult(false, "TMS API key update failed: " + ex.Message);
-        }
-    }
-
     public async Task<LocalizationAdminCommandResult> ExportFromTmsAsync(string languageCode, CancellationToken ct = default)
     {
         try

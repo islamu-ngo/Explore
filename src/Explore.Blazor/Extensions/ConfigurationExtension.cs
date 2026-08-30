@@ -3,51 +3,45 @@
 
 using Explore.Blazor.Configuration;
 using Explore.Blazor.Services.Auth;
-using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Extensions;
 
 public static class ConfigurationExtensions
 {
-    // Bootstrap logging runs before the host's DI container exists, so Infisical wiring cannot use
-    // an injected ILogger<T>. A dedicated LoggerFactory keeps output on the standard logging pipeline.
-    private static readonly ILoggerFactory BootstrapLoggerFactory =
-        LoggerFactory.Create(builder => builder.AddSimpleConsole(opt =>
-        {
-            opt.SingleLine = true;
-            opt.IncludeScopes = false;
-        }));
-
-    private static readonly ILogger BootstrapLogger =
-        BootstrapLoggerFactory.CreateLogger("Explore.Blazor.Bootstrap.Infisical");
-
     public static IConfigurationBuilder AddInfisical(
         this IConfigurationBuilder builder,
         IConfiguration configuration,
         Action<InfisicalConfigurationSource>? configure = null)
     {
-        var projectId = configuration["Infisical:ProjectId"];
-        var clientId = configuration["Infisical:ClientId"];
-        var clientSecret = configuration["Infisical:ClientSecret"];
+        var projectId = configuration["SecretProvider:Infisical:ProjectId"]
+            ?? configuration["INFISICAL_PROJECT_ID"];
+        var clientId = configuration["SecretProvider:Infisical:ClientId"]
+            ?? configuration["INFISICAL_CLIENT_ID"];
+        var clientSecret = configuration["SecretProvider:Infisical:ClientSecret"]
+            ?? configuration["INFISICAL_CLIENT_SECRET"];
 
         if (string.IsNullOrEmpty(projectId)
             || string.IsNullOrEmpty(clientId)
             || string.IsNullOrEmpty(clientSecret))
         {
-            BootstrapLogger.LogInformation("Infisical bootstrap credentials are not configured; skipping source.");
-            return builder;
+            throw new InvalidOperationException(
+                "Infisical authority requires its project and universal-auth credentials.");
         }
 
         var source = new InfisicalConfigurationSource
         {
-            Url = configuration["Infisical:Url"] ?? "https://app.infisical.com",
+            Url = configuration["SecretProvider:Infisical:Url"]
+                ?? configuration["INFISICAL_URL"]
+                ?? "https://app.infisical.com",
             ProjectId = projectId,
             ClientId = clientId,
             ClientSecret = clientSecret,
-            Environment = configuration["Infisical:Environment"] ?? "dev",
+            Environment = configuration["SecretProvider:Infisical:Environment"]
+                ?? configuration["INFISICAL_ENV"]
+                ?? "dev",
         };
 
-        var paths = configuration.GetSection("Infisical:Paths").Get<List<string>>();
+        var paths = configuration.GetSection("SecretProvider:Infisical:Paths").Get<List<string>>();
         if (paths is { Count: > 0 })
         {
             source.Paths.Clear();
@@ -61,26 +55,33 @@ public static class ConfigurationExtensions
     /// <summary>
     /// Adds Infisical secrets and maps them to canonical .NET configuration keys for Blazor Server.
     /// </summary>
-    public static void AddInfisicalBlazorCompatibility(this IConfigurationBuilder configBuilder)
+    public static void AddSecretAuthorityConfiguration(this IConfigurationBuilder configBuilder)
     {
         var bootstrapConfig = configBuilder.Build();
+        string? configuredProvider = bootstrapConfig["SecretProvider:Provider"]
+            ?? bootstrapConfig["SECRET_PROVIDER"];
+        if (string.Equals(configuredProvider, "Environment", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyBlazorMapping(
+                configBuilder,
+                new ConfigurationBuilder().AddEnvironmentVariables().Build());
+            return;
+        }
 
-        BootstrapLogger.LogInformation("Checking bootstrap credentials...");
-        BootstrapLogger.LogInformation(
-            "Bootstrap state: ProjectId={ProjectIdState}, ClientId={ClientIdState}, HasClientSecret={HasClientSecret}",
-            string.IsNullOrEmpty(bootstrapConfig["Infisical:ProjectId"]) ? "(not set)" : "(set)",
-            string.IsNullOrEmpty(bootstrapConfig["Infisical:ClientId"]) ? "(not set)" : "(set)",
-            !string.IsNullOrEmpty(bootstrapConfig["Infisical:ClientSecret"]));
+        if (!string.Equals(configuredProvider, "Infisical", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "SecretProvider:Provider must explicitly select Environment or Infisical.");
+        }
 
-        configBuilder.AddInfisical(bootstrapConfig, source =>
+        var authorityBuilder = new ConfigurationBuilder();
+        authorityBuilder.AddInfisical(bootstrapConfig, source =>
         {
             source.Paths.Clear();
             source.Paths.AddRange(["/keycloak", "/blazor", "/atproto"]);
-            source.ThrowOnFirstLoadFailure = false;
+            source.ThrowOnFirstLoadFailure = true;
         });
-
-        var configWithSecrets = configBuilder.Build();
-        ApplyBlazorMapping(configBuilder, configWithSecrets);
+        ApplyBlazorMapping(configBuilder, authorityBuilder.Build());
     }
 
     /// <summary>
@@ -133,18 +134,6 @@ public static class ConfigurationExtensions
         var metadataAddress = string.IsNullOrWhiteSpace(keycloakAuthority)
             ? null
             : $"{keycloakAuthority}/.well-known/openid-configuration";
-
-        BootstrapLogger.LogInformation(
-            "Keycloak configuration mapped: HasKeycloakInput={HasKeycloakInput}, Authority={Authority}, ClientId={ClientId}, HasClientSecret={HasClientSecret}, HasGoogleClientId={HasGoogleClientId}, HasGoogleClientSecret={HasGoogleClientSecret}, ApiBaseUrl={ApiBaseUrl}",
-            hasKeycloakInput,
-            keycloakAuthority ?? "(not mapped)",
-            keycloakClientId ?? "(not mapped)",
-            !string.IsNullOrEmpty(rawClientSecret),
-            !string.IsNullOrEmpty(rawGoogleClientId),
-            !string.IsNullOrEmpty(rawGoogleClientSecret),
-            hasAspireApiReference
-                ? "(not mapped, Aspire service discovery configured)"
-                : rawApiUrl ?? "(not set, will use default)");
 
         var mappedConfig = new Dictionary<string, string?>();
 

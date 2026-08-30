@@ -1,5 +1,5 @@
 // ABOUTME: Resolves secrets from process environment variables via SecretBinding.EnvironmentVariableName.
-// ABOUTME: Always available, zero external deps; suitable for bootstrap and local-development workflows.
+// ABOUTME: Returns bounded typed outcomes suitable for bootstrap and local-development workflows.
 
 using Explore.Application.Contracts.Secrets;
 using Explore.Domain.Enums;
@@ -19,23 +19,36 @@ public sealed class EnvironmentSecretSource : ISecretSource
     public SecretSourceType SourceType => SecretSourceType.EnvironmentVariable;
 
     /// <inheritdoc />
-    public Task<string?> GetSecretAsync(SecretBinding binding, CancellationToken cancellationToken = default)
+    public Task<SecretResolutionResult> GetSecretAsync(
+        SecretBinding binding,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(binding);
 
         if (string.IsNullOrWhiteSpace(binding.EnvironmentVariableName))
         {
-            return Task.FromResult<string?>(null);
+            return Task.FromResult(SecretResolutionResult.Invalid);
         }
 
         var value = Environment.GetEnvironmentVariable(binding.EnvironmentVariableName);
-        return Task.FromResult(string.IsNullOrEmpty(value) ? null : value);
+        if (string.IsNullOrEmpty(value))
+        {
+            return Task.FromResult(SecretResolutionResult.Unconfigured);
+        }
+
+        return Task.FromResult(SecretResolutionResult.Resolved(new ResolvedSecret(
+            binding.SettingKey,
+            value,
+            binding.SourceType,
+            binding.Scope,
+            binding.ScopeId,
+            DateTime.UtcNow)));
     }
 
     /// <inheritdoc />
     public async Task<bool> ValidateAsync(SecretBinding binding, CancellationToken cancellationToken = default)
     {
-        var value = await GetSecretAsync(binding, cancellationToken).ConfigureAwait(false);
-        return !string.IsNullOrEmpty(value);
+        var result = await GetSecretAsync(binding, cancellationToken).ConfigureAwait(false);
+        return result.IsResolved;
     }
 }

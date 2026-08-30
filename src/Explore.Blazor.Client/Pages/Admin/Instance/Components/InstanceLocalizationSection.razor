@@ -80,37 +80,6 @@
                     }
                 </MudGrid>
 
-                @* ── Secret Lifecycle ─────────────────────── *@
-                <div class="instance-localization__secret mt-3">
-                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudChip T="string"
-                                 Color="@(_state.TmsApiKeyConfigured ? Color.Success : Color.Default)"
-                                 Variant="@(_state.TmsApiKeyConfigured ? Variant.Filled : Variant.Outlined)"
-                                 Size="Size.Small">
-                            @(_state.TmsApiKeyConfigured ? "API Key Configured" : "API Key Not Configured")
-                        </MudChip>
-                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Text"
-                                   Size="Size.Small"
-                                   StartIcon="@Icons.Material.Filled.Refresh"
-                                   OnClick="RotateApiKeyAsync"
-                                   Disabled="_state.IsSaving"
-                                   aria-label="Rotate TMS API key">
-                            Rotate
-                        </MudButton>
-                    </MudStack>
-                    <MudTextField T="string"
-                                  @bind-Value="_state.TmsApiKey"
-                                  Label="API Key"
-                                  InputType="InputType.Password"
-                                  Variant="Variant.Outlined"
-                                  HelperText="Write-only: enter a new key to set. Current value is never sent back."
-                                  Placeholder="Paste new API key…"
-                                  Adornment="Adornment.End"
-                                  AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                  OnAdornmentClick="() => _showApiKey = !_showApiKey"
-                                  Class="mt-2"
-                                  aria-label="TMS API key (write-only)" />
-                </div>
             }
         </div>
 
@@ -452,21 +421,6 @@
                 return;
             }
 
-            if (!_state.IsOffline && !string.IsNullOrWhiteSpace(_state.TmsApiKey))
-            {
-                var rotationResult = await LocalizationAdminService.RotateTmsApiKeyAsync(_state.TmsApiKey);
-                if (!rotationResult.Success)
-                {
-                    Snackbar.Add(rotationResult.Message, Severity.Error);
-                    return;
-                }
-
-                _state.TmsApiKey = null;
-                _state.TmsApiKeyConfigured = true;
-                Snackbar.Add(rotationResult.Message, Severity.Success);
-                return;
-            }
-
             Snackbar.Add(result.Message, Severity.Success);
         }
         finally
@@ -507,15 +461,6 @@
             _state.ExportingLanguages[languageCode] = false;
             StateHasChanged();
         }
-    }
-
-    private async Task RotateApiKeyAsync()
-    {
-        await DialogService.ShowMessageBoxAsync(
-            "Rotate API Key",
-            "Paste the new API key in the write-only field, then click Save. The key is sent once to the backend secret store and is never returned to the browser.",
-            yesText: "OK",
-            cancelText: "Cancel");
     }
 
     private async Task ResetToOfflineAsync()

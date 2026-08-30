@@ -57,6 +57,13 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
         }
 
         var envSecret = configuration["SETUP_SECRET"];
+        var replicaCount = configuration.GetValue<int?>("Hosting:ReplicaCount") ?? 1;
+        if (replicaCount > 1 && string.IsNullOrWhiteSpace(envSecret))
+        {
+            throw new InvalidOperationException(
+                "SETUP_SECRET must be provided by one deployment-owned authority when Hosting:ReplicaCount is greater than one.");
+        }
+
         if (!string.IsNullOrWhiteSpace(envSecret))
         {
             _secret = envSecret;

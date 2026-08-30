@@ -73,24 +73,6 @@ public static class StorageSettingDefinitions
         Description: "S3 bucket name for object storage",
         MaxScope: SettingScope.Tenant);
 
-    public static readonly SettingDefinition AccessKeyId = new(
-        Key: "s3.access_key_id",
-        ValueType: SettingValueType.String,
-        DefaultValue: "\"\"",
-        Category: "ObjectStorage",
-        Description: "S3 access key ID for authentication",
-        MaxScope: SettingScope.Tenant,
-        IsSensitive: true);
-
-    public static readonly SettingDefinition SecretAccessKey = new(
-        Key: "s3.secret_access_key",
-        ValueType: SettingValueType.String,
-        DefaultValue: "\"\"",
-        Category: "ObjectStorage",
-        Description: "S3 secret access key for authentication (stored encrypted)",
-        MaxScope: SettingScope.Tenant,
-        IsSensitive: true);
-
     public static readonly SettingDefinition Region = new(
         Key: "s3.region",
         ValueType: SettingValueType.String,
@@ -118,7 +100,7 @@ public static class StorageSettingDefinitions
     public static IReadOnlyList<SettingDefinition> All =>
     [
         Provider, DefaultMaxUploadBytes, DefaultTenantQuotaBytes, InstanceMaxUploadBytes, RouteMatrix,
-        Endpoint, PublicEndpoint, BucketName, AccessKeyId, SecretAccessKey,
+        Endpoint, PublicEndpoint, BucketName,
         Region, ForcePathStyle, UploadUrlExpirationMinutes
     ];
 }

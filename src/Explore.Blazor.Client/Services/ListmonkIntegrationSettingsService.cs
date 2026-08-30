@@ -37,14 +37,6 @@ public sealed class ListmonkIntegrationSettingsService(
             "Listmonk settings saved.",
             "Unable to save Listmonk settings.");
 
-    public async Task<WebhookActionResult> RotateCredentialsAsync(
-        RotateListmonkIntegrationCredentialsDto request,
-        CancellationToken cancellationToken = default) =>
-        await ExecuteCommandAsync(
-            () => apiClient.RotateListmonkIntegrationCredentialsAsync(request, cancellationToken: cancellationToken),
-            "Listmonk credentials updated.",
-            "Unable to update Listmonk credentials.");
-
     public async Task<WebhookActionResult> TestConnectionAsync(CancellationToken cancellationToken = default) =>
         await ExecuteCommandAsync(
             () => apiClient.TestListmonkIntegrationConnectionAsync(cancellationToken: cancellationToken),

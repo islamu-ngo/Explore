@@ -319,6 +319,55 @@ Checks:
 7. use `GET /api/System/onboarding-preflight` to inspect non-sensitive launch blockers and operational warnings before retrying completion.
 8. for first-run Compose setup, confirm the operator used the service names and ports from [SELF_HOSTING.md](SELF_HOSTING.md), not older `api`/`blazor` examples.
 
+## Secret Provider Unavailable
+
+Symptoms:
+- `secret-resolver` is degraded with `providerState=unavailable`.
+- a required capability fails closed, or an optional integration reports
+  `Unavailable`, `Unauthorized`, or `Invalid` instead of `Unconfigured`.
+
+Checks:
+1. Confirm `SECRET_PROVIDER` explicitly selects `Environment` or `Infisical` and
+   that every runtime binding uses that same authority.
+2. For `Environment`, verify the deployment platform forwards the documented
+   variable to the affected process. Do not print it or use shell tracing.
+3. For `Infisical`, verify network reachability and the deployment-owned
+   `INFISICAL_URL`, project, client, and environment inputs at their source. Do not
+   copy response bodies, coordinates, or credentials into logs or support tickets.
+4. Repair the selected authority. Never add an environment/appsettings/database
+   fallback to turn the failure into a clean miss.
+5. Metadata writes invalidate local cache entries. For urgent changes, restart or
+   drain every replica; otherwise allow the documented five-minute process-local
+   freshness bound before declaring recovery.
+6. Recheck `/health`. Recovery evidence is `providerState=available` and the
+   capability-specific healthy state, never a raw secret read.
+
+## Secret Rotation Partial Activation
+
+Symptoms:
+- one replica reports a local `Activated` acknowledgement while another is
+  missing, `Rejected`, or `Failed`;
+- the stale deadline passes before every declared replica acknowledges the same
+  opaque attempt ID;
+- a provider does not support simultaneous old/new credentials.
+
+Checks:
+1. Do not revoke the previous credential or call the deployment converged from one
+   process. Local acknowledgements contain no secret values and prove only that
+   replica's candidate/activate check.
+2. For `overlap-rollout`, keep the previous provider credential valid, compare the
+   declared replica set with acknowledgements for the same attempt, and rollback to
+   the previous credential if any replica rejects or fails.
+3. At the stale deadline, drain the missing replica and mark the rollout failed
+   closed. Repair it under the previous credential before starting a new attempt.
+4. For `coordinated-restart` or a provider without overlap, enter maintenance,
+   restore the previous deployment value when needed, restart every consumer, and
+   require readiness from the full replica set before reopening traffic.
+5. For `unsupported-live`, stop the operation and follow the consumer-specific
+   replacement/restart runbook. Never add a secondary secret source as break glass.
+6. Revoke the previous provider credential only after convergence and any pinned
+   version/session references have expired or been retired.
+
 ### Onboarding Recovery Matrix
 
 Refresh before every recovery action. The setup UI is a projection of server status, provider verification, and preflight state; browser history or a cached task list is not recovery evidence.
@@ -367,7 +416,7 @@ The instance control plane exposes warning codes with operator remediation text.
 |---|---|---|
 | `general_outbox_due_backlog_capped` | The general outbox due backlog reached the bounded reporting cap. | Verify the outbox worker is running and inspect due rows before raising the reporting cap. |
 | `general_outbox_failures_present` | General outbox rows are failed or dead-lettered. | Fix the downstream handler or payload issue, then replay from an operator-approved path. |
-| `email_provider_missing` | SMTP is not configured for platform email delivery. | Configure SMTP in instance settings before relying on platform email delivery. |
+| `email_provider_missing` | SMTP is not configured for platform email delivery. | Configure non-secret SMTP policy in instance settings and provision credentials in the selected secret authority. |
 | `email_dispatch_dead_letters` | Email dispatch has dead-lettered rows. | Review dead-lettered dispatch rows, fix provider/configuration failures, and replay only after confirming recipients and payloads. |
 | `email_dispatch_stale_processing` | Email dispatch rows are stuck in processing. | Check the worker lease/heartbeat and restart the worker before replaying stuck rows. |
 | `email_dispatch_due_backlog` | Email dispatch due backlog exceeds the configured threshold. | Scale or restart dispatch processing and check SMTP provider throttling before increasing thresholds. |
@@ -536,12 +585,16 @@ Checks:
 **Symptoms:** Application fails to start, secrets not loaded, connection strings missing.
 
 Checks:
-1. Check `SecretProvider:Provider` config value — `None` uses env vars, `Infisical` uses Infisical API.
+1. Check `SecretProvider:Provider` — it must explicitly be `Environment` or `Infisical`.
 2. Provider configuration is validated at startup. Check logs for `SecretProviderOptionsValidator` errors before changing secret values.
-3. For Infisical: verify `ClientId`, `ClientSecret`, `ProjectId`, and `Environment` are set.
+3. For Infisical, verify the deployment-owned `INFISICAL_*` bootstrap inputs. Do not paste their values into logs, tickets, commands, or application configuration.
 4. Check health endpoint: `/health` includes the `secret_provider` check — `Degraded` after 1-2 failures, `Unhealthy` after 3+.
 5. If refresh is enabled, check `secrets_refresh_failures_total` Prometheus metric for recurring failures.
-6. Key mapping: Infisical/domain secret names use `SCREAMING_SNAKE_CASE`, while .NET environment overrides use double-underscore keys such as `S3Settings__Endpoint`. Primary and external-authority database credentials are discrete structured role values such as `DATABASE_RUNTIME_USERNAME` / `DATABASE_RUNTIME_PASSWORD`, not URL-form connection strings; see [SECRETS.md](SECRETS.md).
+6. Key mapping: Infisical/domain secret names use canonical `SCREAMING_SNAKE_CASE` names such as `STORAGE_S3_ACCESS_KEY_ID`; private credentials do not use .NET double-underscore aliases. Primary and external-authority database credentials are discrete structured role values such as `DATABASE_RUNTIME_USERNAME` / `DATABASE_RUNTIME_PASSWORD`, not URL-form connection strings; see [SECRETS.md](SECRETS.md).
+7. `secret_authority_unauthorized`, `secret_authority_invalid`, and
+   `secret_authority_unavailable` are intentionally value-free. Repair the selected
+   provider and restart; never switch authority or add an environment value as an
+   emergency fallback without an explicit deployment change.
 
 ## Storage Readiness Or Upload Failures
 
@@ -553,7 +606,7 @@ Symptoms:
 Checks:
 1. Confirm the selected provider in instance storage settings. Local-first deployments should not require the Compose `storage` profile or S3 credentials.
 2. For local-first storage, verify the API process can read/write `Storage:Local:RootPath`. Compose defaults to `/app/storage-data/local` mounted on the `local_storage_data` volume.
-3. For optional S3-compatible mode, verify `S3Settings:*` values or persisted `s3.*` settings point to the intended endpoint/bucket and that secrets are present.
+3. For optional S3-compatible mode, verify non-secret `storage.*` governance points to the intended endpoint/bucket and both credentials resolve from the selected authority.
 4. Use the instance storage provider test action or `/health` response failure code; do not expose host filesystem paths, bucket names, object keys, access keys, or raw provider errors in tickets.
 5. If metadata exists but downloads fail, run reconciliation in dry-run mode and compare the reported missing-object/orphan counts before changing lifecycle state.
 
@@ -665,6 +718,29 @@ Set `CONFIGURATION_MANIFEST_MODE=Off` and recreate the owning process to
 disable future startup processing. This preserves applied data and audit
 evidence. Removing a convention file is a no-op only when no explicit path is
 configured.
+
+## Configuration Import Or Tenant Migration Failed
+
+Use the session/operation ID and stable code; never copy artifact contents,
+access tokens, transfer nonces, proofs, or configuration values into support
+logs.
+
+| Stable code or state | Safe recovery |
+|---|---|
+| `configuration_import_expired` / `configuration_import_cancelled` / `configuration_import_replayed` | Create a fresh session from the retained source and preview again |
+| `configuration_import_stale_preview` | Refresh and review the new target revision, mappings, warnings, and approvals; do not retry apply unchanged |
+| `configuration_import_target_mismatch` / `configuration_import_token_invalid` | Confirm the authenticated route and header-only capability; do not disclose whether another tenant/session exists |
+| `configuration_import_contract_invalid` / `configuration_import_apply_blocked` | Validate against the v1alpha2 schema and select only session-advertised sections; resolve every blocking/external-setup/legal-review item |
+| `configuration_import_apply_failed` | No selected section committed. Repair the named dependency and start with a fresh preview |
+| Effect `Pending` / `Processing` | Configuration committed. Restore outbox processing; do not replay the import |
+| Effect `DeadLettered` | Repair the bounded downstream effect and use outbox recovery with the operation ID |
+| `configuration_import_snapshot_unavailable` / `configuration_import_rollback_unavailable` | Use a retained artifact and current-state review, or restore database and protected artifact authority from one consistent point; never edit history |
+| Direct transfer interrupted | Resume at the reported offset before expiry, or cancel and create a new mutually approved session |
+
+A rollback is a new forward operation: create its session, preview the protected
+snapshot against current authority, then apply. If target locks, policies, or
+legal requirements changed, the rollback can correctly block. Direct-transfer
+promotion also creates an ordinary import session and cannot bypass this step.
 
 ## Local URLs
 

@@ -8,7 +8,7 @@ namespace Explore.Application.Contracts.Secrets;
 /// <summary>
 /// Resolves a setting-key to its plaintext value by dispatching to exactly one <see cref="ISecretSource"/>
 /// determined by the corresponding <see cref="Explore.Domain.Secrets.SecretBinding"/>. The resolver MUST NOT
-/// implement a fallback chain — if the declared source cannot produce a value the result is <c>null</c>,
+/// implement a fallback chain — if the declared source cannot produce a value the typed result preserves why,
 /// even if other sources could have yielded a value.
 /// </summary>
 public interface ISecretResolver
@@ -23,22 +23,21 @@ public interface ISecretResolver
     /// <param name="tenantId">The active tenant id, or <c>null</c> to resolve against the instance scope only.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>
-    /// The resolved secret, or <c>null</c> when (a) no binding exists, (b) no source is registered for the
-    /// binding's declared <see cref="SecretSourceType"/>, or (c) the source returned no value.
+    /// A bounded outcome distinguishing unconfigured, unavailable, unauthorized, and invalid states.
     /// </returns>
-    Task<ResolvedSecret?> ResolveAsync(
+    Task<SecretResolutionResult> ResolveAsync(
         string settingKey,
         Guid? tenantId,
         CancellationToken cancellationToken = default);
 
-    Task<ResolvedSecret?> ResolveQualifiedAsync(
+    Task<SecretResolutionResult> ResolveQualifiedAsync(
         string settingKey,
         SecretScope scope,
         Guid? scopeId,
         string qualifier,
         CancellationToken cancellationToken = default);
 
-    Task<ResolvedSecret?> ResolveTenantBindingAsync(
+    Task<SecretResolutionResult> ResolveTenantBindingAsync(
         Guid tenantId,
         Guid bindingId,
         CancellationToken cancellationToken = default);

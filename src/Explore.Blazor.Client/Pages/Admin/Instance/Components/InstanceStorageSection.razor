@@ -171,22 +171,11 @@
                                       Disabled="@ControlsDisabled"
                                       Placeholder="us-east-1" />
                     </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudTextField T="string" Label="Access Key ID"
-                                      Variant="Variant.Outlined"
-                                      @bind-Value="Model.S3AccessKeyId"
-                                      Disabled="@ControlsDisabled"
-                                      HelperText="@ConfiguredText(Model.S3AccessKeyConfigured, "access key")" />
-                    </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudTextField T="string" Label="Secret Access Key"
-                                      Variant="Variant.Outlined"
-                                      @bind-Value="Model.S3SecretAccessKey"
-                                      InputType="InputType.Password"
-                                      Disabled="@ControlsDisabled"
-                                      HelperText="@ConfiguredText(Model.S3SecretAccessKeyConfigured, "secret key")" />
-                    </MudItem>
                 </MudGrid>
+
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    S3 credentials are managed by the selected external secret authority.
+                </MudAlert>
 
                 <MudSwitch T="bool"
                            @bind-Value="S3ForcePathStyle"
@@ -436,9 +425,6 @@
             : "Storage tenant lock could not be saved. The latest value was restored.";
         _lockSavePending = false;
     }
-
-    private static string ConfiguredText(bool? configured, string label) =>
-        configured == true ? $"An existing {label} is configured. Leave blank to keep it." : string.Empty;
 
     private static string FormatBytes(long bytes)
     {

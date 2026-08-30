@@ -68,13 +68,15 @@ public sealed class ListmonkIntegrationHealthCheck(
             preconfirmSubscriptions,
             !string.IsNullOrWhiteSpace(instanceUrl),
             defaultListId > 0,
-            username is not null && !string.IsNullOrWhiteSpace(username.Value),
-            apiKey is not null && !string.IsNullOrWhiteSpace(apiKey.Value));
+            username.IsResolved,
+            apiKey.IsResolved,
+            username.Status.ToString(),
+            apiKey.Status.ToString());
 
         if (string.IsNullOrWhiteSpace(instanceUrl) ||
             defaultListId <= 0 ||
-            username is null || string.IsNullOrWhiteSpace(username.Value) ||
-            apiKey is null || string.IsNullOrWhiteSpace(apiKey.Value))
+            !username.IsResolved || string.IsNullOrWhiteSpace(username.Value) ||
+            !apiKey.IsResolved || string.IsNullOrWhiteSpace(apiKey.Value))
         {
             return HealthCheckResult.Degraded(
                 "Listmonk integration is enabled but configuration is incomplete.",
@@ -98,20 +100,19 @@ public sealed class ListmonkIntegrationHealthCheck(
         {
             return HealthCheckResult.Degraded(
                 $"Listmonk API returned HTTP {ex.StatusCode}.",
-                ex,
-                data);
+                data: data);
         }
-        catch (HttpRequestException ex)
+        catch (HttpRequestException)
         {
-            return HealthCheckResult.Degraded("Listmonk API request failed.", ex, data);
+            return HealthCheckResult.Degraded("Listmonk API request failed.", data: data);
         }
-        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return HealthCheckResult.Degraded("Listmonk API request timed out.", ex, data);
+            return HealthCheckResult.Degraded("Listmonk API request timed out.", data: data);
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            return HealthCheckResult.Degraded("Listmonk integration configuration is invalid.", ex, data);
+            return HealthCheckResult.Degraded("Listmonk integration configuration is invalid.", data: data);
         }
     }
 
@@ -122,7 +123,9 @@ public sealed class ListmonkIntegrationHealthCheck(
         bool instanceUrlConfigured = false,
         bool defaultListIdConfigured = false,
         bool apiUsernameResolved = false,
-        bool apiKeyResolved = false)
+        bool apiKeyResolved = false,
+        string apiUsernameState = "Unconfigured",
+        string apiKeyState = "Unconfigured")
     {
         return new Dictionary<string, object>
         {
@@ -132,7 +135,9 @@ public sealed class ListmonkIntegrationHealthCheck(
             ["instanceUrlConfigured"] = instanceUrlConfigured,
             ["defaultListIdConfigured"] = defaultListIdConfigured,
             ["apiUsernameResolved"] = apiUsernameResolved,
-            ["apiKeyResolved"] = apiKeyResolved
+            ["apiKeyResolved"] = apiKeyResolved,
+            ["apiUsernameState"] = apiUsernameState,
+            ["apiKeyState"] = apiKeyState
         };
     }
 

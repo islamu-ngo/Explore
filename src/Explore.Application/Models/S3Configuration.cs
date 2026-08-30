@@ -1,10 +1,10 @@
-// ABOUTME: S3 storage configuration POCO resolved from the cascading settings engine.
-// Supports any S3-compatible provider (Hetzner, MinIO, AWS, Backblaze B2, Wasabi, R2, etc.).
+// ABOUTME: S3 runtime configuration composed from governance and external secret authority.
+// ABOUTME: Supports project-approved S3-compatible providers without persisting credentials.
 
 namespace Explore.Application.Models;
 
 /// <summary>
-/// S3 connection parameters resolved from SystemSetting/TenantSetting.
+/// S3 connection parameters resolved from governance plus external credentials.
 /// Instance admin can lock settings (IsLocked) to enforce a SaaS-wide storage provider,
 /// or leave unlocked so tenants can bring their own S3-compatible storage.
 /// </summary>
@@ -19,7 +19,7 @@ public class S3Configuration
     /// <summary>S3 access key ID for authentication.</summary>
     public required string AccessKeyId { get; set; }
 
-    /// <summary>S3 secret access key for authentication. Decrypted from settings.</summary>
+    /// <summary>S3 secret access key for authentication, resolved from external authority.</summary>
     public required string SecretAccessKey { get; set; }
 
     /// <summary>S3 region identifier (e.g., "fsn1" for Hetzner, "us-east-1" for AWS).</summary>

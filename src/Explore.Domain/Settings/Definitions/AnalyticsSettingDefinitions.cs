@@ -56,15 +56,6 @@ public static class AnalyticsSettingDefinitions
         Description: "Analytics provider endpoint URL (supports self-hosted deployments)",
         MaxScope: SettingScope.Tenant);
 
-    public static readonly SettingDefinition PersonalApiKey = new(
-        Key: "analytics.personal_api_key",
-        ValueType: SettingValueType.String,
-        DefaultValue: "\"\"",
-        Category: "Analytics",
-        Description: "Personal API key used for analytics feature flag evaluation when supported",
-        MaxScope: SettingScope.Tenant,
-        IsSensitive: true);
-
     // Cookie consent & storage governance
 
     public static readonly SettingDefinition CookieConsentEnabled = new(
@@ -154,7 +145,7 @@ public static class AnalyticsSettingDefinitions
 
     public static IReadOnlyList<SettingDefinition> All =>
     [
-        Provider, Enabled, ConsentMode, TransportMode, ApiKey, EndpointUrl, PersonalApiKey,
+        Provider, Enabled, ConsentMode, TransportMode, ApiKey, EndpointUrl,
         CookieConsentEnabled, DeclineBehavior, ConsentCookieLifetimeDays, GlobalDisableClientTracking,
         PosthogCookielessMode, PosthogPersonProfiles, PosthogSessionReplay, PosthogAutocapture,
         PosthogHeatmaps, PosthogToolbar

@@ -15,9 +15,7 @@ internal static class CerbosSettingsCacheInvalidation
         GovernanceSettingKeys.Cerbos.Mode,
         GovernanceSettingKeys.Cerbos.CustomEndpoint,
         GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
-        GovernanceSettingKeys.Cerbos.GrpcEndpoint,
-        InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
-        InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword
+        GovernanceSettingKeys.Cerbos.GrpcEndpoint
     ];
 
     public static void InvalidateIfCerbosSettingChanged(

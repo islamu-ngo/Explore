@@ -73,27 +73,6 @@ public sealed class LocalizationAdminServiceTests
     }
 
     [Test]
-    public async Task RotateTmsApiKeyAsync_ForwardsGeneratedSecretRequest()
-    {
-        _api.RotateLocalizationTmsApiKeyAsync(
-                Arg.Any<RotateLocalizationTmsApiKeyDto>(),
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true, Message = "Rotated." });
-
-        var result = await CreateService().RotateTmsApiKeyAsync("secret-key");
-
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Message).IsEqualTo("Rotated.");
-        await _api.Received(1).RotateLocalizationTmsApiKeyAsync(
-            Arg.Is<RotateLocalizationTmsApiKeyDto>(request => request.TmsApiKey == "secret-key"),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
     public async Task ExportFromTmsAsync_ForwardsLanguageCode()
     {
         var result = await CreateService().ExportFromTmsAsync("fr");

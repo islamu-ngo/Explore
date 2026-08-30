@@ -7,9 +7,11 @@ using Explore.Application.Contracts.Secrets;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
 using Explore.Secrets.Observability;
+using Explore.Secrets.Configuration;
 using Explore.Secrets.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Secrets.UnitTests.Services;
 
@@ -25,6 +27,16 @@ public sealed class SecretResolverBindingTests
     }
 
     [Test]
+    public async Task ISecretResolver_ReturnsTypedResolutionOutcome()
+    {
+        var method = typeof(ISecretResolver).GetMethod(nameof(ISecretResolver.ResolveAsync));
+
+        await Assert.That(method).IsNotNull();
+        await Assert.That(method!.ReturnType.GenericTypeArguments.Single().Name)
+            .IsEqualTo("SecretResolutionResult");
+    }
+
+    [Test]
     public async Task ResolveAsync_CharacterizesExistingTenantToInstanceBindingFallback()
     {
         Guid tenantId = Guid.CreateVersion7();
@@ -37,13 +49,13 @@ public sealed class SecretResolverBindingTests
         string secretValue = SecretsTestValues.CreateSecret();
         var resolver = Resolver([binding], new Dictionary<Guid, string> { [binding.Id] = secretValue });
 
-        ResolvedSecret? resolved = await resolver.ResolveAsync(
+        SecretResolutionResult resolved = await resolver.ResolveAsync(
             SecretDefinitionRegistry.Keys.Stripe.WebhookSecret,
             tenantId,
             CancellationToken.None);
 
-        await Assert.That(resolved).IsNotNull();
-        await Assert.That(resolved!.Scope).IsEqualTo(SecretScope.Instance);
+        await Assert.That(resolved.IsResolved).IsTrue();
+        await Assert.That(resolved.Scope).IsEqualTo(SecretScope.Instance);
         await Assert.That(resolved.Value).IsEqualTo(secretValue);
     }
 
@@ -73,10 +85,10 @@ public sealed class SecretResolverBindingTests
             [second.Id] = secondValue
         });
 
-        ResolvedSecret? resolved = await resolver.ResolveTenantBindingAsync(tenantId, second.Id, CancellationToken.None);
+        SecretResolutionResult resolved = await resolver.ResolveTenantBindingAsync(tenantId, second.Id, CancellationToken.None);
 
-        await Assert.That(resolved).IsNotNull();
-        await Assert.That(resolved!.Value).IsEqualTo(secondValue);
+        await Assert.That(resolved.IsResolved).IsTrue();
+        await Assert.That(resolved.Value).IsEqualTo(secondValue);
         await Assert.That(resolved.Scope).IsEqualTo(SecretScope.Tenant);
         await Assert.That(resolved.ScopeId).IsEqualTo(tenantId);
     }
@@ -100,9 +112,52 @@ public sealed class SecretResolverBindingTests
                 [binding.Id] = SecretsTestValues.CreateSecret(),
             });
 
-        ResolvedSecret? resolved = await resolver.ResolveTenantBindingAsync(tenantId, binding.Id, CancellationToken.None);
+        SecretResolutionResult resolved = await resolver.ResolveTenantBindingAsync(tenantId, binding.Id, CancellationToken.None);
 
-        await Assert.That(resolved).IsNull();
+        await Assert.That(resolved.Status).IsEqualTo(SecretResolutionStatus.Unconfigured);
+    }
+
+    [Test]
+    public async Task ConcurrentTenantResolution_DoesNotShareCachedSecretAcrossTenants()
+    {
+        Guid firstTenantId = Guid.CreateVersion7();
+        Guid secondTenantId = Guid.CreateVersion7();
+        SecretBinding first = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.RegistrationProviders.ApiToken,
+            SecretScope.Tenant,
+            firstTenantId,
+            "FIRST_TENANT_TOKEN");
+        first.Id = Guid.CreateVersion7();
+        SecretBinding second = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.RegistrationProviders.ApiToken,
+            SecretScope.Tenant,
+            secondTenantId,
+            "SECOND_TENANT_TOKEN");
+        second.Id = Guid.CreateVersion7();
+        string firstValue = SecretsTestValues.CreateSecret();
+        string secondValue = SecretsTestValues.CreateSecret();
+        var resolver = Resolver([first, second], new Dictionary<Guid, string>
+        {
+            [first.Id] = firstValue,
+            [second.Id] = secondValue
+        });
+
+        Task<SecretResolutionResult>[] resolutions = Enumerable.Range(0, 64)
+            .Select(index => resolver.ResolveAsync(
+                SecretDefinitionRegistry.Keys.RegistrationProviders.ApiToken,
+                index % 2 == 0 ? firstTenantId : secondTenantId,
+                CancellationToken.None))
+            .ToArray();
+
+        SecretResolutionResult[] results = await Task.WhenAll(resolutions);
+        for (int index = 0; index < results.Length; index++)
+        {
+            Guid expectedTenant = index % 2 == 0 ? firstTenantId : secondTenantId;
+            string expectedValue = index % 2 == 0 ? firstValue : secondValue;
+            await Assert.That(results[index].IsResolved).IsTrue();
+            await Assert.That(results[index].ScopeId).IsEqualTo(expectedTenant);
+            await Assert.That(results[index].Value).IsEqualTo(expectedValue);
+        }
     }
 
     [Test]
@@ -131,21 +186,21 @@ public sealed class SecretResolverBindingTests
             [instanceBinding.Id] = instanceValue
         });
 
-        ResolvedSecret? resolved = await resolver.ResolveQualifiedAsync(
+        SecretResolutionResult resolved = await resolver.ResolveQualifiedAsync(
             SecretDefinitionRegistry.Keys.Storage.AccessKeyId,
             SecretScope.Instance,
             scopeId: null,
             "v7",
             CancellationToken.None);
 
-        await Assert.That(resolved).IsNotNull();
-        await Assert.That(resolved!.Value).IsEqualTo(instanceValue);
+        await Assert.That(resolved.IsResolved).IsTrue();
+        await Assert.That(resolved.Value).IsEqualTo(instanceValue);
         await Assert.That(resolved.Scope).IsEqualTo(SecretScope.Instance);
         await Assert.That(resolved.ScopeId).IsNull();
     }
 
     [Test]
-    public async Task ResolveQualifiedAsync_MissingQualifierReturnsNull()
+    public async Task ResolveQualifiedAsync_MissingQualifierReturnsUnconfigured()
     {
         SecretBinding binding = SecretBinding.CreateEnvironmentVariable(
             SecretDefinitionRegistry.Keys.Promotions.CodeLookupHmacKey,
@@ -161,14 +216,67 @@ public sealed class SecretResolverBindingTests
                 [binding.Id] = SecretsTestValues.CreateSecret(),
             });
 
-        ResolvedSecret? resolved = await resolver.ResolveQualifiedAsync(
+        SecretResolutionResult resolved = await resolver.ResolveQualifiedAsync(
             SecretDefinitionRegistry.Keys.Promotions.CodeLookupHmacKey,
             SecretScope.Instance,
             scopeId: null,
             "v2",
             CancellationToken.None);
 
-        await Assert.That(resolved).IsNull();
+        await Assert.That(resolved.Status).IsEqualTo(SecretResolutionStatus.Unconfigured);
+    }
+
+    [Test]
+    public async Task SourceReferenceIdentityPreventsCrossBindingCacheReuse()
+    {
+        string settingKey = SecretDefinitionRegistry.Keys.Smtp.Password;
+        SecretBinding first = SecretBinding.CreateEnvironmentVariable(
+            settingKey,
+            SecretScope.Instance,
+            scopeId: null,
+            "FIRST_SMTP_PASSWORD");
+        first.Id = Guid.CreateVersion7();
+        SecretBinding second = SecretBinding.CreateEnvironmentVariable(
+            settingKey,
+            SecretScope.Instance,
+            scopeId: null,
+            "SECOND_SMTP_PASSWORD");
+        second.Id = Guid.CreateVersion7();
+        var bindings = new List<SecretBinding> { first };
+        var values = new Dictionary<Guid, string>
+        {
+            [first.Id] = "first-value",
+            [second.Id] = "second-value"
+        };
+        var resolver = Resolver(bindings, values);
+
+        SecretResolutionResult initial = await resolver.ResolveAsync(settingKey, null, CancellationToken.None);
+        bindings[0] = second;
+        SecretResolutionResult switched = await resolver.ResolveAsync(settingKey, null, CancellationToken.None);
+
+        await Assert.That(initial.Value).IsEqualTo("first-value");
+        await Assert.That(switched.Value).IsEqualTo("second-value");
+    }
+
+    [Test]
+    public async Task InvalidationReloadsChangedMetadataValue()
+    {
+        string settingKey = SecretDefinitionRegistry.Keys.Smtp.Password;
+        SecretBinding binding = SecretBinding.CreateEnvironmentVariable(
+            settingKey,
+            SecretScope.Instance,
+            scopeId: null,
+            "SMTP_PASSWORD");
+        binding.Id = Guid.CreateVersion7();
+        var values = new Dictionary<Guid, string> { [binding.Id] = "before" };
+        var resolver = Resolver([binding], values);
+
+        _ = await resolver.ResolveAsync(settingKey, null, CancellationToken.None);
+        values[binding.Id] = "after";
+        await resolver.InvalidateAsync(settingKey, SecretScope.Instance, null, CancellationToken.None);
+        SecretResolutionResult refreshed = await resolver.ResolveAsync(settingKey, null, CancellationToken.None);
+
+        await Assert.That(refreshed.Value).IsEqualTo("after");
     }
 
     private static SecretResolver Resolver(IReadOnlyList<SecretBinding> bindings, IReadOnlyDictionary<Guid, string> values)
@@ -178,7 +286,8 @@ public sealed class SecretResolverBindingTests
             [new FakeSecretSource(values)],
             new MemoryCache(new MemoryCacheOptions()),
             new SecretResolverMetrics(new TestMeterFactory()),
-            NullLogger<SecretResolver>.Instance);
+            NullLogger<SecretResolver>.Instance,
+            Options.Create(new SecretProviderOptions { Provider = SecretProviderType.Environment }));
     }
 
     private sealed class FakeSecretBindingRepository(IReadOnlyList<SecretBinding> bindings) : ISecretBindingRepository
@@ -215,8 +324,16 @@ public sealed class SecretResolverBindingTests
     private sealed class FakeSecretSource(IReadOnlyDictionary<Guid, string> values) : ISecretSource
     {
         public SecretSourceType SourceType => SecretSourceType.EnvironmentVariable;
-        public Task<string?> GetSecretAsync(SecretBinding binding, CancellationToken cancellationToken = default) =>
-            Task.FromResult(values.GetValueOrDefault(binding.Id));
+        public Task<SecretResolutionResult> GetSecretAsync(SecretBinding binding, CancellationToken cancellationToken = default) =>
+            Task.FromResult(values.TryGetValue(binding.Id, out var value)
+                ? SecretResolutionResult.Resolved(new ResolvedSecret(
+                    binding.SettingKey,
+                    value,
+                    binding.SourceType,
+                    binding.Scope,
+                    binding.ScopeId,
+                    DateTime.UtcNow))
+                : SecretResolutionResult.Unconfigured);
         public Task<bool> ValidateAsync(SecretBinding binding, CancellationToken cancellationToken = default) =>
             Task.FromResult(values.ContainsKey(binding.Id));
     }

@@ -376,7 +376,7 @@ internal sealed class SvixWebhookClient(
         }
 
         var resolved = await secretResolver.ResolveAsync(settingKey, tenantId: null, cancellationToken);
-        if (resolved is null || string.IsNullOrWhiteSpace(resolved.Value))
+        if (!resolved.IsResolved || string.IsNullOrWhiteSpace(resolved.Value))
         {
             throw new SvixWebhookConfigurationException("svix_auth_token_unresolved");
         }
@@ -415,7 +415,7 @@ internal sealed class SvixWebhookClient(
             credentialReference,
             tenantId: null,
             cancellationToken);
-        if (resolved is null || string.IsNullOrWhiteSpace(resolved.Value))
+        if (!resolved.IsResolved || string.IsNullOrWhiteSpace(resolved.Value))
         {
             throw new SvixWebhookConfigurationException("svix_auth_token_unresolved");
         }

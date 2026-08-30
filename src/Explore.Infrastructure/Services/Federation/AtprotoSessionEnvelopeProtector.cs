@@ -127,7 +127,7 @@ public sealed class AtprotoSessionEnvelopeProtector(ISecretResolver secretResolv
             SecretDefinitionRegistry.Keys.Atproto.SessionEncryptionKeyRing,
             tenantId: null,
             cancellationToken).ConfigureAwait(false);
-        return AtprotoSessionEncryptionKeyRing.Parse(resolved?.Value)
+        return AtprotoSessionEncryptionKeyRing.Parse(resolved.Value)
             ?? throw Unavailable("key_ring_unavailable");
     }
 

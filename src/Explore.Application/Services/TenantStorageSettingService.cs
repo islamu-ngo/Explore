@@ -22,8 +22,6 @@ public sealed class TenantStorageSettingService : ITenantStorageSettingService
         GovernanceSettingKeys.Storage.Endpoint,
         GovernanceSettingKeys.Storage.PublicEndpoint,
         GovernanceSettingKeys.Storage.BucketName,
-        InfrastructureSecretSettingKeys.Storage.AccessKeyId,
-        InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
         GovernanceSettingKeys.Storage.Region,
         GovernanceSettingKeys.Storage.ForcePathStyle,
         GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes,
@@ -33,20 +31,17 @@ public sealed class TenantStorageSettingService : ITenantStorageSettingService
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantSettingRepository _tenantSettingRepository;
     private readonly IStoragePolicyResolver _storagePolicyResolver;
-    private readonly IS3ConfigResolver? _s3ConfigResolver;
     private readonly IStorageUsageCounterRepository _usageCounterRepository;
 
     public TenantStorageSettingService(
         IHierarchicalSettingsResolver settingsResolver,
         ITenantSettingRepository tenantSettingRepository,
         IStoragePolicyResolver storagePolicyResolver,
-        IStorageUsageCounterRepository usageCounterRepository,
-        IS3ConfigResolver? s3ConfigResolver = null)
+        IStorageUsageCounterRepository usageCounterRepository)
     {
         _settingsResolver = settingsResolver;
         _tenantSettingRepository = tenantSettingRepository;
         _storagePolicyResolver = storagePolicyResolver;
-        _s3ConfigResolver = s3ConfigResolver;
         _usageCounterRepository = usageCounterRepository;
     }
 
@@ -59,7 +54,6 @@ public sealed class TenantStorageSettingService : ITenantStorageSettingService
             ? new SettingContext(TenantId: tenantId)
             : new SettingContext();
         var settings = await ResolveSettingsAsync(settingContext, cancellationToken);
-        var envBackedS3Config = _s3ConfigResolver is null ? null : await _s3ConfigResolver.ResolveAsync(cancellationToken);
         var usageCounter = await _usageCounterRepository.GetByTenantAndProviderAsync(
             tenantId,
             policy.Provider,
@@ -78,11 +72,7 @@ public sealed class TenantStorageSettingService : ITenantStorageSettingService
             S3Endpoint = ReadString(settings, GovernanceSettingKeys.Storage.Endpoint),
             S3PublicEndpoint = ReadString(settings, GovernanceSettingKeys.Storage.PublicEndpoint),
             S3BucketName = ReadString(settings, GovernanceSettingKeys.Storage.BucketName),
-            S3AccessKeyId = string.Empty,
-            S3SecretAccessKey = string.Empty,
-            S3AccessKeyConfigured = !string.IsNullOrWhiteSpace(ReadString(settings, InfrastructureSecretSettingKeys.Storage.AccessKeyId)) || !string.IsNullOrWhiteSpace(envBackedS3Config?.AccessKeyId),
-            S3SecretAccessKeyConfigured = !string.IsNullOrWhiteSpace(ReadString(settings, InfrastructureSecretSettingKeys.Storage.SecretAccessKey)) || !string.IsNullOrWhiteSpace(envBackedS3Config?.SecretAccessKey),
-            S3Region = ReadString(settings, GovernanceSettingKeys.Storage.Region, envBackedS3Config?.Region ?? "fsn1"),
+            S3Region = ReadString(settings, GovernanceSettingKeys.Storage.Region, "fsn1"),
             S3ForcePathStyle = ReadBool(settings, GovernanceSettingKeys.Storage.ForcePathStyle, true),
             S3UploadUrlExpirationMinutes = PositiveIntOrDefault(
                 ReadInt(settings, GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes, 60),
@@ -163,26 +153,6 @@ public sealed class TenantStorageSettingService : ITenantStorageSettingService
             await SetTenantValueAsync(
                 GovernanceSettingKeys.Storage.BucketName,
                 TrimOrEmpty(bucketName.Value),
-                tenantId,
-                actorUserId,
-                cancellationToken);
-        }
-
-        if (settings.S3?.AccessKeyId is { HasValue: true } accessKeyId)
-        {
-            await SetTenantValueAsync(
-                InfrastructureSecretSettingKeys.Storage.AccessKeyId,
-                TrimOrEmpty(accessKeyId.Value),
-                tenantId,
-                actorUserId,
-                cancellationToken);
-        }
-
-        if (settings.S3?.SecretAccessKey is { HasValue: true } secretAccessKey)
-        {
-            await SetTenantValueAsync(
-                InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
-                TrimOrEmpty(secretAccessKey.Value),
                 tenantId,
                 actorUserId,
                 cancellationToken);

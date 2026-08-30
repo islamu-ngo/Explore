@@ -131,16 +131,6 @@ public sealed class PatchTenantStorageSettingsCommandHandler
             current.S3BucketName = bucketName.Value ?? string.Empty;
         }
 
-        if (patch.S3?.AccessKeyId is { HasValue: true } accessKeyId)
-        {
-            current.S3AccessKeyId = accessKeyId.Value ?? string.Empty;
-        }
-
-        if (patch.S3?.SecretAccessKey is { HasValue: true } secretAccessKey)
-        {
-            current.S3SecretAccessKey = secretAccessKey.Value ?? string.Empty;
-        }
-
         if (patch.S3?.Region is { HasValue: true } region)
         {
             current.S3Region = region.Value ?? string.Empty;
