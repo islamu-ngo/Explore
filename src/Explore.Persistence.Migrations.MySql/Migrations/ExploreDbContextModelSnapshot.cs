@@ -40932,7 +40932,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                             b1.HasKey("PaymentAttemptId")
                                 .HasName("pk_ie_payment_attempts");
 
-                            b1.ToTable("ie_payment_attempts");
+                            b1.ToTable("ie_payment_attempts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PaymentAttemptId")
@@ -41075,126 +41075,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
             modelBuilder.Entity("Explore.Domain.Policies.InstancePolicySet", b =>
                 {
-                    b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("char(36)")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId")
-                                .HasName("pk_ie_instance_policy_sets");
-
-                            b1.ToTable("ie_instance_policy_sets");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("char(36)")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("tinyint(1)")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("char(36)")
-                                        .HasColumnName("id");
-
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("longtext")
-                                        .HasColumnName("domains_instance_base_domain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_instance_base_domain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("char(36)")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("tinyint(1)")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("char(36)")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("tinyint(1)")
-                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("AllowTenantCustomDomains")
-                                .IsRequired();
-
-                            b1.Navigation("InstanceBaseDomain")
-                                .IsRequired();
-
-                            b1.Navigation("LockTenantCustomDomain")
-                                .IsRequired();
-
-                            b1.Navigation("LockTenantSubdomain")
-                                .IsRequired();
-                        });
-
                     b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -41203,7 +41083,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -41225,7 +41105,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -41248,7 +41128,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -41271,7 +41151,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -41294,7 +41174,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -41314,6 +41194,126 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                                 .IsRequired();
                         });
 
+                    b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("char(36)")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_ie_instance_policy_sets");
+
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("char(36)")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("tinyint(1)")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("char(36)")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("longtext")
+                                        .HasColumnName("domains_instance_base_domain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_instance_base_domain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("char(36)")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("tinyint(1)")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("char(36)")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("tinyint(1)")
+                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("AllowTenantCustomDomains")
+                                .IsRequired();
+
+                            b1.Navigation("InstanceBaseDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantCustomDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantSubdomain")
+                                .IsRequired();
+                        });
+
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -41322,7 +41322,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -41344,7 +41344,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -41367,7 +41367,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -41390,7 +41390,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -41413,7 +41413,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -41433,6 +41433,73 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                                 .IsRequired();
                         });
 
+                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("char(36)")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("char(36)")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("tinyint(1)")
+                                        .HasColumnName("modules_enable_islamic_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("modules_enable_islamic_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("char(36)")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("tinyint(1)")
+                                        .HasColumnName("modules_enable_tech_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("modules_enable_tech_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("EnableIslamicModule")
+                                .IsRequired();
+
+                            b1.Navigation("EnableTechModule")
+                                .IsRequired();
+                        });
+
                     b.OwnsOne("Explore.Domain.Policies.OrganizationPolicy", "Organizations", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -41441,7 +41508,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -41463,7 +41530,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -41486,7 +41553,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -41509,7 +41576,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -41532,7 +41599,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -41560,7 +41627,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -41582,7 +41649,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41605,7 +41672,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41628,7 +41695,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41651,7 +41718,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41674,7 +41741,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41697,7 +41764,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41720,7 +41787,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41743,7 +41810,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41766,7 +41833,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41789,7 +41856,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41812,7 +41879,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41835,7 +41902,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41858,7 +41925,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41881,7 +41948,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41904,7 +41971,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41927,7 +41994,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41950,7 +42017,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41973,7 +42040,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -42035,73 +42102,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                                 .IsRequired();
                         });
 
-                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("char(36)")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId");
-
-                            b1.ToTable("ie_instance_policy_sets");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("char(36)")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("tinyint(1)")
-                                        .HasColumnName("modules_enable_islamic_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("modules_enable_islamic_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("char(36)")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("tinyint(1)")
-                                        .HasColumnName("modules_enable_tech_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("modules_enable_tech_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("EnableIslamicModule")
-                                .IsRequired();
-
-                            b1.Navigation("EnableTechModule")
-                                .IsRequired();
-                        });
-
                     b.OwnsOne("Explore.Domain.Policies.TenantDelegationPolicy", "TenantDelegation", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -42110,7 +42110,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -42132,7 +42132,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -42155,7 +42155,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -42178,7 +42178,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -42201,7 +42201,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -42224,7 +42224,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -42247,7 +42247,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -42270,7 +42270,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -42331,7 +42331,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("OrganizationPolicySetId");
 
-                            b1.ToTable("ie_organization_policy_sets");
+                            b1.ToTable("ie_organization_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("OrganizationPolicySetId")
@@ -42353,7 +42353,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("ie_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -42376,7 +42376,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("ie_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -42399,7 +42399,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("ie_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -42422,7 +42422,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("ie_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -42456,7 +42456,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("ie_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -42478,7 +42478,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -42501,7 +42501,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -42524,7 +42524,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -42547,7 +42547,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -42575,7 +42575,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("ie_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -42597,7 +42597,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -42620,7 +42620,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -42643,7 +42643,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -42666,7 +42666,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -42694,7 +42694,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("ie_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -42716,7 +42716,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -42739,7 +42739,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -42762,7 +42762,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -42785,7 +42785,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -42813,7 +42813,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("ie_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -42835,7 +42835,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42858,7 +42858,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42881,7 +42881,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42904,7 +42904,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42927,7 +42927,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42950,7 +42950,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42973,7 +42973,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42996,7 +42996,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43019,7 +43019,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43042,7 +43042,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43065,7 +43065,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43088,7 +43088,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43111,7 +43111,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43134,7 +43134,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43157,7 +43157,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43180,7 +43180,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43203,7 +43203,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43226,7 +43226,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -43461,7 +43461,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                             b1.HasKey("RefundAttemptId")
                                 .HasName("pk_ie_refund_attempts");
 
-                            b1.ToTable("ie_refund_attempts");
+                            b1.ToTable("ie_refund_attempts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("RefundAttemptId")
@@ -44231,7 +44231,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("RegistrationOrderId");
 
-                            b1.ToTable("ie_registration_orders");
+                            b1.ToTable("ie_registration_orders", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("RegistrationOrderId")
@@ -45763,7 +45763,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("UiThemeId");
 
-                            b1.ToTable("ie_ui_themes");
+                            b1.ToTable("ie_ui_themes", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemeId")
@@ -45893,7 +45893,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("UiThemeId");
 
-                            b1.ToTable("ie_ui_themes");
+                            b1.ToTable("ie_ui_themes", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemeId")
@@ -46040,7 +46040,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("UiThemePresetId");
 
-                            b1.ToTable("ie_ui_theme_presets");
+                            b1.ToTable("ie_ui_theme_presets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemePresetId")
@@ -46170,7 +46170,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("UiThemePresetId");
 
-                            b1.ToTable("ie_ui_theme_presets");
+                            b1.ToTable("ie_ui_theme_presets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemePresetId")
@@ -46323,7 +46323,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("UserAppearanceProfileId");
 
-                            b1.ToTable("ie_user_appearance_profiles");
+                            b1.ToTable("ie_user_appearance_profiles", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UserAppearanceProfileId")
@@ -46453,7 +46453,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
                             b1.HasKey("UserAppearanceProfileId");
 
-                            b1.ToTable("ie_user_appearance_profiles");
+                            b1.ToTable("ie_user_appearance_profiles", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UserAppearanceProfileId")
