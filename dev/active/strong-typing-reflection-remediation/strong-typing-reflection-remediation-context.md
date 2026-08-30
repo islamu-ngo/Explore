@@ -1,0 +1,159 @@
+<!-- ABOUTME: Active planning and resume context for the strong-typing and reflection-debt remediation. -->
+<!-- ABOUTME: Records current approval state, decisions, evidence, blockers, validation, and dirty-tree boundaries. -->
+
+# Strong Typing And Reflection Debt Remediation — Context
+
+Last Updated: 2026-08-30 Europe/Brussels
+
+## Review State
+
+- **I-VSD report:** `islamic-value-sensitive-design/i-vsd-strong-typing-reflection-remediation.md`
+- **I-VSD reviewed input revision:** `sha256:1a2fa2e4cfaca23086cb49648c0111b5be9c68e85ab5abdddee08e20b1f9b157`
+- **I-VSD status / disposition:** current / plan-aligned
+- **CTO review:** Not reviewed
+- **User approval:** Awaiting approval for this exact workstream revision
+- **Planning status:** Draft complete; implementation has not started
+- **Change classification:** Behavioral Delta with behavior-preserving structural sub-slices
+
+## Session Progress — 2026-08-30 Europe/Brussels
+
+### COMPLETED
+
+- Classified the current contract and found no existing intent that permits the mixed `src/**` plus test scope.
+- Loaded implementation-plan, I-VSD, Grill-Me, Clean Architecture, auth, EF Core, Blazor, IP clean-room, criticality, test, and release guidance.
+- Verified every major submitted archetype against current repository files and identified stale/inaccurate report entries.
+- Audited identity/claim/header/route owners and purpose-specific trust boundaries.
+- Audited reflection runtimes, EF metadata, source scraping, Blazor dynamic tests, and primitive candidates.
+- Completed official-source research for `nameof`, real-provider EF tests, standard headers, bUnit typed parameters, value objects, DID Core, and the AT Protocol DID profile.
+- Created the evidence packet, I-VSD report, plan, task ledger, and this context.
+- Passed the final independent consistency audit with no critical, high, or decision-blocking medium findings; all 39 tasks, 19 scenarios, I-VSD mappings, phase gates, paths, commands, and evidence hashes agree.
+
+### IN PROGRESS
+
+- Awaiting user review/correction/approval.
+
+### NEXT
+
+1. User reviews Plan Sections 3, 5, 6, and the decision to introduce only `AtprotoDid`.
+2. Optional Senior CTO review binds to this exact plan/tasks/I-VSD revision.
+3. After explicit approval, start Task 0.1 and keep the task ledger current.
+
+### BLOCKERS
+
+- **Approval blocker:** Implementation cannot start before user approval.
+- **Tooling evidence blocker at implementation start:** The repository-required code-review graph was unavailable in this planning session. Task 0.2 must refresh caller/callee/affected-flow evidence before product edits.
+- **Shared-worktree constraint:** `develop` is ahead of `origin/develop` and has extensive unrelated tracked/untracked changes, including files cited by this workstream. Implementation must patch only owned files, never revert or overwrite unrelated work, and stop for an exact conflict.
+- **Contract baseline issue:** The current dirty `test-suite-rationalization` intent references a missing active triad. Task 0.1 replaces this category's mixed-source routing with a dedicated valid intent without creating duplicate planning docs.
+
+## Quick Resume
+
+1. Read this context and `strong-typing-reflection-remediation-tasks.md`.
+2. Read only the current phase and referenced decisions/constraints in `strong-typing-reflection-remediation-plan.md`.
+3. Confirm user approval and current dirty-tree ownership.
+4. Start from Task 0.1 unless the user overrides it.
+5. Refresh context after a phase, decision, blocker, validation failure, scope discovery, or handoff.
+
+## Evidence And Research
+
+- **Frozen evidence packet:** `dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-evidence.md`
+- **Evidence SHA-256:** `1a2fa2e4cfaca23086cb49648c0111b5be9c68e85ab5abdddee08e20b1f9b157`
+- **I-VSD report:** `islamic-value-sensitive-design/i-vsd-strong-typing-reflection-remediation.md`
+- **Repository evidence cutoff:** 2026-08-30
+- **External sources:** recorded in the evidence packet; official documentation only.
+- **Clean-room posture:** No third-party implementation source or source-derived design entered the plan; no dependency is proposed.
+
+## Key Files And Responsibilities
+
+| Path | Existing/New | Layer | Responsibility |
+|---|---|---|---|
+| `.agents/contract/intents.yaml` | Existing, currently dirty | Governance | New mixed-source intent and exact scope |
+| `.agents/benchmarks/cold-start-tasks.yaml` | Existing, currently dirty | Governance | Deterministic routing scenario |
+| `docs/TESTING.md` | Existing | Governance | Executable-seam and source-assurance policy |
+| `eng/tools/Explore.AssuranceAudit/` | New, planned | Engineering | Roslyn recurrence audit without historical allowlists |
+| `src/Explore.Domain/ValueObjects/AtprotoDid.cs` | New, planned | Domain | Live DID syntax, equality, safe diagnostics |
+| `src/Explore.Domain/AtprotoIdentity.cs` | Existing | Domain | Aggregate-owned live/refresh/erasure transitions |
+| `src/Explore.Application/Authentication/PlatformIdentityPrincipalExtensions.cs` | Existing | Application | Sole ambient platform GUID authority |
+| `src/Explore.Application/Authentication/PlatformIdentityClaimTypes.cs` | New, planned | Application | Internal platform claim spelling only |
+| `src/Event.Web.BffHosting/Security/EventBffPrincipalExtensions.cs` | New, planned | BFF hosting | Opaque provider subject/session purposes, not platform identity |
+| `src/Explore.API/Hateoas/RouteNames.cs` | Existing, currently dirty | API | Stable named-route catalog |
+| `src/Explore.ServiceDefaults/HealthChecks/HealthCheckResponseWriter.cs` | Existing | Service defaults | Standard/custom health response headers |
+| `tests/Event.Persistence.IntegrationTests/ConfigurationManifest/ConfigurationManifestAuditProviderMigrationTests.cs` | Existing | Tests | Five-provider product-catalog pending-model seam |
+| `tests/Explore.GeneratedContracts.Tests/` | Existing | Tests/tooling | Generated transformer and wire-contract determinism |
+| `schemas/openapi_islamu-event.json` | Existing generated | API contract | API build-owned OpenAPI source for client generation |
+| `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs` | Existing generated | Blazor client | NSwag/Roslyn generated client output |
+| `eng/tools/Explore.ApiContractInventory/` | Existing | Engineering | OpenAPI-to-inventory generator |
+| `tests/Event.Application.UnitTests/Contracts/Admissions/Support/AdmissionContractRuntime.cs` | Existing, delete planned | Tests | Obsolete reflected behavior runtime |
+| `tests/Event.Persistence.IntegrationTests/FairReturnWaitlistConcurrencyTests.cs` | Existing | Tests | Real-provider ordering, tenant, and concurrency behavior |
+| named Blazor component/service tests | Existing | Tests | Typed rendering, HAL, accessibility, conflict behavior |
+| `dev/pause/blazor-clean-code-refactor/` | Existing paused work | Coordination | Broad Blazor work remains paused; exact ownership transfers only |
+
+## Key Decisions
+
+1. Add a dedicated mixed-source intent; do not widen or inherit the stale test-only intent.
+2. Classify string/reflection use by semantic ownership, not syntax.
+3. Eliminate runtime-name behavior dispatch and raw product-source/prose assurance.
+4. Retain compiled architecture/EF/endpoint metadata and real machine-artifact parsing.
+5. Preserve one Application platform-identity authority and separate BFF/provider/session purposes.
+6. Use one API-local Admin policy; do not create global role/action conflation.
+7. Use `nameof` for self-valued route constants and `HeaderNames` for standard HTTP headers.
+8. Introduce only `AtprotoDid`; keep currency/country/email/tenant slug scalar under current owners.
+9. Keep DID wire and database representation scalar; no EF/OpenAPI migration expected.
+10. Remove browser-side role/current-user mutation inference and rely on HAL.
+11. Supersede paused Blazor Tasks 16.1 and 16.6 here; leave paused Task 16.7 and Phase 6A provider/concurrency work untouched.
+12. Add a repository-owned Roslyn command, not a source-scraping test or permanent debt allowlist.
+13. No backward compatibility.
+
+## Constraints And Rules To Remember
+
+- Repositories return entities.
+- Validators are manually instantiated.
+- HAL links are the sole client action-affordance authority.
+- Platform identity order is `sub -> nameidentifier -> sid -> internal_user_id`, GUID-only.
+- Purpose-bound schemes stay isolated.
+- Tenant and soft-delete filters remain enabled.
+- Critical tests are replaced before old coverage is deleted.
+- No fixed sleeps, mock-mirroring, source/prose assurance, or EF query fakes.
+- Generated artifacts are generator-owned and never hand-edited.
+- No secrets/PII/claims/DIDs in logs, evidence, or ProblemDetails.
+- No new dependency without IP/license review.
+- No compatibility aliases, overloads, readers, routes, or adapters.
+- Work remains on `develop`; unrelated shared changes are not reverted or overwritten.
+
+## Validation Baseline
+
+Planning-only session:
+
+- No product build or product test was run, per Markdown-only planning scope.
+- `git diff --check -- .agents/skills/implementation-plan dev/active islamic-value-sensitive-design` exited zero.
+- Per-file `git diff --no-index --check` calls returned the expected content-diff exit code `1` with no whitespace diagnostics for all five new artifacts.
+- Every linked planning artifact exists; no repository Markdown/link validator was present under `eng/` or `.ci/`.
+- Architecture tests are not required unless agent-context/skill infrastructure itself is changed during planning; implementation Task 0.1 will change it and must run the Phase 0 gate.
+
+Implementation phases each run:
+
+- one `dotnet build --configuration Release --verbosity quiet`;
+- one selected project test command listed in plan/tasks;
+- targeted red/green selectors only for the named invariant under active development.
+
+## Current Known Risks / Unknowns
+
+- The current dirty tree can change counts and ownership before implementation; Task 0.2 refreshes evidence.
+- DID is privacy-bearing and case-sensitive; a convenience conversion could leak or normalize identity incorrectly.
+- Identity cleanup can change who the system believes a caller is if purpose-bound schemes are conflated.
+- Deleting reflection/source tests can remove the only safety proof if replacement-first sequencing is ignored.
+- The recurrence audit can become brittle if implemented as a file allowlist instead of semantic Roslyn categories.
+- Blazor overlap can duplicate the paused program unless Tasks 8.5 and 8.6 reconcile superseded versus retained ownership.
+- Unexpected OpenAPI/EF drift is a design failure requiring re-baselining, not a generated-file patch.
+
+## Handoff Notes
+
+### Handoff — 2026-08-30 Europe/Brussels
+
+- **Current state:** Planning triad, evidence packet, and I-VSD report created; no implementation started.
+- **Next action:** User review/approval, then Task 0.1.
+- **Blockers:** Approval, graph refresh, dirty-tree ownership.
+- **Modified files:** Only new files under `dev/active/strong-typing-reflection-remediation/` and `islamic-value-sensitive-design/i-vsd-strong-typing-reflection-remediation.md`.
+- **Validation:** Final independent audit passed; I-VSD/task/scenario/path/command mappings agree; Markdown whitespace and linked-artifact checks passed. Product build/tests were intentionally not run for this Markdown-only planning change.
+- **Documentation impact:** Planned in owning phases; no runtime docs changed now.
+- **Risks:** Identity/DID semantics, invariant loss, dirty-tree collisions, Roslyn guard brittleness.
+- **Notes for next contributor/agent:** Do not rewrite the full paused Blazor plan. Read its context and exact Phase 16/Phase 6A ranges only when Tasks 8.5–8.6 reconcile ownership. Do not touch unrelated configuration-manifest, secrets-control-plane, migration, generated-client, API, or workstream changes already present in the shared tree.
