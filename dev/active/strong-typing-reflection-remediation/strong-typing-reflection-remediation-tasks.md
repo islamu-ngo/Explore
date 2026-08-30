@@ -7,15 +7,15 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Draft
+- **Overall status:** Approved; implementation not started
 - **Completed:** 0/39 implementation tasks; phase verification tracked separately
-- **Current priority:** Await user approval, then Task 0.1
+- **Current priority:** Task 0.1 — add the mixed-source intent
 - **Next recommended slice:** Phase 0 — Governance And Assurance Classification
 - **I-VSD report:** `islamic-value-sensitive-design/i-vsd-strong-typing-reflection-remediation.md`
 - **I-VSD reviewed input revision:** `sha256:1a2fa2e4cfaca23086cb49648c0111b5be9c68e85ab5abdddee08e20b1f9b157`
 - **I-VSD status / disposition:** current / plan-aligned
 - **CTO review:** Not reviewed
-- **User approval:** Awaiting approval for this exact workstream revision
+- **User approval:** Approved by the user on 2026-08-30 for this exact workstream revision
 - **Primary intent:** new `strong-typing-refactor` intent created by Task 0.1
 - **Change classification:** Behavioral Delta with behavior-preserving structural sub-slices
 

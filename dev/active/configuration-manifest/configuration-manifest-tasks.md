@@ -3,19 +3,23 @@
 
 # Configuration Manifest And Reporting-Intake Policy — Task Checklist
 
-Last Updated: 2026-08-30 Europe/Brussels
+Last Updated: 2026-08-31 Europe/Brussels
 
 ## Status Summary
 
 - **Overall status:** In implementation; reactivated by explicit user directive
   on 2026-08-30.
-- **Implemented tasks:** 34/49 through CM-1830.
-- **Remaining tasks:** 15/49 in active Phases 19–23.
-- **Current priority:** CM-1910/CM-1920 selected-section atomic apply and
-  forward rollback.
-- **Next recommended slice:** CM-1930 recovery/history, then Phase 20.
-- **Known blockers:** Phase 18–23 gates are deferred to the final verification
-  sweep by explicit user direction; they remain required before completion.
+- **Implemented tasks:** 46/49 through CM-2320; CM-1930, CM-2030, and CM-2330
+  remain open because their required full-project gates are not green.
+- **Remaining tasks:** 3/49 verification closures in active Phases 19, 20, and
+  23.
+- **Current priority:** complete or explicitly waive the API, Persistence, and
+  Architecture phase gates; no implementation phase is being skipped.
+- **Next recommended slice:** resolve the recorded unrelated gate failures and
+  the committed SQLite migration-chain conflict, then rerun the three gates.
+- **Known blockers:** the API gate is red on unrelated secret-configuration
+  tests; the Persistence gate was stopped after 16 minutes without completion;
+  the Architecture gate is red on three unrelated findings. No waiver exists.
 - **Superseded workstream:** `dev/active/tenant-configuration-manifest/`.
   Its completed runtime foundation remains in the branch, but its planning
   artifacts are replaced by this workstream.
@@ -23,8 +27,8 @@ Last Updated: 2026-08-30 Europe/Brussels
 - **Context:** [configuration-manifest-context.md](configuration-manifest-context.md)
 - **I-VSD:** [i-vsd-configuration-manifest.md](../../../islamic-value-sensitive-design/i-vsd-configuration-manifest.md)
 - **I-VSD reviewed input:** `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`
-- **I-VSD status/disposition:** refresh required during CM-2310 after active
-  implementation.
+- **I-VSD status/disposition:** `plan-aligned`; F025–F030 remain deferred to
+  Setup Assistant.
 - **CTO review:** [configuration-manifest-cto-review.md](configuration-manifest-cto-review.md),
   decision `Approve`
 - **Deferred future workstream:** Avalonia, Terminal.Gui, CLI/TUI, `.env`, and
@@ -40,10 +44,34 @@ Last Updated: 2026-08-30 Europe/Brussels
   user and deferred to the final verification sweep.
 - Every unchecked task in Phases 19–23 is active again and must be implemented
   in order without claiming completion before its acceptance evidence exists.
-- Setup Assistant consumes only the current frozen
-  v1alpha2/schema/registry/import-preview baseline and does not inherit
-  unimplemented atomic apply, live migration UI, managed ownership, or direct
-  transfer.
+- Setup Assistant remains downstream-only: it consumes the frozen v1alpha2
+  wire contract, `Event.Wire.Contracts` extraction boundary, no-secret
+  portability rules, legal Markdown contract, and Phase 1 dependency seams.
+  This workstream makes no Setup Assistant implementation claim.
+
+## Continuation Verification — 2026-08-31
+
+- Release build: passed with 0 errors.
+- Application phase gate: 1,993/1,993 passed.
+- Blazor phase gate: 2,601 passed, 0 failed, 1 documented skip.
+- Persistence focused evidence: atomicity 2/2, recovery 2/2, encrypted
+  artifact/provider-model parity 10/10. The full project remained active for
+  16 minutes without producing a result and was stopped; this is not a pass or
+  waiver.
+- API focused configuration-import controller contract: 9/9 passed. The full
+  project remains red on unrelated secret-configuration tests; no waiver was
+  granted.
+- Architecture: 499 passed, 3 unrelated failures, 1 documented skip. Every
+  configuration-manifest-specific architecture failure was repaired, but the
+  full-project gate is not green.
+- Both v1alpha2 schemas passed `--check` twice. Earlier two-pass OpenAPI, API
+  inventory, and NSwag digests remained stable.
+- Release-fragment policy tests passed 22/22. Range preflight is blocked by an
+  unrelated commit-policy violation at `8aea1bf4c133afcf50cb0d9f2126d23c68a48207`.
+- The committed SQLite development migration sequence still contains the
+  superseded three-migration chain. It cannot be rewritten without an explicit
+  exception to the immutable-merged-migration rule; provider model parity alone
+  does not prove that chain can migrate an empty SQLite database.
 
 ## Implementation Maintenance Rules
 
@@ -1558,13 +1586,13 @@ pass. Phase closure still awaits the two verification commands below.
 ### Phase 18 Verification
 
 - [x] `dotnet build --configuration Release --verbosity quiet`
-- [x] **Closure waiver, not a passing result:** `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 19: Atomic Apply, Receipts, Snapshots, And Forward Rollback
 
 Plan reference: Phase 19 and CM-R4.
 
-### [ ] CM-1910 — Red: specify selected-section atomicity and rollback races
+### [x] CM-1910 — Red: specify selected-section atomicity and rollback races
 
 **Owning layer:** Persistence integration tests
 
@@ -1579,12 +1607,12 @@ Plan reference: Phase 19 and CM-R4.
 
 **Acceptance:**
 
-- [ ] `ConfigurationImportAtomicityTests` fail only on missing expanded apply
+- [x] `ConfigurationImportAtomicityTests` fail only on missing expanded apply
       behavior and verify CM-S5 against observable database state.
-- [ ] No test asserts framework call counts or excluded/nonportable fields.
-- [ ] Failure evidence remains value-minimized after transaction rollback.
+- [x] No test asserts framework call counts or excluded/nonportable fields.
+- [x] Failure evidence remains value-minimized after transaction rollback.
 
-### [ ] CM-1920 — Green: implement atomic selected apply and forward rollback
+### [x] CM-1920 — Green: implement atomic selected apply and forward rollback
 
 **Owning layers:** Domain/Application/Persistence
 
@@ -1599,11 +1627,11 @@ Plan reference: Phase 19 and CM-R4.
 
 **Acceptance:**
 
-- [ ] Atomicity/concurrency selectors prove valid serial outcomes and no partial
+- [x] Atomicity/concurrency selectors prove valid serial outcomes and no partial
       section, receipt, audit-success, or effect state.
-- [ ] Rollback preserves append-only history and never bypasses current target
+- [x] Rollback preserves append-only history and never bypasses current target
       authority.
-- [ ] Provider migrations/models are generated and current.
+- [x] Provider migrations/models are generated and current.
 
 ### [ ] CM-1930 — Complete operation history, recovery, and phase gate
 
@@ -1619,23 +1647,23 @@ Plan reference: Phase 19 and CM-R4.
 
 **Acceptance:**
 
-- [ ] `ConfigurationImportRecoveryTests` verify failed/prepared/applied/effect-
+- [x] `ConfigurationImportRecoveryTests` verify failed/prepared/applied/effect-
       pending/rolled-back states and safe retries.
-- [ ] Retention/cleanup never deletes evidence required for an authorized
+- [x] Retention/cleanup never deletes evidence required for an authorized
       rollback without an explicit expired/not-available result.
 - [ ] Phase 19 closes only after one Release build and the complete
       `Event.Persistence.IntegrationTests` project pass or documented waiver.
 
 ### Phase 19 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 20: Tenant Portability And Cross-Instance Migration
 
 Plan reference: Phase 20 and CM-R1/CM-R5.
 
-### [ ] CM-2010 — Red: specify tenant package authority and isolation
+### [x] CM-2010 — Red: specify tenant package authority and isolation
 
 **Owning layers:** Application/API security tests
 
@@ -1649,13 +1677,13 @@ Plan reference: Phase 20 and CM-R1/CM-R5.
 
 **Acceptance:**
 
-- [ ] `TenantConfigurationPackageAuthorityTests` fail for missing behavior and
+- [x] `TenantConfigurationPackageAuthorityTests` fail for missing behavior and
       verify CM-S1.
-- [ ] Tenant callers cannot infer whole-instance or another tenant’s values,
+- [x] Tenant callers cannot infer whole-instance or another tenant’s values,
       existence, locks, or operation history.
-- [ ] Package metadata never decides target identity or authorization.
+- [x] Package metadata never decides target identity or authorization.
 
-### [ ] CM-2020 — Implement tenant export, import, clone, history, and rollback
+### [x] CM-2020 — Implement tenant export, import, clone, history, and rollback
 
 **Owning layers:** Application/API/HAL/BFF
 
@@ -1668,11 +1696,11 @@ Plan reference: Phase 20 and CM-R1/CM-R5.
 
 **Acceptance:**
 
-- [ ] Tenant package handler/controller/HAL selectors pass for Cerbos/local
+- [x] Tenant package handler/controller/HAL selectors pass for Cerbos/local
       parity and cross-tenant denial.
-- [ ] Clone fails closed without delegated create authority and never copies
+- [x] Clone fails closed without delegated create authority and never copies
       source tenant/database identity as target authority.
-- [ ] Existing Day 2 settings APIs remain available and independently
+- [x] Existing Day 2 settings APIs remain available and independently
       authorized.
 
 ### [ ] CM-2030 — Prove migration fidelity and source independence
@@ -1688,22 +1716,22 @@ Plan reference: Phase 20 and CM-R1/CM-R5.
 
 **Acceptance:**
 
-- [ ] `TenantConfigurationMigrationFidelityTests` verify equivalent portable
+- [x] `TenantConfigurationMigrationFidelityTests` verify equivalent portable
       state and truthful named omissions.
-- [ ] No migration deletes or mutates source state automatically.
+- [x] No migration deletes or mutates source state automatically.
 - [ ] Phase 20 closes only after one Release build and the complete
       `Event.API.IntegrationTests` project pass.
 
 ### Phase 20 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 21: Blazor Instance And Tenant Administration
 
 Plan reference: Phase 21 and Section 3.8.
 
-### [ ] CM-2110 — Implement whole-instance import administration
+### [x] CM-2110 — Implement whole-instance import administration
 
 **Owning layers:** Blazor BFF/client
 
@@ -1716,12 +1744,12 @@ Plan reference: Phase 21 and Section 3.8.
 
 **Acceptance:**
 
-- [ ] `ConfigurationManifestImportAdministrationTests` verify rendered
+- [x] `ConfigurationManifestImportAdministrationTests` verify rendered
       instance behavior, capability loss, stale preview, and operation results.
-- [ ] Missing HAL removes every instance import/apply/rollback entry point.
-- [ ] Raw JSON is optional and no local role/claim check grants authority.
+- [x] Missing HAL removes every instance import/apply/rollback entry point.
+- [x] Raw JSON is optional and no local role/claim check grants authority.
 
-### [ ] CM-2120 — Implement tenant portability administration
+### [x] CM-2120 — Implement tenant portability administration
 
 **Owning layers:** Blazor BFF/client
 
@@ -1733,12 +1761,12 @@ Plan reference: Phase 21 and Section 3.8.
 
 **Acceptance:**
 
-- [ ] `TenantConfigurationPortabilityAdministrationTests` verify tenant-scoped
+- [x] `TenantConfigurationPortabilityAdministrationTests` verify tenant-scoped
       actions, target identity, mappings, omissions, and denied capabilities.
-- [ ] No tenant UI action exposes whole-instance or another-tenant data.
-- [ ] Source and target legal/operator responsibilities remain explicit.
+- [x] No tenant UI action exposes whole-instance or another-tenant data.
+- [x] Source and target legal/operator responsibilities remain explicit.
 
-### [ ] CM-2130 — Complete accessibility, localization, and usability contracts
+### [x] CM-2130 — Complete accessibility, localization, and usability contracts
 
 **Owning layers:** Blazor client/localization/scoped CSS
 
@@ -1751,22 +1779,22 @@ Plan reference: Phase 21 and Section 3.8.
 
 **Acceptance:**
 
-- [ ] `ConfigurationPortabilityAccessibilityTests` pass for semantic and
+- [x] `ConfigurationPortabilityAccessibilityTests` pass for semantic and
       interaction contracts without raw prose/CSS pinning.
-- [ ] No secret/value appears in accessible names, announcements, or errors.
-- [ ] Phase 21 closes only after one Release build and the complete
+- [x] No secret/value appears in accessible names, announcements, or errors.
+- [x] Phase 21 closes only after one Release build and the complete
       `Explore.Blazor.Client.Tests` project pass.
 
 ### Phase 21 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 22: Extensibility, Managed Ownership, And Direct Transfer
 
 Plan reference: Phase 22 and CM-R3/CM-R5.
 
-### [ ] CM-2210 — Implement extension, signature, and managed-ownership contracts
+### [x] CM-2210 — Implement extension, signature, and managed-ownership contracts
 
 **Owning layers:** Application/security/governance
 
@@ -1780,14 +1808,14 @@ Plan reference: Phase 22 and CM-R3/CM-R5.
 
 **Acceptance:**
 
-- [ ] `ConfigurationExtensionAndOwnershipTests` verify non-executable packs,
+- [x] `ConfigurationExtensionAndOwnershipTests` verify non-executable packs,
       issuer trust, drift-only mode, takeover consent, and unmanaged-field
       preservation.
-- [ ] Managed deletion appears explicitly in preview and cannot cross declared
+- [x] Managed deletion appears explicitly in preview and cannot cross declared
       ownership.
-- [ ] Unknown/missing required extensions fail without silent omission.
+- [x] Unknown/missing required extensions fail without silent omission.
 
-### [ ] CM-2220 — Red/Green direct-transfer security and recovery
+### [x] CM-2220 — Red/Green direct-transfer security and recovery
 
 **Owning layers:** Application/API/security/privacy
 
@@ -1800,14 +1828,14 @@ Plan reference: Phase 22 and CM-R3/CM-R5.
 
 **Acceptance:**
 
-- [ ] `ConfigurationDirectTransferSecurityTests` first fail on missing
+- [x] `ConfigurationDirectTransferSecurityTests` first fail on missing
       safeguards, then pass for SSRF, replay, wrong target, expiry, resume, and
       duplicate commit scenarios.
-- [ ] Transfer never carries secrets/PII/application data and never bypasses
+- [x] Transfer never carries secrets/PII/application data and never bypasses
       target preview/approval/apply.
-- [ ] Interrupted transfer leaves both instances authoritative and unchanged.
+- [x] Interrupted transfer leaves both instances authoritative and unchanged.
 
-### [ ] CM-2230 — Complete GitOps, collaboration, and operational controls
+### [x] CM-2230 — Complete GitOps, collaboration, and operational controls
 
 **Owning layers:** Application/API/operations
 
@@ -1820,17 +1848,17 @@ Plan reference: Phase 22 and CM-R3/CM-R5.
 
 **Acceptance:**
 
-- [ ] `ConfigurationManagedOperationsTests` verify uploader/reviewer/applier
+- [x] `ConfigurationManagedOperationsTests` verify uploader/reviewer/applier
       separation, drift without overwrite, scheduled stale fencing, and
       value-free support/observability.
-- [ ] No metric/log label contains paths, values, PII, or unbounded identities.
-- [ ] Phase 22 closes only after one Release build and the complete
+- [x] No metric/log label contains paths, values, PII, or unbounded identities.
+- [x] Phase 22 closes only after one Release build and the complete
       `Event.Application.UnitTests` project pass.
 
 ### Phase 22 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 23: Generated Contracts, Operations, Evidence, And Release
 
@@ -1855,7 +1883,7 @@ Plan reference: Phase 23 and Sections 7–18.
 - [ ] I-VSD/plan/context/tasks agree on revision/status/disposition and
       F025–F030 remain explicitly deferred.
 
-### [ ] CM-2320 — Update operator, developer, legal, and migration documentation
+### [x] CM-2320 — Update operator, developer, legal, and migration documentation
 
 **Owning layer:** documentation/operations
 
@@ -1868,11 +1896,11 @@ Plan reference: Phase 23 and Sections 7–18.
 
 **Acceptance:**
 
-- [ ] Markdown/link/schema examples agree with generated contracts and verify
+- [x] Markdown/link/schema examples agree with generated contracts and verify
       configuration is not application-data migration, secrets, or backup.
-- [ ] Recovery instructions cover stale/expired preview, failed apply, pending
+- [x] Recovery instructions cover stale/expired preview, failed apply, pending
       effects, rollback, source retention, and unavailable snapshot.
-- [ ] Documentation contains no Setup Assistant implementation claim.
+- [x] Documentation contains no Setup Assistant implementation claim.
 
 ### [ ] CM-2330 — Criticality review, change fragment, and final commit composition
 
@@ -1898,7 +1926,7 @@ Plan reference: Phase 23 and Sections 7–18.
 
 ### Phase 23 Verification
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Focused TUnit Selector Map

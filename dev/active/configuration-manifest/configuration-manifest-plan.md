@@ -3,7 +3,7 @@
 
 # Configuration Manifest And Reporting-Intake Policy — Implementation Plan
 
-Last Updated: 2026-08-30 Europe/Brussels
+Last Updated: 2026-08-31 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -13,9 +13,10 @@ Last Updated: 2026-08-30 Europe/Brussels
   migration, preview/diff/mapping/approval, atomic apply/rollback, typed legal
   documents, extensible section coverage, and advanced operational quality.
 - **Task directory:** `dev/active/configuration-manifest/`
-- **Planning status:** Closed for archival by explicit user directive on
-  2026-08-30. Implementation evidence reaches CM-1830; Phases 19–23 are
-  retired, not represented as implemented.
+- **Planning status:** Active verification closure. The later user directive
+  supersedes every closed, retired, or archive-ready statement from the prior
+  handoff. Implementation reaches CM-2320; CM-1930, CM-2030, and CM-2330 stay
+  open until their required full-project gates pass or receive explicit waivers.
 - **Change classification:** Behavioral Delta. This revision adds new artifact,
   authorization, import-session, migration, legal-publication, recovery,
   extension, API/BFF, and Blazor administration behavior.
@@ -967,6 +968,13 @@ the final change fragment/commit composition follows release policy.
 
 **Rollback/failure:** no completion claim while any generated drift, unwaived
 phase gate, critical finding, or I-VSD/triad mismatch remains.
+
+**Current evidence (2026-08-31):** Release, Application, and Blazor gates are
+green; both schemas are current on two consecutive checks; focused PostgreSQL
+atomicity/recovery, provider-model parity, API contracts, and fragment policy
+are green. Phase 23 remains active because the full API/Persistence/Architecture
+gate set is not green or waived, the committed SQLite migration-chain conflict
+requires direction, and the mandatory anonymized MAD review is still running.
 
 ## 7. Testing Strategy
 

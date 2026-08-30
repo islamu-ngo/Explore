@@ -9,7 +9,7 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 - **Original request:** Follow the submitted repository audit and plan a complete refactor of hardcoded semantic strings, weak typing, reflection-based contract runtimes, source-scraping tests, duplicated security literals, and justified Domain primitive debt. Follow repository conventions, Clean Architecture, enterprise-quality design, industry guidance, and greenfield breaking-change freedom.
 - **Task directory:** `dev/active/strong-typing-reflection-remediation/`
-- **Planning status:** Draft
+- **Planning status:** Approved
 - **Change classification:** **Behavioral Delta** overall, composed of:
   - security/federation behavior changes at malformed, conflicting, or purpose-bound identity inputs;
   - a new typed AT Protocol DID ingress boundary;
@@ -29,7 +29,7 @@ Last Updated: 2026-08-30 Europe/Brussels
 - **I-VSD reviewed input revision:** `sha256:1a2fa2e4cfaca23086cb49648c0111b5be9c68e85ab5abdddee08e20b1f9b157`
 - **I-VSD status / disposition:** current / plan-aligned
 - **CTO review:** Not reviewed
-- **User approval:** Awaiting approval for this exact workstream revision
+- **User approval:** Approved by the user on 2026-08-30 for this exact workstream revision
 - **Grill-Me intake:** The request explicitly requires complete remediation and no backward compatibility. Repository evidence resolved the material branches: create one dedicated mixed-source intent; retain legitimate compiled metadata; eliminate runtime-name behavior dispatch; preserve separate protocol/identity authorities; introduce only `AtprotoDid`; keep scalar wire/storage values; migrate exact Blazor overlaps without absorbing the paused broad clean-code program.
 
 ## 1. Executive Summary

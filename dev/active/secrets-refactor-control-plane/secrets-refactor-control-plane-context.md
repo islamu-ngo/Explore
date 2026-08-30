@@ -9,7 +9,7 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 - **Stage:** Product implementation authorized; Phase 0 governance is complete.
 - **Current phase:** Phase 6 deployment and operator convergence.
-- **Current task:** `SEC-401` — align supported provider and topology contracts.
+- **Current task:** `SEC-405` — consolidated verification and Tier 1 MAD review.
 - **User approval:** Full no-backward-compatibility implementation is approved against
   combined plan/tasks
   `sha256:a6255e78747ee7d85f42b27b213a5a0c3db1f250c0b24702856b4b6000445f37`.
@@ -26,12 +26,12 @@ Last Updated: 2026-08-30 Europe/Brussels
   `sha256:825b965e4937a7544ec99ea93c20456f2737c43441d45d44ac00549586805757`.
 - **CTO:** Fresh revision-bound verdict `Approve`; GATE-002 is complete for the
   exact current revalidated revision. This does not grant GATE-003.
-- **Working-tree baseline:** Scoped plan/secret paths were clean before this
-  planning pass. Only planning/I-VSD/CTO documentation is intentionally changed.
-- **Product verification:** Not run for this planning-only update. An unrelated
-  pre-existing API integration run observed 19 failures of 1,991 and an NU1903
-  warning for `System.Security.Cryptography.Xml` 10.0.7; this workstream did not
-  diagnose or rely on that run.
+- **Working-tree baseline:** The one-time pre-product Release build passed 45
+  projects with 0 errors and 343 pre-existing warnings. Product changes for Phases
+  1–6 are present and Green execution remains consolidated under `SEC-405`.
+- **Product verification:** Five required Red slices ran once and failed for their
+  intended pre-change invariants. All Green build/test/provider/topology/browser/
+  runbook/MAD execution is now ready for the single `SEC-405` wave.
 - **User execution direction:** Use no more than one subagent at a time and read its
   complete output before any later delegation. Focus only on planned code and
   directly owned tests/docs. Do not investigate unrelated failures or run phase-exit
@@ -44,12 +44,39 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 ## Resume Here
 
-1. Begin `SEC-001`; Phase 0 governance and its one focused validator are complete.
+1. Execute `SEC-405` exactly once: generated artifacts, Release build, scoped tests,
+   provider/topology evidence, browser/accessibility/manual QA, runbook checks, and
+   one anonymized Tier 1 MAD.
 2. Preserve the PR 0–6 intent mapping below and reclassify conditional intents from
    the final changed-file set before each phase closes.
 3. Preserve the local reset boundary. Exact environment/provider/database/container/
    volume identities MUST be proven immediately before each destructive command;
    no target has yet been proven or reset.
+
+## Phase 1–6 Implementation Evidence
+
+- Authority is explicit `Environment` or `Infisical`; isolated bootstrap has no
+  appsettings/User Secrets/lower-source fallback and diagnostics use bounded codes.
+- `SecretBinding` is metadata-only. Inline ciphertext/source/protect/unprotect paths,
+  the unused AES/database configuration provider, value mutation endpoints, and
+  compatibility scaffolding are deleted. Five clean provider migrations were
+  generated for PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL.
+- `ISecretResolver` returns typed bounded outcomes, caches resolved values only for
+  five minutes with tenant/scope/qualifier isolation, and emits low-cardinality
+  source/status metrics. Required consumers fail closed; optional capabilities
+  disable truthfully.
+- Rotation uses local value-free acknowledgements plus deployment-owned replica
+  convergence. HTTP/database candidates validate before activation; overlap is
+  limited to key rings/HMACs and other credentials use coordinated restart.
+- The existing authenticated control-plane overview consumes only
+  `Provider`/`Status`/`RemediationCode`. No new action, secret input, HAL relation,
+  BFF endpoint, CSS, or generated client hand edit was introduced.
+- Compose/AppHost/Standalone schemas align canonical forwarding, explicit provider,
+  replica count, setup authority, and promotion HMAC. Source files and `.env.example`
+  no longer define local credential defaults for the touched services.
+- SMTP, S3, analytics administration, and Cerbos Admin credentials are absent from
+  hierarchical setting definitions/seeds/groups/write DTOs/UI and resolve only from
+  the selected authority. Non-secret endpoint/bucket/sender policy remains governed.
 
 ## Phase 0 Validation Evidence
 

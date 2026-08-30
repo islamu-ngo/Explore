@@ -553,7 +553,7 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 ## Phase 6 — Deployment And Operator Convergence
 
-- [ ] **SEC-401 — Align environment and topology contracts** (`L`)
+- [x] **SEC-401 — Align environment and topology contracts** (`L`)
   - **Files:** `.env.example`, `docker-compose.yml`,
     `src/Explore.AppHost/AppHost.cs`, Standalone composition, CI/Coolify deployment
     files, and current configuration schemas.
@@ -570,8 +570,16 @@ Last Updated: 2026-08-30 Europe/Brussels
     ownership and complete code/test wiring; actual startup/topology execution is
     deferred to `SEC-405`; no source defines secrets.
   - **Dependency:** `SEC-305`.
+  - **Evidence:** Environment/Infisical is now a closed two-provider contract;
+    unused Vault/Azure/AWS enum/options/factory scaffolding was deleted. Compose,
+    AppHost, `.env.example`, Standalone profiles, replica-count/setup authority,
+    promotion HMAC forwarding, and canonical credential names are aligned without
+    secret defaults or broad credential aliases. SMTP, S3, analytics Admin, and
+    Cerbos Admin credentials resolve only through `ISecretResolver`; their database
+    setting definitions, seeds, write DTOs, handlers, generated-contract sources,
+    and UI inputs were removed.
 
-- [ ] **SEC-402 — Align bootstrap/schema versions and idempotency** (`L`)
+- [x] **SEC-402 — Align bootstrap/schema versions and idempotency** (`L`)
   - **Files:** `deploy/bootstrap/README.md`,
     bootstrap tooling/tests.
   - **Work:** Correct stale v1alpha1 references; prove rerun patches existing
@@ -581,8 +589,13 @@ Last Updated: 2026-08-30 Europe/Brussels
   - **Acceptance:** `SCN-OPS-001` passes through the supported non-destructive
     operator path.
   - **Dependency:** `SEC-401`.
+  - **Evidence:** Bootstrap docs and validation reference v1alpha2. Existing
+    additive rerun behavior is covered by the manifest/bootstrap tests; setup-secret
+    multi-replica initialization now rejects absent deployment authority and the
+    generated-file path has a 16-way convergence test. No manifest schema was
+    changed by this workstream.
 
-- [ ] **SEC-403 — Converge and cross-validate operator documentation** (`L`)
+- [x] **SEC-403 — Converge and cross-validate operator documentation** (`L`)
   - **Files:** `docs/SECRETS.md`, `docs/CONFIGURATION.md`,
     `docs/SECURITY-MODEL.md`, `docs/SELF_HOSTING.md`, `docs/OPERATIONS.md`,
     backup/restore/upgrade and troubleshooting docs, README only where directly
@@ -596,8 +609,14 @@ Last Updated: 2026-08-30 Europe/Brussels
     rotation claim and link exact current commands/contracts; earlier PR histories
     already contain their behavior-owning instructions.
   - **Dependency:** `SEC-402`.
+  - **Evidence:** Secrets, Configuration, Security Model, Self Hosting, Operations,
+    Storage, Email, Admin, Getting Started, troubleshooting, backup/restore, release,
+    and CI governance guidance now share the explicit authority, typed failure,
+    coordinated rotation, canonical credential naming, and no-database-fallback
+    contract. Stale `S3Settings`, SMTP alias, provider-enum, and v1alpha1 claims were
+    removed from the changed operator paths.
 
-- [ ] **SEC-404 — Implement rerun, rotation, backup, restore, and break-glass validation** (`L`)
+- [x] **SEC-404 — Implement rerun, rotation, backup, restore, and break-glass validation** (`L`)
   - **Files:** operator docs and existing deployment validation tests/tools.
   - **Work:** Implement coverage for partial bootstrap rerun, setup-secret divergence/concurrent
     initialization, cleanup, and forward-recovery convergence for each supported
@@ -609,6 +628,11 @@ Last Updated: 2026-08-30 Europe/Brussels
     one final execution; runbooks state restart/maintenance or external-provider
     requirements.
   - **Dependency:** `SEC-403`.
+  - **Evidence:** Replica convergence models partial/all/deadline/rejection and
+    coordinated-restart outcomes; setup authority tests cover missing multi-replica
+    authority and concurrent generated-file convergence. Runbooks label external
+    provisioning, restart/maintenance, delayed revocation, restore/reprovision, and
+    break-glass ownership. Execution remains intentionally deferred to `SEC-405`.
 
 - [ ] **SEC-405 — Run final intent-mandated verification and MAD review** (`L`)
   - **Work:** Run the single consolidated verification wave for the complete

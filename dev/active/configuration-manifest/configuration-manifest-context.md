@@ -3,7 +3,60 @@
 
 # Configuration Manifest And Reporting-Intake Policy — Context
 
-Last Updated: 2026-08-30 Europe/Brussels
+Last Updated: 2026-08-31 Europe/Brussels
+
+## SESSION PROGRESS (2026-08-31 Europe/Brussels)
+
+### COMPLETED
+
+- Implemented CM-1910 through CM-2320 in order without implementing Setup
+  Assistant. The runtime now owns atomic selected apply, append-only receipts,
+  protected snapshots, forward rollback, tenant packages/clone, HAL-gated
+  Blazor administration, declarative signed extension packs, managed ownership,
+  scheduled drift/apply controls, and mutually approved resumable direct
+  transfer.
+- Corrected import selection so available sections come from the uploaded
+  artifact, absent selected sections fail before preview, rollback sessions
+  retain the source selection, and direct-transfer completion verifies nonce,
+  digest, length, target, expiry, and idempotent replay.
+- Declared non-serialized tenant domains truthfully unavailable, kept extension
+  packs outside base artifacts, retained the no-secret boundary, and added
+  explicit rejection for the removed `email.smtp_password` setting key.
+- Completed v1alpha2 operator/developer/security/privacy/legal/accessibility
+  documentation and kept F025–F030 explicitly deferred to Setup Assistant.
+- Passed the Release build, Application gate (1,993/1,993), Blazor gate (2,601
+  passed, one documented skip), atomicity (2/2), recovery (2/2),
+  artifact/provider-model parity (10/10), focused API contract (9/9), schema
+  checks twice, and release-fragment policy tests (22/22).
+
+### IN PROGRESS
+
+- CM-1930, CM-2030, and CM-2330 closure evidence only. No remaining product
+  feature is intentionally deferred inside this workstream.
+
+### BLOCKERS
+
+- The complete API gate is red on unrelated secret-configuration tests; there
+  is no Phase 18/20 waiver.
+- The complete Persistence gate produced no result after 16 minutes and was
+  stopped; focused PostgreSQL and provider-model tests are green but cannot
+  substitute for Phase 19 closure.
+- The Architecture gate reports 499 passed, three unrelated failures, and one
+  documented skip; Phase 23 therefore remains open.
+- The already committed SQLite development migration chain contains the
+  superseded three-migration sequence. Rewriting it requires explicit approval
+  because merged generated migrations are immutable under repository rules.
+- Release range preflight is blocked by unrelated commit
+  `8aea1bf4c133afcf50cb0d9f2126d23c68a48207`; the fragment parser/policy suite
+  itself is green.
+
+### NEXT
+
+1. Record the anonymized Tier-1 MAD result and patch any surviving critical
+   configuration-manifest finding.
+2. Obtain migration-history direction for SQLite, then rerun the three open
+   full-project gates or record explicit waivers.
+3. Close CM-1930, CM-2030, and CM-2330 only after that evidence exists.
 
 ## SESSION PROGRESS (2026-08-30 Europe/Brussels)
 
@@ -79,26 +132,23 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 ### IN PROGRESS
 
-- Phase 19 implementation, beginning with CM-1910/CM-1920 selected-section
-  atomic apply and forward rollback.
+- Superseded by the 2026-08-31 continuation section above.
 
 ### NEXT
 
-1. Implement CM-1910 through CM-2330 in order.
-2. Run every deferred phase gate in the final verification sweep before
-   marking any phase complete.
+1. See the 2026-08-31 continuation section above.
 
 ### BLOCKERS
 
-- Phase 18–23 gates are intentionally deferred to the final verification sweep
-  by explicit user direction; none is waived as a passing result.
+- Superseded by the exact 2026-08-31 gate results above.
 
 ## Quick Resume — Current
 
-- **Status:** Active implementation; implemented evidence reaches CM-1830.
-- **Current phase:** Phase 19 — Atomic Apply, Receipts, Snapshots, And Forward
-  Rollback.
-- **Current task:** CM-1910/CM-1920.
+- **Status:** Active verification closure; implementation reaches CM-2320.
+- **Current phase:** Phase 23 — Generated Contracts, Operations, Evidence, And
+  Release.
+- **Current task:** CM-2330, with CM-1930 and CM-2030 held open by their
+  unwaived full-project gates.
 - **CTO review:** [configuration-manifest-cto-review.md](configuration-manifest-cto-review.md),
   decision `Approve`.
 - **Read first:** this active section, the current task, and only the current
@@ -108,7 +158,7 @@ Last Updated: 2026-08-30 Europe/Brussels
 - **I-VSD:** [i-vsd-configuration-manifest.md](../../../islamic-value-sensitive-design/i-vsd-configuration-manifest.md),
   reviewed input
   `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`,
-  status/disposition to be refreshed during CM-2310 after implementation.
+  status/disposition `plan-aligned`; F025–F030 remain deferred.
 
 ## SESSION PROGRESS (2026-08-26 Europe/Brussels)
 
