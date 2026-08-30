@@ -265,7 +265,7 @@ Point ISLAMU Event at the Coolify Cerbos PDP only after the PDP is healthy and p
 | `Cerbos:PlaintextMode` / `CERBOS_PLAINTEXT_MODE` | `false` |
 | `Cerbos:AdminApi:Endpoints:0` | Admin API endpoint for package sync/status when enabled. |
 | `Cerbos:AdminApi:AdminUsername` | Admin API username. |
-| `Cerbos:AdminApi:AdminPassword` | Plaintext Admin API password, secret-bearing. |
+| `CERBOS_ADMIN_PASSWORD` | Canonical Environment-authority Admin API password; never mapped into application configuration. |
 
 If the instance authorization provider is set to Cerbos and the PDP is unreachable, authorization fails closed. Switch back to local authorization only through an explicit operator action.
 

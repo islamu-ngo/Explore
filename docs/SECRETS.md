@@ -342,8 +342,8 @@ Infisical uses `SCREAMING_SNAKE_CASE` with path-based sections. The provider map
 | storage path + `STORAGE_S3_*` | `Storage:S3*` (for example `/storage/STORAGE_S3_ENDPOINT` → `Storage:S3Endpoint`) |
 | `/smtp/MAIL_SMTP_HOST` | `smtp.host` secret binding default; Development seed maps it to `email.smtp_host` when no SMTP setting exists |
 | `/smtp/MAIL_SMTP_PORT` | `smtp.port` secret binding default; Development seed maps it to `email.smtp_port` when no SMTP setting exists |
-| `/smtp/MAIL_SMTP_USERNAME` | `smtp.username` / `email.smtp_username` secret-bearing SMTP username |
-| `/smtp/MAIL_SMTP_PASSWORD` | `smtp.password` / `email.smtp_password` secret-bearing SMTP password |
+| `/smtp/MAIL_SMTP_USERNAME` | `smtp.username` secret-bearing SMTP username |
+| `/smtp/MAIL_SMTP_PASSWORD` | `smtp.password` secret-bearing SMTP password |
 | `/smtp/MAIL_SMTP_FROM_ADDRESS` | `smtp.from_address` secret binding default; Development seed maps it to `email.from_address` when no SMTP setting exists |
 | `/smtp/MAIL_SMTP_FROM_NAME` | `smtp.from_name` secret binding default; Development seed maps it to `email.from_name` when no SMTP setting exists |
 | `/cerbos/CERBOS_USE_POLICY_SCOPE` | `Cerbos:UsePolicyScope` |
@@ -470,7 +470,7 @@ A `BackgroundService` using `PeriodicTimer` that:
 
 ## Audit Decorator
 
-Wraps `ISecretProvider` to log all secret access operations. Sensitive keys are redacted (matches: `password`, `secret`, `key`, `token`, `credential`, `connectionstring`, `apikey`).
+Wraps `ISecretProvider` for value-free provider lifecycle mutations only. Secret reads do not create a persistent audit trail.
 
 Audit entries track: Operation, ProviderType, KeyPattern (redacted), Timestamp, UserId (extracted via `sub` → `nameidentifier` → `sid` fallback), CorrelationId.
 
@@ -479,13 +479,11 @@ Audit entries track: Operation, ProviderType, KeyPattern (redacted), Timestamp, 
 | Method | Purpose |
 |---|---|
 | `AddSecretProvider` | Core provider registration |
-| `AddSecretManagement` | Full setup (provider + refresh + health + metrics + encryption) |
+| `AddSecretManagement` | Full setup (provider + refresh + health + metrics) |
 | `AddSecretObservability` | Health checks + metrics |
 | `AddSecretMetrics` | Prometheus metrics only |
 | `AddSecretHealthCheck` | Health check only |
 | `AddSecretRefreshService` | Background refresh service |
-| `AddEncryptionService` | AES-256-GCM encryption |
-| `AddKeyRotationService` | Automatic key rotation |
 | `AddRotationAwareHttpClientFactory` | HttpClient with rotating credentials |
 | `AddRotationAwareDbContextFactory<T>` | DbContext with rotating connection strings |
 | `AddConnectionRotation<T>` | Generic connection rotation |

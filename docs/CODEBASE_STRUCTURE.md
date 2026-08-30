@@ -490,15 +490,13 @@ API-side library for multi-provider secret management. The isolated Blazor BFF o
 ```
 Explore.Secrets/
 ├── Abstractions/                  — Core interfaces and types
-│   ├── ISecretProvider.cs         — Secret retrieval interface
-│   └── IEncryptionService.cs      — Encryption abstraction
+│   └── ISecretProvider.cs         — Secret retrieval interface
 ├── Providers/                     — Secret provider implementations
 │   ├── EnvironmentSecretProvider.cs  — Environment variable secrets
 │   └── InfisicalSecretProvider.cs    — Infisical secret manager integration
 ├── Services/                      — Secret services
 │   ├── SecretProviderFactory.cs   — Creates provider based on configuration
-│   ├── SecretRefreshService.cs    — Background secret rotation
-│   └── AesEncryptionService.cs    — AES encryption implementation
+│   └── SecretRefreshService.cs    — Background provider refresh
 ├── Configuration/                 — Options and configuration models
 │   └── SecretProviderOptions.cs   — Provider selection configuration
 ├── Extensions/                    — DI registration

@@ -54,8 +54,8 @@ The email settings model is defined by `EmailSettingDefinitions` and grouped by 
 | `email.from_name` | Default sender display name. |
 | `email.smtp_timeout_seconds` | SMTP connection/send timeout. |
 | `email.smtp_skip_cert_validation` | Certificate validation bypass for controlled environments only. |
-| `email.smtp_username` | Sensitive SMTP username. |
-| `email.smtp_password` | Sensitive SMTP password. |
+| `smtp.username` | External-authority SMTP username; never a setting value. |
+| `smtp.password` | External-authority SMTP password; never a setting value. |
 
 `SmtpConfigResolver` reads the cascading settings model and caches resolved configuration per tenant for five minutes. It returns no SMTP configuration when required values such as host or from-address are missing.
 
@@ -63,7 +63,9 @@ Local Aspire and Compose runs start Mailpit for email capture. Aspire exposes SM
 
 ## Secret Handling
 
-`email.smtp_username` and `email.smtp_password` are sensitive settings. Treat them as secrets in reviews, logs, exports, support bundles, and screenshots.
+`smtp.username` and `smtp.password` are external-authority bindings. They are absent
+from governance settings, write DTOs, generated clients, logs, exports, support
+bundles, and screenshots.
 
 - Use [SECRETS.md](SECRETS.md) for provider setup and redaction expectations.
 - Use [CONFIGURATION.md](CONFIGURATION.md) for runtime configuration and persisted settings boundaries.
