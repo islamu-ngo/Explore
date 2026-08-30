@@ -120,12 +120,12 @@ public sealed class ConfigurationManifestReader : IConfigurationManifestReader
         ValidateLexicalJson(content);
         cancellationToken.ThrowIfCancellationRequested();
 
-        ConfigurationManifestV1Alpha1 manifest;
+        ConfigurationManifestV1Alpha2 manifest;
         try
         {
             manifest = JsonSerializer.Deserialize(
                 content,
-                ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha1)
+                ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2)
                     ?? throw new JsonException(
                         "The configuration manifest root was null.");
         }

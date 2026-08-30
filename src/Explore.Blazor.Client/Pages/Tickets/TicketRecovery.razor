@@ -44,7 +44,7 @@
                                    QrRepresentation="@_delivery.QrRepresentation"
                                    HolderDisplayName="@_delivery.HolderDisplayName"
                                    TicketTypeName="@_delivery.TicketTypeName"
-                                   Entitlements="@_delivery.Entitlements"
+                                   Entitlements="@(_delivery.Entitlements ?? [])"
                                    ShowPrintAction="true"
                                    OnPrint="PrintAsync" />
     }

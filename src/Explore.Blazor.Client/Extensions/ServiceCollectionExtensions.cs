@@ -168,6 +168,9 @@ public static class ServiceCollectionExtensions
             IFairReturnWaitlistService,
             FairReturnWaitlistService>();
         services.AddScoped<IEventAddOnService, EventAddOnService>();
+        services.AddScoped<
+            ITicketingDeploymentCapabilityService,
+            TicketingDeploymentCapabilityService>();
 
         // Notification services
         services.AddScoped<INotificationService, NotificationService>();

@@ -49,6 +49,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Explore.Atproto.Transport\Explore.Atproto.Transport.csproj" />
     <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
+    <ProjectReference Include="..\Explore.Secrets\Explore.Secrets.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -69,6 +70,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Localization\Bundles\*.json" />
+    <EmbeddedResource Include="Deployment\ticketing-capabilities.json" />
   </ItemGroup>
 
 </Project>

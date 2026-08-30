@@ -11,6 +11,7 @@ using Explore.Application.Contracts.LocationPrivacy;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.PrivacyErasure;
+using Explore.Application.Contracts.Recovery;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Waitlist;
 using Explore.Domain;
@@ -180,6 +181,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IManagedTenantProvisioningOperationRepository, ManagedTenantProvisioningOperationRepository>();
         services.AddScoped<IConfigurationManifestOperationRepository, ConfigurationManifestOperationRepository>();
         services.AddScoped<IConfigurationManifestFailureRecorder, ConfigurationManifestFailureRepository>();
+        services.AddScoped<ILegalDocumentRepository, LegalDocumentRepository>();
         services.AddScoped<IExternalApiKeyQuotaRepository, ExternalApiKeyQuotaRepository>();
         services.AddScoped<IUserNotificationPreferenceRepository, UserNotificationPreferenceRepository>();
         services.AddScoped<IUserAuthenticationTokenRepository, UserAuthenticationTokenRepository>();
@@ -219,6 +221,10 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventTicketCatalogRepository, EventTicketCatalogRepository>();
         services.AddScoped<IRegistrationInventoryRepository, RegistrationInventoryRepository>();
         services.AddScoped<IEventAddOnRepository, EventAddOnRepository>();
+        services.AddScoped<TicketingRecoveryRepository>();
+        services.AddScoped<
+            ITicketingRecoveryOperatorStore,
+            TicketingRecoveryRepository>();
         services.AddScoped<IPromotionManagementRepository, PromotionManagementRepository>();
         services.AddScoped<IPromotionRedemptionRepository, PromotionRedemptionRepository>();
         services.AddScoped<IRegistrationParticipantRepository, RegistrationParticipantRepository>();

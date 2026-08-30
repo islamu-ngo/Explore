@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 using Event.Web.BffHosting.Options;
 using Explore.API.Configuration;
 using Explore.API.Hosting;
@@ -313,11 +314,21 @@ public sealed class StandaloneHostGraphTests
     private static AuthenticationProperties CreateTokenProperties()
     {
         var properties = new AuthenticationProperties();
+        string token = new JwtSecurityTokenHandler().WriteToken(
+            new JwtSecurityToken(
+                expires: new DateTime(
+                    2100,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    DateTimeKind.Utc)));
         properties.StoreTokens([
             new AuthenticationToken
             {
                 Name = "access_token",
-                Value = "eyJhbGciOiJub25lIn0.eyJleHAiOjQxMDI0NDQ4MDB9."
+                Value = token
             }
         ]);
         return properties;

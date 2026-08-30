@@ -62,6 +62,8 @@ using Explore.Infrastructure.ConfigurationManifest;
 using Explore.Infrastructure.Webhooks;
 using Explore.Infrastructure.WebPush;
 using Explore.Infrastructure.Waitlist;
+using Explore.Infrastructure.Recovery;
+using Explore.Infrastructure.Deployment;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.AI;
@@ -72,6 +74,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Explore.Application.Features.ConfigurationManifest.Ingestion;
+using Explore.Application.Contracts.Deployment;
+using Explore.Secrets.Configuration;
+using Explore.Secrets.Validation;
 using Polly;
 
 namespace Explore.Infrastructure;
@@ -465,6 +470,21 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IMachinePrincipalAccessor>(provider => provider.GetRequiredService<MachinePrincipalAccessor>());
         services.AddScoped<IMachinePrincipalExecutionAccessor>(provider => provider.GetRequiredService<MachinePrincipalAccessor>());
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddSingleton<
+            ITicketingDeploymentCapabilityCatalog,
+            TicketingDeploymentCapabilityCatalog>();
+        services.AddOptions<TicketingRecoveryOperatorOptions>()
+            .Bind(configuration.GetSection(
+                TicketingRecoveryOperatorOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<
+            IValidateOptions<TicketingRecoveryOperatorOptions>,
+            TicketingRecoveryOperatorOptionsValidator>();
+        services.AddScoped<TicketingRecoveryOperatorService>();
+        services.AddHealthChecks()
+            .AddCheck<TicketingRecoveryHealthCheck>(
+                TicketingRecoveryHealthCheck.Name,
+                tags: ["ready", "recovery"]);
         services.AddOptions<
                 FairReturnOrchestrationDrainSettings>()
             .Bind(configuration.GetSection(

@@ -9,6 +9,8 @@ namespace Explore.API.Hateoas;
 /// </summary>
 public static class RouteNames
 {
+    public const string GetTicketingDeploymentCapabilities =
+        nameof(GetTicketingDeploymentCapabilities);
     public const string GetEventAddOnCatalog = "GetEventAddOnCatalog";
     public const string GetEventAddOnManagement = "GetEventAddOnManagement";
     public const string CreateEventAddOnCatalogDraft = "CreateEventAddOnCatalogDraft";

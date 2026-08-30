@@ -26,23 +26,23 @@ public static class ConfigurationManifestJsonSchemaGenerator
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    public static byte[] Generate() =>
-        Generate(
+    public static byte[] GenerateConfigurationManifest() =>
+        GenerateConfigurationManifest(
             ConfigurationManifestCatalog.InstanceSettings.Values,
             ConfigurationManifestCatalog.InstanceDocuments.Values,
             ConfigurationManifestCatalog.TenantSettings.Values,
             ConfigurationManifestCatalog.TenantDocuments.Values);
 
-    public static byte[] Generate(
+    public static byte[] GenerateConfigurationManifest(
         IEnumerable<ConfigurationManifestSettingCatalogEntry> tenantSettingEntries,
         IEnumerable<ConfigurationManifestDocumentCatalogEntry> tenantDocumentEntries) =>
-        Generate(
+        GenerateConfigurationManifest(
             ConfigurationManifestCatalog.InstanceSettings.Values,
             ConfigurationManifestCatalog.InstanceDocuments.Values,
             tenantSettingEntries,
             tenantDocumentEntries);
 
-    public static byte[] Generate(
+    public static byte[] GenerateConfigurationManifest(
         IEnumerable<ConfigurationManifestSettingCatalogEntry> instanceSettingEntries,
         IEnumerable<ConfigurationManifestDocumentCatalogEntry> instanceDocumentEntries,
         IEnumerable<ConfigurationManifestSettingCatalogEntry> tenantSettingEntries,
@@ -67,6 +67,28 @@ public static class ConfigurationManifestJsonSchemaGenerator
             tenantSettings,
             tenantDocuments);
         string json = root.ToJsonString(SerializerOptions)
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+        return Encoding.UTF8.GetBytes($"{json}\n");
+    }
+
+    public static byte[] GenerateTenantConfigurationPackage() =>
+        GenerateTenantConfigurationPackage(
+            ConfigurationManifestCatalog.TenantSettings.Values,
+            ConfigurationManifestCatalog.TenantDocuments.Values);
+
+    public static byte[] GenerateTenantConfigurationPackage(
+        IEnumerable<ConfigurationManifestSettingCatalogEntry> tenantSettingEntries,
+        IEnumerable<ConfigurationManifestDocumentCatalogEntry> tenantDocumentEntries)
+    {
+        ArgumentNullException.ThrowIfNull(tenantSettingEntries);
+        ArgumentNullException.ThrowIfNull(tenantDocumentEntries);
+
+        ConfigurationManifestSettingCatalogEntry[] tenantSettings =
+            ValidateSettings(tenantSettingEntries, ConfigurationManifestScope.Tenant);
+        ConfigurationManifestDocumentCatalogEntry[] tenantDocuments =
+            ValidateDocuments(tenantDocumentEntries, ConfigurationManifestScope.Tenant);
+        string json = BuildTenantPackageSchema(tenantSettings, tenantDocuments)
+            .ToJsonString(SerializerOptions)
             .Replace("\r\n", "\n", StringComparison.Ordinal);
         return Encoding.UTF8.GetBytes($"{json}\n");
     }
@@ -150,7 +172,7 @@ public static class ConfigurationManifestJsonSchemaGenerator
                 && entry.SchemaVersion == 1
                 && entry.DefaultsVersion is null
                 && entry.PayloadType
-                    == typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha1)
+                    == typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha2)
                 && entry.Storage
                     == ConfigurationManifestDocumentStorage.PaidEventPolicy;
             if (!isBranding && !isPaidPolicy)
@@ -207,6 +229,60 @@ public static class ConfigurationManifestJsonSchemaGenerator
         };
     }
 
+    private static JsonObject BuildTenantPackageSchema(
+        IReadOnlyList<ConfigurationManifestSettingCatalogEntry> tenantSettings,
+        IReadOnlyList<ConfigurationManifestDocumentCatalogEntry> tenantDocuments)
+    {
+        var definitions = new SortedDictionary<string, JsonNode?>(StringComparer.Ordinal)
+        {
+            ["brandingPayload"] = BrandingPayloadSchema(),
+            ["manifestExportMetadata"] = ManifestExportMetadataSchema(),
+            ["paidEventPolicyCurrencyRiskLimit"] = PaidEventPolicyCurrencyRiskLimitSchema(),
+            ["paidEventPolicyPayload"] = PaidEventPolicyPayloadSchema(),
+            ["tenantBrandingDocument"] = BrandingDocumentSchema(),
+            ["tenantDocuments"] = TenantDocumentsSchema(tenantDocuments),
+            ["tenantPackageMetadata"] = TenantPackageMetadataSchema(),
+            ["tenantPackageSource"] = TenantPackageSourceSchema(),
+            ["tenantPackageSpec"] = TenantPackageSpecSchema(),
+            ["tenantPaidEventPolicyDocument"] = PaidEventPolicyDocumentSchema(),
+            ["tenantSettings"] = SettingsSchema(tenantSettings)
+        };
+        var schemaDefinitions = new JsonObject();
+        foreach ((string key, JsonNode? value) in definitions)
+            schemaDefinitions[key] = value;
+
+        return new JsonObject
+        {
+            ["$comment"] = "ABOUTME: Governed JSON Schema for TenantConfigurationPackage files.",
+            ["$comment2"] = "ABOUTME: Generated deterministically; edit the catalog or generator, never this artifact.",
+            ["$schema"] = SchemaDialect,
+            ["$id"] = TenantConfigurationPackageContractMetadata.SchemaId,
+            ["title"] = "ISLAMU Event Tenant Configuration Package",
+            ["description"] = "Portable non-secret tenant configuration whose target is selected by trusted route authority.",
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["required"] = Strings(["$schema", "apiVersion", "kind", "metadata", "spec"]),
+            ["properties"] = new JsonObject
+            {
+                ["$schema"] = new JsonObject
+                {
+                    ["const"] = TenantConfigurationPackageContractMetadata.SchemaId
+                },
+                ["apiVersion"] = new JsonObject
+                {
+                    ["const"] = TenantConfigurationPackageContractMetadata.ApiVersion
+                },
+                ["kind"] = new JsonObject
+                {
+                    ["const"] = TenantConfigurationPackageContractMetadata.Kind
+                },
+                ["metadata"] = Ref("tenantPackageMetadata"),
+                ["spec"] = Ref("tenantPackageSpec")
+            },
+            ["$defs"] = schemaDefinitions
+        };
+    }
+
     private static JsonObject BuildDefinitions(
         IReadOnlyList<ConfigurationManifestSettingCatalogEntry> instanceSettings,
         IReadOnlyList<ConfigurationManifestDocumentCatalogEntry> instanceDocuments,
@@ -249,6 +325,45 @@ public static class ConfigurationManifestJsonSchemaGenerator
                     pattern: "^[a-z0-9]+(?:[.-][a-z0-9]+)*$")
             },
             ["name"]);
+
+    private static JsonObject TenantPackageMetadataSchema() =>
+        ClosedObject(
+            new JsonObject
+            {
+                ["export"] = Ref("manifestExportMetadata"),
+                ["name"] = BoundedString(
+                    maximumLength: 100,
+                    pattern: "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"),
+                ["source"] = Ref("tenantPackageSource")
+            },
+            ["name", "source"]);
+
+    private static JsonObject TenantPackageSourceSchema() =>
+        ClosedObject(
+            new JsonObject
+            {
+                ["instanceName"] = new JsonObject
+                {
+                    ["type"] = Strings(["null", "string"]),
+                    ["minLength"] = 1,
+                    ["maxLength"] = 100,
+                    ["pattern"] = "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+                },
+                ["tenantName"] = BoundedString(
+                    maximumLength: 100,
+                    pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$")
+            },
+            ["tenantName"]);
+
+    private static JsonObject TenantPackageSpecSchema() =>
+        ClosedObject(
+            new JsonObject
+            {
+                ["displayName"] = BoundedString(maximumLength: 500),
+                ["documents"] = Ref("tenantDocuments"),
+                ["settings"] = Ref("tenantSettings")
+            },
+            ["displayName", "documents", "settings"]);
 
     private static JsonObject ManifestExportMetadataSchema() =>
         ClosedObject(

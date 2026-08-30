@@ -1,4 +1,4 @@
-// ABOUTME: Specifies the sole v1alpha1 instance-and-tenant ConfigurationManifest contract.
+// ABOUTME: Specifies the sole v1alpha2 instance-and-tenant ConfigurationManifest contract.
 // ABOUTME: Fails while the tenant-only root, identity, or strict scope shape remains.
 
 namespace Event.Application.UnitTests.Features.ConfigurationManifest;
@@ -18,27 +18,27 @@ public sealed class ConfigurationManifestContractTests
         typeof(SettingUpsertService).Assembly;
 
     [Test]
-    public async Task ContractMetadata_UsesOneAlignedV1Alpha1Identity()
+    public async Task ContractMetadata_UsesOneAlignedV1Alpha2Identity()
     {
         Type? metadataType = ApplicationAssembly.GetType(
             ContractNamespace + "ConfigurationManifestContractMetadata");
 
         await Assert.That(metadataType).IsNotNull();
         await Assert.That(ReadConstant(metadataType!, "SchemaId"))
-            .IsEqualTo("https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json");
+            .IsEqualTo("https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json");
         await Assert.That(ReadConstant(metadataType, "ApiVersion"))
-            .IsEqualTo("configuration.islamu.org/v1alpha1");
+            .IsEqualTo("configuration.islamu.org/v1alpha2");
         await Assert.That(ReadConstant(metadataType, "Kind"))
             .IsEqualTo("ConfigurationManifest");
         await Assert.That(ReadConstant(metadataType, "MediaType"))
-            .IsEqualTo("application/vnd.islamu.configuration-manifest.v1alpha1+json");
+            .IsEqualTo("application/vnd.islamu.configuration-manifest.v1alpha2+json");
     }
 
     [Test]
     public async Task RootContract_RequiresClosedInstanceAndTenantScopes()
     {
         Type? rootType = ApplicationAssembly.GetType(
-            ContractNamespace + "ConfigurationManifestV1Alpha1");
+            ContractNamespace + "ConfigurationManifestV1Alpha2");
 
         await Assert.That(rootType).IsNotNull();
         await AssertClosedRequiredProperties(
@@ -79,14 +79,14 @@ public sealed class ConfigurationManifestContractTests
     public async Task Deserialize_StrictUnifiedEnvelope_AcceptsInstanceAndTenantSections()
     {
         Type? rootType = ApplicationAssembly.GetType(
-            ContractNamespace + "ConfigurationManifestV1Alpha1");
+            ContractNamespace + "ConfigurationManifestV1Alpha2");
         await Assert.That(rootType).IsNotNull();
 
         const string json =
             """
             {
-              "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json",
-              "apiVersion": "configuration.islamu.org/v1alpha1",
+              "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json",
+              "apiVersion": "configuration.islamu.org/v1alpha2",
               "kind": "ConfigurationManifest",
               "metadata": { "name": "primary-instance" },
               "spec": {
@@ -125,7 +125,7 @@ public sealed class ConfigurationManifestContractTests
         string rawValue)
     {
         Type? rootType = ApplicationAssembly.GetType(
-            ContractNamespace + "ConfigurationManifestV1Alpha1");
+            ContractNamespace + "ConfigurationManifestV1Alpha2");
         await Assert.That(rootType).IsNotNull();
 
         string json = ManifestJsonWithUnknown(path, rawValue);
@@ -206,8 +206,8 @@ public sealed class ConfigurationManifestContractTests
         return
             $$"""
             {
-              "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json",
-              "apiVersion": "configuration.islamu.org/v1alpha1",
+              "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json",
+              "apiVersion": "configuration.islamu.org/v1alpha2",
               "kind": "ConfigurationManifest",
               "metadata": { "name": "primary-instance" },
               "spec": {

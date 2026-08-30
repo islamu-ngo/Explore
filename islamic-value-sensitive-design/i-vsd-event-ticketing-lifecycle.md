@@ -15,8 +15,8 @@ Last Updated: 2026-08-29
 - Disposition: plan-aligned
 - Evidence cutoff: 2026-08-29
 - Evidence-packet revision: SHA-256 source-packet manifest `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`
-- Reviewed input revision: plan SHA-256 `3e1d8d0f42a7739e22a685bfc677a8d3e7db82ea00cddd4cd0caefcee1141986`; tasks SHA-256 `d395d927043a639d2ff1f7b75a5f857c7102615212290ddd40ef7b91b1bdf669`
-- Revalidation result: every accepted finding and mitigation remains mapped to S1-S7/WB-1 and Tasks 1.1-9.4; the Phase 7 add-on interpretation below makes catalog cardinality, optionality, commerce, fulfillment, refund, and admission boundaries explicit without widening protected payout or specialist-system scope
+- Reviewed input revision: plan SHA-256 `3f08e54af01d3b9e9825f67b8ce82c85311cb980bc17442be5e801ae2576b1fa`; tasks SHA-256 `75adc80bb9d2ae13df36004e72bd607a695ec6afb5f23f03112f8eeda5d041c7`
+- Revalidation result: every accepted finding and mitigation remains mapped to S1-S7/WB-1 and Tasks 1.1-9.4; Phase 7 keeps add-ons optional and admission-independent, Phase 8 rotates restored bearer authority and resolves provider ambiguity before reopening, and Phase 9 keeps all externally gated capabilities test-only while protected delayed payout remains disabled
 - Refresh trigger: any material change to access/ceiling authority, participant consent, transfer/resale, waitlist/refund priority, add-on admission separation, recovery/key custody, monetization/payout, or mapped scenarios/tasks
 - Supersedes: future-work mappings F6–F13 in `i-vsd-registration-data-collection.md`; that report remains authoritative for completed registration/forms/commerce/admission findings F1–F5
 
@@ -335,7 +335,7 @@ No production stakeholder studies, incident history, legal opinion, qualified sc
 - Workstream: `event-ticketing-lifecycle`
 - Status: current
 - Evidence-packet revision: SHA-256 source-packet manifest `c06e94970f738b8fc20b89895f0425c8ca186b85a0184647fd97cfddbcfeb792`
-- Reviewed input revision: plan SHA-256 `3e1d8d0f42a7739e22a685bfc677a8d3e7db82ea00cddd4cd0caefcee1141986`; tasks SHA-256 `d395d927043a639d2ff1f7b75a5f857c7102615212290ddd40ef7b91b1bdf669`
+- Reviewed input revision: plan SHA-256 `3f08e54af01d3b9e9825f67b8ce82c85311cb980bc17442be5e801ae2576b1fa`; tasks SHA-256 `75adc80bb9d2ae13df36004e72bd607a695ec6afb5f23f03112f8eeda5d041c7`
 - Findings and mitigations: `IVSD-F001`→`IVSD-M001`, `IVSD-F002`→`IVSD-M002`, `IVSD-F003`→`IVSD-M003`, `IVSD-F004`→`IVSD-M004`, `IVSD-F005`→`IVSD-M005`, `IVSD-F006`→`IVSD-M006`, `IVSD-F007`→`IVSD-M007`
 - Required plan mappings: F001/M001→S1-A/B/C→Tasks 1.1-2.6; F002/M002→S2-A/B/C→Tasks 3.1-4.6; F003/M003→S3-A/B/C→Tasks 5.1-5.6; F004/M004→S4-A/B/C/D/E/F and WB-1→Tasks 6.1-6.8 and 8.1-8.4; F005/M005→S5-A/B/C→Tasks 7.1-7.6; F006/M006→S6-A/B/C and WB-1→Tasks 8.1-9.4; F007/M007→S7-A→Tasks 9.1-9.4
 - Phase 7 interpretation: one event-owned multi-item catalog; explicit zero-or-more buyer selection; immutable add-on lines; checked minor-unit totals; tenant-qualified one-winner inventory; durable replay-safe fulfillment/refund; exact refund conservation; and a hard no-admission-mutation ratchet
@@ -354,3 +354,4 @@ No production stakeholder studies, incident history, legal opinion, qualified sc
 | 2026-08-27 | stale / changes-required | current / plan-aligned | Independent planning-mode revalidation mapped the hardened access, recovery, scenario, and task contracts | Plan `84bcd73f...`; tasks `0373aa09...`; S1-S7/WB-1 |
 | 2026-08-28 | current / plan-aligned | current / plan-aligned | User required the full Phase 7 add-on model to be durable I-VSD evidence before implementation | Expanded IVSD-F005/M005; plan `3e1d8d0f...`; tasks `d395d927...` |
 | 2026-08-29 | current / plan-aligned | current / plan-aligned | Phase 7 implemented the bounded catalog, optional selection, inventory, fulfillment, refund-allocation, HAL, BFF, and accessible UI contract | Prospective Task 7.1/7.3/7.5 RED plus Task 7.2/7.4/7.6 GREEN evidence |
+| 2026-08-30 | current / plan-aligned | current / plan-aligned | Test evidence governance replaced mutation-score gates with named public-seam invariant breakers without changing provider responsibility, scenarios, or task mappings | Plan `3f08e54a...`; tasks `75adc80b...`; historical mutation artifacts remain non-gating |

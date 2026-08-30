@@ -96,8 +96,8 @@ public sealed class ConfigurationManifestAuditPersistenceTests
 
         await Assert.That(() => ConfigurationManifestOperation.Create(
                 ConfigurationManifestAuditMode.Bootstrap,
-                "configuration.islamu.org/v1alpha1",
-                "TenantConfigurationList",
+                "configuration.islamu.org/v1alpha2",
+                "ConfigurationManifest",
                 "production",
                 new string('a', 64),
                 ConfigurationManifestOperationStatus.Failed,
@@ -275,8 +275,8 @@ public sealed class ConfigurationManifestAuditPersistenceTests
     private static ConfigurationManifestOperation CreateAppliedOperation() =>
         ConfigurationManifestOperation.Create(
             ConfigurationManifestAuditMode.Bootstrap,
-            "configuration.islamu.org/v1alpha1",
-            "TenantConfigurationList",
+            "configuration.islamu.org/v1alpha2",
+            "ConfigurationManifest",
             "production",
             new string('a', 64),
             ConfigurationManifestOperationStatus.Applied,
@@ -294,8 +294,8 @@ public sealed class ConfigurationManifestAuditPersistenceTests
     private static ConfigurationManifestOperation CreateFailedOperation() =>
         ConfigurationManifestOperation.Create(
             ConfigurationManifestAuditMode.Bootstrap,
-            "configuration.islamu.org/v1alpha1",
-            "TenantConfigurationList",
+            "configuration.islamu.org/v1alpha2",
+            "ConfigurationManifest",
             "production",
             new string('b', 64),
             ConfigurationManifestOperationStatus.Failed,

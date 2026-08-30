@@ -48,7 +48,7 @@ public static class ConfigurationManifestCompiler
         }
 
         ValidateSourceIdentity(source);
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1?
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2?
             proposedInstancePaidEventPolicy =
             CompilePaidEventPolicy(
                 source.Manifest.Spec.Instance.Documents,
@@ -115,7 +115,7 @@ public static class ConfigurationManifestCompiler
     }
 
     private static ConfigurationManifestTenantPlan CompileTenant(
-        ConfigurationManifestTenantV1Alpha1 tenant,
+        ConfigurationManifestTenantV1Alpha2 tenant,
         int manifestIndex)
     {
         ConfigurationManifestSettingWrite[] settings = tenant.Spec.Settings
@@ -134,7 +134,7 @@ public static class ConfigurationManifestCompiler
             .ToImmutableArray();
 
         ConfigurationManifestDocumentWrite branding = CompileBranding(tenant.Spec);
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1? paidEventPolicy =
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2? paidEventPolicy =
             CompilePaidEventPolicy(
                 tenant.Spec.Documents,
                 ConfigurationManifestDocumentKeys.TenantPaidEventPolicy);
@@ -157,26 +157,26 @@ public static class ConfigurationManifestCompiler
                 ]);
     }
 
-    private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha1?
+    private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha2?
         CompilePaidEventPolicy(
-        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha1> documents,
+        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> documents,
         string documentKey)
     {
         if (!documents.TryGetValue(
                 documentKey,
-                out ConfigurationManifestDocumentV1Alpha1? document))
+                out ConfigurationManifestDocumentV1Alpha2? document))
         {
             return null;
         }
 
         return document.Payload.Deserialize(
                 ConfigurationManifestJsonContext.Default
-                    .ConfigurationManifestPaidEventPolicyPayloadV1Alpha1)
+                    .ConfigurationManifestPaidEventPolicyPayloadV1Alpha2)
             ?? throw ConfigurationManifestCompilationException.ContractInvalid();
     }
 
     private static ConfigurationManifestDocumentWrite CompileBranding(
-        ConfigurationManifestTenantSpecV1Alpha1 spec)
+        ConfigurationManifestTenantSpecV1Alpha2 spec)
     {
         var payload = new BrandingSettings
         {
@@ -184,7 +184,7 @@ public static class ConfigurationManifestCompiler
         };
         if (spec.Documents.TryGetValue(
                 SettingsDocumentKeys.Tenant.Branding,
-                out ConfigurationManifestDocumentV1Alpha1? supplied))
+                out ConfigurationManifestDocumentV1Alpha2? supplied))
         {
             JsonElement source = supplied.Payload;
             payload = payload with

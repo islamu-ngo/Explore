@@ -10,15 +10,15 @@ using Explore.Domain.Settings.Documents;
 
 internal static class ConfigurationManifestExportBrandingPolicy
 {
-    public static void EnsureSafeForExport(ConfigurationManifestV1Alpha1 manifest)
+    public static void EnsureSafeForExport(ConfigurationManifestV1Alpha2 manifest)
     {
         EnsureSafeSettings(manifest.Spec.Instance.Settings);
-        foreach (ConfigurationManifestTenantV1Alpha1 tenant in manifest.Spec.Tenants)
+        foreach (ConfigurationManifestTenantV1Alpha2 tenant in manifest.Spec.Tenants)
         {
             EnsureSafeSettings(tenant.Spec.Settings);
             if (tenant.Spec.Documents.TryGetValue(
                     SettingsDocumentKeys.Tenant.Branding,
-                    out ConfigurationManifestDocumentV1Alpha1? document)
+                    out ConfigurationManifestDocumentV1Alpha2? document)
                 && document is not null)
             {
                 EnsureSafeForExport(document.Payload);

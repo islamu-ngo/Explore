@@ -1,0 +1,49 @@
+# ABOUTME: Retains Task 8.2 GREEN evidence for recovery state, manifest validation, and bearer fencing.
+# ABOUTME: Binds real PostgreSQL behavior and generated migrations for all five providers.
+
+schema_version: 1
+workstream: event-ticketing-lifecycle
+phase: 8
+task: "8.2"
+branch: develop
+captured_at: "2026-08-29T19:55:00+02:00"
+status: pass
+
+green:
+  command: >-
+    dotnet test --project
+    tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj
+    --configuration Release --verbosity quiet --
+    --treenode-filter "/*/*/*TicketingLifecycleRecoveryInvariantTests/*"
+    --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+  exit_code: 0
+  total: 6
+  succeeded: 6
+  failed: 0
+  skipped: 0
+  duration: "1m 08s 181ms"
+  fixture: real_postgresql_testcontainer
+
+observed_behavior:
+  - immutable tenant-qualified consistency manifests
+  - missing key cursor idempotency and worker-fence rejection
+  - release and schema mismatch rejection
+  - recovery-only state until validation
+  - mandatory capability credential and worker generation advance
+  - workers reopen only at the exact new fence
+  - sales reopen only after workers
+  - tenant-qualified stable-operation replay
+  - no duplicate reissue effect on manifest replay
+  - digest-free reissue persistence
+
+generated_migrations:
+  PostgreSql: src/Explore.Persistence/Migrations/20260829195214_AddTicketingRecoveryAuthority.cs
+  Sqlite: src/Explore.Persistence.Migrations.Sqlite/Migrations/20260829195306_AddTicketingRecoveryAuthority.cs
+  SqlServer: src/Explore.Persistence.Migrations.SqlServer/Migrations/20260829195331_AddTicketingRecoveryAuthority.cs
+  MariaDb: src/Explore.Persistence.Migrations.MariaDb/Migrations/20260829195357_AddTicketingRecoveryAuthority.cs
+  MySql: src/Explore.Persistence.Migrations.MySql/Migrations/20260829195432_AddTicketingRecoveryAuthority.cs
+  hand_edited: false
+
+chronology:
+  red_evidence: dev/active/event-ticketing-lifecycle/evidence/phase-8-task-8.1-red.yaml
+  production_implemented_after_red: true

@@ -1,0 +1,461 @@
+{
+  "$comment": "ABOUTME: Governed JSON Schema for TenantConfigurationPackage files.",
+  "$comment2": "ABOUTME: Generated deterministically; edit the catalog or generator, never this artifact.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.islamu.org/event/tenant-configuration-package/v1alpha2/schema.json",
+  "title": "ISLAMU Event Tenant Configuration Package",
+  "description": "Portable non-secret tenant configuration whose target is selected by trusted route authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://schemas.islamu.org/event/tenant-configuration-package/v1alpha2/schema.json"
+    },
+    "apiVersion": {
+      "const": "configuration.islamu.org/v1alpha2"
+    },
+    "kind": {
+      "const": "TenantConfigurationPackage"
+    },
+    "metadata": {
+      "$ref": "#/$defs/tenantPackageMetadata"
+    },
+    "spec": {
+      "$ref": "#/$defs/tenantPackageSpec"
+    }
+  },
+  "$defs": {
+    "brandingPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "customCssUrl": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "maxLength": 2048,
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "displayName": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "maxLength": 200
+        },
+        "faviconUrl": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "maxLength": 2048,
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "logoUrl": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "maxLength": 2048,
+          "format": "uri",
+          "pattern": "^https://"
+        }
+      }
+    },
+    "manifestExportMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorityScope",
+        "effectiveValuesFlattened",
+        "sensitiveValuesOmitted",
+        "sovereignLockedFields",
+        "sovereignValuesOmitted",
+        "view"
+      ],
+      "properties": {
+        "authorityScope": {
+          "const": "InstanceAndTenants"
+        },
+        "effectiveValuesFlattened": {
+          "type": "boolean"
+        },
+        "sensitiveValuesOmitted": {
+          "const": true
+        },
+        "sovereignLockedFields": {
+          "type": "array",
+          "minItems": 15,
+          "maxItems": 15,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "buyerAcceptance",
+              "chargeType",
+              "connectedAccounts",
+              "disputeHandling",
+              "liability",
+              "negativeBalances",
+              "officialOrigin",
+              "officialStatus",
+              "operatorIdentity",
+              "providerCredentials",
+              "providerHandoff",
+              "providerProfiles",
+              "reconciliation",
+              "refundExecution",
+              "saleControl"
+            ]
+          }
+        },
+        "sovereignValuesOmitted": {
+          "const": true
+        },
+        "view": {
+          "enum": [
+            "Overrides",
+            "Portable"
+          ]
+        }
+      }
+    },
+    "paidEventPolicyCurrencyRiskLimit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currencyCode"
+      ],
+      "properties": {
+        "currencyCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3,
+          "pattern": "^[A-Z]{3}$"
+        },
+        "highValueReviewThresholdMinor": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "perEventSalesCeilingMinor": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "perEventSalesCountCeiling": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "rollingOrganizerSalesCeilingMinor": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "rollingOrganizerSalesCountCeiling": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "rollingOrganizerWindowDays": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      }
+    },
+    "paidEventPolicyPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowedCurrencyCodes",
+        "allowedOrganizerKindIds",
+        "currencyRiskLimits",
+        "defaultCurrencyCode",
+        "farFutureReviewThresholdDays",
+        "isPaymentsEnabled",
+        "refundProtectionIds",
+        "requiresFirstPaidEventReview",
+        "requiresLocalVerification"
+      ],
+      "properties": {
+        "allowedCurrencyCodes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3,
+            "pattern": "^[A-Z]{3}$"
+          }
+        },
+        "allowedOrganizerKindIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              1,
+              2,
+              4
+            ]
+          }
+        },
+        "currencyRiskLimits": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/paidEventPolicyCurrencyRiskLimit"
+          }
+        },
+        "defaultCurrencyCode": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "minLength": 3,
+          "maxLength": 3,
+          "pattern": "^[A-Z]{3}$"
+        },
+        "farFutureReviewThresholdDays": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "isPaymentsEnabled": {
+          "type": "boolean"
+        },
+        "refundProtectionIds": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ]
+          }
+        },
+        "requiresFirstPaidEventReview": {
+          "type": "boolean"
+        },
+        "requiresLocalVerification": {
+          "type": "boolean"
+        }
+      }
+    },
+    "tenantBrandingDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "payload",
+        "schemaVersion"
+      ],
+      "properties": {
+        "payload": {
+          "$ref": "#/$defs/brandingPayload"
+        },
+        "schemaVersion": {
+          "const": 1
+        }
+      }
+    },
+    "tenantDocuments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "tenant.branding": {
+          "$ref": "#/$defs/tenantBrandingDocument"
+        },
+        "tenant.paid_event_policy": {
+          "$ref": "#/$defs/tenantPaidEventPolicyDocument"
+        }
+      }
+    },
+    "tenantPackageMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "source"
+      ],
+      "properties": {
+        "export": {
+          "$ref": "#/$defs/manifestExportMetadata"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+        },
+        "source": {
+          "$ref": "#/$defs/tenantPackageSource"
+        }
+      }
+    },
+    "tenantPackageSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantName"
+      ],
+      "properties": {
+        "instanceName": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+        },
+        "tenantName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        }
+      }
+    },
+    "tenantPackageSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "displayName",
+        "documents",
+        "settings"
+      ],
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "documents": {
+          "$ref": "#/$defs/tenantDocuments"
+        },
+        "settings": {
+          "$ref": "#/$defs/tenantSettings"
+        }
+      }
+    },
+    "tenantPaidEventPolicyDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "payload",
+        "schemaVersion"
+      ],
+      "properties": {
+        "payload": {
+          "$ref": "#/$defs/paidEventPolicyPayload"
+        },
+        "schemaVersion": {
+          "const": 1
+        }
+      }
+    },
+    "tenantSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "appearance.default_theme_mode": {
+          "type": "string",
+          "enum": [
+            "dark",
+            "light",
+            "system"
+          ]
+        },
+        "event_reporting.intake_enabled": {
+          "type": "boolean"
+        },
+        "events.group_submission_enabled": {
+          "type": "boolean"
+        },
+        "events.organization_submission_enabled": {
+          "type": "boolean"
+        },
+        "events.require_approval": {
+          "type": "boolean"
+        },
+        "events.user_submission_enabled": {
+          "type": "boolean"
+        },
+        "groups.self_registration_enabled": {
+          "type": "boolean"
+        },
+        "modules.islamic_enabled": {
+          "type": "boolean"
+        },
+        "modules.tech_enabled": {
+          "type": "boolean"
+        },
+        "organizations.self_registration_enabled": {
+          "type": "boolean"
+        },
+        "organizations.verification_required": {
+          "type": "boolean"
+        },
+        "public_experience.event_catalog_label": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "public_experience.mode": {
+          "type": "string",
+          "enum": [
+            "DiscoveryCentric",
+            "OrganizationCentric"
+          ]
+        },
+        "routing.default_public_home_page": {
+          "type": "string",
+          "enum": [
+            "EventList",
+            "LandingPage"
+          ]
+        },
+        "tenants.white_labeling_enabled": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

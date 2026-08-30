@@ -29,7 +29,7 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 23. **Blazor is fully isolated from API implementation layers**: `Explore.Blazor`, `Explore.Blazor.Client`, and their tests must not reference Domain, Application, Infrastructure, or Persistence. Backend communication and backend/domain models come only from the generated `IEventApiClient` contract.
 24. **EF Core migrations and model snapshots are generated artifacts**: Never hand-edit them. Correct the entity/configuration or migration-generation extension, delete the unapplied development migration, and regenerate it with `dotnet ef migrations`.
 25. **External behavior research is clean-room only**: Implementation context may contain neutral functional requirements and repository-native design material, never third-party source, snippets, ASTs, SQL, migrations, tests, comments, or assets. Independently design the implementation's structure, sequence, and organization and record provenance under [`docs/legal/IP_GOVERNANCE.md`](legal/IP_GOVERNANCE.md).
-26. **Controllers never resolve services from the container.** `HttpContext.RequestServices` is banned in `Explore.API/Controllers`; take a constructor dependency, or read the request principal directly. Enforced by `ApiLiabilityRatchetTests`.
+26. **Controllers never resolve services from the container.** `HttpContext.RequestServices` is banned in `Explore.API/Controllers`; take a constructor dependency, or read the request principal directly. Enforce the rule through compiled or runtime API contracts, never a historical source allowlist.
 27. **Periodic work belongs to the Quartz.NET scheduler**, not to a hand-rolled `BackgroundService` timer loop. Register a sweep with `AddSweepJob<TJob>`; a job is one pass and nothing else. Queue-driven drains and the durable `OutboxProcessor` are deliberate exceptions.
 28. **Controllers are partitioned by route capability.** A controller that accumulates several capabilities gets split, keeping every route template and `Name = RouteNames.*` verbatim so operationIds and the generated client do not move. Shared behavior across a split family becomes an explicit base class, never copied code.
 29. **Dependencies must preserve outbound licensing options**: Do not add a library, package, image, asset, or generated component whose terms prevent ISLAMU-owned material from being offered under any outbound license the Project Steward may select under the CLA. Third-party material always retains its own terms; commercial or exceptional use requires documented approval for each distribution mode.
@@ -80,7 +80,9 @@ Every new controller action MUST have:
 7. **No private failure switch** — declare a `CommandFailurePolicy` (or use `MapCommandResponse`) instead of a per-action `switch` over `FailureCode`
 8. **Identity from the principal** — `CurrentUserId` / `RequiredUserId`, or `mediator.ResolveCurrentUserIdAsync(User, ct)` when the provider subject is not a platform user id
 
-Enforced by: `ApiContractArchitectureTests`, `EndpointClassificationArchitectureTests`, `ContractInvariantsTests`, `ApiLiabilityRatchetTests`.
+Enforced through compiled architecture contracts, runtime endpoint metadata,
+and focused HTTP behavior tests. Raw controller-source inventories are not an
+acceptable enforcement seam.
 
 ## API Rate Limiting Quick Reference
 

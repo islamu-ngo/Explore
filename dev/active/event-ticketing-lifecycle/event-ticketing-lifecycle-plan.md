@@ -3,15 +3,15 @@
 
 # Event Ticketing Lifecycle — Implementation Plan
 
-Last Updated: 2026-08-28 Europe/Brussels
+Last Updated: 2026-08-29 Europe/Brussels
 
 ## 0. Planning Metadata
 
 - **Original request:** move all unimplemented Registration Data Collection Phase 22+ work into a successor workstream.
 - **Hardening request:** strengthen architecture, conventions, maintainability, technical-debt remediation, code comments, and durable `docs/` ownership without backward-compatibility constraints.
 - **Task directory:** `dev/active/event-ticketing-lifecycle/`
-- **Planning status:** Approved implementation scope partially delivered and merged into `develop`. Phases 0–6 and the narrow chronology disposition are closed; Phase 7 prospective RED is authorized and Phases 7–9 remain to implement.
-- **Execution-ledger status:** implementation presence is recorded separately from task completion. No Phase 0–6 task checkbox is closed without its exact acceptance evidence; historical RED chronology is currently unproven.
+- **Planning status:** Repository-controlled implementation is complete through Phase 9 on `develop`. Phases 7–9 source, generated contracts, migrations, docs, release contribution, focused verification, mutation, privacy, and review artifacts are retained; independent launch approvals remain open and every affected capability stays `test-only` or `disabled`.
+- **Execution-ledger status:** implementation presence remains separate from exact chronology evidence. The approved four-task Phase 0–6 exception is unchanged. User-directed end-loaded testing means Tasks 8.3 and 9.1 have final GREEN evidence but no observed prospective RED chronology; neither is claimed as RED.
 - **Change classification:** Behavioral Delta.
 - **Matched intent:** `registration-data-collection`.
 - **Criticality:** Tier 0 Sovereign for money/orders; Tier 1 Security for tenancy, capabilities, migrations, and authorization; Tier 2 Privacy for participant/contact/consent data.
@@ -19,7 +19,7 @@ Last Updated: 2026-08-28 Europe/Brussels
 - **Primary layers:** Domain, Application, Persistence, Infrastructure, API/HAL, BFF, Blazor Client, generated contracts, operations/docs.
 - **Matched skills/rules:** criticality-guardrail, clean-architecture-rules, CQRS/MediatR, EF Core, outbox, auth/BFF/HAL, Blazor/accessibility, error tracking, payments-commerce, privacy/PII, scheduling, tests, IP clean-room.
 - **Grill-Me decisions:** hard purchaser ceilings require stable authority; name-only limits remain honest; seller withdrawal fails closed without full commercial equivalence; pre-restore bearer authority rotates; protected delayed payout stays absent.
-- **Implementation shape:** the implemented purchase, readiness, transfer, and fair-return slices were integrated through the ticketing branch and follow-up repair commits. Remaining work must preserve the dependency order from Phase 6 closeout through `REL`.
+- **Implementation shape:** purchase, readiness, transfer, fair return, add-ons, recovery/operator controls, and deployment capability convergence are integrated. Promotion to production-approved remains exclusively gated by independently retained provider, legal/tax, scholarly, accessibility/privacy/security, operator, and production restore/takeover evidence.
 - **Compatibility posture:** development-mode direct replacement. Do not add compatibility shims, dual authority, obsolete routes, stale DTOs, or tests that preserve superseded behavior.
 - **I-VSD report:** [`i-vsd-event-ticketing-lifecycle.md`](../../../islamic-value-sensitive-design/i-vsd-event-ticketing-lifecycle.md), whose authoritative metadata binds the exact plan/tasks revisions reviewed.
 - **I-VSD status:** `current / plan-aligned`.
@@ -495,7 +495,7 @@ dotnet test --project <project.csproj> --configuration Release -- \
 - **API/HAL:** auth, tenancy, capability equivalence, ProblemDetails, cache headers, idempotency, rate limiting, OpenAPI.
 - **BFF/UI:** token isolation, antiforgery, generated-client use, HAL affordances, state rendering.
 - **Privacy/observability:** inject literal email/phone/token/provider/money sentinels and prove zero plaintext in logs, metrics, traces, health, ProblemDetails, Quartz/outbox/operator outputs.
-- **Mutation:** Phases 0, 1, 3, 5, 6, 7, and 8 run phase-scoped Stryker campaigns over changed safety-critical Domain/Application files with CLI break threshold 86 (>85%); retain JSON killed/survived/no-coverage counts.
+- **Critical invariants:** Phases 0, 1, 3, 5, 6, 7, and 8 execute their named public-seam invariant breakers, including real PostgreSQL races and fail-closed security/privacy cases. Historical mutation artifacts remain non-gating evidence and are not regenerated.
 - **MAD:** each Tier 0–2 PR retains anonymized structured YAML with independent domain/payment, PostgreSQL/concurrency, and security/privacy arguments, 60/40 weighted vote, reproducible invariant-breakers, remediation, and rerun evidence.
 
 ### 7.3 PR And Phase Gates
@@ -633,15 +633,15 @@ Operator resolution is authenticated, HAL-advertised, generation/fence-checked, 
 | restore bearer resurrection | Critical | recovery mode and mandatory rotation/reissue | 8.1–8.4 |
 | cross-tenant worker leak | Critical | tenant-qualified claims and real negatives | every persistence/worker phase |
 | false Red/Green | Critical | no `--no-build`, nonzero discovery, assertion failure, public seams | every behavioral task |
-| mutation/PII/MAD evidence deferred | High | phase-owned gates and retained artifacts | 0–8 |
-| payout leakage | Critical | machine-readable absence ratchet | 9.1–9.4 |
+| invariant/PII/MAD evidence deferred | High | phase-owned gates and retained artifacts | 0–8 |
+| payout leakage | Critical | executable capability-absence contract | 9.1–9.4 |
 | external approval confused with code readiness | High | deployment status matrix and named external gates | 9.1–9.4 |
 
 ## 15. Success Metrics And Definition Of Done
 
 - Every S1–S7 and WB-1 behavior has Red-before-Green, deterministic, non-tautological evidence.
 - Real PostgreSQL tests prove one-winner, rollback, retry, deadlock avoidance, tenant isolation, and restore behavior.
-- Safety-critical changed files achieve Stryker break threshold 86 with retained JSON evidence.
+- Safety-critical changes pass their named deterministic invariant-breaker, real-provider, and fail-closed boundary tests.
 - Zero sentinel PII/capability/provider/money values appear in telemetry or public/operator outputs.
 - Every Tier 0–2 PR has anonymized MAD evidence and no unresolved critical vote.
 - All task-level focused evidence, the selected phase project, Release build, generated artifacts, and docs pass.

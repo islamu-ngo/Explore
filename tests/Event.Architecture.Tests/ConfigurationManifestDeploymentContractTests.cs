@@ -63,7 +63,9 @@ public sealed class ConfigurationManifestDeploymentContractTests
         {
             await Assert.That(dockerfile).Contains("/etc/islamu-event/bootstrap");
             await Assert.That(dockerfile).Contains(
-                "/app/schemas/configuration-manifest-v1alpha1.schema.json");
+                "/app/schemas/configuration-manifest-v1alpha2.schema.json");
+            await Assert.That(dockerfile).Contains(
+                "/app/schemas/tenant-configuration-package-v1alpha2.schema.json");
             await Assert.That(dockerfile).Contains("USER $APP_UID");
         }
 

@@ -1,4 +1,4 @@
-// ABOUTME: Provides strict source-generated JSON metadata for ConfigurationManifest v1alpha1.
+// ABOUTME: Provides strict source-generated JSON metadata for v1alpha2 portability artifacts.
 // ABOUTME: Uses canonical camel-case names and rejects unmapped members through contract metadata.
 
 namespace Explore.Application.Features.ConfigurationManifest.Serialization;
@@ -12,6 +12,8 @@ using Explore.Application.Features.ConfigurationManifest.Contracts;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     GenerationMode = JsonSourceGenerationMode.Metadata,
     WriteIndented = false)]
-[JsonSerializable(typeof(ConfigurationManifestV1Alpha1))]
-[JsonSerializable(typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha1))]
+[JsonSerializable(typeof(ConfigurationManifestV1Alpha2))]
+[JsonSerializable(typeof(TenantConfigurationPackageV1Alpha2))]
+[JsonSerializable(typeof(ConfigurationManifestLegalDocumentV1Alpha2))]
+[JsonSerializable(typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha2))]
 public sealed partial class ConfigurationManifestJsonContext : JsonSerializerContext;

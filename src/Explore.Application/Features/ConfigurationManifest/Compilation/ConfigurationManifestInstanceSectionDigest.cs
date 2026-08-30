@@ -10,7 +10,7 @@ using Explore.Application.Features.ConfigurationManifest.Contracts;
 internal static class ConfigurationManifestInstanceSectionDigest
 {
     public static string Compute(
-        ConfigurationManifestInstanceV1Alpha1 instance)
+        ConfigurationManifestInstanceV1Alpha2 instance)
     {
         ArgumentNullException.ThrowIfNull(instance);
         using var stream = new MemoryStream();
@@ -31,7 +31,7 @@ internal static class ConfigurationManifestInstanceSectionDigest
             writer.WriteStartObject();
             foreach ((
                          string key,
-                         ConfigurationManifestDocumentV1Alpha1 document)
+                         ConfigurationManifestDocumentV1Alpha2 document)
                      in instance.Documents
                          .OrderBy(entry => entry.Key, StringComparer.Ordinal))
             {

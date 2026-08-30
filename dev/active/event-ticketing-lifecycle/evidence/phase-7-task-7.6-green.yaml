@@ -1,0 +1,99 @@
+# ABOUTME: Retains Task 7.6 GREEN closeout evidence for add-on BFF, UI, docs, mutation, and review.
+# ABOUTME: Records exact focused passes, rendered QA, provider parity, and the unrelated full-project limitation.
+
+schema_version: 1
+workstream: event-ticketing-lifecycle
+phase: 7
+task: "7.6"
+branch: develop
+captured_at: "2026-08-29T16:32:00+02:00"
+status: pass
+
+verification:
+  release_build:
+    command: dotnet build --configuration Release --verbosity quiet
+    exit_code: 0
+    errors: 0
+  bff:
+    command: >-
+      dotnet test --project
+      tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj
+      --configuration Release --verbosity quiet --
+      --treenode-filter "/*/*/*EventAddOnBffTests/*"
+      --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+    exit_code: 0
+    total: 5
+    succeeded: 5
+  component:
+    command: >-
+      dotnet test --project
+      tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj
+      --configuration Release --verbosity quiet --
+      --treenode-filter "/*/*/*EventAddOnComponentTests/*"
+      --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+    exit_code: 0
+    total: 7
+    succeeded: 7
+  generated_record_ratchet:
+    exit_code: 0
+    total: 1
+    succeeded: 1
+    expected_generated_nominal_contracts: 685
+  critical_evidence:
+    command: >-
+      dotnet test --project
+      tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj
+      --configuration Release --verbosity quiet --
+      --treenode-filter "/*/*/*TicketingCriticalEvidenceContractTests/*"
+      --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+    exit_code: 0
+    total: 1
+    succeeded: 1
+
+mutation:
+  summary: dev/active/event-ticketing-lifecycle/evidence/phase-7-mutation-summary.json
+  score: 89.34010152284264
+  threshold_exclusive: 85
+  result: pass
+
+provider_snapshot_parity:
+  startup_project: src/Event.MigrationService/Event.MigrationService.csproj
+  PostgreSql: no_changes
+  Sqlite: no_changes
+  SqlServer: no_changes
+  MariaDb: no_changes
+  MySql: no_changes
+  malformed_probe_artifacts_retained: 0
+
+rendered_qa:
+  surface: bUnit-rendered Blazor components
+  reason: >-
+    The approved implementation plan forbids starting the application/browser
+    runtime during this workstream, so deterministic rendered components are
+    the closest permitted user surface.
+  observed:
+    - buyer choices start unchecked and the zero-add-on path exposes no reserve action
+    - unavailable inventory is visibly disabled
+    - malformed quantity input converges to zero without submitting
+    - valid selection exposes the HAL-gated reserve action
+    - organizer create action renders only when its exact HAL relation exists
+    - add, publish, and retire actions stay absent without their relations
+    - status regions are polite and labeled without focus theft
+    - CSS contract remains RTL-safe and uses logical properties
+
+selected_project_limitation:
+  project: tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj
+  result:
+    total: 2780
+    succeeded: 2778
+    failed: 1
+    skipped: 1
+  inherited_failure: >-
+    TicketRecoveryTests.FragmentCapabilityIsConsumedWithoutEnteringMarkup
+    throws from AdmissionTicketBearerCard.razor:59. The failure is outside the
+    add-on source, contracts, and selectors; the Phase 7 generated-contract
+    regression in the same run was corrected and now passes.
+
+chronology:
+  red_evidence: dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.5-red.yaml
+  production_implemented_after_red: true

@@ -1,4 +1,4 @@
-// ABOUTME: Specifies the closed v1alpha1 instance-setting authority boundary before implementation.
+// ABOUTME: Specifies the closed v1alpha2 instance-setting authority boundary before implementation.
 // ABOUTME: Proves unsafe and wrong-scope values fail with safe codes before an apply plan exists.
 
 namespace Event.Application.UnitTests.Features.ConfigurationManifest;
@@ -49,7 +49,7 @@ public sealed class ConfigurationManifestInstanceAuthorityTests
     ];
 
     [Test]
-    public async Task InstanceSettingCatalog_ContainsExactlyApprovedV1Alpha1Keys()
+    public async Task InstanceSettingCatalog_ContainsExactlyApprovedV1Alpha2Keys()
     {
         PropertyInfo? property = typeof(ConfigurationManifestCatalog).GetProperty(
             "InstanceSettings",
@@ -218,7 +218,7 @@ public sealed class ConfigurationManifestInstanceAuthorityTests
     public async Task Compile_SensitiveInstanceSetting_RejectsBeforePlanConstruction()
     {
         const string secret = "compiler-secret-sentinel";
-        ConfigurationManifestV1Alpha1 manifest =
+        ConfigurationManifestV1Alpha2 manifest =
             ConfigurationManifestTestData.Valid(
                 instanceSettings: new Dictionary<string, JsonElement>(
                     StringComparer.Ordinal)
@@ -333,6 +333,6 @@ public sealed class ConfigurationManifestInstanceAuthorityTests
 
         return definition.RequiresCoordinatedMutation
             ? "requires_explicit_canonical_boundary"
-            : "not_admitted_by_v1alpha1";
+            : "not_admitted_by_v1alpha2";
     }
 }

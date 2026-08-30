@@ -1,33 +1,32 @@
-<!-- ABOUTME: Execution ledger for the instance-wide ConfigurationManifest rebase. -->
-<!-- ABOUTME: Sequences strict Red/Green contract, authority, atomicity, export, and cutover work. -->
+<!-- ABOUTME: Execution ledger for complete instance and tenant configuration portability. -->
+<!-- ABOUTME: Preserves completed foundation evidence and sequences import, migration, legal, recovery, and extensibility work. -->
 
 # Configuration Manifest And Reporting-Intake Policy — Task Checklist
 
-Last Updated: 2026-08-27 Europe/Brussels
+Last Updated: 2026-08-30 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Phases 9–15 product work complete; objective closure is
-  blocked by the unsatisfied full-Persistence phase gate and unavailable
-  Context7 MCP research channel.
-- **Completed new tasks:** 25/25.
-- **Current priority:** Obtain an explicit gate decision or restore the required
-  external verification prerequisites.
-- **Next recommended slice:** Re-run the complete Persistence project only
-  after its unrelated shared baseline is repaired, and use Context7 only when
-  that MCP is registered; otherwise obtain an explicit waiver before closing
-  the objective.
-- **Known blockers:** the complete Persistence project still times out with
-  broad unrelated baseline failures, and Context7 MCP is not registered.
-  Focused manifest/provider evidence and official-source web research are green,
-  but neither substitutes for the literal original requirements without
-  approval.
+- **Overall status:** Phases 9–16 implemented; Phase 17 in progress; Phases
+  18–23 not started.
+- **Completed tasks:** 29/49.
+- **Current priority:** Implement the legal aggregate, append-only publication
+  evidence, and provider-portable persistence model.
+- **Next recommended slice:** `CM-1720`.
+- **Known blockers:** the complete Persistence project remains an unwaived
+  Phase 19 gate.
 - **Superseded workstream:** `dev/active/tenant-configuration-manifest/`.
   Its completed runtime foundation remains in the branch, but its planning
   artifacts are replaced by this workstream.
 - **Plan:** [configuration-manifest-plan.md](configuration-manifest-plan.md)
 - **Context:** [configuration-manifest-context.md](configuration-manifest-context.md)
 - **I-VSD:** [i-vsd-configuration-manifest.md](../../../islamic-value-sensitive-design/i-vsd-configuration-manifest.md)
+- **I-VSD reviewed input:** `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`
+- **I-VSD status/disposition:** `current` / `plan-aligned`
+- **CTO review:** [configuration-manifest-cto-review.md](configuration-manifest-cto-review.md),
+  decision `Approve`
+- **Deferred future workstream:** Avalonia, Terminal.Gui, CLI/TUI, `.env`, and
+  agentic skill; no task below implements them.
 
 ## Implementation Maintenance Rules
 
@@ -1188,6 +1187,605 @@ blocker.
   on mainline `develop` or is a branch-behind-`develop` artifact/inventory skew;
   none originates in a ConfigurationManifest file. See §7 of the evidence record.
 
+## Phase 16: V1Alpha2 Artifact And Section Contracts
+
+Plan reference: Phase 16 and Sections 3.6, 4, 5.1, and 9.1.
+
+### [x] CM-1610 — Red: specify v1alpha2 artifact authority and section coverage
+
+**Owning layers:** Application/architecture tests
+
+**Work:**
+
+- Author failing contract tests for distinct `ConfigurationManifest` and
+  `TenantConfigurationPackage` kinds, closed roots, target-authority exclusion,
+  named apply modes, legal-content limits, and clean v1alpha1 removal.
+- Author failing section-registry tests requiring scope, authority,
+  portability class, dependencies, references, export, preview/diff, apply,
+  verify, rollback, and documentation for every section.
+- Pin CM-S1, CM-S4, CM-S6, and wrong-scope/secret/PII/application-data
+  invariant breakers before production changes.
+
+**Acceptance:**
+
+- [x] Contract selectors fail only because v1alpha2/package/registry behavior is
+      missing, and verify artifact metadata cannot select target authority.
+- [x] Tests assert public JSON/schema/coverage behavior rather than private
+      collaborator calls.
+- [x] No production or generated file changes in this Red task.
+
+**Evidence:** Added `ConfigurationManifestV1Alpha2ContractTests` and
+`ConfigurationPortabilityRegistryTests` at public reflection/contract seams.
+The first selector compiled and failed 6/6 for the missing tenant-package
+metadata, v1alpha2 roots, named apply-mode enum, content-limit contract, and
+still-present v1alpha1 types. The registry selector failed 5/5 solely because
+`ConfigurationPortabilityRegistry` does not yet exist. The fresh baseline
+Release build completed with 0 errors and the complete
+`Event.Application.UnitTests` project passed 1,937/1,937 before these Red tests.
+No product or generated file changed in CM-1610.
+
+### [x] CM-1620 — Green: implement artifact contracts and portability registry
+
+**Owning layer:** Application
+
+**Work:**
+
+- Implement immutable v1alpha2 record graphs, deterministic serializers,
+  explicit instance/tenant catalogs, section descriptors, portability classes,
+  coverage/omission/fidelity contracts, and typed apply modes.
+- Classify settings, typed documents, footer, navigation, templates, lookups,
+  custom-property definitions, localization, registration policy, modules, and
+  extension sections by actual owner and safety.
+- Keep secrets, PII, application data, operational state, provider bindings,
+  and deployment topology explicitly nonportable.
+
+**Acceptance:**
+
+- [x] `ConfigurationManifestV1Alpha2ContractTests` and
+      `ConfigurationPortabilityRegistryTests` pass via focused selectors.
+- [x] Every admitted section has one canonical owner and every omitted category
+      appears in machine-readable coverage.
+- [x] No registry discovery or generic JSON automatically grants portability.
+
+**Evidence:** Added strict v1alpha2 whole-instance and tenant-package record
+graphs, distinct metadata/media identities, explicit apply modes, bounded legal
+content constants, and a 21-entry frozen portability registry. The registry
+names every portable/mapped section and gives secrets, PII, application data,
+operational state, provider bindings, and deployment topology explicit
+nonportable descriptors with no mutation capabilities. The artifact selector
+passed 6/6 and the registry selector passed 5/5. Temporary compile-only aliases
+keep existing internal consumers buildable inside Phase 16; CM-1630 removes
+them and every v1alpha1 source/schema identity before the phase gate.
+
+### [x] CM-1630 — Generate schemas and complete the clean contract cutover
+
+**Owning layers:** schema tooling/generated contracts/architecture
+
+**Work:**
+
+- Generate v1alpha2 manifest and tenant-package schemas from source.
+- Remove v1alpha1 schema/media/generated-contract identities without aliases,
+  converters, redirects, or dual reads.
+- Update intent/rule paths only where the new artifacts require canonical
+  scope; preserve twin rules and secret restrictions.
+
+**Acceptance:**
+
+- [x] Both schema `--check` commands pass and second generation produces
+      byte-identical artifacts.
+- [x] Architecture ratchets verify no v1alpha1 compatibility surface remains.
+- [x] Phase 16 closes only after one Release build and the complete
+      `Event.Application.UnitTests` project pass.
+
+**Evidence:** Migrated Application, Infrastructure, test-support, BFF, OpenAPI,
+NSwag, container packaging, workflow, and intent references to v1alpha2 names;
+removed both compile-only alias files and the v1alpha1 schema. The generator now
+owns deterministic manifest and tenant-package outputs through explicit
+`manifest` and `tenant-package` CLI selectors. Both schema checks passed twice,
+schema generation passed 9/9, artifact cutover passed 2/2, and runtime/generated
+source inspection found zero v1alpha1 identities. Manual CLI QA observed help
+exit 0 and invalid-artifact usage exit 64. The Release solution build completed
+with 0 errors; the complete Application project passed 1,948/1,948.
+
+### Phase 16 Verification
+
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 17: Typed Legal Documents And Safe Content
+
+Plan reference: Phase 17 and Sections 3.7, 5, 9.1, and 13.
+
+### [x] CM-1710 — Red: specify legal authority, lifecycle, and content invariants
+
+**Owning layers:** Domain/Application tests
+
+**Work:**
+
+- Author failing tests for closed instance/tenant legal kinds, role ownership,
+  locale/size/link/placeholder bounds, draft-to-published lifecycle, immutable
+  history, and acceptance separation.
+- Author adversarial constrained-Markdown tests for HTML, scripts, remote
+  resources, unsafe links, tracking, oversized localized content, and
+  unresolved required identity.
+- Pin template provenance, non-certifying status, and target-review behavior.
+
+**Acceptance:**
+
+- [x] `LegalDocumentPortabilityInvariantTests` fail for the missing aggregate
+      and verify CM-S7/CM-S8 without persistence mocks.
+- [x] Unsafe content and acceptance-history input fail before any public-state
+      mutation.
+- [x] No external template prose or implementation structure is imported.
+
+**Evidence:** Added 13 compiled reflection-bound Domain Invariant-Breakers.
+They pin a closed 29-kind instance/tenant catalog, one role owner per kind,
+scope/tenant isolation, Draft→ReviewRequired→Approved→Scheduled→Published/
+Retired transitions, append-only publication evidence, target-review import,
+acceptance-fact separation, 32-locale/256-KiB/128-link/64-placeholder bounds,
+unsafe raw HTML/script/remote-image/tracking-link rejection, and non-certifying
+project/FOSS template provenance. All 13 fail solely because the legal Domain
+contracts are absent. Test content is repository-native sentinel prose, not an
+external legal template.
+
+### [ ] CM-1720 — Green: implement legal aggregates and persistence
+
+**Owning layers:** Domain/Application/Persistence
+
+**Work:**
+
+- Implement typed legal document/value objects, role/kind catalogue,
+  localization metadata, lifecycle, publication versions, target drafts,
+  acceptance-impact metadata, and clean template provenance.
+- Add canonical mutation boundaries and repositories returning entities.
+- Generate all provider migrations from source; do not hand-edit snapshots.
+
+**Acceptance:**
+
+- [ ] Domain legal lifecycle/authority selectors pass and verify publication
+      history remains append-only.
+- [ ] Import/export cannot carry acceptance facts or source target authority.
+- [ ] All provider models report current after generated migrations.
+
+### [ ] CM-1730 — Share safe rendering and public legal composition
+
+**Owning layers:** Application/API/Blazor legal surfaces
+
+**Work:**
+
+- Use one deterministic constrained-Markdown validation/rendering contract for
+  preview, import/export, and public pages.
+- Replace static Terms/Privacy authority with role-labeled last-published
+  instance/tenant documents while preserving safe fallback behavior only where
+  explicitly approved.
+- Add template/readiness, source-origin link, identity-placeholder, locale, and
+  accessibility diagnostics without network fetches.
+
+**Acceptance:**
+
+- [ ] `LegalDocumentRenderingContractTests` verify identical safe output across
+      editorless preview, API, and public rendering.
+- [ ] Unsafe content never becomes public and last published content remains
+      available after a failed draft/import.
+- [ ] Phase 17 closes only after one Release build and the complete
+      `Event.Domain.UnitTests` project pass.
+
+### Phase 17 Verification
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 18: Import Sessions, Preview, Diff, And Mapping
+
+Plan reference: Phase 18 and CM-R2/CM-R3/CM-R5.
+
+### [ ] CM-1810 — Red: specify bounded side-effect-free import sessions
+
+**Owning layers:** Application/API tests
+
+**Work:**
+
+- Author failing tests for bounded uploads, protected temporary storage,
+  digest-bound sessions, authority scope, expiry, replay, cancellation,
+  retention, rate limits, value-safe errors, and zero preview side effects.
+- Pin changed/unchanged/skipped/mapped/blocking/warning/omitted/external-setup
+  preview categories and stale-preview behavior.
+
+**Acceptance:**
+
+- [ ] `ConfigurationImportSessionContractTests` fail only on missing session
+      behavior and verify CM-S2/CM-S3.
+- [ ] Preview tests prove no setting/document/tenant/success-audit/outbox/provider
+      mutation occurs.
+- [ ] Secret/PII/value scans cover ProblemDetails, logs, metrics, and traces.
+
+### [ ] CM-1820 — Green: implement preview, semantic diff, and mapping
+
+**Owning layers:** Application/Persistence
+
+**Work:**
+
+- Implement the import-session state machine, bounded protected storage
+  metadata, parser, section dependency graph, semantic diff, stable-reference
+  mapping, coverage, approval requirements, and expiry cleanup.
+- Bind preview to artifact digest, trusted target, target revisions, selected
+  sections, mappings, apply mode, and required approvals.
+
+**Acceptance:**
+
+- [ ] Focused session/preview selectors pass and stale target changes invalidate
+      apply readiness.
+- [ ] Mapping uses stable identities, never localized names or source database
+      IDs as authority.
+- [ ] Expiry/cancellation removes temporary bytes and retains only permitted
+      value-minimized evidence.
+
+### [ ] CM-1830 — Expose import-session API, HAL, and generated contracts
+
+**Owning layers:** API/HAL/OpenAPI/BFF contract
+
+**Work:**
+
+- Add separate instance and tenant upload/preview/refresh/cancel routes with
+  exact authorization facts, antiforgery, rate/size/timeout policies,
+  ProblemDetails, no-store behavior, and HAL affordances.
+- Regenerate OpenAPI, API inventory, and NSwag twice from source.
+
+**Acceptance:**
+
+- [ ] `ConfigurationImportSessionControllerTests` verify 401/403/404/409/413,
+      provider-unavailable, expiry, and wrong-scope behavior.
+- [ ] Generated contracts expose only canonical v1alpha2 operations and produce
+      stable bytes on the second run.
+- [ ] Phase 18 closes only after one Release build and the complete
+      `Event.API.IntegrationTests` project pass.
+
+### Phase 18 Verification
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 19: Atomic Apply, Receipts, Snapshots, And Forward Rollback
+
+Plan reference: Phase 19 and CM-R4.
+
+### [ ] CM-1910 — Red: specify selected-section atomicity and rollback races
+
+**Owning layer:** Persistence integration tests
+
+**Work:**
+
+- Author real PostgreSQL invariant breakers for stale preview, changed mapping,
+  expired/missing approval, instance/tenant/policy/legal competitors, snapshot
+  failure, one-invalid-section rollback, cancellation, and forward rollback
+  racing Day 2 writers.
+- Subscribe to exact lock/transaction events before competitors; use no sleeps
+  or timing polling.
+
+**Acceptance:**
+
+- [ ] `ConfigurationImportAtomicityTests` fail only on missing expanded apply
+      behavior and verify CM-S5 against observable database state.
+- [ ] No test asserts framework call counts or excluded/nonportable fields.
+- [ ] Failure evidence remains value-minimized after transaction rollback.
+
+### [ ] CM-1920 — Green: implement atomic selected apply and forward rollback
+
+**Owning layers:** Domain/Application/Persistence
+
+**Work:**
+
+- Replay target authority, digest, revisions, selections, mappings, mode, and
+  approvals under ordered leases before a fresh serializable transaction.
+- Create a protected pre-import portable snapshot, route every selected write
+  through canonical transaction-aware boundaries, persist receipt/outbox, and
+  verify resulting fidelity.
+- Implement rollback as a new authorized preview/apply operation.
+
+**Acceptance:**
+
+- [ ] Atomicity/concurrency selectors prove valid serial outcomes and no partial
+      section, receipt, audit-success, or effect state.
+- [ ] Rollback preserves append-only history and never bypasses current target
+      authority.
+- [ ] Provider migrations/models are generated and current.
+
+### [ ] CM-1930 — Complete operation history, recovery, and phase gate
+
+**Owning layers:** Application/Persistence/operations
+
+**Work:**
+
+- Add value-safe operation history, receipt download, snapshot retention,
+  post-commit retry, fidelity verification, cancellation-before-commit, and
+  forward-rollback relationships.
+- Repair the unrelated Persistence test baseline or obtain an explicit waiver;
+  focused selectors do not substitute for the phase gate.
+
+**Acceptance:**
+
+- [ ] `ConfigurationImportRecoveryTests` verify failed/prepared/applied/effect-
+      pending/rolled-back states and safe retries.
+- [ ] Retention/cleanup never deletes evidence required for an authorized
+      rollback without an explicit expired/not-available result.
+- [ ] Phase 19 closes only after one Release build and the complete
+      `Event.Persistence.IntegrationTests` project pass or documented waiver.
+
+### Phase 19 Verification
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 20: Tenant Portability And Cross-Instance Migration
+
+Plan reference: Phase 20 and CM-R1/CM-R5.
+
+### [ ] CM-2010 — Red: specify tenant package authority and isolation
+
+**Owning layers:** Application/API security tests
+
+**Work:**
+
+- Author failing tests for tenant-only export/preview/import/clone/history/
+  rollback, trusted route-selected target, source-provenance-only metadata,
+  delegated tenant creation, instance locks/ceilings, and other-tenant denial.
+- Scan package/preview/receipt bytes for instance, other-tenant, secret, PII,
+  provider, and operational state.
+
+**Acceptance:**
+
+- [ ] `TenantConfigurationPackageAuthorityTests` fail for missing behavior and
+      verify CM-S1.
+- [ ] Tenant callers cannot infer whole-instance or another tenant’s values,
+      existence, locks, or operation history.
+- [ ] Package metadata never decides target identity or authorization.
+
+### [ ] CM-2020 — Implement tenant export, import, clone, history, and rollback
+
+**Owning layers:** Application/API/HAL/BFF
+
+**Work:**
+
+- Implement deterministic tenant package export, import-session reuse,
+  existing-target and delegated-clone modes, instance-ceiling validation,
+  receipts/history/rollback, and capability-specific HAL.
+- Preserve whole-instance export/import as independent instance authority.
+
+**Acceptance:**
+
+- [ ] Tenant package handler/controller/HAL selectors pass for Cerbos/local
+      parity and cross-tenant denial.
+- [ ] Clone fails closed without delegated create authority and never copies
+      source tenant/database identity as target authority.
+- [ ] Existing Day 2 settings APIs remain available and independently
+      authorized.
+
+### [ ] CM-2030 — Prove migration fidelity and source independence
+
+**Owning layers:** API/Persistence migration tests
+
+**Work:**
+
+- Exercise source-to-target packages across supported tenancy modes/providers,
+  mappings, omitted sections, external setup, legal target drafts, retry,
+  rollback, and source-origin independence.
+- Produce machine-readable fidelity and target-setup reports.
+
+**Acceptance:**
+
+- [ ] `TenantConfigurationMigrationFidelityTests` verify equivalent portable
+      state and truthful named omissions.
+- [ ] No migration deletes or mutates source state automatically.
+- [ ] Phase 20 closes only after one Release build and the complete
+      `Event.API.IntegrationTests` project pass.
+
+### Phase 20 Verification
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 21: Blazor Instance And Tenant Administration
+
+Plan reference: Phase 21 and Section 3.8.
+
+### [ ] CM-2110 — Implement whole-instance import administration
+
+**Owning layers:** Blazor BFF/client
+
+**Work:**
+
+- Add HAL-gated upload, preview, section selection, diff, mapping, approvals,
+  apply, progress, history, receipt, retry, and rollback under the existing
+  instance/Control Plane administration surface.
+- Keep tokens and privileged API destinations server-side.
+
+**Acceptance:**
+
+- [ ] `ConfigurationManifestImportAdministrationTests` verify rendered
+      instance behavior, capability loss, stale preview, and operation results.
+- [ ] Missing HAL removes every instance import/apply/rollback entry point.
+- [ ] Raw JSON is optional and no local role/claim check grants authority.
+
+### [ ] CM-2120 — Implement tenant portability administration
+
+**Owning layers:** Blazor BFF/client
+
+**Work:**
+
+- Add tenant package export/import/clone/history/rollback under the current
+  tenant administration surface with source/target role labels and instance
+  lock/ceiling explanations.
+
+**Acceptance:**
+
+- [ ] `TenantConfigurationPortabilityAdministrationTests` verify tenant-scoped
+      actions, target identity, mappings, omissions, and denied capabilities.
+- [ ] No tenant UI action exposes whole-instance or another-tenant data.
+- [ ] Source and target legal/operator responsibilities remain explicit.
+
+### [ ] CM-2130 — Complete accessibility, localization, and usability contracts
+
+**Owning layers:** Blazor client/localization/scoped CSS
+
+**Work:**
+
+- Implement keyboard-complete wizard behavior, focus restoration, screen-reader
+  summaries, non-color states, narrow reflow, RTL/logical layout, localized
+  consequences/recovery, reduced motion, and plain/expert modes.
+- Test dense diffs, mapping, approval, progress, capability loss, and rollback.
+
+**Acceptance:**
+
+- [ ] `ConfigurationPortabilityAccessibilityTests` pass for semantic and
+      interaction contracts without raw prose/CSS pinning.
+- [ ] No secret/value appears in accessible names, announcements, or errors.
+- [ ] Phase 21 closes only after one Release build and the complete
+      `Explore.Blazor.Client.Tests` project pass.
+
+### Phase 21 Verification
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+
+## Phase 22: Extensibility, Managed Ownership, And Direct Transfer
+
+Plan reference: Phase 22 and CM-R3/CM-R5.
+
+### [ ] CM-2210 — Implement extension, signature, and managed-ownership contracts
+
+**Owning layers:** Application/security/governance
+
+**Work:**
+
+- Complete declarative extension descriptors and compatibility handling.
+- Add signed pack provenance/trust policy and explicit managed field ownership,
+  drift, takeover, relinquishment, previewed deletion, and conflict rules.
+- Reject scripts, SQL, migrations, plugins, unknown licenses/provenance, and
+  undeclared ownership.
+
+**Acceptance:**
+
+- [ ] `ConfigurationExtensionAndOwnershipTests` verify non-executable packs,
+      issuer trust, drift-only mode, takeover consent, and unmanaged-field
+      preservation.
+- [ ] Managed deletion appears explicitly in preview and cannot cross declared
+      ownership.
+- [ ] Unknown/missing required extensions fail without silent omission.
+
+### [ ] CM-2220 — Red/Green direct-transfer security and recovery
+
+**Owning layers:** Application/API/security/privacy
+
+**Work:**
+
+- Write invariant breakers, then implement opt-in mutually approved transfer
+  sessions with destination proof, SSRF defenses, nonce/digest binding, replay
+  protection, bounded/resumable transport, expiry, cancellation, and no source
+  deletion.
+
+**Acceptance:**
+
+- [ ] `ConfigurationDirectTransferSecurityTests` first fail on missing
+      safeguards, then pass for SSRF, replay, wrong target, expiry, resume, and
+      duplicate commit scenarios.
+- [ ] Transfer never carries secrets/PII/application data and never bypasses
+      target preview/approval/apply.
+- [ ] Interrupted transfer leaves both instances authoritative and unchanged.
+
+### [ ] CM-2230 — Complete GitOps, collaboration, and operational controls
+
+**Owning layers:** Application/API/operations
+
+**Work:**
+
+- Add dry-run/drift reports, approval separation, scheduled apply windows,
+  immutable receipts, effect/dead-letter visibility, safe support bundles,
+  migration readiness, and retention/health metrics.
+- Keep continuous overwrite disabled unless explicit managed ownership exists.
+
+**Acceptance:**
+
+- [ ] `ConfigurationManagedOperationsTests` verify uploader/reviewer/applier
+      separation, drift without overwrite, scheduled stale fencing, and
+      value-free support/observability.
+- [ ] No metric/log label contains paths, values, PII, or unbounded identities.
+- [ ] Phase 22 closes only after one Release build and the complete
+      `Event.Application.UnitTests` project pass.
+
+### Phase 22 Verification
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 23: Generated Contracts, Operations, Evidence, And Release
+
+Plan reference: Phase 23 and Sections 7–18.
+
+### [ ] CM-2310 — Regenerate contracts and reconcile coverage/I-VSD
+
+**Owning layers:** generated artifacts/governance
+
+**Work:**
+
+- Regenerate JSON Schemas, OpenAPI, API inventory, NSwag, and provider models
+  twice and compare bytes.
+- Generate section coverage/docs and reconcile every IVSD-F001–F024 mapping.
+- Refresh the I-VSD report to `plan-aligned` when path scope permits.
+
+**Acceptance:**
+
+- [ ] All generated checks pass twice with stable digests and no hand edits.
+- [ ] Coverage names every supported, mapped, environment-bound, secret,
+      application-data, operational, and unsupported section.
+- [ ] I-VSD/plan/context/tasks agree on revision/status/disposition and
+      F025–F030 remain explicitly deferred.
+
+### [ ] CM-2320 — Update operator, developer, legal, and migration documentation
+
+**Owning layer:** documentation/operations
+
+**Work:**
+
+- Update configuration, self-hosting, operations, security, privacy, legal,
+  accessibility, troubleshooting, API changelog, and contributor guides for
+  v1alpha2, imports, tenant migration, legal review, retention, rollback,
+  managed ownership, transfer, and support evidence.
+
+**Acceptance:**
+
+- [ ] Markdown/link/schema examples agree with generated contracts and verify
+      configuration is not application-data migration, secrets, or backup.
+- [ ] Recovery instructions cover stale/expired preview, failed apply, pending
+      effects, rollback, source retention, and unavailable snapshot.
+- [ ] Documentation contains no Setup Assistant implementation claim.
+
+### [ ] CM-2330 — Criticality review, change fragment, and final commit composition
+
+**Owning layer:** review/release evidence
+
+**Work:**
+
+- Run Tier 1/Tier 0 invariant, real-concurrency, zero-PII, security/privacy,
+  accessibility, migration-fidelity, and anonymized MAD review gates.
+- Create and validate the final append-only Tier 2 change fragment.
+- Reconcile triad/evidence and compose the final conventional commit subject
+  and trailers; do not create a commit unless the user explicitly authorizes it.
+
+**Acceptance:**
+
+- [ ] No unwaived phase gate, critical finding, generated drift, I-VSD mismatch,
+      or triad inconsistency remains.
+- [ ] Release fragment validates and records v1alpha2 breaking/operator actions.
+- [ ] Phase 23 closes only after one Release build and the complete
+      `Event.Architecture.Tests` project pass.
+- [ ] Definition of Done is proven before any Setup Assistant implementation
+      plan begins.
+
+### Phase 23 Verification
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+
 ## Focused TUnit Selector Map
 
 Use the owning project with:
@@ -1215,24 +1813,40 @@ dotnet run --project <owning-project>.csproj --no-build -- \
 | CM-1510 | `ConfigurationManifestNamingAndArtifactTests` |
 | CM-1520 | Markdown/link/schema/release-fragment checks only |
 | CM-1530 | Criticality selectors named by the evidence ledger; no additional full project before the phase gate |
+| CM-1610/1620/1630 | `ConfigurationManifestV1Alpha2ContractTests` and `ConfigurationPortabilityRegistryTests` |
+| CM-1710/1720/1730 | `LegalDocumentPortabilityInvariantTests` and `LegalDocumentRenderingContractTests` |
+| CM-1810/1820/1830 | `ConfigurationImportSessionContractTests` and `ConfigurationImportSessionControllerTests` |
+| CM-1910/1920/1930 | `ConfigurationImportAtomicityTests` and `ConfigurationImportRecoveryTests` |
+| CM-2010/2020/2030 | `TenantConfigurationPackageAuthorityTests` and `TenantConfigurationMigrationFidelityTests` |
+| CM-2110 | `ConfigurationManifestImportAdministrationTests` |
+| CM-2120 | `TenantConfigurationPortabilityAdministrationTests` |
+| CM-2130 | `ConfigurationPortabilityAccessibilityTests` |
+| CM-2210 | `ConfigurationExtensionAndOwnershipTests` |
+| CM-2220 | `ConfigurationDirectTransferSecurityTests` |
+| CM-2230 | `ConfigurationManagedOperationsTests` |
+| CM-2310/2320/2330 | Generated-contract, documentation, criticality, and architecture gates named by the Phase 23 evidence ledger |
 
 ## Remaining / Deferred Work
 
-- managed `Reconcile` mode, field ownership, drift/diff, takeover, deletion,
-  pruning, and conflict policy;
 - YAML;
-- remote URL ingestion;
 - manifest directory/multi-file composition;
 - secret references or secret-provider identifiers;
-- tenant-shaped partial manifest exports;
+- Avalonia web/desktop Setup Assistant;
+- Terminal.Gui and CLI/TUI commands;
+- `.env` generation and secret-entry UI;
+- agentic skill and any embedded AI;
 - operational payment sale-control/review/handoff/reconciliation/refund
   execution;
+- events, users, registrations, orders, tickets, payments, uploaded files, and
+  other application-data migration;
 - file-size changes beyond the governed limit without measured evidence.
 
 ## Synchronization Rules
 
 - Plan, context, and tasks must agree on the `ConfigurationManifest` name,
   current phase, next task, blockers, decisions, and deferred scope.
+- They must also agree that `TenantConfigurationPackage` is distinct from a
+  tenant manifest and that Setup Assistant/Avalonia/TUI/CLI/skill is deferred.
 - A checked task requires acceptance evidence in that task or the latest context
   handoff.
 - A phase is complete only when all tasks and both verification checkboxes pass.

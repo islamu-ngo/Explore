@@ -35,5 +35,6 @@ FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 COPY --chown=$APP_UID:$APP_UID --from=build /src/deploy/bootstrap/README.md /etc/islamu-event/bootstrap/README.md
-COPY --chown=$APP_UID:$APP_UID --from=build /src/schemas/configuration-manifest-v1alpha1.schema.json /app/schemas/configuration-manifest-v1alpha1.schema.json
+COPY --chown=$APP_UID:$APP_UID --from=build /src/schemas/configuration-manifest-v1alpha2.schema.json /app/schemas/configuration-manifest-v1alpha2.schema.json
+COPY --chown=$APP_UID:$APP_UID --from=build /src/schemas/tenant-configuration-package-v1alpha2.schema.json /app/schemas/tenant-configuration-package-v1alpha2.schema.json
 ENTRYPOINT ["dotnet", "Event.MigrationService.dll"]

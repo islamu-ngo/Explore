@@ -30999,6 +30999,196 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                     b.ToTable("ticket_type_entitlements", "islamu_event");
                 });
 
+            modelBuilder.Entity("Explore.Domain.TicketingRecoveryCheckpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AuthorityFloor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("authority_floor");
+
+                    b.Property<DateTime?>("AuthorityRotatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("authority_rotated_at");
+
+                    b.Property<int>("CapabilityGeneration")
+                        .HasColumnType("int")
+                        .HasColumnName("capability_generation");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CredentialGeneration")
+                        .HasColumnType("int")
+                        .HasColumnName("credential_generation");
+
+                    b.Property<long>("DatabaseCheckpoint")
+                        .HasColumnType("bigint")
+                        .HasColumnName("database_checkpoint");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<long>("IdempotencyFloor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("idempotency_floor");
+
+                    b.Property<string>("ManifestDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("manifest_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("ObjectCutoffUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("object_cutoff_utc");
+
+                    b.Property<long>("ProviderCursor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("provider_cursor");
+
+                    b.Property<Guid>("RecoveryOperationId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("recovery_operation_id");
+
+                    b.Property<string>("ReleaseRevision")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("release_revision");
+
+                    b.Property<int>("RetainedKeyVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("retained_key_version");
+
+                    b.Property<DateTime?>("SalesOpenedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("sales_opened_at");
+
+                    b.Property<string>("SchemaRevision")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("schema_revision");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime?>("ValidatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("validated_at");
+
+                    b.Property<long>("WorkerFence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("worker_fence");
+
+                    b.Property<DateTime?>("WorkersOpenedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("workers_opened_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticketing_recovery_checkpoints");
+
+                    b.HasIndex("TenantId", "RecoveryOperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ticketing_recovery_checkpoints_tenant_id_recovery_operation_id");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_ticketing_recovery_checkpoints_tenant_id_status");
+
+                    b.ToTable("ticketing_recovery_checkpoints", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TicketingRecoveryReissueIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("RecoveryOperationId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("recovery_operation_id");
+
+                    b.Property<int>("RequiredCredentialGeneration")
+                        .HasColumnType("int")
+                        .HasColumnName("required_credential_generation");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticketing_recovery_reissue_intents");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_ticketing_recovery_reissue_intents_tenant_id_status");
+
+                    b.HasIndex("TenantId", "RecoveryOperationId", "AdmissionTicketId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ticketing_recovery_reissue_intents_tenant_id_recovery_operation_id_admission_ticket_id");
+
+                    b.ToTable("ticketing_recovery_reissue_intents", "islamu_event");
+                });
+
             modelBuilder.Entity("Explore.Domain.UiTheme", b =>
                 {
                     b.Property<Guid>("Id")
@@ -40453,125 +40643,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
 
             modelBuilder.Entity("Explore.Domain.Policies.InstancePolicySet", b =>
                 {
-                    b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId");
-
-                            b1.ToTable("instance_policy_sets", "islamu_event");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("nvarchar(max)")
-                                        .HasColumnName("domains_instance_base_domain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_instance_base_domain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("AllowTenantCustomDomains")
-                                .IsRequired();
-
-                            b1.Navigation("InstanceBaseDomain")
-                                .IsRequired();
-
-                            b1.Navigation("LockTenantCustomDomain")
-                                .IsRequired();
-
-                            b1.Navigation("LockTenantSubdomain")
-                                .IsRequired();
-                        });
-
                     b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -40691,6 +40762,125 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                                 .IsRequired();
                         });
 
+                    b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uniqueidentifier")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("instance_policy_sets", "islamu_event");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("nvarchar(max)")
+                                        .HasColumnName("domains_instance_base_domain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_instance_base_domain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("AllowTenantCustomDomains")
+                                .IsRequired();
+
+                            b1.Navigation("InstanceBaseDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantCustomDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantSubdomain")
+                                .IsRequired();
+                        });
+
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -40807,6 +40997,73 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                                 .IsRequired();
 
                             b1.Navigation("EventCardClickOpensDetailPage")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uniqueidentifier")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("instance_policy_sets", "islamu_event");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("modules_enable_islamic_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("modules_enable_islamic_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("uniqueidentifier")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("bit")
+                                        .HasColumnName("modules_enable_tech_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("int")
+                                        .HasColumnName("modules_enable_tech_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets", "islamu_event");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("EnableIslamicModule")
+                                .IsRequired();
+
+                            b1.Navigation("EnableTechModule")
                                 .IsRequired();
                         });
 
@@ -41409,73 +41666,6 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                                 .IsRequired();
 
                             b1.Navigation("Version")
-                                .IsRequired();
-                        });
-
-                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId");
-
-                            b1.ToTable("instance_policy_sets", "islamu_event");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("modules_enable_islamic_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("modules_enable_islamic_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("uniqueidentifier")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("bit")
-                                        .HasColumnName("modules_enable_tech_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("int")
-                                        .HasColumnName("modules_enable_tech_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("instance_policy_sets", "islamu_event");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("EnableIslamicModule")
-                                .IsRequired();
-
-                            b1.Navigation("EnableTechModule")
                                 .IsRequired();
                         });
 

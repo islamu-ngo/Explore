@@ -1,9 +1,88 @@
-<!-- ABOUTME: Resumable context for the instance-wide ConfigurationManifest rebase. -->
-<!-- ABOUTME: Records verified tenant-only reality, approved architecture, risks, and the first implementation task. -->
+<!-- ABOUTME: Resumable context for full instance and tenant configuration portability. -->
+<!-- ABOUTME: Records the implemented foundation, expanded plan boundary, blockers, and next task. -->
 
 # Configuration Manifest And Reporting-Intake Policy — Context
 
-Last Updated: 2026-08-27 Europe/Brussels
+Last Updated: 2026-08-30 Europe/Brussels
+
+## SESSION PROGRESS (2026-08-30 Europe/Brussels)
+
+### COMPLETED
+
+- Established the fresh implementation baseline: the Release solution build
+  completed with 0 errors and the complete `Event.Application.UnitTests`
+  project passed 1,937/1,937.
+- Completed CM-1610 with 11 public-contract Invariant-Breaker tests. Six
+  v1alpha2 artifact tests fail on the missing package/root/mode/limits and
+  existing v1alpha1 surface; five portability-registry tests fail on the
+  missing registry. No product/generated file changed in the Red task.
+- Completed CM-1620: strict v1alpha2 manifest/package contracts, named import
+  modes, legal-content bounds, and a closed 21-entry portability registry are
+  implemented. Focused artifact tests pass 6/6 and registry tests pass 5/5.
+- Completed CM-1630 and Phase 16: both schemas are source-generated and stable,
+  v1alpha1 runtime/generated identities and temporary aliases are removed,
+  schema generation passes 9/9, schema artifacts pass 2/2, the Release build
+  has 0 errors, and the Application gate passes 1,948/1,948.
+- Completed CM-1710 with 13 public Domain Invariant-Breakers. Every case fails
+  only because the closed legal catalog, bounded localized source, provenance,
+  aggregate lifecycle, and publication evidence contracts do not exist.
+- Re-baselined the workstream after the user required whole-instance UI import,
+  tenant-admin import/export, cross-instance migration, typed portable legal
+  documents, extensible configuration coverage, and broad migration/recovery
+  quality.
+- Preserved Phases 9–15 as implemented historical foundation: strict v1alpha1
+  instance-plus-tenant bootstrap, ordered atomic apply, startup ownership,
+  instance-authorized export, BFF download, HAL-gated UI, generated artifacts,
+  and criticality evidence.
+- Added planned Phases 16–23 for a clean v1alpha2 contract,
+  `TenantConfigurationPackage`, portability section registry, legal-document
+  aggregates, import sessions, preview/diff/mapping, atomic selected-section
+  apply, receipts/snapshots/forward rollback, tenant migration, Blazor
+  administration, governed extensibility/GitOps/direct transfer, and final
+  evidence/release.
+- Mapped applicable `IVSD-F001` through `IVSD-F024` into concrete scenarios and
+  task IDs.
+- Explicitly deferred `IVSD-F025` through `IVSD-F030` and every Avalonia,
+  Terminal.Gui, CLI/TUI, `.env`, and agentic-skill deliverable to a later
+  Setup Assistant plan that starts only after this workstream is complete.
+- Kept this update planning-only and scoped to
+  `dev/active/configuration-manifest/`.
+
+### IN PROGRESS
+
+- CM-1720: legal aggregate, publication evidence, and multi-provider
+  persistence.
+
+### NEXT
+
+1. Implement CM-1720 Domain behavior from the 13 failing invariants.
+2. Add EF configurations and generate every provider migration.
+3. Run the focused Domain selector and persistence model-current checks.
+
+### BLOCKERS
+
+- The complete `Event.Persistence.IntegrationTests` project remains an
+  unwaived phase-gate blocker from the implemented foundation; Phase 19 cannot
+  close until the baseline is repaired or explicitly waived.
+- No ConfigurationManifest product decision is delegated to the future Setup
+  Assistant plan; that plan consumes this workstream’s final contracts only.
+
+## Quick Resume — Current
+
+- **Status:** Phases 9–16 implemented; Phases 17–23 planned and unchecked.
+- **Current phase:** Phase 17 — Typed Legal Documents And Safe Content.
+- **Current task:** `CM-1720`.
+- **CTO review:** [configuration-manifest-cto-review.md](configuration-manifest-cto-review.md),
+  decision `Approve`.
+- **Read first:** this section, then CM-1610 in
+  `configuration-manifest-tasks.md`, then plan Sections 3.6–3.8, 5, 6 Phase 16,
+  and 9.1.
+- **Hard boundary:** no Avalonia, Terminal.Gui, CLI/TUI, `.env`, or agent-skill
+  work in this workstream.
+- **I-VSD:** [i-vsd-configuration-manifest.md](../../../islamic-value-sensitive-design/i-vsd-configuration-manifest.md),
+  reviewed input
+  `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`,
+  status `current`, disposition `plan-aligned`.
 
 ## SESSION PROGRESS (2026-08-26 Europe/Brussels)
 
@@ -197,7 +276,7 @@ Last Updated: 2026-08-27 Europe/Brussels
   registered. Read-only repository scouts and bounded direct evidence replaced
   it for this planning update.
 
-## Quick Resume
+## Historical Quick Resume — Superseded 2026-08-30
 
 - **Status:** Phases 9–14 complete.
 - **Current phase:** Phase 15 — Generated Artifacts, Documentation, Cutover,
@@ -221,8 +300,14 @@ Last Updated: 2026-08-27 Europe/Brussels
 - Do not preserve backward compatibility; this is development mode.
 - Do not include task time estimates.
 - Update planning artifacts only for this request.
+- Add whole-instance import to the existing Blazor administration UI.
+- Add tenant-admin `TenantConfigurationPackage` import/export and migration.
+- Include typed portable instance/tenant legal documents and extensibility.
+- Finish ConfigurationManifest before planning the Setup Assistant.
+- Keep Avalonia, Terminal.Gui, CLI/TUI, `.env`, and agentic-skill work out of
+  this workstream.
 
-## Verified Current Implementation
+## Historical Pre-Phase-9 Evidence — Superseded
 
 | Path/symbol | Current responsibility | Rebase consequence |
 |---|---|---|
@@ -281,6 +366,19 @@ Last Updated: 2026-08-27 Europe/Brussels
     inventory/NSwag are regenerated from source.
 15. **HAL/BFF:** UI action capability remains HAL-authored; browser tokens and
     privileged authority remain server-side.
+16. **Two artifact kinds:** instance authority uses
+    `ConfigurationManifest`; tenant authority uses
+    `TenantConfigurationPackage`.
+17. **Preview-first Day 2 import:** upload and preview are side-effect-free;
+    apply is separately authorized and revision-fenced.
+18. **Recovery:** selected-section apply is atomic; rollback is a new forward
+    operation from a protected portable snapshot.
+19. **Legal evidence separation:** portable source/drafts never rewrite
+    published history or acceptance.
+20. **Extensibility:** one declarative section registry owns coverage,
+    mappings, dependencies, apply, verify, rollback, and docs.
+21. **Deferred clients:** Setup Assistant/Avalonia/TUI/CLI/skill work starts
+    only after ConfigurationManifest Definition of Done.
 
 ## Contract Sketch
 
@@ -313,16 +411,22 @@ Last Updated: 2026-08-27 Europe/Brussels
 }
 ```
 
-## Canonical Cutover Names
+## Current And Planned Canonical Names
 
 - `ConfigurationManifest`
 - `CONFIGURATION_MANIFEST_PATH`
 - `CONFIGURATION_MANIFEST_MODE`
 - `/etc/islamu-event/bootstrap/configuration-manifest.json`
-- `schemas/configuration-manifest-v1alpha1.schema.json`
-- `application/vnd.islamu.configuration-manifest.v1alpha1+json`
+- current: `schemas/configuration-manifest-v1alpha1.schema.json`
+- planned replacement: `schemas/configuration-manifest-v1alpha2.schema.json`
+- planned tenant artifact:
+  `schemas/tenant-configuration-package-v1alpha2.schema.json`
+- planned media types:
+  `application/vnd.islamu.configuration-manifest.v1alpha2+json` and
+  `application/vnd.islamu.tenant-configuration-package.v1alpha2+json`
 
-No tenant-manifest compatibility spelling survives implementation.
+No tenant-manifest or v1alpha1 compatibility alias survives the planned
+v1alpha2 cutover.
 
 ## Constraints And Rules To Remember
 
@@ -433,10 +537,22 @@ new instance-wide work is implemented.
 - If Day 2 instance changes make a later tenant invalid, fresh current authority
   wins and the complete rerun fails without writes; historical manifest values
   are never used as a hidden validation ceiling.
-- Managed reconciliation remains a separate workstream because ownership,
-  deletion, takeover, and drift are not bootstrap semantics.
+- Managed reconciliation remains separate from bootstrap semantics and is
+  planned only in late Phase 22 with explicit ownership, deletion, takeover,
+  relinquishment, and drift contracts.
 - Tavily, Context7, and code-review-graph tooling gaps reduce tool-specific
   evidence but do not change the source-grounded architecture decision.
+- HTTP/UI import is a new Day 2 authority surface and must never reuse trusted
+  startup-file assumptions.
+- Tenant package metadata cannot select target authority or weaken instance
+  locks/ceilings.
+- Legal templates and Markdown require clean-room/license, security,
+  accessibility, and qualified legal review.
+- Direct transfer and managed ownership remain late phases; no earlier task may
+  imply remote ingestion, deletion, takeover, or source retirement.
+- The complete Persistence project blocker remains unwaived.
+- The Setup Assistant I-VSD report is evidence only; none of its client
+  architecture belongs in this task.
 
 ## Handoff — 2026-08-26 Europe/Brussels
 
@@ -509,3 +625,17 @@ new instance-wide work is implemented.
   identically on mainline `develop`; the Phase 0 disposition artifact row count
   and the `StripeRefundAdapter` PII inventory entry are branch-behind-`develop`
   skews. None touches a ConfigurationManifest file.
+
+## Handoff — 2026-08-30 Europe/Brussels
+
+- **Outcome:** the active workstream now plans full server/API/BFF/Blazor
+  configuration portability on top of the implemented bootstrap/export
+  foundation.
+- **First unchecked task:** `CM-1610`.
+- **Approval:** do not implement until the new phases receive user start,
+  revision-bound CTO review, and I-VSD plan-alignment refresh.
+- **Scope:** ConfigurationManifest only; Setup Assistant/Avalonia/TUI/CLI/skill
+  remains a separate future plan.
+- **No runtime edits:** this session changed only the three planning artifacts.
+- **No compatibility:** v1alpha2 cleanly replaces v1alpha1.
+- **Known hard gate:** full Persistence project remains unwaived.

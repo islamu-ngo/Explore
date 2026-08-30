@@ -3,6 +3,26 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-08-29
+
+- **Added: machine-readable ticketing deployment capability status.**
+  `GET /api/deployment/ticketing-capabilities` returns the canonical
+  `production-approved`, `test-only`, or `disabled` status, reason code,
+  required external gate codes, revision, and reference topology for every
+  ticketing capability. The endpoint is read-only and non-cacheable. The
+  canonical OpenAPI and generated Blazor client include the matrix.
+- **Added: event add-on catalog, order, fulfillment, and refund allocation
+  contracts.** Public catalog reads, organizer HAL management, buyer
+  reservation, fulfillment, and exact partial-refund allocation use immutable
+  minor-unit snapshots and stable idempotency. Add-on authority remains
+  separate from admission credentials and check-in.
+- **Breaking: ticketing recovery and release status fail closed.** Restored
+  deployments require the exact consistency manifest, advanced bearer
+  generations, resolved provider ambiguity, and ordered worker/sales reopen.
+  Protected delayed payout remains `disabled`; there is no payout route,
+  operation, HAL relation, scheduler job, secret, generated-client method, or
+  UI action.
+
 ## 2026-08-28
 
 - **Breaking: legal identity is structured and responsibility-specific.**

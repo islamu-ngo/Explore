@@ -95,6 +95,12 @@ public static class SecretDefinitionRegistry
             public const string ScannerCapabilityHmacKey = "admissions.scanner_capability_hmac_key";
         }
 
+        public static class Ticketing
+        {
+            public const string RecoveryManifestHmacKey =
+                "ticketing.recovery_manifest_hmac_key";
+        }
+
         public static class Atproto
         {
             public const string OAuthClientPrivateJwks = "auth.atproto.oauth_client_private_jwks";
@@ -430,6 +436,17 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "ADMISSIONS_SCANNER_CAPABILITY_HMAC_KEY",
                 IsBootstrapSecret = false,
                 Description = "Versioned backend-only HMAC key for admission scanner capability digests.",
+            },
+            new()
+            {
+                Key = Keys.Ticketing.RecoveryManifestHmacKey,
+                AllowedScopes = instanceOnly,
+                AllowedSources = bootstrapSources,
+                DefaultInfisicalPath = "/ticketing/recovery",
+                DefaultInfisicalKey = "TICKETING_RECOVERY_MANIFEST_HMAC_KEY",
+                DefaultEnvironmentVariableName = "TICKETING_RECOVERY_MANIFEST_HMAC_KEY",
+                IsBootstrapSecret = true,
+                Description = "Backend-only HMAC key for signed ticketing recovery manifests.",
             },
 
             new()

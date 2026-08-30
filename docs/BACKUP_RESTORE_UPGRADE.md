@@ -15,6 +15,36 @@ This runbook covers self-hosted deployments using the repository Docker Compose 
 
 Before restore, enable global stop-sale. Restore as one consistent recovery point: application database tables for payment attempts, paid acceptance snapshots, Checkout dispatch effects, incoming webhook messages/effects, payment reconciliation effects, succeeded observations, secret-binding metadata, and Quartz state; then restore Data Protection keys before exposing BFF sessions or one-time Checkout tickets. Rebind provider and webhook secrets without copying secret values into evidence. Start signed webhook intake and reconciliation first, verify stable due claims and no duplicate provider idempotency identities, then restore support/reads. Clear stop-sale only after reconciliation health is bounded and current acceptance disclosure can be regenerated. Never synthesize acceptance for a historical attempt after restore.
 
+## Ticketing Consistency Manifest And Reopen Order
+
+Before backup, stop sales, pause Quartz, drain bounded active claims, classify
+post-handoff work as `Unknown`, and capture one signed/hash-bound manifest per
+tenant. The manifest records the release and schema revisions, database
+checkpoint, object cutoff, retained key version, authority floor, provider
+cursor, durable idempotency floor, worker fence, capability generation, and
+credential generation. Store its HMAC outside the database with the matching
+`ticketing.recovery_manifest_hmac_key`; never place key material in the
+manifest, logs, evidence YAML, or support bundles.
+
+Restore into clean storage in this order:
+
+1. deployment-level maintenance and stop-sale;
+2. primary database and durable object cutoff;
+3. retained Data Protection and ticketing manifest-signing keys;
+4. Quartz tables, inbox/outbox/effect rows, provider cursors, and idempotency facts;
+5. manifest validation while runtime stays `RecoveryOnly`;
+6. cancellation of pre-restore capabilities and active credential revocation;
+7. one durable reissue intent per active admission ticket;
+8. authoritative reconciliation of every `Unknown`, poison, and dead-letter effect;
+9. reads/support, then workers at the exact new fence, then sales last.
+
+Missing or stale revision, key, cursor, authority, idempotency, or fence facts
+keep the deployment closed. Never synthesize them, lower configured floors,
+copy a cursor from another tenant, or move authority backward. A replay of the
+same tenant/operation/digest returns the existing checkpoint; a changed digest
+is a conflict. A restored pre-revocation bearer cannot become valid because
+every capability and credential generation must advance before workers reopen.
+
 ## Pre-v1 Privacy-erasure Reset Policy
 
 The removed `PrivacyErasure:Durability:Mode` contract has no compatibility

@@ -1,0 +1,25 @@
+# ABOUTME: Records the non-viable root-level Phase 7 Stryker attempt without relabeling it as evidence.
+# ABOUTME: Explains why the final gate uses a dedicated test-project context and bounded mutate scope.
+
+schema_version: 1
+phase: 7
+status: superseded
+attempt:
+  command: >-
+    dotnet stryker --project src/Explore.Domain/Explore.Domain.csproj
+    --test-project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj
+    --break-at 86 --reporter json
+    --output dev/active/event-ticketing-lifecycle/evidence/phase-7
+  exit_code: 143
+  outcome: timeout_before_mutation
+  discovered_tests: 12647
+  timeout_seconds: 1800
+disposition:
+  reason: >-
+    Running at the solution root selected solution context, expanded discovery
+    to 12,647 tests, and did not complete the initial test run before the
+    bounded timeout.
+  replacement: >-
+    Run from src/Explore.Domain with the dedicated
+    Event.Domain.AddOns.MutationTests project and an explicit add-on mutate
+    scope, preserving the same strict break threshold.

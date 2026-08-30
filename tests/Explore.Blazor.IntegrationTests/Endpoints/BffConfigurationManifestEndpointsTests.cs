@@ -14,7 +14,7 @@ public sealed class BffConfigurationManifestEndpointsTests
     private const string BffRoute = "/bff/control-plane/configuration-manifest/export";
     private const string ApiOverviewRoute = "/api/admin/control-plane/overview";
     private const string ApiExportRoute = "/api/control-plane/configuration-manifest/export";
-    private const string MediaType = "application/vnd.islamu.configuration-manifest.v1alpha1+json";
+    private const string MediaType = "application/vnd.islamu.configuration-manifest.v1alpha2+json";
     private const int MaximumBytes = 4 * 1024 * 1024;
 
     [Test]

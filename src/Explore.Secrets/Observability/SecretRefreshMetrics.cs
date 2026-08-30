@@ -24,13 +24,17 @@ public sealed class SecretRefreshMetrics : IDisposable
     private readonly Counter<long> _refreshFailuresTotal;
     private readonly Histogram<double> _refreshDurationSeconds;
     private readonly UpDownCounter<int> _consecutiveFailures;
+    private readonly TimeProvider _clock;
 
     private DateTimeOffset _lastSuccessfulRefresh = DateTimeOffset.MinValue;
     private int _currentConsecutiveFailures;
     private readonly object _lock = new();
 
-    public SecretRefreshMetrics(IMeterFactory? meterFactory = null)
+    public SecretRefreshMetrics(
+        IMeterFactory? meterFactory = null,
+        TimeProvider? clock = null)
     {
+        _clock = clock ?? TimeProvider.System;
         // Use factory if provided (for DI), otherwise create standalone meter
         _meter = meterFactory?.Create(MeterName) ?? new Meter(MeterName, "1.0.0");
 
@@ -132,7 +136,7 @@ public sealed class SecretRefreshMetrics : IDisposable
                 _currentConsecutiveFailures = 0;
             }
 
-            _lastSuccessfulRefresh = DateTimeOffset.UtcNow;
+            _lastSuccessfulRefresh = _clock.GetUtcNow();
         }
     }
 

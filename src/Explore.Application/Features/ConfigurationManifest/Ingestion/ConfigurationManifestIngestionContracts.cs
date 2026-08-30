@@ -17,7 +17,7 @@ public sealed record ConfigurationManifestReadOptions(
     string? ConfiguredPath);
 
 public sealed record ConfigurationManifestReadResult(
-    ConfigurationManifestV1Alpha1 Manifest,
+    ConfigurationManifestV1Alpha2 Manifest,
     ConfigurationManifestMode Mode,
     string Sha256Digest,
     int ByteLength);

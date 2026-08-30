@@ -26,6 +26,8 @@ namespace Event.Standalone.IntegrationTests.Fixtures;
 
 public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<StandaloneHostMarker>
 {
+    private readonly string _runtimePassword =
+        Guid.CreateVersion7().ToString("N");
     private readonly IReadOnlyDictionary<string, string?>? _configurationOverrides;
     private readonly IConfigurationManifestStartupRunner? _startupRunner;
 
@@ -51,7 +53,7 @@ public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<Stan
                 ["Database:Runtime:Database"] = "event_test",
                 ["Database:Migrator:Database"] = "event_test",
                 ["Database:Runtime:Username"] = "event_test",
-                ["Database:Runtime:Password"] = "test-only-secret",
+                ["Database:Runtime:Password"] = _runtimePassword,
                 ["ExploreApi:BaseUrl"] = "http://127.0.0.1:7039/",
                 ["Keycloak:Authority"] = "https://auth.example.com",
                 ["Keycloak:Realm"] = "explore",
@@ -64,7 +66,31 @@ public sealed class StandaloneWebApplicationFactory : WebApplicationFactory<Stan
                 ["Testing:SkipJwtAuthorityWarmup"] = "true",
                 ["ForwardedHeadersTrust:TrustLoopbackProxy"] = "true",
                 ["Bff:AdminHosts:0"] = "admin.proxy.test",
-                ["Bff:AdminHostAllowedIpRanges:0"] = "203.0.113.0/24"
+                ["Bff:AdminHostAllowedIpRanges:0"] = "203.0.113.0/24",
+                ["Instance:OperatorIdentity:OperatorId"] =
+                    "0198e2a4-5340-7f89-8abc-b8bdf43e0ea8",
+                ["Instance:OperatorIdentity:PublicName"] =
+                    "Standalone Test Operator",
+                ["Instance:OperatorIdentity:LegalName"] =
+                    "Standalone Test Operator ASBL",
+                ["Instance:OperatorIdentity:IsOfficialInstance"] = "false",
+                ["Instance:OperatorIdentity:OfficialOrigin"] =
+                    "https://standalone.example.test",
+                ["Instance:OperatorIdentity:OperatorKindCode"] =
+                    "registered_organization",
+                ["Instance:OperatorIdentity:JurisdictionCountryCode"] = "BE",
+                ["Instance:OperatorIdentity:RegistrationIdentifier"] =
+                    "BE 0123.456.789",
+                ["Instance:OperatorIdentity:PublicContactEmail"] =
+                    "contact@standalone.example.test",
+                ["Instance:OperatorIdentity:WebsiteUrl"] =
+                    "https://standalone.example.test",
+                ["Instance:OperatorIdentity:LegalNoticeUrl"] =
+                    "https://standalone.example.test/legal",
+                ["Instance:OperatorIdentity:TermsUrl"] =
+                    "https://standalone.example.test/terms",
+                ["Instance:OperatorIdentity:PrivacyUrl"] =
+                    "https://standalone.example.test/privacy"
             }));
         if (_configurationOverrides is not null)
         {
@@ -159,7 +185,7 @@ public sealed class DynamicAuthInitializationProbe(IServiceScopeFactory scopeFac
     public async Task InitializeAsync()
     {
         Interlocked.Increment(ref _initializationCount);
-        await Task.Delay(50);
+        await Task.Yield();
         await using var scope = scopeFactory.CreateAsyncScope();
         var apiClient = scope.ServiceProvider.GetRequiredService<IEventApiClient>();
         _ = await apiClient.GetEventTypesAsync(cancellationToken: CancellationToken.None);

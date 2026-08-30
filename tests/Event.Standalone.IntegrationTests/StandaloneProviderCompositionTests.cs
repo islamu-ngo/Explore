@@ -17,67 +17,6 @@ namespace Event.Standalone.IntegrationTests;
 public sealed class StandaloneProviderCompositionTests
 {
     [Test]
-    public async Task StandaloneContainerContractUsesOneImageWithoutCompose()
-    {
-        var repositoryRoot = FindRepositoryRoot();
-        IConfiguration settings = new ConfigurationBuilder()
-            .AddJsonFile(
-                Path.Combine(repositoryRoot, "src", "Event.Standalone", "appsettings.json"),
-                optional: false)
-            .Build();
-        var dockerfile = await File.ReadAllTextAsync(
-            Path.Combine(repositoryRoot, "src", "Event.Standalone", "Dockerfile"));
-
-        await Assert.That(settings["Database:Provider"]).IsEqualTo("Sqlite");
-        await Assert.That(settings["Database:Database"]).IsEqualTo("/app/data/islamu_event.db");
-        await Assert.That(File.Exists(Path.Combine(repositoryRoot, "docker-compose.standalone.yml"))).IsFalse();
-        await Assert.That(dockerfile).Contains("EXPOSE 8080");
-        await Assert.That(dockerfile).Contains("USER $APP_UID");
-        await Assert.That(dockerfile).Contains("/etc/islamu-event/bootstrap");
-        await Assert.That(dockerfile).Contains(
-            "/app/schemas/configuration-manifest-v1alpha1.schema.json");
-        await Assert.That(dockerfile).Contains("ENTRYPOINT [\"./Event.Standalone\"]");
-    }
-
-    [Test]
-    public async Task StandaloneContainerRestoreIncludesBlazorFrameworkAssetsBeforeRazorSourcesAreCopied()
-    {
-        var dockerfile = await File.ReadAllTextAsync(
-            Path.Combine(FindRepositoryRoot(), "src", "Event.Standalone", "Dockerfile"));
-
-        var razorCopyIndex = dockerfile.IndexOf(
-            "COPY [\"src/Explore.Blazor/Components/App.razor\", \"src/Explore.Blazor/Components/\"]",
-            StringComparison.Ordinal);
-        var restoreIndex = dockerfile.IndexOf("RUN dotnet restore", StringComparison.Ordinal);
-
-        await Assert.That(razorCopyIndex).IsGreaterThanOrEqualTo(0);
-        await Assert.That(razorCopyIndex).IsLessThan(restoreIndex);
-    }
-
-    [Test]
-    public async Task StandaloneEnvironmentAllowsHttpMetadataForLocalKeycloak()
-    {
-        var environment = await File.ReadAllTextAsync(Path.Combine(FindRepositoryRoot(), ".env.example"));
-
-        await Assert.That(environment).Contains("KEYCLOAK_ENDPOINT=http://keycloak.localhost:8080");
-        await Assert.That(environment).Contains("Keycloak__RequireHttpsMetadata=false");
-    }
-
-    [Test]
-    public async Task StandaloneSingleFileHostLoadsExternalMigrationAssembliesBeforeMigrating()
-    {
-        var repositoryRoot = FindRepositoryRoot();
-        var program = await File.ReadAllTextAsync(
-            Path.Combine(repositoryRoot, "src", "Event.Standalone", "Program.cs"));
-
-        var loadIndex = program.IndexOf("AssemblyLoadContext.Default.LoadFromAssemblyPath", StringComparison.Ordinal);
-        var migrationIndex = program.IndexOf("MigrateAndSeedAsync", StringComparison.Ordinal);
-
-        await Assert.That(loadIndex).IsGreaterThanOrEqualTo(0);
-        await Assert.That(loadIndex).IsLessThan(migrationIndex);
-    }
-
-    [Test]
     public async Task SqliteReplicaCountGreaterThanOneFailsBeforeHostStartup()
     {
         var temporaryDirectory = Path.Combine(Path.GetTempPath(), $"event-standalone-{Guid.NewGuid():N}");

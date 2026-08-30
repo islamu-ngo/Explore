@@ -6,7 +6,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 > **Audience:** Operators | Contributors | Admins | Integrators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-08-26
+> **Last Verified:** 2026-08-29
 > **Source Anchors:** `README.md`, `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`
 
 Start with [README.md](../README.md) if you are new to the project. Use this page when you already know your task or need the complete documentation inventory.
@@ -20,6 +20,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Understand the product and current scope | [PROJECT.md](PROJECT.md) | [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
 | Run the app locally | [GETTING_STARTED.md](GETTING_STARTED.md) | [TESTING.md](TESTING.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
 | Self-host or operate a deployment | [SELF_HOSTING.md](SELF_HOSTING.md) | [CONFIGURATION.md](CONFIGURATION.md), [SECRETS.md](SECRETS.md), [OPERATIONS.md](OPERATIONS.md), [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) |
+| Bootstrap instance and tenant configuration | [CONFIGURATION_MANIFEST.md](CONFIGURATION_MANIFEST.md) | [CONFIGURATION.md](CONFIGURATION.md), [SELF_HOSTING.md](SELF_HOSTING.md), [SECRETS.md](SECRETS.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
 | Troubleshoot a failure | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | [OPERATIONS.md](OPERATIONS.md), [CONFIGURATION.md](CONFIGURATION.md), [TEST_RELIABILITY.md](TEST_RELIABILITY.md) |
 | Prepare a governed release | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | [RELEASE_POLICY.md](RELEASE_POLICY.md), [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md), [ADR-025](adr/ADR-025-provider-neutral-release-governance.md) |
 | Configure tenants, admins, or branding | [ADMIN_GUIDE.md](ADMIN_GUIDE.md) | [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md), [DEPLOYMENT_MODES.md](DEPLOYMENT_MODES.md), [MULTI_TENANCY.md](MULTI_TENANCY.md) |
@@ -99,6 +100,7 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 - [../dev/_journal/README.md](../dev/_journal/README.md) - durable findings log + promotion rules.
 
 ## Runtime And Operations
+- [CONFIGURATION_MANIFEST.md](CONFIGURATION_MANIFEST.md) - strict instance-and-tenant bootstrap contract, operator workflow, rerun semantics, export, recovery, and contributor extension guide.
 - [CONFIGURATION.md](CONFIGURATION.md) - environment/config settings and secret providers.
 - [SECRETS.md](SECRETS.md) - multi-provider secret management (Explore.Secrets library).
 - [STORAGE.md](STORAGE.md) - local-first object storage, optional S3-compatible configuration, reconciliation, API boundaries, and backup impact.

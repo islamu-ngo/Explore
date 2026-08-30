@@ -83,14 +83,14 @@ public sealed class ExportConfigurationManifestQueryHandler(
         };
 
         var instanceDocuments =
-            new SortedDictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+            new SortedDictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                 StringComparer.Ordinal)
             {
                 [ConfigurationManifestDocumentKeys.InstancePaidEventPolicy] =
                     PaidPolicyDocument(instancePolicy)
             };
 
-        var exportedTenants = new List<ConfigurationManifestTenantV1Alpha1>(
+        var exportedTenants = new List<ConfigurationManifestTenantV1Alpha2>(
             activeTenants.Count);
         foreach (Tenant tenant in activeTenants.OrderBy(value => value.Slug, StringComparer.Ordinal))
         {
@@ -108,15 +108,15 @@ public sealed class ExportConfigurationManifestQueryHandler(
             ? "current-instance"
             : latest.ManifestName;
 
-        var manifest = new ConfigurationManifestV1Alpha1
+        var manifest = new ConfigurationManifestV1Alpha2
         {
             Schema = ConfigurationManifestContractMetadata.SchemaId,
             ApiVersion = ConfigurationManifestContractMetadata.ApiVersion,
             Kind = ConfigurationManifestContractMetadata.Kind,
-            Metadata = new ConfigurationManifestMetadataV1Alpha1
+            Metadata = new ConfigurationManifestMetadataV1Alpha2
             {
                 Name = manifestName,
-                Export = new ConfigurationManifestExportMetadataV1Alpha1
+                Export = new ConfigurationManifestExportMetadataV1Alpha2
                 {
                     View = request.View == ConfigurationManifestExportView.Portable
                         ? ConfigurationManifestExportMetadataValues.PortableView
@@ -131,9 +131,9 @@ public sealed class ExportConfigurationManifestQueryHandler(
                         .SovereignLockedFields
                 }
             },
-            Spec = new ConfigurationManifestSpecV1Alpha1
+            Spec = new ConfigurationManifestSpecV1Alpha2
             {
-                Instance = new ConfigurationManifestInstanceV1Alpha1
+                Instance = new ConfigurationManifestInstanceV1Alpha2
                 {
                     Settings = instanceValues,
                     Documents = instanceDocuments
@@ -159,7 +159,7 @@ public sealed class ExportConfigurationManifestQueryHandler(
         };
     }
 
-    private async Task<ConfigurationManifestTenantV1Alpha1> ExportTenantAsync(
+    private async Task<ConfigurationManifestTenantV1Alpha2> ExportTenantAsync(
         Tenant tenant,
         PaidEventPolicyVersion instancePolicy,
         ConfigurationManifestExportView view,
@@ -177,7 +177,7 @@ public sealed class ExportConfigurationManifestQueryHandler(
             _ => throw new ValidationException("The configuration manifest export view is invalid.")
         };
 
-        SortedDictionary<string, ConfigurationManifestDocumentV1Alpha1> documents =
+        SortedDictionary<string, ConfigurationManifestDocumentV1Alpha2> documents =
             view == ConfigurationManifestExportView.Portable
                 ? await ReadPortableTenantDocumentsAsync(tenant.Id, cancellationToken)
                 : await ReadTenantDocumentOverridesAsync(tenant.Id, cancellationToken);
@@ -193,7 +193,7 @@ public sealed class ExportConfigurationManifestQueryHandler(
         if (view == ConfigurationManifestExportView.Portable || tenantPolicy is not null)
         {
             PaidEventPolicyVersion selected = tenantPolicy ?? instancePolicy;
-            ConfigurationManifestPaidEventPolicyPayloadV1Alpha1 payload =
+            ConfigurationManifestPaidEventPolicyPayloadV1Alpha2 payload =
                 ConfigurationManifestPaidEventPolicyMapper.ToManifestPayload(selected);
             PaidEventPolicyVersion candidate =
                 ConfigurationManifestPaidEventPolicyMapper.CreateTenantCandidate(
@@ -205,13 +205,13 @@ public sealed class ExportConfigurationManifestQueryHandler(
                 PaidPolicyDocument(payload));
         }
 
-        return new ConfigurationManifestTenantV1Alpha1
+        return new ConfigurationManifestTenantV1Alpha2
         {
-            Metadata = new ConfigurationManifestTenantMetadataV1Alpha1
+            Metadata = new ConfigurationManifestTenantMetadataV1Alpha2
             {
                 Name = tenant.Slug
             },
-            Spec = new ConfigurationManifestTenantSpecV1Alpha1
+            Spec = new ConfigurationManifestTenantSpecV1Alpha2
             {
                 DisplayName = tenant.FullName,
                 Settings = values,
@@ -290,7 +290,7 @@ public sealed class ExportConfigurationManifestQueryHandler(
         return values;
     }
 
-    private async Task<SortedDictionary<string, ConfigurationManifestDocumentV1Alpha1>>
+    private async Task<SortedDictionary<string, ConfigurationManifestDocumentV1Alpha2>>
         ReadTenantDocumentOverridesAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         IReadOnlyList<TenantSettingsDocument> stored = await tenantDocuments.GetManyForTenant(
@@ -298,7 +298,7 @@ public sealed class ExportConfigurationManifestQueryHandler(
             TenantStoredDocumentKeys,
             cancellationToken);
         var documents =
-            new SortedDictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+            new SortedDictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                 StringComparer.Ordinal);
         foreach (TenantSettingsDocument document in stored.OrderBy(
                      value => value.DocumentKey,
@@ -318,7 +318,7 @@ public sealed class ExportConfigurationManifestQueryHandler(
             EnsureDocumentVersion(document, catalogEntry);
             if (!documents.TryAdd(
                     document.DocumentKey,
-                    new ConfigurationManifestDocumentV1Alpha1
+                    new ConfigurationManifestDocumentV1Alpha2
                     {
                         SchemaVersion = document.SchemaVersion,
                         Payload = ParseJson(document.PayloadJson)
@@ -332,11 +332,11 @@ public sealed class ExportConfigurationManifestQueryHandler(
         return documents;
     }
 
-    private async Task<SortedDictionary<string, ConfigurationManifestDocumentV1Alpha1>>
+    private async Task<SortedDictionary<string, ConfigurationManifestDocumentV1Alpha2>>
         ReadPortableTenantDocumentsAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         var documents =
-            new SortedDictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+            new SortedDictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                 StringComparer.Ordinal);
         if (ConfigurationManifestCatalog.TryGetTenantDocument(
                 SettingsDocumentKeys.Tenant.Branding,
@@ -365,7 +365,7 @@ public sealed class ExportConfigurationManifestQueryHandler(
 
                 documents.Add(
                     SettingsDocumentKeys.Tenant.Branding,
-                    new ConfigurationManifestDocumentV1Alpha1
+                    new ConfigurationManifestDocumentV1Alpha2
                     {
                         SchemaVersion = branding.SchemaVersion,
                         Payload = JsonSerializer.SerializeToElement(branding.Payload, WebJson)
@@ -394,13 +394,13 @@ public sealed class ExportConfigurationManifestQueryHandler(
         return instancePolicy;
     }
 
-    private static ConfigurationManifestDocumentV1Alpha1 PaidPolicyDocument(
+    private static ConfigurationManifestDocumentV1Alpha2 PaidPolicyDocument(
         PaidEventPolicyVersion policy) =>
         PaidPolicyDocument(
             ConfigurationManifestPaidEventPolicyMapper.ToManifestPayload(policy));
 
-    private static ConfigurationManifestDocumentV1Alpha1 PaidPolicyDocument(
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1 payload) =>
+    private static ConfigurationManifestDocumentV1Alpha2 PaidPolicyDocument(
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2 payload) =>
         new()
         {
             SchemaVersion = ConfigurationManifestCatalog.InstanceDocuments[
@@ -408,7 +408,7 @@ public sealed class ExportConfigurationManifestQueryHandler(
             Payload = JsonSerializer.SerializeToElement(
                 payload,
                 ConfigurationManifestJsonContext.Default
-                    .ConfigurationManifestPaidEventPolicyPayloadV1Alpha1)
+                    .ConfigurationManifestPaidEventPolicyPayloadV1Alpha2)
         };
 
     private static void EnsureDocumentVersion(

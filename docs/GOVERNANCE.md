@@ -308,9 +308,22 @@ Records are shallowly immutable. Every published collection-bearing handwritten 
 
 `UserId` and `TenantId` that represent the current caller or current tenant are never body authority. Introduce them from established server principal, tenant, route, or trusted-adapter context only when the request's authorization or business intent uses them. A body may carry a legitimate target ID only for an operation that manages that target, and the server must authorize it independently.
 
-### Ratchet and TDD
+### Executable Contract Classification And TDD
 
-The record-contract and body-authority baselines are exact shrinking inventories: missing new debt and stale or resolved entries both fail. `PublishedCollectionContractArchitectureTests` classifies every published collection record across Domain, Application, API, and Blazor; mutable framework/ownership exceptions require exact reasoned entries in `published-collection-contract-dispositions.json`, whose completed baseline is empty. `GeneratedClientRecordArchitectureTests` ratchets the exact policy-derived eligibility set, compiled init semantics, value-free diagnostic printing, AOT extension-data behavior, protected framework classes, and the 25-entry mutable-state manifest. Before a behavioral conversion, write focused tests for consumed equality, one-fact `with` variants, caller-mutation isolation, JSON construction, PATCH omitted/clear/replacement behavior, and authority trust boundaries; test machine-consumed behavior rather than generated record prose.
+Record-policy tests derive the current contract surface from compiled types,
+serialization behavior, and generator-owned machine manifests rather than
+historical source inventories. `PublishedCollectionContractArchitectureTests`
+classifies published collection contracts across Domain, Application, API, and
+Blazor; `published-collection-contract-dispositions.json` contains only
+current, reasoned framework or ownership exceptions. Generated-client tests
+verify policy-derived eligibility, compiled `init` semantics, value-free
+diagnostic printing, AOT extension-data behavior, protected framework classes,
+and the generator-owned mutable-state manifest. These structured manifests
+must classify the complete current machine contract, but must not pin prose,
+source tokens, or obsolete debt. Before a behavioral conversion, write focused
+tests for consumed equality, one-fact `with` variants, caller-mutation
+isolation, JSON construction, PATCH omitted/clear/replacement behavior, and
+authority trust boundaries.
 
 ---
 
@@ -489,6 +502,7 @@ Every change — human or agent — routes through the Contribution Contract bef
 | New MediatR command/query | `add-cqrs-handler` | `cqrs-mediatr-guidelines`, `.agents/rules/application-layer.md` |
 | New EF Core migration | `add-ef-migration` | `dotnet-efcore-guidelines`, `.agents/rules/efcore-migrations.md` |
 | Repository query change | `update-repository-query` | `dotnet-efcore-guidelines`, `.agents/rules/efcore-persistence.md` |
+| Repository-wide test architecture refactor | `test-suite-rationalization` | `docs/TESTING.md`, `.agents/rules/tests.md`, `refactor-safely` |
 | Blazor component affordance gated by HAL links | `blazor-component-affordance` | `blazor-ui-conventions`, `blazor-bff-patterns` |
 | 401/403 BFF/API auth issue | `bff-auth-bug` | `auth-patterns`, `blazor-bff-patterns`, `docs/SECURITY-MODEL.md` |
 | Cerbos policy change | `cerbos-policy-change` | `docs/AUTHORIZATION_PATTERNS.md`, `auth-patterns` |

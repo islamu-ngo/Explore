@@ -19,8 +19,9 @@ public sealed class ConfigurationManifestSchemaGenerationTests
     {
         byte[] expected = await File.ReadAllBytesAsync(ContextSystemHelpers.RepoPath(
             "schemas",
-            "configuration-manifest-v1alpha1.schema.json"));
-        byte[] actual = ConfigurationManifestJsonSchemaGenerator.Generate();
+            "configuration-manifest-v1alpha2.schema.json"));
+        byte[] actual =
+            ConfigurationManifestJsonSchemaGenerator.GenerateConfigurationManifest();
 
         await Assert.That(actual.SequenceEqual(expected)).IsTrue();
     }
@@ -35,10 +36,12 @@ public sealed class ConfigurationManifestSchemaGenerationTests
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("ar-SA");
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ar-SA");
 
-            byte[] forward = ConfigurationManifestJsonSchemaGenerator.Generate(
+            byte[] forward =
+                ConfigurationManifestJsonSchemaGenerator.GenerateConfigurationManifest(
                 ConfigurationManifestCatalog.TenantSettings.Values,
                 ConfigurationManifestCatalog.TenantDocuments.Values);
-            byte[] reverse = ConfigurationManifestJsonSchemaGenerator.Generate(
+            byte[] reverse =
+                ConfigurationManifestJsonSchemaGenerator.GenerateConfigurationManifest(
                 ConfigurationManifestCatalog.TenantSettings.Values.Reverse(),
                 ConfigurationManifestCatalog.TenantDocuments.Values.Reverse());
 
@@ -55,7 +58,7 @@ public sealed class ConfigurationManifestSchemaGenerationTests
     public async Task GeneratedSchema_UsesGovernedDraftIdentityAndClosedObjects()
     {
         using JsonDocument schema = JsonDocument.Parse(
-            ConfigurationManifestJsonSchemaGenerator.Generate());
+            ConfigurationManifestJsonSchemaGenerator.GenerateConfigurationManifest());
         JsonElement root = schema.RootElement;
 
         await Assert.That(root.GetProperty("$schema").GetString())
@@ -78,15 +81,15 @@ public sealed class ConfigurationManifestSchemaGenerationTests
     [Test]
     public async Task CanonicalExportMetadata_SatisfiesGeneratedSchemaContract()
     {
-        var manifest = new ConfigurationManifestV1Alpha1
+        var manifest = new ConfigurationManifestV1Alpha2
         {
             Schema = ConfigurationManifestContractMetadata.SchemaId,
             ApiVersion = ConfigurationManifestContractMetadata.ApiVersion,
             Kind = ConfigurationManifestContractMetadata.Kind,
-            Metadata = new ConfigurationManifestMetadataV1Alpha1
+            Metadata = new ConfigurationManifestMetadataV1Alpha2
             {
                 Name = "current-instance",
-                Export = new ConfigurationManifestExportMetadataV1Alpha1
+                Export = new ConfigurationManifestExportMetadataV1Alpha2
                 {
                     View = ConfigurationManifestExportMetadataValues.OverridesView,
                     EffectiveValuesFlattened = false,
@@ -98,34 +101,34 @@ public sealed class ConfigurationManifestSchemaGenerationTests
                         .SovereignLockedFields
                 }
             },
-            Spec = new ConfigurationManifestSpecV1Alpha1
+            Spec = new ConfigurationManifestSpecV1Alpha2
             {
-                Instance = new ConfigurationManifestInstanceV1Alpha1
+                Instance = new ConfigurationManifestInstanceV1Alpha2
                 {
                     Settings = new Dictionary<string, JsonElement>(StringComparer.Ordinal),
-                    Documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+                    Documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                         StringComparer.Ordinal)
                 },
                 Tenants =
                 [
-                    new ConfigurationManifestTenantV1Alpha1
+                    new ConfigurationManifestTenantV1Alpha2
                     {
-                        Metadata = new ConfigurationManifestTenantMetadataV1Alpha1
+                        Metadata = new ConfigurationManifestTenantMetadataV1Alpha2
                         {
                             Name = "primary"
                         },
-                        Spec = new ConfigurationManifestTenantSpecV1Alpha1
+                        Spec = new ConfigurationManifestTenantSpecV1Alpha2
                         {
                             DisplayName = "Primary",
                             Settings = new Dictionary<string, JsonElement>(StringComparer.Ordinal),
-                            Documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+                            Documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                                 StringComparer.Ordinal)
                         }
                     }
                 ]
             }
         };
-        Type serializer = typeof(ConfigurationManifestV1Alpha1).Assembly.GetType(
+        Type serializer = typeof(ConfigurationManifestV1Alpha2).Assembly.GetType(
             "Explore.Application.Features.ConfigurationManifest.Application.ConfigurationManifestExportJsonSerializer")
             ?? throw new InvalidOperationException("Missing canonical export serializer.");
         MethodInfo serialize = serializer.GetMethod(
@@ -136,7 +139,7 @@ public sealed class ConfigurationManifestSchemaGenerationTests
 
         using JsonDocument export = JsonDocument.Parse(bytes);
         using JsonDocument schema = JsonDocument.Parse(
-            ConfigurationManifestJsonSchemaGenerator.Generate());
+            ConfigurationManifestJsonSchemaGenerator.GenerateConfigurationManifest());
         JsonElement exportedMetadata = export.RootElement
             .GetProperty("metadata")
             .GetProperty("export");
@@ -166,7 +169,7 @@ public sealed class ConfigurationManifestSchemaGenerationTests
     public async Task GeneratedSchema_CoversOnlyExplicitCatalogEntries()
     {
         using JsonDocument schema = JsonDocument.Parse(
-            ConfigurationManifestJsonSchemaGenerator.Generate());
+            ConfigurationManifestJsonSchemaGenerator.GenerateConfigurationManifest());
         string[] schemaKeys = schema.RootElement
             .GetProperty("$defs")
             .GetProperty("tenantSettings")
@@ -203,7 +206,7 @@ public sealed class ConfigurationManifestSchemaGenerationTests
     public async Task GeneratedSchema_PaidPolicyIsVersionedClosedAndSovereignFieldFree()
     {
         using JsonDocument schema = JsonDocument.Parse(
-            ConfigurationManifestJsonSchemaGenerator.Generate());
+            ConfigurationManifestJsonSchemaGenerator.GenerateConfigurationManifest());
         JsonElement definitions = schema.RootElement.GetProperty("$defs");
         JsonElement documents = definitions
             .GetProperty("tenantDocuments")
@@ -257,7 +260,7 @@ public sealed class ConfigurationManifestSchemaGenerationTests
 
         try
         {
-            _ = ConfigurationManifestJsonSchemaGenerator.Generate(
+            _ = ConfigurationManifestJsonSchemaGenerator.GenerateConfigurationManifest(
                 [unsafeEntry],
                 ConfigurationManifestCatalog.TenantDocuments.Values);
         }
@@ -278,11 +281,33 @@ public sealed class ConfigurationManifestSchemaGenerationTests
             "test.yml"));
 
         await Assert.That(workflow.Contains(
-            "schemas/configuration-manifest-v1alpha1.schema.json) return 1 ;;",
+            "schemas/configuration-manifest-v1alpha2.schema.json|schemas/tenant-configuration-package-v1alpha2.schema.json) return 1 ;;",
             StringComparison.Ordinal)).IsTrue();
         await Assert.That(workflow.Contains(
-            "schemas/configuration-manifest-v1alpha1.schema.json|eng/configuration-manifest-schema/*)",
+            "schemas/configuration-manifest-v1alpha2.schema.json|schemas/tenant-configuration-package-v1alpha2.schema.json|eng/configuration-manifest-schema/*)",
             StringComparison.Ordinal)).IsTrue();
+    }
+
+    [Test]
+    public async Task TenantPackageSchema_MatchesArtifactAndExcludesTargetAuthority()
+    {
+        byte[] expected = await File.ReadAllBytesAsync(ContextSystemHelpers.RepoPath(
+            "schemas",
+            "tenant-configuration-package-v1alpha2.schema.json"));
+        byte[] actual =
+            ConfigurationManifestJsonSchemaGenerator.GenerateTenantConfigurationPackage();
+        using JsonDocument schema = JsonDocument.Parse(actual);
+        string text = schema.RootElement.GetRawText();
+
+        await Assert.That(actual.SequenceEqual(expected)).IsTrue();
+        await Assert.That(schema.RootElement.GetProperty("$id").GetString())
+            .IsEqualTo(TenantConfigurationPackageContractMetadata.SchemaId);
+        await Assert.That(schema.RootElement.GetProperty("properties")
+            .GetProperty("kind").GetProperty("const").GetString())
+            .IsEqualTo(TenantConfigurationPackageContractMetadata.Kind);
+        await Assert.That(text).DoesNotContain("targetTenantId");
+        await Assert.That(text).DoesNotContain("targetInstanceId");
+        await Assert.That(AllTypedObjectsAreClosed(schema.RootElement)).IsTrue();
     }
 
     private static bool AllTypedObjectsAreClosed(JsonElement element)

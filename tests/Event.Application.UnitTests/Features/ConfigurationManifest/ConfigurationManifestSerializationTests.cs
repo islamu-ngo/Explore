@@ -16,11 +16,11 @@ public sealed class ConfigurationManifestSerializationTests
         {
             ["events.require_approval"] = ConfigurationManifestTestData.Json("true")
         };
-        ConfigurationManifestV1Alpha1 manifest = ConfigurationManifestTestData.Valid(settings: settings);
+        ConfigurationManifestV1Alpha2 manifest = ConfigurationManifestTestData.Valid(settings: settings);
 
         string json = JsonSerializer.Serialize(
             manifest,
-            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha1);
+            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
 
         await Assert.That(json.Contains("\"$schema\"", StringComparison.Ordinal)).IsTrue();
         await Assert.That(json.Contains("\"apiVersion\"", StringComparison.Ordinal)).IsTrue();
@@ -33,8 +33,8 @@ public sealed class ConfigurationManifestSerializationTests
         const string json =
             """
             {
-              "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json",
-              "apiVersion": "configuration.islamu.org/v1alpha1",
+              "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json",
+              "apiVersion": "configuration.islamu.org/v1alpha2",
               "kind": "ConfigurationManifest",
               "metadata": { "name": "primary-deployment" },
               "spec": {
@@ -53,7 +53,7 @@ public sealed class ConfigurationManifestSerializationTests
         {
             _ = JsonSerializer.Deserialize(
                 json,
-                ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha1);
+                ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
         }
         catch (JsonException caught)
         {
@@ -66,14 +66,14 @@ public sealed class ConfigurationManifestSerializationTests
     [Test]
     public async Task RoundTrip_PreservesCanonicalManifestIdentity()
     {
-        ConfigurationManifestV1Alpha1 expected = ConfigurationManifestTestData.Valid();
+        ConfigurationManifestV1Alpha2 expected = ConfigurationManifestTestData.Valid();
         string json = JsonSerializer.Serialize(
             expected,
-            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha1);
+            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
 
-        ConfigurationManifestV1Alpha1? actual = JsonSerializer.Deserialize(
+        ConfigurationManifestV1Alpha2? actual = JsonSerializer.Deserialize(
             json,
-            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha1);
+            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
 
         await Assert.That(actual).IsNotNull();
         await Assert.That(actual!.Schema).IsEqualTo(expected.Schema);

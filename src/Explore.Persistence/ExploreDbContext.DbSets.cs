@@ -62,6 +62,10 @@ public partial class ExploreDbContext
     public DbSet<ManagedTenantProvisioningOperation> ManagedTenantProvisioningOperations { get; set; }
     public DbSet<ConfigurationManifestOperation> ConfigurationManifestOperations { get; set; }
     public DbSet<ConfigurationManifestTenantResult> ConfigurationManifestTenantResults { get; set; }
+    public DbSet<LegalDocument> LegalDocuments { get; set; }
+    public DbSet<LegalDocumentVersion> LegalDocumentVersions { get; set; }
+    public DbSet<LegalDocumentLocalizedSource> LegalDocumentLocalizedSources { get; set; }
+    public DbSet<LegalDocumentPublication> LegalDocumentPublications { get; set; }
 
     // ===== Authorization (RBAC) =====
     public DbSet<Role> Roles { get; set; }
@@ -170,6 +174,8 @@ public partial class ExploreDbContext
     public DbSet<EventAddOnInventoryAllocation> EventAddOnInventoryAllocations { get; set; }
     public DbSet<EventAddOnFulfillment> EventAddOnFulfillments { get; set; }
     public DbSet<EventAddOnRefundAllocation> EventAddOnRefundAllocations { get; set; }
+    public DbSet<TicketingRecoveryCheckpoint> TicketingRecoveryCheckpoints { get; set; }
+    public DbSet<TicketingRecoveryReissueIntent> TicketingRecoveryReissueIntents { get; set; }
     public DbSet<RegistrationOrderPii> RegistrationOrderPii { get; set; }
     public DbSet<RegistrationOrderPlatformContribution> RegistrationOrderPlatformContributions { get; set; }
     public DbSet<PromotionDefinition> PromotionDefinitions { get; set; }

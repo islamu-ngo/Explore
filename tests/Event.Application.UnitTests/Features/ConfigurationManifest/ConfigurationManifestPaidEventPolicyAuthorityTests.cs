@@ -1,4 +1,4 @@
-// ABOUTME: Specifies the sole v1alpha1 instance document and canonical paid-policy revision authority.
+// ABOUTME: Specifies the sole v1alpha2 instance document and canonical paid-policy revision authority.
 // ABOUTME: Proves sovereign fields, caller-selected revisions, and cross-scope broadening fail safely.
 
 namespace Event.Application.UnitTests.Features.ConfigurationManifest;
@@ -45,7 +45,7 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
             .IsEqualTo(ConfigurationManifestScope.Instance);
         await Assert.That(entry.SchemaVersion).IsEqualTo(1);
         await Assert.That(entry.PayloadType)
-            .IsEqualTo(typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha1));
+            .IsEqualTo(typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha2));
         await Assert.That(entry.Storage)
             .IsEqualTo(ConfigurationManifestDocumentStorage.PaidEventPolicy);
     }
@@ -60,7 +60,7 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
                 ConfigurationManifestTestData.Valid(
                     instanceDocuments: new Dictionary<
                         string,
-                        ConfigurationManifestDocumentV1Alpha1>(
+                        ConfigurationManifestDocumentV1Alpha2>(
                         StringComparer.Ordinal)
                     {
                         [key] = Document(InstancePolicyPayload())
@@ -83,7 +83,7 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
     public async Task Validate_NullInstanceDocument_FailsClosed()
     {
         var documents =
-            new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+            new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                 StringComparer.Ordinal)
             {
                 [ConfigurationManifestDocumentKeys.InstancePaidEventPolicy] = null!
@@ -104,14 +104,14 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
     public async Task Validate_NullTenantPolicyWithProposedInstancePolicy_FailsClosed()
     {
         var instanceDocuments =
-            new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+            new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                 StringComparer.Ordinal)
             {
                 [ConfigurationManifestDocumentKeys.InstancePaidEventPolicy] =
                     Document(InstancePolicyPayload())
             };
         var tenantDocuments =
-            new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+            new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                 StringComparer.Ordinal)
             {
                 [ConfigurationManifestDocumentKeys.TenantPaidEventPolicy] = null!
@@ -133,13 +133,13 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
     [Test]
     public async Task Validate_NullSovereignLockedFields_FailsClosed()
     {
-        ConfigurationManifestV1Alpha1 valid =
+        ConfigurationManifestV1Alpha2 valid =
             ConfigurationManifestTestData.Valid();
-        ConfigurationManifestV1Alpha1 manifest = valid with
+        ConfigurationManifestV1Alpha2 manifest = valid with
         {
             Metadata = valid.Metadata with
             {
-                Export = new ConfigurationManifestExportMetadataV1Alpha1
+                Export = new ConfigurationManifestExportMetadataV1Alpha2
                 {
                     View = ConfigurationManifestExportMetadataValues.OverridesView,
                     EffectiveValuesFlattened = false,
@@ -163,7 +163,7 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
     [Test]
     public async Task PaidPolicyPayload_ContainsOnlyManifestOwnedPolicyFields()
     {
-        string[] actual = typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha1)
+        string[] actual = typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha2)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(property => property.Name)
             .Order(StringComparer.Ordinal)
@@ -189,7 +189,7 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
     public async Task CurrencyRiskLimit_ContainsOnlyPortableCeilingFields()
     {
         string[] actual =
-            typeof(ConfigurationManifestPaidEventPolicyCurrencyRiskLimitV1Alpha1)
+            typeof(ConfigurationManifestPaidEventPolicyCurrencyRiskLimitV1Alpha2)
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(property => property.Name)
                 .Order(StringComparer.Ordinal)
@@ -223,7 +223,7 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
             _ = JsonSerializer.Deserialize(
                 payload,
                 ConfigurationManifestJsonContext.Default
-                    .ConfigurationManifestPaidEventPolicyPayloadV1Alpha1);
+                    .ConfigurationManifestPaidEventPolicyPayloadV1Alpha2);
         }
         catch (JsonException caught)
         {
@@ -351,26 +351,26 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
             BindingFlags.Public | BindingFlags.Instance)).IsNotNull();
     }
 
-    private static ConfigurationManifestV1Alpha1 ManifestWithPolicies(
+    private static ConfigurationManifestV1Alpha2 ManifestWithPolicies(
         string instancePayload,
         string? tenantPayload = null)
     {
         var instanceDocuments =
-            new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+            new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                 StringComparer.Ordinal)
             {
                 [ConfigurationManifestDocumentKeys.InstancePaidEventPolicy] =
                     Document(instancePayload)
             };
-        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha1>
+        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2>
             tenantDocuments = tenantPayload is null
                 ? new Dictionary<
                     string,
-                    ConfigurationManifestDocumentV1Alpha1>(
+                    ConfigurationManifestDocumentV1Alpha2>(
                     StringComparer.Ordinal)
                 : new Dictionary<
                     string,
-                    ConfigurationManifestDocumentV1Alpha1>(
+                    ConfigurationManifestDocumentV1Alpha2>(
                     StringComparer.Ordinal)
                 {
                     [ConfigurationManifestDocumentKeys.TenantPaidEventPolicy] =
@@ -382,7 +382,7 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
             instanceDocuments: instanceDocuments);
     }
 
-    private static ConfigurationManifestDocumentV1Alpha1 Document(
+    private static ConfigurationManifestDocumentV1Alpha2 Document(
         string payload) =>
         new()
         {

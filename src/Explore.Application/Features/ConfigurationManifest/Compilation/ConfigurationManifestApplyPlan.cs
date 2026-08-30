@@ -40,12 +40,12 @@ public sealed record ConfigurationManifestTenantPlan(
     ImmutableArray<ConfigurationManifestSettingWrite> GuardedSettings,
     ImmutableArray<ConfigurationManifestSettingWrite> UnguardedSettings,
     ConfigurationManifestDocumentWrite BrandingDocument,
-    ConfigurationManifestPaidEventPolicyPayloadV1Alpha1? PaidEventPolicy,
+    ConfigurationManifestPaidEventPolicyPayloadV1Alpha2? PaidEventPolicy,
     ImmutableArray<string> ChangedSettingKeyNames,
     ImmutableArray<string> ChangedDocumentKeyNames);
 
 public sealed record ConfigurationManifestInstancePaidEventPolicyPlan(
-    ConfigurationManifestPaidEventPolicyPayloadV1Alpha1? ProposedRevision,
+    ConfigurationManifestPaidEventPolicyPayloadV1Alpha2? ProposedRevision,
     int? ExpectedActivePolicyVersion)
 {
     public int EffectivePolicyVersion =>

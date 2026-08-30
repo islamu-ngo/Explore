@@ -26,15 +26,18 @@ public sealed class SecretProviderHealthCheck : IHealthCheck
     private readonly ISecretProvider _provider;
     private readonly SecretRefreshMetrics? _metrics;
     private readonly ILogger<SecretProviderHealthCheck> _logger;
+    private readonly TimeProvider _clock;
 
     public SecretProviderHealthCheck(
         ISecretProvider provider,
         ILogger<SecretProviderHealthCheck> logger,
-        SecretRefreshMetrics? metrics = null)
+        SecretRefreshMetrics? metrics = null,
+        TimeProvider? clock = null)
     {
         _provider = provider;
         _logger = logger;
         _metrics = metrics;
+        _clock = clock ?? TimeProvider.System;
     }
 
     /// <inheritdoc />
@@ -56,7 +59,9 @@ public sealed class SecretProviderHealthCheck : IHealthCheck
             if (healthInfo.LastSuccessfulRefresh.HasValue)
             {
                 data["lastSuccessfulRefresh"] = healthInfo.LastSuccessfulRefresh.Value.ToString("O");
-                data["secondsSinceLastRefresh"] = (DateTimeOffset.UtcNow - healthInfo.LastSuccessfulRefresh.Value).TotalSeconds;
+                data["secondsSinceLastRefresh"] =
+                    (_clock.GetUtcNow() - healthInfo.LastSuccessfulRefresh.Value)
+                    .TotalSeconds;
             }
 
             // Add metrics data if available

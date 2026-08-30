@@ -468,21 +468,27 @@ inside its tenant.
 
 ### Configuration-manifest bootstrap runbook
 
-Configuration bootstrap is owned by the process that owns application startup:
-the API in split deployments and the Standalone host in combined deployments.
-`Event.MigrationService` must complete the generated provider migrations first.
-The owning host then reads
-`CONFIGURATION_MANIFEST_PATH` only when
-`CONFIGURATION_MANIFEST_MODE` is `ValidateOnly` or `Bootstrap`.
+Configuration bootstrap has exactly one topology owner:
+`Event.MigrationService` in split deployments and `Event.Standalone` in
+combined deployments. The owner completes generated provider migrations and
+seeding before it reads `CONFIGURATION_MANIFEST_PATH` when
+`CONFIGURATION_MANIFEST_MODE` is `ValidateOnly` or `Bootstrap`. API replicas
+never own manifest application. See
+[Configuration Manifest](CONFIGURATION_MANIFEST.md) for the full contract,
+topology matrix, operator workflow, and contributor guide.
 
 Use this sequence:
 
 1. Validate the file against
    `schemas/configuration-manifest-v1alpha1.schema.json` and mount it read-only
    at `/etc/islamu-event/bootstrap/configuration-manifest.json`.
-2. Run `ValidateOnly`. It performs bounded file, UTF-8 JSON, contract, catalog,
-   complete-state, authority, and paid-policy narrowing checks without writes.
-3. Run MigrationService, then start the owning host with `Bootstrap`.
+2. Start the topology owner with `ValidateOnly`. It completes its normal
+   migration/seed phase, then performs bounded file, UTF-8 JSON, contract,
+   catalog, complete-state, authority, and paid-policy narrowing checks without
+   manifest-owned writes.
+3. Restart the same topology owner with `Bootstrap`. In split deployments this
+   is `Event.MigrationService`; in combined deployments it is
+   `Event.Standalone`.
 4. Confirm the instance-section digest, operation audit, per-tenant results,
    and durable effect state. Instance state is applied before tenants inside
    one serializable lock-ordered transaction.
@@ -496,7 +502,7 @@ On any validation, concurrency, or persistence failure, fix the source and run
 development breaking cutover, databases containing the removed unapplied
 tenant-shaped bootstrap model must be reset or recreated before rehearsal
 rather than migrated through compatibility aliases. See
-`docs/TROUBLESHOOTING.md` for digest mismatch, unsafe path, oversize file,
+[Troubleshooting](TROUBLESHOOTING.md) for digest mismatch, unsafe path, oversize file,
 provider availability, and durable-effect recovery codes.
 
 Instance administrators may export an Overrides or Portable view from the
@@ -1035,7 +1041,18 @@ For a provider incident:
 
 GitHub Actions deploys use the `staging` and `production` environments. Configure environment rules in GitHub repository settings, not in application runtime configuration. Code scanning is owned by the `CodeQL Advanced` workflow; keep GitHub CodeQL default setup disabled so advanced SARIF uploads are accepted:
 
-Tier 0-2 implementation phases also produce machine-consumed evidence before phase closeout. Store Stryker JSON beneath the active workstream's `evidence/<phase>/<layer>/reports/mutation-report.json` path and require the declared break threshold in the command itself. Scope mutation to the source hunks introduced by the phase; a score diluted by unrelated legacy source is not evidence about the change. TUnit runs on Microsoft.Testing.Platform and does not support VSTest `--filter`; when unrelated baseline failures prevent Stryker's initial run, use a dedicated project that links the canonical focused tests, following `Event.Application.Phase20.MutationTests`, rather than skipping or copying tests. Store anonymized MAD output as structured YAML with specialist proposals, concrete invariant-breaker tests, weighted votes, and no unresolved critical finding. Architecture evidence contracts validate fields and sentinel values rather than prose or prompt wording.
+Tier 0-2 implementation phases produce machine-consumed evidence before phase
+closeout. Evidence names and executes the owning invariant-breaker scenarios:
+real concurrency, provider behavior, tenant isolation, fail-closed
+authorization, privacy erasure, and zero-PII telemetry as applicable. TUnit
+runs on Microsoft.Testing.Platform; use `--treenode-filter` for focused
+execution and `--minimum-expected-tests` so an empty selector fails. Do not
+create linked wrapper projects, lower behavior to interaction assertions, or
+use a mutation score as merge evidence. Store anonymized MAD output as
+structured YAML with specialist proposals, concrete invariant-breaker tests,
+weighted votes, and no unresolved critical finding. Architecture evidence
+contracts validate structured fields, executable behavior, and sentinel values
+rather than source text, prose, or prompt wording.
 
 - `production` should require reviewer approval and restrict deployments to `main` and version tags.
 - `staging` should use environment-scoped secrets and can deploy automatically from `develop` unless the release process requires review.
@@ -2063,6 +2080,43 @@ Operational signals are intentionally bounded:
 | `pds-sync-drain` structured logs | Aggregate claimed/delivered/failed/claim-lost counts only; provider response bodies, OAuth material, DIDs, record keys, and payloads must not be logged. |
 
 For delayed or failed publication, keep the local event authoritative. Inspect the newest non-superseded `PdsSyncOutbox` row for the tenant/event, verify capability, consent, linked session, and public-location eligibility, then follow the stable recovery guidance in [TROUBLESHOOTING.md](TROUBLESHOOTING.md). Do not create a PDS record manually and do not replay by changing the stable record key.
+
+## Ticketing Recovery Operator Matrix
+
+Ticketing restore starts fail-closed in `RecoveryOnly`. New sales, transfer,
+waitlist allocation, add-on fulfillment, and ordinary queue dispatch remain
+closed until the consistency manifest matches the configured release/schema,
+retained key inventory, authority floor, provider cursor, durable idempotency
+floor, and worker fence. The configured manifest-signing key is a server-only
+Infisical/environment secret; health and operator output expose only the
+canonical key reference and retained integer versions.
+
+The ordered controls are:
+
+| Current state | Allowed action | Result / refusal |
+|---|---|---|
+| Any non-failed state | `StopSales` | Advances the worker fence and returns to `RecoveryOnly`. |
+| `WorkersOpen` / `SalesOpen` | `PauseWorkers` | Quartz enters standby and durable state returns to `AuthorityRotated`. |
+| `RecoveryOnly` | `Reconcile` | Validates the exact manifest, cancels pre-restore capabilities, revokes active credentials, writes one digest-free reissue intent per ticket, and marks in-flight provider work `Unknown`. |
+| `Unknown` effect | `ResolveUnknown` | Operator chooses retry only after authoritative provider evidence; the expected processing fence must match. |
+| `Unknown` effect | `DeadLetter` | Parks the effect with append-only failure evidence; blind replay and direct SQL are forbidden. |
+| `AuthorityRotated` | `ReopenWorkers` | Requires the exact new worker fence; Quartz resumes only after durable acceptance. |
+| `WorkersOpen` | `ReopenSales` | Refused while any unknown provider effect or pending credential reissue remains. Sales open last. |
+
+`ticketing-recovery` readiness emits only:
+`status`, `pending_reissues`, `ambiguous_effects`, `dead_lettered_effects`,
+`poison_effects`, and `oldest_due_age_seconds`. It is unhealthy for a failed
+recovery or oldest due age at least 120 seconds; degraded for recovery-only,
+unknown/dead-letter/poison work, backlog at the configured threshold, or age at
+least 60 seconds. Never add tenant, event, order, ticket, actor, amount,
+provider object, capability, digest, or exception text to this signal.
+
+Reference recovery targets are RPO <=15 minutes and RTO <=60 minutes.
+Configuration can declare stricter values but cannot claim looser values as
+production-ready. SQLite supports one application replica. Server-database
+multi-replica deployments require shared primary state and clustered Quartz.
+Production-like timed restore and takeover evidence remains an external release
+gate; fixture success is not that evidence.
 
 ## Incident Triage Quick Checks
 

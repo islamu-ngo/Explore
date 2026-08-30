@@ -190,7 +190,7 @@ public sealed class ConfigurationManifestVisualQaCaptureTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
+            if (File.Exists(Path.Combine(directory.FullName, "Explore.slnx")))
             {
                 return directory.FullName;
             }

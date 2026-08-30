@@ -26,7 +26,7 @@ public sealed class ConfigurationManifestValidatorTests
     [Test]
     public async Task Validate_UnsupportedEnvelopeFields_RejectsContract()
     {
-        ConfigurationManifestV1Alpha1 manifest = ConfigurationManifestTestData.Valid() with
+        ConfigurationManifestV1Alpha2 manifest = ConfigurationManifestTestData.Valid() with
         {
             ApiVersion = "configuration.islamu.org/v2"
         };
@@ -40,12 +40,12 @@ public sealed class ConfigurationManifestValidatorTests
     [Test]
     public async Task Validate_LegacyTenantNarrowingAuthorityScope_RejectsContract()
     {
-        ConfigurationManifestV1Alpha1 valid = ConfigurationManifestTestData.Valid();
-        ConfigurationManifestV1Alpha1 manifest = valid with
+        ConfigurationManifestV1Alpha2 valid = ConfigurationManifestTestData.Valid();
+        ConfigurationManifestV1Alpha2 manifest = valid with
         {
             Metadata = valid.Metadata with
             {
-                Export = new ConfigurationManifestExportMetadataV1Alpha1
+                Export = new ConfigurationManifestExportMetadataV1Alpha2
                 {
                     View = ConfigurationManifestExportMetadataValues.OverridesView,
                     EffectiveValuesFlattened = false,
@@ -70,9 +70,9 @@ public sealed class ConfigurationManifestValidatorTests
     [Test]
     public async Task Validate_DuplicateTenantSlug_RejectsOrdinalDuplicate()
     {
-        ConfigurationManifestV1Alpha1 valid = ConfigurationManifestTestData.Valid();
-        ConfigurationManifestTenantV1Alpha1 tenant = valid.Spec.Tenants[0];
-        ConfigurationManifestV1Alpha1 manifest = valid with
+        ConfigurationManifestV1Alpha2 valid = ConfigurationManifestTestData.Valid();
+        ConfigurationManifestTenantV1Alpha2 tenant = valid.Spec.Tenants[0];
+        ConfigurationManifestV1Alpha2 manifest = valid with
         {
             Spec = valid.Spec with { Tenants = [tenant, tenant] }
         };
@@ -180,7 +180,7 @@ public sealed class ConfigurationManifestValidatorTests
     [Test]
     public async Task Validate_UnknownDocument_RejectsClosedAllowlist()
     {
-        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(StringComparer.Ordinal)
+        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(StringComparer.Ordinal)
         {
             ["tenant.event_defaults"] = BrandingDocument("{}")
         };
@@ -194,7 +194,7 @@ public sealed class ConfigurationManifestValidatorTests
     [Test]
     public async Task Validate_BrandingHttpUrl_RejectsDocument()
     {
-        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(StringComparer.Ordinal)
+        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(StringComparer.Ordinal)
         {
             [SettingsDocumentKeys.Tenant.Branding] = BrandingDocument(
                 """{"logoUrl":"http://example.test/logo.svg"}""")
@@ -232,7 +232,7 @@ public sealed class ConfigurationManifestValidatorTests
     public async Task Validate_BrandingHttpsUrlWithUnsafeComponents_RejectsSafely(
         string suppliedUrl)
     {
-        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(StringComparer.Ordinal)
+        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(StringComparer.Ordinal)
         {
             [SettingsDocumentKeys.Tenant.Branding] = BrandingDocument(
                 $$"""{"logoUrl":"{{suppliedUrl}}","faviconUrl":"{{suppliedUrl}}","customCssUrl":"{{suppliedUrl}}"}""")
@@ -257,7 +257,7 @@ public sealed class ConfigurationManifestValidatorTests
     [Test]
     public async Task Validate_BrandingHttpsUrlsAndNullableFields_IsValid()
     {
-        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(StringComparer.Ordinal)
+        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(StringComparer.Ordinal)
         {
             [SettingsDocumentKeys.Tenant.Branding] = BrandingDocument(
                 """{"displayName":"Community","logoUrl":"https://example.test/logo.svg","faviconUrl":null}""")
@@ -272,7 +272,7 @@ public sealed class ConfigurationManifestValidatorTests
     [Test]
     public async Task Validate_PaidPolicyNarrowingDocument_IsValid()
     {
-        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
             StringComparer.Ordinal)
         {
             ["tenant.paid_event_policy"] = PaidPolicyDocument()
@@ -307,7 +307,7 @@ public sealed class ConfigurationManifestValidatorTests
               "farFutureReviewThresholdDays": 90
             }
             """;
-        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
             StringComparer.Ordinal)
         {
             ["tenant.paid_event_policy"] = PaidPolicyDocument(payload)
@@ -326,7 +326,7 @@ public sealed class ConfigurationManifestValidatorTests
     public async Task Validate_NullTenantDocument_RejectsSafely()
     {
         var documents =
-            new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+            new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                 StringComparer.Ordinal)
             {
                 [SettingsDocumentKeys.Tenant.Branding] = null!
@@ -373,7 +373,7 @@ public sealed class ConfigurationManifestValidatorTests
               "reconciliation": "must-not-appear"
             }
             """;
-        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
             StringComparer.Ordinal)
         {
             ["tenant.paid_event_policy"] = PaidPolicyDocument(payload)
@@ -409,7 +409,7 @@ public sealed class ConfigurationManifestValidatorTests
               "tenantId": "0199464e-e388-7f56-9281-cefabd6a5674"
             }
             """;
-        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
             StringComparer.Ordinal)
         {
             ["tenant.paid_event_policy"] = PaidPolicyDocument(payload)
@@ -431,7 +431,7 @@ public sealed class ConfigurationManifestValidatorTests
             "\"isPaymentsEnabled\": true",
             "\"instancePolicyVersion\": 777,\n  \"isPaymentsEnabled\": true",
             StringComparison.Ordinal);
-        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+        var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
             StringComparer.Ordinal)
         {
             ["tenant.paid_event_policy"] = PaidPolicyDocument(invalidPayload)
@@ -476,7 +476,7 @@ public sealed class ConfigurationManifestValidatorTests
 
         foreach (string invalidPayload in invalidPayloads)
         {
-            var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+            var documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                 StringComparer.Ordinal)
             {
                 ["tenant.paid_event_policy"] = PaidPolicyDocument(invalidPayload)
@@ -492,14 +492,14 @@ public sealed class ConfigurationManifestValidatorTests
         }
     }
 
-    private static ConfigurationManifestDocumentV1Alpha1 BrandingDocument(string payload) =>
+    private static ConfigurationManifestDocumentV1Alpha2 BrandingDocument(string payload) =>
         new()
         {
             SchemaVersion = 1,
             Payload = ConfigurationManifestTestData.Json(payload)
         };
 
-    private static ConfigurationManifestDocumentV1Alpha1 PaidPolicyDocument(
+    private static ConfigurationManifestDocumentV1Alpha2 PaidPolicyDocument(
         string? payload = null) =>
         new()
         {

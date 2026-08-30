@@ -15206,6 +15206,340 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("languages", "islamu_event");
                 });
 
+            modelBuilder.Entity("Explore.Domain.LegalDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountableIdentityReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("accountable_identity_reference");
+
+                    b.Property<string>("AuthorityKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("authority_key");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CurrentVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_version");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<int>("OwnerRole")
+                        .HasColumnType("integer")
+                        .HasColumnName("owner_role");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer")
+                        .HasColumnName("scope");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_legal_documents");
+
+                    b.HasIndex("AuthorityKey", "Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ix_legal_documents_authority_key_kind");
+
+                    b.HasIndex("TenantId", "State", "Kind")
+                        .HasDatabaseName("ix_legal_documents_tenant_id_state_kind");
+
+                    b.ToTable("legal_documents", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_legal_documents_current_version", "current_version > 0");
+
+                            t.HasCheckConstraint("ck_legal_documents_scope_tenant", "(scope = 1 AND tenant_id IS NULL) OR (scope = 2 AND tenant_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_legal_documents_state", "state >= 1 AND state <= 6");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentLocalizedSource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("LanguageTag")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .IsUnicode(false)
+                        .HasColumnType("character varying(35)")
+                        .HasColumnName("language_tag");
+
+                    b.Property<Guid>("LegalDocumentVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("legal_document_version_id");
+
+                    b.Property<int>("LinkCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("link_count");
+
+                    b.Property<string>("Markdown")
+                        .IsRequired()
+                        .HasMaxLength(262144)
+                        .HasColumnType("character varying(262144)")
+                        .HasColumnName("markdown");
+
+                    b.Property<int>("PlaceholderCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("placeholder_count");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("summary");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Utf8ByteCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("utf8_byte_count");
+
+                    b.HasKey("Id")
+                        .HasName("pk_legal_document_localized_sources");
+
+                    b.HasIndex("LegalDocumentVersionId", "LanguageTag")
+                        .IsUnique()
+                        .HasDatabaseName("ix_legal_document_localized_sources_legal_document_986950cfc8a1");
+
+                    b.ToTable("legal_document_localized_sources", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_legal_document_localized_sources_counts", "utf8_byte_count >= 1 AND utf8_byte_count <= 262144 AND link_count >= 0 AND link_count <= 128 AND placeholder_count >= 0 AND placeholder_count <= 64");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentPublication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountableIdentityReference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("accountable_identity_reference");
+
+                    b.Property<string>("ContentDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("content_digest");
+
+                    b.Property<DateTime>("EffectiveAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("effective_at");
+
+                    b.Property<Guid>("LegalDocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("legal_document_id");
+
+                    b.Property<Guid>("LegalDocumentVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("legal_document_version_id");
+
+                    b.Property<int>("LifecycleState")
+                        .HasColumnType("integer")
+                        .HasColumnName("lifecycle_state");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<bool>("RequiresFreshAcceptance")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_fresh_acceptance");
+
+                    b.Property<string>("ReviewEvidenceReference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("review_evidence_reference");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_legal_document_publications");
+
+                    b.HasIndex("LegalDocumentVersionId")
+                        .HasDatabaseName("ix_legal_document_publications_legal_document_version_id");
+
+                    b.HasIndex("LegalDocumentId", "OccurredAt")
+                        .HasDatabaseName("ix_legal_document_publications_legal_document_id_occurred_at");
+
+                    b.HasIndex("LegalDocumentId", "Version", "LifecycleState")
+                        .IsUnique()
+                        .HasDatabaseName("ix_legal_document_publications_legal_document_id_v_721f4e4a8ff2");
+
+                    b.ToTable("legal_document_publications", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_legal_document_publications_state", "lifecycle_state IN (5, 6)");
+
+                            t.HasCheckConstraint("ck_legal_document_publications_version", "version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountableIdentityReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("accountable_identity_reference");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<int>("Audience")
+                        .HasColumnType("integer")
+                        .HasColumnName("audience");
+
+                    b.Property<string>("ContentDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("content_digest");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("LegalDocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("legal_document_id");
+
+                    b.Property<DateTime?>("ProposedEffectiveAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("proposed_effective_at");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<bool>("RequiresFreshAcceptance")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_fresh_acceptance");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<string>("ReviewEvidenceReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("review_evidence_reference");
+
+                    b.Property<Guid?>("ReviewerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewer_id");
+
+                    b.Property<string>("SourceOrigin")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("source_origin");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<string>("TemplateId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("template_id");
+
+                    b.Property<string>("TemplateLicenseExpression")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("template_license_expression");
+
+                    b.Property<string>("TemplateReviewReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("template_review_reference");
+
+                    b.Property<int?>("TemplateSourceKind")
+                        .HasColumnType("integer")
+                        .HasColumnName("template_source_kind");
+
+                    b.Property<string>("TemplateVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("template_version");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_legal_document_versions");
+
+                    b.HasIndex("LegalDocumentId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_legal_document_versions_legal_document_id_version");
+
+                    b.HasIndex("State", "ProposedEffectiveAt")
+                        .HasDatabaseName("ix_legal_document_versions_state_proposed_effective_at");
+
+                    b.ToTable("legal_document_versions", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_legal_document_versions_state", "state >= 1 AND state <= 6");
+
+                            t.HasCheckConstraint("ck_legal_document_versions_version", "version > 0");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.Location", b =>
                 {
                     b.Property<Guid>("Id")
@@ -31068,6 +31402,196 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("ticket_type_entitlements", "islamu_event");
                 });
 
+            modelBuilder.Entity("Explore.Domain.TicketingRecoveryCheckpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AuthorityFloor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("authority_floor");
+
+                    b.Property<DateTime?>("AuthorityRotatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("authority_rotated_at");
+
+                    b.Property<int>("CapabilityGeneration")
+                        .HasColumnType("integer")
+                        .HasColumnName("capability_generation");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CredentialGeneration")
+                        .HasColumnType("integer")
+                        .HasColumnName("credential_generation");
+
+                    b.Property<long>("DatabaseCheckpoint")
+                        .HasColumnType("bigint")
+                        .HasColumnName("database_checkpoint");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<long>("IdempotencyFloor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("idempotency_floor");
+
+                    b.Property<string>("ManifestDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("manifest_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("ObjectCutoffUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("object_cutoff_utc");
+
+                    b.Property<long>("ProviderCursor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("provider_cursor");
+
+                    b.Property<Guid>("RecoveryOperationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recovery_operation_id");
+
+                    b.Property<string>("ReleaseRevision")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("release_revision");
+
+                    b.Property<int>("RetainedKeyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("retained_key_version");
+
+                    b.Property<DateTime?>("SalesOpenedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sales_opened_at");
+
+                    b.Property<string>("SchemaRevision")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("schema_revision");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime?>("ValidatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("validated_at");
+
+                    b.Property<long>("WorkerFence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("worker_fence");
+
+                    b.Property<DateTime?>("WorkersOpenedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("workers_opened_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticketing_recovery_checkpoints");
+
+                    b.HasIndex("TenantId", "RecoveryOperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ticketing_recovery_checkpoints_tenant_id_recove_382a2690a057");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_ticketing_recovery_checkpoints_tenant_id_status");
+
+                    b.ToTable("ticketing_recovery_checkpoints", "islamu_event");
+                });
+
+            modelBuilder.Entity("Explore.Domain.TicketingRecoveryReissueIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("RecoveryOperationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recovery_operation_id");
+
+                    b.Property<int>("RequiredCredentialGeneration")
+                        .HasColumnType("integer")
+                        .HasColumnName("required_credential_generation");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticketing_recovery_reissue_intents");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_ticketing_recovery_reissue_intents_tenant_id_status");
+
+                    b.HasIndex("TenantId", "RecoveryOperationId", "AdmissionTicketId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ticketing_recovery_reissue_intents_tenant_id_re_1d88fa84b407");
+
+                    b.ToTable("ticketing_recovery_reissue_intents", "islamu_event");
+                });
+
             modelBuilder.Entity("Explore.Domain.UiTheme", b =>
                 {
                     b.Property<Guid>("Id")
@@ -39133,6 +39657,51 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Explore.Domain.LegalDocumentLocalizedSource", b =>
+                {
+                    b.HasOne("Explore.Domain.LegalDocumentVersion", "LegalDocumentVersion")
+                        .WithMany("Sources")
+                        .HasForeignKey("LegalDocumentVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_legal_document_localized_sources_legal_document_8009183c6cc2");
+
+                    b.Navigation("LegalDocumentVersion");
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentPublication", b =>
+                {
+                    b.HasOne("Explore.Domain.LegalDocument", "LegalDocument")
+                        .WithMany("Publications")
+                        .HasForeignKey("LegalDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_legal_document_publications_legal_documents_leg_18b8221d9f3c");
+
+                    b.HasOne("Explore.Domain.LegalDocumentVersion", "LegalDocumentVersion")
+                        .WithMany()
+                        .HasForeignKey("LegalDocumentVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_legal_document_publications_legal_document_vers_544132891a28");
+
+                    b.Navigation("LegalDocument");
+
+                    b.Navigation("LegalDocumentVersion");
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentVersion", b =>
+                {
+                    b.HasOne("Explore.Domain.LegalDocument", "LegalDocument")
+                        .WithMany("Versions")
+                        .HasForeignKey("LegalDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_legal_document_versions_legal_documents_legal_document_id");
+
+                    b.Navigation("LegalDocument");
+                });
+
             modelBuilder.Entity("Explore.Domain.Location", b =>
                 {
                     b.HasOne("Explore.Domain.LocationAddressSource", "AddressSourceLookup")
@@ -46929,6 +47498,18 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("ProcessingAttempts");
 
                     b.Navigation("RedriveRecords");
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocument", b =>
+                {
+                    b.Navigation("Publications");
+
+                    b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentVersion", b =>
+                {
+                    b.Navigation("Sources");
                 });
 
             modelBuilder.Entity("Explore.Domain.Location", b =>

@@ -41,6 +41,9 @@ source_evidence:
   - tests/Event.API.IntegrationTests/EventAddOnApiTests.cs
   - tests/Explore.Blazor.IntegrationTests/EventAddOnBffTests.cs
   - tests/Explore.Blazor.Client.Tests/EventAddOnComponentTests.cs
+  - tests/Event.Domain.AddOns.MutationTests/EventAddOnMutationTests.cs
+  - tests/Event.Domain.AddOns.MutationTests/Event.Domain.AddOns.MutationTests.csproj
+  - tests/Event.Domain.AddOns.MutationTests/stryker-config.json
 comments:
   - src/Explore.Domain/EventAddOnCatalogVersion.cs
   - src/Explore.Domain/EventAddOnRefundAllocation.cs
@@ -54,7 +57,10 @@ evidence_artifacts:
   - dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.3-red.yaml
   - dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.4-green.yaml
   - dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.5-red.yaml
+  - dev/active/event-ticketing-lifecycle/evidence/phase-7-task-7.6-green.yaml
   - dev/active/event-ticketing-lifecycle/evidence/phase-7-mutation-scope.yaml
+  - dev/active/event-ticketing-lifecycle/evidence/phase-7-mutation-timeout.yaml
+  - dev/active/event-ticketing-lifecycle/evidence/phase-7-mutation-summary.json
 generated_artifacts:
   - schemas/openapi_islamu-event.json
   - src/Explore.Blazor.Client/Clients/EventApiClient.g.cs

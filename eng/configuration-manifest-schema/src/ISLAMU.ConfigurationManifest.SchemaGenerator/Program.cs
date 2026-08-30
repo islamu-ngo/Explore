@@ -12,22 +12,28 @@ internal static class Program
         if (args is ["--help"])
         {
             Console.WriteLine(
-                "Usage: configuration-manifest-schema (--write|--check) <schema-path>");
+                "Usage: configuration-manifest-schema (--write|--check) (manifest|tenant-package) <schema-path>");
             return 0;
         }
 
-        if (args.Length != 2 || args[0] is not ("--write" or "--check"))
+        if (args.Length != 3
+            || args[0] is not ("--write" or "--check")
+            || args[1] is not ("manifest" or "tenant-package"))
         {
             Console.Error.WriteLine(
-                "Usage: configuration-manifest-schema (--write|--check) <schema-path>");
+                "Usage: configuration-manifest-schema (--write|--check) (manifest|tenant-package) <schema-path>");
             return UsageError;
         }
 
-        string artifactPath = Path.GetFullPath(args[1]);
+        string artifactPath = Path.GetFullPath(args[2]);
         byte[] generated;
         try
         {
-            generated = ConfigurationManifestJsonSchemaGenerator.Generate();
+            generated = args[1] == "manifest"
+                ? ConfigurationManifestJsonSchemaGenerator
+                    .GenerateConfigurationManifest()
+                : ConfigurationManifestJsonSchemaGenerator
+                    .GenerateTenantConfigurationPackage();
         }
         catch (InvalidOperationException exception)
         {

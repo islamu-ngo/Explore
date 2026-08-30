@@ -146,6 +146,12 @@ public partial class ExploreDbContext
         modelBuilder.Entity<EventAddOnRefundAllocation>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 
+        modelBuilder.Entity<TicketingRecoveryCheckpoint>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
+        modelBuilder.Entity<TicketingRecoveryReissueIntent>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
+
         modelBuilder.Entity<RegistrationOrderPii>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
 

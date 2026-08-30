@@ -110,6 +110,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     [Inject] private MainContentAppearanceState MainContentAppearanceState { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [Inject] private TimeProvider Clock { get; set; } = TimeProvider.System;
     [Inject] private IEventService EventService { get; set; } = default!;
     [Inject] private IPublicExperienceService PublicExperienceService { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
@@ -611,7 +612,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
     private bool IsPastEvent() =>
         _eventDetails?.LastSessionDate != null &&
-        _eventDetails.LastSessionDate < DateTimeOffset.UtcNow;
+        _eventDetails.LastSessionDate < Clock.GetUtcNow();
 
     /// <summary>
     /// Gets the formatted date display string.
@@ -1011,7 +1012,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         sb.AppendLine("METHOD:PUBLISH");
         sb.AppendLine("BEGIN:VEVENT");
 
-        var now = DateTime.UtcNow;
+        var now = Clock.GetUtcNow().UtcDateTime;
         sb.AppendLine($"DTSTAMP:{now:yyyyMMdd'T'HHmmss'Z'}");
         sb.AppendLine($"UID:{EventId}@{GetCalendarUidHost()}");
 

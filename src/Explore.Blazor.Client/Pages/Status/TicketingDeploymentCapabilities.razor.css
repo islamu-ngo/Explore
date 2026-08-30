@@ -1,0 +1,80 @@
+/* ABOUTME: Styles the read-only ticketing capability matrix with logical properties. */
+/* ABOUTME: Preserves visible status distinction without relying on color alone. */
+
+.ticketing-capabilities {
+    max-inline-size: 72rem;
+    margin-inline: auto;
+    padding: var(--space-6);
+}
+
+.ticketing-capabilities__header {
+    margin-block-end: var(--space-5);
+}
+
+.ticketing-capabilities__status {
+    min-block-size: 1.5rem;
+}
+
+.ticketing-capabilities__list {
+    display: grid;
+    gap: var(--space-4);
+    padding-inline-start: 0;
+    list-style: none;
+}
+
+.ticketing-capabilities__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.ticketing-capabilities__item h2 {
+    margin-block: 0 var(--space-1);
+}
+
+.ticketing-capabilities__badge {
+    align-self: start;
+    padding-block: var(--space-1);
+    padding-inline: var(--space-2);
+    border: 2px solid currentColor;
+    border-radius: var(--radius-pill);
+    font-weight: 700;
+}
+
+.ticketing-capabilities__badge--approved::before {
+    content: "Approved: ";
+}
+
+.ticketing-capabilities__badge--test::before {
+    content: "Test only: ";
+}
+
+.ticketing-capabilities__badge--disabled::before {
+    content: "Disabled: ";
+}
+
+.ticketing-capabilities__gates {
+    grid-column: 1 / -1;
+    margin-block: 0;
+}
+
+.ticketing-capabilities__gates dt {
+    font-weight: 700;
+}
+
+.ticketing-capabilities__gates dd {
+    margin-inline-start: 0;
+}
+
+@media (max-width: 40rem) {
+    .ticketing-capabilities {
+        padding-inline: var(--space-3);
+    }
+
+    .ticketing-capabilities__item {
+        grid-template-columns: 1fr;
+    }
+}

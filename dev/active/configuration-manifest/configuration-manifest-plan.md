@@ -1,23 +1,31 @@
-<!-- ABOUTME: Decision-complete implementation plan for one instance-wide ConfigurationManifest. -->
-<!-- ABOUTME: Re-baselines the tenant-only foundation into a strict instance-and-tenant bootstrap contract. -->
+<!-- ABOUTME: Decision-complete plan for full instance and tenant configuration portability. -->
+<!-- ABOUTME: Extends the implemented bootstrap/export foundation with import, migration, legal documents, and recovery. -->
 
 # Configuration Manifest And Reporting-Intake Policy — Implementation Plan
 
-Last Updated: 2026-08-26 Europe/Brussels
+Last Updated: 2026-08-30 Europe/Brussels
 
 ## 0. Planning Metadata
 
-- **Request:** Replace the tenant-only manifest concept with one
-  `ConfigurationManifest` per ISLAMU Event instance. The same strict file must
-  configure approved instance settings/documents and one or more tenant
-  settings/documents in single-tenant and multi-tenant deployments.
+- **Request:** Complete configuration portability after the implemented
+  instance-wide bootstrap/export foundation: whole-instance UI import,
+  tenant-admin `TenantConfigurationPackage` import/export, cross-instance
+  migration, preview/diff/mapping/approval, atomic apply/rollback, typed legal
+  documents, extensible section coverage, and advanced operational quality.
 - **Task directory:** `dev/active/configuration-manifest/`
-- **Planning status:** Re-baselined and ready for implementation approval. Runtime
-  implementation is paused; this update changes planning artifacts only.
-- **Current implementation reality:** the completed foundation is
-  tenant-focused. Its envelope is `TenantConfigurationList`, its only root
-  configuration collection is `spec.tenants`, and its catalog, compiler, apply,
-  audit-result, export, route, schema, startup, and UI surfaces are tenant-named.
+- **Planning status:** Phases 9–16 are implemented; Phases 17–23 remain
+  unimplemented.
+- **Change classification:** Behavioral Delta. This revision adds new artifact,
+  authorization, import-session, migration, legal-publication, recovery,
+  extension, API/BFF, and Blazor administration behavior.
+- **Current implementation reality:** strict v1alpha2
+  `ConfigurationManifest` and `TenantConfigurationPackage` record/schema
+  contracts plus the closed portability registry are implemented.
+  ConfigurationManifest continues to support instance-plus-tenant startup
+  bootstrap and instance-admin whole-instance export. There is no HTTP/UI
+  import, tenant-package operation surface, cross-instance mapping workflow,
+  rollback snapshot, typed portable legal-document aggregate, or managed drift
+  ownership.
 - **Primary matched intent:** `external-infrastructure-bootstrap`.
 - **Criticality:** Tier 1 Security because the file crosses instance authority,
   tenant isolation, startup, filesystem, and persistence boundaries. Any
@@ -25,9 +33,9 @@ Last Updated: 2026-08-26 Europe/Brussels
 - **Additional matched intents:** `add-cqrs-handler`, `add-get-endpoint`,
   `add-hal-link`, `openapi-contract-change`, `blazor-component-affordance`, and
   `add-ef-migration`.
-- **Intent gap:** the intent registry currently scopes tenant-prefixed feature,
-  schema, and tooling paths. Phase 9 must replace those paths with the canonical
-  `ConfigurationManifest` locations before product edits.
+- **Complexity:** XL. The expansion crosses security-critical uploads,
+  authorization, tenant isolation, concurrency, legal-publication evidence,
+  generated contracts, and two administration scopes.
 - **Relevant skills:** `implementation-plan`, `senior-cto-feedback`, `i-vsd`,
   `grill-me`, `agentic-research`, `ip-clean-room`,
   `criticality-guardrail`, `clean-architecture-rules`,
@@ -40,20 +48,31 @@ Last Updated: 2026-08-26 Europe/Brussels
   Infrastructure ingestion/startup; API/HAL/OpenAPI; Blazor BFF/client; hosts,
   deployment configuration, generated artifacts, and operator documentation.
 - **Compatibility position:** clean breaking replacement. The repository is
-  pre-v1; no tenant-manifest DTO, kind, route, media type, environment key,
-  schema, service alias, migration alias, or generated-client shim survives.
+  pre-v1; v1alpha2 replaces v1alpha1 without aliases, dual reads, converters,
+  deprecated routes, or migration shims.
 - **I-VSD:** [i-vsd-configuration-manifest.md](../../../islamic-value-sensitive-design/i-vsd-configuration-manifest.md)
+- **I-VSD reviewed input:** `sha256:21ae0c2feee79a79a7c2e724dfb909a6d24456d75df4c238bf51a0f52a6c8ea7`
+- **I-VSD status/disposition:** `current` / `plan-aligned`. The 2026-08-30
+  planning-mode review maps IVSD-F001 through IVSD-F024 to Phases 16-23 and
+  confirms IVSD-F025 through IVSD-F030 are explicitly deferred.
+- **CTO review:** Phases 16–23 are approved by the revision-bound
+  [Senior CTO review](configuration-manifest-cto-review.md).
+- **User approval:** scope boundary and implementation start approved on
+  2026-08-30.
+- **Grill-Me intake:** resolved by direct user decisions: no backward
+  compatibility; configuration-manifest work completes first; Avalonia,
+  Terminal.Gui, CLI, `.env` generation, and agentic skill planning are deferred
+  to a separate workstream after this Definition of Done is met.
 
 ## 1. Executive Summary
 
-The current implementation is not a whole-instance configuration manifest. It
-successfully provides strict tenant bootstrap, tenant-safe export, transactional
-application, audit, startup ownership, and paid-policy narrowing, but it cannot
-declare general instance settings or instance documents. The name
-`TenantConfigurationManifest` therefore understates the intended product and
-the contract shape prevents the intended use.
+Phases 9–15 delivered the instance-wide bootstrap/export foundation. Phase 16
+completed the clean v1alpha2 artifact and portability-registry cutover. The
+remaining product increments complete practical configuration migration rather
+than creating a separate desktop/TUI product.
 
-The corrected target is one strict JSON `ConfigurationManifest`:
+The expanded target retains one strict JSON `ConfigurationManifest` and adds a
+distinct tenant-scoped `TenantConfigurationPackage`:
 
 - `spec.instance` declares only explicitly allowlisted, non-secret,
   deployment-safe instance settings and typed instance documents;
@@ -66,37 +85,59 @@ The corrected target is one strict JSON `ConfigurationManifest`:
   evidence, and durable post-commit effects;
 - single-tenant mode uses the same contract with one default tenant;
 - multi-tenant mode uses the same contract with multiple tenants;
-- whole-instance export is instance-administrator-only and remains secret-free;
+- whole-instance import/export is instance-administrator-only and remains
+  secret-free;
+- tenant administrators can export and import only configuration they govern,
+  while the authenticated target route selects tenant authority;
+- every import is preview-first, revision-fenced, fully preflighted, atomic,
+  receipt-backed, and recoverable through a new forward rollback operation;
+- typed legal documents move as owned source/drafts without rewriting
+  publication or acceptance history;
+- a governed section registry makes coverage, omissions, mappings,
+  dependencies, and extension compatibility machine-readable;
 - Day 2 API/UI/database administration remains authoritative after bootstrap;
-- managed reconciliation, field takeover, deletion, and pruning remain out of
-  scope until a separate ownership design is approved.
+- optional managed ownership, drift, takeover, and direct transfer are included
+  only after their dedicated security/ownership phases prove the contracts.
 
-This is a substantial contract and authority refactor, not a mechanical rename.
-The strict reader, deterministic serializer/schema generator, transaction and
-outbox foundation, startup sequencing, and HAL/BFF patterns remain reusable.
+This is a substantial portability and administration expansion. The strict
+reader, deterministic serializer/schema generator, transaction and outbox
+foundation, startup sequencing, authorization, HAL/BFF, and export patterns
+remain reusable.
+
+### 1.1 Explicit Non-Goals And Deferred Product
+
+This workstream SHALL NOT create or plan implementation tasks for:
+
+- Avalonia web/desktop projects;
+- Terminal.Gui or any CLI/TUI executable;
+- `.env` generation or secret-entry experiences;
+- an agentic skill or embedded AI;
+- application-data migration for events, users, registrations, orders,
+  tickets, payments, or uploaded files.
+
+Those surfaces receive a separate implementation plan only after every
+ConfigurationManifest phase and gate in this workstream is complete.
 
 ## 2. Source-Grounded Current State
 
 ### 2.1 Verified Evidence
 
-The structural claims below were reconfirmed from the named branch paths on
-2026-08-26. Representative test locations identify existing coverage, but no
-.NET suite was rerun for this Markdown-only planning update; prior pass counts
-remain historical context and are not claimed as fresh verification.
+The claims below reflect the completed Phases 9–15 recorded in
+`configuration-manifest-context.md`. No .NET suite was rerun for this
+Markdown-only planning update; all pass counts remain historical implementation
+evidence rather than fresh verification.
 
 | Current fact | Evidence | Planning consequence |
 |---|---|---|
-| The root contract is tenant-only. | `src/Explore.Application/Features/TenantConfigurationManifest/Contracts/TenantConfigurationManifestV1.cs` | Replace it with `ConfigurationManifestV1Alpha1`; do not add a second manifest type beside it. |
-| The public kind is `TenantConfigurationList`. | `src/Explore.Application/Features/TenantConfigurationManifest/Contracts/TenantConfigurationManifestV1.cs` — `TenantConfigurationManifestV1.Kind` | Replace it with `ConfigurationManifest`; no alias. |
-| The catalog accepts only tenant-compatible entries. | `src/Explore.Application/Features/TenantConfigurationManifest/Catalog/TenantConfigurationManifestCatalog.cs`; representative coverage under `tests/Event.Application.UnitTests/Features/TenantConfigurationManifest/` | Add independent explicit instance and tenant catalogs with separate authority rules. |
-| Compiler, validator, and apply plans contain tenant plans only. | `src/Explore.Application/Features/TenantConfigurationManifest/Validation/TenantConfigurationManifestValidator.cs`, `Compilation/TenantConfigurationManifestCompiler.cs`, `Application/ApplyTenantConfigurationManifestCommandHandler.cs` | Introduce a complete instance-and-tenant proposed-state compiler and ordered apply plan. |
-| Export is tenant-scoped. | `src/Explore.Application/Features/TenantConfigurationManifest/Application/ExportTenantConfigurationManifestQueryHandler.cs`; representative export tests under `tests/Event.Application.UnitTests/Features/TenantConfigurationManifest/` | Replace tenant-self manifest export with instance-admin whole-instance export. |
-| Startup, schema, options, routes, media type, and UI are tenant-named. | `src/Explore.Infrastructure/TenantConfigurationManifest/**`, schema generator, API/BFF/Blazor manifest surfaces | Rename the complete vertical slice and delete old public names. |
-| Setting definitions already describe scope, sensitivity, defaults, locks, and coordinated mutation metadata. | `SettingDefinition.cs`, `SettingRegistry.cs` | Reuse definitions as metadata, but never auto-expose registry entries. |
-| Canonical instance scalar writes already exist. | `src/Explore.Application/Settings/SettingUpsertService.cs` and coordinated mutation boundaries | Add transaction-aware manifest entry points rather than writing rows directly. |
-| Settings documents are tenant-owned only. | `src/Explore.Domain/Settings/Documents/TenantSettingsDocument.cs`, `SettingsDocumentTaxonomy.cs`, `SettingsDocumentKeys.cs` | Do not invent a generic instance document store; v1alpha1 admits only the existing instance paid-policy aggregate as an instance document. |
-| Paid policy already separates instance authority and tenant narrowing. | `src/Explore.Application/Features/PaidEventPolicies/PaidEventPolicyMutationBoundary.cs`, `src/Explore.Domain/Services/Registration/PaidEventPolicyRules.cs` | Preserve the authority chain and bind tenant narrowing to the manifest-compiled current instance revision. |
-| Strict parsing, digesting, schema drift, atomicity, audit, outbox, and startup ordering are implemented. | Existing manifest Application, Infrastructure, Persistence, host, and test slices | Generalize these foundations instead of replacing their behavior. |
+| Strict v1alpha2 instance and tenant-package contracts plus schemas exist. | `src/Explore.Application/Features/ConfigurationManifest/Contracts/**`, `ConfigurationPortabilityRegistry`, `schemas/configuration-manifest-v1alpha2.schema.json`, and `schemas/tenant-configuration-package-v1alpha2.schema.json` | Use these sole artifact identities for remaining import, legal, migration, and UI behavior. |
+| Startup bootstrap is host-local, bounded, atomic, and post-migration/pre-traffic. | `src/Explore.Infrastructure/ConfigurationManifest/**`, Standalone/MigrationService composition, Phase 12 evidence | Preserve this bootstrap lane; browser/API import is a separate authorized Day 2 lane. |
+| Whole-instance export exists under Control Plane authority. | `ExportConfigurationManifestQueryHandler`, Control Plane controller/HAL/BFF/client, Phase 13–14 evidence | Reuse deterministic export and bounded download, then add preview/import/history actions. |
+| Tenant-shaped manifest export was intentionally removed. | CM-1330 evidence and current route/HAL absence tests | Add a distinct `TenantConfigurationPackage`; never weaken whole-instance export authorization. |
+| Apply already has ordered leases, serializable transaction, safe audit, and outbox. | ConfigurationManifest apply/preflight/persistence slices and focused PostgreSQL evidence | Generalize to selected-section import and forward rollback without nested transactions. |
+| No import session or browser upload boundary exists. | Current API/BFF/UI inventory and I-VSD E001–E006 | Add bounded temporary storage, preview state, expiry, digest binding, approval, and apply. |
+| No typed portable legal-document aggregate exists. | Static Terms/Privacy pages and tenant setting document taxonomy | Introduce explicit instance/tenant legal ownership; keep published history and acceptance outside portable configuration. |
+| Setting definitions and existing domain aggregates expose broad candidate configuration. | `SettingRegistry`, `SettingsDocumentKeys`, footer/navigation/template/custom-property/localization domains | Classify every section through a closed portability registry; never auto-expose by discovery. |
+| Current full Persistence project gate is unhealthy outside this feature. | Context Phase 11 blocker and focused provider evidence | Keep the blocker visible; do not relabel focused selectors as the full-project pass. |
 
 ### 2.2 What Is Reusable
 
@@ -115,18 +156,21 @@ remain historical context and are not claimed as fresh verification.
 
 ### 2.3 Missing Capabilities
 
-1. No `spec.instance`.
-2. No explicit instance-safe setting catalog.
-3. No instance document catalog; the only approved v1alpha1 candidate with an
-   existing owner is the instance paid-event-policy aggregate.
-4. No complete proposed-state model that validates tenant values against the
-   instance values declared in the same file.
-5. No transaction-aware instance setting/paid-policy manifest boundary.
-6. No instance result or scope-qualified audit facts.
-7. No instance-admin whole-instance export contract.
-8. No instance-level HAL/BFF/UI authority model.
-9. No unified schema, media type, environment keys, startup path, generated
-   client, or operator vocabulary.
+1. No whole-instance HTTP/BFF/Blazor import.
+2. No tenant-scoped configuration package or tenant-admin portability surface.
+3. No bounded import-session lifecycle, value-safe preview, semantic diff,
+   target mapping, approval, expiry, or stale-preview fencing.
+4. No named merge/apply/replace/reconcile ownership semantics.
+5. No pre-import portable snapshot, forward rollback, migration receipt,
+   fidelity report, or history dashboard.
+6. No complete portability section registry or machine-readable coverage
+   ledger.
+7. No typed role-scoped legal-document aggregate, constrained Markdown
+   contract, target-review lifecycle, or public rendering cutover.
+8. No cross-instance direct-transfer protocol, package signature policy,
+   GitOps ownership, drift, takeover, or relinquishment contract.
+9. No accessibility/usability evidence for complex import, diff, mapping,
+   conflict, approval, and rollback workflows.
 
 ### 2.4 Current Strengths To Preserve
 
@@ -137,7 +181,33 @@ remain historical context and are not claimed as fresh verification.
 - manifest application is atomic and effects are deferred until commit;
 - runtime API/UI administration does not pretend bootstrap is reconciliation.
 
-## 3. Proposed Future State
+### 2.5 Current Improvement Areas
+
+- export/bootstrap bytes are not yet a usable migration experience;
+- instance authority currently blocks legitimate tenant-owned portability;
+- operators must manually compare JSON and recover changes;
+- static legal pages cannot express instance/tenant ownership or move safely;
+- configuration coverage is scattered across catalogs and domain-specific
+  contracts rather than one truthful portability ledger;
+- current I-VSD disposition is `changes-required`.
+
+### 2.6 Strictly Deferrable Unknowns
+
+| Unknown | Why deferrable | Owning task |
+|---|---|---|
+| Exact import-session/upload/snapshot retention durations | Does not change bounded expiring state-machine architecture | CM-1810 |
+| Exact detached-signature algorithm and curated issuer set | Signature/issuer trust model is fixed; repository release primitives determine concrete profile | CM-2210 |
+| Initial legal-template locales and jurisdiction variants | Typed locale/template contract and non-certifying review gate are fixed | CM-1710 |
+| Exact managed-ownership lease/refresh interval | Explicit ownership/takeover/relinquishment semantics are fixed | CM-2210 |
+
+Any discovery that changes artifact authority, import modes, transaction
+boundaries, legal evidence separation, or phase sequencing is not deferrable
+and requires plan/user review before implementation continues.
+
+## 3. Current Foundation And Expanded Behavioral Contract
+
+Sections 3.1–3.5 record the implemented v1alpha1 foundation. Sections
+3.6–3.8 are the normative v1alpha2 expansion.
 
 ### 3.1 Canonical Envelope
 
@@ -288,7 +358,8 @@ Bootstrap is not continuous desired-state reconciliation:
   still matches the recorded digest;
 - existing tenants remain whole-tenant skips;
 - no omitted field is deleted, reset, or taken over;
-- `Reconcile`, prune, takeover, and field ownership remain separate future work.
+- startup bootstrap never performs reconcile/prune/takeover. Phase 22 may add
+  `ReconcileManaged` only as a separate Day 2 ownership contract.
 
 #### Bootstrap State Matrix
 
@@ -330,9 +401,9 @@ The canonical export is a whole-instance artifact:
 - `Overrides` emits declared instance overrides and tenant-owned overrides;
 - `Portable` emits approved effective non-sensitive values with explicit
   flattening and sovereign-omission metadata;
-- tenant administrators no longer receive a manifest-shaped partial export;
-- current tenant-self manifest routes, HAL relations, BFF methods, and UI
-  controls are deleted rather than aliased;
+- tenant administrators do not receive a partial
+  `ConfigurationManifest`; v1alpha2 adds the distinct
+  `TenantConfigurationPackage` defined below;
 - exports remain configuration artifacts, not backups or secret bundles;
 - exported bytes are generated incrementally but the aggregate hard limit
   remains 4 MiB so every successful export is accepted by the import boundary;
@@ -340,10 +411,139 @@ The canonical export is a whole-instance artifact:
   per-tenant configuration read. Overflow fails before response bytes are sent with stable
   `configuration_manifest_export_too_large` ProblemDetails.
 
+### 3.6 Artifact And Portability Requirements
+
+#### Requirement CM-R1 — Distinct Authority-Bound Artifacts
+
+The system SHALL expose `ConfigurationManifest` for instance-authorized
+portability and `TenantConfigurationPackage` for tenant-authorized
+portability. Artifact metadata MUST never select target authority.
+
+**Scenario CM-S1 — Tenant package targets authenticated tenant**
+
+- **GIVEN** an administrator authorized for tenant B uploads a package exported
+  from tenant A;
+- **WHEN** preview or apply is requested through tenant B’s route;
+- **THEN** the target is tenant B, source identity is provenance only, and no
+  package member can select tenant A, another tenant, or instance scope.
+
+#### Requirement CM-R2 — Preview Before Mutation
+
+Every HTTP/UI import SHALL create a bounded, expiring, digest-bound preview
+before any configuration write. Preview MUST report changed, unchanged,
+skipped, mapped, blocking, warning, omitted, and externally required items.
+
+**Scenario CM-S2 — Upload is side-effect-free**
+
+- **GIVEN** a valid artifact containing changes;
+- **WHEN** the administrator uploads and previews it;
+- **THEN** no setting, document, tenant, audit-success row, outbox effect, or
+  provider call is created.
+
+**Scenario CM-S3 — Stale preview fails closed**
+
+- **GIVEN** target configuration changes after preview;
+- **WHEN** apply uses the stale preview token;
+- **THEN** apply returns a stable conflict, performs no selected-section write,
+  and offers a fresh preview.
+
+#### Requirement CM-R3 — Named Apply Semantics
+
+The system SHALL distinguish `PreviewOnly`, `CreateNew`, `MergeMissing`,
+`ApplySelected`, `ReplacePortableConfiguration`, and `ReconcileManaged`.
+Omission MUST NOT imply deletion unless managed ownership explicitly grants it
+and the preview names the deletion.
+
+**Scenario CM-S4 — Replacement is bounded to selected portable fields**
+
+- **GIVEN** application data, environment-bound fields, and unselected portable
+  sections exist;
+- **WHEN** an authorized administrator confirms replacement;
+- **THEN** only selected portable configuration changes and every excluded
+  category remains untouched.
+
+#### Requirement CM-R4 — Atomic Apply And Forward Rollback
+
+Every accepted import SHALL revalidate authority and revisions under ordered
+locks, apply all selected sections in one transaction, persist a value-minimized
+receipt and durable effects, and support rollback as a new authorized forward
+operation from a protected pre-import snapshot.
+
+**Scenario CM-S5 — One invalid or racing section rolls back all**
+
+- **GIVEN** several selected sections and one invalid, stale, locked, or
+  concurrently changed section;
+- **WHEN** apply reaches fresh preflight;
+- **THEN** no selected section, success receipt, or external effect commits.
+
+#### Requirement CM-R5 — Explicit Portability Coverage
+
+Every configuration section SHALL declare scope, authority, schema version,
+portability class, dependencies, references, export, preview/diff, validation,
+apply, verify, rollback, and documentation behavior. Unknown or absent required
+extensions MUST fail according to their declared compatibility rule and MUST
+never disappear silently.
+
+**Scenario CM-S6 — Coverage is truthful**
+
+- **GIVEN** an export omits secrets, PII, application data, operational state,
+  or unsupported sections;
+- **WHEN** the artifact and receipt are inspected;
+- **THEN** machine-readable coverage names each omission and target setup
+  requirement without exposing values.
+
+### 3.7 Legal-Document Requirements
+
+#### Requirement CM-R6 — Role-Scoped Portable Legal Source
+
+Instance and tenant legal documents SHALL be typed, localized, role-owned,
+bounded, and portable as constrained Markdown plus metadata. Import MUST create
+target-reviewed drafts or new target versions and MUST NOT copy acceptance
+history or source-instance authority.
+
+**Scenario CM-S7 — Legal import preserves evidence**
+
+- **GIVEN** a package containing published-looking terms and privacy text;
+- **WHEN** it is imported into another instance or tenant;
+- **THEN** target drafts/review requirements are created, source links and
+  identity placeholders are flagged, and no user acceptance is fabricated or
+  rewritten.
+
+#### Requirement CM-R7 — Safe Deterministic Legal Rendering
+
+Legal source SHALL use one constrained non-fetching Markdown contract shared by
+validation, preview, import/export, and public rendering. Raw HTML, executable
+content, remote images, tracking, unresolved required placeholders, and unsafe
+links MUST fail closed.
+
+**Scenario CM-S8 — Unsafe legal content cannot publish**
+
+- **GIVEN** a document containing remote content, executable markup, or an
+  unresolved required identity;
+- **WHEN** preview, import, or publication readiness runs;
+- **THEN** a stable value-safe blocker is returned and public state is
+  unchanged.
+
+### 3.8 Existing Blazor Administration And Deferred Setup Assistant
+
+The existing Blazor administration application SHALL provide:
+
+- whole-instance upload, preview, diff, mapping, approval, apply, history, and
+  rollback under instance HAL authority;
+- tenant package export/import/clone/history/rollback under tenant HAL
+  authority;
+- keyboard, screen-reader, reflow, localization, and RTL-complete workflows;
+- raw JSON as an optional expert view, never the required interface.
+
+The future Setup Assistant may consume the final schemas and APIs, but this
+workstream MUST NOT create Avalonia, Terminal.Gui, CLI, `.env`, or agent-skill
+projects or tasks.
+
 ## 4. Non-Negotiable Constraints
 
-1. One canonical `ConfigurationManifest` contract; no parallel
-   `TenantConfigurationManifest` compatibility surface.
+1. One canonical instance `ConfigurationManifest` and one distinct
+   tenant-authorized `TenantConfigurationPackage`; no partial tenant manifest
+   or compatibility surface.
 2. One file may represent exactly one instance and one or more tenants.
 3. Single-tenant and multi-tenant deployments use the same schema and pipeline.
 4. All instance and tenant entries are explicit allowlists; registry membership
@@ -365,9 +565,16 @@ The canonical export is a whole-instance artifact:
 14. Repositories return entities, never DTOs.
 15. EF migrations/snapshots, OpenAPI, NSwag, and JSON Schema are generated from
     source and never hand-edited.
-16. No YAML, directory composition, remote URL ingestion, compatibility alias,
-    or managed reconcile mode.
+16. No YAML, directory composition, compatibility alias, or hidden automatic
+    reconciliation.
 17. Every new file begins with two `ABOUTME:` lines.
+18. Upload/preview storage is bounded, protected, value-safe, and expires
+    automatically.
+19. Artifact identity and source metadata never select target authority.
+20. Legal source is typed, role-scoped, constrained, and separate from
+    immutable publication/acceptance evidence.
+21. Avalonia, Terminal.Gui, CLI/TUI, `.env`, and agent-skill work is excluded
+    until this workstream is complete.
 
 ## 5. Architecture And Design Decisions
 
@@ -375,32 +582,41 @@ The canonical export is a whole-instance artifact:
 
 | Decision | Selected | Rejected | Rationale |
 |---|---|---|---|
-| Product contract | One `ConfigurationManifest` with instance and tenants | Separate instance and tenant manifest families | One deployment artifact matches the product concept and avoids ambiguous composition. |
+| Product contracts | Whole-instance `ConfigurationManifest` plus tenant-scoped `TenantConfigurationPackage` | Partial tenant manifest or one artifact with caller-selected scope | Distinct kinds preserve authority while enabling legitimate tenant portability. |
 | Contract migration | Replace old kind, DTOs, schema, routes, env keys, and media types | Preserve aliases | Pre-v1 development permits a clean contract; duplicate semantics would become permanent debt. |
 | Scope catalogs | Separate explicit instance and tenant catalogs under one feature | Auto-expose by registry scope | Instance eligibility requires stricter authority and operational classification. |
 | Instance documents | `instance.paid_event_policy` only in v1alpha1, backed by its existing aggregate | Generic JSON document entity or reuse tenant rows | Do not create speculative persistence; every document needs a real authority owner. |
 | Apply ordering | Compile instance, validate tenants against it, then one atomic apply | Tenant-first or independent transactions | Instance defaults, locks, and ceilings constrain tenant validity. |
 | Bootstrap changes | Immutable instance-section digest after first success | Restart-time overwrite | Avoids hidden reconciliation and Day 2 changes being reverted. |
 | Tenant reruns | Create absent, skip existing wholesale | Patch existing tenants | Preserves explicit Day 0 versus Day 2 ownership. |
-| Export authority | Instance-admin whole-instance export | Tenant-shaped partial manifests | A canonical instance file must not leak other tenants or imply partial files are deployable roots. |
+| Export authority | Instance-admin whole-instance export plus tenant-admin package export | Tenant-shaped partial manifests | Tenant portability needs a distinct non-root artifact and trusted route-selected target. |
 | Paid policy | Canonical instance revision then tenant narrowing | Direct setting/table writes | Preserves Tier 0 authority, freshness, and sovereign exclusions. |
 | Effects | Transactional outbox and post-commit cache/notification dispatch | External effects inside transaction | Keeps rollback truthful and recovery idempotent. |
+| Import lifecycle | Bounded upload → side-effect-free preview → approved apply → receipt/history | Upload-to-write | Prevents hidden destructive changes and stale authority. |
+| Rollback | New forward import from protected portable snapshot | Database/audit history rewrites | Preserves append-only evidence and canonical mutation boundaries. |
+| Legal documents | Typed role-scoped Markdown source with target review | Hard-coded pages, links-only portability, arbitrary HTML | Preserves accountable authorship, safety, localization, and migration independence. |
+| Extensibility | Closed section registry with declared portability behavior | Arbitrary extension JSON/scripts/SQL | Makes coverage truthful without remote code execution. |
+| Advanced automation | Explicit managed ownership and optional reviewed direct transfer | Implicit continuous reconciliation or source deletion | Keeps drift/takeover/deletion and network trust visible. |
+| Setup applications | Separate later plan after ConfigurationManifest completion | Mix Avalonia/TUI/CLI/skill work into this plan | Keeps the server/domain contract stable before new clients depend on it. |
 
 ### 5.2 Clean Architecture Ownership
 
 - **Domain:** setting definitions; existing tenant document ownership;
   paid-policy and other true domain invariants; audit/bootstrap state entities.
 - **Application:** manifest contracts, catalogs, validators, compiler, apply
-  plan, CQRS requests/handlers, scope-qualified DTO mapping, authorization facts,
+  plan, import-session state machine, section registry, preview/diff/mapping,
+  CQRS requests/handlers, scope-qualified DTO mapping, authorization facts,
   canonical transaction-aware mutation boundaries, deterministic serializer.
 - **Persistence:** EF configuration, entity repositories, transaction execution,
-  indexes/constraints, generated provider migrations.
+  protected import metadata/snapshots/receipts, indexes/constraints, generated
+  provider migrations.
 - **Infrastructure:** bounded local-file reading, lexical strictness, options,
   digesting, startup runner, safe logs/metrics.
-- **API/HAL:** instance-admin transport, ProblemDetails, route names, OpenAPI,
-  HAL capability emission.
-- **Blazor BFF/client:** token-safe download adapter and HAL-driven
-  instance-administration UI; no local authorization calculation.
+- **API/HAL:** instance/tenant import/export transport, ProblemDetails, rate
+  limits, route names, OpenAPI, HAL capability emission.
+- **Blazor BFF/client:** token-safe bounded upload/download adapters and
+  HAL-driven instance/tenant administration UI; no local authorization
+  calculation.
 - **Hosts/deployment:** post-migration/pre-traffic ownership and read-only file
   mounting.
 
@@ -416,6 +632,10 @@ The canonical export is a whole-instance artifact:
   while every ordered lease remains held;
 - prove both valid serial orders against competing instance setting, instance
   paid-policy, tenant creation, branding, and tenant setting writers;
+- bind apply to preview digest, target revisions, selected sections, mappings,
+  and approvals; any drift invalidates the preview;
+- treat rollback as another fresh authorized apply with its own locks,
+  transaction, receipt, and outbox;
 - on any stale revision or conflict, roll back instance, tenants, audit success,
   and effects together, then record only privacy-minimized failure evidence when
   the database remains available.
@@ -426,18 +646,39 @@ The canonical export is a whole-instance artifact:
   request body or browser-supplied path;
 - instance export requires instance-level resource authorization with Cerbos and
   local-provider parity;
-- tenant administrators retain Day 2 tenant settings APIs but cannot obtain the
-  whole-instance manifest;
-- BFF tokens remain server-side and the browser receives only the bounded
-  download;
+- instance import requires independent preview/apply/replace/rollback facts and
+  enhanced approval where policy broadens;
+- tenant administrators retain Day 2 APIs and may export/import only a
+  `TenantConfigurationPackage` for the trusted route-selected target;
+- BFF tokens remain server-side and the browser receives only bounded
+  upload/download and value-safe preview contracts;
 - explicit wrong-instance, wrong-tenant, missing-context, and locked-authority
   tests fail closed.
 
 ## 6. Implementation Phases
 
-Phases 1–8 of the former tenant-focused workstream produced the reusable
-foundation. The corrected implementation resumes at Phase 9. Granular Red/Green
-tasks live only in `configuration-manifest-tasks.md`.
+Phases 1–8 produced the former tenant foundation. Phases 9–15 delivered the
+current instance-wide bootstrap/export product. Expanded implementation resumes
+at Phase 16. Granular Red/Green tasks live only in
+`configuration-manifest-tasks.md`.
+
+### 6.1 Delivery And Review Boundaries
+
+This file is an umbrella workstream, not one omnibus change set. The expanded
+implementation SHALL remain independently reviewable at these boundaries:
+
+1. Phase 16: artifact and registry contract cutover;
+2. Phase 17: legal-document aggregate and rendering boundary;
+3. Phases 18-19: import-session and atomic recovery backend;
+4. Phase 20: tenant package and migration API boundary;
+5. Phase 21: BFF/client administration boundary;
+6. Phase 22: managed ownership and direct-transfer boundary;
+7. Phase 23: generated artifacts, documentation, evidence, and release.
+
+Each boundary closes its own build and selected project gate before work moves
+forward. Later boundaries may depend on earlier contracts, but an incomplete
+UI or advanced-operations boundary MUST NOT obscure the independently verified
+backend state. No commit is created unless the user separately authorizes one.
 
 ### Phase 9 — Breaking Contract And Namespace Rebase
 
@@ -542,6 +783,176 @@ artifacts are stable on a second run; reset/cutover guidance is explicit; Tier 1
 and Tier 0 evidence gates pass; anonymized MAD review has no surviving blocker;
 all triad artifacts are reconciled.
 
+### Phase 16 — V1Alpha2 Artifact And Section Contracts
+
+**Goal:** Replace v1alpha1 with the clean v1alpha2
+`ConfigurationManifest`/`TenantConfigurationPackage` contracts and one closed
+portability-section registry.
+
+**Primary paths:** Application contracts/catalog/serialization/schema;
+settings/document/module/template/footer/navigation/custom-property/localization
+owners; schema generator; contract and architecture tests.
+
+**Exit criteria:** both kinds are strict and authority-distinct; every candidate
+section has one portability classification and owner; unknown sections fail
+closed; machine-readable coverage and omission contracts exist; v1alpha1 has no
+alias.
+
+**Phase-end verification:** one Release build and
+`Event.Application.UnitTests`.
+
+**Rollback/failure:** contract/schema failure leaves v1alpha1 current; no
+runtime consumer cuts over before the new contract and registry are green.
+
+### Phase 17 — Typed Legal Documents And Safe Content
+
+**Goal:** Add role-scoped instance/tenant legal-document ownership, immutable
+publication history, acceptance separation, constrained Markdown, localization,
+and target-review transitions.
+
+**Primary paths:** Domain legal aggregates/value objects; Application mutation,
+validation, rendering contracts; Persistence entities/configurations/generated
+migrations; current legal pages/footer composition; legal tests.
+
+**Exit criteria:** legal kinds are closed and role-owned; Markdown is bounded,
+deterministic, non-fetching, and shared across validation/rendering; imports
+create target drafts/new versions; publication and acceptance evidence cannot
+be imported or rewritten; unsafe content fails closed.
+
+**Phase-end verification:** one Release build and `Event.Domain.UnitTests`.
+
+**Rollback/failure:** legal routes continue serving the last published
+immutable version; failed import/publication creates no new effective document.
+
+### Phase 18 — Import Sessions, Preview, Diff, And Mapping
+
+**Goal:** Introduce bounded instance and tenant import sessions whose previews
+are side-effect-free, digest/revision bound, section-selective, and
+mapping-aware.
+
+**Primary paths:** Application import-session contracts/state machine,
+preview/diff/coverage/mapping composers; protected Persistence metadata/storage;
+API upload/preview routes, rate limits, ProblemDetails, OpenAPI, and tests.
+
+**Exit criteria:** upload never mutates configuration; sessions expire and
+cannot cross authority; preview classifies all outcomes and external setup;
+stable mappings use machine identities; stale revisions fail before apply;
+secrets/PII/values never enter telemetry or support artifacts.
+
+**Phase-end verification:** one Release build and
+`Event.API.IntegrationTests`.
+
+**Rollback/failure:** rejected/expired sessions delete protected temporary
+bytes according to retention policy and retain only value-minimized evidence.
+
+### Phase 19 — Atomic Apply, Receipts, Snapshots, And Forward Rollback
+
+**Goal:** Apply selected instance/tenant sections through canonical boundaries
+under ordered leases and one fresh serializable transaction, with durable
+receipts and forward rollback.
+
+**Primary paths:** Application preflight/apply/verify/rollback; Domain operation
+state; Persistence transaction/leases/snapshots/receipts/outbox; real
+PostgreSQL/provider tests and generated migrations.
+
+**Exit criteria:** all selected sections preflight before writes; preview digest,
+mappings, revisions, approvals, and target authority are replayed; one failure
+rolls back every section/effect; receipts are value-minimized; rollback is a new
+authorized operation; provider models are generated/current.
+
+**Phase-end verification:** one Release build and the complete
+`Event.Persistence.IntegrationTests` project. Focused selectors guide active
+development but cannot close the phase; the existing unrelated project
+baseline must be repaired or explicitly waived.
+
+**Rollback/failure:** transaction rollback preserves current state; snapshot
+creation failure prevents apply; post-commit effect retry uses the outbox.
+
+### Phase 20 — Tenant Portability And Cross-Instance Migration
+
+**Goal:** Deliver tenant-admin package export/import, clone, target mapping,
+history, rollback, fidelity, and optional source/target transfer prerequisites
+without exposing whole-instance authority.
+
+**Primary paths:** Application tenant package CQRS; tenant-safe repositories;
+authorization facts/providers; API/HAL/OpenAPI/BFF contracts; migration
+receipts and tests.
+
+**Exit criteria:** authenticated route context selects the target; tenant
+packages never include instance/other-tenant values; clone requires delegated
+creation authority; source IDs are provenance only; external setup and fidelity
+are explicit; whole-instance export remains instance-only.
+
+**Phase-end verification:** one Release build and
+`Event.API.IntegrationTests`.
+
+**Rollback/failure:** source state is never deleted automatically; failed target
+apply leaves source and target configuration unchanged.
+
+### Phase 21 — Blazor Instance And Tenant Administration
+
+**Goal:** Add preview-first instance and tenant import/export/history/rollback
+workspaces to the existing Blazor administration product.
+
+**Primary paths:** Blazor BFF upload/download services/endpoints; generated
+client adapter; instance/tenant pages/components; localization/scoped CSS;
+accessibility and component tests.
+
+**Exit criteria:** HAL alone gates every action; tokens stay server-side;
+instance and tenant authority remain visually and technically distinct; dense
+diff/mapping/approval flows are keyboard/screen-reader/reflow/RTL capable; raw
+JSON is optional; stale capability/preview recovery preserves focus.
+
+**Phase-end verification:** one Release build and
+`Explore.Blazor.Client.Tests`.
+
+**Rollback/failure:** client failure never implies apply success; operation
+history/receipt remains the authoritative result.
+
+### Phase 22 — Extensibility, Managed Ownership, And Direct Transfer
+
+**Goal:** Complete governed extension sections, signatures, GitOps drift and
+field ownership, approval separation, and optional mutually authenticated
+direct transfer.
+
+**Primary paths:** section descriptors/source generation; ownership/drift
+contracts; signature/trust policy; transfer session/protocol; authorization,
+outbox, security, privacy, and integration tests.
+
+**Exit criteria:** extensions execute no code/migration; signed packs identify
+issuer and provenance; managed deletion/takeover/relinquishment is explicit;
+drift never overwrites automatically; direct transfer is opt-in, SSRF-safe,
+replay-protected, mutually approved, bounded, resumable, and never deletes
+source state.
+
+**Phase-end verification:** one Release build and
+`Event.Application.UnitTests`.
+
+**Rollback/failure:** unmanaged fields remain untouched; transfer can resume or
+expire safely before commit; signature/issuer failure blocks preview/apply.
+
+### Phase 23 — Generated Contracts, Operations, Evidence, And Release
+
+**Goal:** Regenerate and prove all schemas/contracts/models, teach migration and
+recovery, refresh I-VSD/CTO evidence, close criticality review, and publish the
+breaking change fragment.
+
+**Primary paths:** JSON Schema/OpenAPI/inventory/NSwag/provider models;
+configuration/self-hosting/operations/security/legal/accessibility/API
+documentation; release fragment; I-VSD; evidence and triad.
+
+**Exit criteria:** generated artifacts are stable on a second run; all
+configuration domains have truthful coverage; docs distinguish configuration,
+application data, secrets, operational state, and backup; migration/rollback
+drills and criticality review have no surviving blocker; I-VSD is plan-aligned;
+the final change fragment/commit composition follows release policy.
+
+**Phase-end verification:** one Release build and
+`Event.Architecture.Tests`.
+
+**Rollback/failure:** no completion claim while any generated drift, unwaived
+phase gate, critical finding, or I-VSD/triad mismatch remains.
+
 ## 7. Testing Strategy
 
 ### Test-First Invariant Order
@@ -566,6 +977,17 @@ Required adversarial coverage includes:
 - partial instance success followed by tenant failure;
 - stale instance paid-policy revision and tenant broadening;
 - wrong-tenant and non-instance-admin export;
+- tenant package attempts to select another target or instance scope;
+- upload-to-write, expired session, replayed token, stale preview, changed
+  mapping, and approval bypass;
+- one invalid selected section among otherwise valid sections;
+- forward rollback racing ordinary Day 2 writers;
+- legal import attempting to copy publication/acceptance history;
+- raw HTML, remote resources, unsafe links, oversized localized Markdown, and
+  unresolved required legal placeholders;
+- extension code/migration payloads, unknown compatibility, drift takeover,
+  deletion without ownership, package signature failure, SSRF, and transfer
+  replay;
 - HAL/direct authorization disagreement;
 - secret/PII scans across export, audit, ProblemDetails, logs, metrics, traces,
   and evidence.
@@ -581,6 +1003,14 @@ Required adversarial coverage includes:
 | 13 | `Event.API.IntegrationTests` |
 | 14 | `Explore.Blazor.Client.Tests` |
 | 15 | `Event.Architecture.Tests` |
+| 16 | `Event.Application.UnitTests` |
+| 17 | `Event.Domain.UnitTests` |
+| 18 | `Event.API.IntegrationTests` |
+| 19 | `Event.Persistence.IntegrationTests` |
+| 20 | `Event.API.IntegrationTests` |
+| 21 | `Explore.Blazor.Client.Tests` |
+| 22 | `Event.Application.UnitTests` |
+| 23 | `Event.Architecture.Tests` |
 
 Each phase also runs one canonical Release build. BFF and other touched-layer
 tests use focused TUnit selectors during their owning task; full unrelated
@@ -593,8 +1023,10 @@ Canonical operator contract after cutover:
 - `CONFIGURATION_MANIFEST_PATH`
 - `CONFIGURATION_MANIFEST_MODE`
 - `/etc/islamu-event/bootstrap/configuration-manifest.json`
-- `schemas/configuration-manifest-v1alpha1.schema.json`
-- `application/vnd.islamu.configuration-manifest.v1alpha1+json`
+- `schemas/configuration-manifest-v1alpha2.schema.json`
+- `schemas/tenant-configuration-package-v1alpha2.schema.json`
+- `application/vnd.islamu.configuration-manifest.v1alpha2+json`
+- `application/vnd.islamu.tenant-configuration-package.v1alpha2+json`
 
 Update:
 
@@ -612,6 +1044,22 @@ Update:
 Documentation must distinguish bootstrap from reconciliation, explain one-file
 single-/multi-tenant behavior, list excluded authority, teach same-digest reruns
 and changed-instance failure recovery, and state that export is not backup.
+It must also teach import modes, preview expiry/staleness, mappings, approvals,
+receipts, rollback, tenant migration, legal target review, section coverage,
+managed ownership, transfer trust, retention, and support-safe diagnostics.
+
+### 8.1 Release And Changelog Strategy
+
+This is Tier 2 breaking/operator-impact work. The final Phase 23 task SHALL:
+
+- create an append-only `docs/releases/changes/CHG-*.yaml` fragment;
+- identify v1alpha1 removal, v1alpha2 artifact/media/schema changes, new
+  instance/tenant administration behavior, migration/reset actions, and legal
+  review boundaries;
+- validate through `ReleaseInputPolicy`;
+- compose a conventional `feat(configuration)!:` commit subject only when the
+  user authorizes a commit;
+- include `Change-Id: CHG-...` and a `BREAKING CHANGE:` footer.
 
 ## 9. Security, Authorization, Privacy, And Abuse
 
@@ -631,6 +1079,48 @@ and changed-instance failure recovery, and state that export is not backup.
 - **Payments:** provider credentials, operational governance, handoff,
   reconciliation, acceptance, liability, and refund execution remain outside
   manifest authority.
+- **Imports:** bounded temporary bytes, digest-bound previews, automatic expiry,
+  rate/size limits, stale-revision fencing, and value-safe ProblemDetails.
+- **Legal:** role-scoped source only; publication/acceptance history is
+  immutable nonportable evidence; constrained Markdown performs no fetch.
+- **Extensions/transfer:** no executable payloads; signatures do not grant
+  authority; transfer is SSRF-safe, replay-protected, and mutually approved.
+
+### 9.1 I-VSD Mapping
+
+Report:
+[i-vsd-configuration-manifest.md](../../../islamic-value-sensitive-design/i-vsd-configuration-manifest.md),
+reviewed input
+`sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`,
+status `current`, disposition `plan-aligned`.
+
+| I-VSD finding/mitigation | Scenario/task mapping | Disposition |
+|---|---|---|
+| F001/M001 | CM-S2; CM-1810–1830 and CM-2110 | Implement whole-instance preview/import/history/rollback. |
+| F002/M002 | CM-S1; CM-2010–2030 and CM-2120 | Implement tenant-admin package portability. |
+| F003/M003 | CM-S1; CM-1610 and CM-2010 | Target authority comes only from authenticated route/context. |
+| F004/M004 | CM-S2/CM-S3; CM-1810–1830 | Enforce preview-first, side-effect-free upload. |
+| F005/M005 | CM-S4; CM-1610/CM-1620/CM-1920 | Implement named apply modes and explicit ownership. |
+| F006/M006 | CM-S5; CM-1910–1930 | Implement atomic apply, snapshots, receipts, forward rollback. |
+| F007/M007 | CM-S6; CM-1820/CM-2010 | Map only stable machine identities and surface blockers. |
+| F008/M008 | CM-S6; CM-1610/CM-1810/CM-2310 | Exclude and scan secrets, PII, application/operational data. |
+| F009/M009 | CM-S7; CM-1710–1730 | Rebind accountable target identity; never copy authority blindly. |
+| F010/M010 | CM-S5; CM-1910/CM-1920 | Fence paid policy and require enhanced approval for broadening. |
+| F011/M011 | CM-S1/CM-S3; CM-2220 | Implement optional mutually approved secure transfer. |
+| F012/M012 | CM-S6; CM-1610/CM-2210 | Use a declarative non-executable extension registry. |
+| F013/M013 | CM-S6; CM-1620/CM-2310 | Generate truthful coverage, omission, dependency, fidelity ledgers. |
+| F014/M014 | Section 3.8; CM-2110–2130 | Implement accessible/localized instance and tenant workflows. |
+| F015/M015 | CM-S1/CM-S5; CM-1810/CM-1910/CM-2010 | Reauthorize and append value-minimized audit evidence. |
+| F016/M016 | This re-baseline; CM-2310 | Resolve stale-plan integrity and keep triad/report synchronized. |
+| F017/M017 | CM-S6; CM-2320 | Document configuration versus data, secrets, operations, and backup. |
+| F018/M018 | CM-1930/CM-2030/CM-2330 | Prove fidelity, recovery, accessibility, and migration outcomes. |
+| F019/M019 | CM-S7; CM-1710/CM-1720 | Implement typed role-scoped legal bundles. |
+| F020/M020 | CM-S7; CM-1710/CM-1920 | Preserve immutable publication/acceptance evidence. |
+| F021/M021 | CM-S7; CM-1710/CM-1730 | Govern templates as non-certifying reviewed starting points. |
+| F022/M022 | CM-S8; CM-1710–1730 | Share one constrained safe Markdown contract. |
+| F023/M023 | CM-S7; CM-1720/CM-2010 | Export owned source and create target-reviewed versions. |
+| F024/M024 | CM-S8; CM-1610/CM-1710 | Re-baseline legal count/locale/byte/link/package limits. |
+| F025–F030/M025–M030 | Section 1.1 and 3.8 | Deferred in full to the later Setup Assistant/Avalonia/TUI/CLI/skill workstream; no task here. |
 
 ## 10. Single-Tenancy, Multi-Tenancy, Federation, Localization, Accessibility
 
@@ -640,11 +1130,15 @@ and changed-instance failure recovery, and state that export is not backup.
 - multi-tenant mode accepts multiple unique slugs and validates all before
   writes;
 - instance settings/defaults/locks/policy ceilings constrain every tenant;
+- tenant package target authority comes from authenticated route context, never
+  package metadata;
 - federation publication/reporting invariants remain unchanged;
+- configuration migration remains distinct from federation/PDS publication and
+  application-data migration;
 - export and administration copy is localizable and never renders raw authority
   codes as user-facing prose;
-- BFF/client changes retain keyboard, focus, reflow, contrast, RTL, and live
-  announcement behavior.
+- BFF/client import/diff/mapping/approval/history changes retain keyboard,
+  focus, reflow, contrast, RTL, non-color state, and live announcements.
 
 ## 11. Observability And Recovery
 
@@ -655,6 +1149,9 @@ Record structured, bounded facts:
 - tenant counts by created/skipped/failed;
 - stable failure category and duration;
 - outbox dispatch state.
+- import-session status/expiry, artifact kind, selected section count, mapping
+  blocker count, approval state, snapshot/rollback operation relation, and
+  fidelity status.
 
 Never record paths as metric labels, raw values, secret names/presence, tenant
 private content, provider state, or PII.
@@ -668,6 +1165,12 @@ Recovery:
 - tenant conflict: preserve recorded instance section, correct tenant input, rerun;
 - transaction failure: no partial state; inspect operation id and stable code;
 - disable processing: set mode `Off` or remove the convention file.
+- stale/expired preview: create a new preview; never force the old token;
+- failed Day 2 apply: inspect the value-safe receipt; no selected state changed;
+- applied migration needing reversal: authorize a forward rollback from the
+  protected pre-import snapshot;
+- transfer interruption: resume or expire before target commit; never delete
+  source state.
 
 ### Operator State/Action Matrix
 
@@ -687,7 +1190,9 @@ Recovery:
 
 ## 12. Migration And Compatibility
 
-This workstream intentionally deletes the old tenant-manifest contract.
+Phases 9–15 intentionally deleted the old tenant-manifest contract. Phases
+16–23 intentionally replace v1alpha1 with v1alpha2 and add a distinct tenant
+package.
 
 Remove or replace:
 
@@ -719,6 +1224,12 @@ proves the old migration shipped to a persistent external environment, stop and
 replace the reset assumption with an explicit migration plan before editing
 generated migrations.
 
+The v1alpha2 cutover also removes v1alpha1 schema/media/generated-client
+surfaces in one source-driven regeneration. No aliases, converters, dual reads,
+redirects, or deprecated endpoints remain. Development databases use generated
+corrective/reset strategy selected before migration edits; persisted external
+use requires an explicit data-migration decision.
+
 ## 13. Risk Register
 
 | Risk | Severity | Mitigation | Phase |
@@ -734,10 +1245,21 @@ generated migrations.
 | Instance documents become arbitrary JSON | Critical | v1alpha1 admits only the existing paid-policy aggregate; no generic document store | 10 |
 | Self-hoster cannot recover from cutover | Major | Explicit reset, startup, validation, and recovery docs | 12, 15 |
 | Large cross-layer change becomes unreviewable | Major | Phase boundaries above; no mixed compatibility layer | All |
+| Package metadata selects target authority | Blocker | Trusted route/context target, distinct artifact kinds, wrong-scope tests | 16, 18, 20 |
+| Upload mutates before approval | Blocker | Side-effect-free session/preview state machine and public-state tests | 18 |
+| Stale preview applies over Day 2 changes | Blocker | Digest/revision/mapping/approval replay under ordered locks | 18–19 |
+| Rollback rewrites audit or partially applies | Blocker | Protected snapshot and new forward operation in one transaction | 19 |
+| Tenant package leaks other scopes | Blocker | Tenant-filtered repositories, HAL/API parity, output scans | 20 |
+| Legal import fabricates acceptance | Blocker | Separate immutable evidence and target-draft semantics | 17, 19 |
+| Markdown executes or tracks | Blocker | Shared constrained non-fetching parser/sanitizer and adversarial tests | 17 |
+| Extension smuggles executable behavior | Blocker | Declarative registry; no scripts/SQL/migrations/plugins | 16, 22 |
+| Managed ownership deletes unmanaged fields | Critical | Explicit field ownership, previewed deletion, takeover/relinquishment | 22 |
+| Direct transfer creates SSRF/replay/source loss | Blocker | Allowlisted target proof, mutual approval, nonce/digest binding, no source deletion | 22 |
+| Setup Assistant scope contaminates server plan | Major | Explicit deferment and zero Avalonia/TUI/CLI/skill tasks | All |
 
 ## 14. Definition Of Done
 
-The corrected workstream is complete only when:
+The expanded workstream is complete only when:
 
 1. one strict `ConfigurationManifest` contract contains a required instance
    section and one or more tenants;
@@ -756,13 +1278,29 @@ The corrected workstream is complete only when:
     current and stable;
 11. configuration, security, payment, operations, self-hosting,
     troubleshooting, release, and I-VSD docs agree;
-12. all phase builds/tests and required Tier 1/Tier 0 evidence/review gates pass.
+12. whole-instance import is available through API/BFF/Blazor with preview,
+    mapping, approval, history, and rollback;
+13. tenant administrators can export/import/clone only their governed
+    `TenantConfigurationPackage`;
+14. typed role-scoped legal documents migrate as safe source/drafts without
+    changing publication or acceptance history;
+15. section coverage, omissions, mappings, dependencies, fidelity, and target
+    setup are machine-readable;
+16. managed ownership/direct transfer satisfy their explicit safety contracts;
+17. all phase builds/tests and required Tier 1/Tier 0 evidence/review gates
+    pass, including the previously unsatisfied full Persistence project unless
+    explicitly waived;
+18. I-VSD is refreshed to `plan-aligned`, the triad is reconciled, and the
+    breaking release fragment validates;
+19. no Avalonia, Terminal.Gui, CLI/TUI, `.env`, or agent-skill implementation
+    has been mixed into this workstream.
 
 ## 15. Implementation Agent Contract
 
 1. Resume from `configuration-manifest-context.md`, then the first unchecked
    task in `configuration-manifest-tasks.md`, then only the referenced plan phase.
-2. Do not implement from the former tenant-manifest plan.
+2. Treat Phases 9–15 as historical completed foundation and start expanded work
+   at CM-1610; do not reopen completed tasks without new contrary evidence.
 3. Write failing invariant/contract tests before every behavioral change.
 4. Change the innermost owning layer first and migrate outward without shims.
 5. Use canonical mutation boundaries; never write settings, documents, paid
@@ -773,6 +1311,8 @@ The corrected workstream is complete only when:
    decision, failure, or handoff; update this plan only for strategy changes.
 9. Preserve unrelated shared-workspace changes and ask only on a direct conflict.
 10. Do not run implementation builds/tests during planning.
+11. Do not create Avalonia, Terminal.Gui, CLI/TUI, `.env`, or agent-skill work
+    under this task; stop and route such work to the later Setup Assistant plan.
 
 ## 16. Progress Reporting Contract
 
@@ -814,15 +1354,16 @@ copied. No new dependency is planned.
 
 ## 18. Senior CTO Verdict
 
-**Decision: Approve with the required phases above.**
+**Decision: Approve Phases 16–23 for implementation at the independently gated
+delivery boundaries in Section 6.1.**
 
-The tenant-only implementation was a strong reusable foundation but the public
-contract was too narrow for the intended platform capability. A mechanical
-rename would be rejected: it would leave instance authority, document
-ownership, bootstrap idempotency, export authorization, and transaction order
-undefined. The corrected plan resolves those blockers, uses a clean pre-v1
-breaking cutover, and preserves the security, tenant-isolation, payment,
-self-hosting, and maintainability boundaries needed for implementation.
+The implemented bootstrap/export foundation remains sound. The expanded plan
+now addresses the I-VSD gaps in whole-instance UI import, legitimate tenant
+portability, migration recovery, legal-document ownership, extensibility, and
+advanced governance without mixing in the deferred Setup Assistant clients.
 
-No unresolved user decision blocks the first task. Time estimates are
-intentionally omitted.
+The revision-bound review is recorded in
+`configuration-manifest-cto-review.md`. No unresolved user decision changes the
+first task’s scope. Legal document authority and direct-transfer controls still
+require their named legal, security, privacy, accessibility, and scholarly
+release gates. Time estimates are intentionally omitted.

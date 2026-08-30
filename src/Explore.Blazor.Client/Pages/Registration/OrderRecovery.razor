@@ -11,6 +11,7 @@
 @inject IRegistrationOrderService RegistrationOrderService
 @inject IAccessibilityAnnouncerService Announcer
 @inject IAccessibilityFocusService Focus
+@inject TimeProvider Clock
 @implements IDisposable
 
 <PageTitle>Registration order</PageTitle>
@@ -31,7 +32,7 @@
         <section class="registration-order-recovery__summary" aria-labelledby="registration-order-status">
             <MudText Id="registration-order-status" Typo="Typo.h5" HtmlTag="h2">@(_order.StatusName ?? _order.StatusCode ?? "Status unavailable")</MudText>
             <MudText Typo="Typo.body1">@RegistrationOrderRecovery.Guidance(_order.StatusCode)</MudText>
-            @if (RegistrationOrderRecovery.Countdown(_order.ExpiresAt, DateTimeOffset.UtcNow) is { } countdown)
+            @if (RegistrationOrderRecovery.Countdown(_order.ExpiresAt, Clock.GetUtcNow()) is { } countdown)
             {
                 <MudText Typo="Typo.body2" role="status">@countdown</MudText>
             }
@@ -55,7 +56,8 @@
                                  IssueCheckoutTicket="IssueCheckoutTicketAsync"
                                  Succeeded="ReloadAfterPaymentAsync"
                                  Expired="ReloadAfterPaymentAsync"
-                                 OrderExpiresAt="_order.ExpiresAt" />
+                                 OrderExpiresAt="_order.ExpiresAt"
+                                 Clock="Clock" />
         }
 
         <section class="registration-order-recovery__details" aria-labelledby="registration-order-details">

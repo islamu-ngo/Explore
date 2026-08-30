@@ -20,6 +20,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
     private readonly ISecretAuditLogger _auditLogger;
     private readonly IHttpContextAccessor? _httpContextAccessor;
     private readonly ILogger<AuditingSecretProviderDecorator> _logger;
+    private readonly TimeProvider _clock;
 
     /// <summary>
     /// Keys containing these patterns will have their values redacted in logs.
@@ -41,12 +42,14 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
         ISecretProvider inner,
         ISecretAuditLogger auditLogger,
         ILogger<AuditingSecretProviderDecorator> logger,
-        IHttpContextAccessor? httpContextAccessor = null)
+        IHttpContextAccessor? httpContextAccessor = null,
+        TimeProvider? clock = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _auditLogger = auditLogger ?? throw new ArgumentNullException(nameof(auditLogger));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _httpContextAccessor = httpContextAccessor;
+        _clock = clock ?? TimeProvider.System;
     }
 
     /// <inheritdoc />
@@ -75,7 +78,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
                 Operation: SecretOperation.Initialize,
                 ProviderType: _inner.ProviderType,
                 KeyPattern: null,
-                Timestamp: DateTimeOffset.UtcNow,
+                Timestamp: _clock.GetUtcNow(),
                 UserId: userId,
                 CorrelationId: correlationId,
                 Success: true),
@@ -92,7 +95,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
                 Operation: SecretOperation.InitializeFailed,
                 ProviderType: _inner.ProviderType,
                 KeyPattern: null,
-                Timestamp: DateTimeOffset.UtcNow,
+                Timestamp: _clock.GetUtcNow(),
                 UserId: userId,
                 CorrelationId: correlationId,
                 Success: false,
@@ -128,7 +131,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
             Operation: SecretOperation.Access,
             ProviderType: _inner.ProviderType,
             KeyPattern: redactedKey,
-            Timestamp: DateTimeOffset.UtcNow,
+            Timestamp: _clock.GetUtcNow(),
             UserId: userId,
             CorrelationId: correlationId,
             Success: result is not null),
@@ -166,7 +169,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
             Operation: SecretOperation.Access,
             ProviderType: _inner.ProviderType,
             KeyPattern: redactedKey,
-            Timestamp: DateTimeOffset.UtcNow,
+            Timestamp: _clock.GetUtcNow(),
             UserId: userId,
             CorrelationId: correlationId,
             Success: result is not null),
@@ -196,7 +199,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
             Operation: SecretOperation.Access,
             ProviderType: _inner.ProviderType,
             KeyPattern: $"{pathPrefix}:* ({result.Count} secrets)",
-            Timestamp: DateTimeOffset.UtcNow,
+            Timestamp: _clock.GetUtcNow(),
             UserId: userId,
             CorrelationId: correlationId,
             Success: true),
@@ -230,7 +233,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
                 Operation: SecretOperation.Refresh,
                 ProviderType: _inner.ProviderType,
                 KeyPattern: null,
-                Timestamp: DateTimeOffset.UtcNow,
+                Timestamp: _clock.GetUtcNow(),
                 UserId: userId,
                 CorrelationId: correlationId,
                 Success: true),
@@ -247,7 +250,7 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
                 Operation: SecretOperation.RefreshFailed,
                 ProviderType: _inner.ProviderType,
                 KeyPattern: null,
-                Timestamp: DateTimeOffset.UtcNow,
+                Timestamp: _clock.GetUtcNow(),
                 UserId: userId,
                 CorrelationId: correlationId,
                 Success: false,

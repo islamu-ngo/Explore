@@ -43,7 +43,7 @@ public static class ConfigurationManifestValidator
         };
 
     public static ConfigurationManifestValidationResult Validate(
-        ConfigurationManifestV1Alpha1 manifest)
+        ConfigurationManifestV1Alpha2 manifest)
     {
         ArgumentNullException.ThrowIfNull(manifest);
 
@@ -55,7 +55,7 @@ public static class ConfigurationManifestValidator
             return new ConfigurationManifestValidationResult(errors.AsReadOnly());
         }
 
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1? proposedInstancePolicy = null;
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2? proposedInstancePolicy = null;
         if (manifest.Spec.Instance is null)
         {
             AddContractError(errors, "$.spec.instance");
@@ -78,7 +78,7 @@ public static class ConfigurationManifestValidator
     }
 
     private static void ValidateEnvelope(
-        ConfigurationManifestV1Alpha1 manifest,
+        ConfigurationManifestV1Alpha2 manifest,
         List<ConfigurationManifestValidationError> errors)
     {
         if (!string.Equals(
@@ -114,7 +114,7 @@ public static class ConfigurationManifestValidator
         if (!IsMachineName(manifest.Metadata.Name, 100, allowDot: true))
             AddContractError(errors, "$.metadata.name");
 
-        ConfigurationManifestExportMetadataV1Alpha1? export = manifest.Metadata.Export;
+        ConfigurationManifestExportMetadataV1Alpha2? export = manifest.Metadata.Export;
         if (export is null)
             return;
 
@@ -144,9 +144,9 @@ public static class ConfigurationManifestValidator
         }
     }
 
-    private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha1?
+    private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha2?
         ValidateInstance(
-        ConfigurationManifestInstanceV1Alpha1 instance,
+        ConfigurationManifestInstanceV1Alpha2 instance,
         List<ConfigurationManifestValidationError> errors)
     {
         if (instance.Settings is null)
@@ -174,8 +174,8 @@ public static class ConfigurationManifestValidator
     }
 
     private static void ValidateTenants(
-        IReadOnlyList<ConfigurationManifestTenantV1Alpha1> tenants,
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1? proposedInstancePolicy,
+        IReadOnlyList<ConfigurationManifestTenantV1Alpha2> tenants,
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2? proposedInstancePolicy,
         List<ConfigurationManifestValidationError> errors)
     {
         if (tenants.Count is < 1 or > MaximumTenantCount)
@@ -187,7 +187,7 @@ public static class ConfigurationManifestValidator
         var slugs = new HashSet<string>(StringComparer.Ordinal);
         for (int index = 0; index < tenants.Count; index++)
         {
-            ConfigurationManifestTenantV1Alpha1? tenant = tenants[index];
+            ConfigurationManifestTenantV1Alpha2? tenant = tenants[index];
             string tenantPath = $"$.spec.tenants[{index}]";
             if (tenant is null)
             {
@@ -255,9 +255,9 @@ public static class ConfigurationManifestValidator
         }
     }
 
-    private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha1?
+    private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha2?
         ValidateInstanceDocuments(
-        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha1> documents,
+        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> documents,
         string path,
         List<ConfigurationManifestValidationError> errors)
     {
@@ -267,8 +267,8 @@ public static class ConfigurationManifestValidator
             return null;
         }
 
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1? paidEventPolicy = null;
-        foreach ((string key, ConfigurationManifestDocumentV1Alpha1 document) in documents)
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2? paidEventPolicy = null;
+        foreach ((string key, ConfigurationManifestDocumentV1Alpha2 document) in documents)
         {
             string documentPath = $"{path}.{key}";
             if (!ConfigurationManifestCatalog.TryGetInstanceDocument(
@@ -301,15 +301,15 @@ public static class ConfigurationManifestValidator
     }
 
     private static void ValidateTenantPaidEventPolicyNarrowing(
-        ConfigurationManifestTenantV1Alpha1 tenant,
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1? proposedInstancePolicy,
+        ConfigurationManifestTenantV1Alpha2 tenant,
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2? proposedInstancePolicy,
         string documentsPath,
         List<ConfigurationManifestValidationError> errors)
     {
         if (proposedInstancePolicy is null
             || !tenant.Spec.Documents.TryGetValue(
                 ConfigurationManifestDocumentKeys.TenantPaidEventPolicy,
-                out ConfigurationManifestDocumentV1Alpha1? document)
+                out ConfigurationManifestDocumentV1Alpha2? document)
             || document is null
             || !IsValidPaidEventPolicyPayload(document.Payload))
         {
@@ -321,7 +321,7 @@ public static class ConfigurationManifestValidator
             PaidEventPolicyVersion instanceCandidate =
                 ConfigurationManifestPaidEventPolicyMapper.CreateInstanceCandidate(
                     proposedInstancePolicy);
-            ConfigurationManifestPaidEventPolicyPayloadV1Alpha1 tenantPolicy =
+            ConfigurationManifestPaidEventPolicyPayloadV1Alpha2 tenantPolicy =
                 DeserializePaidEventPolicyPayload(document.Payload);
             PaidEventPolicyVersion tenantCandidate =
                 ConfigurationManifestPaidEventPolicyMapper.CreateTenantCandidate(
@@ -506,7 +506,7 @@ public static class ConfigurationManifestValidator
     }
 
     private static void ValidateDocuments(
-        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha1> documents,
+        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> documents,
         string path,
         List<ConfigurationManifestValidationError> errors)
     {
@@ -516,7 +516,7 @@ public static class ConfigurationManifestValidator
             return;
         }
 
-        foreach ((string key, ConfigurationManifestDocumentV1Alpha1 document) in documents)
+        foreach ((string key, ConfigurationManifestDocumentV1Alpha2 document) in documents)
         {
             string documentPath = $"{path}['{key}']";
             if (!ConfigurationManifestCatalog.TryGetTenantDocument(
@@ -602,7 +602,7 @@ public static class ConfigurationManifestValidator
 
         try
         {
-            ConfigurationManifestPaidEventPolicyPayloadV1Alpha1? policy =
+            ConfigurationManifestPaidEventPolicyPayloadV1Alpha2? policy =
                 DeserializePaidEventPolicyPayload(payload);
             if (policy is null
                 || policy.AllowedOrganizerKindIds is null
@@ -676,11 +676,11 @@ public static class ConfigurationManifestValidator
         }
     }
 
-    private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha1
+    private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha2
         DeserializePaidEventPolicyPayload(JsonElement payload) =>
         payload.Deserialize(
             ConfigurationManifestJsonContext.Default
-                .ConfigurationManifestPaidEventPolicyPayloadV1Alpha1)
+                .ConfigurationManifestPaidEventPolicyPayloadV1Alpha2)
         ?? throw new JsonException("The paid-event policy payload is required.");
 
     private static void ValidatePublicationPolicy(

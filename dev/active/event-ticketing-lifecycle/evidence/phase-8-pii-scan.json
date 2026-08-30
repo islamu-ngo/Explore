@@ -1,0 +1,42 @@
+{
+  "aboutme": [
+    "Records Phase 8 zero-PII recovery health, manifest, operator, and capability evidence.",
+    "Binds fixed-cardinality checks to the exact recovery and deployment source paths."
+  ],
+  "schemaVersion": 1,
+  "phase": 8,
+  "status": "pass",
+  "sentinels": {
+    "emailAddress": 0,
+    "phoneNumber": 0,
+    "personName": 0,
+    "tenantIdentifierTelemetry": 0,
+    "orderIdentifierTelemetry": 0,
+    "ticketIdentifierTelemetry": 0,
+    "providerObjectTelemetry": 0,
+    "rawCapability": 0,
+    "credentialDigest": 0,
+    "manifestKeyMaterial": 0,
+    "paymentAmount": 0,
+    "exceptionText": 0
+  },
+  "fixedCardinalityHealthKeys": [
+    "status",
+    "pending_reissues",
+    "ambiguous_effects",
+    "dead_lettered_effects",
+    "poison_effects",
+    "oldest_due_age_seconds"
+  ],
+  "scannedPaths": [
+    "src/Explore.Domain/TicketingRecovery.cs",
+    "src/Explore.Application/Contracts/Recovery/ITicketingRecoveryOperatorStore.cs",
+    "src/Explore.Persistence/Repositories/TicketingRecoveryRepository.cs",
+    "src/Explore.Infrastructure/Recovery/TicketingRecoveryOperatorService.cs",
+    "src/Explore.Infrastructure/Recovery/TicketingRecoveryHealthCheck.cs",
+    "src/Explore.Secrets/Configuration/TicketingRecoveryOperatorOptions.cs",
+    "src/Explore.Secrets/Validation/TicketingRecoveryOperatorOptionsValidator.cs",
+    "src/Explore.Infrastructure/Deployment/ticketing-capabilities.json",
+    "src/Explore.API/Controllers/TicketingDeploymentCapabilitiesController.cs"
+  ]
+}

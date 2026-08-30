@@ -12,6 +12,33 @@ ABOUTME: Captures key runtime patterns and boundaries that are not obvious from 
 - Optional combined host: `Event.Standalone`.
 - Data: PostgreSQL, SQLite, SQL Server, MariaDB, or MySQL via EF Core.
 
+## Ticketing Recovery And Deployment Capability Authority
+
+Ticketing recovery follows a durable state-machine pattern rather than
+inferring readiness from process startup. `TicketingRecoveryManifest` is an
+immutable tenant-qualified value; `TicketingRecoveryCheckpoint` is the
+serializable persisted authority. Reopening follows
+`RecoveryOnly -> Validated -> AuthorityRotated -> WorkersOpen -> SalesOpen`.
+The persistence adapter advances admission capability/credential generations,
+writes one reissue intent per ticket, and fences queue work in the same local
+transaction. Provider calls remain outside that transaction; in-flight work is
+`Unknown` until an authenticated operator resolves it against provider truth.
+
+`ITicketingRecoveryOperatorStore` is the Application port.
+`TicketingRecoveryRepository` is the EF Core adapter.
+`TicketingRecoveryOperatorService` coordinates the existing Quartz
+`ISchedulerOperations` port, while `TicketingRecoveryHealthCheck` exports only
+closed status/count/age dimensions. Typed configuration and its validator live
+in `Explore.Secrets`; key material comes only from Infisical or environment.
+
+Deployment approval is a separate read model. The embedded
+`Deployment/ticketing-capabilities.json` artifact is the single machine source
+of truth. `TicketingDeploymentCapabilityCatalog` validates its closed status
+vocabulary and refuses any non-disabled protected delayed-payout entry.
+Application maps it to immutable DTOs, the API publishes one anonymous
+read-only endpoint, and Blazor consumes only the generated API client. Browser
+code displays server-owned status and never promotes `test-only` locally.
+
 ## Hosting: Topology
 
 There are three application composition roots: `Explore.API` owns the Split API host, `Explore.Blazor` owns the Split BFF host, and `Event.Standalone` owns the optional Combined host. `Explore.AppHost` is the local Aspire orchestrator that selects and wires those hosts.

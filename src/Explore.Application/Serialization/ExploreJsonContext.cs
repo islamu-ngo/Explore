@@ -11,6 +11,7 @@ using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CategoryTypeCategories;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.DidCustodyType;
+using Explore.Application.DTOs.Deployment;
 using Explore.Application.DTOs.EmailDispatch;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAspects;
@@ -88,6 +89,8 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(PromotionManagementCommandResponseDto))]
 [JsonSerializable(typeof(PromotionRedemptionResponseDto))]
 [JsonSerializable(typeof(WebhookProviderPortalAccessCommandResponse))]
+[JsonSerializable(typeof(TicketingDeploymentCapabilityDto))]
+[JsonSerializable(typeof(TicketingDeploymentCapabilityMatrixDto))]
 [JsonSerializable(typeof(ActorDto))]
 [JsonSerializable(typeof(AiAssistantBootstrapDto))]
 [JsonSerializable(typeof(AiAssistantModelDto))]

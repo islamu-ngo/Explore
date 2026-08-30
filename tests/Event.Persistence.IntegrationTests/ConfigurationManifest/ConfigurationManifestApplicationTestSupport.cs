@@ -160,7 +160,7 @@ internal static class ConfigurationManifestApplicationTestSupport
         bool includeInstanceState,
         params string[] slugs)
     {
-        ConfigurationManifestTenantV1Alpha1[] tenants = slugs
+        ConfigurationManifestTenantV1Alpha2[] tenants = slugs
             .Select(slug =>
             {
                 var settings = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
@@ -174,12 +174,12 @@ internal static class ConfigurationManifestApplicationTestSupport
                 }
 
                 var documents =
-                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                         StringComparer.Ordinal);
                 if (includePaidPolicy)
                 {
                     documents[ConfigurationManifestDocumentKeys.TenantPaidEventPolicy] =
-                        new ConfigurationManifestDocumentV1Alpha1
+                        new ConfigurationManifestDocumentV1Alpha2
                         {
                             SchemaVersion = 1,
                             Payload = Json(
@@ -199,13 +199,13 @@ internal static class ConfigurationManifestApplicationTestSupport
                         };
                 }
 
-                return new ConfigurationManifestTenantV1Alpha1
+                return new ConfigurationManifestTenantV1Alpha2
                 {
-                    Metadata = new ConfigurationManifestTenantMetadataV1Alpha1
+                    Metadata = new ConfigurationManifestTenantMetadataV1Alpha2
                     {
                         Name = slug
                     },
-                    Spec = new ConfigurationManifestTenantSpecV1Alpha1
+                    Spec = new ConfigurationManifestTenantSpecV1Alpha2
                     {
                         DisplayName = $"{slug} community",
                         Settings = settings,
@@ -214,18 +214,18 @@ internal static class ConfigurationManifestApplicationTestSupport
                 };
             })
             .ToArray();
-        var manifest = new ConfigurationManifestV1Alpha1
+        var manifest = new ConfigurationManifestV1Alpha2
         {
             Schema = ConfigurationManifestContractMetadata.SchemaId,
             ApiVersion = ConfigurationManifestContractMetadata.ApiVersion,
             Kind = ConfigurationManifestContractMetadata.Kind,
-            Metadata = new ConfigurationManifestMetadataV1Alpha1
+            Metadata = new ConfigurationManifestMetadataV1Alpha2
             {
                 Name = "deployment"
             },
-            Spec = new ConfigurationManifestSpecV1Alpha1
+            Spec = new ConfigurationManifestSpecV1Alpha2
             {
-                Instance = new ConfigurationManifestInstanceV1Alpha1
+                Instance = new ConfigurationManifestInstanceV1Alpha2
                 {
                     Settings = includeInstanceState
                         ? new Dictionary<string, JsonElement>(
@@ -239,7 +239,7 @@ internal static class ConfigurationManifestApplicationTestSupport
                     Documents = includeInstanceState
                         ? new Dictionary<
                             string,
-                            ConfigurationManifestDocumentV1Alpha1>(
+                            ConfigurationManifestDocumentV1Alpha2>(
                             StringComparer.Ordinal)
                         {
                             [ConfigurationManifestDocumentKeys
@@ -264,7 +264,7 @@ internal static class ConfigurationManifestApplicationTestSupport
                         }
                         : new Dictionary<
                             string,
-                            ConfigurationManifestDocumentV1Alpha1>(
+                            ConfigurationManifestDocumentV1Alpha2>(
                             StringComparer.Ordinal)
                 },
                 Tenants = tenants

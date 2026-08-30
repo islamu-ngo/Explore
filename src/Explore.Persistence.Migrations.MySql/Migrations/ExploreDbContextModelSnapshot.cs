@@ -15183,6 +15183,340 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.ToTable("ie_languages", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.LegalDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountableIdentityReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("accountable_identity_reference");
+
+                    b.Property<string>("AuthorityKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)")
+                        .HasColumnName("authority_key");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CurrentVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("current_version");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int")
+                        .HasColumnName("kind");
+
+                    b.Property<int>("OwnerRole")
+                        .HasColumnType("int")
+                        .HasColumnName("owner_role");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("int")
+                        .HasColumnName("scope");
+
+                    b.Property<int>("State")
+                        .HasColumnType("int")
+                        .HasColumnName("state");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_legal_documents");
+
+                    b.HasIndex("AuthorityKey", "Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ix_legal_documents_authority_key_kind");
+
+                    b.HasIndex("TenantId", "State", "Kind")
+                        .HasDatabaseName("ix_legal_documents_tenant_id_state_kind");
+
+                    b.ToTable("ie_legal_documents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_legal_documents_current_version", "current_version > 0");
+
+                            t.HasCheckConstraint("ck_legal_documents_scope_tenant", "(scope = 1 AND tenant_id IS NULL) OR (scope = 2 AND tenant_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_legal_documents_state", "state >= 1 AND state <= 6");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentLocalizedSource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("LanguageTag")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(35)")
+                        .HasColumnName("language_tag");
+
+                    b.Property<Guid>("LegalDocumentVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("legal_document_version_id");
+
+                    b.Property<int>("LinkCount")
+                        .HasColumnType("int")
+                        .HasColumnName("link_count");
+
+                    b.Property<string>("Markdown")
+                        .IsRequired()
+                        .HasMaxLength(262144)
+                        .HasColumnType("longtext")
+                        .HasColumnName("markdown");
+
+                    b.Property<int>("PlaceholderCount")
+                        .HasColumnType("int")
+                        .HasColumnName("placeholder_count");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("summary");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Utf8ByteCount")
+                        .HasColumnType("int")
+                        .HasColumnName("utf8_byte_count");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_legal_document_localized_sources");
+
+                    b.HasIndex("LegalDocumentVersionId", "LanguageTag")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_legal_document_localized_sources_legal_document_v_d20f8079");
+
+                    b.ToTable("ie_legal_document_localized_sources", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_legal_document_localized_sources_counts", "utf8_byte_count >= 1 AND utf8_byte_count <= 262144 AND link_count >= 0 AND link_count <= 128 AND placeholder_count >= 0 AND placeholder_count <= 64");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentPublication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountableIdentityReference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("accountable_identity_reference");
+
+                    b.Property<string>("ContentDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("content_digest");
+
+                    b.Property<DateTime>("EffectiveAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("effective_at");
+
+                    b.Property<Guid>("LegalDocumentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("legal_document_id");
+
+                    b.Property<Guid>("LegalDocumentVersionId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("legal_document_version_id");
+
+                    b.Property<int>("LifecycleState")
+                        .HasColumnType("int")
+                        .HasColumnName("lifecycle_state");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<bool>("RequiresFreshAcceptance")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("requires_fresh_acceptance");
+
+                    b.Property<string>("ReviewEvidenceReference")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("review_evidence_reference");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_legal_document_publications");
+
+                    b.HasIndex("LegalDocumentVersionId")
+                        .HasDatabaseName("ix_legal_document_publications_legal_document_version_id");
+
+                    b.HasIndex("LegalDocumentId", "OccurredAt")
+                        .HasDatabaseName("ix_legal_document_publications_legal_document_id_occurred_at");
+
+                    b.HasIndex("LegalDocumentId", "Version", "LifecycleState")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_legal_document_publications_legal_document_id_ver_78e4bf63");
+
+                    b.ToTable("ie_legal_document_publications", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_legal_document_publications_state", "lifecycle_state IN (5, 6)");
+
+                            t.HasCheckConstraint("ck_legal_document_publications_version", "version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountableIdentityReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("accountable_identity_reference");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("approved_at");
+
+                    b.Property<int>("Audience")
+                        .HasColumnType("int")
+                        .HasColumnName("audience");
+
+                    b.Property<string>("ContentDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("content_digest");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("LegalDocumentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("legal_document_id");
+
+                    b.Property<DateTime?>("ProposedEffectiveAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("proposed_effective_at");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("published_at");
+
+                    b.Property<bool>("RequiresFreshAcceptance")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("requires_fresh_acceptance");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("retired_at");
+
+                    b.Property<string>("ReviewEvidenceReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("review_evidence_reference");
+
+                    b.Property<Guid?>("ReviewerId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("reviewer_id");
+
+                    b.Property<string>("SourceOrigin")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("source_origin");
+
+                    b.Property<int>("State")
+                        .HasColumnType("int")
+                        .HasColumnName("state");
+
+                    b.Property<string>("TemplateId")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("template_id");
+
+                    b.Property<string>("TemplateLicenseExpression")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("template_license_expression");
+
+                    b.Property<string>("TemplateReviewReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("template_review_reference");
+
+                    b.Property<int?>("TemplateSourceKind")
+                        .HasColumnType("int")
+                        .HasColumnName("template_source_kind");
+
+                    b.Property<string>("TemplateVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("template_version");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_legal_document_versions");
+
+                    b.HasIndex("LegalDocumentId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_legal_document_versions_legal_document_id_version");
+
+                    b.HasIndex("State", "ProposedEffectiveAt")
+                        .HasDatabaseName("ix_legal_document_versions_state_proposed_effective_at");
+
+                    b.ToTable("ie_legal_document_versions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_legal_document_versions_state", "state >= 1 AND state <= 6");
+
+                            t.HasCheckConstraint("ck_legal_document_versions_version", "version > 0");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.Location", b =>
                 {
                     b.Property<Guid>("Id")
@@ -31025,6 +31359,196 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.ToTable("ie_ticket_type_entitlements", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.TicketingRecoveryCheckpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AuthorityFloor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("authority_floor");
+
+                    b.Property<DateTime?>("AuthorityRotatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("authority_rotated_at");
+
+                    b.Property<int>("CapabilityGeneration")
+                        .HasColumnType("int")
+                        .HasColumnName("capability_generation");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CredentialGeneration")
+                        .HasColumnType("int")
+                        .HasColumnName("credential_generation");
+
+                    b.Property<long>("DatabaseCheckpoint")
+                        .HasColumnType("bigint")
+                        .HasColumnName("database_checkpoint");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("failure_code");
+
+                    b.Property<long>("IdempotencyFloor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("idempotency_floor");
+
+                    b.Property<string>("ManifestDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("manifest_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("ObjectCutoffUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("object_cutoff_utc");
+
+                    b.Property<long>("ProviderCursor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("provider_cursor");
+
+                    b.Property<Guid>("RecoveryOperationId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("recovery_operation_id");
+
+                    b.Property<string>("ReleaseRevision")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("release_revision");
+
+                    b.Property<int>("RetainedKeyVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("retained_key_version");
+
+                    b.Property<DateTime?>("SalesOpenedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("sales_opened_at");
+
+                    b.Property<string>("SchemaRevision")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("schema_revision");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime?>("ValidatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("validated_at");
+
+                    b.Property<long>("WorkerFence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("worker_fence");
+
+                    b.Property<DateTime?>("WorkersOpenedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("workers_opened_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_ticketing_recovery_checkpoints");
+
+                    b.HasIndex("TenantId", "RecoveryOperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_ticketing_recovery_checkpoints_tenant_id_recovery_c44e37e9");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_ticketing_recovery_checkpoints_tenant_id_status");
+
+                    b.ToTable("ie_ticketing_recovery_checkpoints", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.TicketingRecoveryReissueIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("RecoveryOperationId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("recovery_operation_id");
+
+                    b.Property<int>("RequiredCredentialGeneration")
+                        .HasColumnType("int")
+                        .HasColumnName("required_credential_generation");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_ticketing_recovery_reissue_intents");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_ticketing_recovery_reissue_intents_tenant_id_status");
+
+                    b.HasIndex("TenantId", "RecoveryOperationId", "AdmissionTicketId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ie_ticketing_recovery_reissue_intents_tenant_id_reco_a6bb0d1d");
+
+                    b.ToTable("ie_ticketing_recovery_reissue_intents", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.UiTheme", b =>
                 {
                     b.Property<Guid>("Id")
@@ -39102,6 +39626,51 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Explore.Domain.LegalDocumentLocalizedSource", b =>
+                {
+                    b.HasOne("Explore.Domain.LegalDocumentVersion", "LegalDocumentVersion")
+                        .WithMany("Sources")
+                        .HasForeignKey("LegalDocumentVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_legal_document_localized_sources_ie_legal_documen_6e5d3dd1");
+
+                    b.Navigation("LegalDocumentVersion");
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentPublication", b =>
+                {
+                    b.HasOne("Explore.Domain.LegalDocument", "LegalDocument")
+                        .WithMany("Publications")
+                        .HasForeignKey("LegalDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_legal_document_publications_ie_legal_documents_le_615b7a87");
+
+                    b.HasOne("Explore.Domain.LegalDocumentVersion", "LegalDocumentVersion")
+                        .WithMany()
+                        .HasForeignKey("LegalDocumentVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_legal_document_publications_ie_legal_document_ver_59dac480");
+
+                    b.Navigation("LegalDocument");
+
+                    b.Navigation("LegalDocumentVersion");
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentVersion", b =>
+                {
+                    b.HasOne("Explore.Domain.LegalDocument", "LegalDocument")
+                        .WithMany("Versions")
+                        .HasForeignKey("LegalDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_legal_document_versions_ie_legal_documents_legal__5ca7f0d4");
+
+                    b.Navigation("LegalDocument");
+                });
+
             modelBuilder.Entity("Explore.Domain.Location", b =>
                 {
                     b.HasOne("Explore.Domain.LocationAddressSource", "AddressSourceLookup")
@@ -46901,6 +47470,18 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.Navigation("ProcessingAttempts");
 
                     b.Navigation("RedriveRecords");
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocument", b =>
+                {
+                    b.Navigation("Publications");
+
+                    b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("Explore.Domain.LegalDocumentVersion", b =>
+                {
+                    b.Navigation("Sources");
                 });
 
             modelBuilder.Entity("Explore.Domain.Location", b =>

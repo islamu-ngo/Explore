@@ -64,11 +64,11 @@ public sealed class ConfigurationManifestExportQueryTests
     [Test]
     public async Task Serializer_SingleAndMultiTenantDocumentsAreTypedAndOrdinallyOrdered()
     {
-        ConfigurationManifestV1Alpha1 single = Manifest(
+        ConfigurationManifestV1Alpha2 single = Manifest(
             "Overrides",
             flattened: false,
             Tenant("primary", "Primary Community", "z.value", "tenant.branding"));
-        ConfigurationManifestV1Alpha1 multiple = Manifest(
+        ConfigurationManifestV1Alpha2 multiple = Manifest(
             "Overrides",
             flattened: false,
             Tenant("z-community", "Z Community", "z.value", "tenant.branding"),
@@ -163,9 +163,9 @@ public sealed class ConfigurationManifestExportQueryTests
         await Assert.That(resultType.GetProperty("FileName")?.PropertyType).IsEqualTo(typeof(string));
     }
 
-    private static byte[] Serialize(ConfigurationManifestV1Alpha1 manifest)
+    private static byte[] Serialize(ConfigurationManifestV1Alpha2 manifest)
     {
-        Type serializer = typeof(ConfigurationManifestV1Alpha1).Assembly.GetTypes()
+        Type serializer = typeof(ConfigurationManifestV1Alpha2).Assembly.GetTypes()
             .SingleOrDefault(type => type.Name == SerializerTypeName)
             ?? throw new InvalidOperationException(
                 $"Missing {SerializerTypeName}; the current tenant-scoped serializer is not the whole-instance contract.");
@@ -173,29 +173,29 @@ public sealed class ConfigurationManifestExportQueryTests
             "Serialize",
             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static,
             binder: null,
-            types: [typeof(ConfigurationManifestV1Alpha1)],
+            types: [typeof(ConfigurationManifestV1Alpha2)],
             modifiers: null)
-            ?? throw new InvalidOperationException("The canonical serializer must accept ConfigurationManifestV1Alpha1.");
+            ?? throw new InvalidOperationException("The canonical serializer must accept ConfigurationManifestV1Alpha2.");
         return (byte[])method.Invoke(null, [manifest])!;
     }
 
     private static Type RequireApplicationType(string fullName) =>
-        typeof(ConfigurationManifestV1Alpha1).Assembly.GetType(fullName)
+        typeof(ConfigurationManifestV1Alpha2).Assembly.GetType(fullName)
         ?? throw new InvalidOperationException($"Missing planned whole-instance production type: {fullName}.");
 
-    private static ConfigurationManifestV1Alpha1 Manifest(
+    private static ConfigurationManifestV1Alpha2 Manifest(
         string view,
         bool flattened,
-        params ConfigurationManifestTenantV1Alpha1[] tenants) =>
+        params ConfigurationManifestTenantV1Alpha2[] tenants) =>
         new()
         {
             Schema = ConfigurationManifestContractMetadata.SchemaId,
             ApiVersion = ConfigurationManifestContractMetadata.ApiVersion,
             Kind = ConfigurationManifestContractMetadata.Kind,
-            Metadata = new ConfigurationManifestMetadataV1Alpha1
+            Metadata = new ConfigurationManifestMetadataV1Alpha2
             {
                 Name = "current-instance",
-                Export = new ConfigurationManifestExportMetadataV1Alpha1
+                Export = new ConfigurationManifestExportMetadataV1Alpha2
                 {
                     View = view,
                     EffectiveValuesFlattened = flattened,
@@ -206,15 +206,15 @@ public sealed class ConfigurationManifestExportQueryTests
                         ["providerCredentials", "saleControl", "liability", "refundExecution"]
                 }
             },
-            Spec = new ConfigurationManifestSpecV1Alpha1
+            Spec = new ConfigurationManifestSpecV1Alpha2
             {
-                Instance = new ConfigurationManifestInstanceV1Alpha1
+                Instance = new ConfigurationManifestInstanceV1Alpha2
                 {
                     Settings = new SortedDictionary<string, JsonElement>(StringComparer.Ordinal)
                     {
                         ["branding.display_name"] = Json("\"ISLAMU Event\"")
                     },
-                    Documents = new SortedDictionary<string, ConfigurationManifestDocumentV1Alpha1>(StringComparer.Ordinal)
+                    Documents = new SortedDictionary<string, ConfigurationManifestDocumentV1Alpha2>(StringComparer.Ordinal)
                     {
                         [ConfigurationManifestDocumentKeys.InstancePaidEventPolicy] = PaidPolicyDocument()
                     }
@@ -223,25 +223,25 @@ public sealed class ConfigurationManifestExportQueryTests
             }
         };
 
-    private static ConfigurationManifestTenantV1Alpha1 Tenant(
+    private static ConfigurationManifestTenantV1Alpha2 Tenant(
         string slug,
         string displayName,
         string settingKey,
         string documentKey) =>
         new()
         {
-            Metadata = new ConfigurationManifestTenantMetadataV1Alpha1 { Name = slug },
-            Spec = new ConfigurationManifestTenantSpecV1Alpha1
+            Metadata = new ConfigurationManifestTenantMetadataV1Alpha2 { Name = slug },
+            Spec = new ConfigurationManifestTenantSpecV1Alpha2
             {
                 DisplayName = displayName,
                 Settings = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
                 {
                     [settingKey] = Json("true")
                 },
-                Documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(StringComparer.Ordinal)
+                Documents = new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(StringComparer.Ordinal)
                 {
                     [documentKey] = documentKey == "tenant.branding"
-                        ? new ConfigurationManifestDocumentV1Alpha1
+                        ? new ConfigurationManifestDocumentV1Alpha2
                         {
                             SchemaVersion = 1,
                             Payload = Json("""{"logoUrl":"https://cdn.example/logo.svg","displayName":"Community"}""")
@@ -251,7 +251,7 @@ public sealed class ConfigurationManifestExportQueryTests
             }
         };
 
-    private static ConfigurationManifestDocumentV1Alpha1 PaidPolicyDocument() =>
+    private static ConfigurationManifestDocumentV1Alpha2 PaidPolicyDocument() =>
         new()
         {
             SchemaVersion = 1,

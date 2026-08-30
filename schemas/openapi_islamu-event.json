@@ -11365,7 +11365,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json": {
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -11376,67 +11376,67 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json; v=0.1": {
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json": { }
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json": { }
             }
           },
           "401": {
             "description": "Unauthorized",
             "content": {
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json; v=0.1": {
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json": { }
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json": { }
             }
           },
           "403": {
             "description": "Forbidden",
             "content": {
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json; v=0.1": {
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json": { }
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json": { }
             }
           },
           "413": {
             "description": "Payload Too Large",
             "content": {
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json; v=0.1": {
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json": { }
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json": { }
             }
           },
           "429": {
             "description": "Too Many Requests",
             "content": {
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json; v=0.1": {
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json": { }
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json": { }
             }
           },
           "503": {
             "description": "Service Unavailable",
             "content": {
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json; v=0.1": {
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
-              "application/vnd.islamu.configuration-manifest.v1alpha1+json": { }
+              "application/vnd.islamu.configuration-manifest.v1alpha2+json": { }
             }
           }
         },
@@ -88221,6 +88221,53 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/deployment/ticketing-capabilities": {
+      "get": {
+        "tags": [
+          "TicketingDeploymentCapabilities"
+        ],
+        "operationId": "GetTicketingDeploymentCapabilities",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketingDeploymentCapabilityMatrixDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketingDeploymentCapabilityMatrixDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketingDeploymentCapabilityMatrixDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
     "/api/events/{eventId}/registration-orders/{orderId}/purchase-authority": {
       "post": {
         "tags": [
@@ -157414,6 +157461,63 @@
           }
         }
       },
+      "TicketingDeploymentCapabilityDto": {
+        "required": [
+          "code",
+          "status",
+          "reasonCode",
+          "requiredExternalGates"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "requiredExternalGates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TicketingDeploymentCapabilityMatrixDto": {
+        "required": [
+          "schemaVersion",
+          "revision",
+          "referenceTopology",
+          "capabilities"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "referenceTopology": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketingDeploymentCapabilityDto"
+            }
+          }
+        }
+      },
       "TicketParticipantAssignmentInputDto": {
         "required": [
           "registrationOrderLineId",
@@ -164195,6 +164299,9 @@
     },
     {
       "name": "TenantUserRoleGrant"
+    },
+    {
+      "name": "TicketingDeploymentCapabilities"
     },
     {
       "name": "TicketPurchase"

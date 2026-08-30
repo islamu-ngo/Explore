@@ -2,7 +2,7 @@
   "$comment": "ABOUTME: Governed JSON Schema for ConfigurationManifest files.",
   "$comment2": "ABOUTME: Generated deterministically; edit the catalog or generator, never this artifact.",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json",
+  "$id": "https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json",
   "title": "ISLAMU Event Configuration Manifest",
   "description": "Declarative non-secret instance and tenant bootstrap configuration.",
   "type": "object",
@@ -16,10 +16,10 @@
   ],
   "properties": {
     "$schema": {
-      "const": "https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json"
+      "const": "https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json"
     },
     "apiVersion": {
-      "const": "configuration.islamu.org/v1alpha1"
+      "const": "configuration.islamu.org/v1alpha2"
     },
     "kind": {
       "const": "ConfigurationManifest"

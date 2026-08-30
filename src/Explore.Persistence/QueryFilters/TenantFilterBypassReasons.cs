@@ -50,6 +50,9 @@ public static class TenantFilterBypassReasons
     public const string TenantCapabilityResolution =
         "Tenant capability resolution reads module flags by explicit tenant id before ambient context is guaranteed.";
 
+    public const string TicketingRecoveryTenantOperation =
+        "Ticketing recovery validates and fences one explicit tenant and recovery operation before request tenant context exists.";
+
     public const string ScannerCapabilityAuthentication =
         "Scanner capability authentication resolves a globally opaque digest before tenant authority is established.";
 

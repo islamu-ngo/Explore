@@ -121,7 +121,7 @@ public sealed class ConfigurationManifestFileReaderTests
         using var directory = new TemporaryDirectory();
         string path = directory.File("unsupported.json");
         string json = ConfigurationManifestReaderTests.ValidManifest.Replace(
-            "configuration.islamu.org/v1alpha1",
+            "configuration.islamu.org/v1alpha2",
             "configuration.islamu.org/v2",
             StringComparison.Ordinal);
         await File.WriteAllTextAsync(path, json);

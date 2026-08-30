@@ -9,7 +9,7 @@ using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 
 internal static class ConfigurationManifestExportJsonSerializer
 {
-    public static byte[] Serialize(ConfigurationManifestV1Alpha1 manifest)
+    public static byte[] Serialize(ConfigurationManifestV1Alpha2 manifest)
     {
         ArgumentNullException.ThrowIfNull(manifest);
 
@@ -26,7 +26,7 @@ internal static class ConfigurationManifestExportJsonSerializer
         return stream.ToArray();
     }
 
-    private static void WriteManifest(Utf8JsonWriter writer, ConfigurationManifestV1Alpha1 manifest)
+    private static void WriteManifest(Utf8JsonWriter writer, ConfigurationManifestV1Alpha2 manifest)
     {
         writer.WriteStartObject();
         writer.WriteString("$schema", manifest.Schema);
@@ -41,7 +41,7 @@ internal static class ConfigurationManifestExportJsonSerializer
 
     private static void WriteMetadata(
         Utf8JsonWriter writer,
-        ConfigurationManifestMetadataV1Alpha1 metadata)
+        ConfigurationManifestMetadataV1Alpha2 metadata)
     {
         writer.WriteStartObject();
         writer.WriteString("name", metadata.Name);
@@ -65,14 +65,18 @@ internal static class ConfigurationManifestExportJsonSerializer
         writer.WriteEndObject();
     }
 
-    private static void WriteSpec(Utf8JsonWriter writer, ConfigurationManifestSpecV1Alpha1 spec)
+    private static void WriteSpec(Utf8JsonWriter writer, ConfigurationManifestSpecV1Alpha2 spec)
     {
         writer.WriteStartObject();
         writer.WritePropertyName("instance");
-        WriteConfigurationScope(writer, spec.Instance.Settings, spec.Instance.Documents);
+        WriteConfigurationScope(
+            writer,
+            spec.Instance.Settings,
+            spec.Instance.Documents,
+            spec.Instance.LegalDocuments);
         writer.WritePropertyName("tenants");
         writer.WriteStartArray();
-        foreach (ConfigurationManifestTenantV1Alpha1 tenant in spec.Tenants
+        foreach (ConfigurationManifestTenantV1Alpha2 tenant in spec.Tenants
                      .OrderBy(value => value.Metadata.Name, StringComparer.Ordinal))
         {
             writer.WriteStartObject();
@@ -83,7 +87,11 @@ internal static class ConfigurationManifestExportJsonSerializer
             writer.WritePropertyName("spec");
             writer.WriteStartObject();
             writer.WriteString("displayName", tenant.Spec.DisplayName);
-            WriteConfigurationMembers(writer, tenant.Spec.Settings, tenant.Spec.Documents);
+            WriteConfigurationMembers(
+                writer,
+                tenant.Spec.Settings,
+                tenant.Spec.Documents,
+                tenant.Spec.LegalDocuments);
             writer.WriteEndObject();
             writer.WriteEndObject();
         }
@@ -95,17 +103,21 @@ internal static class ConfigurationManifestExportJsonSerializer
     private static void WriteConfigurationScope(
         Utf8JsonWriter writer,
         IReadOnlyDictionary<string, JsonElement> settings,
-        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha1> documents)
+        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> documents,
+        IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>
+            legalDocuments)
     {
         writer.WriteStartObject();
-        WriteConfigurationMembers(writer, settings, documents);
+        WriteConfigurationMembers(writer, settings, documents, legalDocuments);
         writer.WriteEndObject();
     }
 
     private static void WriteConfigurationMembers(
         Utf8JsonWriter writer,
         IReadOnlyDictionary<string, JsonElement> settings,
-        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha1> documents)
+        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> documents,
+        IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>
+            legalDocuments)
     {
         writer.WritePropertyName("settings");
         writer.WriteStartObject();
@@ -119,7 +131,7 @@ internal static class ConfigurationManifestExportJsonSerializer
 
         writer.WritePropertyName("documents");
         writer.WriteStartObject();
-        foreach ((string key, ConfigurationManifestDocumentV1Alpha1 document) in documents
+        foreach ((string key, ConfigurationManifestDocumentV1Alpha2 document) in documents
                      .OrderBy(entry => entry.Key, StringComparer.Ordinal))
         {
             writer.WritePropertyName(key);
@@ -129,6 +141,25 @@ internal static class ConfigurationManifestExportJsonSerializer
             WriteCanonicalJson(writer, document.Payload);
             writer.WriteEndObject();
         }
+        writer.WriteEndObject();
+
+        writer.WritePropertyName("legalDocuments");
+        writer.WriteStartObject();
+        foreach ((
+                     string key,
+                     ConfigurationManifestLegalDocumentV1Alpha2 legalDocument)
+                 in legalDocuments.OrderBy(
+                     entry => entry.Key,
+                     StringComparer.Ordinal))
+        {
+            writer.WritePropertyName(key);
+            JsonElement element = JsonSerializer.SerializeToElement(
+                legalDocument,
+                ConfigurationManifestJsonContext.Default
+                    .ConfigurationManifestLegalDocumentV1Alpha2);
+            WriteCanonicalJson(writer, element);
+        }
+
         writer.WriteEndObject();
     }
 

@@ -30984,6 +30984,196 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.ToTable("ie_ticket_type_entitlements", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.TicketingRecoveryCheckpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AuthorityFloor")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("authority_floor");
+
+                    b.Property<DateTime?>("AuthorityRotatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("authority_rotated_at");
+
+                    b.Property<int>("CapabilityGeneration")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("capability_generation");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CredentialGeneration")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("credential_generation");
+
+                    b.Property<long>("DatabaseCheckpoint")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("database_checkpoint");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("failure_code");
+
+                    b.Property<long>("IdempotencyFloor")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("idempotency_floor");
+
+                    b.Property<string>("ManifestDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("manifest_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("ObjectCutoffUtc")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("object_cutoff_utc");
+
+                    b.Property<long>("ProviderCursor")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("provider_cursor");
+
+                    b.Property<Guid>("RecoveryOperationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("recovery_operation_id");
+
+                    b.Property<string>("ReleaseRevision")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("release_revision");
+
+                    b.Property<int>("RetainedKeyVersion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("retained_key_version");
+
+                    b.Property<DateTime?>("SalesOpenedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sales_opened_at");
+
+                    b.Property<string>("SchemaRevision")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("schema_revision");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTime?>("ValidatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("validated_at");
+
+                    b.Property<long>("WorkerFence")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("worker_fence");
+
+                    b.Property<DateTime?>("WorkersOpenedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("workers_opened_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_ticketing_recovery_checkpoints");
+
+                    b.HasIndex("TenantId", "RecoveryOperationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ticketing_recovery_checkpoints_tenant_id_recovery_operation_id");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_ticketing_recovery_checkpoints_tenant_id_status");
+
+                    b.ToTable("ie_ticketing_recovery_checkpoints", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.TicketingRecoveryReissueIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionTicketId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("admission_ticket_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("RecoveryOperationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("recovery_operation_id");
+
+                    b.Property<int>("RequiredCredentialGeneration")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("required_credential_generation");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_ticketing_recovery_reissue_intents");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_ticketing_recovery_reissue_intents_tenant_id_status");
+
+                    b.HasIndex("TenantId", "RecoveryOperationId", "AdmissionTicketId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ticketing_recovery_reissue_intents_tenant_id_recovery_operation_id_admission_ticket_id");
+
+                    b.ToTable("ie_ticketing_recovery_reissue_intents", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.UiTheme", b =>
                 {
                     b.Property<Guid>("Id")
@@ -40295,7 +40485,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                             b1.HasKey("PaymentAttemptId")
                                 .HasName("pk_ie_payment_attempts");
 
-                            b1.ToTable("ie_payment_attempts");
+                            b1.ToTable("ie_payment_attempts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PaymentAttemptId")
@@ -40438,126 +40628,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
             modelBuilder.Entity("Explore.Domain.Policies.InstancePolicySet", b =>
                 {
-                    b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("TEXT")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId")
-                                .HasName("pk_ie_instance_policy_sets");
-
-                            b1.ToTable("ie_instance_policy_sets");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("TEXT")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("TEXT")
-                                        .HasColumnName("id");
-
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("TEXT")
-                                        .HasColumnName("domains_instance_base_domain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("domains_instance_base_domain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("TEXT")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
-                                {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("TEXT")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
-
-                                    b2.HasKey("DomainPolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("AllowTenantCustomDomains")
-                                .IsRequired();
-
-                            b1.Navigation("InstanceBaseDomain")
-                                .IsRequired();
-
-                            b1.Navigation("LockTenantCustomDomain")
-                                .IsRequired();
-
-                            b1.Navigation("LockTenantSubdomain")
-                                .IsRequired();
-                        });
-
                     b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -40566,7 +40636,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -40588,7 +40658,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -40611,7 +40681,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -40634,7 +40704,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -40657,7 +40727,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
@@ -40677,6 +40747,126 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                                 .IsRequired();
                         });
 
+                    b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_ie_instance_policy_sets");
+
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("TEXT")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("TEXT")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("TEXT")
+                                        .HasColumnName("domains_instance_base_domain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("domains_instance_base_domain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("TEXT")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("TEXT")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("AllowTenantCustomDomains")
+                                .IsRequired();
+
+                            b1.Navigation("InstanceBaseDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantCustomDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantSubdomain")
+                                .IsRequired();
+                        });
+
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -40685,7 +40875,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -40707,7 +40897,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -40730,7 +40920,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -40753,7 +40943,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -40776,7 +40966,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
@@ -40796,6 +40986,73 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                                 .IsRequired();
                         });
 
+                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("id");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("TEXT")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("modules_enable_islamic_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("modules_enable_islamic_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("TEXT")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("modules_enable_tech_module_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("INTEGER")
+                                        .HasColumnName("modules_enable_tech_module_override_mode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("EnableIslamicModule")
+                                .IsRequired();
+
+                            b1.Navigation("EnableTechModule")
+                                .IsRequired();
+                        });
+
                     b.OwnsOne("Explore.Domain.Policies.OrganizationPolicy", "Organizations", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -40804,7 +41061,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -40826,7 +41083,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -40849,7 +41106,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -40872,7 +41129,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -40895,7 +41152,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
@@ -40923,7 +41180,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -40945,7 +41202,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -40968,7 +41225,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -40991,7 +41248,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41014,7 +41271,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41037,7 +41294,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41060,7 +41317,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41083,7 +41340,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41106,7 +41363,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41129,7 +41386,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41152,7 +41409,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41175,7 +41432,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41198,7 +41455,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41221,7 +41478,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41244,7 +41501,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41267,7 +41524,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41290,7 +41547,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41313,7 +41570,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41336,7 +41593,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
@@ -41398,73 +41655,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                                 .IsRequired();
                         });
 
-                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
-                        {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("TEXT")
-                                .HasColumnName("id");
-
-                            b1.HasKey("InstancePolicySetId");
-
-                            b1.ToTable("ie_instance_policy_sets");
-
-                            b1.WithOwner()
-                                .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-
-                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("TEXT")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("modules_enable_islamic_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("modules_enable_islamic_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
-                                {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("TEXT")
-                                        .HasColumnName("id");
-
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("modules_enable_tech_module_local_value");
-
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("INTEGER")
-                                        .HasColumnName("modules_enable_tech_module_override_mode");
-
-                                    b2.HasKey("ModulePolicyInstancePolicySetId");
-
-                                    b2.ToTable("ie_instance_policy_sets");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
-                                });
-
-                            b1.Navigation("EnableIslamicModule")
-                                .IsRequired();
-
-                            b1.Navigation("EnableTechModule")
-                                .IsRequired();
-                        });
-
                     b.OwnsOne("Explore.Domain.Policies.TenantDelegationPolicy", "TenantDelegation", b1 =>
                         {
                             b1.Property<Guid>("InstancePolicySetId")
@@ -41473,7 +41663,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("InstancePolicySetId");
 
-                            b1.ToTable("ie_instance_policy_sets");
+                            b1.ToTable("ie_instance_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -41495,7 +41685,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -41518,7 +41708,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -41541,7 +41731,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -41564,7 +41754,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -41587,7 +41777,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -41610,7 +41800,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -41633,7 +41823,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.ToTable("ie_instance_policy_sets");
+                                    b2.ToTable("ie_instance_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -41694,7 +41884,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("OrganizationPolicySetId");
 
-                            b1.ToTable("ie_organization_policy_sets");
+                            b1.ToTable("ie_organization_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("OrganizationPolicySetId")
@@ -41716,7 +41906,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("ie_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -41739,7 +41929,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("ie_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -41762,7 +41952,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("ie_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -41785,7 +41975,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
-                                    b2.ToTable("ie_organization_policy_sets");
+                                    b2.ToTable("ie_organization_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -41819,7 +42009,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("ie_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -41841,7 +42031,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -41864,7 +42054,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -41887,7 +42077,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -41910,7 +42100,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -41938,7 +42128,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("ie_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -41960,7 +42150,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -41983,7 +42173,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -42006,7 +42196,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -42029,7 +42219,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -42057,7 +42247,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("ie_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -42079,7 +42269,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -42102,7 +42292,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -42125,7 +42315,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -42148,7 +42338,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -42176,7 +42366,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("TenantPolicySetId");
 
-                            b1.ToTable("ie_tenant_policy_sets");
+                            b1.ToTable("ie_tenant_policy_sets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -42198,7 +42388,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42221,7 +42411,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42244,7 +42434,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42267,7 +42457,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42290,7 +42480,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42313,7 +42503,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42336,7 +42526,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42359,7 +42549,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42382,7 +42572,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42405,7 +42595,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42428,7 +42618,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42451,7 +42641,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42474,7 +42664,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42497,7 +42687,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42520,7 +42710,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42543,7 +42733,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42566,7 +42756,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42589,7 +42779,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
-                                    b2.ToTable("ie_tenant_policy_sets");
+                                    b2.ToTable("ie_tenant_policy_sets", (string)null);
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -42824,7 +43014,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                             b1.HasKey("RefundAttemptId")
                                 .HasName("pk_ie_refund_attempts");
 
-                            b1.ToTable("ie_refund_attempts");
+                            b1.ToTable("ie_refund_attempts", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("RefundAttemptId")
@@ -43594,7 +43784,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("RegistrationOrderId");
 
-                            b1.ToTable("ie_registration_orders");
+                            b1.ToTable("ie_registration_orders", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("RegistrationOrderId")
@@ -45126,7 +45316,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UiThemeId");
 
-                            b1.ToTable("ie_ui_themes");
+                            b1.ToTable("ie_ui_themes", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemeId")
@@ -45256,7 +45446,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UiThemeId");
 
-                            b1.ToTable("ie_ui_themes");
+                            b1.ToTable("ie_ui_themes", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemeId")
@@ -45403,7 +45593,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UiThemePresetId");
 
-                            b1.ToTable("ie_ui_theme_presets");
+                            b1.ToTable("ie_ui_theme_presets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemePresetId")
@@ -45533,7 +45723,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UiThemePresetId");
 
-                            b1.ToTable("ie_ui_theme_presets");
+                            b1.ToTable("ie_ui_theme_presets", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UiThemePresetId")
@@ -45686,7 +45876,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UserAppearanceProfileId");
 
-                            b1.ToTable("ie_user_appearance_profiles");
+                            b1.ToTable("ie_user_appearance_profiles", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UserAppearanceProfileId")
@@ -45816,7 +46006,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
                             b1.HasKey("UserAppearanceProfileId");
 
-                            b1.ToTable("ie_user_appearance_profiles");
+                            b1.ToTable("ie_user_appearance_profiles", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UserAppearanceProfileId")

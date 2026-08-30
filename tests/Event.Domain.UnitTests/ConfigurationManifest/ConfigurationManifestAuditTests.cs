@@ -43,8 +43,8 @@ public sealed class ConfigurationManifestAuditTests
     {
         ConfigurationManifestOperation validated = ConfigurationManifestOperation.Create(
             ConfigurationManifestAuditMode.ValidateOnly,
-            "configuration.islamu.org/v1alpha1",
-            "TenantConfigurationList",
+            "configuration.islamu.org/v1alpha2",
+            "ConfigurationManifest",
             "production",
             new string('a', 64),
             ConfigurationManifestOperationStatus.Validated,
@@ -81,8 +81,8 @@ public sealed class ConfigurationManifestAuditTests
     {
         await Assert.That(() => ConfigurationManifestOperation.Create(
                 ConfigurationManifestAuditMode.Bootstrap,
-                "configuration.islamu.org/v1alpha1",
-                "TenantConfigurationList",
+                "configuration.islamu.org/v1alpha2",
+                "ConfigurationManifest",
                 "production",
                 new string('b', 64),
                 ConfigurationManifestOperationStatus.Failed,
@@ -98,8 +98,8 @@ public sealed class ConfigurationManifestAuditTests
 
         await Assert.That(() => ConfigurationManifestOperation.Create(
                 ConfigurationManifestAuditMode.Bootstrap,
-                "configuration.islamu.org/v1alpha1",
-                "TenantConfigurationList",
+                "configuration.islamu.org/v1alpha2",
+                "ConfigurationManifest",
                 "production",
                 new string('b', 64),
                 ConfigurationManifestOperationStatus.Failed,
@@ -168,8 +168,8 @@ public sealed class ConfigurationManifestAuditTests
         DateTime? completedAt = null) =>
         ConfigurationManifestOperation.Create(
             ConfigurationManifestAuditMode.Bootstrap,
-            "configuration.islamu.org/v1alpha1",
-            "TenantConfigurationList",
+            "configuration.islamu.org/v1alpha2",
+            "ConfigurationManifest",
             "production",
             digest ?? new string('a', 64),
             ConfigurationManifestOperationStatus.Applied,

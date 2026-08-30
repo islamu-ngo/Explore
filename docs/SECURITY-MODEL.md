@@ -916,6 +916,31 @@ The `missing_ok=true` form plus `NULLIF(..., '')` makes absent tenant context fa
 - Performance: RLS adds a predicate to every query. Indexes on `tenant_id` (already exist) mitigate this.
 - Migrations: Must run with a maintenance role that bypasses RLS intentionally.
 
+## Ticketing Recovery Trust Boundary
+
+Ticketing recovery is deployment/operator authority, never request-body,
+tenant-header, browser, scheduler, or restored-row authority. The accepted
+manifest is tenant-qualified and binds release/schema, checkpoint/object
+cutoff, retained key version, authority/provider/idempotency floors, worker
+fence, and bearer generations. A digest identifies exact replay; the HMAC key
+remains in Infisical or environment under
+`ticketing.recovery_manifest_hmac_key`.
+
+Recovery starts `RecoveryOnly`. Validation cannot open writes. Pre-restore
+recovery capabilities are cancelled, active admission credentials are revoked,
+and digest-free reissue intents commit in the same serializable local
+transaction before worker/sales reopening. In-flight provider work becomes
+`Unknown`; stale fences cannot resolve it. Operators must supply authoritative
+provider evidence before retry or dead-letter. Provider I/O never occurs inside
+the recovery transaction.
+
+Health is deliberately fixed-cardinality and PII-free. Operator actions require
+the existing authenticated instance-administration boundary and are advertised
+only by server HAL affordances when their state transition applies. HAL does
+not authorize the mutation: server policy, exact tenant/operation identity,
+state, and fence are revalidated. Direct SQL, blind replay, copied tenant
+cursors, and synthetic key/fence/idempotency facts are unsupported.
+
 ## Configuration-manifest trust boundary
 
 `ConfigurationManifest` is a startup-only instance administration input, not a

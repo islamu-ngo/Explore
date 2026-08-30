@@ -446,7 +446,7 @@ Every action is classified as one of `Public`, `Authenticated`, `Admin` via the 
 3. Ensure the action produces a stable, policy-conformant `operationId` via the `{Controller}_{Action}` convention.
 4. Declare `[ProducesResponseType]` for success + error cases.
 5. Pick an Endpoint Classification (Public / Authenticated / Admin).
-6. Run `Event.API.IntegrationTests` — `ContractInvariantsTests` and `ApiContractInventoryGeneratorTests` must both pass.
+6. Run `Event.API.IntegrationTests`, then regenerate the inventory with `Explore.ApiContractInventory`.
 7. Regenerate the NSwag client only as a discrete, reviewed step — never mixed with feature PRs.
 
 ---

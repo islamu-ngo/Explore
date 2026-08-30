@@ -194,6 +194,27 @@ Expected artifact names:
 - `container-build-*`
 - `deployment-production-evidence` / `deployment-staging-evidence`
 
+## Ticketing Recovery And Capability Status
+
+- [ ] `ticketing-capabilities.json` parses with only
+  `production-approved`, `test-only`, or `disabled` statuses.
+- [ ] Every `production-approved` ticketing capability has retained provider,
+  legal/tax, scholarly, accessibility, privacy, security, operator-readiness,
+  and restore/takeover evidence required by its matrix entry.
+- [ ] Protected delayed payout remains `disabled` and has no route, HAL
+  relation, scheduler job, configuration key, secret, client method, or UI
+  action.
+- [ ] Recovery configuration is disabled by default; enabled deployments bind
+  exact release/schema, key, authority, provider, idempotency, and worker-fence
+  floors.
+- [ ] A production-like timed restore proves declared RPO/RTO, cancellation of
+  pre-restore bearer authority, one reissue per ticket, unknown-provider
+  reconciliation, multi-replica Quartz takeover, workers-first reopening, and
+  sales-last reopening.
+- [ ] Recovery health exports only status, bounded counts, and age. No tenant,
+  actor, event, ticket, order, amount, provider object, capability, digest,
+  secret, or exception text is present.
+
 ## Documentation Impact
 
 Choose exactly one docs impact outcome for the release:

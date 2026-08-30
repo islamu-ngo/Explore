@@ -16,6 +16,7 @@ public partial class EventCard : ComponentBase
     private const int ModeratedStatusId = 6;
 
     [Inject] private NavigationManager Navigation { get; set; } = null!;
+    [Inject] private TimeProvider Clock { get; set; } = TimeProvider.System;
 
     /// <summary>The event data to display.</summary>
     [Parameter, EditorRequired] public EventListDto Event { get; set; } = null!;
@@ -180,14 +181,14 @@ public partial class EventCard : ComponentBase
         _ => null
     };
 
-    private static string FormatEventDate(DateTimeOffset? value)
+    private string FormatEventDate(DateTimeOffset? value)
     {
         if (value is null)
             return "TBD";
 
         var date = value.Value;
         var month = date.ToString("MMM", CultureInfo.InvariantCulture).ToUpperInvariant();
-        var year = date.Year == DateTimeOffset.Now.Year ? string.Empty : $", {date.Year}";
+        var year = date.Year == Clock.GetLocalNow().Year ? string.Empty : $", {date.Year}";
         return $"{date.ToString("ddd", CultureInfo.InvariantCulture)}, {month} {date.Day}{year}, {date.ToString("h:mm tt", CultureInfo.InvariantCulture)}";
     }
 

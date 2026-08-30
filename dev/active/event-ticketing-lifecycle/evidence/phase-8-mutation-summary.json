@@ -1,0 +1,26 @@
+{
+  "aboutme": [
+    "Summarizes the scoped Phase 8 ticketing recovery Domain mutation report.",
+    "Binds exact status counts, score, source report, and SHA-256."
+  ],
+  "schema_version": 1,
+  "phase": 8,
+  "project": "Explore.Domain",
+  "test_project": "tests/Event.Domain.Recovery.MutationTests/Event.Domain.Recovery.MutationTests.csproj",
+  "source_report": "dev/active/event-ticketing-lifecycle/evidence/phase-8/domain/reports/mutation-report.json",
+  "source_report_sha256": "fc64644d8183fb72f6f854841a5e43f341de03ef275cc7287aa79e9efc2ff826",
+  "status_counts": {
+    "CompileError": 438,
+    "Ignored": 13918,
+    "Killed": 121,
+    "Survived": 10
+  },
+  "scoreable_mutants": 131,
+  "detected_mutants": 121,
+  "mutation_score": 92.36641221374046,
+  "threshold": {
+    "comparison": "greater_than",
+    "score": 85,
+    "result": "pass"
+  }
+}

@@ -1368,7 +1368,7 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 
 1. Building `Explore.API/Explore.API.csproj` in `Release` runs ASP.NET Core build-time OpenAPI generation and refreshes the checked-in `schemas/openapi_islamu-event.json` contract.
 2. Contract invariant and parity tests assert the runtime `/openapi/islamu-event.json` shape without writing generated files.
-3. `ApiContractInventoryGeneratorTests` writes the committed endpoint inventory to [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md).
+3. `Explore.ApiContractInventory` writes the committed endpoint inventory to [API_CONTRACT_INVENTORY.md](API_CONTRACT_INVENTORY.md).
 4. HAL schema transformers shape OpenAPI schemas so generated clients preserve HAL extension data.
 5. `Explore.Blazor.Client/Explore.Blazor.Client.csproj` uses `schemas/openapi_islamu-event.json` as NSwag input and regenerates `Explore.Blazor.Client/Clients/EventApiClient.g.cs` before `CoreCompile`.
 6. DTO changes should follow API-first regeneration workflow (see `docs/CONTRIBUTING.md`).
@@ -1379,7 +1379,7 @@ For contract changes, regenerate from server DTOs in this order:
 
 ```bash
 dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal -maxcpucount:1
-dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress
+dotnet run --project eng/tools/Explore.ApiContractInventory/Explore.ApiContractInventory.csproj --configuration Release
 dotnet msbuild src/Explore.Blazor.Client/Explore.Blazor.Client.csproj /t:GenerateApiClient /p:Configuration=Release /p:Restore=false /m:1 /v:minimal
 ```
 

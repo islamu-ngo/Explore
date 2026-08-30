@@ -23,7 +23,7 @@ public sealed class ConfigurationManifestCompilerTests
     [Test]
     public async Task Compile_SortsTenantsAndSplitsGuardedSettings()
     {
-        ConfigurationManifestV1Alpha1 manifest = CreateManifest(
+        ConfigurationManifestV1Alpha2 manifest = CreateManifest(
             CreateTenant(
                 "z-community",
                 new Dictionary<string, JsonElement>(StringComparer.Ordinal)
@@ -65,10 +65,10 @@ public sealed class ConfigurationManifestCompilerTests
     [Test]
     public async Task Compile_ComposesBaselineAndExplicitBrandingOverlay()
     {
-        ConfigurationManifestV1Alpha1 manifest = CreateManifest(
+        ConfigurationManifestV1Alpha2 manifest = CreateManifest(
             CreateTenant(
                 "primary",
-                documents: new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+                documents: new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                     StringComparer.Ordinal)
                 {
                     [SettingsDocumentKeys.Tenant.Branding] = new()
@@ -106,7 +106,7 @@ public sealed class ConfigurationManifestCompilerTests
     [Test]
     public async Task Compile_PreservesCanonicalJsonAndStableProvenance()
     {
-        ConfigurationManifestV1Alpha1 manifest = CreateManifest(
+        ConfigurationManifestV1Alpha2 manifest = CreateManifest(
             CreateTenant(
                 "primary",
                 new Dictionary<string, JsonElement>(StringComparer.Ordinal)
@@ -137,7 +137,7 @@ public sealed class ConfigurationManifestCompilerTests
         await Assert.That(() => ConfigurationManifestCompiler.Compile(off, OperationId, OccurredAt))
             .Throws<ConfigurationManifestCompilationException>();
 
-        ConfigurationManifestV1Alpha1 invalid = CreateManifest(
+        ConfigurationManifestV1Alpha2 invalid = CreateManifest(
             CreateTenant(
                 "primary",
                 new Dictionary<string, JsonElement>(StringComparer.Ordinal)
@@ -159,16 +159,16 @@ public sealed class ConfigurationManifestCompilerTests
     [Test]
     public async Task Compile_ProposedInstancePolicyCreatesUnboundInternalAuthority()
     {
-        ConfigurationManifestDocumentV1Alpha1 instancePolicy =
+        ConfigurationManifestDocumentV1Alpha2 instancePolicy =
             PaidPolicyDocument(isPaymentsEnabled: true);
-        ConfigurationManifestDocumentV1Alpha1 tenantPolicy =
+        ConfigurationManifestDocumentV1Alpha2 tenantPolicy =
             PaidPolicyDocument(isPaymentsEnabled: false);
-        ConfigurationManifestV1Alpha1 manifest = CreateManifest(
-            new ConfigurationManifestInstanceV1Alpha1
+        ConfigurationManifestV1Alpha2 manifest = CreateManifest(
+            new ConfigurationManifestInstanceV1Alpha2
             {
                 Settings = new Dictionary<string, JsonElement>(StringComparer.Ordinal),
                 Documents =
-                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                         StringComparer.Ordinal)
                     {
                         [ConfigurationManifestDocumentKeys.InstancePaidEventPolicy] =
@@ -178,7 +178,7 @@ public sealed class ConfigurationManifestCompilerTests
             CreateTenant(
                 "primary",
                 documents:
-                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                         StringComparer.Ordinal)
                     {
                         [ConfigurationManifestDocumentKeys.TenantPaidEventPolicy] =
@@ -205,8 +205,8 @@ public sealed class ConfigurationManifestCompilerTests
     public async Task Compile_ApprovedInstanceSettingsProduceTypedPlanAndDeterministicLocks()
     {
         const string instanceKey = "appearance.default_theme_mode";
-        ConfigurationManifestV1Alpha1 manifest = CreateManifest(
-            new ConfigurationManifestInstanceV1Alpha1
+        ConfigurationManifestV1Alpha2 manifest = CreateManifest(
+            new ConfigurationManifestInstanceV1Alpha2
             {
                 Settings = new Dictionary<string, JsonElement>(
                     StringComparer.Ordinal)
@@ -215,7 +215,7 @@ public sealed class ConfigurationManifestCompilerTests
                         ConfigurationManifestTestData.Json("\"system\"")
                 },
                 Documents =
-                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                         StringComparer.Ordinal)
             },
             CreateTenant("primary"));
@@ -275,13 +275,13 @@ public sealed class ConfigurationManifestCompilerTests
         ConfigurationManifestApplyPlan first =
             ConfigurationManifestCompiler.Compile(
                 ReadResult(CreateManifest(
-                    new ConfigurationManifestInstanceV1Alpha1
+                    new ConfigurationManifestInstanceV1Alpha2
                     {
                         Settings = firstSettings,
                         Documents =
                             new Dictionary<
                                 string,
-                                ConfigurationManifestDocumentV1Alpha1>(
+                                ConfigurationManifestDocumentV1Alpha2>(
                                 StringComparer.Ordinal)
                     },
                     CreateTenant("primary"))),
@@ -290,13 +290,13 @@ public sealed class ConfigurationManifestCompilerTests
         ConfigurationManifestApplyPlan reordered =
             ConfigurationManifestCompiler.Compile(
                 ReadResult(CreateManifest(
-                    new ConfigurationManifestInstanceV1Alpha1
+                    new ConfigurationManifestInstanceV1Alpha2
                     {
                         Settings = reorderedSettings,
                         Documents =
                             new Dictionary<
                                 string,
-                                ConfigurationManifestDocumentV1Alpha1>(
+                                ConfigurationManifestDocumentV1Alpha2>(
                                 StringComparer.Ordinal)
                     },
                     CreateTenant("secondary"))),
@@ -307,13 +307,13 @@ public sealed class ConfigurationManifestCompilerTests
         ConfigurationManifestApplyPlan changed =
             ConfigurationManifestCompiler.Compile(
                 ReadResult(CreateManifest(
-                    new ConfigurationManifestInstanceV1Alpha1
+                    new ConfigurationManifestInstanceV1Alpha2
                     {
                         Settings = reorderedSettings,
                         Documents =
                             new Dictionary<
                                 string,
-                                ConfigurationManifestDocumentV1Alpha1>(
+                                ConfigurationManifestDocumentV1Alpha2>(
                                 StringComparer.Ordinal)
                     },
                     CreateTenant("secondary"))),
@@ -329,39 +329,39 @@ public sealed class ConfigurationManifestCompilerTests
     }
 
     private static ConfigurationManifestReadResult ReadResult(
-        ConfigurationManifestV1Alpha1 manifest,
+        ConfigurationManifestV1Alpha2 manifest,
         ConfigurationManifestMode mode = ConfigurationManifestMode.Bootstrap) =>
         new(manifest, mode, new string('a', 64), ByteLength: 512);
 
-    private static ConfigurationManifestV1Alpha1 CreateManifest(
-        params ConfigurationManifestTenantV1Alpha1[] tenants) =>
+    private static ConfigurationManifestV1Alpha2 CreateManifest(
+        params ConfigurationManifestTenantV1Alpha2[] tenants) =>
         CreateManifest(
-            new ConfigurationManifestInstanceV1Alpha1
+            new ConfigurationManifestInstanceV1Alpha2
             {
                 Settings = new Dictionary<string, JsonElement>(StringComparer.Ordinal),
                 Documents =
-                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+                    new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                         StringComparer.Ordinal)
             },
             tenants);
 
-    private static ConfigurationManifestV1Alpha1 CreateManifest(
-        ConfigurationManifestInstanceV1Alpha1 instance,
-        params ConfigurationManifestTenantV1Alpha1[] tenants) =>
+    private static ConfigurationManifestV1Alpha2 CreateManifest(
+        ConfigurationManifestInstanceV1Alpha2 instance,
+        params ConfigurationManifestTenantV1Alpha2[] tenants) =>
         new()
         {
             Schema = ConfigurationManifestContractMetadata.SchemaId,
             ApiVersion = ConfigurationManifestContractMetadata.ApiVersion,
             Kind = ConfigurationManifestContractMetadata.Kind,
-            Metadata = new ConfigurationManifestMetadataV1Alpha1 { Name = "primary-deployment" },
-            Spec = new ConfigurationManifestSpecV1Alpha1
+            Metadata = new ConfigurationManifestMetadataV1Alpha2 { Name = "primary-deployment" },
+            Spec = new ConfigurationManifestSpecV1Alpha2
             {
                 Instance = instance,
                 Tenants = tenants
             }
         };
 
-    private static ConfigurationManifestDocumentV1Alpha1 PaidPolicyDocument(
+    private static ConfigurationManifestDocumentV1Alpha2 PaidPolicyDocument(
         bool isPaymentsEnabled) =>
         new()
         {
@@ -382,19 +382,19 @@ public sealed class ConfigurationManifestCompilerTests
                 """)
         };
 
-    private static ConfigurationManifestTenantV1Alpha1 CreateTenant(
+    private static ConfigurationManifestTenantV1Alpha2 CreateTenant(
         string slug,
         IReadOnlyDictionary<string, JsonElement>? settings = null,
-        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha1>? documents = null) =>
+        IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2>? documents = null) =>
         new()
         {
-            Metadata = new ConfigurationManifestTenantMetadataV1Alpha1 { Name = slug },
-            Spec = new ConfigurationManifestTenantSpecV1Alpha1
+            Metadata = new ConfigurationManifestTenantMetadataV1Alpha2 { Name = slug },
+            Spec = new ConfigurationManifestTenantSpecV1Alpha2
             {
                 DisplayName = "Primary Community",
                 Settings = settings ?? new Dictionary<string, JsonElement>(StringComparer.Ordinal),
                 Documents = documents
-                    ?? new Dictionary<string, ConfigurationManifestDocumentV1Alpha1>(
+                    ?? new Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(
                         StringComparer.Ordinal)
             }
         };

@@ -11,7 +11,7 @@ using Explore.Domain.Enums;
 public static class ConfigurationManifestPaidEventPolicyMapper
 {
     public static PaidEventPolicyVersion CreateInstanceCandidate(
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1 payload)
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2 payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
         PaidEventPolicyVersion baseline = PaidEventPolicyVersion.CreateDefaultInstance();
@@ -36,7 +36,7 @@ public static class ConfigurationManifestPaidEventPolicyMapper
 
     public static PaidEventPolicyVersion CreateTenantCandidate(
         Guid tenantId,
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1 payload)
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2 payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
         return PaidEventPolicyVersion.CreateTenant(
@@ -60,7 +60,7 @@ public static class ConfigurationManifestPaidEventPolicyMapper
     }
 
     public static RevisePaidEventPolicyDto ToRevisionDto(
-        ConfigurationManifestPaidEventPolicyPayloadV1Alpha1 payload)
+        ConfigurationManifestPaidEventPolicyPayloadV1Alpha2 payload)
     {
         ArgumentNullException.ThrowIfNull(payload);
         return new RevisePaidEventPolicyDto
@@ -90,11 +90,11 @@ public static class ConfigurationManifestPaidEventPolicyMapper
         };
     }
 
-    public static ConfigurationManifestPaidEventPolicyPayloadV1Alpha1 ToManifestPayload(
+    public static ConfigurationManifestPaidEventPolicyPayloadV1Alpha2 ToManifestPayload(
         PaidEventPolicyVersion policy)
     {
         ArgumentNullException.ThrowIfNull(policy);
-        return new ConfigurationManifestPaidEventPolicyPayloadV1Alpha1
+        return new ConfigurationManifestPaidEventPolicyPayloadV1Alpha2
         {
             IsPaymentsEnabled = policy.IsPaymentsEnabled,
             AllowedOrganizerKindIds = policy.AllowedOrganizerKinds
@@ -108,7 +108,7 @@ public static class ConfigurationManifestPaidEventPolicyMapper
                 .ToArray(),
             CurrencyRiskLimits = policy.CurrencyRiskLimits
                 .Select(limit =>
-                    new ConfigurationManifestPaidEventPolicyCurrencyRiskLimitV1Alpha1
+                    new ConfigurationManifestPaidEventPolicyCurrencyRiskLimitV1Alpha2
                     {
                         CurrencyCode = limit.CurrencyCode,
                         PerEventSalesCeilingMinor = limit.PerEventSalesCeilingMinor,

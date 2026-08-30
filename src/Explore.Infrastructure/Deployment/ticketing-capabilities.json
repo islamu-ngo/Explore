@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "revision": "event-ticketing-lifecycle-2026-08-29",
+  "referenceTopology": "split-postgresql-quartz-cluster",
+  "capabilities": [
+    {
+      "code": "purchase-governance",
+      "status": "test-only",
+      "reasonCode": "external_launch_gates_open",
+      "requiredExternalGates": ["provider", "legal-tax", "scholarly", "accessibility", "privacy", "security", "operator-readiness", "restore-takeover"]
+    },
+    {
+      "code": "participant-readiness",
+      "status": "test-only",
+      "reasonCode": "external_launch_gates_open",
+      "requiredExternalGates": ["accessibility", "privacy", "security", "operator-readiness", "restore-takeover"]
+    },
+    {
+      "code": "credential-transfer",
+      "status": "test-only",
+      "reasonCode": "external_launch_gates_open",
+      "requiredExternalGates": ["scholarly", "accessibility", "privacy", "security", "operator-readiness", "restore-takeover"]
+    },
+    {
+      "code": "fair-return-waitlist",
+      "status": "test-only",
+      "reasonCode": "external_launch_gates_open",
+      "requiredExternalGates": ["provider", "legal-tax", "scholarly", "accessibility", "privacy", "security", "operator-readiness", "restore-takeover"]
+    },
+    {
+      "code": "event-add-ons",
+      "status": "test-only",
+      "reasonCode": "external_launch_gates_open",
+      "requiredExternalGates": ["provider", "legal-tax", "scholarly", "accessibility", "privacy", "security", "operator-readiness", "restore-takeover"]
+    },
+    {
+      "code": "ticketing-recovery",
+      "status": "test-only",
+      "reasonCode": "production_restore_evidence_open",
+      "requiredExternalGates": ["security", "operator-readiness", "restore-takeover"]
+    },
+    {
+      "code": "protected-delayed-payout",
+      "status": "disabled",
+      "reasonCode": "separate_workstream_required",
+      "requiredExternalGates": ["separate-ivsd", "separate-adr", "legal-tax", "scholarly", "provider", "security"]
+    }
+  ]
+}

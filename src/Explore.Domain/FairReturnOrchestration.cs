@@ -11,6 +11,7 @@ public enum FairReturnOrchestrationEffectStatus
     Processing = 2,
     Completed = 3,
     DeadLettered = 4,
+    Unknown = 5,
 }
 
 public sealed class WaitlistPaymentIntent :
@@ -328,6 +329,67 @@ public sealed class FairReturnOrchestrationEffect :
         ConcurrencyStamp = Guid.CreateVersion7();
         return (FairReturnOrchestrationEffectStatus)
             StatusId;
+    }
+
+    public bool EnterRecovery(
+        long recoveryFence,
+        DateTime occurredAtUtc)
+    {
+        DateTime occurredAt =
+            FairReturnSupplyPolicy.RequireUtc(
+                occurredAtUtc,
+                nameof(occurredAtUtc));
+        if (StatusId is
+                (int)FairReturnOrchestrationEffectStatus.Completed or
+                (int)FairReturnOrchestrationEffectStatus.DeadLettered ||
+            recoveryFence <= ProcessingFence)
+        {
+            return false;
+        }
+
+        if (StatusId ==
+            (int)FairReturnOrchestrationEffectStatus.Processing)
+        {
+            StatusId =
+                (int)FairReturnOrchestrationEffectStatus.Unknown;
+            LastFailureCode =
+                "RECOVERY_PROVIDER_AMBIGUOUS";
+        }
+
+        ProcessingFence = recoveryFence;
+        ClearLease();
+        UpdatedAt = occurredAt;
+        ConcurrencyStamp = Guid.CreateVersion7();
+        return true;
+    }
+
+    public bool ResolveRecoveryUnknown(
+        long expectedFence,
+        bool retry,
+        DateTime occurredAtUtc)
+    {
+        DateTime occurredAt =
+            FairReturnSupplyPolicy.RequireUtc(
+                occurredAtUtc,
+                nameof(occurredAtUtc));
+        if (StatusId !=
+                (int)FairReturnOrchestrationEffectStatus.Unknown ||
+            ProcessingFence != expectedFence)
+        {
+            return false;
+        }
+
+        StatusId = retry
+            ? (int)FairReturnOrchestrationEffectStatus.Pending
+            : (int)FairReturnOrchestrationEffectStatus.DeadLettered;
+        NextAttemptAt = occurredAt;
+        LastFailureCode = retry
+            ? null
+            : "RECOVERY_OPERATOR_DEAD_LETTER";
+        DeadLetteredAt = retry ? null : occurredAt;
+        UpdatedAt = occurredAt;
+        ConcurrencyStamp = Guid.CreateVersion7();
+        return true;
     }
 
     private bool Owns(long processingFence) =>

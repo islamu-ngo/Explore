@@ -8,18 +8,19 @@ tool:
   version: 4.16.0
   license: Apache-2.0
 test_runner: mtp
-discovered_tests: 12647
+discovered_tests: 12
 command: >-
-  dotnet stryker --project src/Explore.Domain/Explore.Domain.csproj
-  --test-project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj
+  cd src/Explore.Domain && dotnet stryker
+  --config-file ../../tests/Event.Domain.AddOns.MutationTests/stryker-config.json
+  --test-project ../../tests/Event.Domain.AddOns.MutationTests/Event.Domain.AddOns.MutationTests.csproj
   --break-at 86 --reporter json
-  --output dev/active/event-ticketing-lifecycle/evidence/phase-7
+  --output ../../dev/active/event-ticketing-lifecycle/evidence/phase-7/domain
 threshold:
   comparison: greater_than
   score: 85
 domain:
   project: src/Explore.Domain/Explore.Domain.csproj
-  test_project: tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj
+  test_project: tests/Event.Domain.AddOns.MutationTests/Event.Domain.AddOns.MutationTests.csproj
   source_focus:
     - src/Explore.Domain/EventAddOnCatalogVersion.cs
     - src/Explore.Domain/EventAddOnCatalogItem.cs
@@ -29,7 +30,13 @@ domain:
     - src/Explore.Domain/EventAddOnRefundAllocation.cs
     - src/Explore.Domain/EventAddOnResults.cs
     - src/Explore.Domain/RegistrationOrder.cs
-  report: dev/active/event-ticketing-lifecycle/evidence/phase-7/reports/mutation-report.json
+  report: dev/active/event-ticketing-lifecycle/evidence/phase-7/domain/reports/mutation-report.json
+  ignored_mutation_types:
+    - string
+  ignored_mutation_rationale: >-
+    Error and disclosure prose is not a machine-consumed contract and repository
+    test discipline forbids pinning prose; behavioral string validation remains
+    covered without asserting exception wording.
 test_integrity:
   skipped_tests: 0
   copied_tests: 0

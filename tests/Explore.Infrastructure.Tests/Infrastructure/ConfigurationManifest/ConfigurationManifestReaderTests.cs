@@ -14,8 +14,8 @@ public sealed class ConfigurationManifestReaderTests
     internal const string ValidManifest =
         """
         {
-          "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json",
-          "apiVersion": "configuration.islamu.org/v1alpha1",
+          "$schema": "https://schemas.islamu.org/event/configuration-manifest/v1alpha2/schema.json",
+          "apiVersion": "configuration.islamu.org/v1alpha2",
           "kind": "ConfigurationManifest",
           "metadata": { "name": "primary-deployment" },
           "spec": {

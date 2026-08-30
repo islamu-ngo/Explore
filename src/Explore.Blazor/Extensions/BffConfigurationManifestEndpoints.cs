@@ -12,7 +12,7 @@ namespace Explore.Blazor.Extensions;
 public static class BffConfigurationManifestEndpoints
 {
     private const string MediaType =
-        "application/vnd.islamu.configuration-manifest.v1alpha1+json";
+        "application/vnd.islamu.configuration-manifest.v1alpha2+json";
     private const string OverridesFileName = "configuration-manifest-overrides.json";
     private const string PortableFileName = "configuration-manifest-portable.json";
     private const int MaximumBytes = 4 * 1024 * 1024;

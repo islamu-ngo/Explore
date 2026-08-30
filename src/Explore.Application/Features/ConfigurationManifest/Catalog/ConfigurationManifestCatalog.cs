@@ -217,7 +217,7 @@ public static class ConfigurationManifestCatalog
                 ConfigurationManifestDocumentKeys.TenantPaidEventPolicy,
                 SchemaVersion: 1,
                 DefaultsVersion: null,
-                typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha1),
+                typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha2),
                 ConfigurationManifestDocumentStorage.PaidEventPolicy)
         ];
 
@@ -236,7 +236,7 @@ public static class ConfigurationManifestCatalog
                 ConfigurationManifestDocumentKeys.InstancePaidEventPolicy,
                 SchemaVersion: 1,
                 DefaultsVersion: null,
-                typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha1),
+                typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha2),
                 ConfigurationManifestDocumentStorage.PaidEventPolicy)
         ];
 

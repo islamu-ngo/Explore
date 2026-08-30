@@ -1,0 +1,99 @@
+@* ABOUTME: Displays the server-owned ticketing deployment capability matrix as read-only status. *@
+@* ABOUTME: Never derives approval locally and offers no mutation or protected payout action. *@
+@page "/status/ticketing-capabilities"
+@rendermode InteractiveAuto
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services
+@inject ITicketingDeploymentCapabilityService Capabilities
+
+<PageTitle>Ticketing capability status</PageTitle>
+
+<main class="ticketing-capabilities"
+      aria-labelledby="ticketing-capabilities-title"
+      aria-busy="@_loading">
+    <header class="ticketing-capabilities__header">
+        <h1 id="ticketing-capabilities-title">Ticketing capability status</h1>
+        @if (_matrix is not null)
+        {
+            <p>
+                Revision <code>@_matrix.Revision</code>;
+                topology <code>@_matrix.ReferenceTopology</code>.
+            </p>
+        }
+    </header>
+
+    <div role="status"
+         aria-live="polite"
+         class="ticketing-capabilities__status">
+        @if (_loading)
+        {
+            <span>Loading ticketing capability status.</span>
+        }
+        else if (_failed)
+        {
+            <span>Ticketing capability status is unavailable.</span>
+        }
+    </div>
+
+    @if (_matrix is not null)
+    {
+        <ul class="ticketing-capabilities__list">
+            @foreach (TicketingDeploymentCapabilityDto capability
+                in _matrix.Capabilities.OrderBy(
+                    item => item.Code,
+                    StringComparer.Ordinal))
+            {
+                <li class="ticketing-capabilities__item">
+                    <div>
+                        <h2>@capability.Code</h2>
+                        <code>@capability.ReasonCode</code>
+                    </div>
+                    <strong class="@StatusClass(capability.Status)">
+                        @capability.Status
+                    </strong>
+                    @if (capability.RequiredExternalGates.Count > 0)
+                    {
+                        <dl class="ticketing-capabilities__gates">
+                            <dt>Required external gates</dt>
+                            <dd>@string.Join(", ", capability.RequiredExternalGates)</dd>
+                        </dl>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</main>
+
+@code {
+    private TicketingDeploymentCapabilityMatrixDto? _matrix;
+    private bool _loading = true;
+    private bool _failed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _matrix = await Capabilities.GetAsync(
+                CancellationToken.None);
+        }
+        catch (ApiException)
+        {
+            _failed = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string StatusClass(string status) =>
+        status switch
+        {
+            "production-approved" =>
+                "ticketing-capabilities__badge ticketing-capabilities__badge--approved",
+            "test-only" =>
+                "ticketing-capabilities__badge ticketing-capabilities__badge--test",
+            _ =>
+                "ticketing-capabilities__badge ticketing-capabilities__badge--disabled",
+        };
+}

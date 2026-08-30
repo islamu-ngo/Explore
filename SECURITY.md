@@ -52,6 +52,26 @@ Durable operation keys are tenant-qualified and fingerprint the server-resolved 
 - A capability travels only in `X-Ticket-Transfer-Capability`. It never enters a URL, log, trace, metric, ProblemDetails body, HAL link, or persisted plaintext field. Claim capability and replacement credential plaintext are returned once and generated diagnostic records redact all members.
 - Browser writes require cookie authorization, antiforgery before partitioned rate limiting, and independent API authorization. Transfer controls render only when the matching server HAL relation is present.
 
+## Ticketing Restore And Operator-Control Invariants
+
+- A restored database never reopens ticket writes by itself. Runtime begins in
+  recovery-only mode and validates one tenant-qualified consistency manifest.
+- Release/schema revision, retained key inventory, authority floor, provider
+  cursor, durable idempotency floor, and worker fence all fail closed when
+  absent, stale, mixed, or cross-tenant.
+- Pre-restore transfer, waitlist, and recovery capabilities are cancelled.
+  Active admission credentials are revoked and replaced through one durable,
+  digest-free reissue intent per ticket before reopening.
+- In-flight provider work becomes `Unknown`; stale workers lose through the
+  advanced fence. Retry/dead-letter requires authenticated operator action and
+  authoritative provider evidence.
+- Recovery HMAC material comes only from Infisical or environment. Manifests,
+  health, logs, metrics, traces, ProblemDetails, and support output never expose
+  key material, bearer values, digests, provider objects, payment amounts, or
+  tenant/user identifiers.
+- Workers reopen before sales and only at the exact rotated fence. Sales remain
+  closed while credential reissue or provider ambiguity is unresolved.
+
 ## Our Commitment
 
 At ISLAMU Event, we are committed to maintaining transparent and collaborative communication throughout the vulnerability resolution process. Here's what you can expect from us:

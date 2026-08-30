@@ -1,5 +1,5 @@
-// ABOUTME: Specifies the breaking v1alpha1 ConfigurationManifest schema and tool identity.
-// ABOUTME: Rejects coexistence with tenant-only contract, schema, and generator artifacts.
+// ABOUTME: Specifies the breaking v1alpha2 manifest and tenant-package schema identities.
+// ABOUTME: Rejects coexistence with v1alpha1 contracts, schemas, or generator routing.
 
 namespace Event.Architecture.Tests;
 
@@ -14,7 +14,7 @@ public sealed class ConfigurationManifestSchemaArtifactTests
             "Features",
             "ConfigurationManifest",
             "Contracts",
-            "ConfigurationManifestV1Alpha1.cs");
+            "ConfigurationManifestV1Alpha2.cs");
         string oldContract = ContextSystemHelpers.RepoPath(
             "src",
             "Explore.Application",
@@ -23,6 +23,12 @@ public sealed class ConfigurationManifestSchemaArtifactTests
             "Contracts",
             "Tenant" + "ConfigurationManifestV1.cs");
         string newSchema = ContextSystemHelpers.RepoPath(
+            "schemas",
+            "configuration-manifest-v1alpha2.schema.json");
+        string tenantPackageSchema = ContextSystemHelpers.RepoPath(
+            "schemas",
+            "tenant-configuration-package-v1alpha2.schema.json");
+        string oldManifestSchema = ContextSystemHelpers.RepoPath(
             "schemas",
             "configuration-manifest-v1alpha1.schema.json");
         string oldSchema = ContextSystemHelpers.RepoPath(
@@ -44,6 +50,8 @@ public sealed class ConfigurationManifestSchemaArtifactTests
         await Assert.That(File.Exists(newContract)).IsTrue();
         await Assert.That(File.Exists(oldContract)).IsFalse();
         await Assert.That(File.Exists(newSchema)).IsTrue();
+        await Assert.That(File.Exists(tenantPackageSchema)).IsTrue();
+        await Assert.That(File.Exists(oldManifestSchema)).IsFalse();
         await Assert.That(File.Exists(oldSchema)).IsFalse();
         await Assert.That(File.Exists(newGenerator)).IsTrue();
         await Assert.That(File.Exists(oldGenerator)).IsFalse();
@@ -58,7 +66,10 @@ public sealed class ConfigurationManifestSchemaArtifactTests
             "test.yml"));
 
         await Assert.That(workflow.Contains(
-            "schemas/configuration-manifest-v1alpha1.schema.json",
+            "schemas/configuration-manifest-v1alpha2.schema.json",
+            StringComparison.Ordinal)).IsTrue();
+        await Assert.That(workflow.Contains(
+            "schemas/tenant-configuration-package-v1alpha2.schema.json",
             StringComparison.Ordinal)).IsTrue();
         await Assert.That(workflow.Contains(
             "eng/configuration-manifest-schema/",
