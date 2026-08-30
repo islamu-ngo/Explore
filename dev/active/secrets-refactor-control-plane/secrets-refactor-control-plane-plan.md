@@ -1,522 +1,811 @@
-ABOUTME: Enterprise-grade strategic plan for refactoring secrets architecture into a control-plane/data-plane separation model.
-ABOUTME: Single-source-of-truth SecretBinding registry with resolver, resilience patterns, audit trail, versioned rotation, and tenant isolation. Eliminates the Infisical → env → AppSetting fallback chain.
-
-# Plan: Secrets Refactor — Control Plane / Data Plane Separation
-
-Last Updated: 2026-04-24
-Version: 2.0 (Enterprise Revision)
-
-## Executive Summary
-
-The current secrets implementation couples provider lookup, inline DB encryption, and `IConfiguration` overlays into a single global fallback chain (Infisical → env/appsettings → AppSetting). That chain is exactly the ambiguity we must eliminate: any given secret has no single owner, operators cannot tell what is live, and source precedence is a global runtime setting instead of a per-secret decision.
-
-This refactor treats **the database as the control plane** and **Infisical / environment variables / inline-encrypted storage as the data plane**, with enterprise-grade resilience, observability, and tenant isolation:
-
-1. For each secret-backed setting, a `SecretBinding` row in Postgres declares WHERE the value comes from (source type + normalized metadata). No binding = inherits from parent scope (or absent).
-2. A single `ISecretResolver` dispatches on the binding's source type and fetches from **exactly one** source. There is no fallback chain and no "DB first then Infisical" conflict logic.
-3. Every mutation and resolution is persisted in an immutable audit trail (`SecretBindingAuditEntry`), queryable for compliance and debugging.
-4. Bindings support **versioned rotation** (active/pending/previous) for zero-downtime blue/green credential rotation.
-5. All external source calls (Infisical) are wrapped in **Polly resilience policies** (retry + circuit breaker + timeout).
-6. Caching uses **HybridCache** (L1 memory + L2 distributed) for multi-instance deployment correctness.
-7. Validation produces **structured, categorized results** (not binary pass/fail) for actionable diagnostics.
-8. Health checks expose **per-source granularity** — operators can see that Infisical is degraded while env-var bindings are healthy.
-9. Tenant-scoped bindings are **isolated by EF Core query filter** — no cross-tenant data leakage at the ORM level.
-10. The Infisical layout is redesigned to the clean folder-per-concern structure (`api/`, `storage/`, `keycloak/`, `postgresql/`, `smtp/`, `analytics/`, `ai/`).
-11. Postgres boot secrets become **five discrete fields** composed via `NpgsqlConnectionStringBuilder`. The legacy `POSTGRESQL_PUBLIC_URL` is deleted.
-12. The UI never renders secret values. It renders **state + metadata**: configured/not configured, which source, source-specific metadata, last validation result, last updated by/when.
-13. Missing secrets never crash the platform. A minimal deployment (API + Blazor + Postgres) works; every other feature degrades gracefully until its secrets are configured.
-14. The onboarding flow reads "what resolves" to auto-select providers and exposes explicit input flows for the three source types.
-15. Bindings carry **TTL/lease metadata** for Vault-style dynamic secret expiration tracking.
-16. A **file-based secret source** (`/run/secrets/`) supports Docker/Kubernetes secret mounts.
-
-Oracle review confirmed the direction with four key adjustments: (a) split bootstrap secrets from runtime bindings; (b) use a centralized `SecretDefinitionRegistry` as policy source-of-truth; (c) use normalized metadata columns with DB check constraints instead of polymorphic JSON; (d) drop `Module` scope and `Inherited` source type from v1 (absence = inheritance; modules use tenant-scoped namespaced keys).
-
-Delivery is a six-PR sequence. No backward compatibility is preserved; we are in development mode. The destructive EF migration drops `AppSettings` and related infrastructure as part of PR 6.
-
----
-
-## Architecture Decision Records (ADRs)
-
-### ADR-001: DB as Control Plane, External Sources as Data Plane
-
-**Context**: Current system has a global fallback chain that makes it impossible to determine which source is authoritative for any given secret.
-
-**Decision**: One `SecretBinding` row per (SettingKey, Scope, ScopeId) tuple declares the single source. The resolver dispatches to that source and only that source. If the source returns null, the resolver returns null — it never tries another source.
-
-**Consequences**: Operators see exactly what is live. No ambiguity. Debugging is deterministic. But: operator must explicitly choose a source at binding time; no "set it and forget it" fallback.
-
-### ADR-002: Normalized Metadata Columns over Polymorphic JSON
-
-**Context**: SecretBinding could store source-specific metadata as polymorphic JSON (`{ "envVar": "SMTP_PASSWORD" }` vs `{ "path": "/smtp/", "key": "SMTP_PASSWORD" }`).
-
-**Decision**: Use separate nullable columns (`InfisicalEnvironment`, `InfisicalPath`, `InfisicalKey`, `EnvironmentVariableName`, `InlineCiphertext`, `InlineCiphertextVersion`) with a CHECK constraint enforcing exactly one metadata group per source type.
-
-**Consequences**: Strong type safety, DB-level integrity, simpler EF mappings, indexable metadata. Trade-off: wider row, but secret bindings number in the hundreds at most.
-
-### ADR-003: Persistent Audit Trail (Not Just Structured Logs)
-
-**Context**: The original plan relied on 1% sampled structured logs for audit. Enterprise compliance (SOC 2, ISO 27001) requires persistent, queryable audit trails.
-
-**Decision**: Introduce `SecretBindingAuditEntry` as a separate entity/table. Every mutation (create, update, delete, validate, source-switch, rotation) writes an immutable row. Read operations are still 1% sampled via the decorator but critical operations are fully persisted.
-
-**Consequences**: Full audit trail for who changed what and when. Slightly higher write volume on binding mutations (negligible for hundreds of bindings). Enables compliance reporting and forensic debugging.
-
-### ADR-004: Versioned Rotation (Blue/Green Secret Rotation)
-
-**Context**: Zero-downtime secret rotation requires that a new credential can be staged alongside the current one, and consumers switch atomically.
-
-**Decision**: Add `Version` (int, monotonically increasing) and `Status` (`Active`/`Pending`/`Previous`) columns to `SecretBinding`. Rotation workflow: (1) create Pending version with new credential, (2) validate, (3) atomically promote Pending→Active and demote Active→Previous, (4) cache invalidation event, (5) after grace period, hard-delete Previous.
-
-**Consequences**: Zero-downtime rotation possible. UI shows version history. Trade-off: adds complexity to the resolver (must resolve Active version only). But the resolver already filters by binding, so `Status=Active` is just an additional filter.
-
-### ADR-005: HybridCache over IMemoryCache
-
-**Context**: `IMemoryCache` is local to a single process instance. In multi-instance deployment (API replicas behind load balancer), cache invalidation on one instance doesn't propagate to others.
-
-**Decision**: Use `HybridCache` (already in the codebase dependency) for per-secret caching. HybridCache provides L1 (in-process memory) + L2 (distributed, Redis/SQL) with automatic tag-based invalidation.
-
-**Consequences**: Multi-instance deployments get correct cache semantics. L1 hit is still nanosecond-fast. L2 hit is millisecond-fast. Trade-off: requires Redis or SQL-based L2 provider in production. For single-instance dev, HybridCache falls back to L1-only gracefully.
-
-### ADR-006: Polly Resilience Policies on External Source Calls
-
-**Context**: Infisical API calls can fail transiently (network errors, rate limits, temporary unavailability). The original plan had no retry or circuit-breaking.
-
-**Decision**: Wrap all `ISecretSource` implementations with Polly policies:
-- **Retry**: 3 retries with exponential backoff (500ms, 1s, 2s) on `HttpRequestException` and `TimeoutException`.
-- **Circuit Breaker**: 5 consecutive failures opens for 30 seconds. Half-open allows one probe; success resets.
-- **Timeout**: 10-second per-call timeout on Infisical calls; 5-second on env-var and inline (should be near-instant).
-
-**Consequences**: Transient Infisical failures are absorbed by retry. Circuit breaker prevents cascading failure. Timeouts prevent hanging resolve calls. All resilience metrics are emitted to OpenTelemetry.
-
-### ADR-007: Structured Validation Results
-
-**Context**: The original `SecretValidationResult` enum (`NotValidated`/`Success`/`Failure`) provides no diagnostic information on failure.
-
-**Decision**: Replace with `SecretValidationResult` enum kept for DB storage (backward-compat with existing column) plus a richer `SecretValidationDetail` record returned by `ISecretSource.ValidateAsync`:
-```csharp
-public sealed record SecretValidationDetail(
-    SecretValidationResult Result,
-    SecretValidationCategory Category,
-    string? DiagnosticMessage);
-```
-Categories: `SourceReachable`, `SourceUnreachable`, `CredentialValid`, `CredentialInvalid`, `BindingMisconfigured`, `InternalError`, `TtlExpired`.
-
-**Consequences**: UI and API can display actionable diagnostics ("Infisical reachable but credential invalid" vs "Infisical unreachable"). Operators debug faster. `DiagnosticMessage` is logged server-side; UI gets the category only (not the message, to avoid info leakage).
-
-### ADR-008: Tenant Isolation via Query Filter
-
-**Context**: `SecretBinding` rows can be Instance-scoped or Tenant-scoped. Without a query filter, a code path that forgets to filter by tenant could read all tenant secrets.
-
-**Decision**: Add a global EF Core query filter on `SecretBinding` that enforces `Scope == SecretScope.Instance || ScopeId == _currentTenantId` when tenant context is available. Admin endpoints explicitly bypass this filter for cross-tenant management.
-
-**Consequences**: Impossible to accidentally query another tenant's secrets at the ORM level. Admin operations that need cross-tenant view use `IgnoreQueryFilters()`. Trade-off: must ensure admin handlers explicitly opt out of the filter.
-
-### ADR-009: Lease/TTL Metadata on Bindings
-
-**Context**: Vault-style dynamic secrets have expiration times. Even for static secrets, operators want to know when credentials were last rotated.
-
-**Decision**: Add `TtlExpiresAt` (DateTime?) and `LastRotatedAt` (DateTime?) nullable columns to `SecretBinding`. `TtlExpiresAt` is set when the binding points to a dynamic/leased secret (future Vault integration). `LastRotatedAt` is set on every source-switch or version promotion.
-
-**Consequences**: UI can show "expires in 4h" for dynamic secrets. Health check degrades when `TtlExpiresAt < DateTime.UtcNow`. Enables future automated rotation workflows.
-
-### ADR-010: File-Based Secret Source for Docker/Kubernetes
-
-**Context**: Docker and Kubernetes mount secrets as files under `/run/secrets/` (Docker) or configurable paths (K8s). The initial plan had no support for this pattern.
-
-**Decision**: Add `SecretSourceType.File` (value `3`) to the enum in Phase 5 with `FileSecretSource` implementation reading from disk. `SecretBinding` gets `FilePath` (string?) normalized column. This is a SHOULD-HAVE, not blocking for v1.
-
-**Consequences**: K8s-native deployments can mount secrets as files without env vars. Trade-off: adds one more source type to the resolver and UI. Phase 5 extends the CHECK constraint.
-
----
-
-## Current State Analysis
-
-### Verified Existing Architecture (the anti-pattern to eliminate)
-
-- `Explore.Secrets/Abstractions/ISecretProvider.cs` defines the single global provider abstraction with `SecretProviderType` enum. Only `None`, `Infisical`, and `Environment` are implemented today.
-- `Explore.Secrets/Configuration/InfisicalConfigurationSource.cs` + `InfisicalConfigurationProvider.cs` register Infisical values as an `IConfiguration` overlay.
-- `Explore.Secrets/Configuration/DbConfigurationSource.cs` + `DbConfigurationProvider.cs` load the `AppSetting` table and decrypt values via `AesEncryptionService` (AES-256-GCM).
-- `Explore.Secrets/Services/SecretRefreshService.cs` is a hosted background service that polls Infisical on an interval and updates the provider cache.
-- `Explore.API/Extensions/ConfigurationExtensions.cs` maps legacy Infisical names to canonical keys (`POSTGRESQL_PUBLIC_URL`, `ISLAMU_EVENT_S3_*`, `KEYCLOAK_PUBLIC_URL`, etc.).
-- Effective resolution precedence today is: **Infisical overlay → `IConfiguration` (env vars + appsettings) → `AppSetting` via `DbConfigurationProvider`**. This is global — no per-secret opt-out. This is what the user rejects.
-
-### Verified Settings Entities (three tables exist today)
-
-- `Explore.Domain/AppSetting.cs` (PK `ConfigKey`, `EncryptedValue`, `KeyVersion`, `IsSensitive`, `Category`, `ValueType`). CHECK constraint blocks `Database:*`, `Security:MasterKey*`, `ConnectionStrings:*` keys.
-- `Explore.Domain/SystemSetting.cs` (governance key/value, JSON serialized). Used for instance-scope governance and auth provider secrets (anti-pattern - plain JSON, no encryption).
-- `Explore.Domain/TenantSetting.cs` (tenant override for governance keys). Separate from typed `TenantSettingsDocument` payloads; neither storage path should contain secrets.
-- `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs` defines the "logical secret key" namespace that currently leaks secret values into `SystemSetting.Value` JSON.
-
-### Verified Consumers
-
-- **SETUP_SECRET**: reads `configuration["SETUP_SECRET"]` env var; auto-generates if missing. Bootstrap-only, stays outside `SecretBinding`.
-- **STORAGE_S3_***: reads discrete keys via `IHierarchicalSettingsResolver` falling back to `IConfiguration["S3Settings:*"]`. Scoped, 5-min cache. Null → S3 features disable cleanly.
-- **KEYCLOAK_***: reads Keycloak OIDC settings from configuration. Startup-only today; runtime updates must re-register schemes.
-- **POSTGRESQL**: single URL string today. Must be refactored to discrete fields composed via `NpgsqlConnectionStringBuilder`.
-- **SMTP_***: reads governance keys via `IHierarchicalSettingsResolver`; secret keys (`smtp.username`/`smtp.password`) through same resolver reading `SystemSetting.Value` JSON.
-- **ANALYTICS_POSTHOG_***: reads `analytics.*` keys. Per-tenant, scoped. Fire-and-forget false if unavailable.
-- **AI_OPENAI_API_KEY / AI_ANTHROPIC_API_KEY**: no consumer exists yet. Infisical folder layout prepared for future work.
-
-### Verified Onboarding Flow
-
-- `Explore.Blazor.Client/Pages/Setup.razor` validates setup token, persists via BFF JS interop.
-- `Explore.Blazor.Client/Pages/Onboarding/StartupGate.razor` routes based on completion state.
-- `Explore.Blazor.Client/Pages/Onboarding/AuthProviderConfiguration.razor` enables/configures Keycloak, ATProto, Google SSO. Extends `KeycloakDetectedFromEnvironment` pattern to every secret-backed provider.
-- `Explore.Application/Services/AuthProviderConfigurationService.cs` currently writes secrets into `SystemSetting.Value` as plain JSON (anti-pattern).
-
-### Verified Tests
-
-- `Explore.Secrets.UnitTests/` covers current provider implementations. Many will be deleted in Phase 6.
-- `Event.Application.UnitTests/Infrastructure/` covers `SetupSecretProvider`, `SmtpConfigResolver`, `S3ConfigResolver` — need rewrites for the new resolver.
-- `Event.API.IntegrationTests/` covers `SetupSecretFlowTests` and `InstanceOnboardingControllerTests`.
-
-### Confirmed Gaps
-
-- No `SecretBinding` entity, table, or repository exists (implemented in Phase 1, committed).
-- No `SecretDefinitionRegistry` exists (implemented in Phase 1, committed).
-- No `ISecretResolver` dispatch contract (Phase 3, written but uncommitted).
-- No persistent audit trail (ADR-003).
-- No versioned rotation support (ADR-004).
-- No resilience policies on external calls (ADR-006).
-- No distributed cache (ADR-005).
-- No structured validation categories (ADR-007).
-- No per-source health granularity.
-- No tenant isolation query filter (ADR-008).
-- No TTL/lease metadata (ADR-009).
-- No file-based source (ADR-010, deferred to Phase 5).
-- No discrete Postgres bootstrap path (implemented in Phase 2, committed).
-- No Data Protection-based inline encryption in the resolver (Phase 3, written but uncommitted).
-
----
-
-## Proposed Future State
-
-### 1. `SecretDefinitionRegistry` (Committed — Phase 1)
-
-A code-defined registry where every secret-backed setting key declares:
-- `SettingKey` — canonical key (e.g. `smtp.password`, `storage.s3.secret_access_key`)
-- `AllowedScopes` — `{Instance}` or `{Instance, Tenant}`
-- `AllowedSourceTypes` — subset of `{Infisical, InlineEncrypted, EnvironmentVariable}` (bootstrap secrets ban `InlineEncrypted`)
-- `IsBootstrap` — true for Postgres-connection + setup secret
-- `InfisicalDefaults` — `{ Folder, SecretName }` for the clean folder layout
-- `EnvironmentVariableDefault` — canonical env var name
-- `ValidationKind` — drives the `POST /validate` contract
-
-**Enterprise extension (Phase 3)**: Add `RequiresLease` flag (for future Vault dynamic secrets), `RotationPolicy` enum (`Manual`, `AutomaticOnExpiry`, `BlueGreen`), and `DriftValidation` flag (whether to check this binding on startup).
-
-### 2. `SecretBinding` Entity (Committed foundation — Phase 1, extended in Phase 3)
-
-Committed columns (Phase 1):
-- `Id` (Guid v7), `SettingKey`, `Scope`, `ScopeId`, `SourceType`
-- `InfisicalEnvironment`, `InfisicalPath`, `InfisicalKey`
-- `EnvironmentVariableName`
-- `InlineCiphertext`, `InlineCiphertextVersion`
-- `IsLocked`, `LastValidationResult`, `LastValidationMessage`, `LastValidatedAt`, `LastValidatedBy`
-- `IAuditable` fields
-
-**Enterprise extensions (Phase 3 migration)**:
-- `Version` (int, default 1) — monotonically increasing per binding key+scope
-- `Status` (`SecretBindingStatus` enum: `Active = 0`, `Pending = 1`, `Previous = 2`) — only one `Active` binding per (SettingKey, Scope, ScopeId)
-- `TtlExpiresAt` (DateTime?) — set for dynamic/leased secrets; null for static
-- `LastRotatedAt` (DateTime?) — set on source-switch and version promotion
-- `LastValidationCategory` (`SecretValidationCategory` enum: `SourceReachable`, `SourceUnreachable`, `CredentialValid`, `CredentialInvalid`, `BindingMisconfigured`, `InternalError`, `TtlExpired`)
-
-Updated CHECK constraints:
-- Original: exactly one metadata group per `SourceType`
-- New: `Status = 'Active'` must be unique per `(SettingKey, Scope, ScopeId)` (via the existing filtered unique indexes)
-- New: `Version > 0`
-- New: for `SourceType = InlineEncrypted`, `TtlExpiresAt` must be null (inline secrets don't expire)
-
-Updated filtered unique indexes:
-- `UNIQUE (SettingKey) WHERE Scope = 'Instance' AND Status = 'Active' AND IsDeleted = false` (was: just `IsDeleted = false`)
-- `UNIQUE (SettingKey, ScopeId) WHERE Scope = 'Tenant' AND Status = 'Active' AND IsDeleted = false`
-
-**Note on `IsDeleted`**: `SecretBinding` is `IAuditableEntity` (NOT `ISoftDeletable`). The previous plan's reference to `IsDeleted` in filtered indexes was incorrect — it applies to other entities that ARE soft-deletable. For `SecretBinding`, the filtered unique indexes simply filter on `Status = 'Active'`.
-
-### 3. `SecretBindingAuditEntry` (New — Phase 3)
-
-Immutable audit entity in `Explore.Domain/Secrets/SecretBindingAuditEntry.cs`:
-
-- `Id` (Guid v7)
-- `BindingId` (Guid) — FK to `SecretBinding`
-- `SettingKey` (string, max 256) — denormalized for queryability
-- `Scope` (`SecretScope` enum)
-- `ScopeId` (Guid?)
-- `Action` (`SecretBindingAuditAction` enum: `Created`, `Updated`, `Deleted`, `Validated`, `SourceSwitched`, `VersionPromoted`, `Rotated`, `CacheInvalidated`)
-- `SourceType` (`SecretSourceType` enum) — source at time of action
-- `Version` (int?) — binding version at time of action
-- `PreviousSourceType` (`SecretSourceType?`) — for source-switch actions
-- `ValidationResult` (`SecretValidationResult?`) — for validated actions
-- `ValidationCategory` (`SecretValidationCategory?`) — for validated actions
-- `DiagnosticMessage` (string?, max 1024) — internal-only, NOT exposed via API
-- `PerformedBy` (Guid?) — user ID from auth context
-- `PerformedAt` (DateTimeOffset) — defaults to `DateTimeOffset.UtcNow`
-- `IpAddress` (string?, max 45) — for API-initiated actions
-
-This table is **append-only** — no updates, no deletes (except by DBA for GDPR/compliance retention). EF configuration sets `HasNoKey()` or uses a PK with no update/delete convention.
-
-### 4. `ISecretResolver` (Phase 3 — written but uncommitted, now enhanced)
-
-```csharp
-public interface ISecretResolver
-{
-    Task<ResolvedSecret?> TryResolveAsync(string settingKey, Guid? tenantId, CancellationToken ct);
-    Task<ResolvedSecret> ResolveRequiredAsync(string settingKey, Guid? tenantId, CancellationToken ct);
-    Task<SecretBindingDescriptor> DescribeAsync(string settingKey, Guid? tenantId, CancellationToken ct);
-    Task<IReadOnlyList<SecretBindingDescriptor>> DescribeAllAsync(Guid? tenantId, CancellationToken ct);
-    Task InvalidateAsync(string settingKey, Guid? tenantId, CancellationToken ct);
-    Task<SecretValidationDetail> ValidateAsync(string settingKey, Guid? tenantId, CancellationToken ct);
-}
-```
-
-Enhancements over original:
-- `ResolveRequiredAsync` — throws `SecretNotConfiguredException` instead of returning null (for non-optional secrets that MUST resolve)
-- `ValidateAsync` — returns structured `SecretValidationDetail` (not just bool)
-- Cache uses `HybridCache` (not `IMemoryCache`) keyed on `(settingKey, scope, scopeId)` with 5-minute L1 TTL and tag-based invalidation
-- Resolver only considers `Status = Active` bindings; Pending/Previous are invisible to consumers
-- All external source calls wrapped in Polly resilience policies
-
-### 5. Resilience Pipeline (Phase 3 — new)
-
-`Explore.Secrets/Resilience/SecretResiliencePipeline.cs`:
-
-- **Retry policy**: 3 retries, exponential backoff (500ms, 1s, 2s) on `HttpRequestException`, `TimeoutException`, `InfisicalApiException` (custom). Jitter via `RetryHelper`.
-- **Circuit breaker**: 5 consecutive failures → open for 30 seconds. Half-open allows one probe. Success resets.
-- **Timeout policy**: 10s for Infisical, 5s for env-var/inline (defensive, should be near-instant).
-- **Bulkhead**: max 20 concurrent Infisical calls (prevents thread pool starvation under load).
-- Policies are per-source-type, not global. `EnvironmentSecretSource` and `InlineSecretSource` get timeout-only (no retry needed for local operations).
-
-Configured via `SecretResilienceOptions` bound from `SecretProvider:Resilience` configuration section. All resilience events emit to `SecretResolverMetrics`.
-
-### 6. Caching Strategy (Phase 3 — changed from IMemoryCache to HybridCache)
-
-- **L1**: In-process `MemoryCache` (default HybridCache behavior, 5-minute TTL)
-- **L2**: Configured via `AddHybridCache()` (already in codebase). Production uses Redis; development uses in-process only.
-- **Cache key format**: `secret:{settingKey}:{scope}:{scopeId:N}` or `secret:{settingKey}:Instance:-`
-- **Tag-based invalidation**: Each cache entry tagged with `secret-binding:{settingKey}:{scope}:{scopeId}`. `InvalidateAsync` removes by tag (removes all versions for that binding).
-- **Version-aware resolve**: Resolver appends `binding.Version` to cache key component. When a binding's version increments (rotation), the old cache entry naturally expires; the new version gets a new cache key.
-- **No-fallback guarantee**: A binding pointing to Infisical that returns null results in a null cached entry. The resolver NEVER tries another source.
-
-### 7. Per-Source Health Granularity (Phase 3 — enhanced)
-
-`SecretResolverHealthCheck` returns per-source status:
-
-```csharp
-Dictionary<string, HealthStatus> SourceStatuses { get; }
-// e.g. { "EnvironmentVariable": Healthy, "Infisical": Degraded, "InlineEncrypted": Healthy }
-```
-
-Overall health: `Healthy` if all sources healthy, `Degraded` if any degraded and none unhealthy, `Unhealthy` if any unhealthy.
-
-Additional degraded conditions:
-- A binding with `TtlExpiresAt < DateTime.UtcNow` → source marked `\Degraded`
-- A binding with `LastValidationResult = Failure` for more than 1 hour → source marked `Degraded`
-
-### 8. Tenant Isolation (Phase 4 — new)
-
-EF Core global query filter on `SecretBinding`:
-
-```csharp
-.HasQueryFilter("TenantSecretIsolation", e =>
-    e.Scope == SecretScope.Instance ||
-    e.ScopeId == _currentTenantId);
-```
-
-Admin query handlers explicitly use `.IgnoreQueryFilters()` when listing all bindings across tenants (requires `[Authorize]` + Cerbos `secret_binding:manage_instance`).
-
-### 9. Infisical Layout (unchanged from Phase 1)
-
-Per user spec — every `SecretDefinitionRegistry` entry maps to its `(Folder, SecretName)`.
-
-### 10. Bootstrap Secret Loader (Committed — Phase 2)
-
-`Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` is the only path Postgres bootstrap takes. Discrete fields, composed via `NpgsqlConnectionStringBuilder`. **Stays outside `SecretBinding`** — bootstrap secrets unlock the DB containing the bindings.
-
-### 11. Inline Encryption via `IDataProtectionProvider` (unchanged)
-
-- Persist keys via `PersistKeysToDbContext<ExploreDbContext>` (committed in Phase 1).
-- Purpose string hierarchy: `("Event.Secrets", "Binding", "v1")` plus scope chain.
-- `InlineCiphertextVersion` column captures purpose version for future rotation.
-- **Disaster recovery note**: DP keys in the same DB = protection against app-layer disclosure, not full DB compromise. Backups must include both ciphertext and keys.
-
-### 12. Blue/Green Rotation Workflow (Phase 5 — new)
-
-```
-1. Admin creates a new Pending binding version (SourceType + metadata = new credential)
-2. Admin validates the Pending version → sets LastValidationResult/Category
-3. Admin promotes: atomically swaps Pending→Active and Active→Previous
-4. Cache invalidation event fires → all consumers get new credential
-5. After grace period (configurable, default 1 hour), admin deletes Previous
-```
-
-The `SecretBinding.Version` + `Status` columns enable this workflow. The resolve path only ever reads `Status = Active` bindings, so Pending credentials are invisible until promotion.
-
-### 13. Lease/TTL Metadata (Phase 3 — new column)
-
-`SecretBinding.TtlExpiresAt` (DateTime?) — set when the binding points to a dynamic/leased secret (Vault dynamic credentials, Infisical rotating secrets). When `TtlExpiresAt < DateTime.UtcNow`:
-- Health check marks the source as `Degraded`
-- `DescribeAsync` returns `IsExpired: true` in the descriptor
-- UI shows "Expired" badge with timestamp
-
-This does NOT auto-rotate — it surfaces expiration for manual intervention. Automated rotation is post-1.0.
-
-### 14. Audit Trail Persistence (Phase 3 — new)
-
-Every write operation on `SecretBinding` persists a `SecretBindingAuditEntry` row via the same MediatR notification handler that does cache invalidation. The audit handler runs synchronously before the command response returns.
-
-Read operations are 1% sampled (configurable via `SecretResolverOptions.AuditSampleRate`, default 0.01) via `AuditingSecretResolverDecorator`. The sample writes to structured logs, NOT to the audit table (to avoid read-path write amplification).
-
-### 15. UI Contract (unchanged)
-
-Admin UI lists every secret from `SecretDefinitionRegistry`. Each card shows state, source, metadata, validation result/category, timestamps, version, and TTL expiry. **Never renders secret values.**
-
----
-
-## Implementation Phases
-
-### Phase 1 — Foundations (Committed `38ce8098`)
-
-**Goal**: introduce `SecretDefinitionRegistry`, `SecretBinding` entity, schema, repository, and Data Protection plumbing.
-
-**Status**: ✅ COMPLETE. No further changes needed.
-
-### Phase 2 — Bootstrap Split (Committed `fc0b2b5a`)
-
-**Goal**: introduce `BootstrapSecretLoader` for discrete Postgres secrets + setup secret. Remove legacy URL connection string path.
-
-**Status**: ✅ COMPLETE. No further changes needed.
-
-### Phase 3 — Resolver + Admin API + Enterprise (PR 3)
-
-**Goal**: `ISecretResolver` implementation with resilience, `HybridCache`, per-source health, structured validation, persistent audit trail, versioned rotation schema, tenant isolation query filter, and admin CQRS/API.
-
-**Dependencies**: PR 1.
-
-**New over original plan**: ADR-003 (audit trail), ADR-004 (versioned rotation), ADR-005 (HybridCache), ADR-006 (Polly resilience), ADR-007 (structured validation), ADR-008 (tenant query filter), ADR-009 (TTL metadata).
-
-**Tasks**:
-
-1. **3.1** EF migration: add `Version`, `Status`, `TtlExpiresAt`, `LastRotatedAt`, `LastValidationCategory` columns to `SecretBindings`; add `SecretBindingAuditEntries` table; update filtered unique indexes to include `Status = Active`.
-2. **3.2** Domain: `SecretBindingAuditEntry` entity + `SecretBindingAuditAction` enum + `SecretValidationCategory` enum + `SecretBindingStatus` enum. Update `SecretBinding` with new columns + factory methods for version promotion.
-3. **3.3** Domain: `SecretBindingUpdatedEvent` (already written, update to include Version and Status).
-4. **3.4** Application contracts: `ResolvedSecret`, `ISecretResolver` (enhanced with `ResolveRequiredAsync` + `ValidateAsync`), `ISecretSource` (enhanced with `ValidateAsync` returning `SecretValidationDetail`), `IInfisicalClientFactory`.
-5. **3.5** Resilience pipeline: `SecretResiliencePipeline` + `SecretResilienceOptions` + Polly integration.
-6. **3.6** Per-source implementations: `EnvironmentSecretSource` (timeout-only), `InlineSecretSource` (timeout-only), `InfisicalSecretSource` (full resilience pipeline) — all wrapped in Polly policies.
-7. **3.7** Core resolver: `SecretResolver` using `HybridCache`, `Status=Active` filter, and version-aware cache keys. `SecretResolverMetrics` with per-source counters.
-8. **3.8** Auditing decorator: `AuditingSecretResolverDecorator` (1% read sampling to logs, all writes/deletes/validations to `SecretBindingAuditEntry` via `IAuditWriter`).
-9. **3.9** Health check: `SecretResolverHealthCheck` with per-source status + TTL-expiry degradation.
-10. **3.10** Tenant isolation: EF query filter on `SecretBinding` + `ITenantContext` injection.
-11. **3.11** Per-source Polly policies configuration + DI registration (`SecretResolutionServiceCollectionExtensions.AddSecretResolution()`).
-12. **3.12** Admin CQRS commands: Create/Update/Delete/Validate (with audit trail writes, version handling on update, source-switch detection).
-13. **3.13** Admin CQRS queries: List/Details/AvailableForOnboarding (with tenant filter bypass for instance admins).
-14. **3.14** Notification handlers: Cache invalidation + audit persistence + Keycloak scheme refresh (stub).
-15. **3.15** Controller: `SecretBindingsController` with `[Authorize]`, Cerbos, rate limiting, HAL links.
-16. **3.16** HATEOAS policy + assembler.
-17. **3.17** Cerbos policy.
-18. **3.18** DI wiring in API + Blazor `Program.cs`.
-19. **3.19** Tests: no-fallback, no-leak, resilience (circuit breaker states), audit trail, version rotation lifecycle, tenant isolation enforcement, per-source health check.
-20. **3.20** Verification: build + all test projects.
-21. **3.21** Commit: single Phase 3 commit.
-
-### Phase 4 — Onboarding + Auth + Tenant Isolation (PR 4)
-
-**Goal**: move Keycloak/Google/ATProto secrets from `SystemSetting` JSON onto `SecretBinding`; explicit Keycloak scheme refresh on binding update; tenant isolation enforcement; remove `/auth-provider-configuration/internal` endpoint; batch resolve endpoint for onboarding.
-
-**Dependencies**: PR 3.
-
-**New over original plan**: Batch resolve API for onboarding (check multiple secrets in one call).
-
-### Phase 5 — Consumer Migration + File Source + Drift Detection (PR 5)
-
-**Goal**: refactor all consumers to `ISecretResolver`; add `FileSecretSource` for Docker/K8s; add configuration drift detection at startup.
-
-**Dependencies**: PR 3.
-
-**New over original plan**: ADR-010 (File-Based Secret Source), startup drift detection (`SecretDefinitionRegistry` vs active bindings reconciliation).
-
-### Phase 6 — Deletion + Docs + Key Rotation Procedure (PR 6)
-
-**Goal**: delete legacy configuration providers, refresh/rotation services, AES/key-rotation code, compatibility mappings, obsolete tests. Write Data Protection key rotation procedure. Rewrite docs.
-
-**Dependencies**: PRs 1–5.
-
-**New over original plan**: Documented key rotation procedure for `IDataProtectionProvider` (purpose-string version bump workflow + test). Load/performance test scaffolding. Security test scaffolding.
-
----
-
-## Risk Assessment And Mitigation Strategies
-
-| # | Risk | Severity | Mitigation |
+<!-- ABOUTME: Repository-grounded plan for deterministic, deployment-owned secret authority. -->
+<!-- ABOUTME: Removes database ciphertext and separates bootstrap, runtime references, rotation, and portability. -->
+
+# Secrets Authority And Control Plane Refactor — Implementation Plan
+
+Last Updated: 2026-08-30 Europe/Brussels
+
+## 0. Planning Metadata
+
+- **Request:** Re-baseline the stale secrets refactor from current code and current
+  official guidance; do not treat the previous plan as authoritative.
+- **Task directory:** `dev/active/secrets-refactor-control-plane/`
+- **Planning status:** GATE-001 I-VSD revalidation, GATE-002 technical approval, and
+  GATE-003 user implementation approval are complete. Product edits remain blocked
+  until the Phase 0 governance prerequisite (`GOV-001`, then `GOV-002`) completes.
+  The user separately selected `Whole development databases`; Section 13 remains the
+  exact destructive boundary and no execution-time target has yet been proven.
+- **Change classification:** Behavioral Delta. Source authority, startup failure,
+  runtime capability state, secret persistence, diagnostics, rotation, and
+  operator recovery behavior all change.
+- **Primary matched intent:** `external-infrastructure-bootstrap`, supplemented by
+  the phase-specific intent matrix in Section 0.1. Phase 0 MUST extend the intent
+  registry before product edits because current scopes do not cover
+  `src/Explore.Secrets/**`, `src/Explore.Domain/Secrets/**`, or `.env.example`.
+- **Criticality:** Tier 1 Security. Secret-zero handling, tenant isolation,
+  provider failure, deployment authority, and diagnostic leakage are security
+  boundaries.
+- **Complexity:** XL, split into one governance prerequisite and six independently
+  reviewable product phases/PRs.
+- **Relevant skills:** `implementation-plan`, `senior-cto-feedback`, `i-vsd`,
+  `grill-me`, `agentic-research`, `ip-clean-room`, `criticality-guardrail`,
+  `clean-architecture-rules`, `dotnet-efcore-guidelines`, `auth-patterns`,
+  `blazor-bff-patterns`, `blazor-ui-conventions`, `error-tracking`, and
+  `epistemic-mad-review`.
+- **Primary layers:** Domain secret definitions and metadata; Application
+  resolution contracts and capability policy; Persistence metadata and generated
+  migrations; `Explore.Secrets` provider adapters; API/HAL/BFF status surfaces;
+  AppHost, Standalone, Compose, CI, schemas, and operator documentation.
+- **Compatibility position:** Clean breaking replacement. No legacy source aliases,
+  dual reads, database-ciphertext compatibility, deprecated routes, or migration
+  shims.
+- **Execution posture:** Code-first and strictly scoped. Use at most one subagent at
+  a time, never dispatch parallel review/implementation swarms, and read the complete
+  subagent result before any later delegation. Do not perform drive-by cleanup,
+  unrelated baseline diagnosis, repeated reviews, broad test runs, app startup,
+  browser/Aspire QA, provider-matrix execution, or phase-exit builds during active
+  implementation. Defer those checks to the final verification wave in `SEC-405`
+  and `FINAL`.
+- **Non-deferrable exceptions:** `GOV-002` MUST validate the contribution contract
+  once before product edits, and each Tier 1 Red task MUST run the smallest named
+  invariant slice once to prove the current security defect before its production
+  fix. These are authorization and failing-first safety gates, not general testing.
+- **I-VSD:**
+  [i-vsd-secrets-refactor-control-plane.md](../../../islamic-value-sensitive-design/i-vsd-secrets-refactor-control-plane.md)
+- **I-VSD status/disposition:** `current` / `plan-aligned` for the exact plan/tasks
+  revision recorded in the I-VSD report. This does not grant CTO technical readiness
+  or user product implementation approval.
+- **CTO review:** The fresh revision-bound re-review records `Approve`; GATE-002 is
+  complete for the exact reviewed revisions.
+- **User approval:** Full implementation of this no-backward-compatibility workstream
+  is approved against pre-GATE-003 combined plan/tasks
+  `sha256:a6255e78747ee7d85f42b27b213a5a0c3db1f250c0b24702856b4b6000445f37`.
+  Separately, whole local-development databases and volumes may be recreated when
+  required by the clean migration path. Production, shared, staging, CI evidence,
+  external-provider/Infisical state, deployment secret stores, unnamed targets, and
+  every ambiguous target remain excluded; immediate identity proof is still required
+  before each destructive command.
+- **Grill-Me decisions resolved from repository evidence:** Secret values remain
+  deployment-owned; Infisical and environment modes are explicit and do not
+  silently fall back; configuration manifests remain secret-free; bootstrap and
+  runtime authority remain separate; purpose-specific rotation replaces a
+  universal rotation state machine.
+
+### 0.1 Contribution Contract And PR Intent Matrix
+
+Phase 0 SHALL add or extend a secrets-authority intent so every planned product
+path, required test project, documentation obligation, acceptance criterion, and
+forbidden action is explicit before implementation. The new contract inherits Tier
+1 security rigor and MUST NOT weaken existing intents.
+
+| PR | Applicable intent(s) | Contract consequence |
+|---|---|---|
+| 0 — governance prerequisite | Agent-context/governance change | Add exact scopes for Domain secrets, `Explore.Secrets`, `.env.example`, and their tests/docs; validate the intent schema and twin rules before product edits. |
+| 1 — authority/bootstrap | New secrets-authority intent; `external-infrastructure-bootstrap` where AppHost/Compose/Standalone change | Carry deterministic authority, secret-zero, deployment, docs, and full applicable minimum verification. |
+| 2 — persistence removal | New secrets-authority intent; `add-ef-migration` or an explicitly approved greenfield baseline-reset contract | Generate artifacts only, update `schemas/islamu-event.md`, prove provider/tenant behavior, and never hand-edit or silently destroy data. |
+| 3 — runtime authority/confidentiality | New secrets-authority intent | Land typed provider outcomes, consumer policy, bounded freshness, health, zero-secret diagnostics, and the matching operator failure contract without rotation activation. |
+| 4 — rotation/recovery | New secrets-authority intent; `external-infrastructure-bootstrap` where deployment validation changes | Land consumer support classification, single-replica automation, deployment-owned multi-replica overlap/restart coordination, stale-replica behavior, recovery, and matching runbooks. |
+| 5 — safe visibility | New secrets-authority intent; conditional `add-get-endpoint`, `add-hal-link`, `openapi-contract-change`, and `blazor-component-affordance` only if those surfaces actually change | Reuse existing surfaces first; apply API/HAL/generated-client/Blazor minimums only to created or changed contracts. The repository greenfield rule overrides compatibility-shim requirements. |
+| 6 — deployment/operators | New secrets-authority intent; `external-infrastructure-bootstrap`; conditional `ci-cd-change` if CI/Coolify files change | Carry final topology convergence, rerun, release, cross-doc validation, and provider-safety obligations without deferring the first truthful operator contract. |
+
+Conditional intents are resolved from the final changed-file set before each PR
+starts. Missing scope is a blocker, not permission to edit outside the contract.
+
+## 1. Executive Summary
+
+The old plan proposed a database control plane containing reversible ciphertext,
+generic versioned rotation, persistent read auditing, HybridCache, Polly recipes,
+file/Vault-style sources, and a large new CRUD surface. Current code and repository
+rules do not justify that design. More importantly, storing inline ciphertext in
+`SecretBinding` conflicts with the repository invariant that secrets originate
+only from Infisical or `.env`/explicit environment injection.
+
+The replacement establishes four explicit responsibilities:
+
+1. **Deployment/bootstrap authority** chooses one source mode and provides
+   secret-zero inputs before normal dependency injection.
+2. **Runtime reference resolution** uses tenant/instance-scoped, non-secret source
+   metadata and resolves exactly one authoritative source.
+3. **Purpose-specific rotation** coordinates provider and consumer behavior with
+   validation and rollback appropriate to each credential type.
+4. **Configuration portability** remains a separate, non-secret manifest concern.
+
+Database rows may describe opaque source references and safe operational status;
+they SHALL NOT contain secret values or reversible ciphertext. Required secrets
+fail closed at startup or capability activation. Optional secrets disable only
+their owning capability and expose truthful, non-sensitive status. Provider
+responses, exception details, coordinates, and credentials never enter logs,
+traces, health payloads, metrics, ProblemDetails, or support artifacts.
+
+## 2. Source-Grounded Current State Report
+
+### 2.0 Pre-Flight Structural Context (Blast Radius)
+
+The fresh code graph at `HEAD 7ad222c285e5e0e8ff8e8c9f12bf7acb29fca6ba`
+contains 62,446 nodes and 2,012,194 edges. The affected execution surfaces are:
+
+- AppHost environment composition and Infisical augmentation;
+- pre-DI PostgreSQL bootstrap;
+- runtime `SecretResolver` and its three source adapters;
+- `SecretBinding` domain/persistence ownership and tenant fallback;
+- setup-secret and external-provider bootstrap flows;
+- configuration-manifest export and BFF download boundaries;
+- Standalone SQLite, split Compose, CI/Coolify, `.env.example`, and operator docs;
+- Domain, Secrets, Persistence, Application, API, Blazor, and Architecture tests.
+
+### 2.1 Evidence Log
+
+| Evidence | Verified current fact |
+|---|---|
+| `src/Explore.AppHost/AppHost.cs` | Loads `.env`, augments configuration with Infisical, projects explicit child environment variables, and owns local-development parameter/default behavior. |
+| `src/Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` | Resolves PostgreSQL fields through Infisical, environment, then `IConfiguration`; writes provider diagnostics directly to stderr. |
+| `src/Explore.Domain/Secrets/SecretBinding.cs` and `.Factory.cs` | Model instance/tenant source metadata and permit `InlineEncrypted` database ciphertext. |
+| `src/Explore.Secrets/Services/SecretResolver.cs` | Chooses tenant then instance binding, dispatches one source, caches for five minutes, and often turns source failure into null. |
+| `src/Explore.Secrets/Sources/*.cs` | Environment reads process environment; Infisical catches/logs provider exceptions; inline source unprotects database ciphertext. |
+| `src/Explore.Application/Features/ConfigurationManifest/Handlers/Queries/ExportConfigurationManifestQueryHandler.cs` | Exports allowlisted non-secret settings/documents and marks sensitive/sovereign values omitted. It does not query secret bindings. |
+| `.env.example` and `docker-compose.yml` | `.env` is the documented schema; Compose forwards explicit allowlists and separates runtime/migrator credentials. |
+| `src/Event.Standalone` and `README.md` | Standalone SQLite is the minimum topology; Postgres and external services are not universal prerequisites. |
+| `docs/SECRETS.md` and `docs/CONFIGURATION.md` | Still describe duplicated providers, appsettings/User Secrets/database authority, automatic refresh, and stale manifest/CLI guidance. |
+| Existing tests | Cover resolver tenant fallback, bootstrap precedence, setup-secret lifecycle/header stripping, and selected redaction paths; they do not prove deterministic fail-closed authority or repository-wide zero-secret diagnostics. |
+
+External functional guidance was consulted under the clean-room policy. Only
+behavioral constraints are retained:
+
+- [Microsoft ASP.NET Core configuration](https://learn.microsoft.com/aspnet/core/fundamentals/configuration/): providers are ordered and later values override earlier values; environment values are process-visible inputs, not a managed vault.
+- [Microsoft Aspire external parameters](https://aspire.dev/fundamentals/external-parameters/): secret parameters protect deployment input handling but do not replace a lifecycle secret manager.
+- [Infisical machine identities](https://infisical.com/docs/documentation/platform/identities/machine-identities): machine authentication has a secret-zero boundary, short-lived access, expiry, and revocation considerations.
+- [Infisical secret rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview): rotation semantics depend on provider support; overlap is not universally available.
+- [OWASP Secrets Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html): lifecycle ownership, least privilege, rotation, audit metadata, recovery, and high availability must be explicit.
+- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html): tokens, credentials, and secret values must not be recorded.
+- [Docker build secrets](https://docs.docker.com/build/building/secrets/): sensitive build inputs use ephemeral secret mounts rather than `ARG`/`ENV` persistence.
+- [Kubernetes Secrets](https://kubernetes.io/docs/concepts/configuration/secret/): base64 is not encryption and consumers may require restart/reload coordination. Kubernetes implementation remains out of scope.
+
+### 2.2 Existing Implementation
+
+Reusable foundations are `SecretDefinitionRegistry`, tenant/instance binding
+lookup, environment and Infisical adapters, setup-secret fail-closed handling,
+explicit Compose allowlists, configuration-manifest omission metadata, and BFF
+header stripping. `SecretBinding` and `SecretResolver` are not discarded; they are
+narrowed to non-secret references and explicit result semantics.
+
+The incompatible implementation is `InlineEncrypted`: Data Protection ciphertext
+and version metadata are persisted in the application database and later
+unprotected into plaintext. The bootstrap loader also contains duplicated source
+precedence and a legacy Infisical prefix. Infisical source failures and bootstrap
+HTTP failures can expose provider detail and are frequently reduced to a clean
+miss, obscuring degraded or compromised authority.
+
+### 2.3 Existing Tests And Verification Coverage
+
+Useful tests exist in:
+
+- `tests/Explore.Secrets.UnitTests/Bootstrap/BootstrapSecretLoaderTests.cs`;
+- `tests/Explore.Secrets.UnitTests/Services/SecretResolverBindingTests.cs`;
+- `tests/Event.Domain.UnitTests/Entities/SecretBindingTests.cs`;
+- setup-secret provider/API/BFF integration tests;
+- current Doctor, authentication, database-context, and structured-audit
+  redaction tests.
+
+Missing invariant coverage includes hostile concurrent tenant access, explicit
+source-mode failure without fallback, required-versus-optional capability state,
+provider-response/exception redaction across every output channel, and
+consumer-specific rotation rollback.
+
+### 2.4 Existing Documentation And Contracts
+
+`.env.example` is the environment schema. `docs/SECRETS.md`,
+`docs/CONFIGURATION.md`, `docs/SELF_HOSTING.md`, `docs/SECURITY-MODEL.md`, and
+deployment bootstrap docs are operator contracts. Current inconsistencies include
+database-held application secrets, duplicated Infisical prefixes, stale
+configuration-manifest v1alpha1 references, stale `aspire run`, and a bootstrap
+README that disagrees with the v1alpha2 schema in the repository.
+
+### 2.5 Current Pain Points / Improvement Areas
+
+- More than one source can appear authoritative during bootstrap.
+- Inline database ciphertext violates the repository secret source-of-truth rule.
+- Null conflates unconfigured, unavailable, unauthorized, and invalid states.
+- Sensitive provider diagnostics can escape through stderr/logging.
+- Five-minute local caching has no explicit freshness or rotation contract.
+- Operator docs do not provide one coherent rerun, rotation, backup, and recovery
+  procedure for all supported topologies.
+- The old plan duplicates the configuration-manifest workstream and invents
+  infrastructure not present in the current dependency graph.
+
+### 2.6 Unknowns After Investigation (Strict Deferrable Open Questions Rule)
+
+No scope- or architecture-changing questions are deferred. Current production
+consumers are partitioned as follows:
+
+- admission, recovery, promotion-digest, and ticketing-recovery keys are
+  required/core when their owning security workflow is enabled;
+- tenant registration providers, Stripe, Svix, SMTP, S3, analytics, localization,
+  ATProto, Cerbos, Listmonk, webhooks, and managed control-plane registration are
+  optional capabilities whose own operation fails or disables truthfully;
+- all direct `ISecretResolver` consumers are operator-owned rotation boundaries;
+  they re-resolve on the next supported operation/restart and receive explicit
+  value-free validation and recovery instructions;
+- automated candidate/rollback orchestration is limited to the already existing
+  options-driven `RotationAwareHttpClientFactory` and
+  `RotationAwareDbContextFactory`; current evidence shows no direct resolver
+  consumer wired into those factories.
+
+Per-provider overlap windows and exact restart timing remain implementation values,
+but they cannot expand automation beyond those two proven boundaries without a new
+plan/approval revision.
+
+## 3. Proposed Future State: Behavioral Contract & Scenarios
+
+### 3.1 Normative Requirements
+
+- Secret values **MUST** originate from Infisical or explicit environment
+  injection described by `.env.example`.
+- Application databases, manifests, API contracts, browser state, AppHost source,
+  appsettings, and User Secrets **MUST NOT** originate or persist secret values.
+- Each deployment and secret class **MUST** select one source authority.
+- Supported multi-replica deployments **MUST** use one deployment-owned setup-secret
+  authority across replicas; replicas **MUST NOT** generate or accept divergent
+  setup secrets, and inconsistency **MUST** fail closed with value-free recovery.
+- Infisical-selected resolution failure **MUST NOT** fall back to environment or
+  configuration values.
+- Required bootstrap/core secrets **MUST** fail startup or activation closed.
+- Optional capability secrets **MUST** affect only their owning capability and
+  **MUST** expose a truthful non-sensitive state.
+- Tenant authority **MUST** come from authenticated server context and repository
+  isolation, never request headers/body or UI claims.
+- Control-plane APIs, HAL, BFF, and UI **MUST NOT** expose values, reversible
+  ciphertext, provider payloads, or sensitive coordinates.
+- Configuration manifest import/export **MUST** remain secret-free.
+- Rotation **MUST** preserve last-known-good service or fail closed, with an
+  operator-visible rollback path and no universal provider-independent promise of
+  zero downtime.
+- Runtime rotation **MUST NOT** claim deployment-wide success from one replica's
+  process-local activation. Multi-replica rotation SHALL be deployment-coordinated:
+  use provider overlap while the old credential remains valid, or use a documented
+  maintenance-window stop/restart when overlap is unavailable. Live automatic
+  cross-replica orchestration is unsupported in this revision.
+- During an overlap rollout, revocation of the old credential **MUST** wait for
+  value-free evidence that every intended replica has activated and verified the
+  candidate. Partial activation keeps the old credential valid and rolls the
+  affected replica back or removes it from service; it is never reported as success.
+- A stale replica **MUST NOT** serve dependent work after the declared overlap
+  deadline. It SHALL be drained/restarted or fail the affected capability closed
+  until it verifies the active credential generation.
+- Direct resolver consumers **MUST** migrate to explicit required/core or optional
+  capability handling; `null` **MUST NOT** remain a shared policy contract.
+- Logs, stderr, traces, metrics, health payloads, ProblemDetails, and support
+  artifacts **MUST NOT** contain credentials, tokens, values, provider response
+  bodies, exception messages, paths, keys, or client identifiers.
+
+### 3.2 Security And Operator Scenarios
+
+**SCN-SEC-001 — Deterministic authority**
+
+- GIVEN Infisical mode is selected and a lower-authority environment value exists
+- WHEN Infisical is unavailable, unauthorized, or returns no value
+- THEN resolution fails with a typed non-sensitive state and never reads the
+  environment value.
+
+**SCN-SEC-002 — Required secret fails closed**
+
+- GIVEN a required database or authentication secret is absent or invalid
+- WHEN its host or capability starts
+- THEN startup/activation fails before accepting dependent work and diagnostics
+  identify only the safe setting classification and remediation route.
+
+**SCN-CAP-001 — Optional capability isolation**
+
+- GIVEN an optional SMTP/analytics/AI credential is unconfigured
+- WHEN unrelated platform capabilities start
+- THEN only the owning capability is unavailable and status distinguishes
+  unconfigured from provider failure without revealing coordinates.
+
+**SCN-TEN-001 — Concurrent tenant isolation**
+
+- GIVEN two tenants have bindings for the same definition
+- WHEN hostile concurrent requests resolve and mutate status
+- THEN each request can observe only its authenticated tenant or permitted instance
+  fallback and no cache/result crosses tenant boundaries.
+
+**SCN-OBS-001 — Zero-secret diagnostics**
+
+- GIVEN provider responses/exceptions contain canary credentials and coordinates
+- WHEN bootstrap, resolution, validation, health, API errors, and support diagnostics
+  fail
+- THEN no canary material appears in any observable output channel.
+
+**SCN-ROT-001 — Rotation rollback**
+
+- GIVEN a candidate credential has been created at the source
+- WHEN dependent-resource validation or controlled reload fails
+- THEN the last-known-good credential remains authoritative or the capability fails
+  closed, the candidate is revoked/rolled back, and operators receive a value-free
+  recovery receipt.
+
+**SCN-ROT-002 — Multi-replica partial activation**
+
+- GIVEN a deployment-coordinated overlap rollout and at least two replicas
+- WHEN one replica validates the candidate and another rejects, times out, or does
+  not acknowledge activation
+- THEN deployment success is withheld, the old credential remains valid, the failed
+  replica rolls back or leaves service, and no provider revocation occurs until all
+  intended replicas produce value-free convergence evidence.
+
+**SCN-ROT-003 — Restart and stale-replica boundary**
+
+- GIVEN a consumer/provider pair has no safe overlap or a replica misses the overlap
+  deadline
+- WHEN rotation is attempted
+- THEN the deployment uses a documented maintenance-window stop/restart, or drains
+  and restarts the stale replica; dependent work remains closed until candidate
+  validation succeeds, and unsupported live rotation is never presented as healthy.
+
+**SCN-MAN-001 — Secret-free portability**
+
+- GIVEN bindings and active credentials exist
+- WHEN an instance or tenant configuration artifact is exported
+- THEN the artifact contains no values, ciphertext, tokens, source credentials, or
+  sensitive provider coordinates and reports that sensitive values were omitted.
+
+**SCN-OPS-001 — Safe rerun and recovery**
+
+- GIVEN bootstrap is rerun after partial external-resource creation or credential
+  rotation, including a supported multi-replica deployment sharing setup authority
+- WHEN existing resources are discovered or replicas concurrently initialize,
+  clean up, or recover setup-secret state
+- THEN operations are additive/idempotent, deployment-managed secrets are not
+  silently overwritten, every replica observes one deployment-owned setup-secret
+  authority, divergent or unavailable authority fails closed, obsolete setup
+  material is cleaned up, and documented value-free forward recovery restores
+  consistent service.
+
+## 4. Non-Negotiable Constraints
+
+- Preserve Clean Architecture dependency direction and repository-returned
+  entities.
+- Generate EF migrations; never hand-edit migration or model-snapshot files.
+- Preserve Standalone SQLite as the minimum topology and split deployment support.
+- Preserve BFF token/header boundaries and HAL as the UI affordance authority.
+- No source-code-derived external implementation material or incompatible
+  dependency additions.
+- No backward compatibility for obsolete source types, aliases, columns, or docs.
+- No persisted provider admin credentials or browser-supplied setup authority.
+
+## 5. Architecture And Design Decisions
+
+### AD-001 — Deployment Owns Values
+
+Infisical or explicit environment injection owns secret values. Application state
+may own definitions, opaque references, safe validation status, timestamps, and
+audit metadata, but never values or reversible material.
+
+### AD-002 — Explicit Source Mode, No Fallback
+
+Bootstrap and runtime selection use an explicit source mode. The adapter for that
+mode returns typed outcomes: resolved, unconfigured, unavailable, unauthorized,
+or invalid. Callers apply required/optional policy; adapters do not silently
+convert provider failure into absence.
+
+### AD-003 — Keep `SecretBinding` Only As A Deep Metadata Module
+
+`SecretBinding` earns its place by concentrating definition/scope/source-reference
+invariants and tenant/instance override policy. `InlineEncrypted` and its
+ciphertext/version fields disappear. If a remaining metadata field does not drive
+resolution, authorization, safe status, or recovery, delete it.
+
+### AD-004 — Purpose-Specific Rotation
+
+Rotation belongs to the provider/consumer pair. Database credentials, OAuth client
+secrets, signing/encryption key rings, SMTP credentials, and external admin
+credentials have different overlap and reload capabilities. Shared orchestration
+defines candidate, validate, activate/reload, verify, rollback, and revoke stages;
+it does not persist a fictional universal `Pending/Active/Previous` value model.
+Automation is confined to the existing options-driven HTTP-client and database
+factories. Direct resolver consumers remain operator-owned unless a future,
+separately approved plan proves an independent automated workflow is necessary.
+Those factories coordinate only process-local replacement. In multi-replica
+deployments they participate in an operator/deployment-owned overlap rollout or
+maintenance restart; they do not provide a distributed commit protocol. Each
+consumer family MUST be classified before implementation as `overlap-rollout`,
+`coordinated-restart`, or `unsupported-live`, with partial activation, stale-replica,
+rollback, revocation, and recovery evidence owned by Phase 4.
+
+### AD-005 — Separate Non-Secret Manifest
+
+`ConfigurationManifest` remains closed, allowlisted, and secret-free. This
+workstream adds omission/boundary tests only; broad import/export/UI ownership stays
+with `dev/active/configuration-manifest/`.
+
+### AD-006 — Minimal Infrastructure
+
+Continue with existing SDKs and memory caching only where bounded freshness is
+explicitly safe. Do not add file sources, Vault/cloud-provider scaffolding,
+HybridCache/Redis L2, generic read-audit storage, or fixed Polly recipes without a
+measured requirement and separate approval.
+
+## 6. Implementation Phases
+
+Phases 1–6 are code-delivery checkpoints, not test/review cycles. Unless a task is a
+Tier 1 Red invariant task, implementation work SHALL author the required production
+code, test code, CI wiring, and operator contracts without executing builds, Green
+test suites, provider matrices, app/browser/Aspire QA, MAD review, or repeated
+independent review. Every phase exit below describes the behavior that the final
+`SEC-405`/`FINAL` wave must prove, not a command that is run at that phase boundary.
+Unrelated failures or cleanup discovered along the way are recorded and left alone
+unless they directly block the next planned code edit.
+
+### Phase 0 — Contribution Contract Prerequisite
+
+Extend `.agents/contract/intents.yaml` and any required twin path rules with a
+Tier 1 secrets-authority intent covering verified paths, test projects, docs,
+acceptance criteria, and forbidden actions. Record conditional secondary-intent
+routing and validate the contract before touching product code.
+
+**Exit:** every planned path is authorized by an exact intent and the focused
+`GOV-002` contract validator passes once; no product file has changed. Product builds
+and architecture suites are deferred to final verification.
+
+### Phase 1 — Authority Contract And Fail-Closed Bootstrap
+
+Define typed resolution/capability outcomes and required/optional classifications.
+Add Red invariant-breaker coverage for unauthorized fallback and zero-secret
+bootstrap diagnostics. Replace legacy/double Infisical configuration paths with one
+explicit source mode in AppHost, BootstrapSecretLoader, Standalone, and Compose.
+Ship the source-mode, no-fallback, secret-zero, required/optional bootstrap, and
+immediate recovery operator contract in `docs/SECRETS.md`, `docs/CONFIGURATION.md`,
+`docs/SELF_HOSTING.md`, and `docs/TROUBLESHOOTING.md` in this same PR.
+
+**Exit:** `SCN-SEC-001` plus the bootstrap portions of `SCN-SEC-002` and
+`SCN-OBS-001` pass; no appsettings/User Secrets/runtime fallback remains an
+origin for secret values; executable source-mode checks and operator docs agree.
+Complete required-consumer activation remains owned by Phase 3.
+
+### Phase 2 — Remove Database Secret Values
+
+Remove `InlineEncrypted`, Data Protection Protect/Unprotect flows, ciphertext and
+version fields, commands/contracts/DI/tests that support inline values, and reduce
+bindings to opaque non-secret metadata. This pre-release workstream chooses a clean
+local-development database/volume reset and generated migration-baseline
+regeneration rather than a compatibility migration. The user's authorization covers
+whole LOCAL DEVELOPMENT databases and volumes only when needed for this clean path;
+target identities MUST still be confirmed immediately before execution and the
+exclusions in Section 13 are absolute. Update `schemas/islamu-event.md` and add
+concurrent tenant-isolation/provider constraints.
+
+**Exit:** `SCN-TEN-001` passes across supported database providers; no application
+table or DTO can persist/return a secret value or reversible ciphertext.
+
+### Phase 3 — Runtime Authority And Confidentiality
+
+Make Infisical/provider outcomes typed and value-free, remove exception/response
+logging, define bounded process-local cache freshness and invalidation, migrate every
+direct resolver consumer to explicit required/core or optional capability behavior,
+and expose value-free health. Ship the matching runtime failure, cache freshness,
+capability-state, and immediate recovery documentation in this PR. Do not activate
+or automate credential rotation in this slice.
+
+**Exit:** complete `SCN-SEC-002`, `SCN-OBS-001`, and `SCN-CAP-001` pass; no source
+failure is silently reported as unconfigured; every direct consumer has an explicit
+policy owner; runtime docs and executable checks agree.
+
+### Phase 4 — Consumer Activation, Rotation, And Recovery
+
+Classify each automated category and direct-consumer family as
+`overlap-rollout`, `coordinated-restart`, or `unsupported-live`. Harden only the
+existing options-driven HTTP-client and database factories for process-local
+candidate/validate/activate/verify/rollback behavior. Multi-replica coordination
+remains deployment/operator owned and MUST implement the normative overlap,
+partial-activation, restart, stale-replica, revocation, and fail-closed contracts in
+`SCN-ROT-001`–`SCN-ROT-003`. Ship provider/consumer-specific rotation, reload,
+rollback, recovery, and break-glass runbooks and executable validation in this PR.
+
+**Exit:** `SCN-ROT-001`–`SCN-ROT-003` pass for every claimed mode; unsupported live
+rotation is explicitly rejected; no old credential is revoked before deployment-wide
+convergence evidence; operator docs identify owner, overlap/restart mode, and exact
+recovery command path.
+
+### Phase 5 — Safe Control-Plane Visibility
+
+Expose server-authorized status and safe reference metadata through the smallest
+existing settings/control-plane surface. Use API/HAL/BFF authority; add Blazor
+affordances only when a supported operator action exists. Prove existing manifest
+exports and any changed API/OpenAPI/generated-client/UI or support outputs omit
+values and sensitive coordinates. This workstream changes the manifest handler or
+schema only if a concrete defect is first recorded and coordinated with
+`dev/active/configuration-manifest/`. Do not create a duplicate generic secret CRUD
+product.
+
+**Exit:** `SCN-MAN-001` passes and a hostile browser cannot supply authority or
+recover sensitive material from any contract.
+
+### Phase 6 — Deployment And Operator Convergence
+
+Align AppHost, Compose, Standalone, `.env.example`, CI/Coolify, bootstrap schemas,
+and operator docs. Fix v1alpha1/v1alpha2 and promotion-HMAC forwarding drift.
+Validate the already-shipped authority/runtime/rotation docs as one coherent
+install, rerun, backup, restore, setup-secret authority/cleanup, and forward-recovery
+contract for each supported topology. This PR may correct cross-document drift but
+MUST NOT be the first delivery of behavior-owning operator instructions. Complete
+each PR's applicable intent test matrix, MAD review, Tier 2 change
+fragment, and final atomic commits.
+
+**Exit:** `SCN-OPS-001` passes through operator-level validation; all supported
+topologies have one source authority and a tested recovery path, and supported
+multi-replica deployments prove consistent setup-secret authority or fail closed.
+
+### 6.1 Provider × Topology Evidence Matrix
+
+Only `None`/explicit environment injection and `Infisical` are supported secret
+authorities. `Vault`, `AzureKeyVault`, and `AwsSecretsManager` are declared but
+unimplemented and MUST fail closed; they have no supported topology row. Every row
+below requires executable evidence; documentary inspection supplements but never
+replaces startup, divergence, partial-activation, or recovery assertions.
+
+| Runtime topology | Environment authority | Infisical authority | Executable owner | Documentary owner |
+|---|---|---|---|---|
+| Direct `Event.Standalone`, one process/container, SQLite default | Supported | Supported | Extend `StandaloneProviderCompositionTests` plus `EnvironmentSecretProviderTests` / `InfisicalSecretProviderTests` to compose the selected mode and reject fallback | `.env.example`, `docs/SECRETS.md`, `docs/SELF_HOSTING.md` |
+| Aspire `Hosting:Topology=Standalone` | Supported | Supported in explicitly selected maintainer mode | Add public composition assertions to the AppHost topology contract and run provider tests; do not use source-text scraping as product evidence | `docs/OPERATIONS.md`, `docs/CONFIGURATION.md` |
+| Aspire `Hosting:Topology=Split` (`DefaultLocal`, `FullLocal`, `LocalDataExternalPlatform`, `ExternalInfra`) | Supported | Supported where profile inputs select it; `FullLocal` remains explicit environment mode | Add profile/source-mode composition cases and provider tests proving one selected authority and value-free failure | `launchSettings.json`, `docs/OPERATIONS.md`, `.env.example` |
+| Split Docker Compose, one API replica | Supported | Supported | Extend `DockerComposeTopologyDoctorCheckTests`, bootstrap/resolver tests, and `docker compose config` validation for explicit allowlists and no fallback | `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/TROUBLESHOOTING.md` |
+| Split deployment, two or more API replicas | Supported only when deployment injects one consistent authority | Supported only when replicas share the same project/environment/path authority | New `SecretRotationReplicaConvergenceTests`: execute `SCN-ROT-002` and `SCN-ROT-003` for overlap, partial activation, stale replica, restart, and fail-closed recovery; setup-secret divergence remains executable under `SCN-OPS-001` | rotation/recovery runbook shipped in Phase 4; final cross-doc validation in Phase 6 |
+
+The primary database clean-baseline matrix is independently closed and executable:
+
+| Provider | Required executable evidence |
+|---|---|
+| PostgreSQL | CI `database-provider-matrix`: clean/idempotent MigrationService run, `PrimaryDatabaseRuntimeSmokeTests`, `PrimaryDatabaseProviderBehaviorContractTests`, and the new SecretBinding tenant/constraint contract |
+| SQLite | Same CI lane with isolated file creation plus the same smoke, behavior, and SecretBinding contract |
+| SQL Server | Same CI lane against the pinned SQL Server service plus the same smoke, behavior, and SecretBinding contract |
+| MariaDB | Same CI lane against the pinned MariaDB service plus the same smoke, behavior, and SecretBinding contract |
+| MySQL | Same CI lane against the pinned MySQL service plus the same smoke, behavior, and SecretBinding contract |
+
+Phase 2 MUST extend the existing five-engine `.github/workflows/_build-test.yml`
+`database-provider-matrix`; “supported providers” without one artifact per row is not
+completion evidence. Phase 4 MUST execute replica behavior for every live claim;
+runbook review alone cannot prove convergence.
+
+Matrix rows are exercised only in the final verification wave by exact class slices
+(after the relevant project build):
+
+- provider authority: `dotnet run --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --no-build -- --treenode-filter "/*/*/*SecretProviderFactoryTests/*"`, then the equivalent `EnvironmentSecretProviderTests` and `InfisicalSecretProviderTests` slices;
+- direct Standalone: `dotnet run --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --no-build -- --treenode-filter "/*/*/*StandaloneProviderCompositionTests/*"`;
+- Aspire source/topology composition: new public-seam `SecretAuthorityAppHostCompositionTests` slice in `Event.Architecture.Tests` (raw AppHost source scraping is forbidden);
+- Compose: `dotnet run --project tests/Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj --no-build -- --treenode-filter "/*/*/*DockerComposeTopologyDoctorCheckTests/*"` plus `docker compose config --quiet`;
+- multi-replica runtime: new `SecretRotationReplicaConvergenceTests` slice in `Explore.Secrets.UnitTests`;
+- database providers: the existing CI `database-provider-matrix` command at `.github/workflows/_build-test.yml`, extended with a new SecretBinding contract slice and one uploaded artifact for each of the five rows.
+
+### Behavioral Slice Rule: Invariant-First Slicing (in `tasks.md`)
+
+Red tasks precede production changes only for source authority, tenant isolation,
+diagnostic confidentiality, rotation rollback, and secret-free export boundaries.
+Run only the smallest named Red slice once to demonstrate the current defect.
+Ordinary handlers/UI/docs use direct implementation and author their contract tests,
+but all Green execution is deferred to `SEC-405`/`FINAL`.
+
+### Atomic Task Verification Rule (in `tasks.md`)
+
+Each task names exact owning files, dependencies, acceptance evidence, and the final
+verification owner. During implementation, do not run builds, Green tests, broad
+suites, app startup, browser/Aspire QA, provider matrices, or MAD review after tasks
+or phases. Read/compile diagnostics may be used only when required to keep editing
+the next planned code task; they are not completion gates.
+
+### Final Phase Closing Rule: Changelog & Commit as the Final Task (in `tasks.md`)
+
+After implementation and review are green, create the required Tier 2 change
+  fragment and compose focused commits following repository history. Do not mix the
+  governance prerequisite or six product phases into one commit.
+
+## 7. Testing Strategy
+
+- Domain tests protect source/scope/reference invariants and removal of inline
+  values.
+- Secrets tests protect deterministic authority, typed outcomes, zero-secret
+  diagnostics, cache boundaries, and rotation rollback.
+- Persistence tests use supported providers for constraints, generated migrations,
+  and hostile concurrent tenant isolation.
+- Application/API/BFF tests protect required/optional behavior, server authority,
+  HAL, and value-free contracts.
+- Configuration-manifest tests protect closed omission boundaries.
+- Architecture tests prevent forbidden dependencies and secret-bearing contracts.
+- Tier 1 MAD review independently challenges fallback, diagnostics, tenancy,
+  migration, rollback, and operator recovery during the final verification wave.
+
+### 7.1 Code-First Execution Policy
+
+During active implementation, execute only:
+
+1. the focused `GOV-002` contribution-contract validator once before product edits;
+2. the smallest named Red invariant slice once for `SEC-001`, `SEC-101`, `SEC-201`,
+   `SEC-221`, and `SEC-301`, before their dependent production change.
+
+Everything else is deferred to `SEC-405` and `FINAL`: Release builds, Green test
+slices, full/minimum projects, migration/provider matrices, Docker/Aspire/Standalone
+startup, HTTP/browser/manual QA, accessibility checks, canary scans, runbook
+execution, MAD review, and repeated independent reviews. Test and CI code is still
+implemented alongside its owning behavior so the final wave can run once against
+the complete system. A directly blocking compiler/syntax error may be diagnosed
+only enough to continue the planned code path; unrelated failures are logged without
+investigation.
+
+### 7.2 Final Verification Matrix
+
+| Implemented slice | Verification deferred to `SEC-405` / `FINAL` |
+|---|---|
+| 0 | Contract/schema, route, twin, link, whitespace, and architecture ratchet. Only the focused contract validator runs before implementation. |
+| 1 | Bootstrap/resolver Green suites, Release build, source-mode topology checks, and operator-link/command validation. |
+| 2 | Domain/Secrets/Persistence/Architecture suites, generated-artifact inspection, and the five-provider clean/idempotent baseline matrix. |
+| 3 | Runtime consumer suites, zero-secret canary scan, health/failure behavior, and operator-document validation. |
+| 4 | `SCN-ROT-001`–`SCN-ROT-003`, replica convergence, provider/consumer matrix, runbook execution, and rotation MAD. |
+| 5 | API/HAL/OpenAPI/generated-client/BFF/Blazor, accessibility, and hostile-browser behavior for changed surfaces only. |
+| 6 | Standalone/Aspire/Compose/multi-replica operator paths, rerun/backup/restore/break-glass, all intent minimums, final Release build, and final Tier 1 MAD. |
+
+## 8. Documentation, Configuration, And Operations Impact
+
+Implementation updates include `.env.example`, `docs/SECRETS.md`,
+`docs/CONFIGURATION.md`, `docs/SECURITY-MODEL.md`, `docs/SELF_HOSTING.md`,
+`docs/OPERATIONS.md`, backup/recovery/troubleshooting docs, deployment bootstrap
+README/schema references, AppHost composition, Compose allowlists, Standalone
+guidance, and CI/Coolify secret inventory documentation.
+
+Authority-changing documentation ships with its owning PR: Phase 1 owns source
+mode/no-fallback/bootstrap recovery; Phase 3 owns typed runtime outcomes, cache
+freshness, health, and capability recovery; Phase 4 owns overlap/restart,
+partial-activation, stale-replica, rollback/revoke, and break-glass rotation. Phase 6
+only converges and validates those already truthful contracts.
+
+Operator docs must distinguish secret-zero inputs, required/core values, optional
+capability values, externally managed rotation, reload/restart behavior, backup
+scope, break-glass authority, and value-free diagnostics.
+
+### 8.1 Release & Changelog Strategy (Procedural Contribution)
+
+This is a Tier 2 security/operator breaking change. The final phase creates a
+change fragment that names removed inline storage and legacy aliases, explicit
+source-mode migration, required operator action, downtime/reload expectations,
+and rollback/recovery. Generated baseline artifacts and docs ship in the same release as
+the breaking runtime change; no compatibility window is planned.
+
+## 9. Islamic Value-Sensitive Design (I-VSD) & Moral Boundaries
+
+| Finding | Required mitigation | Scenario | Task ownership |
 |---|---|---|---|
-| 1 | Postgres NULL unique-index semantics | High | Two partial indexes for Instance and Tenant scopes, filtered on `Status = Active`. Verified with integration tests. |
-| 2 | DP key ring disaster recovery | High | `docs/SECRETS.md` documents that `DataProtectionKeys` must be in every backup; integration test round-trips ciphertext across simulated DB recreation. |
-| 3 | Bootstrap / runtime boundary drift | High | `SecretDefinitionRegistry` enforces `AllowedSourceTypes` at binding write time; architecture test asserts no bootstrap-flagged key allows `InlineEncrypted`. |
-| 4 | Stale cache after source switch or version promotion | High | `SecretBindingUpdatedEvent` → `InvalidateAsync` synchronously in handler before command response. HybridCache tag-based invalidation handles multi-instance propagation. |
-| 5 | Validation endpoint information leakage | Medium | Generic validation messages for API consumers; detailed diagnostics only in audit trail and server logs. `POST /validate` rate-limited. |
-| 6 | Source-type switching UX confusion | Medium | UI explicit confirmation: "Switching replaces the current binding. Inline-encrypted values are write-only and cannot be recovered." |
-| 7 | Keycloak scheme refresh timing | High | `SecretBindingUpdatedEvent` → `KeycloakSchemeRefreshHandler` with tests covering mid-flight OIDC exchange. |
-| 8 | PostHog analytics silent-fail masking outage | Low | Validation state surfaced on admin card + OpenTelemetry metric; health check degrades if `Failure` > 1 hour. |
-| 9 | Setup-secret edge case | Low | `ISetupSecretProvider` stays outside `SecretBinding`; dedicated admin component reads `IsAutoGenerated`/`IsTimedOut`/`GetExpiration`. |
-| 10 | Per-secret cache TTL drift with Infisical rotation | Medium | Document 5-min cache TTL in `docs/SECRETS.md`. Expose `POST /api/SecretBindings/{key}/refresh-cache` admin endpoint for forced eviction. Infisical webhook support deferred. |
-| 11 | **Circuit breaker blocks all Infisical secrets when one path fails (NEW)** | Medium | Circuit breaker is per-source, not per-binding. If the Infisical service is down, ALL Infisical bindings return null. Mitigation: env-var/inline fallback is explicit (operator switches SourceType), not automatic. Health check surfaces circuit state. |
-| 12 | **HybridCache L2 requires Redis in production (NEW)** | Low | Development mode falls back to L1-only gracefully. Production deployment docs must include Redis configuration. |
-| 13 | **Version rotation atomicity — concurrent promotions (NEW)** | Medium | `Status = Active` partial unique index prevents two Active versions for the same (SettingKey, Scope, ScopeId). Promotion handler uses `UPDATE ... SET Status = 'Active' WHERE ...` in a single transaction with `SET Status = 'Previous' WHERE Status = 'Active'` as the first statement. |
-| 14 | **Audit table growth (NEW)** | Low | Secret bindings number in the hundreds; mutations are operator-driven (not per-request). Estimated <1,000 rows/day even in active rotation scenarios. Add index on `(SettingKey, PerformedAt)` for queryability. |
-| 15 | **Tenant isolation filter bypass in admin endpoints (NEW)** | High | Architecture test asserts every `SecretBindings` query handler that uses `IgnoreQueryFilters()` is decorated with `[Authorize]` + Cerbos `secret_binding:manage_instance`. |
+| `IVSD-F001` ambiguous authority can conceal unsafe fallback | `IVSD-M001` explicit source and fail-closed outcomes | `SCN-SEC-001` | `SEC-001`–`SEC-003` |
+| `IVSD-F002` diagnostics can expose entrusted secrets | `IVSD-M002` zero-secret output boundary | `SCN-OBS-001` | `SEC-004`, `SEC-201`, `SEC-202`, `SEC-205`, `SEC-207` |
+| `IVSD-F003` weak recovery burdens self-hosters | `IVSD-M003` topology-specific rerun/rotation/recovery | `SCN-OPS-001`, `SCN-ROT-001`–`SCN-ROT-003` | `SEC-221`–`SEC-226`, `SEC-401`, `SEC-402`, `SEC-404` |
+| `IVSD-F004` tenant crossover violates entrusted authority | `IVSD-M004` server-derived tenant isolation and races | `SCN-TEN-001` | `SEC-101`, `SEC-104`, `SEC-105` |
+| `IVSD-F005` silent degradation misrepresents capability state | `IVSD-M005` required/optional typed status | `SCN-SEC-002`, `SCN-CAP-001` | `SEC-002`, `SEC-202`, `SEC-203`, `SEC-205`, `SEC-207` |
+| `IVSD-F006` secret-bearing portability transfers entrusted material | `IVSD-M006` preserve a closed, value-free portability boundary | `SCN-MAN-001` | `SEC-301`–`SEC-305` |
+| `IVSD-F007` destructive migration authority can exceed consent | `IVSD-M007` constrain disposal to proven local-development targets and fail on ambiguity | Section 13 authority boundary; no product scenario | `GATE-003`, `SEC-104`–`SEC-106` |
 
----
+These mappings are confirmed by the current revision-bound planning-mode I-VSD
+report. The Section 13 destructive authority is deliberately a user-owned execution
+gate rather than a product behavior scenario. I-VSD alignment does not grant CTO
+technical readiness, user product implementation approval, or religious-legal
+approval.
 
-## Success Metrics
+## 10. Security, Authorization, Privacy, And Abuse Considerations
 
-- **Zero fallback paths** — automated test asserts that a binding with `SourceType=EnvironmentVariable` never triggers an Infisical call and vice versa.
-- **Zero secret-value leaks in UI/logs** — API-contract test asserts no response from `/api/SecretBindings` or `/validate` contains ciphertext or plaintext.
-- **Minimal deployment works** — integration test: API + Blazor + Postgres with no Infisical, no S3, no SMTP, no PostHog; every page loads; email/S3/analytics report "Not configured".
-- **Onboarding auto-detection** — integration test: Keycloak secrets in env vars → onboarding page shows "Auto-detected" chip.
-- **Zero `InfrastructureSecretSettingKeys` references** after Phase 5 — grep-based architecture test.
-- **Zero legacy secret code** after Phase 6 — architecture test asserts no references to `AppSetting`, `DbConfigurationProvider`, `AesEncryptionService`, `KeyRotationService`, `SecretRefreshService`.
-- **Audit trail completeness (NEW)** — integration test: every create/update/delete/validate/write operation on SecretBindings produces a corresponding `SecretBindingAuditEntry` row with correct action, user, and timestamp.
-- **Resilience verification (NEW)** — unit test: Infisical source returns null after 3 retries + circuit breaker opens after 5 consecutive failures. Unit test: env-var source resolves in <1ms (no resilience overhead).
-- **Tenant isolation (NEW)** — integration test: tenant A cannot see tenant B's secrets via the resolver; instance admin CAN see all secrets via admin endpoint with `IgnoreQueryFilters`.
-- **Version rotation lifecycle (NEW)** — integration test: create Pending → validate → promote → verify Active version changed → cache invalidated → Previous version still accessible for 1-hour grace period.
-- **Lighthouse + bUnit accessibility scores** unchanged on the new admin Secrets page.
+Secrets, credentials, provider coordinates, and exception payloads are sensitive
+even when not personal data. API authority remains server-side; protected admin
+GET endpoints are explicit exceptions to the generic anonymous-GET convention.
+Tenant filters/repositories remain active; no runtime `IgnoreQueryFilters()` escape
+is planned. BFF strips browser-supplied privileged headers. Provider admin
+credentials remain request/job scoped and never become runtime secret records.
 
----
+## 11. Multi-Tenancy, Federation, Localization, Accessibility, And Product Considerations
 
-## Required Resources And Dependencies
+Tenant overrides are permitted only where `SecretDefinitionRegistry` allows them.
+Instance locks and authenticated target context govern inheritance. No federation
+or locale-specific secret semantics are introduced. Any operator UI uses HAL
+affordances, value-free accessible labels/status, keyboard/focus conventions, and
+RTL-safe styling; a UI is not required for actions that remain deployment-owned.
 
-- NuGet: `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` (committed Phase 1).
-- NuGet: `Microsoft.Extensions.Caching.Hybrid` (already in codebase).
-- NuGet: `Infisical.Sdk` v3.0.4 (stays).
-- NuGet: `Polly` + `Polly.Extensions.Http` (new — resilience pipeline).
-- Cerbos policy updates: `secret_binding.yaml` resource.
-- EF Core migration tooling.
-- Redis (for HybridCache L2 in production; optional for development).
+## 12. Observability And Operations
 
----
+Emit low-cardinality state/reason codes and timing without exception messages,
+values, coordinates, binding IDs that become sensitive, or provider bodies.
+Health differentiates unconfigured, degraded, and failed-closed capabilities but
+never provides discovery material. Audit only security-relevant mutations and
+rotation/recovery receipts, not secret reads or values. Alerting must direct
+operators to runbooks, not reproduce provider diagnostics.
 
-## Effort Estimates
+## 13. Migration And Compatibility Plan
 
-| Phase | Effort | Notes |
-|-------|--------|-------|
-| Phase 1 — Foundations | ✅ COMPLETE | Committed `38ce8098`. |
-| Phase 2 — Bootstrap split | ✅ COMPLETE | Committed `fc0b2b5a`. |
-| Phase 3 — Resolver + Admin API + Enterprise | **XL** | Resilience, HybridCache, audit trail, versioned rotation schema, tenant isolation, structured validation, per-source health, all CQRS + controller + tests. Highest-risk PR. |
-| Phase 4 — Onboarding + Auth + Tenant Isolation | **L** | Keycloak scheme-refresh, onboarding UI, batch resolve, tenant filter bypass. |
-| Phase 5 — Consumer Migration + File Source + Drift | **L** | Consumer cutover, FileSecretSource, startup drift detection. |
-| Phase 6 — Deletion + Docs + Key Rotation | **M** | Destructive migration, doc rewrite, key rotation procedure. |
+The user has authorized disposal and recreation of whole **LOCAL DEVELOPMENT**
+databases and volumes when needed for the clean migration path. This includes all
+data and database-resident Data Protection material inside the specifically named
+local targets; it is broader than deleting only `SecretBinding` rows. It does not
+authorize destruction of production, shared, staging, CI evidence, external
+provider resources, Infisical state, deployment secret stores, or any unnamed
+database/volume. Immediately before any destructive command, the implementation
+agent MUST print and record each target's environment, provider, database/container
+identity, and volume/path, prove it is local and non-shared, and stop on ambiguity.
 
----
+After GATE-002 passes and GATE-003 records separate product implementation approval,
+delete inline source enums/factories/contracts, update the EF model, reset only those
+confirmed local-development targets, and regenerate provider migration baselines
+through repository tooling. Do not ship a destructive compatibility migration or a
+`Down` path pretending deleted ciphertext can be restored. Update
+`schemas/islamu-event.md`, execute every provider row in Section 6.1, and require
+operators to re-provision values in the selected deployment source. Rollback is
+forward-fix from external source/configuration plus a regenerated/corrected local
+development baseline; generated artifacts are never hand-edited.
 
-## Post-1.0 Backlog (Explicitly Deferred)
+## 14. Risk Register
 
-- Infisical webhook integration (cache has `InvalidateAsync` hook; webhook endpoint to be added).
-- `Module`-scoped bindings.
-- `Inherited` as a persisted source type (computed by resolver today).
-- Additional providers (Vault, Azure Key Vault, AWS Secrets Manager).
-- RLS for `SecretBindings` (row-level security in Postgres for defense-in-depth).
-- Automated rotation workflows (manual via UI supported; automated rotation post-1.0).
-- Import/Export API for bulk secret binding management.
-- Dynamic module registration (runtime loading of `SecretDefinition` entries).
-- Load/performance test suite for resolve path (>10K ops/sec target).
-- Security penetration testing of admin API and resolve path.
-- Vault dynamic secrets integration (TTL/lease support is schema-ready but provider not implemented).
+| Risk | Severity | Mitigation |
+|---|---|---|
+| Provider failure silently falls back and appears healthy | Blocker | Typed outcomes plus `SCN-SEC-001` Red test |
+| Provider exception/response leaks credentials | Blocker | Central zero-secret diagnostics contract plus canary scans |
+| Tenant cache/reference crosses scope | Blocker | Scope-qualified keys, repository isolation, hostile concurrency tests |
+| Rotation revokes old credential before every replica converges | Critical | `SCN-ROT-002`, deployment-wide value-free acknowledgements, old-credential overlap, and delayed revocation |
+| Stale replica serves after overlap deadline | Critical | `SCN-ROT-003`, drain/restart or capability fail-closed behavior |
+| Local reset command reaches shared/staging/CI/production/external/deployment state | Blocker | Exact pre-execution target identity and environment proof; authorization is local-development-only and ambiguity stops execution |
+| Removing inline values strands a local development deployment | Major | Authorized local database/volume recreation plus reprovision runbook; no compatibility migration |
+| AppHost/Compose/docs disagree on authority | Major | Phase 6 provider×topology matrix and contract validation |
+| Control-plane UI duplicates configuration ownership | Major | Reuse existing settings/HAL surface or omit UI |
+
+## 15. Success Metrics And Definition Of Done
+
+- No database, manifest, API, UI, source file, appsettings, or User Secrets path
+  can originate or persist secret values.
+- Every secret class has one documented source authority and required/optional
+  policy.
+- All ten named scenarios pass with value-free evidence.
+- PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL each produce clean/idempotent
+  baseline plus SecretBinding tenant/constraint artifacts; every supported runtime
+  topology executes its Environment and/or Infisical authority row.
+- Logs, traces, stderr, health, metrics, ProblemDetails, and support artifacts pass
+  canary secret scans.
+- Standalone, Compose, and Aspire operator paths document install, rerun, rotation,
+  backup, restore, and forward recovery.
+- Configuration manifests remain secret-free and the secrets workstream does not
+  duplicate configuration-manifest ownership.
+- I-VSD is fresh/plan-aligned, revision-bound CTO review approves, and user approval
+  is recorded before implementation begins.
+
+## 16. Implementation Agent Contract — KEEP DEV DOCS CURRENT
+
+The implementation agent SHALL:
+
+- read this plan and the context file before selecting the next task;
+- update only `tasks.md` for granular execution status;
+- update `context.md` immediately for decisions, blockers, baseline failures, and
+  dated handoffs;
+- update this plan only when behavior, architecture, phase scope, or risk changes;
+- verify paths/symbols immediately before editing because the worktree is shared;
+- regenerate migration baselines through EF tooling after explicit disposal
+  approval, local target-identity proof, and environment exclusions, then inspect
+  them without hand edits;
+- keep exactly one task in progress and check it off when its acceptance evidence
+  exists;
+- use no more than one subagent at a time, consume its complete output, and never
+  launch parallel implementation/review agents;
+- refuse irrelevant cleanup, speculative additions, unrelated baseline diagnosis,
+  and repeated review loops; record non-blocking discoveries for later instead;
+- defer all product Green tests, builds, app/browser/Aspire/manual QA, provider
+  matrices, and MAD review to `SEC-405`/`FINAL`, except the focused `GOV-002`
+  authorization validator and mandatory failing-first Red slices;
+- stop and refresh I-VSD/CTO/user approval if a material provider/deployment
+  responsibility changes;
+- never reinterpret a source failure as absence merely to preserve availability;
+- never add a dependency or external implementation pattern without clean-room and
+  licensing review.
+
+## 17. Progress Reporting Contract
+
+At phase start, record the selected code task in `context.md`. At task completion,
+record the changed paths and deferred final-verification owner, then immediately
+update `tasks.md`. Do not run or report phase-exit test cycles. `SEC-405` records the
+single consolidated Release build, every applicable intent-minimum project,
+generated/provider/topology evidence, real-surface QA, and MAD review. A handoff
+states current phase/task, changed paths, next code action, blockers, and deferred
+verification without duplicating this plan.
+
+## 18. Potential Risks & Unknowns
+
+Runtime bindings carry provider coordinates that are secret-equivalent outside
+trusted server persistence/adapters; keep them server-only. Exact overlap, reload,
+and restart timing remains purpose-specific and must be documented per consumer,
+but direct resolver consumers remain operator-owned under this revision.
