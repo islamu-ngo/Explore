@@ -40,6 +40,15 @@ public interface IBffClient
         Guid operationId,
         CancellationToken ct = default);
     Task<TResponse?>
+        SendWithRegistrationOrderCapabilityAsync<
+            TBody,
+            TResponse>(
+                HttpMethod method,
+                string path,
+                TBody body,
+                string? capability,
+                CancellationToken ct = default);
+    Task<TResponse?>
         SendWithTicketTransferCapabilityAsync<
             TBody,
             TResponse>(
@@ -216,6 +225,36 @@ public sealed class BffClient : IBffClient, IAsyncDisposable
     }
 
     public async Task<TResponse?>
+        SendWithRegistrationOrderCapabilityAsync<
+            TBody,
+            TResponse>(
+                HttpMethod method,
+                string path,
+                TBody body,
+                string? capability,
+                CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(
+            method,
+            path)
+        {
+            Content = JsonContent.Create(body),
+        };
+        AddRegistrationOrderCapability(
+            request,
+            capability);
+        using HttpResponseMessage response =
+            await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return default;
+        }
+
+        return await response.Content
+            .ReadFromJsonAsync<TResponse>(ct);
+    }
+
+    public async Task<TResponse?>
         SendWithTicketTransferCapabilityAsync<
             TBody,
             TResponse>(
@@ -307,6 +346,18 @@ public sealed class BffClient : IBffClient, IAsyncDisposable
     {
         using var req = new HttpRequestMessage(method, path) { Content = content };
         return await _http.SendAsync(req, ct);
+    }
+
+    private static void AddRegistrationOrderCapability(
+        HttpRequestMessage request,
+        string? capability)
+    {
+        if (!string.IsNullOrWhiteSpace(capability))
+        {
+            request.Headers.Add(
+                "X-Registration-Order-Capability",
+                capability);
+        }
     }
 
     private static void AddTicketTransferCapability(

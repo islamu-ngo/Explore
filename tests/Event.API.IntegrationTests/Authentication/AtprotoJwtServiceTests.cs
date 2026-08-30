@@ -331,13 +331,13 @@ public sealed class AtprotoJwtServiceTests
                 var value = secretKey == SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks
                     ? keys.OAuthRing
                     : keys.SessionRing;
-                return new ResolvedSecret(
+                return SecretResolutionResult.Resolved(new ResolvedSecret(
                     secretKey,
                     value,
                     SecretSourceType.Infisical,
                     SecretScope.Instance,
                     null,
-                    DateTimeOffset.UtcNow);
+                    DateTimeOffset.UtcNow));
             });
         return new(resolver, Options.Create(new AtprotoJwtOptions()), TimeProvider.System);
     }

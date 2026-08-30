@@ -69,6 +69,14 @@ public static class CachingExtensions
                 .SetVaryByQuery("areaId", "mode")
                 .Tag("public-home-discovery"));
 
+            options.AddPolicy("PublicLegalDocuments", builder => builder
+                .Expire(TimeSpan.FromSeconds(30))
+                .SetVaryByHeader(
+                    TenantHeaderNames.TenantSlug,
+                    "Host",
+                    "Accept-Language")
+                .Tag("public-legal-documents"));
+
             // SystemConfig: public first-run/runtime mode state for BFF startup.
             options.AddPolicy("SystemConfig", builder => builder
                 .Expire(TimeSpan.FromSeconds(10))

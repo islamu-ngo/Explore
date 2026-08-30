@@ -259,6 +259,46 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
         await Assert.That(_upstream.LastSetupSecret).IsNull();
     }
 
+    [Test]
+    public async Task ConfigurationImportMutation_RequiresAntiforgeryAndForwardsOnlyHeaderCapability()
+    {
+        const string path =
+            "/api/control-plane/configuration-import/sessions/11111111-1111-1111-1111-111111111111/preview";
+        const string capability = "configuration-import-capability";
+        _upstream.ResetCapture();
+        using var rejected = CreateAuthenticatedRequest(HttpMethod.Post, path);
+        rejected.Headers.Add(
+            "X-Configuration-Import-Token",
+            capability);
+        rejected.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage rejectedResponse =
+            await _client.SendAsync(rejected);
+
+        await Assert.That(rejectedResponse.StatusCode)
+            .IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(_upstream.LastPathAndQuery).IsNull();
+
+        AntiforgeryCookie antiforgery = await IssueAntiforgeryCookieAsync();
+        using var allowed = CreateAuthenticatedRequest(HttpMethod.Post, path);
+        allowed.Headers.Add("Cookie", antiforgery.CookieHeader);
+        allowed.Headers.Add("X-CSRF-TOKEN", antiforgery.Token);
+        allowed.Headers.Add(
+            "X-Configuration-Import-Token",
+            capability);
+        allowed.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage allowedResponse =
+            await _client.SendAsync(allowed);
+
+        await Assert.That(allowedResponse.StatusCode)
+            .IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(_upstream.LastPathAndQuery).IsEqualTo(path);
+        await Assert.That(_upstream.LastConfigurationImportToken)
+            .IsEqualTo(capability);
+        await Assert.That(_upstream.LastSetupSecret).IsNull();
+    }
+
     public async ValueTask DisposeAsync()
     {
         _client.Dispose();
@@ -352,6 +392,8 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
 
         public string? LastTenantSlug { get; private set; }
 
+        public string? LastConfigurationImportToken { get; private set; }
+
         public async Task StartAsync()
         {
             var builder = WebApplication.CreateBuilder();
@@ -369,6 +411,9 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
                 LastApiKey = context.Request.Headers["X-API-Key"].FirstOrDefault();
                 LastTenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault();
                 LastTenantSlug = context.Request.Headers["X-Tenant-Slug"].FirstOrDefault();
+                LastConfigurationImportToken =
+                    context.Request.Headers[
+                        "X-Configuration-Import-Token"].FirstOrDefault();
                 using var reader = new StreamReader(
                     context.Request.Body,
                     Encoding.UTF8,
@@ -396,6 +441,7 @@ public sealed class BffApiProxyAntiforgeryTests : IAsyncDisposable
             LastApiKey = null;
             LastTenantId = null;
             LastTenantSlug = null;
+            LastConfigurationImportToken = null;
         }
 
         public async ValueTask DisposeAsync()

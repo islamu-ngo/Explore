@@ -298,7 +298,7 @@ public sealed class AtprotoJwtService(
         CancellationToken cancellationToken)
     {
         var resolved = await secretResolver.ResolveAsync(secretKey, tenantId: null, cancellationToken).ConfigureAwait(false);
-        return InfrastructureAtprotoKeyRing.Parse(resolved?.Value);
+        return InfrastructureAtprotoKeyRing.Parse(resolved.Value);
     }
 
     private static ECDsaSecurityKey CreateTransientKey(ECDsa ecdsa, string keyId) => new(ecdsa)

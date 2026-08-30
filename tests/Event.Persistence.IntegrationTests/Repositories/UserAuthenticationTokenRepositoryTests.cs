@@ -302,27 +302,27 @@ public sealed class PostgreSqlUserAuthenticationTokenRepositoryTests(PostgreSqlC
 
     private sealed class StaticSecretResolver(string value) : ISecretResolver
     {
-        public Task<ResolvedSecret?> ResolveAsync(
+        public Task<SecretResolutionResult> ResolveAsync(
             string settingKey,
             Guid? tenantId,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(new(
+            Task.FromResult(SecretResolutionResult.Resolved(new ResolvedSecret(
                 settingKey,
                 value,
                 SecretSourceType.Infisical,
                 SecretScope.Instance,
                 null,
-                DateTimeOffset.UtcNow));
+                DateTimeOffset.UtcNow)));
 
-        public Task<ResolvedSecret?> ResolveQualifiedAsync(
+        public Task<SecretResolutionResult> ResolveQualifiedAsync(
             string settingKey,
             SecretScope scope,
             Guid? scopeId,
             string qualifier,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(null);
+            Task.FromResult(SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveTenantBindingAsync(
+        public Task<SecretResolutionResult> ResolveTenantBindingAsync(
             Guid tenantId,
             Guid bindingId,
             CancellationToken cancellationToken = default) =>

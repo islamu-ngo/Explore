@@ -193,10 +193,14 @@ public static class MiddlewareExtensions
             headers[HeaderNames.XContentTypeOptions] = "nosniff";
             if (IsSensitiveAdmissionPath(context.Request.Path)
                 || context.Request.Path.StartsWithSegments(
-                    "/bff/ticket-purchases")
-                || context.Request.Path.StartsWithSegments(
                     "/bff/events")
                 && (context.Request.Path.Value?.Contains(
+                        "/registration-orders/",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    && context.Request.Path.Value?.EndsWith(
+                        "/purchase-authority",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    || context.Request.Path.Value?.Contains(
                         "/participant-readiness/",
                         StringComparison.OrdinalIgnoreCase) == true
                     || context.Request.Path.Value?.Contains(

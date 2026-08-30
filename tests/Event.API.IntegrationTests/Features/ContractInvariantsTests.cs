@@ -813,6 +813,29 @@ public class ContractInvariantsTests
     }
 
     [Test]
+    public async Task OpenApiDocument_QuotaExceededDetailsIsNullableReferencedAndTenantSafe()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        JsonElement quotaProperties = GetSchemaProperties(document, "QuotaExceededDetails");
+
+        await Assert.That(quotaProperties.TryGetProperty("tenantId", out _)).IsFalse();
+
+        foreach (string responseSchemaName in new[]
+                 {
+                     "BaseCommandResponseOfGuid",
+                     "PromotionManagementCommandResponseDto",
+                     "PromotionCodeIssuedCommandResponseDto"
+                 })
+        {
+            JsonElement quotaExceeded = GetSchemaProperties(document, responseSchemaName)
+                .GetProperty("quotaExceeded");
+            await Assert.That(GetReferenceOrNullableReference(quotaExceeded))
+                .IsEqualTo("#/components/schemas/QuotaExceededDetails");
+            await Assert.That(SchemaAllowsNull(quotaExceeded)).IsTrue();
+        }
+    }
+
+    [Test]
     public async Task OpenApiDocument_ActorSubscriptionPatchMarksMandatoryLeavesRequired()
     {
         using var document = await GetOpenApiDocumentAsync();
