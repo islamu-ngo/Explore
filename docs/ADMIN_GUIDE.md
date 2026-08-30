@@ -158,7 +158,7 @@ Dangerous operation: deleting or broadly changing a property definition can affe
 
 | Area | Current admin scope | Recovery note |
 |---|---|---|
-| Storage | Provider-neutral instance storage settings manage local default, optional S3-compatible mode, quotas, max upload, provider health, usage recalculation, and tenant delegation. Tenant storage overrides are available only when delegation is unlocked. | Verify `Storage:Local:*`, optional `S3Settings:*`, and secrets against [CONFIGURATION.md](CONFIGURATION.md) and [SECRETS.md](SECRETS.md); confirm database and object-storage backups in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md). |
+| Storage | Provider-neutral instance storage settings manage local default, optional S3-compatible mode, quotas, max upload, provider health, usage recalculation, and tenant delegation. Tenant storage overrides are available only when delegation is unlocked. | Verify `Storage:Local:*`, non-secret `s3.*` governance, and external-authority bindings against [CONFIGURATION.md](CONFIGURATION.md) and [SECRETS.md](SECRETS.md); confirm database and object-storage backups in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md). |
 | SMTP | Platform SMTP settings are managed from instance administration. | Keep provider credentials in the configured secret provider; test mail after changes. |
 | Localization | Instance localization supports offline/emergency controls and bundle export. | Use forced offline mode or reset-to-offline behavior if remote localization becomes unsafe. |
 | Analytics/privacy | Instance analytics and privacy settings are platform-level controls. | Verify data sharing and retention expectations before enabling integrations. |

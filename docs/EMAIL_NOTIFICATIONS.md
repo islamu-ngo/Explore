@@ -59,7 +59,7 @@ The email settings model is defined by `EmailSettingDefinitions` and grouped by 
 
 `SmtpConfigResolver` reads the cascading settings model and caches resolved configuration per tenant for five minutes. It returns no SMTP configuration when required values such as host or from-address are missing.
 
-Local Aspire and Compose runs start Mailpit for email capture. Aspire exposes SMTP on `localhost:1025` and the UI at `http://localhost:8025`; Compose containers use SMTP host `mailpit` and port `1025`. Development database seeding uses `MAIL_SMTP_*`, then `SMTP_*` aliases, then these Mailpit defaults when no SMTP host has been configured.
+Local Aspire and Compose runs start Mailpit for email capture. Aspire exposes SMTP on `localhost:1025` and the UI at `http://localhost:8025`; Compose containers use SMTP host `mailpit` and port `1025`. Development seeding may set non-secret host/sender governance only; credentials have no database or alias fallback.
 
 ## Secret Handling
 

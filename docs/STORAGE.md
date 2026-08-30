@@ -30,19 +30,21 @@ The API delete endpoint exists, but `Explore.Blazor.Client/Services/ImageStorage
 
 ## Configuration
 
-Local storage is the default provider. Its filesystem root is deployment-managed and bound from `Storage:Local:*`; it is never saved as a tenant/admin-editable setting. Optional S3-compatible storage still uses the current `S3Settings:*` naming family.
+Local storage is the default provider. Its filesystem root is deployment-managed and bound from `Storage:Local:*`; it is never saved as a tenant/admin-editable setting. Optional S3-compatible storage composes non-secret governance with credentials from the selected authority.
 
 | Purpose | Key Shape | Notes |
 |---|---|---|
 | Local provider root | `Storage:Local:RootPath` / `Storage__Local__RootPath` | Deployment-managed filesystem directory or mounted volume used by the API process. Compose defaults this to `/app/storage-data/local`; Aspire uses `storage-data/aspire-local` under the repository root. |
 | Local root creation | `Storage:Local:CreateRootIfMissing` / `Storage__Local__CreateRootIfMissing` | Allows the local provider to create the root directory during startup/health checks when the deployment intentionally grants that permission. |
-| .NET configuration | `S3Settings:*` | Bound by runtime configuration. |
-| Environment variables | `S3Settings__*` | Double-underscore form for .NET configuration providers. |
 | Persisted settings | `s3.endpoint`, `s3.public_endpoint`, `s3.bucket_name`, `s3.region`, `s3.force_path_style`, `s3.upload_url_expiration_minutes` | Defined by storage setting definitions and surfaced through admin settings. |
-| Secrets | `s3.access_key_id`, `s3.secret_access_key` | Sensitive values; see [SECRETS.md](SECRETS.md). |
+| Secrets | `storage.s3.access_key_id`, `storage.s3.secret_access_key` | External-authority bindings only; see [SECRETS.md](SECRETS.md). |
 | Tenant delegation | `governance.lock_tenant_storage` | Controls whether tenant-level storage overrides are locked. |
 
-For external secret providers, keep the naming distinction from [SECRETS.md](SECRETS.md): provider-side optional S3 names map into runtime `S3Settings:*` values. `Storage__Local__*` keys are deployment/runtime configuration only and must not contain tenant-controlled paths.
+Environment authority reads canonical `STORAGE_S3_ACCESS_KEY_ID` and
+`STORAGE_S3_SECRET_ACCESS_KEY`; Infisical reads the matching `/storage` keys.
+Neither path maps credentials into .NET configuration or governance settings.
+`Storage__Local__*` keys are deployment/runtime configuration only and must not
+contain tenant-controlled paths.
 
 ### Tenant Settings PATCH Contract
 

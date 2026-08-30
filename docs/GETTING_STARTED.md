@@ -57,7 +57,7 @@ Maintainers using external infrastructure can configure Infisical bootstrap sett
 - **Windows:** `%APPDATA%\Microsoft\UserSecrets\event-shared-secrets\secrets.json`
 
 ### Infisical Configuration (Maintainers Only)
-`local-full` does not require Infisical because Aspire starts local infrastructure and the AppHost sets `SecretProvider:Provider=None` for child projects while clearing Infisical bootstrap identifiers. Use Infisical only for maintainer workflows that intentionally depend on shared external infrastructure.
+`local-full` does not require Infisical because Aspire starts local infrastructure and explicitly selects Environment authority while clearing Infisical bootstrap identifiers. Populate required local credentials in `.env`; AppHost does not generate or hard-code them.
 
 If using external infrastructure with `local-core` or `local-lite`, configure your local bootstrap credentials inside the `secrets.json` file:
 ```json

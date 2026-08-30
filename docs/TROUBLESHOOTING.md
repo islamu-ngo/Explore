@@ -606,7 +606,7 @@ Symptoms:
 Checks:
 1. Confirm the selected provider in instance storage settings. Local-first deployments should not require the Compose `storage` profile or S3 credentials.
 2. For local-first storage, verify the API process can read/write `Storage:Local:RootPath`. Compose defaults to `/app/storage-data/local` mounted on the `local_storage_data` volume.
-3. For optional S3-compatible mode, verify non-secret `storage.*` governance points to the intended endpoint/bucket and both credentials resolve from the selected authority.
+3. For optional S3-compatible mode, verify non-secret `s3.*` governance points to the intended endpoint/bucket and both credentials resolve from the selected authority.
 4. Use the instance storage provider test action or `/health` response failure code; do not expose host filesystem paths, bucket names, object keys, access keys, or raw provider errors in tickets.
 5. If metadata exists but downloads fail, run reconciliation in dry-run mode and compare the reported missing-object/orphan counts before changing lifecycle state.
 
@@ -675,7 +675,7 @@ Checks:
 1. Stop write traffic before repeated restore attempts.
 2. Compare the release manifest, database dump timestamp, object storage snapshot, and secret/config snapshot from [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
 3. Verify the configured application primary database, the independent privacy-erasure authority, and Keycloak PostgreSQL were restored from their intended snapshots. For embedded authority SQLite, restore the database together with its WAL state while all writers are stopped; never replace it with the primary SQLite file.
-4. Verify `Storage:Local:RootPath` points to the restored local storage data, or that `S3Settings:*` values point to the restored bucket or compatible object store when S3-compatible mode is selected.
+4. Verify `Storage:Local:RootPath` points to restored local data, or that non-secret `s3.*` governance points to the restored bucket and credentials resolve from the selected authority when S3-compatible mode is selected.
 5. If MigrationService already ran, do not manually edit provider-specific migration files, snapshots, or history tables; decide rollback vs corrective migration using the rollback matrix in [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md).
 
 ## Configuration Manifest Startup Failed

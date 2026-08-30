@@ -211,7 +211,7 @@ Commonly consumed sections in code:
 - `Bff:AdminHosts` and `Bff:AdminHostAllowedIpRanges`
 - `Storage:Local:*` (deployment-managed local filesystem storage)
 - `StorageReconciliation:*` (dry-run-first storage drift sweep; runs as the `storage-reconciliation` Quartz job)
-- `storage.*` governance settings (non-secret S3 endpoint, bucket, region, and URL policy)
+- `s3.*` governance settings (non-secret S3 endpoint, bucket, region, and URL policy)
 - `SecretProvider:*`
 - `SecretRefresh:*`
 - `EmailDispatchProcessor:*` (Basic Dispatch Mode background worker)
@@ -695,7 +695,7 @@ Local-first storage is deployment-managed. The filesystem root is bound from sta
 | `Storage:Local:RootPath` | provider default unless Compose/Aspire overrides | API-owned local storage root. Compose sets `/app/storage-data/local` and mounts it to `local_storage_data`; Aspire sets `storage-data/aspire-local` under the repository root. |
 | `Storage:Local:CreateRootIfMissing` | `true` in Compose/Aspire overrides | Allows startup/health/provider code to create the local root when the deployment grants write permission. |
 
-Optional S3-compatible storage composes non-secret `storage.*` governance with
+Optional S3-compatible storage composes non-secret `s3.*` governance with
 `storage.s3.access_key_id` and `storage.s3.secret_access_key` resolved exclusively
 through the selected Environment or Infisical authority. There is no database or
 `IConfiguration` credential fallback.
@@ -1289,16 +1289,11 @@ After authentication, onboarding is presented as one server-derived task overvie
 - `AUTHORIZATION_PROVIDER` (Infisical `/api` or `/cerbos`) -> `Authorization:Provider` (blank, `local`, or `cerbos`)
 - `CERBOS_GRPC_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:GrpcEndpoint`
 - `CERBOS_HTTP_ENDPOINT` (Infisical `/cerbos`) -> `Cerbos:HttpEndpoint` and the instance Admin API endpoint list
-- `CERBOS_ADMIN_USERNAME` (Infisical `/cerbos`) -> `Cerbos:AdminApi:AdminUsername`
-- `CERBOS_ADMIN_PASSWORD` (Infisical `/cerbos`) -> `Cerbos:AdminApi:AdminPassword`
+- `CERBOS_ADMIN_USERNAME` and `CERBOS_ADMIN_PASSWORD` are canonical Environment-authority names; they are never remapped into `IConfiguration`
 - `CERBOS_USE_POLICY_SCOPE` (Infisical `/cerbos`) -> `Cerbos:UsePolicyScope` (`true`/`false`, also accepts `1`/`0`, `yes`/`no`, `on`/`off`)
-- S3 runtime values:
-  - `ISLAMU_EVENT_REGION` -> `S3Settings:Region`
-  - `ISLAMU_EVENT_PRIVATE_BUCKET_NAME` -> `S3Settings:BucketName`
-  - `ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID` -> `S3Settings:AccessKeyId`
-  - `ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID` -> `S3Settings:SecretAccessKey`
-  - `ISLAMU_EVENT_S3_ENDPOINT` -> `S3Settings:Endpoint`
-  - `ISLAMU_EVENT_S3_PUBLIC_ENDPOINT` -> `S3Settings:PublicEndpoint`
+- S3 credentials use only `STORAGE_S3_ACCESS_KEY_ID` and
+  `STORAGE_S3_SECRET_ACCESS_KEY` under Environment authority. Legacy
+  `ISLAMU_EVENT_*` and `S3Settings:*` aliases are removed.
 
 Keycloak base URL: `KEYCLOAK_ENDPOINT` (Infisical `/keycloak`). No hardcoded fallback — if not set, Keycloak mapping is skipped.
 
@@ -1306,7 +1301,7 @@ Storage naming rules:
 
 - local filesystem runtime settings use `Storage:Local:*`;
 - local filesystem Compose/environment overrides use `Storage__Local__*`;
-- optional S3-compatible governance uses `storage.*` settings;
+- optional S3-compatible governance uses `s3.*` settings;
 - optional S3-compatible credentials use canonical `STORAGE_S3_ACCESS_KEY_ID` and
   `STORAGE_S3_SECRET_ACCESS_KEY` only when Environment authority is selected;
 - reconciliation worker settings use `StorageReconciliation:*` or `StorageReconciliation__*`;
@@ -1374,8 +1369,8 @@ Platform monetization is application-managed instance data, not an `appsettings`
 
 | Concern | Governance key family | Secret-bearing key family |
 |---|---|---|
-| SMTP | `email.*` | `email.smtp_username`, `email.smtp_password` |
-| Optional S3-compatible storage | `s3.*` | `s3.access_key_id`, `s3.secret_access_key` |
+| SMTP | `email.*` | `smtp.username`, `smtp.password` |
+| Optional S3-compatible storage | `s3.*` | `storage.s3.access_key_id`, `storage.s3.secret_access_key` |
 | Authentication | `auth.*` | `auth.keycloak_client_secret`, `auth.google_client_secret` |
 | Cerbos admin credentials | `cerbos.*` | Deployment configuration or request-scoped one-time sync input; never persisted by onboarding |
 | AI assistant | `ai_assistant.*` | `ai_assistant.api_key` |
