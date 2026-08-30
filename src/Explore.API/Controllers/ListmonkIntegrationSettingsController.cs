@@ -26,11 +26,6 @@ public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : 
         "Listmonk integration settings validation failed",
         "Listmonk integration settings update failed.");
 
-    private static readonly ApiValidationProblemDescriptor CredentialsValidationProblem = new(
-        "listmonkIntegrationCredentials",
-        "Listmonk integration credential validation failed",
-        "Listmonk integration credential rotation failed.");
-
     private static readonly ApiValidationProblemDescriptor TestConnectionValidationProblem = new(
         "listmonkIntegrationConnection",
         "Listmonk integration connection validation failed",
@@ -71,25 +66,6 @@ public sealed class ListmonkIntegrationSettingsController(IMediator mediator) : 
             return Ok(result);
 
         return this.ToCommandValidationProblem(result, SettingsValidationProblem);
-    }
-
-    [HttpPost("credentials/rotate", Name = RouteNames.RotateListmonkIntegrationCredentials)]
-    [Authorize]
-    [EndpointClassification(EndpointClass.Authenticated)]
-    [EndpointSummary("Rotate Listmonk Integration Credentials")]
-    [EndpointDescription("Stores Listmonk API username and/or API key through tenant secret bindings.")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> RotateCredentials(
-        [FromBody] RotateListmonkIntegrationCredentialsDto dto,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await mediator.Send(new RotateListmonkIntegrationCredentialsCommand { Dto = dto }, cancellationToken);
-        if (result.IsSuccess)
-            return Ok(result);
-
-        return this.ToCommandValidationProblem(result, CredentialsValidationProblem);
     }
 
     [HttpPost("test-connection", Name = RouteNames.TestListmonkIntegrationConnection)]

@@ -44,11 +44,6 @@ public class LocalizationAdminController : ControllerBase
         "Localization bundle import validation failed",
         "Localization bundle import failed.");
 
-    private static readonly ApiValidationProblemDescriptor TmsApiKeyRotationValidationProblem = new(
-        "localizationTmsApiKey",
-        "Localization TMS API key validation failed",
-        "Localization TMS API key rotation failed.");
-
     private readonly IMediator _mediator;
     private readonly ITranslationConfigResolver _configResolver;
     private readonly IBundleFileWriter _bundleFileWriter;
@@ -111,26 +106,6 @@ public class LocalizationAdminController : ControllerBase
         };
 
         return Ok(dto);
-    }
-
-    [HttpPost("tms-api-key/rotate", Name = RouteNames.RotateLocalizationTmsApiKey)]
-    [EndpointSummary("Rotate Localization TMS API Key")]
-    [EndpointDescription("Stores a backend-only Tolgee/Weblate API token through the secret binding resolver path.")]
-    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> RotateTmsApiKey(
-        [FromBody] RotateLocalizationTmsApiKeyDto dto,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await _mediator.Send(
-            new RotateLocalizationTmsApiKeyCommand { Dto = dto },
-            cancellationToken);
-
-        if (result.IsSuccess)
-            return Ok(result);
-
-        return this.ToCommandValidationProblem(result, TmsApiKeyRotationValidationProblem);
     }
 
     /// <summary>

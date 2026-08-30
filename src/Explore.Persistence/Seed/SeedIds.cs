@@ -142,8 +142,6 @@ public static class SeedIds
     // ===== System Settings — Email / SMTP =====
     public static readonly Guid SystemSettingEmailSmtpHostId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000520");
     public static readonly Guid SystemSettingEmailSmtpPortId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000521");
-    public static readonly Guid SystemSettingEmailSmtpUsernameId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000522");
-    public static readonly Guid SystemSettingEmailSmtpPasswordId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000523");
     public static readonly Guid SystemSettingEmailSmtpSecurityId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000524");
     public static readonly Guid SystemSettingEmailFromAddressId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000525");
     public static readonly Guid SystemSettingEmailFromNameId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000526");
@@ -158,8 +156,6 @@ public static class SeedIds
     public static readonly Guid SystemSettingS3EndpointId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000530");
     public static readonly Guid SystemSettingS3PublicEndpointId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000531");
     public static readonly Guid SystemSettingS3BucketNameId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000532");
-    public static readonly Guid SystemSettingS3AccessKeyIdId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000533");
-    public static readonly Guid SystemSettingS3SecretAccessKeyId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000534");
     public static readonly Guid SystemSettingS3RegionId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000535");
     public static readonly Guid SystemSettingS3ForcePathStyleId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000536");
     public static readonly Guid SystemSettingS3UploadUrlExpirationMinutesId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000537");
@@ -169,7 +165,6 @@ public static class SeedIds
     public static readonly Guid SystemSettingAnalyticsEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000541");
     public static readonly Guid SystemSettingAnalyticsApiKeyId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000542");
     public static readonly Guid SystemSettingAnalyticsEndpointUrlId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000543");
-    public static readonly Guid SystemSettingAnalyticsPersonalApiKeyId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000544");
 
     // ===== System Settings — Entity Submission & Self-Registration =====
     public static readonly Guid SystemSettingOrgSubmissionEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000550");

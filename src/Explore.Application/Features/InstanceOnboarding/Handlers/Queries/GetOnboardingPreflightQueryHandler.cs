@@ -271,21 +271,8 @@ public sealed class GetOnboardingPreflightQueryHandler(
 
     private async Task<bool> IsObjectStorageConfiguredAsync(CancellationToken cancellationToken)
     {
-        if (s3ConfigResolver is not null && await s3ConfigResolver.IsConfiguredAsync(cancellationToken))
-        {
-            return true;
-        }
-
-        if (await HasSettingValueAsync(GovernanceSettingKeys.Storage.BucketName))
-        {
-            return true;
-        }
-
-        return HasConfigurationValue("STORAGE_S3_BUCKET_NAME")
-            || HasConfigurationValue("S3Settings:BucketName")
-            || HasConfigurationValue("Storage:S3BucketName")
-            || HasConfigurationValue("Storage:S3:BucketName")
-            || HasConfigurationValue("ISLAMU_EVENT_PRIVATE_BUCKET_NAME");
+        return s3ConfigResolver is not null
+            && await s3ConfigResolver.IsConfiguredAsync(cancellationToken);
     }
 
     private async Task<bool> IsSmtpConfiguredAsync(CancellationToken cancellationToken)
@@ -300,10 +287,7 @@ public sealed class GetOnboardingPreflightQueryHandler(
             return true;
         }
 
-        return HasConfigurationValue("Smtp:Host")
-            || HasConfigurationValue("MAIL_SMTP_HOST")
-            || HasConfigurationValue("SMTP_HOST")
-            || HasConfigurationValue("Email:SmtpHost");
+        return false;
     }
 
     private bool HasConfigurationValue(string key) => !string.IsNullOrWhiteSpace(configuration[key]);

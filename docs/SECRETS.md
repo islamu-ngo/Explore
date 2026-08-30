@@ -13,9 +13,9 @@ authority stops required startup work and never falls back to another source.
 |---|---|---|---|
 | Environment | `0` | Implemented | Explicit environment injection |
 | Infisical | `1` | Implemented | Universal Auth (ClientId + ClientSecret) |
-| Vault | `2` | Not implemented | AppRole (RoleId + SecretId) |
-| Azure Key Vault | `3` | Not implemented | DefaultAzureCredential |
-| AWS Secrets Manager | `4` | Not implemented | Region-based |
+
+Vault, Azure Key Vault, and AWS Secrets Manager have no enum, options, factory,
+or deployment scaffolding. Any such configured string is invalid and fails closed.
 
 When `Provider = Environment`, secrets come exclusively from process environment
 variables. Appsettings and .NET User Secrets are not secret origins. When

@@ -4,7 +4,6 @@
 using System.Text.Json;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Contracts.Secrets;
 using Explore.Application.Contracts.Webhooks;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
@@ -24,7 +23,6 @@ public sealed class PublishedContractSnapshotTests
         byte[] source = [1, 2, 3];
         var manifest = new PolicyPackageManifest("package", "v1", "hash", DateTimeOffset.UnixEpoch, []);
         var archive = new PolicyPackageArchive("package.zip", "application/zip", source, manifest);
-        var secret = new InlineProtectedSecret(source, 1);
         var webhook = new WebhookPayloadBuildResult(true, null, source, "hash", DateTimeOffset.UnixEpoch, null, null);
         var current = new AtprotoCurrentOAuthSession("did:plc:test", new Uri("https://pds.test"), "key", source);
         var verification = new AtprotoOAuthVerificationInput("did:plc:test", new Uri("https://pds.test"), "key", source);
@@ -41,7 +39,6 @@ public sealed class PublishedContractSnapshotTests
         source[0] = 99;
 
         await Assert.That(archive.Content.Span[0]).IsEqualTo((byte)1);
-        await Assert.That(secret.Ciphertext.Span[0]).IsEqualTo((byte)1);
         await Assert.That(webhook.PayloadBytes!.Value.Span[0]).IsEqualTo((byte)1);
         await Assert.That(current.OAuthSessionPayload.Span[0]).IsEqualTo((byte)1);
         await Assert.That(verification.OAuthSessionPayload.Span[0]).IsEqualTo((byte)1);
