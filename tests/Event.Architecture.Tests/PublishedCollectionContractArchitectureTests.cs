@@ -11,6 +11,7 @@ using Explore.API.Controllers;
 using Explore.Application.Authorization;
 using Explore.Blazor.Client.Clients;
 using Explore.Domain.Interfaces;
+using Explore.GeneratedContracts;
 
 namespace Event.Architecture.Tests;
 
@@ -20,6 +21,8 @@ public sealed class PublishedCollectionContractArchitectureTests
         "tests/Event.Architecture.Tests/Baselines/published-collection-contract-dispositions.json";
     private const string GeneratedClientPath =
         "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs";
+    private const string MutableGeneratedContractsPath =
+        "eng/tools/Explore.GeneratedContracts/mutable-generated-contracts.txt";
     private const string GeneratedRecordDeclaration =
         "public partial record class ";
 
@@ -71,8 +74,8 @@ public sealed class PublishedCollectionContractArchitectureTests
         await Assert.That(HasFailure(failures, "blank")).IsTrue();
         await Assert.That(HasFailure(failures, "stale")).IsTrue();
         await Assert.That(HasFailure(failures, "not generated")).IsTrue();
-        await Assert.That(GeneratedClientRecordNames.Value.Count)
-            .IsEqualTo(681);
+        await Assert.That(GeneratedClientRecordNames.Value)
+            .IsEquivalentTo(ReadPolicyDerivedGeneratedClientRecordNames());
         await Assert.That(IsGenerated(typeof(ActorDto))).IsTrue();
     }
 
@@ -176,6 +179,21 @@ public sealed class PublishedCollectionContractArchitectureTests
                     [' ', '<'],
                     StringSplitOptions.RemoveEmptyEntries)[0])
             .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private static IReadOnlyCollection<string>
+        ReadPolicyDerivedGeneratedClientRecordNames()
+    {
+        string root = FindRepositoryRoot();
+        string source = File.ReadAllText(Path.Combine(
+            root,
+            GeneratedClientPath));
+        HashSet<string> mutableTypes =
+            GeneratedContractPolicy.LoadMutableStateTypes(Path.Combine(
+                root,
+                MutableGeneratedContractsPath));
+        return GeneratedContractTransformer.Classify(source, mutableTypes)
+            .RecordTypeNames;
     }
 
     private static bool IsCollectionType(Type type) =>

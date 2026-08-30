@@ -78,7 +78,7 @@ Table "secret_source_types" {
     master_code [unique, name: 'ix_secret_source_types_master_code']
   }
 
-  Note: 'Lookup: secret value source types. Values: Infisical(0), InlineEncrypted(1), EnvironmentVariable(2). Seeded.'
+  Note: 'Lookup: secret value source types. Values: Infisical(0), EnvironmentVariable(1). Seeded.'
 }
 
 Table "secret_validation_statuses" {
@@ -923,8 +923,6 @@ Table "secret_bindings" {
   "infisical_environment" varchar(64)
   "infisical_key" varchar(256)
   "infisical_path" varchar(512)
-  "inline_ciphertext" bytea
-  "inline_ciphertext_version" int
   "is_locked" boolean [not null]
   "last_validated_at" timestamptz
   "last_validated_by" uuid

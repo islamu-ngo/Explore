@@ -74,7 +74,12 @@ public sealed class ConfigurationManifestSchemaGenerationTests
         await Assert.That(instance.GetProperty("required")
             .EnumerateArray()
             .Select(value => value.GetString()!)
-            .ToArray()).IsEquivalentTo(["documents", "settings"]);
+            .ToArray()).IsEquivalentTo(
+            [
+                "documents",
+                "legalDocuments",
+                "settings"
+            ]);
         await Assert.That(AllTypedObjectsAreClosed(root)).IsTrue();
     }
 

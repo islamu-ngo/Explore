@@ -589,6 +589,15 @@ jobs:
           --minimum-expected-tests 2 --no-progress --maximum-parallel-tests 1
           --report-trx --report-trx-filename Event.Persistence.IntegrationTests.${{ matrix.provider }}.Behavior.trx
 
+      - name: Run Secret Binding Provider Contract
+        id: secret_binding_contract
+        run: >-
+          dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj
+          --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal --
+          --treenode-filter "/*/*/SecretBindingProviderContractTests/*"
+          --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
+          --report-trx --report-trx-filename Event.Persistence.IntegrationTests.${{ matrix.provider }}.SecretBinding.trx
+
       - name: Capture Database Service Diagnostics
         if: ${{ always() && matrix.provider != 'Sqlite' }}
         shell: bash
