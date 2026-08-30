@@ -19,7 +19,7 @@ x-secrets-env: &secrets-env
   SecretProvider__Infisical__ProjectId: ${INFISICAL_PROJECT_ID:-}
   SecretProvider__Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
   SecretProvider__Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
-  SecretProvider__Infisical__Environment: ${INFISICAL_ENV:-dev}
+SecretProvider__Infisical__Environment: ${INFISICAL_ENV:-}
 
 x-postgres-env: &postgres-env
   POSTGRES_USER: ${DATABASE_MIGRATOR_USERNAME-explore}
@@ -556,8 +556,8 @@ services:
     profiles: ["storage"] # Opt-in only
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${STORAGE_S3_ACCESS_KEY_ID:?Set STORAGE_S3_ACCESS_KEY_ID for the storage profile}
-      MINIO_ROOT_PASSWORD: ${STORAGE_S3_SECRET_ACCESS_KEY:?Set STORAGE_S3_SECRET_ACCESS_KEY for the storage profile}
+      MINIO_ROOT_USER: ${STORAGE_S3_ACCESS_KEY_ID:-}
+      MINIO_ROOT_PASSWORD: ${STORAGE_S3_SECRET_ACCESS_KEY:-}
       MINIO_SERVER_URL: ${STORAGE_S3_PUBLIC_ENDPOINT:-http://minio.localhost:9005}
     volumes:
       - minio_data:/data
@@ -580,7 +580,7 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${STORAGE_S3_ACCESS_KEY_ID:?Set STORAGE_S3_ACCESS_KEY_ID for the storage profile} ${STORAGE_S3_SECRET_ACCESS_KEY:?Set STORAGE_S3_SECRET_ACCESS_KEY for the storage profile};
+      mc alias set local http://minio:9000 ${STORAGE_S3_ACCESS_KEY_ID:-} ${STORAGE_S3_SECRET_ACCESS_KEY:-};
       mc mb --ignore-existing local/${STORAGE_S3_BUCKET_NAME:-explore};
       mc anonymous set public local/${STORAGE_S3_BUCKET_NAME:-explore};
       "
@@ -591,7 +591,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${CERBOS_POSTGRES_USER:-cerbos_user}
-      POSTGRES_PASSWORD: ${CERBOS_POSTGRES_PASSWORD:?Set CERBOS_POSTGRES_PASSWORD for the authz profile}
+      POSTGRES_PASSWORD: ${CERBOS_POSTGRES_PASSWORD:-}
       POSTGRES_DB: ${CERBOS_POSTGRES_DB:-cerbos}
     volumes:
       - cerbos_data:/var/lib/postgresql
@@ -612,7 +612,7 @@ services:
     environment:
       CERBOS_ADMIN_USER: ${CERBOS_ADMIN_USERNAME:-cerbos}
       CERBOS_ADMIN_PASSWORD_HASH: ${CERBOS_ADMIN_PASSWORD_HASH:-}
-      CERBOS_PG_URL: ${CERBOS_PG_URL:?Set CERBOS_PG_URL for the authz profile}
+      CERBOS_PG_URL: ${CERBOS_PG_URL:-}
     volumes:
       # Repository-owned Cerbos runtime config and bundled policies/schemas.
       - ./cerbos/config/.cerbos.yaml:/config/.cerbos.yaml:ro
