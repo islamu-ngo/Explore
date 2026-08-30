@@ -4,6 +4,7 @@
 using System.Reflection;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.Secrets;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.ControlPlane.Requests.Queries;
@@ -22,6 +23,7 @@ public sealed class GetControlPlaneOverviewQueryHandler(
     IAuthorizationProviderConfigurationService authorizationProviderConfigurationService,
     IInstanceStorageSettingService storageSettingService,
     IInstanceSmtpSettingService smtpSettingService,
+    ISecretAuthorityStatusReader secretAuthorityStatusReader,
     IConfiguration configuration)
     : IRequestHandler<GetControlPlaneOverviewQuery, ControlPlaneOverviewDto>
 {
@@ -40,6 +42,7 @@ public sealed class GetControlPlaneOverviewQueryHandler(
         var authorizationProviderConfiguration = await authorizationProviderConfigurationService.ReadConfigurationAsync();
         var storageSettings = await storageSettingService.ReadSettingsAsync(cancellationToken);
         var smtpSettings = await smtpSettingService.ReadSettingsAsync();
+        var secretAuthority = await secretAuthorityStatusReader.ReadAsync(cancellationToken);
 
         var statusCounts = BuildTenantStatusCounts(tenants);
         var publicOrigin = FirstConfiguredValue(
@@ -66,7 +69,8 @@ public sealed class GetControlPlaneOverviewQueryHandler(
                 authorizationProviderConfigured,
                 authorizationProviderConfiguration,
                 storageSettings,
-                smtpSettings),
+                smtpSettings,
+                secretAuthority),
             Warnings = BuildWarnings(
                 deploymentMode,
                 publicOrigin,
@@ -74,7 +78,8 @@ public sealed class GetControlPlaneOverviewQueryHandler(
                 authProviderConfigured,
                 authorizationProviderConfigured,
                 storageSettings,
-                smtpSettings)
+                smtpSettings,
+                secretAuthority)
         };
     }
 
@@ -94,8 +99,17 @@ public sealed class GetControlPlaneOverviewQueryHandler(
         bool authorizationProviderConfigured,
         AuthorizationProviderConfigurationDto authorizationProviderConfiguration,
         InstanceStorageSettingsDto storageSettings,
-        InstanceSmtpSettingsDto smtpSettings) =>
+        InstanceSmtpSettingsDto smtpSettings,
+        SecretAuthorityStatusSnapshot secretAuthority) =>
         [
+            new()
+            {
+                Key = "secret-authority",
+                DisplayName = "Secret authority",
+                Configured = string.Equals(secretAuthority.Status, "configured", StringComparison.Ordinal),
+                Status = secretAuthority.Status,
+                Message = secretAuthority.Provider
+            },
             new()
             {
                 Key = "authentication",
@@ -136,9 +150,21 @@ public sealed class GetControlPlaneOverviewQueryHandler(
         bool authProviderConfigured,
         bool authorizationProviderConfigured,
         InstanceStorageSettingsDto storageSettings,
-        InstanceSmtpSettingsDto smtpSettings)
+        InstanceSmtpSettingsDto smtpSettings,
+        SecretAuthorityStatusSnapshot secretAuthority)
     {
         var warnings = new List<ControlPlaneWarningDto>();
+
+        if (!string.Equals(secretAuthority.Status, "configured", StringComparison.Ordinal))
+        {
+            warnings.Add(new ControlPlaneWarningDto
+            {
+                Code = secretAuthority.RemediationCode,
+                Severity = secretAuthority.Status == "required" ? "critical" : "warning",
+                Message = $"The selected secret authority is {secretAuthority.Status}.",
+                Remediation = "Follow the secret-provider recovery runbook; do not add a fallback source."
+            });
+        }
 
         if (deploymentMode != DeploymentMode.MultiTenant)
         {

@@ -22,6 +22,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Services.Registration;
 using Explore.Application.Contracts.Strategies;
 using Explore.Application.Contracts.Webhooks;
+using Explore.Application.Features.ConfigurationManifest.Managed;
 using Explore.Application.Management;
 using Explore.Application.Models;
 using Explore.Application.Services.Registration;
@@ -88,6 +89,8 @@ public static class InfrastructureServicesRegistration
         IConfiguration configuration,
         IHostEnvironment? environment = null)
     {
+        services.AddScoped<IConfigurationTransferDestinationResolver,
+            ConfigurationTransferDestinationResolver>();
         services.AddOptions<PhotonGeocodingOptions>()
             .Bind(configuration.GetSection(PhotonGeocodingOptions.SectionName))
             .ValidateOnStart();
