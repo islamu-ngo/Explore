@@ -757,14 +757,12 @@ public sealed class StripeConnectAccountAdapterTests
         secretResolver.ResolveAsync(
                 SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
                 null,
-                Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret(
-                SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
-                value,
-                SecretSourceType.EnvironmentVariable,
-                SecretScope.Instance,
-                null,
-                DateTimeOffset.UtcNow));
+                Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
+        value,
+        SecretSourceType.EnvironmentVariable,
+        SecretScope.Instance,
+        null,
+        DateTimeOffset.UtcNow)));
         return secretResolver;
     }
 
@@ -774,13 +772,15 @@ public sealed class StripeConnectAccountAdapterTests
     {
         ISecretResolver secretResolver = Substitute.For<ISecretResolver>();
         secretResolver.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.WebhookSecret, null, Arg.Any<CancellationToken>())
-            .Returns(secret is null ? null : new ResolvedSecret(
-                SecretDefinitionRegistry.Keys.Stripe.WebhookSecret,
-                secret,
-                SecretSourceType.EnvironmentVariable,
-                SecretScope.Instance,
-                null,
-                DateTimeOffset.UtcNow));
+            .Returns(secret is null
+                ? SecretResolutionResult.Unconfigured
+                : SecretResolutionResult.Resolved(new ResolvedSecret(
+                    SecretDefinitionRegistry.Keys.Stripe.WebhookSecret,
+                    secret,
+                    SecretSourceType.EnvironmentVariable,
+                    SecretScope.Instance,
+                    null,
+                    DateTimeOffset.UtcNow)));
         return new StripeConnectIncomingWebhookVerifier(
             new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions()),
             StripeOptions(),

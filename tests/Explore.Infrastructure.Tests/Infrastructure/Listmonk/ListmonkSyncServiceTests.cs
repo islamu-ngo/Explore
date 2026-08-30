@@ -33,7 +33,7 @@ public sealed class ListmonkSyncServiceTests
         await Assert.That(handler.CallCount).IsEqualTo(1);
         await Assert.That(handler.RequestUri!.AbsolutePath).IsEqualTo("/api/subscribers");
         await Assert.That(handler.Authorization!.Scheme).IsEqualTo("Basic");
-        await Assert.That(DecodeBasicAuth(handler.Authorization)).IsEqualTo("listmonk-user:listmonk-key");
+        await Assert.That(DecodeBasicAuth(handler.Authorization)).IsEqualTo($"{fixture.Username}:{fixture.ApiKey}");
 
         using var body = JsonDocument.Parse(handler.Body!);
         JsonElement root = body.RootElement;
@@ -129,6 +129,9 @@ public sealed class ListmonkSyncServiceTests
 
     private sealed class Fixture
     {
+        public string Username { get; } = $"user-{Guid.NewGuid():N}";
+        public string ApiKey { get; } = Guid.NewGuid().ToString("N");
+
         public Fixture(RecordingMessageHandler handler, bool configureSecrets = true)
         {
             SettingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
@@ -146,25 +149,29 @@ public sealed class ListmonkSyncServiceTests
                 SecretResolver.ResolveAsync(
                         SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiUsername,
                         Arg.Any<Guid?>(),
-                        Arg.Any<CancellationToken>())
-                    .Returns(new ResolvedSecret(
-                        SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiUsername,
-                        "listmonk-user",
-                        SecretSourceType.EnvironmentVariable,
-                        SecretScope.Tenant,
-                        Guid.CreateVersion7(),
-                        DateTimeOffset.UtcNow));
+                        Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiUsername,
+                Username,
+                SecretSourceType.EnvironmentVariable,
+                SecretScope.Tenant,
+                Guid.CreateVersion7(),
+                DateTimeOffset.UtcNow)));
                 SecretResolver.ResolveAsync(
                         SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiKey,
                         Arg.Any<Guid?>(),
+                        Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiKey,
+                ApiKey,
+                SecretSourceType.EnvironmentVariable,
+                SecretScope.Tenant,
+                Guid.CreateVersion7(),
+                DateTimeOffset.UtcNow)));
+            }
+            else
+            {
+                SecretResolver.ResolveAsync(
+                        Arg.Any<string>(),
+                        Arg.Any<Guid?>(),
                         Arg.Any<CancellationToken>())
-                    .Returns(new ResolvedSecret(
-                        SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiKey,
-                        "listmonk-key",
-                        SecretSourceType.EnvironmentVariable,
-                        SecretScope.Tenant,
-                        Guid.CreateVersion7(),
-                        DateTimeOffset.UtcNow));
+                    .Returns(SecretResolutionResult.Unconfigured);
             }
 
             HttpClientFactory.CreateClient(ListmonkSyncService.HttpClientName)

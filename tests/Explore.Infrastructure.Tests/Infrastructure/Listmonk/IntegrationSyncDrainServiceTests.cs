@@ -320,25 +320,21 @@ public sealed class IntegrationSyncDrainServiceTests
             secretResolver.ResolveAsync(
                     SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiUsername,
                     Arg.Any<Guid?>(),
-                    Arg.Any<CancellationToken>())
-                .Returns(new ResolvedSecret(
-                    SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiUsername,
-                    "listmonk-user",
-                    SecretSourceType.EnvironmentVariable,
-                    SecretScope.Tenant,
-                    Guid.CreateVersion7(),
-                    DateTimeOffset.UtcNow));
+                    Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiUsername,
+            "listmonk-user",
+            SecretSourceType.EnvironmentVariable,
+            SecretScope.Tenant,
+            Guid.CreateVersion7(),
+            DateTimeOffset.UtcNow)));
             secretResolver.ResolveAsync(
                     SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiKey,
                     Arg.Any<Guid?>(),
-                    Arg.Any<CancellationToken>())
-                .Returns(new ResolvedSecret(
-                    SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiKey,
-                    "listmonk-key",
-                    SecretSourceType.EnvironmentVariable,
-                    SecretScope.Tenant,
-                    Guid.CreateVersion7(),
-                    DateTimeOffset.UtcNow));
+                    Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiKey,
+            "listmonk-key",
+            SecretSourceType.EnvironmentVariable,
+            SecretScope.Tenant,
+            Guid.CreateVersion7(),
+            DateTimeOffset.UtcNow)));
 
             var httpClientFactory = Substitute.For<IHttpClientFactory>();
             httpClientFactory.CreateClient(ListmonkSyncService.HttpClientName)

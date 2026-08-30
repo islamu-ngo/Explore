@@ -209,13 +209,13 @@ public sealed class RepositoryBackedOAuthSessionStoreTests
                 SecretDefinitionRegistry.Keys.Atproto.SessionEncryptionKeyRing,
                 null,
                 Arg.Any<CancellationToken>())
-            .Returns(_ => new ResolvedSecret(
+            .Returns(_ => SecretResolutionResult.Resolved(new ResolvedSecret(
                 SecretDefinitionRegistry.Keys.Atproto.SessionEncryptionKeyRing,
                 getRing(),
                 SecretSourceType.Infisical,
                 SecretScope.Instance,
                 null,
-                DateTimeOffset.UtcNow));
+                DateTimeOffset.UtcNow)));
         var context = new AtprotoOAuthSessionStoreContext(
             TenantId,
             UserId,

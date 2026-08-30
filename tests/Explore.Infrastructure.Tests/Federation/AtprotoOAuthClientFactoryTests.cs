@@ -30,14 +30,12 @@ public sealed class AtprotoOAuthClientFactoryTests
         resolver.ResolveAsync(
                 SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks,
                 null,
-                Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret(
-                SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks,
-                CreatePrivateJwks(("new", "active"), ("old", "retired")),
-                SecretSourceType.Infisical,
-                SecretScope.Instance,
-                null,
-                DateTimeOffset.UtcNow));
+                Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks,
+        CreatePrivateJwks(("new", "active"), ("old", "retired")),
+        SecretSourceType.Infisical,
+        SecretScope.Instance,
+        null,
+        DateTimeOffset.UtcNow)));
         var environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);
         var factory = new AtprotoOAuthClientFactory(
@@ -62,14 +60,12 @@ public sealed class AtprotoOAuthClientFactoryTests
     public async Task MissingOrMalformedKeyFailsReadinessWithoutSecretValueInReason()
     {
         var resolver = Substitute.For<ISecretResolver>();
-        resolver.ResolveAsync(Arg.Any<string>(), null, Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret(
-                SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks,
-                "private-canary",
-                SecretSourceType.Infisical,
-                SecretScope.Instance,
-                null,
-                DateTimeOffset.UtcNow));
+        resolver.ResolveAsync(Arg.Any<string>(), null, Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks,
+        "private-canary",
+        SecretSourceType.Infisical,
+        SecretScope.Instance,
+        null,
+        DateTimeOffset.UtcNow)));
         var environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);
         var factory = new AtprotoOAuthClientFactory(
@@ -103,7 +99,7 @@ public sealed class AtprotoOAuthClientFactoryTests
     {
         var resolver = Substitute.For<ISecretResolver>();
         resolver.ResolveAsync(Arg.Any<string>(), null, Arg.Any<CancellationToken>())
-            .Returns<Task<ResolvedSecret?>>(_ => throw new HttpRequestException("private-canary"));
+            .Returns(Task.FromException<SecretResolutionResult>(new HttpRequestException("private-canary")));
         var factory = CreateFactory(resolver);
 
         var readiness = await factory.GetReadinessAsync(CancellationToken.None);
@@ -115,7 +111,7 @@ public sealed class AtprotoOAuthClientFactoryTests
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         resolver.ResolveAsync(Arg.Any<string>(), null, cancellation.Token)
-            .Returns(Task.FromCanceled<ResolvedSecret?>(cancellation.Token));
+            .Returns(Task.FromCanceled<SecretResolutionResult>(cancellation.Token));
         await Assert.That(async () => await factory.GetReadinessAsync(cancellation.Token))
             .Throws<OperationCanceledException>();
     }

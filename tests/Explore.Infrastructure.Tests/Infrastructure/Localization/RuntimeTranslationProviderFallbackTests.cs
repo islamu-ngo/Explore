@@ -183,14 +183,12 @@ public class RuntimeTranslationProviderFallbackTests
     private static ISecretResolver CreateSecretResolver()
     {
         var resolver = Substitute.For<ISecretResolver>();
-        resolver.ResolveAsync(SecretDefinitionRegistry.Keys.Localization.TmsApiKey, TenantId, Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret(
-                SecretDefinitionRegistry.Keys.Localization.TmsApiKey,
-                "test-tms-key",
-                SecretSourceType.EnvironmentVariable,
-                SecretScope.Tenant,
-                TenantId,
-                DateTimeOffset.UtcNow));
+        resolver.ResolveAsync(SecretDefinitionRegistry.Keys.Localization.TmsApiKey, TenantId, Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Localization.TmsApiKey,
+        "test-tms-key",
+        SecretSourceType.EnvironmentVariable,
+        SecretScope.Tenant,
+        TenantId,
+        DateTimeOffset.UtcNow)));
         return resolver;
     }
 

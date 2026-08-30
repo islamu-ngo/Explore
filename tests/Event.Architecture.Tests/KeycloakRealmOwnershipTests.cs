@@ -144,7 +144,8 @@ public sealed class KeycloakRealmOwnershipTests
         await Assert.That(script).DoesNotContain("webOrigins=[\"+\"]");
         await Assert.That(script).DoesNotContain("/*");
         await Assert.That(appHost).DoesNotContain("islamu-event-blazor-secret");
-        await Assert.That(appHost).Contains("new GenerateParameterDefault");
+        await Assert.That(appHost).DoesNotContain("new GenerateParameterDefault");
+        await Assert.That(appHost).Contains("configuration[\"KEYCLOAK_BLAZOR_CLIENT_SECRET\"] ?? string.Empty");
         await Assert.That(appHost).Contains(".WithEnvironment(\"KEYCLOAK_BLAZOR_REDIRECT_URIS\"");
         await Assert.That(appHost).Contains(".WithEnvironment(\"KEYCLOAK_BLAZOR_WEB_ORIGINS\"");
         await Assert.That(appHost).Contains(".WithEnvironment(\"KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS\"");

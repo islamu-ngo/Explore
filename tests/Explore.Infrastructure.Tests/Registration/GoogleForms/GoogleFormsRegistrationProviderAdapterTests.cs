@@ -665,26 +665,24 @@ public sealed class GoogleFormsRegistrationProviderAdapterTests
 
     private sealed class FakeSecretResolver(Dictionary<Guid, string> secrets) : ISecretResolver
     {
-        public Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) => Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) => Task.FromResult(SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(secrets.TryGetValue(bindingId, out string? value)
-                ? new ResolvedSecret("test", value, SecretSourceType.EnvironmentVariable, SecretScope.Tenant, tenantId, UtcNow)
-                : null);
+        public Task<SecretResolutionResult> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(secrets.TryGetValue(bindingId, out string? value) ? SecretResolutionResult.Resolved(new ResolvedSecret("test", value, SecretSourceType.EnvironmentVariable, SecretScope.Tenant, tenantId, UtcNow)) : SecretResolutionResult.Unconfigured);
 
         public Task InvalidateAsync(string settingKey, SecretScope scope, Guid? scopeId, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private sealed class ThrowingSecretResolver : ISecretResolver
     {
-        public Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) => throw new InvalidOperationException("secret resolver should not be reached");
+        public Task<SecretResolutionResult> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) => throw new InvalidOperationException("secret resolver should not be reached");
 
-        public Task<ResolvedSecret?> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) => throw new InvalidOperationException("secret resolver should not be reached");
+        public Task<SecretResolutionResult> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) => throw new InvalidOperationException("secret resolver should not be reached");
 
-        public Task<ResolvedSecret?> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) => throw new InvalidOperationException("secret resolver should not be reached");
+        public Task<SecretResolutionResult> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) => throw new InvalidOperationException("secret resolver should not be reached");
 
         public Task InvalidateAsync(string settingKey, SecretScope scope, Guid? scopeId, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }

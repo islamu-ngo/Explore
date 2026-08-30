@@ -52,8 +52,7 @@ public sealed class RegistrationProviderSubmissionSinkAdapterTests
         Guid submissionId = Guid.CreateVersion7();
         var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") });
         var secrets = Substitute.For<ISecretResolver>();
-        secrets.ResolveTenantBindingAsync(TenantId, ApiSecretBindingId, Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret("google", "token", SecretSourceType.EnvironmentVariable, SecretScope.Tenant, TenantId, DateTimeOffset.UtcNow));
+        secrets.ResolveTenantBindingAsync(TenantId, ApiSecretBindingId, Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret("google", "token", SecretSourceType.EnvironmentVariable, SecretScope.Tenant, TenantId, DateTimeOffset.UtcNow)));
         var sink = new GoogleSheetsRegistrationProviderSubmissionSink(new HttpClient(handler), secrets);
 
         await sink.AcceptAsync(Request(GoogleSheetsRegistrationProviderSubmissionSink.SupportedTuple, submissionId), CancellationToken.None);
@@ -72,8 +71,7 @@ public sealed class RegistrationProviderSubmissionSinkAdapterTests
         Guid submissionId = Guid.CreateVersion7();
         var handler = new RecordingHandler(new HttpResponseMessage(HttpStatusCode.Accepted));
         var secrets = Substitute.For<ISecretResolver>();
-        secrets.ResolveTenantBindingAsync(TenantId, WebhookSecretBindingId, Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret("webhook", "secret", SecretSourceType.EnvironmentVariable, SecretScope.Tenant, TenantId, DateTimeOffset.UtcNow));
+        secrets.ResolveTenantBindingAsync(TenantId, WebhookSecretBindingId, Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret("webhook", "secret", SecretSourceType.EnvironmentVariable, SecretScope.Tenant, TenantId, DateTimeOffset.UtcNow)));
         var sink = new WebhookRegistrationProviderSubmissionSink(
             new HttpClient(handler),
             secrets,

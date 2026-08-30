@@ -117,16 +117,14 @@ public sealed class AdmissionCredentialDigestServiceTests
 
     private sealed class DirectSecretResolver(string value) : ISecretResolver
     {
-        public Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(settingKey == SecretDefinitionRegistry.Keys.Admissions.CredentialLookupHmacKey
-                ? new ResolvedSecret(settingKey, value, SecretSourceType.EnvironmentVariable, SecretScope.Instance, null, DateTime.UtcNow)
-                : null);
+        public Task<SecretResolutionResult> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(settingKey == SecretDefinitionRegistry.Keys.Admissions.CredentialLookupHmacKey ? SecretResolutionResult.Resolved(new ResolvedSecret(settingKey, value, SecretSourceType.EnvironmentVariable, SecretScope.Instance, null, DateTime.UtcNow)) : SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId,
-            string qualifier, CancellationToken cancellationToken = default) => Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId,
+            string qualifier, CancellationToken cancellationToken = default) => Task.FromResult(SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SecretResolutionResult.Unconfigured);
 
         public Task InvalidateAsync(string settingKey, SecretScope scope, Guid? scopeId, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
@@ -134,19 +132,17 @@ public sealed class AdmissionCredentialDigestServiceTests
 
     private sealed class SecretResolver(IReadOnlyDictionary<int, string> keys) : ISecretResolver
     {
-        public Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId,
+        public Task<SecretResolutionResult> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId,
             string qualifier, CancellationToken cancellationToken = default) =>
             Task.FromResult(settingKey == SecretDefinitionRegistry.Keys.Admissions.CredentialLookupHmacKey &&
                 scope == SecretScope.Instance && scopeId is null &&
-                qualifier.Length > 1 && int.TryParse(qualifier[1..], out int version) && keys.TryGetValue(version, out string? value)
-                ? new ResolvedSecret(settingKey, value, SecretSourceType.EnvironmentVariable, scope, scopeId, DateTime.UtcNow)
-                : null);
+                qualifier.Length > 1 && int.TryParse(qualifier[1..], out int version) && keys.TryGetValue(version, out string? value) ? SecretResolutionResult.Resolved(new ResolvedSecret(settingKey, value, SecretSourceType.EnvironmentVariable, scope, scopeId, DateTime.UtcNow)) : SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SecretResolutionResult.Unconfigured);
 
         public Task InvalidateAsync(string settingKey, SecretScope scope, Guid? scopeId, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;

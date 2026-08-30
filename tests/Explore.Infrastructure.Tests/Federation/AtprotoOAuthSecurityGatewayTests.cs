@@ -480,13 +480,13 @@ public sealed class AtprotoOAuthSecurityGatewayTests
                 var value = key == SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks
                     ? CreatePrivateJwks()
                     : CreateEncryptionRing();
-                return new ResolvedSecret(
+                return SecretResolutionResult.Resolved(new ResolvedSecret(
                     key,
                     value,
                     SecretSourceType.Infisical,
                     SecretScope.Instance,
                     null,
-                    DateTimeOffset.UtcNow);
+                    DateTimeOffset.UtcNow));
             });
         var environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);

@@ -37,7 +37,7 @@ public sealed class SvixWebhookProviderHealthCheckTests
     {
         var secretResolver = Substitute.For<ISecretResolver>();
         secretResolver.ResolveAsync("webhooks.svix.auth_token", null, Arg.Any<CancellationToken>())
-            .Returns((ResolvedSecret?)null);
+            .Returns(SecretResolutionResult.Unconfigured);
         var healthCheck = CreateHealthCheck(
             secretResolver,
             new WebhookOptions
@@ -82,9 +82,9 @@ public sealed class SvixWebhookProviderHealthCheckTests
     {
         var secretResolver = Substitute.For<ISecretResolver>();
         secretResolver.ResolveAsync("webhooks.svix.auth_token", null, Arg.Any<CancellationToken>())
-            .Returns(Resolved("webhooks.svix.auth_token", "jwt-token"));
+            .Returns(Resolved("webhooks.svix.auth_token", Guid.NewGuid().ToString("N")));
         secretResolver.ResolveAsync("webhooks.svix.operational_webhook_secret", null, Arg.Any<CancellationToken>())
-            .Returns(Resolved("webhooks.svix.operational_webhook_secret", "whsec_secret"));
+            .Returns(Resolved("webhooks.svix.operational_webhook_secret", Guid.NewGuid().ToString("N")));
         var healthCheck = CreateHealthCheck(
             secretResolver,
             new WebhookOptions
@@ -116,9 +116,9 @@ public sealed class SvixWebhookProviderHealthCheckTests
     {
         var secretResolver = Substitute.For<ISecretResolver>();
         secretResolver.ResolveAsync("webhooks.svix.auth_token", null, Arg.Any<CancellationToken>())
-            .Returns(Resolved("webhooks.svix.auth_token", "jwt-token"));
+            .Returns(Resolved("webhooks.svix.auth_token", Guid.NewGuid().ToString("N")));
         secretResolver.ResolveAsync("webhooks.svix.operational_webhook_secret", null, Arg.Any<CancellationToken>())
-            .Returns((ResolvedSecret?)null);
+            .Returns(SecretResolutionResult.Unconfigured);
         var healthCheck = CreateHealthCheck(
             secretResolver,
             new WebhookOptions
@@ -212,14 +212,14 @@ public sealed class SvixWebhookProviderHealthCheckTests
         return new BusinessMetrics(meterFactory);
     }
 
-    private static ResolvedSecret Resolved(string settingKey, string value) =>
-        new(
+    private static SecretResolutionResult Resolved(string settingKey, string value) =>
+        SecretResolutionResult.Resolved(new ResolvedSecret(
             settingKey,
             value,
             SecretSourceType.EnvironmentVariable,
             SecretScope.Instance,
             ScopeId: null,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow));
 
     private static WebhookSvixOptions SupportedSelfHostedOptions(
         string? operationalWebhookSecretRef = "webhooks.svix.operational_webhook_secret") =>

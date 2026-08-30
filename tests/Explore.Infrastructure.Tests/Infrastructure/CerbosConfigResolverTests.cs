@@ -6,6 +6,8 @@ using Explore.Application.Contracts.Secrets;
 using Explore.Application.Models;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -141,6 +143,8 @@ public sealed class CerbosConfigResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_WithCustomModeAndBlankEndpoint_PreservesByoFailureModeInsteadOfInstanceFallback()
     {
+        string username = $"user-{Guid.NewGuid():N}";
+        string password = Guid.NewGuid().ToString("N");
         _settingsResolver.ResolveAsync<string>(
                 GovernanceSettingKeys.Cerbos.CustomEndpoint,
                 Arg.Any<SettingContext>(),
@@ -151,16 +155,16 @@ public sealed class CerbosConfigResolverTests : IDisposable
                 Arg.Any<SettingContext>(),
                 Arg.Any<CancellationToken>())
             .Returns("https://tenant-admin.example.com:8443");
-        _settingsResolver.ResolveAsync<string>(
-                InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
-                Arg.Any<SettingContext>(),
+        _secretResolver.ResolveAsync(
+                SecretDefinitionRegistry.Keys.Cerbos.CustomAdminUsername,
+                TenantId,
                 Arg.Any<CancellationToken>())
-            .Returns("tenant-admin");
-        _settingsResolver.ResolveAsync<string>(
-                InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword,
-                Arg.Any<SettingContext>(),
+            .Returns(Resolved(SecretDefinitionRegistry.Keys.Cerbos.CustomAdminUsername, username));
+        _secretResolver.ResolveAsync(
+                SecretDefinitionRegistry.Keys.Cerbos.CustomAdminPassword,
+                TenantId,
                 Arg.Any<CancellationToken>())
-            .Returns("tenant-password");
+            .Returns(Resolved(SecretDefinitionRegistry.Keys.Cerbos.CustomAdminPassword, password));
         var resolver = CreateResolver();
 
         var result = await resolver.ResolveAsync();
@@ -169,8 +173,8 @@ public sealed class CerbosConfigResolverTests : IDisposable
         await Assert.That(result?.Mode).IsEqualTo(CerbosMode.CustomEndpoint);
         await Assert.That(result?.Endpoint).IsEqualTo(string.Empty);
         await Assert.That(result?.AdminEndpoint).IsEqualTo("https://tenant-admin.example.com:8443");
-        await Assert.That(result?.AdminUsername).IsEqualTo("tenant-admin");
-        await Assert.That(result?.AdminPassword).IsEqualTo("tenant-password");
+        await Assert.That(result?.AdminUsername).IsEqualTo(username);
+        await Assert.That(result?.AdminPassword).IsEqualTo(password);
         await Assert.That(result?.IsInstanceDefault).IsFalse();
     }
 
@@ -230,4 +234,13 @@ public sealed class CerbosConfigResolverTests : IDisposable
             _secretResolver,
             _logger);
     }
+
+    private static SecretResolutionResult Resolved(string key, string value) =>
+        SecretResolutionResult.Resolved(new ResolvedSecret(
+            key,
+            value,
+            SecretSourceType.EnvironmentVariable,
+            SecretScope.Tenant,
+            TenantId,
+            DateTimeOffset.UtcNow));
 }

@@ -204,10 +204,8 @@ public sealed class StripeRefundWebhookTests
         connections.ListHistoricalByExternalAccountAsync("stripe", AccountId, 2, Arg.Any<CancellationToken>())
             .Returns([connection]);
         var secrets = Substitute.For<ISecretResolver>();
-        secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.WebhookSecret, null, Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret(
-                SecretDefinitionRegistry.Keys.Stripe.WebhookSecret, Secret, SecretSourceType.EnvironmentVariable,
-                SecretScope.Instance, null, DateTimeOffset.UtcNow));
+        secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.WebhookSecret, null, Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Stripe.WebhookSecret, Secret, SecretSourceType.EnvironmentVariable,
+        SecretScope.Instance, null, DateTimeOffset.UtcNow)));
         return new(
             new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions()),
             Options.Create(new StripePaymentOptions()),

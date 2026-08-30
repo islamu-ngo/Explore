@@ -17,6 +17,7 @@ public sealed class MicrosoftFormsRegistrationProviderDescriptorTests
     private static readonly DateTime UtcNow = new(2026, 8, 11, 12, 0, 0, DateTimeKind.Utc);
     private static readonly Guid TenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
     private static readonly Guid WebhookBindingId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000101");
+    private static readonly string CallbackKey = Guid.NewGuid().ToString("N");
 
     [Test]
     public async Task Registry_ResolvesOnlyExactPinnedTupleAndHonestCapabilities()
@@ -54,13 +55,13 @@ public sealed class MicrosoftFormsRegistrationProviderDescriptorTests
         MicrosoftFormsRegistrationProviderDescriptor descriptor = Descriptor();
         RegistrationProviderBinding binding = Binding();
         byte[] validBody = Envelope(binding.Id, UtcNow);
-        Dictionary<string, string> headers = new() { [MicrosoftFormsRegistrationProviderDescriptor.CallbackKeyHeader] = "callback-key" };
+        Dictionary<string, string> headers = new() { [MicrosoftFormsRegistrationProviderDescriptor.CallbackKeyHeader] = CallbackKey };
 
         RegistrationProviderCallbackVerificationResult valid = await descriptor.VerifyCallbackAsync(
             new(TenantId, binding, Connection(), descriptor.Tuple, validBody, headers), CancellationToken.None);
         RegistrationProviderCallbackVerificationResult badKey = await descriptor.VerifyCallbackAsync(
             new(TenantId, binding, Connection(), descriptor.Tuple, validBody,
-                new Dictionary<string, string> { [MicrosoftFormsRegistrationProviderDescriptor.CallbackKeyHeader] = "wrong" }), CancellationToken.None);
+                new Dictionary<string, string> { [MicrosoftFormsRegistrationProviderDescriptor.CallbackKeyHeader] = Guid.NewGuid().ToString("N") }), CancellationToken.None);
         RegistrationProviderCallbackVerificationResult stale = await descriptor.VerifyCallbackAsync(
             new(TenantId, binding, Connection(), descriptor.Tuple, Envelope(binding.Id, UtcNow.AddMinutes(-6)), headers), CancellationToken.None);
         RegistrationProviderCallbackVerificationResult malformed = await descriptor.VerifyCallbackAsync(
@@ -112,16 +113,16 @@ public sealed class MicrosoftFormsRegistrationProviderDescriptorTests
 
     private sealed class FakeSecretResolver : ISecretResolver
     {
-        public Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId, string qualifier, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(bindingId == WebhookBindingId
-                ? new ResolvedSecret("test", "callback-key", SecretSourceType.EnvironmentVariable, SecretScope.Tenant, tenantId, UtcNow)
-                : null);
+        public Task<SecretResolutionResult> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(bindingId == WebhookBindingId
+                ? SecretResolutionResult.Resolved(new ResolvedSecret("test", CallbackKey, SecretSourceType.EnvironmentVariable, SecretScope.Tenant, tenantId, UtcNow))
+                : SecretResolutionResult.Unconfigured);
 
         public Task InvalidateAsync(string settingKey, SecretScope scope, Guid? scopeId, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;

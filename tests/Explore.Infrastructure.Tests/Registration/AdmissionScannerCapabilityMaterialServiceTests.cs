@@ -144,7 +144,7 @@ public sealed class AdmissionScannerCapabilityMaterialServiceTests
     {
         public List<string> RequestedSettingKeys { get; } = [];
 
-        public Task<ResolvedSecret?> ResolveAsync(
+        public Task<SecretResolutionResult> ResolveAsync(
             string settingKey,
             Guid? tenantId,
             CancellationToken cancellationToken = default)
@@ -155,10 +155,10 @@ public sealed class AdmissionScannerCapabilityMaterialServiceTests
                 throw new OperationCanceledException(cancellationToken);
             return Task.FromResult(keys.TryGetValue(1, out string? value)
                 ? Secret(settingKey, value)
-                : null);
+                : SecretResolutionResult.Unconfigured);
         }
 
-        public Task<ResolvedSecret?> ResolveQualifiedAsync(
+        public Task<SecretResolutionResult> ResolveQualifiedAsync(
             string settingKey,
             SecretScope scope,
             Guid? scopeId,
@@ -173,13 +173,13 @@ public sealed class AdmissionScannerCapabilityMaterialServiceTests
                 qualifier.Length > 1 && int.TryParse(qualifier[1..], out int version) &&
                 keys.TryGetValue(version, out string? value)
                     ? Secret(settingKey, value)
-                    : null);
+                    : SecretResolutionResult.Unconfigured);
         }
 
-        public Task<ResolvedSecret?> ResolveTenantBindingAsync(
+        public Task<SecretResolutionResult> ResolveTenantBindingAsync(
             Guid tenantId,
             Guid bindingId,
-            CancellationToken cancellationToken = default) => Task.FromResult<ResolvedSecret?>(null);
+            CancellationToken cancellationToken = default) => Task.FromResult(SecretResolutionResult.Unconfigured);
 
         public Task InvalidateAsync(
             string settingKey,
@@ -187,7 +187,8 @@ public sealed class AdmissionScannerCapabilityMaterialServiceTests
             Guid? scopeId,
             CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        private static ResolvedSecret Secret(string key, string value) => new(
-            key, value, SecretSourceType.EnvironmentVariable, SecretScope.Instance, null, DateTime.UtcNow);
+        private static SecretResolutionResult Secret(string key, string value) =>
+            SecretResolutionResult.Resolved(new ResolvedSecret(
+                key, value, SecretSourceType.EnvironmentVariable, SecretScope.Instance, null, DateTime.UtcNow));
     }
 }

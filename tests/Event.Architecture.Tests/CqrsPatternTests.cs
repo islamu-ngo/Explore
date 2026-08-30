@@ -70,6 +70,12 @@ public class CqrsPatternTests
             .DoNotResideInNamespaceContaining("Contracts")
             .And()
             .DoNotHaveName("AddressGovernancePolicyRequest")
+            .And()
+            .DoNotHaveName("ConfigurationManagedFieldRequest")
+            .And()
+            .DoNotHaveName("ConfigurationImportPreviewRequest")
+            .And()
+            .DoNotHaveName("ConfigurationImportApplyRequest")
             .Should()
             .ResideInNamespaceContaining("Queries")
             .GetResult();

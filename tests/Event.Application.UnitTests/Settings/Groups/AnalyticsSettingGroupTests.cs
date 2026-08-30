@@ -218,10 +218,10 @@ public class AnalyticsSettingGroupTests
     // --- SettingKeys completeness ---
 
     [Test]
-    public async Task SettingKeys_Contains17Keys()
+    public async Task SettingKeys_Contains16Keys()
     {
         var keys = AnalyticsSettingGroup.SettingKeys.ToList();
 
-        await Assert.That(keys.Count).IsEqualTo(17);
+        await Assert.That(keys.Count).IsEqualTo(16);
     }
 }

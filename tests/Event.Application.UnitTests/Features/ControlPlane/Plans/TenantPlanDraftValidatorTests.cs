@@ -57,7 +57,10 @@ public sealed class TenantPlanDraftValidatorTests
         {
             SettingOverrides =
             [
-                new TenantPlanSettingOverride("email.smtp_password", "\"secret\"", IsLocked: true)
+                new TenantPlanSettingOverride(
+                    InfrastructureSecretSettingKeys.Reporting.OspreyApiKey,
+                    "\"secret\"",
+                    IsLocked: true)
             ]
         };
 

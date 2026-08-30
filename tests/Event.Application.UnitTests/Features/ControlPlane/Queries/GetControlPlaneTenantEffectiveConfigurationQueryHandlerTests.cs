@@ -57,7 +57,7 @@ public sealed class GetControlPlaneTenantEffectiveConfigurationQueryHandlerTests
         await Assert.That(Value(result, GovernanceSettingKeys.PublicExperience.HomeBlocks))
             .IsEqualTo("{\"schemaVersion\":1,\"blocks\":[{\"type\":\"hero\"}]}");
         await Assert.That(Value(result, GovernanceSettingKeys.Email.FromName)).IsEqualTo("Explore");
-        await Assert.That(Value(result, "email.smtp_password")).IsEmpty();
+        await Assert.That(result.Settings.Select(setting => setting.Key)).DoesNotContain("email.smtp_password");
     }
 
     [Test]

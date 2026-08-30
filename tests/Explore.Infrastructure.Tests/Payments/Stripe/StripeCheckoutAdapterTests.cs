@@ -297,14 +297,12 @@ public sealed class StripeCheckoutAdapterTests
     {
         var handler = new RecordingHandler(_ => throw new InvalidOperationException("HTTP must not run."));
         ISecretResolver secrets = Substitute.For<ISecretResolver>();
-        secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey, null, Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret(
-                SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
-                "sk_live_platform",
-                SecretSourceType.EnvironmentVariable,
-                SecretScope.Instance,
-                null,
-                DateTimeOffset.UtcNow));
+        secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey, null, Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
+        "sk_live_platform",
+        SecretSourceType.EnvironmentVariable,
+        SecretScope.Instance,
+        null,
+        DateTimeOffset.UtcNow)));
 
         HostedCheckoutCreateResult result = await Adapter(handler, secrets).CreateAsync(CreateRequest(), CancellationToken.None);
 
@@ -413,14 +411,12 @@ public sealed class StripeCheckoutAdapterTests
         secrets ??= Substitute.For<ISecretResolver>();
         if (useDefaultSecret)
         {
-            secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey, null, Arg.Any<CancellationToken>())
-                .Returns(new ResolvedSecret(
-                    SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
-                    "sk_test_platform",
-                    SecretSourceType.EnvironmentVariable,
-                    SecretScope.Instance,
-                    null,
-                    DateTimeOffset.UtcNow));
+            secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey, null, Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
+            "sk_test_platform",
+            SecretSourceType.EnvironmentVariable,
+            SecretScope.Instance,
+            null,
+            DateTimeOffset.UtcNow)));
         }
         return new StripeCheckoutAdapter(
             new SingleClientFactory(new HttpClient(handler) { BaseAddress = new Uri("https://api.stripe.example.test") }),

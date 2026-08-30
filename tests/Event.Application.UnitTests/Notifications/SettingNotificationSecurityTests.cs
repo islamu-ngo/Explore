@@ -19,7 +19,7 @@ public sealed class SettingNotificationSecurityTests
         Guid actorUserId = Guid.NewGuid();
 
         var notification = new SettingChangedNotification(
-            InfrastructureSecretSettingKeys.Email.SmtpPassword,
+            InfrastructureSecretSettingKeys.Reporting.OspreyApiKey,
             canary,
             canary,
             SettingSource.SystemDefault,
@@ -48,7 +48,7 @@ public sealed class SettingNotificationSecurityTests
             .Do(call => capturedState = call.ArgAt<object>(2));
         var handler = new SettingAuditLogHandler(logger);
         var notification = new SettingChangedNotification(
-            InfrastructureSecretSettingKeys.Email.SmtpPassword,
+            InfrastructureSecretSettingKeys.Reporting.OspreyApiKey,
             canary,
             canary,
             SettingSource.SystemDefault,

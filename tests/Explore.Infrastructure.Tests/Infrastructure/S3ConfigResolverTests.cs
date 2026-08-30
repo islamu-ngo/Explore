@@ -20,8 +20,9 @@ public sealed class S3ConfigResolverTests : IDisposable
     private readonly ITenantContext _tenant = Substitute.For<ITenantContext>();
     private readonly ISecretResolver _secrets = Substitute.For<ISecretResolver>();
     private readonly MemoryCache _cache = new(new MemoryCacheOptions());
+    private readonly Guid _tenantId = Guid.NewGuid();
 
-    public S3ConfigResolverTests() => _tenant.TenantId.Returns(Guid.NewGuid());
+    public S3ConfigResolverTests() => _tenant.TenantId.Returns(_tenantId);
 
     public void Dispose() => _cache.Dispose();
 
@@ -100,6 +101,6 @@ public sealed class S3ConfigResolverTests : IDisposable
         value,
         SecretSourceType.EnvironmentVariable,
         SecretScope.Tenant,
-        _tenant.TenantId,
+        _tenantId,
         DateTimeOffset.UtcNow));
 }

@@ -153,7 +153,7 @@ public sealed class StripeRefundAdapterTests
         var handler = new RecordingHandler(_ => throw new InvalidOperationException("HTTP must not run."));
         var secrets = Substitute.For<ISecretResolver>();
         secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey, null, Arg.Any<CancellationToken>())
-            .Returns<Task<ResolvedSecret?>>(_ => throw new TimeoutException());
+            .Returns(Task.FromException<SecretResolutionResult>(new TimeoutException()));
 
         RefundProviderResult result = await Adapter(handler, secrets).CreateAsync(CreateRequest(), CancellationToken.None);
 
@@ -196,14 +196,12 @@ public sealed class StripeRefundAdapterTests
         secrets ??= Substitute.For<ISecretResolver>();
         if (useDefaultSecret)
         {
-            secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey, null, Arg.Any<CancellationToken>())
-                .Returns(new ResolvedSecret(
-                    SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
-                    PlatformSecret,
-                    SecretSourceType.EnvironmentVariable,
-                    SecretScope.Instance,
-                    null,
-                    DateTimeOffset.UtcNow));
+            secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey, null, Arg.Any<CancellationToken>()).Returns(SecretResolutionResult.Resolved(new ResolvedSecret(SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
+            PlatformSecret,
+            SecretSourceType.EnvironmentVariable,
+            SecretScope.Instance,
+            null,
+            DateTimeOffset.UtcNow)));
         }
         return new(
             new SingleClientFactory(new HttpClient(handler) { BaseAddress = new Uri("https://api.stripe.example.test") }),
