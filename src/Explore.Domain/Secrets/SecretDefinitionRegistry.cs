@@ -111,8 +111,8 @@ public static class SecretDefinitionRegistry
             public const string Endpoint = "storage.s3.endpoint";
             public const string PublicEndpoint = "storage.s3.public_endpoint";
             public const string BucketName = "storage.s3.bucket_name";
-            public const string AccessKeyId = "storage.s3.access_key_id";
-            public const string SecretAccessKey = "storage.s3.secret_access_key";
+            public const string AccessKeyId = InfrastructureSecretSettingKeys.Storage.AccessKeyId;
+            public const string SecretAccessKey = InfrastructureSecretSettingKeys.Storage.SecretAccessKey;
             public const string Region = "storage.s3.region";
         }
 
@@ -172,8 +172,8 @@ public static class SecretDefinitionRegistry
         {
             public const string Host = "smtp.host";
             public const string Port = "smtp.port";
-            public const string Username = "smtp.username";
-            public const string Password = "smtp.password";
+            public const string Username = InfrastructureSecretSettingKeys.Email.SmtpUsername;
+            public const string Password = InfrastructureSecretSettingKeys.Email.SmtpPassword;
             public const string FromAddress = "smtp.from_address";
             public const string FromName = "smtp.from_name";
         }

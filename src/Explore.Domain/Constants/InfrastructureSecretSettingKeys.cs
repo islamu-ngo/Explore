@@ -7,14 +7,14 @@ public static class InfrastructureSecretSettingKeys
 {
     public static class Email
     {
-        public const string SmtpUsername = "email.smtp_username";
-        public const string SmtpPassword = "email.smtp_password";
+        public const string SmtpUsername = "smtp.username";
+        public const string SmtpPassword = "smtp.password";
     }
 
     public static class Storage
     {
-        public const string AccessKeyId = "s3.access_key_id";
-        public const string SecretAccessKey = "s3.secret_access_key";
+        public const string AccessKeyId = "storage.s3.access_key_id";
+        public const string SecretAccessKey = "storage.s3.secret_access_key";
     }
 
     public static class Cerbos
