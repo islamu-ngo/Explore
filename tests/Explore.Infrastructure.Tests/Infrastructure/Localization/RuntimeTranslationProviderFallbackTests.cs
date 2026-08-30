@@ -187,7 +187,7 @@ public class RuntimeTranslationProviderFallbackTests
             .Returns(new ResolvedSecret(
                 SecretDefinitionRegistry.Keys.Localization.TmsApiKey,
                 "test-tms-key",
-                SecretSourceType.InlineEncrypted,
+                SecretSourceType.EnvironmentVariable,
                 SecretScope.Tenant,
                 TenantId,
                 DateTimeOffset.UtcNow));

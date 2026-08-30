@@ -22,21 +22,22 @@ public sealed class ConfigurationImportAtomicityTests(
         Guid sessionId = Guid.CreateVersion7();
         await using ExploreDbContext first = fixture.CreateDbContext();
         await using ExploreDbContext second = fixture.CreateDbContext();
-        await using var firstTransaction =
-            await first.Database.BeginTransactionAsync();
-        first.ConfigurationImportOperations.Add(
-            ConfigurationImportOperationTestData.Applied(sessionId));
-        await first.SaveChangesAsync();
+        await first.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var firstTransaction =
+                await first.Database.BeginTransactionAsync();
+            first.ConfigurationImportOperations.Add(
+                ConfigurationImportOperationTestData.Applied(sessionId));
+            await first.SaveChangesAsync();
 
-        await using var secondTransaction =
-            await second.Database.BeginTransactionAsync();
-        second.ConfigurationImportOperations.Add(
-            ConfigurationImportOperationTestData.Applied(sessionId));
-        Task secondWrite = second.SaveChangesAsync();
-        await firstTransaction.CommitAsync();
+            second.ConfigurationImportOperations.Add(
+                ConfigurationImportOperationTestData.Applied(sessionId));
+            Task secondWrite = second.SaveChangesAsync();
+            await firstTransaction.CommitAsync();
 
-        await Assert.That(async () => await secondWrite)
-            .Throws<DbUpdateException>();
+            await Assert.That(async () => await secondWrite)
+                .Throws<DbUpdateException>();
+        });
         await using ExploreDbContext verification = fixture.CreateDbContext();
         await Assert.That(await verification.ConfigurationImportOperations
                 .CountAsync(operation => operation.SessionId == sessionId))
@@ -49,13 +50,17 @@ public sealed class ConfigurationImportAtomicityTests(
         await fixture.ResetAsync();
         Guid operationId = Guid.CreateVersion7();
         await using ExploreDbContext context = fixture.CreateDbContext();
-        await using var transaction = await context.Database.BeginTransactionAsync();
-        context.ConfigurationImportOperations.Add(
-            ConfigurationImportOperationTestData.Applied(
-                Guid.CreateVersion7(),
-                operationId));
-        await context.SaveChangesAsync();
-        await transaction.RollbackAsync();
+        await context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var transaction =
+                await context.Database.BeginTransactionAsync();
+            context.ConfigurationImportOperations.Add(
+                ConfigurationImportOperationTestData.Applied(
+                    Guid.CreateVersion7(),
+                    operationId));
+            await context.SaveChangesAsync();
+            await transaction.RollbackAsync();
+        });
         context.ChangeTracker.Clear();
 
         await Assert.That(await context.ConfigurationImportOperations

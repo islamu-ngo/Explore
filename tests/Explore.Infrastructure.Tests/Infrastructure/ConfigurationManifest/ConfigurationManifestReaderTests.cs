@@ -21,7 +21,8 @@ public sealed class ConfigurationManifestReaderTests
           "spec": {
             "instance": {
               "settings": {},
-              "documents": {}
+              "documents": {},
+              "legalDocuments": {}
             },
             "tenants": [
               {
@@ -29,7 +30,8 @@ public sealed class ConfigurationManifestReaderTests
                 "spec": {
                   "displayName": "Primary Community",
                   "settings": {},
-                  "documents": {}
+                  "documents": {},
+                  "legalDocuments": {}
                 }
               }
             ]
