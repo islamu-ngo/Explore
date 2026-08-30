@@ -299,7 +299,7 @@ public sealed class GoogleFormsRegistrationProviderAdapter(
         return new RegistrationProviderSubscriptionResult(
             true,
             FirstString(watch, "id", "watchId"),
-            null,
+            false,
             OptionalTimestamp(watch, "expireTime", "expirationTime"));
     }
 
@@ -415,7 +415,7 @@ public sealed class GoogleFormsRegistrationProviderAdapter(
             throw new InvalidOperationException("Google Forms OAuth token binding is required.");
         }
 
-        ResolvedSecret? secret = await secretResolver.ResolveTenantBindingAsync(tenantId, bindingId, cancellationToken);
+        SecretResolutionResult secret = await secretResolver.ResolveTenantBindingAsync(tenantId, bindingId, cancellationToken);
         string value = secret?.Value?.Trim() ?? string.Empty;
         if (value.Length == 0)
         {

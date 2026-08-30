@@ -67,7 +67,7 @@ public sealed class WebhookRegistrationProviderSubmissionSink(
         message.Headers.TryAddWithoutValidation("Idempotency-Key", request.RegistrationSubmissionId.ToString("N"));
         message.Headers.TryAddWithoutValidation("X-Islamu-Registration-Submission-Id", request.RegistrationSubmissionId.ToString("D"));
         if ((request.Binding.WebhookSecretBindingId ?? request.Connection.WebhookSecretBindingId) is { } bindingId &&
-            (await secretResolver.ResolveTenantBindingAsync(request.TenantId, bindingId, cancellationToken))?.Value is { Length: > 0 } secret)
+            (await secretResolver.ResolveTenantBindingAsync(request.TenantId, bindingId, cancellationToken)).Value is { Length: > 0 } secret)
         {
             string signature = Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), body)).ToLowerInvariant();
             message.Headers.TryAddWithoutValidation("X-Islamu-Signature", "sha256=" + signature);

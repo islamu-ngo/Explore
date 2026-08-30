@@ -132,10 +132,8 @@ public sealed class PromotionContractPrivacyTests
         JsonElement issuedCodeCommand = schemas.GetProperty("PromotionCodeIssuedCommandResponseDto").GetProperty("properties");
 
         await Assert.That(quotaExceeded.TryGetProperty("tenantId", out _)).IsFalse();
-        await Assert.That(GetNullableSchemaRef(safeCommand.GetProperty("quotaExceeded")))
-            .IsEqualTo("#/components/schemas/QuotaExceededDetails");
-        await Assert.That(GetNullableSchemaRef(issuedCodeCommand.GetProperty("quotaExceeded")))
-            .IsEqualTo("#/components/schemas/QuotaExceededDetails");
+        await AssertNullableQuotaExceededReference(safeCommand.GetProperty("quotaExceeded"));
+        await AssertNullableQuotaExceededReference(issuedCodeCommand.GetProperty("quotaExceeded"));
 
         var generated = await File.ReadAllTextAsync(Path.Combine(
             ResolveRepositoryRoot(),
@@ -145,7 +143,11 @@ public sealed class PromotionContractPrivacyTests
             "EventApiClient.g.cs"));
 
         await Assert.That(ExtractGeneratedType(generated, "QuotaExceededDetails")).DoesNotContain("TenantId");
+        await Assert.That(ExtractGeneratedType(generated, "PromotionManagementCommandResponseDto"))
+            .Contains("public QuotaExceededDetails? QuotaExceeded");
         await Assert.That(ExtractGeneratedType(generated, "PromotionManagementCommandResponseDto")).DoesNotContain("TenantId");
+        await Assert.That(ExtractGeneratedType(generated, "PromotionCodeIssuedCommandResponseDto"))
+            .Contains("public QuotaExceededDetails? QuotaExceeded");
         await Assert.That(ExtractGeneratedType(generated, "PromotionCodeIssuedCommandResponseDto")).DoesNotContain("TenantId");
     }
 
@@ -233,13 +235,19 @@ public sealed class PromotionContractPrivacyTests
         return string.Empty;
     }
 
-    private static string GetNullableSchemaRef(JsonElement schema)
+    private static async Task AssertNullableQuotaExceededReference(JsonElement schema)
     {
-        return schema.GetProperty("oneOf")
-            .EnumerateArray()
+        JsonElement[] alternatives = schema.GetProperty("oneOf").EnumerateArray().ToArray();
+        string[] references = alternatives
             .Select(option => option.TryGetProperty("$ref", out JsonElement reference) ? reference.GetString() : null)
-            .FirstOrDefault(reference => !string.IsNullOrWhiteSpace(reference))
-            ?? string.Empty;
+            .Where(reference => !string.IsNullOrWhiteSpace(reference))
+            .Select(reference => reference!)
+            .ToArray();
+        int nullAlternatives = alternatives.Count(option =>
+            option.TryGetProperty("type", out JsonElement type) && type.GetString() == "null");
+
+        await Assert.That(references).IsEquivalentTo(["#/components/schemas/QuotaExceededDetails"]);
+        await Assert.That(nullAlternatives).IsEqualTo(1);
     }
 
     private static async Task AssertOperationHasExpectedHeaders(string path, JsonElement operation)

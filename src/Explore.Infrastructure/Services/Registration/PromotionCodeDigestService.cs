@@ -98,7 +98,7 @@ public sealed class PromotionCodeDigestService(
             throw new ArgumentException("Tenant and event identifiers are required.");
         }
 
-        ResolvedSecret? secret = await secretResolver.ResolveQualifiedAsync(
+        SecretResolutionResult secret = await secretResolver.ResolveQualifiedAsync(
             SecretDefinitionRegistry.Keys.Promotions.CodeLookupHmacKey,
             SecretScope.Instance,
             scopeId: null,

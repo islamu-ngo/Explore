@@ -335,7 +335,7 @@ public sealed class FormbricksRegistrationProviderAdapter(
         return new RegistrationProviderSubscriptionResult(
             true,
             RequiredString(webhook, "id"),
-            FirstString(webhook, "secret"));
+            ExternalSecretProvisioningRequired: !string.IsNullOrWhiteSpace(FirstString(webhook, "secret")));
     }
 
     public async Task<RegistrationProviderReconciliationResult> ReconcileAsync(
@@ -466,7 +466,7 @@ public sealed class FormbricksRegistrationProviderAdapter(
             throw new InvalidOperationException("Formbricks API token binding is required.");
         }
 
-        ResolvedSecret? secret = await secretResolver.ResolveTenantBindingAsync(tenantId, bindingId, cancellationToken);
+        SecretResolutionResult secret = await secretResolver.ResolveTenantBindingAsync(tenantId, bindingId, cancellationToken);
         return !string.IsNullOrWhiteSpace(secret?.Value)
             ? secret.Value
             : throw new InvalidOperationException("Formbricks API token could not be resolved.");
@@ -480,7 +480,7 @@ public sealed class FormbricksRegistrationProviderAdapter(
             return null;
         }
 
-        return (await secretResolver.ResolveTenantBindingAsync(request.TenantId, bindingId.Value, cancellationToken))?.Value;
+        return (await secretResolver.ResolveTenantBindingAsync(request.TenantId, bindingId.Value, cancellationToken)).Value;
     }
 
     private static IReadOnlyList<object> BuildSurveyQuestions(RegistrationFormVersion version) =>

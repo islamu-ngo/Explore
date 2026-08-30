@@ -258,7 +258,11 @@ public sealed record RegistrationProviderCallbackReceipt(
     DateTimeOffset VerifiedAt,
     string Nonce);
 public sealed record RegistrationProviderSubscriptionRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, Uri CallbackUri);
-public sealed record RegistrationProviderSubscriptionResult(bool IsActive, string? ProviderSubscriptionId, string? ProviderWebhookSecret = null, DateTime? ExpiresAtUtc = null);
+public sealed record RegistrationProviderSubscriptionResult(
+    bool IsActive,
+    string? ProviderSubscriptionId,
+    bool ExternalSecretProvisioningRequired = false,
+    DateTime? ExpiresAtUtc = null);
 public sealed record RegistrationProviderReconciliationRequest(Guid TenantId, RegistrationProviderBinding Binding, RegistrationProviderConnection Connection, RegistrationProviderTuple Tuple, DateTime SinceUtc, string? ContinuationCursor = null);
 public sealed record RegistrationProviderReconciledSubmission(
     string ProviderSubmissionId,

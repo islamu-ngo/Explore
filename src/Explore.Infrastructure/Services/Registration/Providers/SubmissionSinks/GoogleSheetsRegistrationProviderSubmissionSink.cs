@@ -42,7 +42,7 @@ public sealed class GoogleSheetsRegistrationProviderSubmissionSink(
                 "provider_connection_invalid");
         }
 
-        string token = (await secretResolver.ResolveTenantBindingAsync(request.TenantId, bindingId, cancellationToken))?.Value?.Trim() ?? string.Empty;
+        string token = (await secretResolver.ResolveTenantBindingAsync(request.TenantId, bindingId, cancellationToken)).Value?.Trim() ?? string.Empty;
         if (token.Length == 0)
         {
             throw new RegistrationProviderSubmissionDeliveryException(

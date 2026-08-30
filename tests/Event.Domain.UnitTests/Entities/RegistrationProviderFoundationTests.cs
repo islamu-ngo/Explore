@@ -105,7 +105,7 @@ public sealed class RegistrationProviderFoundationTests
 
         await Assert.That(apiToken.AllowedScopes).IsEquivalentTo([SecretScope.Tenant]);
         await Assert.That(webhookSecret.AllowedScopes).IsEquivalentTo([SecretScope.Tenant]);
-        await Assert.That(apiToken.AllowedSources.Contains(SecretSourceType.InlineEncrypted)).IsTrue();
+        await Assert.That(apiToken.AllowedSources).Contains(SecretSourceType.EnvironmentVariable);
         await Assert.That(webhookSecret.DefaultInfisicalPath).IsEqualTo("/registration-providers");
     }
 

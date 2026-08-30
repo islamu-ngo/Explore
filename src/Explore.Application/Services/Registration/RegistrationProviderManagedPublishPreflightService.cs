@@ -17,7 +17,6 @@ public sealed class RegistrationProviderManagedPublishPreflightService(
     IRegistrationProviderRepository providerRepository,
     IRegistrationProviderRegistry providerRegistry,
     IRegistrationProviderCallbackUriBuilder callbackUriBuilder,
-    IInlineSecretProtector secretProtector,
     ISecretBindingRepository secretBindingRepository,
     IRegistrationProviderSubscriptionStateRepository subscriptionStateRepository,
     TimeProvider timeProvider) : IRegistrationProviderManagedPublishPreflight
@@ -127,23 +126,12 @@ public sealed class RegistrationProviderManagedPublishPreflightService(
                     return Failure("registration_provider_remote_acceptance_ambiguous");
                 }
 
-                if (string.IsNullOrWhiteSpace(subscription.ProviderWebhookSecret))
+                if (subscription.ExternalSecretProvisioningRequired)
                 {
-                    binding.SetDraftProvisionedSubscription(subscription.ProviderSubscriptionId);
+                    return Failure("registration_provider_external_secret_provisioning_required");
                 }
-                else
-                {
-                    InlineProtectedSecret protectedSecret = secretProtector.Protect(subscription.ProviderWebhookSecret);
-                    SecretBinding secretBinding = SecretBinding.CreateInlineEncrypted(
-                        SecretDefinitionRegistry.Keys.RegistrationProviders.WebhookSecret,
-                        SecretScope.Tenant,
-                        tenantId,
-                        protectedSecret.Ciphertext.ToArray(),
-                        protectedSecret.Version,
-                        qualifier: binding.Id.ToString("N"));
-                    secretBinding = await secretBindingRepository.Create(secretBinding);
-                    binding.SetDraftProvisionedSubscription(subscription.ProviderSubscriptionId, secretBinding.Id);
-                }
+
+                binding.SetDraftProvisionedSubscription(subscription.ProviderSubscriptionId);
 
                 if (subscription.ExpiresAtUtc is { } expiresAt &&
                     await subscriptionStateRepository.GetAsync(tenantId, binding.Id, "RESPONSES", cancellationToken) is null)
