@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Secrets;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
 using Explore.Secrets.Observability;
+using Explore.Secrets.Abstractions;
 using Explore.Secrets.Configuration;
 using Explore.Secrets.Services;
 using Microsoft.Extensions.Caching.Memory;

@@ -7,6 +7,7 @@ using Explore.Secrets.Services;
 using Explore.Domain.Secrets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -155,7 +156,7 @@ public sealed class SecretRotationReplicaConvergenceTests
             options => new ReplicaTestDbContext(options),
             Monitor(new DatabaseConnectionOptions { ConnectionString = "Host=database;Database=event" }),
             Monitor(new RotationOptions()),
-            Substitute.For<ILogger<RotationAwareDbContextFactory<ReplicaTestDbContext>>>(),
+            NullLogger<RotationAwareDbContextFactory<ReplicaTestDbContext>>.Instance,
             validateCandidate: _ => false,
             replicaId: "replica-a");
 

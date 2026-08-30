@@ -13,9 +13,8 @@ public sealed class InfisicalConfigurationSource : IConfigurationSource
 {
     /// <summary>
     /// Infisical server URL (e.g., "https://infisical.example.com").
-    /// Defaults to "https://app.infisical.com".
     /// </summary>
-    public string Url { get; set; } = "https://app.infisical.com";
+    public required string Url { get; set; }
 
     /// <summary>
     /// Infisical project ID.
@@ -35,7 +34,7 @@ public sealed class InfisicalConfigurationSource : IConfigurationSource
     /// <summary>
     /// Environment slug (e.g., "dev", "staging", "prod").
     /// </summary>
-    public string Environment { get; set; } = "dev";
+    public required string Environment { get; set; }
 
     /// <summary>
     /// Secret paths to load (e.g., "/api", "/keycloak", "/postgresql").

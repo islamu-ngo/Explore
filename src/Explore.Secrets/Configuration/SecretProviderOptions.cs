@@ -63,7 +63,7 @@ public sealed class InfisicalOptions
     /// <summary>
     /// Environment slug (e.g., "dev", "staging", "prod").
     /// </summary>
-    public string Environment { get; set; } = "dev";
+    public string Environment { get; set; } = string.Empty;
 
     /// <summary>
     /// Secret paths to load (e.g., "/api", "/keycloak").

@@ -156,11 +156,12 @@ public class BootstrapSecretLoaderTests
         ClearEnv();
         try
         {
+            string password = SecretsTestValues.CreateSecret();
             Environment.SetEnvironmentVariable(HostEnv, "env-host");
             Environment.SetEnvironmentVariable(PortEnv, "7777");
             Environment.SetEnvironmentVariable(DbEnv, "env_db");
             Environment.SetEnvironmentVariable(UserEnv, "env_user");
-            Environment.SetEnvironmentVariable(PassEnv, "env_pass");
+            Environment.SetEnvironmentVariable(PassEnv, password);
 
             var config = BuildConfig(new Dictionary<string, string?>());
 
@@ -171,7 +172,7 @@ public class BootstrapSecretLoaderTests
             await Assert.That(parsed.Port).IsEqualTo(7777);
             await Assert.That(parsed.Database).IsEqualTo("env_db");
             await Assert.That(parsed.Username).IsEqualTo("env_user");
-            await Assert.That(parsed.Password).IsEqualTo("env_pass");
+            await Assert.That(parsed.Password).IsEqualTo(password);
 
             await Assert.That(credentials.Source).Contains("Env");
         }
@@ -187,11 +188,12 @@ public class BootstrapSecretLoaderTests
         ClearEnv();
         try
         {
+            string password = SecretsTestValues.CreateSecret();
             Environment.SetEnvironmentVariable(HostEnv, "env-host");
             Environment.SetEnvironmentVariable(PortEnv, "6543");
             Environment.SetEnvironmentVariable(DbEnv, "env_db");
             Environment.SetEnvironmentVariable(UserEnv, "env_user");
-            Environment.SetEnvironmentVariable(PassEnv, "env_pass");
+            Environment.SetEnvironmentVariable(PassEnv, password);
 
             var config = BuildConfig(new Dictionary<string, string?>
             {
@@ -199,7 +201,7 @@ public class BootstrapSecretLoaderTests
                 [PortKey] = "5432",
                 [DbKey] = "config_db",
                 [UserKey] = "config_user",
-                [PassKey] = "config_pass",
+                [PassKey] = SecretsTestValues.CreateSecret(),
             });
 
             var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
@@ -208,7 +210,7 @@ public class BootstrapSecretLoaderTests
             await Assert.That(parsed.Host).IsEqualTo("env-host");
             await Assert.That(parsed.Database).IsEqualTo("env_db");
             await Assert.That(parsed.Username).IsEqualTo("env_user");
-            await Assert.That(parsed.Password).IsEqualTo("env_pass");
+            await Assert.That(parsed.Password).IsEqualTo(password);
         }
         finally
         {
@@ -217,7 +219,7 @@ public class BootstrapSecretLoaderTests
     }
 
     [Test]
-    public async Task LoadPostgresConnectionString_MixedSources_LabelsSourceAsMixed()
+    public async Task LoadPostgresConnectionString_EnvironmentModeDoesNotMixConfigurationValues()
     {
         ClearEnv();
         try
@@ -229,14 +231,15 @@ public class BootstrapSecretLoaderTests
                 [PortKey] = "5432",
                 [DbKey] = "db",
                 [UserKey] = "u",
-                [PassKey] = "p",
+                [PassKey] = SecretsTestValues.CreateSecret(),
             });
 
-            var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
+            var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-            await Assert.That(credentials.Source).Contains("Mixed");
-            await Assert.That(credentials.Source).Contains("Env");
-            await Assert.That(credentials.Source).Contains("Config");
+            var exception = (await Assert.That(act).Throws<InvalidOperationException>())!;
+            await Assert.That(exception.Message).Contains("database");
+            await Assert.That(exception.Message).Contains("username");
+            await Assert.That(exception.Message).Contains("password");
         }
         finally
         {
@@ -252,72 +255,88 @@ public class BootstrapSecretLoaderTests
     public async Task LoadPostgresConnectionString_MissingHost_ThrowsInvalidOperationException()
     {
         ClearEnv();
-
-        var config = BuildConfig(new Dictionary<string, string?>
+        try
         {
-            [DbKey] = "db",
-            [UserKey] = "u",
-            [PassKey] = "p",
-        });
+            Environment.SetEnvironmentVariable(DbEnv, "db");
+            Environment.SetEnvironmentVariable(UserEnv, "user");
+            Environment.SetEnvironmentVariable(PassEnv, SecretsTestValues.CreateSecret());
+            var config = BuildConfig(new Dictionary<string, string?>());
 
-        var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
+            var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        await Assert.That(act).Throws<InvalidOperationException>()
-            .WithMessageContaining("Host");
+            await Assert.That(act).Throws<InvalidOperationException>()
+                .WithMessageContaining("host");
+        }
+        finally
+        {
+            ClearEnv();
+        }
     }
 
     [Test]
     public async Task LoadPostgresConnectionString_MissingDatabase_ThrowsInvalidOperationException()
     {
         ClearEnv();
-
-        var config = BuildConfig(new Dictionary<string, string?>
+        try
         {
-            [HostKey] = "localhost",
-            [UserKey] = "u",
-            [PassKey] = "p",
-        });
+            Environment.SetEnvironmentVariable(HostEnv, "localhost");
+            Environment.SetEnvironmentVariable(UserEnv, "user");
+            Environment.SetEnvironmentVariable(PassEnv, SecretsTestValues.CreateSecret());
+            var config = BuildConfig(new Dictionary<string, string?>());
 
-        var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
+            var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        await Assert.That(act).Throws<InvalidOperationException>()
-            .WithMessageContaining("Database");
+            await Assert.That(act).Throws<InvalidOperationException>()
+                .WithMessageContaining("database");
+        }
+        finally
+        {
+            ClearEnv();
+        }
     }
 
     [Test]
     public async Task LoadPostgresConnectionString_MissingUsername_ThrowsInvalidOperationException()
     {
         ClearEnv();
-
-        var config = BuildConfig(new Dictionary<string, string?>
+        try
         {
-            [HostKey] = "localhost",
-            [DbKey] = "db",
-            [PassKey] = "p",
-        });
+            Environment.SetEnvironmentVariable(HostEnv, "localhost");
+            Environment.SetEnvironmentVariable(DbEnv, "db");
+            Environment.SetEnvironmentVariable(PassEnv, SecretsTestValues.CreateSecret());
+            var config = BuildConfig(new Dictionary<string, string?>());
 
-        var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
+            var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        await Assert.That(act).Throws<InvalidOperationException>()
-            .WithMessageContaining("Username");
+            await Assert.That(act).Throws<InvalidOperationException>()
+                .WithMessageContaining("username");
+        }
+        finally
+        {
+            ClearEnv();
+        }
     }
 
     [Test]
     public async Task LoadPostgresConnectionString_MissingPassword_ThrowsInvalidOperationException()
     {
         ClearEnv();
-
-        var config = BuildConfig(new Dictionary<string, string?>
+        try
         {
-            [HostKey] = "localhost",
-            [DbKey] = "db",
-            [UserKey] = "u",
-        });
+            Environment.SetEnvironmentVariable(HostEnv, "localhost");
+            Environment.SetEnvironmentVariable(DbEnv, "db");
+            Environment.SetEnvironmentVariable(UserEnv, "user");
+            var config = BuildConfig(new Dictionary<string, string?>());
 
-        var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
+            var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
-        await Assert.That(act).Throws<InvalidOperationException>()
-            .WithMessageContaining("Password");
+            await Assert.That(act).Throws<InvalidOperationException>()
+                .WithMessageContaining("password");
+        }
+        finally
+        {
+            ClearEnv();
+        }
     }
 
     [Test]
@@ -330,10 +349,10 @@ public class BootstrapSecretLoaderTests
         var act = () => BootstrapSecretLoader.LoadPostgresConnectionString(config);
 
         var ex = (await Assert.That(act).Throws<InvalidOperationException>())!;
-        await Assert.That(ex.Message).Contains("Host");
-        await Assert.That(ex.Message).Contains("Database");
-        await Assert.That(ex.Message).Contains("Username");
-        await Assert.That(ex.Message).Contains("Password");
+        await Assert.That(ex.Message).Contains("host");
+        await Assert.That(ex.Message).Contains("database");
+        await Assert.That(ex.Message).Contains("username");
+        await Assert.That(ex.Message).Contains("password");
     }
 
     #endregion
@@ -341,6 +360,7 @@ public class BootstrapSecretLoaderTests
     private static IConfiguration InfisicalConfiguration(IDictionary<string, string?> values)
     {
         values["SecretProvider:Provider"] = "Infisical";
+        values.TryAdd("SecretProvider:Infisical:Environment", "test");
         return BuildConfig(values);
     }
 

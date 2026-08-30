@@ -35,26 +35,28 @@ public static class ConfigurationBuilderExtensions
             ?? configuration["INFISICAL_CLIENT_ID"];
         var clientSecret = configuration["SecretProvider:Infisical:ClientSecret"]
             ?? configuration["INFISICAL_CLIENT_SECRET"];
+        var url = configuration["SecretProvider:Infisical:Url"]
+            ?? configuration["INFISICAL_URL"];
+        var environment = configuration["SecretProvider:Infisical:Environment"]
+            ?? configuration["INFISICAL_ENV"];
 
         if (string.IsNullOrEmpty(projectId)
             || string.IsNullOrEmpty(clientId)
-            || string.IsNullOrEmpty(clientSecret))
+            || string.IsNullOrEmpty(clientSecret)
+            || string.IsNullOrEmpty(url)
+            || string.IsNullOrEmpty(environment))
         {
             throw new InvalidOperationException(
-                "Infisical authority requires its project and universal-auth credentials.");
+                "Infisical authority requires an explicit URL, environment, project, and universal-auth credentials.");
         }
 
         var source = new InfisicalConfigurationSource
         {
-            Url = configuration["SecretProvider:Infisical:Url"]
-                ?? configuration["INFISICAL_URL"]
-                ?? "https://app.infisical.com",
+            Url = url,
             ProjectId = projectId,
             ClientId = clientId,
             ClientSecret = clientSecret,
-            Environment = configuration["SecretProvider:Infisical:Environment"]
-                ?? configuration["INFISICAL_ENV"]
-                ?? "dev",
+            Environment = environment,
         };
 
         var paths = configuration.GetSection("SecretProvider:Infisical:Paths").Get<List<string>>();
@@ -63,35 +65,6 @@ public static class ConfigurationBuilderExtensions
             source.Paths.Clear();
             source.Paths.AddRange(paths);
         }
-
-        configure?.Invoke(source);
-
-        return builder.Add(source);
-    }
-
-    /// <summary>
-    /// Adds Infisical as a configuration source with explicit credentials.
-    /// Use this when you want to pass credentials directly rather than from configuration.
-    /// </summary>
-    /// <param name="builder">The configuration builder.</param>
-    /// <param name="projectId">Infisical project ID.</param>
-    /// <param name="clientId">Universal Auth client ID.</param>
-    /// <param name="clientSecret">Universal Auth client secret.</param>
-    /// <param name="configure">Optional action to configure additional options.</param>
-    /// <returns>The configuration builder for chaining.</returns>
-    public static IConfigurationBuilder AddInfisical(
-        this IConfigurationBuilder builder,
-        string projectId,
-        string clientId,
-        string clientSecret,
-        Action<InfisicalConfigurationSource>? configure = null)
-    {
-        var source = new InfisicalConfigurationSource
-        {
-            ProjectId = projectId,
-            ClientId = clientId,
-            ClientSecret = clientSecret,
-        };
 
         configure?.Invoke(source);
 

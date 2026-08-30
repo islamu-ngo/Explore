@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 
 public sealed class InfisicalConfigurationSource : IConfigurationSource
 {
-    public string Url { get; set; } = "https://app.infisical.com";
+    public required string Url { get; set; }
 
     public required string ProjectId { get; set; }
 
@@ -15,7 +15,7 @@ public sealed class InfisicalConfigurationSource : IConfigurationSource
 
     public required string ClientSecret { get; set; }
 
-    public string Environment { get; set; } = "dev";
+    public required string Environment { get; set; }
 
     public List<string> Paths { get; } = ["/"];
 

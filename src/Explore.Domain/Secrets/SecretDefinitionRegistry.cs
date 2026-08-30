@@ -98,7 +98,7 @@ public static class SecretDefinitionRegistry
     }
 
     private static string OwnerFor(string settingKey) =>
-        settingKey[..settingKey.IndexOf(".", StringComparison.Ordinal)];
+        settingKey[..settingKey.IndexOf('.')];
 
     // -- Canonical keys (lower.dot.case, aligned with governance/key naming convention) --
 

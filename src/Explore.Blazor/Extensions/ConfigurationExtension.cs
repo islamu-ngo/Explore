@@ -19,26 +19,28 @@ public static class ConfigurationExtensions
             ?? configuration["INFISICAL_CLIENT_ID"];
         var clientSecret = configuration["SecretProvider:Infisical:ClientSecret"]
             ?? configuration["INFISICAL_CLIENT_SECRET"];
+        var url = configuration["SecretProvider:Infisical:Url"]
+            ?? configuration["INFISICAL_URL"];
+        var environment = configuration["SecretProvider:Infisical:Environment"]
+            ?? configuration["INFISICAL_ENV"];
 
         if (string.IsNullOrEmpty(projectId)
             || string.IsNullOrEmpty(clientId)
-            || string.IsNullOrEmpty(clientSecret))
+            || string.IsNullOrEmpty(clientSecret)
+            || string.IsNullOrEmpty(url)
+            || string.IsNullOrEmpty(environment))
         {
             throw new InvalidOperationException(
-                "Infisical authority requires its project and universal-auth credentials.");
+                "Infisical authority requires an explicit URL, environment, project, and universal-auth credentials.");
         }
 
         var source = new InfisicalConfigurationSource
         {
-            Url = configuration["SecretProvider:Infisical:Url"]
-                ?? configuration["INFISICAL_URL"]
-                ?? "https://app.infisical.com",
+            Url = url,
             ProjectId = projectId,
             ClientId = clientId,
             ClientSecret = clientSecret,
-            Environment = configuration["SecretProvider:Infisical:Environment"]
-                ?? configuration["INFISICAL_ENV"]
-                ?? "dev",
+            Environment = environment,
         };
 
         var paths = configuration.GetSection("SecretProvider:Infisical:Paths").Get<List<string>>();
