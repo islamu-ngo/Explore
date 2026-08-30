@@ -31,8 +31,6 @@ public sealed class PatchTenantStorageSettingsDtoValidator : AbstractValidator<P
            (s3.Endpoint.HasValue ||
             s3.PublicEndpoint.HasValue ||
             s3.BucketName.HasValue ||
-            s3.AccessKeyId.HasValue ||
-            s3.SecretAccessKey.HasValue ||
             s3.Region.HasValue ||
             s3.ForcePathStyle.HasValue ||
             s3.UploadUrlExpirationMinutes.HasValue);
