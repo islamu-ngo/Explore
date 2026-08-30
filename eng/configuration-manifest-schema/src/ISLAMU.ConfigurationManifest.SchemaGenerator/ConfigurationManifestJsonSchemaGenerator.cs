@@ -236,11 +236,15 @@ public static class ConfigurationManifestJsonSchemaGenerator
         var definitions = new SortedDictionary<string, JsonNode?>(StringComparer.Ordinal)
         {
             ["brandingPayload"] = BrandingPayloadSchema(),
+            ["legalDocumentLocalizedSource"] = LegalDocumentLocalizedSourceSchema(),
+            ["legalTemplateProvenance"] = LegalTemplateProvenanceSchema(),
             ["manifestExportMetadata"] = ManifestExportMetadataSchema(),
             ["paidEventPolicyCurrencyRiskLimit"] = PaidEventPolicyCurrencyRiskLimitSchema(),
             ["paidEventPolicyPayload"] = PaidEventPolicyPayloadSchema(),
             ["tenantBrandingDocument"] = BrandingDocumentSchema(),
             ["tenantDocuments"] = TenantDocumentsSchema(tenantDocuments),
+            ["tenantLegalDocuments"] =
+                LegalDocumentsSchema(LegalDocumentScope.Tenant),
             ["tenantPackageMetadata"] = TenantPackageMetadataSchema(),
             ["tenantPackageSource"] = TenantPackageSourceSchema(),
             ["tenantPackageSpec"] = TenantPackageSpecSchema(),
@@ -293,8 +297,12 @@ public static class ConfigurationManifestJsonSchemaGenerator
         {
             ["brandingPayload"] = BrandingPayloadSchema(),
             ["instanceDocuments"] = InstanceDocumentsSchema(instanceDocuments),
+            ["instanceLegalDocuments"] =
+                LegalDocumentsSchema(LegalDocumentScope.Instance),
             ["instancePaidEventPolicyDocument"] = PaidEventPolicyDocumentSchema(),
             ["instanceSettings"] = SettingsSchema(instanceSettings),
+            ["legalDocumentLocalizedSource"] = LegalDocumentLocalizedSourceSchema(),
+            ["legalTemplateProvenance"] = LegalTemplateProvenanceSchema(),
             ["manifestExportMetadata"] = ManifestExportMetadataSchema(),
             ["manifestInstance"] = ManifestInstanceSchema(),
             ["manifestMetadata"] = ManifestMetadataSchema(),
@@ -304,6 +312,8 @@ public static class ConfigurationManifestJsonSchemaGenerator
             ["paidEventPolicyPayload"] = PaidEventPolicyPayloadSchema(),
             ["tenantBrandingDocument"] = BrandingDocumentSchema(),
             ["tenantDocuments"] = TenantDocumentsSchema(tenantDocuments),
+            ["tenantLegalDocuments"] =
+                LegalDocumentsSchema(LegalDocumentScope.Tenant),
             ["tenantMetadata"] = TenantMetadataSchema(),
             ["tenantPaidEventPolicyDocument"] = PaidEventPolicyDocumentSchema(),
             ["tenantSettings"] = SettingsSchema(tenantSettings),
@@ -361,9 +371,10 @@ public static class ConfigurationManifestJsonSchemaGenerator
             {
                 ["displayName"] = BoundedString(maximumLength: 500),
                 ["documents"] = Ref("tenantDocuments"),
+                ["legalDocuments"] = Ref("tenantLegalDocuments"),
                 ["settings"] = Ref("tenantSettings")
             },
-            ["displayName", "documents", "settings"]);
+            ["displayName", "documents", "legalDocuments", "settings"]);
 
     private static JsonObject ManifestExportMetadataSchema() =>
         ClosedObject(
@@ -438,9 +449,10 @@ public static class ConfigurationManifestJsonSchemaGenerator
             new JsonObject
             {
                 ["documents"] = Ref("instanceDocuments"),
+                ["legalDocuments"] = Ref("instanceLegalDocuments"),
                 ["settings"] = Ref("instanceSettings")
             },
-            ["documents", "settings"]);
+            ["documents", "legalDocuments", "settings"]);
 
     private static JsonObject InstanceDocumentsSchema(
         IReadOnlyList<ConfigurationManifestDocumentCatalogEntry> documents)
@@ -484,9 +496,122 @@ public static class ConfigurationManifestJsonSchemaGenerator
             {
                 ["displayName"] = BoundedString(maximumLength: 500),
                 ["documents"] = Ref("tenantDocuments"),
+                ["legalDocuments"] = Ref("tenantLegalDocuments"),
                 ["settings"] = Ref("tenantSettings")
             },
-            ["displayName", "documents", "settings"]);
+            ["displayName", "documents", "legalDocuments", "settings"]);
+
+    private static JsonObject LegalDocumentsSchema(LegalDocumentScope scope)
+    {
+        var properties = new JsonObject();
+        foreach (LegalDocumentKindDescriptor descriptor in
+                 LegalDocumentKindCatalog.Entries.Values
+                     .Where(descriptor => descriptor.Scope == scope)
+                     .OrderBy(descriptor => descriptor.Kind))
+        {
+            properties[descriptor.Kind.ToString()] =
+                LegalDocumentSchema(descriptor.Kind);
+        }
+
+        return ClosedObject(properties, []);
+    }
+
+    private static JsonObject LegalDocumentSchema(LegalDocumentKind kind) =>
+        ClosedObject(
+            new JsonObject
+            {
+                ["accountableIdentityReference"] =
+                    BoundedString(maximumLength: 200),
+                ["audience"] = new JsonObject
+                {
+                    ["enum"] = Strings(Enum.GetNames<LegalDocumentAudience>())
+                },
+                ["changeSummary"] = BoundedString(maximumLength: 500),
+                ["jurisdictionAssumptions"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["maxItems"] = 16,
+                    ["uniqueItems"] = true,
+                    ["items"] = BoundedString(maximumLength: 100)
+                },
+                ["kind"] = new JsonObject
+                {
+                    ["const"] = kind.ToString()
+                },
+                ["lifecycleIntent"] = new JsonObject
+                {
+                    ["enum"] = Strings(
+                    [
+                        "Draft",
+                        "ReviewRequired",
+                        "ProposedPublication"
+                    ])
+                },
+                ["localizations"] = new JsonObject
+                {
+                    ["type"] = "array",
+                    ["minItems"] = 1,
+                    ["maxItems"] =
+                        LegalDocumentContentLimits.MaximumLocalesPerDocument,
+                    ["items"] = Ref("legalDocumentLocalizedSource")
+                },
+                ["proposedEffectiveAt"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["format"] = "date-time"
+                },
+                ["requiresFreshAcceptance"] = new JsonObject
+                {
+                    ["type"] = "boolean"
+                },
+                ["templateProvenance"] = Ref("legalTemplateProvenance")
+            },
+            [
+                "audience",
+                "jurisdictionAssumptions",
+                "kind",
+                "lifecycleIntent",
+                "localizations",
+                "requiresFreshAcceptance"
+            ]);
+
+    private static JsonObject LegalDocumentLocalizedSourceSchema() =>
+        ClosedObject(
+            new JsonObject
+            {
+                ["languageTag"] = BoundedString(
+                    LegalDocumentContentLimits.MaximumLanguageTagLength,
+                    "^(?:[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*|x(?:-[A-Za-z0-9]{1,8})+)$"),
+                ["markdown"] = BoundedString(
+                    LegalDocumentContentLimits.MaximumMarkdownUtf8BytesPerLocale),
+                ["summary"] = BoundedString(
+                    LegalDocumentContentLimits.MaximumSummaryLength),
+                ["title"] = BoundedString(
+                    LegalDocumentContentLimits.MaximumTitleLength)
+            },
+            ["languageTag", "markdown", "summary", "title"]);
+
+    private static JsonObject LegalTemplateProvenanceSchema() =>
+        ClosedObject(
+            new JsonObject
+            {
+                ["licenseExpression"] = BoundedString(maximumLength: 100),
+                ["reviewReference"] = BoundedString(maximumLength: 200),
+                ["sourceKind"] = new JsonObject
+                {
+                    ["enum"] = Strings(
+                        Enum.GetNames<LegalDocumentTemplateSourceKind>())
+                },
+                ["templateId"] = BoundedString(maximumLength: 100),
+                ["templateVersion"] = BoundedString(maximumLength: 50)
+            },
+            [
+                "licenseExpression",
+                "reviewReference",
+                "sourceKind",
+                "templateId",
+                "templateVersion"
+            ]);
 
     private static JsonObject SettingsSchema(
         IReadOnlyList<ConfigurationManifestSettingCatalogEntry> settings)
