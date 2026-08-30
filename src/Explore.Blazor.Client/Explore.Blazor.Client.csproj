@@ -96,6 +96,7 @@
   <Target Name="GenerateApiClientSource" Inputs="..\..\schemas\openapi_islamu-event.json;nswag.json;$(DotNetToolManifest)" Outputs="$(GeneratedApiClientFile)" Condition="Exists('..\..\schemas\openapi_islamu-event.json')">
     <Message Importance="high" Text="NSwag: Regenerating API client from openapi_islamu-event.json..." />
     <Exec Command="dotnet nswag run nswag.json" WorkingDirectory="$(ProjectDir)" ConsoleToMSBuild="true" />
+    <Error Condition="!Exists('$(GeneratedApiClientFile)')" Text="NSwag completed without producing $(GeneratedApiClientFile)." />
   </Target>
 
   <!-- Fix the NSwag 204-response bug before syntax-aware record transformation. -->
@@ -107,16 +108,14 @@
   <Target Name="TransformGeneratedApiClientRecords"
           DependsOnTargets="FixNSwagVoidReturns"
           Inputs="$(GeneratedApiClientFile);@(GeneratedRecordTransformerInput)"
-          Outputs="$(GeneratedRecordTransformerStamp)"
-          Condition="Exists('$(GeneratedApiClientFile)')">
+          Outputs="$(GeneratedRecordTransformerStamp)">
     <Exec Command="dotnet run --project &quot;$(GeneratedRecordTransformerProject)&quot; --configuration Release --no-launch-profile -- &quot;$(GeneratedApiClientFile)&quot; &quot;$(GeneratedRecordMutablePolicy)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" />
     <Touch Files="$(GeneratedRecordTransformerStamp)" AlwaysCreate="true" />
   </Target>
 
   <!-- Final byte normalization runs after semantic syntax transformation. -->
   <Target Name="NormalizeGeneratedApiClient"
-          DependsOnTargets="TransformGeneratedApiClientRecords"
-          Condition="Exists('$(GeneratedApiClientFile)')">
+          DependsOnTargets="TransformGeneratedApiClientRecords">
     <ReplaceFileText InputFilename="$(GeneratedApiClientFile)" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
   </Target>
 

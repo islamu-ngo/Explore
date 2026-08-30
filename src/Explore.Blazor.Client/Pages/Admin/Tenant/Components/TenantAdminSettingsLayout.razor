@@ -181,6 +181,10 @@
                                          Text="Webhooks"
                                          Class="@GetNavItemClass("webhooks")"
                                          OnClick="@(() => SelectSection("webhooks"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.MoveDown"
+                                         Text="Configuration Portability"
+                                         Class="@GetNavItemClass("configuration-portability")"
+                                         OnClick="@(() => SelectSection("configuration-portability"))" />
                             <MudListItem Icon="@Icons.Material.Filled.ReceiptLong"
                                          Text="Support Evidence"
                                          Class="@GetNavItemClass("support-access-evidence")"
@@ -342,6 +346,12 @@
                         else if (_currentSection == "webhooks")
                         {
                             <Explore.Blazor.Client.Components.Webhooks.WebhookManagementPanel Owner="@WebhookOwnerSelection.Tenant" />
+                        }
+                        else if (_currentSection == "configuration-portability")
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Components.ConfigurationPortabilityWorkspace
+                                Scope="ConfigurationImportScope.Tenant"
+                                TenantId="_tenantId" />
                         }
                         else if (_currentSection == "support-access-evidence")
                         {

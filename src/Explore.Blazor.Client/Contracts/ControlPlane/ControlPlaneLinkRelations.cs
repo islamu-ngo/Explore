@@ -39,4 +39,12 @@ public static class ControlPlaneLinkRelations
     public const string Unlock = "unlock";
     public const string ExportConfigurationOverrides = "export-configuration-overrides";
     public const string ExportConfigurationPortable = "export-configuration-portable";
+    public const string CreateConfigurationImportSession =
+        "create-configuration-import-session";
+    public const string ExportTenantConfigurationPackage =
+        "export-tenant-configuration-package";
+    public const string ConfigurationImportHistory = "configuration-import-history";
+    public const string ApplyConfigurationImport = "apply-configuration-import";
+    public const string CreateConfigurationImportRollback =
+        "create-configuration-import-rollback";
 }

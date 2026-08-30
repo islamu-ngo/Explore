@@ -1,0 +1,119 @@
+/* ABOUTME: Responsive, RTL-safe layout for configuration portability workspaces. */
+/* ABOUTME: Uses semantic state borders, visible focus, and reduced-motion-safe native controls. */
+
+.configuration-portability {
+    display: grid;
+    gap: var(--isl-space-5);
+    padding-block: var(--isl-space-5);
+    padding-inline: var(--isl-space-5);
+}
+
+.configuration-portability__heading,
+.configuration-portability section,
+.configuration-portability__upload,
+.configuration-portability__preview,
+.configuration-portability__receipt {
+    display: grid;
+    gap: var(--isl-space-3);
+}
+
+.configuration-portability__guidance,
+.configuration-portability__preview ul,
+.configuration-portability__history {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin-block: 0;
+    padding-inline-start: var(--isl-space-6);
+}
+
+.configuration-portability__actions,
+.configuration-portability__progress,
+.configuration-portability__section-heading,
+.configuration-portability__preview-item > div,
+.configuration-portability__history li,
+.configuration-portability__sections label {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-3);
+}
+
+.configuration-portability__actions {
+    flex-wrap: wrap;
+}
+
+.configuration-portability__section-heading,
+.configuration-portability__history li {
+    justify-content: space-between;
+}
+
+.configuration-portability__sections {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin: 0;
+    padding-block: var(--isl-space-3);
+    padding-inline: var(--isl-space-4);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+}
+
+.configuration-portability__preview-item,
+.configuration-portability__history li,
+.configuration-portability__status,
+.configuration-portability__receipt {
+    padding-block: var(--isl-space-3);
+    padding-inline: var(--isl-space-4);
+    border-radius: var(--mud-default-borderradius);
+    background: var(--mud-palette-background-gray);
+}
+
+.configuration-portability__category {
+    font-weight: 600;
+}
+
+.configuration-portability__receipt dl {
+    display: grid;
+    gap: var(--isl-space-2);
+    margin-block: 0;
+}
+
+.configuration-portability__receipt dl > div {
+    display: grid;
+    grid-template-columns: minmax(9rem, 1fr) 2fr;
+    gap: var(--isl-space-3);
+}
+
+.configuration-portability__receipt dd {
+    margin-inline-start: 0;
+}
+
+.configuration-portability__status--error {
+    border-inline-start: var(--isl-focus-ring-width) solid var(--mud-palette-error);
+}
+
+.configuration-portability__status--success {
+    border-inline-start: var(--isl-focus-ring-width) solid var(--mud-palette-success);
+}
+
+.configuration-portability__status:focus-visible {
+    outline: var(--isl-focus-ring-width) solid var(--mud-palette-primary);
+    outline-offset: var(--isl-focus-ring-offset);
+}
+
+@media (max-width: 37.5rem) {
+    .configuration-portability__actions,
+    .configuration-portability__section-heading,
+    .configuration-portability__history li,
+    .configuration-portability__receipt dl > div {
+        align-items: stretch;
+        flex-direction: column;
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (forced-colors: active) {
+    .configuration-portability__preview-item,
+    .configuration-portability__receipt,
+    .configuration-portability__status {
+        border: var(--isl-focus-ring-width) solid CanvasText;
+    }
+}

@@ -1,0 +1,86 @@
+/* ABOUTME: Responsive logical layout for role-labeled public legal documents. */
+/* ABOUTME: Preserves readable measure, visible links, forced colors, and RTL reflow. */
+
+.public-legal-document-shell__title,
+.public-legal-document__title {
+    font-weight: 800;
+    margin-block-end: 1.5rem;
+}
+
+.public-legal-document-shell__loading {
+    padding-block: 3rem;
+}
+
+.public-legal-document {
+    max-inline-size: 72ch;
+    margin-inline: auto;
+}
+
+.public-legal-document__header {
+    border-block-end: 1px solid var(--mud-palette-divider);
+    margin-block-end: 2rem;
+    padding-block-end: 1.5rem;
+}
+
+.public-legal-document__summary {
+    margin-block-end: 1rem;
+}
+
+.public-legal-document__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 1rem;
+    margin: 0;
+}
+
+.public-legal-document__facts div {
+    min-inline-size: 0;
+}
+
+.public-legal-document__facts dt {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
+}
+
+.public-legal-document__facts dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.public-legal-document__locale-status {
+    margin-block-start: 1rem;
+}
+
+.public-legal-document__content {
+    overflow-wrap: anywhere;
+}
+
+.public-legal-document__content ::deep h2,
+.public-legal-document__content ::deep h3,
+.public-legal-document__content ::deep h4,
+.public-legal-document__content ::deep h5,
+.public-legal-document__content ::deep h6 {
+    margin-block: 1.75rem 0.75rem;
+}
+
+.public-legal-document__content ::deep p,
+.public-legal-document__content ::deep ul,
+.public-legal-document__content ::deep ol {
+    margin-block: 0 1rem;
+}
+
+.public-legal-document__content ::deep ul,
+.public-legal-document__content ::deep ol {
+    padding-inline-start: 1.5rem;
+}
+
+.public-legal-document__content ::deep a {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
+
+@media (forced-colors: active) {
+    .public-legal-document__header {
+        border-block-end-color: CanvasText;
+    }
+}

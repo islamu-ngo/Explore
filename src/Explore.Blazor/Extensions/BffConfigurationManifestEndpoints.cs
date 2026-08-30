@@ -13,6 +13,8 @@ public static class BffConfigurationManifestEndpoints
 {
     private const string MediaType =
         "application/vnd.islamu.configuration-manifest.v1alpha2+json";
+    private const string TenantMediaType =
+        "application/vnd.islamu.tenant-configuration-package.v1alpha2+json";
     private const string OverridesFileName = "configuration-manifest-overrides.json";
     private const string PortableFileName = "configuration-manifest-portable.json";
     private const int MaximumBytes = 4 * 1024 * 1024;
@@ -26,7 +28,86 @@ public static class BffConfigurationManifestEndpoints
             .RequireAuthorization()
             .ExcludeFromDescription();
 
+        app.MapGet(
+                ConfigurationManifestExportRoutes.BffTenantExport,
+                HandleTenantDownloadAsync)
+            .RequireAuthorization()
+            .ExcludeFromDescription();
+
         return app;
+    }
+
+    private static async Task<IResult> HandleTenantDownloadAsync(
+        Guid tenantId,
+        ConfigurationManifestExportView? view,
+        HttpContext context,
+        IEventApiClient apiClient,
+        ILoggerFactory loggerFactory,
+        CancellationToken cancellationToken)
+    {
+        context.Response.Headers.CacheControl = "no-store, no-cache";
+        context.Response.Headers.Pragma = "no-cache";
+        var logger = loggerFactory.CreateLogger("TenantConfigurationPackageExport");
+
+        try
+        {
+            HalResourceOfTenantOnboardingStatusDto status =
+                await apiClient.GetTenantOnboardingStatusAsync(
+                    cancellationToken: cancellationToken);
+            if (status.TenantId != tenantId
+                || !HasGetCapability(
+                    status._links,
+                    ControlPlaneLinkRelations.ExportTenantConfigurationPackage))
+            {
+                return Results.Problem(
+                    title: "Tenant configuration export unavailable",
+                    detail: "The current tenant capabilities do not permit this export.",
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            using FileResponse response =
+                await apiClient.ExportTenantConfigurationPackageAsync(
+                    tenantId,
+                    view ?? ConfigurationManifestExportView.Overrides,
+                    cancellationToken: cancellationToken);
+            if (!HasExpectedContentType(response.Headers, TenantMediaType)
+                || !TryGetSafeTenantFileName(response.Headers, out string fileName))
+            {
+                logger.LogWarning(
+                    "Rejected a tenant configuration export response with invalid file metadata.");
+                return InvalidDownstreamResponse();
+            }
+
+            byte[]? content = await ReadBoundedAsync(response.Stream, cancellationToken);
+            return content is null
+                ? InvalidDownstreamResponse()
+                : Results.File(
+                    content,
+                    TenantMediaType,
+                    fileName,
+                    enableRangeProcessing: false);
+        }
+        catch (ApiException exception)
+        {
+            logger.LogWarning(
+                "Tenant configuration export forwarding failed. Status={StatusCode}",
+                exception.StatusCode);
+            return BffForwardingResults.Problem(
+                exception,
+                "The tenant configuration package could not be downloaded.",
+                "Tenant configuration export failed");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(
+                "Tenant configuration export forwarding failed. FailureType={FailureType}",
+                exception.GetType().Name);
+            return InvalidDownstreamResponse();
+        }
     }
 
     private static async Task<IResult> HandleDownloadAsync(
@@ -113,7 +194,12 @@ public static class BffConfigurationManifestEndpoints
     private static bool HasGetCapability(
         HalResourceOfControlPlaneOverviewDto overview,
         string relation) =>
-        overview._links?.TryGetValue(relation, out HalLink? link) == true
+        HasGetCapability(overview._links, relation);
+
+    private static bool HasGetCapability(
+        IDictionary<string, HalLink>? links,
+        string relation) =>
+        links?.TryGetValue(relation, out HalLink? link) == true
         && string.Equals(link.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase);
 
     private static string RelationFor(ConfigurationManifestExportView view) =>
@@ -142,6 +228,15 @@ public static class BffConfigurationManifestEndpoints
             && string.Equals(parsed.MediaType, MediaType, StringComparison.Ordinal);
     }
 
+    private static bool HasExpectedContentType(
+        IReadOnlyDictionary<string, IEnumerable<string>> headers,
+        string mediaType)
+    {
+        string? value = HeaderValue(headers, "Content-Type");
+        return MediaTypeHeaderValue.TryParse(value, out MediaTypeHeaderValue? parsed)
+            && string.Equals(parsed.MediaType, mediaType, StringComparison.Ordinal);
+    }
+
     private static bool HasExpectedFileName(
         IReadOnlyDictionary<string, IEnumerable<string>> headers,
         string expectedFileName)
@@ -159,6 +254,34 @@ public static class BffConfigurationManifestEndpoints
             fileName?.Trim('"'),
             expectedFileName,
             StringComparison.Ordinal);
+    }
+
+    private static bool TryGetSafeTenantFileName(
+        IReadOnlyDictionary<string, IEnumerable<string>> headers,
+        out string fileName)
+    {
+        fileName = string.Empty;
+        string? value = HeaderValue(headers, "Content-Disposition");
+        if (!ContentDispositionHeaderValue.TryParse(
+                value,
+                out ContentDispositionHeaderValue? parsed))
+        {
+            return false;
+        }
+
+        fileName = (parsed.FileNameStar ?? parsed.FileName)?.Trim('"') ?? string.Empty;
+        const string prefix = "tenant-configuration-package-";
+        const string suffix = ".json";
+        string slug = fileName.StartsWith(prefix, StringComparison.Ordinal)
+            && fileName.EndsWith(suffix, StringComparison.Ordinal)
+            ? fileName[prefix.Length..^suffix.Length]
+            : string.Empty;
+        return fileName.Length <= 200
+            && slug.Length > 0
+            && slug.All(character =>
+                character is >= 'a' and <= 'z'
+                    or >= '0' and <= '9'
+                    or '-');
     }
 
     private static string? HeaderValue(

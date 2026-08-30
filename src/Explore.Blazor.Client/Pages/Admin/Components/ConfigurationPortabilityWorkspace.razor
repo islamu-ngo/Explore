@@ -1,0 +1,647 @@
+@* ABOUTME: Shared preview-first workspace for instance manifests and tenant configuration packages. *@
+@* ABOUTME: Keeps upload tokens server-side and renders apply or rollback only from current HAL links. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Services.ControlPlane
+@using Microsoft.AspNetCore.Components.Forms
+@implements IDisposable
+@inject ConfigurationPortabilityService Portability
+@inject ITranslationService Translations
+@inject IAccessibilityFocusService Focus
+@inject IAccessibilityAnnouncerService Announcer
+@inject ILogger<ConfigurationPortabilityWorkspace> Logger
+
+<MudPaper Class="configuration-portability" Outlined="true"
+          aria-labelledby="@HeadingId">
+    <header class="configuration-portability__heading">
+        <MudText Id="@HeadingId" Typo="Typo.h6" HtmlTag="h2" dir="auto">
+            @Heading
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" dir="auto">
+            @Summary
+        </MudText>
+    </header>
+
+    <ul class="configuration-portability__guidance" dir="auto">
+        <li>@T("configurationPortability.guidance.target", "The current route selects the target; package metadata never grants authority.")</li>
+        <li>@T("configurationPortability.guidance.secrets", "Secrets, personal data, provider bindings, payments, and operational records are not portable.")</li>
+        <li>@T("configurationPortability.guidance.legal", "Imported legal content becomes a target review draft and never publishes or changes acceptance history automatically.")</li>
+        <li>@T("configurationPortability.guidance.rollback", "Apply is atomic and records a protected pre-import snapshot for forward rollback while it remains available.")</li>
+    </ul>
+
+    @if (_loadingCapabilities)
+    {
+        <div class="configuration-portability__progress" role="status">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <span>@T("configurationPortability.loading", "Checking portability capabilities...")</span>
+        </div>
+    }
+    else
+    {
+        @if (_capabilities?.CanExport == true)
+        {
+            <section aria-labelledby="@ExportHeadingId">
+                <MudText Id="@ExportHeadingId" Typo="Typo.subtitle1" HtmlTag="h3">
+                    @T("configurationPortability.export.heading", "Export")
+                </MudText>
+                <div class="configuration-portability__actions">
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.Download"
+                               Disabled="_busy"
+                               OnClick="@(() => DownloadAsync(ConfigurationManifestExportView.Overrides))">
+                        @(Scope == ConfigurationImportScope.Instance
+                            ? T("configurationPortability.export.overrides", "Download overrides")
+                            : T("configurationPortability.export.tenant", "Download tenant package"))
+                    </MudButton>
+                    @if (Scope == ConfigurationImportScope.Instance)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.Download"
+                                   Disabled="_busy"
+                                   OnClick="@(() => DownloadAsync(ConfigurationManifestExportView.Portable))">
+                            @T("configurationPortability.export.portable", "Download portable")
+                        </MudButton>
+                    }
+                    else if (_capabilities.CanCreateCloneTarget)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.ContentCopy"
+                                   Href="/admin/instance/tenants">
+                            @T("configurationPortability.clone.createTarget", "Create target for clone")
+                        </MudButton>
+                    }
+                </div>
+                @if (Scope == ConfigurationImportScope.Tenant && _capabilities.CanCreateCloneTarget)
+                {
+                    <MudText Typo="Typo.caption" dir="auto">
+                        @T("configurationPortability.clone.help", "Clone is a source-safe workflow: download this package, create an authorized target tenant, then import it from that target tenant's portability section. The source is never changed or deleted.")
+                    </MudText>
+                }
+            </section>
+        }
+
+        @if (_capabilities?.CanImport == true)
+        {
+            <section aria-labelledby="@ImportHeadingId">
+                <MudText Id="@ImportHeadingId" Typo="Typo.subtitle1" HtmlTag="h3">
+                    @T("configurationPortability.import.heading", "Preview and apply")
+                </MudText>
+
+                <div class="configuration-portability__upload">
+                    <label for="@FileInputId">
+                        @T("configurationPortability.file.label", "Configuration JSON file")
+                    </label>
+                    <InputFile id="@FileInputId"
+                               accept="application/json,.json"
+                               aria-describedby="@FileHelpId"
+                               disabled="@_busy"
+                               OnChange="UploadAsync" />
+                    <small id="@FileHelpId">
+                        @T("configurationPortability.file.help", "Maximum size 4 MiB. Upload creates a short-lived preview session and does not change configuration.")
+                    </small>
+                </div>
+
+                @if (_session is not null)
+                {
+                    <MudText Typo="Typo.caption" dir="auto">
+                        @T("configurationPortability.session.expires", "Preview session expires"):
+                        @_session.ExpiresAt.ToLocalTime().ToString("g")
+                    </MudText>
+
+                    <MudSelect T="ConfigurationImportApplyMode"
+                               Label="@T("configurationPortability.mode.label", "Apply mode")"
+                               Value="_applyMode"
+                               ValueChanged="SetApplyModeAsync"
+                               Disabled="_busy">
+                        @if (Scope == ConfigurationImportScope.Tenant)
+                        {
+                            <MudSelectItem Value="ConfigurationImportApplyMode.CreateNew">
+                                @T("configurationPortability.mode.create", "Create-new target")
+                            </MudSelectItem>
+                        }
+                        <MudSelectItem Value="ConfigurationImportApplyMode.MergeMissing">
+                            @T("configurationPortability.mode.merge", "Merge missing")
+                        </MudSelectItem>
+                        <MudSelectItem Value="ConfigurationImportApplyMode.ApplySelected">
+                            @T("configurationPortability.mode.selected", "Apply selected")
+                        </MudSelectItem>
+                        <MudSelectItem Value="ConfigurationImportApplyMode.ReplacePortableConfiguration">
+                            @T("configurationPortability.mode.replace", "Replace portable configuration")
+                        </MudSelectItem>
+                    </MudSelect>
+
+                    <fieldset class="configuration-portability__sections">
+                        <legend>@T("configurationPortability.sections.legend", "Sections to apply")</legend>
+                        @foreach (string section in _session.AvailableSectionKeys)
+                        {
+                            string inputId = $"{IdPrefix}-section-{SafeId(section)}";
+                            <label for="@inputId">
+                                <input id="@inputId"
+                                       type="checkbox"
+                                       checked="@_selectedSections.Contains(section)"
+                                       disabled="@_busy"
+                                       @onchange="@(args => ToggleSectionAsync(section, args))" />
+                                <span>@SectionLabel(section)</span>
+                            </label>
+                        }
+                    </fieldset>
+
+                    @if (_preview is not null)
+                    {
+                        <div class="configuration-portability__preview"
+                             aria-labelledby="@PreviewHeadingId">
+                            <MudText Id="@PreviewHeadingId" Typo="Typo.subtitle2" HtmlTag="h4">
+                                @T("configurationPortability.preview.heading", "Preview report")
+                            </MudText>
+                            <ul>
+                                @foreach (ConfigurationImportPreviewLine item in _preview.Items)
+                                {
+                                    <li class="configuration-portability__preview-item">
+                                        <div>
+                                            <strong>@SectionLabel(item.SectionKey)</strong>
+                                            <span class="configuration-portability__category">
+                                                @CategoryLabel(item.Category)
+                                            </span>
+                                        </div>
+                                        <span>@ReasonLabel(item.ReasonCode)</span>
+
+                                        @if (item.SourceMappingIdentity is not null
+                                             && item.Category == ConfigurationImportPreviewCategory.Blocking)
+                                        {
+                                            <MudTextField T="string"
+                                                          Label="@T("configurationPortability.mapping.target", "Target mapping identity")"
+                                                          HelperText="@T("configurationPortability.mapping.help", "Map the source identity to an existing target identity.")"
+                                                          Value="@MappingValue(item.SourceMappingIdentity)"
+                                                          ValueChanged="@(value => SetMappingAsync(item.SourceMappingIdentity, value))"
+                                                          Disabled="_busy" />
+                                        }
+
+                                        @if (TryApprovalCode(item.SectionKey, out string? approvalCode))
+                                        {
+                                            string approvalId = $"{IdPrefix}-approval-{SafeId(approvalCode)}";
+                                            <label for="@approvalId">
+                                                <input id="@approvalId"
+                                                       type="checkbox"
+                                                       checked="@_approvalCodes.Contains(approvalCode)"
+                                                       disabled="@_busy"
+                                                       @onchange="@(args => ToggleApprovalAsync(approvalCode, args))" />
+                                                <span>@T("configurationPortability.approval.confirm", "I reviewed and approve this consequence")</span>
+                                            </label>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+
+                        <div class="configuration-portability__actions">
+                            <MudButton Variant="Variant.Outlined"
+                                       Disabled="_busy || _selectedSections.Count == 0"
+                                       OnClick="RefreshPreviewAsync">
+                                @T("configurationPortability.preview.refresh", "Refresh preview")
+                            </MudButton>
+                            @if (_preview.IsApplyReady && _preview.CanApply)
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Publish"
+                                           Disabled="_busy"
+                                           OnClick="ApplyAsync">
+                                    @(_session.RollbackOfOperationId.HasValue
+                                        ? T("configurationPortability.rollback.apply", "Apply forward rollback")
+                                        : T("configurationPortability.apply", "Apply selected configuration"))
+                                </MudButton>
+                            }
+                        </div>
+                    }
+                }
+            </section>
+        }
+        else
+        {
+            <p dir="auto">
+                @T("configurationPortability.import.unavailable", "The server did not advertise configuration import authority.")
+            </p>
+        }
+
+        @if (_capabilities?.CanViewHistory == true)
+        {
+            <section aria-labelledby="@HistoryHeadingId">
+                <div class="configuration-portability__section-heading">
+                    <MudText Id="@HistoryHeadingId" Typo="Typo.subtitle1" HtmlTag="h3">
+                        @T("configurationPortability.history.heading", "Operation history")
+                    </MudText>
+                    <MudButton Variant="Variant.Text" Disabled="_busy" OnClick="LoadHistoryAsync">
+                        @T("configurationPortability.history.refresh", "Refresh history")
+                    </MudButton>
+                </div>
+                @if (_history.Count == 0)
+                {
+                    <p>@T("configurationPortability.history.empty", "No configuration import operations are available.")</p>
+                }
+                else
+                {
+                    <ul class="configuration-portability__history">
+                        @foreach (ConfigurationImportOperationView operation in _history)
+                        {
+                            <li>
+                                <div>
+                                    <strong>@OperationLabel(operation)</strong>
+                                    <span>@operation.CompletedAt.ToLocalTime().ToString("g")</span>
+                                </div>
+                                <MudButton Variant="Variant.Text"
+                                           Disabled="_busy"
+                                           OnClick="@(() => LoadReceiptAsync(operation.OperationId))">
+                                    @T("configurationPortability.receipt.view", "View receipt")
+                                </MudButton>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        }
+
+        @if (_receipt is not null)
+        {
+            <section class="configuration-portability__receipt"
+                     aria-labelledby="@ReceiptHeadingId">
+                <MudText Id="@ReceiptHeadingId" Typo="Typo.subtitle1" HtmlTag="h3">
+                    @T("configurationPortability.receipt.heading", "Migration receipt")
+                </MudText>
+                <dl>
+                    <div><dt>@T("configurationPortability.receipt.status", "Status")</dt><dd>@_receipt.Status</dd></div>
+                    <div><dt>@T("configurationPortability.receipt.fidelity", "Fidelity")</dt><dd>@(_receipt.FidelityVerified ? T("common.verified", "Verified") : T("common.notVerified", "Not verified"))</dd></div>
+                    <div><dt>@T("configurationPortability.receipt.effects", "Post-commit effects")</dt><dd>@_receipt.EffectStatus (@_receipt.EffectRetryCount)</dd></div>
+                    <div><dt>@T("configurationPortability.receipt.omissions", "Named omissions")</dt><dd>@OmissionsLabel(_receipt)</dd></div>
+                </dl>
+                <details>
+                    <summary>@T("configurationPortability.expert.heading", "Expert details")</summary>
+                    <code dir="ltr">@_receipt.FidelityDigest</code>
+                </details>
+                @if (_receipt.CanRollback)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Warning"
+                               StartIcon="@Icons.Material.Filled.Restore"
+                               Disabled="_busy"
+                               OnClick="CreateRollbackAsync">
+                        @T("configurationPortability.rollback.prepare", "Prepare forward rollback")
+                    </MudButton>
+                }
+            </section>
+        }
+    }
+
+    @if (_statusMessage is not null)
+    {
+        <div id="@StatusId"
+             class="configuration-portability__status configuration-portability__status--@(_statusIsError ? "error" : "success")"
+             role="@(_statusIsError ? "alert" : "status")"
+             tabindex="-1"
+             dir="auto">
+            @_statusMessage
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public ConfigurationImportScope Scope { get; set; }
+
+    [Parameter]
+    public Guid? TenantId { get; set; }
+
+    private readonly CancellationTokenSource _disposal = new();
+    private readonly HashSet<string> _selectedSections = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _approvalCodes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _mappings = new(StringComparer.Ordinal);
+    private ConfigurationPortabilityCapabilities? _capabilities;
+    private ConfigurationImportClientSession? _session;
+    private ConfigurationImportPreviewView? _preview;
+    private ConfigurationImportOperationView? _receipt;
+    private IReadOnlyList<ConfigurationImportOperationView> _history = [];
+    private ConfigurationImportApplyMode _applyMode = ConfigurationImportApplyMode.ApplySelected;
+    private bool _loadingCapabilities = true;
+    private bool _busy;
+    private bool _statusIsError;
+    private string? _statusMessage;
+
+    private string IdPrefix => Scope == ConfigurationImportScope.Instance
+        ? "instance-configuration-portability"
+        : "tenant-configuration-portability";
+    private string HeadingId => $"{IdPrefix}-heading";
+    private string ExportHeadingId => $"{IdPrefix}-export-heading";
+    private string ImportHeadingId => $"{IdPrefix}-import-heading";
+    private string PreviewHeadingId => $"{IdPrefix}-preview-heading";
+    private string HistoryHeadingId => $"{IdPrefix}-history-heading";
+    private string ReceiptHeadingId => $"{IdPrefix}-receipt-heading";
+    private string FileInputId => $"{IdPrefix}-file";
+    private string FileHelpId => $"{IdPrefix}-file-help";
+    private string StatusId => $"{IdPrefix}-status";
+    private string Heading => Scope == ConfigurationImportScope.Instance
+        ? T("configurationPortability.instance.heading", "Instance configuration portability")
+        : T("configurationPortability.tenant.heading", "Tenant configuration portability");
+    private string Summary => Scope == ConfigurationImportScope.Instance
+        ? T("configurationPortability.instance.summary", "Preview and apply selected whole-instance configuration, review receipts, and recover with forward rollback.")
+        : T("configurationPortability.tenant.summary", "Export, migrate, or clone portable configuration into this tenant without changing the source tenant.");
+
+    protected override async Task OnInitializedAsync()
+    {
+        Translations.OnLanguageChanged += OnLanguageChanged;
+        await ReloadCapabilitiesAsync();
+    }
+
+    private async Task ReloadCapabilitiesAsync()
+    {
+        try
+        {
+            _capabilities = await Portability.GetCapabilitiesAsync(
+                Scope,
+                _disposal.Token);
+            if (Scope == ConfigurationImportScope.Tenant)
+            {
+                TenantId = _capabilities.TenantId;
+            }
+            if (_capabilities.CanViewHistory)
+            {
+                await LoadHistoryAsync();
+            }
+        }
+        catch (OperationCanceledException) when (_disposal.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            LogFailure("capabilities", exception);
+            await ShowErrorAsync(T("configurationPortability.error.capabilities", "Portability capabilities could not be loaded."));
+        }
+        finally
+        {
+            _loadingCapabilities = false;
+        }
+    }
+
+    private async Task UploadAsync(InputFileChangeEventArgs args)
+    {
+        await RunAsync(async () =>
+        {
+            _session = await Portability.CreateSessionAsync(
+                Scope,
+                TenantId,
+                args.File,
+                _disposal.Token);
+            _selectedSections.Clear();
+            _selectedSections.UnionWith(_session.AvailableSectionKeys);
+            _approvalCodes.Clear();
+            _mappings.Clear();
+            _receipt = null;
+            await RefreshPreviewCoreAsync();
+            await ShowSuccessAsync(T("configurationPortability.preview.ready", "Upload complete. Review the preview before applying."));
+        }, "upload", T("configurationPortability.error.upload", "The configuration file could not be uploaded or validated."));
+    }
+
+    private Task RefreshPreviewAsync() => RunAsync(
+        RefreshPreviewCoreAsync,
+        "preview",
+        T("configurationPortability.error.preview", "The preview is stale or invalid. Refresh capabilities and try again."));
+
+    private async Task RefreshPreviewCoreAsync()
+    {
+        if (_session is null || _selectedSections.Count == 0)
+        {
+            return;
+        }
+        _preview = await Portability.PreviewAsync(
+            _session,
+            _selectedSections,
+            _mappings,
+            _approvalCodes,
+            _applyMode,
+            _disposal.Token);
+    }
+
+    private Task ApplyAsync() => RunAsync(async () =>
+    {
+        if (_session is null || _preview is not { IsApplyReady: true, CanApply: true })
+        {
+            return;
+        }
+        _receipt = await Portability.ApplyAsync(
+            _session,
+            _selectedSections,
+            _mappings,
+            _approvalCodes,
+            _applyMode,
+            _disposal.Token);
+        _session = null;
+        _preview = null;
+        await LoadHistoryCoreAsync();
+        await ShowSuccessAsync(T("configurationPortability.apply.complete", "Configuration apply completed. The migration receipt is authoritative."));
+    }, "apply", T("configurationPortability.error.apply", "Configuration was not confirmed as applied. Review operation history before retrying."));
+
+    private Task LoadHistoryAsync() => RunAsync(
+        LoadHistoryCoreAsync,
+        "history",
+        T("configurationPortability.error.history", "Operation history could not be loaded."),
+        focusError: false);
+
+    private async Task LoadHistoryCoreAsync() =>
+        _history = await Portability.HistoryAsync(
+            Scope,
+            TenantId,
+            _disposal.Token);
+
+    private Task LoadReceiptAsync(Guid operationId) => RunAsync(async () =>
+    {
+        _receipt = await Portability.GetReceiptAsync(
+            Scope,
+            TenantId,
+            operationId,
+            _disposal.Token);
+    }, "receipt", T("configurationPortability.error.receipt", "The migration receipt could not be loaded."));
+
+    private Task CreateRollbackAsync() => RunAsync(async () =>
+    {
+        if (_receipt is not { CanRollback: true })
+        {
+            return;
+        }
+        _session = await Portability.CreateRollbackSessionAsync(
+            Scope,
+            TenantId,
+            _receipt.OperationId,
+            _disposal.Token);
+        _selectedSections.Clear();
+        _selectedSections.UnionWith(_receipt.SelectedSectionKeys);
+        _approvalCodes.Clear();
+        _mappings.Clear();
+        await RefreshPreviewCoreAsync();
+        await ShowSuccessAsync(T("configurationPortability.rollback.ready", "Forward rollback preview is ready. Review it before applying."));
+    }, "rollback", T("configurationPortability.error.rollback", "A forward rollback session could not be prepared."));
+
+    private Task DownloadAsync(ConfigurationManifestExportView view) => RunAsync(async () =>
+    {
+        bool started = await Portability.DownloadAsync(
+            Scope,
+            TenantId,
+            view,
+            _disposal.Token);
+        if (!started)
+        {
+            _capabilities = await Portability.GetCapabilitiesAsync(Scope, _disposal.Token);
+            throw new InvalidOperationException("Download capability changed.");
+        }
+        await ShowSuccessAsync(T("configurationPortability.download.started", "Configuration download started."));
+    }, "download", T("configurationPortability.error.download", "The configuration download could not be started."));
+
+    private async Task RunAsync(
+        Func<Task> action,
+        string operation,
+        string error,
+        bool focusError = true)
+    {
+        if (_busy)
+        {
+            return;
+        }
+        _busy = true;
+        _statusMessage = null;
+        try
+        {
+            await action();
+        }
+        catch (OperationCanceledException) when (_disposal.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            LogFailure(operation, exception);
+            if (focusError)
+            {
+                await ShowErrorAsync(error);
+            }
+            else
+            {
+                _statusIsError = true;
+                _statusMessage = error;
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ShowSuccessAsync(string message)
+    {
+        _statusIsError = false;
+        _statusMessage = message;
+        await Announcer.AnnouncePoliteAsync(message);
+    }
+
+    private async Task ShowErrorAsync(string message)
+    {
+        _statusIsError = true;
+        _statusMessage = message;
+        await InvokeAsync(StateHasChanged);
+        await Focus.FocusByIdAsync(StatusId);
+    }
+
+    private async Task ToggleSectionAsync(string section, ChangeEventArgs args)
+    {
+        if (args.Value is bool selected && selected)
+        {
+            _selectedSections.Add(section);
+        }
+        else
+        {
+            _selectedSections.Remove(section);
+        }
+        await RefreshPreviewAsync();
+    }
+
+    private async Task ToggleApprovalAsync(string approvalCode, ChangeEventArgs args)
+    {
+        if (args.Value is bool approved && approved)
+        {
+            _approvalCodes.Add(approvalCode);
+        }
+        else
+        {
+            _approvalCodes.Remove(approvalCode);
+        }
+        await RefreshPreviewAsync();
+    }
+
+    private async Task SetMappingAsync(string sourceIdentity, string? targetIdentity)
+    {
+        if (string.IsNullOrWhiteSpace(targetIdentity))
+        {
+            _mappings.Remove(sourceIdentity);
+        }
+        else
+        {
+            _mappings[sourceIdentity] = targetIdentity.Trim();
+        }
+        await RefreshPreviewAsync();
+    }
+
+    private async Task SetApplyModeAsync(ConfigurationImportApplyMode mode)
+    {
+        _applyMode = mode;
+        await RefreshPreviewAsync();
+    }
+
+    private string MappingValue(string sourceIdentity) =>
+        _mappings.GetValueOrDefault(sourceIdentity, string.Empty);
+
+    private static bool TryApprovalCode(string sectionKey, out string? approvalCode)
+    {
+        const string prefix = "approval.";
+        approvalCode = sectionKey.StartsWith(prefix, StringComparison.Ordinal)
+            ? sectionKey[prefix.Length..]
+            : null;
+        return approvalCode is not null;
+    }
+
+    private string SectionLabel(string sectionKey) =>
+        T($"configurationPortability.section.{sectionKey}", sectionKey);
+
+    private string ReasonLabel(string reasonCode) =>
+        T($"configurationPortability.reason.{reasonCode}", reasonCode.Replace('_', ' '));
+
+    private string CategoryLabel(ConfigurationImportPreviewCategory category) =>
+        T($"configurationPortability.category.{category}", category.ToString());
+
+    private string OperationLabel(ConfigurationImportOperationView operation) =>
+        $"{operation.Kind}: {operation.Status}";
+
+    private string OmissionsLabel(ConfigurationImportOperationView operation) =>
+        operation.OmittedSectionKeys.Count == 0
+            ? T("common.none", "None")
+            : string.Join(", ", operation.OmittedSectionKeys);
+
+    private static string SafeId(string value) =>
+        string.Concat(value.Select(character => char.IsAsciiLetterOrDigit(character) ? character : '-'));
+
+    private string T(string key, string fallback) => Translations.T(key, fallback);
+
+    private void LogFailure(string operation, Exception exception) =>
+        Logger.LogWarning(
+            "Configuration portability operation failed. Operation={Operation} FailureType={FailureType}",
+            operation,
+            exception.GetType().Name);
+
+    private void OnLanguageChanged(string languageCode)
+    {
+        _ = languageCode;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Translations.OnLanguageChanged -= OnLanguageChanged;
+        _disposal.Cancel();
+        _disposal.Dispose();
+    }
+}

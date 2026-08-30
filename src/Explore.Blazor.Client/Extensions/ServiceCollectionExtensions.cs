@@ -16,6 +16,7 @@ using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
+using Explore.Blazor.Client.Contracts.Services.LegalDocuments;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Contracts.Services.Reporting;
@@ -76,6 +77,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IControlPlanePlanCatalogService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IControlPlaneTenantConfigurationService>(provider => provider.GetRequiredService<ExploreControlPlaneApiAdapter>());
         services.AddScoped<IConfigurationManifestExportService, ConfigurationManifestExportService>();
+        services.AddScoped<ConfigurationPortabilityService>();
         services.AddScoped<ISchedulerAdminService, SchedulerAdminApiAdapter>();
         services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IWebhookManagementService, WebhookManagementService>();
@@ -112,6 +114,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
         services.AddScoped<ITenantNavigationService, TenantNavigationService>();
         services.AddScoped<IFooterAdminService, FooterAdminService>();
+        services.AddScoped<ILegalDocumentService, LegalDocumentService>();
         services.AddBffRefitClient<IMapsApi>(configureBffRefitClient)
             .ConfigureBffRefitClient(configureBffRefitClientBuilder);
         services.AddScoped<IMapsService, MapsService>();

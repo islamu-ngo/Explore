@@ -1,0 +1,127 @@
+@* ABOUTME: Shared accessible composition for immutable role-labeled public legal documents.
+   ABOUTME: Renders only server-sanitized HTML and uses a non-legal unavailable fallback. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.LegalDocuments
+@using System.Globalization
+@implements IDisposable
+@inject ILegalDocumentService LegalDocumentService
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="public-legal-document-shell py-8">
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center"
+                  Class="public-legal-document-shell__loading"
+                  role="status"
+                  aria-label="Loading published legal document">
+            <MudProgressCircular Indeterminate="true"
+                                 Color="Color.Primary" />
+        </MudStack>
+    }
+    else if (_document is null)
+    {
+        <MudAlert Severity="Severity.Info"
+                  Variant="Variant.Outlined"
+                  data-testid="legal-document-unavailable">
+            No reviewed public version is currently available.
+        </MudAlert>
+    }
+    else
+    {
+        <article class="public-legal-document"
+                 lang="@_document.LanguageTag"
+                 dir="auto"
+                 aria-labelledby="public-legal-document-title">
+            <header class="public-legal-document__header">
+                <MudText Typo="Typo.h4"
+                         HtmlTag="h2"
+                         Id="public-legal-document-title"
+                         Class="public-legal-document__title">
+                    @_document.Title
+                </MudText>
+                <MudText Typo="Typo.body1"
+                         Class="public-legal-document__summary">
+                    @_document.Summary
+                </MudText>
+                <dl class="public-legal-document__facts">
+                    <div>
+                        <dt>Published by</dt>
+                        <dd>@OwnerRoleLabel</dd>
+                    </div>
+                    <div>
+                        <dt>Effective</dt>
+                        <dd><time datetime="@_document.EffectiveAt.ToString("O")">@EffectiveDateLabel</time></dd>
+                    </div>
+                    <div>
+                        <dt>Version</dt>
+                        <dd>@_document.Version</dd>
+                    </div>
+                </dl>
+                @if (_document.IsLocaleFallback)
+                {
+                    <MudAlert Severity="Severity.Info"
+                              Variant="Variant.Text"
+                              Dense="true"
+                              Class="public-legal-document__locale-status">
+                        Language fallback: this is the reviewed version currently available.
+                    </MudAlert>
+                }
+            </header>
+            <div class="public-legal-document__content">
+                @((MarkupString)_document.RenderedHtml)
+            </div>
+        </article>
+    }
+</MudContainer>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string KindCode { get; init; }
+
+    [Parameter, EditorRequired]
+    public required string FallbackTitle { get; init; }
+
+    private readonly CancellationTokenSource _loadCancellation = new();
+    private PublicLegalDocumentDto? _document;
+    private bool _isLoading = true;
+
+    private string PageTitleText =>
+        $"{_document?.Title ?? FallbackTitle} — Event Platform";
+
+    private string OwnerRoleLabel => _document?.OwnerRoleCode switch
+    {
+        "instance_operator" => "Instance operator",
+        "tenant_operator" => "Tenant operator",
+        _ => "Document publisher"
+    };
+
+    private string EffectiveDateLabel =>
+        _document?.EffectiveAt.ToString("D", CultureInfo.CurrentCulture)
+        ?? string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _document = await LegalDocumentService.GetAsync(
+                KindCode,
+                _loadCancellation.Token);
+        }
+        catch (OperationCanceledException)
+            when (_loadCancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _loadCancellation.Cancel();
+        _loadCancellation.Dispose();
+    }
+}

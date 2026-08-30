@@ -211,7 +211,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> CheckInAdmissionAsync(System.Guid eventId, AdmissionCheckInRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> CheckInAdmissionAsync(System.Guid eventId, AdmissionCheckInRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
@@ -221,12 +221,12 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInBatchResultDto> BatchCheckInAdmissionsAsync(System.Guid eventId, AdmissionCheckInBatchRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInBatchResultDto> BatchCheckInAdmissionsAsync(System.Guid eventId, AdmissionCheckInBatchRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> UndoAdmissionCheckInAsync(System.Guid eventId, System.Guid checkInId, AdmissionCheckInUndoRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> UndoAdmissionCheckInAsync(System.Guid eventId, System.Guid checkInId, AdmissionCheckInUndoRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
@@ -242,19 +242,19 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="idempotency_Key">Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> ScannerCheckInAdmissionAsync(string idempotency_Key, AdmissionScannerCheckInRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> ScannerCheckInAdmissionAsync(string idempotency_Key, AdmissionScannerCheckInRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <param name="idempotency_Key">Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInBatchResultDto> ScannerBatchCheckInAdmissionsAsync(string idempotency_Key, AdmissionScannerCheckInBatchRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInBatchResultDto> ScannerBatchCheckInAdmissionsAsync(string idempotency_Key, AdmissionScannerCheckInBatchRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <param name="idempotency_Key">Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> ScannerUndoAdmissionCheckInAsync(System.Guid checkInId, string idempotency_Key, AdmissionScannerCheckInUndoRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> ScannerUndoAdmissionCheckInAsync(System.Guid checkInId, string idempotency_Key, AdmissionScannerCheckInUndoRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
@@ -284,12 +284,12 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfAdmissionScannerCapabilityIssuedDto> IssueAdmissionScannerCapabilityAsync(System.Guid eventId, IssueAdmissionScannerCapabilityRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfAdmissionScannerCapabilityIssuedDto> IssueAdmissionScannerCapabilityAsync(System.Guid eventId, IssueAdmissionScannerCapabilityRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfAdmissionScannerCapabilityDto> RevokeAdmissionScannerCapabilityAsync(System.Guid eventId, System.Guid scannerCapabilityId, RevokeAdmissionScannerCapabilityRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfAdmissionScannerCapabilityDto> RevokeAdmissionScannerCapabilityAsync(System.Guid eventId, System.Guid scannerCapabilityId, RevokeAdmissionScannerCapabilityRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -813,6 +813,66 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<System.Collections.Generic.ICollection<CategoryTypeWithCategoriesDto>> GetCategoryTypeOptionsWithCategoriesAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferCreated> CreateInstanceConfigurationTransferAsync(CreateConfigurationDirectTransferRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferCreated> CreateTenantConfigurationTransferAsync(System.Guid tenantId, CreateConfigurationDirectTransferRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> ApproveInstanceConfigurationTransferSourceAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> ApproveTenantConfigurationTransferSourceAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> AppendInstanceConfigurationTransferChunkAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string x_Configuration_Transfer_Chunk_Digest, int? x_Configuration_Transfer_Offset = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> AppendTenantConfigurationTransferChunkAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string x_Configuration_Transfer_Chunk_Digest, int? x_Configuration_Transfer_Offset = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> CompleteInstanceConfigurationTransferAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> CompleteTenantConfigurationTransferAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportSessionCreatedResult> PromoteInstanceConfigurationTransferAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportSessionCreatedResult> PromoteTenantConfigurationTransferAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> CancelInstanceConfigurationTransferAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> CancelTenantConfigurationTransferAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -4142,6 +4202,46 @@ namespace Explore.Blazor.Client.Clients
         System.Threading.Tasks.Task<ProviderConfigurationStatusDto> GetInstanceAuthorizationProviderConfigurationStatusAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportSessionCreatedResult> CreateInstanceConfigurationImportSessionAsync(System.IO.Stream body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportPreviewResult> PreviewInstanceConfigurationImportSessionAsync(System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportPreviewRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportPreviewResult> RefreshInstanceConfigurationImportSessionAsync(System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportPreviewRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportOperationResult> ApplyInstanceConfigurationImportSessionAsync(System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportApplyRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportHistoryResult> ListInstanceConfigurationImportHistoryAsync(int? maximumCount = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportOperationResult> GetInstanceConfigurationImportReceiptAsync(System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportRollbackSessionCreatedResult> CreateInstanceConfigurationRollbackSessionAsync(System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task CancelInstanceConfigurationImportSessionAsync(System.Guid sessionId, string x_Configuration_Import_Token, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get Module Settings
         /// </summary>
@@ -4682,6 +4782,17 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get a published legal document
+        /// </summary>
+        /// <remarks>
+        /// Returns the current role-labeled immutable public legal document in the negotiated locale.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<PublicLegalDocumentDto> GetPublicLegalDocumentAsync(string kindCode, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get Listmonk Integration Settings
         /// </summary>
         /// <remarks>
@@ -4701,17 +4812,6 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<BaseCommandResponseOfGuid> UpdateListmonkIntegrationSettingsAsync(UpdateListmonkIntegrationSettingsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Rotate Listmonk Integration Credentials
-        /// </summary>
-        /// <remarks>
-        /// Stores Listmonk API username and/or API key through tenant secret bindings.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> RotateListmonkIntegrationCredentialsAsync(RotateListmonkIntegrationCredentialsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -4756,17 +4856,6 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<LocalizationConfigDto> GetLocalizationConfigurationAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Rotate Localization TMS API Key
-        /// </summary>
-        /// <remarks>
-        /// Stores a backend-only Tolgee/Weblate API token through the secret binding resolver path.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> RotateLocalizationTmsApiKeyAsync(RotateLocalizationTmsApiKeyDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -6847,6 +6936,51 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<System.Collections.Generic.ICollection<TagTypeWithTagsDto>> GetTagTypesWithTagsAsync(string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportSessionCreatedResult> CreateTenantConfigurationImportSessionAsync(System.Guid tenantId, System.IO.Stream body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportPreviewResult> PreviewTenantConfigurationImportSessionAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportPreviewRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportPreviewResult> RefreshTenantConfigurationImportSessionAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportPreviewRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportOperationResult> ApplyTenantConfigurationImportSessionAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportApplyRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportHistoryResult> ListTenantConfigurationImportHistoryAsync(System.Guid tenantId, int? maximumCount = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportOperationResult> GetTenantConfigurationImportReceiptAsync(System.Guid tenantId, System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<HalResourceOfConfigurationImportRollbackSessionCreatedResult> CreateTenantConfigurationRollbackSessionAsync(System.Guid tenantId, System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task CancelTenantConfigurationImportSessionAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Import_Token, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<FileResponse> ExportTenantConfigurationPackageAsync(System.Guid tenantId, ConfigurationManifestExportView? view = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -9925,7 +10059,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> CheckInAdmissionAsync(System.Guid eventId, AdmissionCheckInRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> CheckInAdmissionAsync(System.Guid eventId, AdmissionCheckInRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (eventId == null)
                 throw new System.ArgumentNullException("eventId");
@@ -10216,7 +10350,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInBatchResultDto> BatchCheckInAdmissionsAsync(System.Guid eventId, AdmissionCheckInBatchRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInBatchResultDto> BatchCheckInAdmissionsAsync(System.Guid eventId, AdmissionCheckInBatchRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (eventId == null)
                 throw new System.ArgumentNullException("eventId");
@@ -10368,7 +10502,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> UndoAdmissionCheckInAsync(System.Guid eventId, System.Guid checkInId, AdmissionCheckInUndoRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> UndoAdmissionCheckInAsync(System.Guid eventId, System.Guid checkInId, AdmissionCheckInUndoRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (eventId == null)
                 throw new System.ArgumentNullException("eventId");
@@ -10818,7 +10952,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="idempotency_Key">Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> ScannerCheckInAdmissionAsync(string idempotency_Key, AdmissionScannerCheckInRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> ScannerCheckInAdmissionAsync(string idempotency_Key, AdmissionScannerCheckInRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (body == null)
                 throw new System.ArgumentNullException("body");
@@ -10960,7 +11094,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="idempotency_Key">Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInBatchResultDto> ScannerBatchCheckInAdmissionsAsync(string idempotency_Key, AdmissionScannerCheckInBatchRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInBatchResultDto> ScannerBatchCheckInAdmissionsAsync(string idempotency_Key, AdmissionScannerCheckInBatchRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (body == null)
                 throw new System.ArgumentNullException("body");
@@ -11102,7 +11236,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="idempotency_Key">Client-generated replay key bound by the server to the current principal or hashed capability and resolved route.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> ScannerUndoAdmissionCheckInAsync(System.Guid checkInId, string idempotency_Key, AdmissionScannerCheckInUndoRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionCheckInResultDto> ScannerUndoAdmissionCheckInAsync(System.Guid checkInId, string idempotency_Key, AdmissionScannerCheckInUndoRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (checkInId == null)
                 throw new System.ArgumentNullException("checkInId");
@@ -11968,7 +12102,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionScannerCapabilityIssuedDto> IssueAdmissionScannerCapabilityAsync(System.Guid eventId, IssueAdmissionScannerCapabilityRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionScannerCapabilityIssuedDto> IssueAdmissionScannerCapabilityAsync(System.Guid eventId, IssueAdmissionScannerCapabilityRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (eventId == null)
                 throw new System.ArgumentNullException("eventId");
@@ -12110,7 +12244,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionScannerCapabilityDto> RevokeAdmissionScannerCapabilityAsync(System.Guid eventId, System.Guid scannerCapabilityId, RevokeAdmissionScannerCapabilityRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfAdmissionScannerCapabilityDto> RevokeAdmissionScannerCapabilityAsync(System.Guid eventId, System.Guid scannerCapabilityId, RevokeAdmissionScannerCapabilityRequestDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (eventId == null)
                 throw new System.ArgumentNullException("eventId");
@@ -19094,6 +19228,1159 @@ namespace Explore.Blazor.Client.Clients
                         if (status_ == 200)
                         {
                             var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<CategoryTypeWithCategoriesDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferCreated> CreateInstanceConfigurationTransferAsync(CreateConfigurationDirectTransferRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/instance"
+                    urlBuilder_.Append("api/configuration-transfers/instance");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferCreated>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferCreated> CreateTenantConfigurationTransferAsync(System.Guid tenantId, CreateConfigurationDirectTransferRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/tenants/{tenantId}"
+                    urlBuilder_.Append("api/configuration-transfers/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferCreated>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> ApproveInstanceConfigurationTransferSourceAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/instance/{sessionId}/source-approval"
+                    urlBuilder_.Append("api/configuration-transfers/instance/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/source-approval");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferProgress>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> ApproveTenantConfigurationTransferSourceAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/tenants/{tenantId}/{sessionId}/source-approval"
+                    urlBuilder_.Append("api/configuration-transfers/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('/');
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/source-approval");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferProgress>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> AppendInstanceConfigurationTransferChunkAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string x_Configuration_Transfer_Chunk_Digest, int? x_Configuration_Transfer_Offset = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Chunk_Digest == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Chunk_Digest");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Chunk-Digest", ConvertToString(x_Configuration_Transfer_Chunk_Digest, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Offset != null)
+                        request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Offset", ConvertToString(x_Configuration_Transfer_Offset, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/instance/{sessionId}/chunks"
+                    urlBuilder_.Append("api/configuration-transfers/instance/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/chunks");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferProgress>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> AppendTenantConfigurationTransferChunkAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string x_Configuration_Transfer_Chunk_Digest, int? x_Configuration_Transfer_Offset = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Chunk_Digest == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Chunk_Digest");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Chunk-Digest", ConvertToString(x_Configuration_Transfer_Chunk_Digest, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Offset != null)
+                        request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Offset", ConvertToString(x_Configuration_Transfer_Offset, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/tenants/{tenantId}/{sessionId}/chunks"
+                    urlBuilder_.Append("api/configuration-transfers/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('/');
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/chunks");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferProgress>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> CompleteInstanceConfigurationTransferAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/instance/{sessionId}/complete"
+                    urlBuilder_.Append("api/configuration-transfers/instance/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/complete");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferProgress>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> CompleteTenantConfigurationTransferAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/tenants/{tenantId}/{sessionId}/complete"
+                    urlBuilder_.Append("api/configuration-transfers/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('/');
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/complete");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferProgress>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportSessionCreatedResult> PromoteInstanceConfigurationTransferAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/instance/{sessionId}/promote"
+                    urlBuilder_.Append("api/configuration-transfers/instance/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/promote");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportSessionCreatedResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportSessionCreatedResult> PromoteTenantConfigurationTransferAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/tenants/{tenantId}/{sessionId}/promote"
+                    urlBuilder_.Append("api/configuration-transfers/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('/');
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/promote");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportSessionCreatedResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> CancelInstanceConfigurationTransferAsync(System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/instance/{sessionId}"
+                    urlBuilder_.Append("api/configuration-transfers/instance/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferProgress>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ConfigurationDirectTransferProgress> CancelTenantConfigurationTransferAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Transfer_Nonce, string x_Configuration_Transfer_Destination_Proof, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Transfer_Nonce == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Nonce");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Nonce", ConvertToString(x_Configuration_Transfer_Nonce, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Configuration_Transfer_Destination_Proof == null)
+                        throw new System.ArgumentNullException("x_Configuration_Transfer_Destination_Proof");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Transfer-Destination-Proof", ConvertToString(x_Configuration_Transfer_Destination_Proof, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/configuration-transfers/tenants/{tenantId}/{sessionId}"
+                    urlBuilder_.Append("api/configuration-transfers/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('/');
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ConfigurationDirectTransferProgress>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -61658,6 +62945,1166 @@ namespace Explore.Blazor.Client.Clients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportSessionCreatedResult> CreateInstanceConfigurationImportSessionAsync(System.IO.Stream body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var content_ = new System.Net.Http.StreamContent(body);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/vnd.islamu.configuration-manifest.v1alpha2+json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/control-plane/configuration-import/sessions"
+                    urlBuilder_.Append("api/control-plane/configuration-import/sessions");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportSessionCreatedResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 413)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Payload Too Large", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 504)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Gateway Timeout", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportPreviewResult> PreviewInstanceConfigurationImportSessionAsync(System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportPreviewRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Import_Token == null)
+                        throw new System.ArgumentNullException("x_Configuration_Import_Token");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Import-Token", ConvertToString(x_Configuration_Import_Token, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/control-plane/configuration-import/sessions/{sessionId}/preview"
+                    urlBuilder_.Append("api/control-plane/configuration-import/sessions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/preview");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportPreviewResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 504)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Gateway Timeout", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportPreviewResult> RefreshInstanceConfigurationImportSessionAsync(System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportPreviewRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Import_Token == null)
+                        throw new System.ArgumentNullException("x_Configuration_Import_Token");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Import-Token", ConvertToString(x_Configuration_Import_Token, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/control-plane/configuration-import/sessions/{sessionId}/refresh"
+                    urlBuilder_.Append("api/control-plane/configuration-import/sessions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/refresh");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportPreviewResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 504)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Gateway Timeout", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportOperationResult> ApplyInstanceConfigurationImportSessionAsync(System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportApplyRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Import_Token == null)
+                        throw new System.ArgumentNullException("x_Configuration_Import_Token");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Import-Token", ConvertToString(x_Configuration_Import_Token, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/control-plane/configuration-import/sessions/{sessionId}/apply"
+                    urlBuilder_.Append("api/control-plane/configuration-import/sessions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/apply");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportOperationResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportHistoryResult> ListInstanceConfigurationImportHistoryAsync(int? maximumCount = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/control-plane/configuration-import/sessions/operations"
+                    urlBuilder_.Append("api/control-plane/configuration-import/sessions/operations");
+                    urlBuilder_.Append('?');
+                    if (maximumCount != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("maximumCount")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(maximumCount, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportHistoryResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportOperationResult> GetInstanceConfigurationImportReceiptAsync(System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (operationId == null)
+                throw new System.ArgumentNullException("operationId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/control-plane/configuration-import/sessions/operations/{operationId}"
+                    urlBuilder_.Append("api/control-plane/configuration-import/sessions/operations/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(operationId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportOperationResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportRollbackSessionCreatedResult> CreateInstanceConfigurationRollbackSessionAsync(System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (operationId == null)
+                throw new System.ArgumentNullException("operationId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/control-plane/configuration-import/sessions/operations/{operationId}/rollback"
+                    urlBuilder_.Append("api/control-plane/configuration-import/sessions/operations/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(operationId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/rollback");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportRollbackSessionCreatedResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task CancelInstanceConfigurationImportSessionAsync(System.Guid sessionId, string x_Configuration_Import_Token, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Import_Token == null)
+                        throw new System.ArgumentNullException("x_Configuration_Import_Token");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Import-Token", ConvertToString(x_Configuration_Import_Token, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/control-plane/configuration-import/sessions/{sessionId}"
+                    urlBuilder_.Append("api/control-plane/configuration-import/sessions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 504)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Gateway Timeout", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get Module Settings
         /// </summary>
@@ -66933,6 +69380,126 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get a published legal document
+        /// </summary>
+        /// <remarks>
+        /// Returns the current role-labeled immutable public legal document in the negotiated locale.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<PublicLegalDocumentDto> GetPublicLegalDocumentAsync(string kindCode, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (kindCode == null)
+                throw new System.ArgumentNullException("kindCode");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/legal-documents/{kindCode}"
+                    urlBuilder_.Append("api/legal-documents/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(kindCode, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<PublicLegalDocumentDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get Listmonk Integration Settings
         /// </summary>
         /// <remarks>
@@ -67051,119 +69618,6 @@ namespace Explore.Blazor.Client.Clients
 
                     // Operation Path: "api/integrations/listmonk/settings"
                     urlBuilder_.Append("api/integrations/listmonk/settings");
-                    urlBuilder_.Append('?');
-                    if (api_version != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Rotate Listmonk Integration Credentials
-        /// </summary>
-        /// <remarks>
-        /// Stores Listmonk API username and/or API key through tenant secret bindings.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> RotateListmonkIntegrationCredentialsAsync(RotateListmonkIntegrationCredentialsDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            if (body == null)
-                throw new System.ArgumentNullException("body");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-
-                    if (x_Api_Version != null)
-                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
-                    var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/integrations/listmonk/credentials/rotate"
-                    urlBuilder_.Append("api/integrations/listmonk/credentials/rotate");
                     urlBuilder_.Append('?');
                     if (api_version != null)
                     {
@@ -67624,119 +70078,6 @@ namespace Explore.Blazor.Client.Clients
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             return objectResponse_.Object;
-                        }
-                        else
-                        if (status_ == 401)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
-                        }
-                        else
-                        {
-                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
-                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
-                        }
-                    }
-                    finally
-                    {
-                        if (disposeResponse_)
-                            response_.Dispose();
-                    }
-                }
-            }
-            finally
-            {
-                if (disposeClient_)
-                    client_.Dispose();
-            }
-        }
-
-        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <summary>
-        /// Rotate Localization TMS API Key
-        /// </summary>
-        /// <remarks>
-        /// Stores a backend-only Tolgee/Weblate API token through the secret binding resolver path.
-        /// </remarks>
-        /// <returns>OK</returns>
-        /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> RotateLocalizationTmsApiKeyAsync(RotateLocalizationTmsApiKeyDto body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
-        {
-            if (body == null)
-                throw new System.ArgumentNullException("body");
-
-            var client_ = _httpClient;
-            var disposeClient_ = false;
-            try
-            {
-                using (var request_ = new System.Net.Http.HttpRequestMessage())
-                {
-
-                    if (x_Api_Version != null)
-                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
-                    var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
-                    request_.Content = content_;
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
-
-                    var urlBuilder_ = new System.Text.StringBuilder();
-
-                    // Operation Path: "api/admin/localization/tms-api-key/rotate"
-                    urlBuilder_.Append("api/admin/localization/tms-api-key/rotate");
-                    urlBuilder_.Append('?');
-                    if (api_version != null)
-                    {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
-                    }
-                    urlBuilder_.Length--;
-
-                    PrepareRequest(client_, request_, urlBuilder_);
-
-                    var url_ = urlBuilder_.ToString();
-                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
-
-                    PrepareRequest(client_, request_, url_);
-
-                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                    var disposeResponse_ = true;
-                    try
-                    {
-                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
-                        foreach (var item_ in response_.Headers)
-                            headers_[item_.Key] = item_.Value;
-                        if (response_.Content != null && response_.Content.Headers != null)
-                        {
-                            foreach (var item_ in response_.Content.Headers)
-                                headers_[item_.Key] = item_.Value;
-                        }
-
-                        ProcessResponse(client_, response_);
-
-                        var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            return objectResponse_.Object;
-                        }
-                        else
-                        if (status_ == 400)
-                        {
-                            var objectResponse_ = await ReadObjectResponseAsync<ValidationProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
-                            if (objectResponse_.Object == null)
-                            {
-                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
-                            }
-                            throw new ApiException<ValidationProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
                         }
                         else
                         if (status_ == 401)
@@ -97391,6 +99732,1343 @@ namespace Explore.Blazor.Client.Clients
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportSessionCreatedResult> CreateTenantConfigurationImportSessionAsync(System.Guid tenantId, System.IO.Stream body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var content_ = new System.Net.Http.StreamContent(body);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/vnd.islamu.tenant-configuration-package.v1alpha2+json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/configuration-import/sessions"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/configuration-import/sessions");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportSessionCreatedResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 413)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Payload Too Large", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 504)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Gateway Timeout", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportPreviewResult> PreviewTenantConfigurationImportSessionAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportPreviewRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Import_Token == null)
+                        throw new System.ArgumentNullException("x_Configuration_Import_Token");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Import-Token", ConvertToString(x_Configuration_Import_Token, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/configuration-import/sessions/{sessionId}/preview"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/configuration-import/sessions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/preview");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportPreviewResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 504)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Gateway Timeout", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportPreviewResult> RefreshTenantConfigurationImportSessionAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportPreviewRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Import_Token == null)
+                        throw new System.ArgumentNullException("x_Configuration_Import_Token");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Import-Token", ConvertToString(x_Configuration_Import_Token, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/configuration-import/sessions/{sessionId}/refresh"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/configuration-import/sessions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/refresh");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportPreviewResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 504)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Gateway Timeout", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportOperationResult> ApplyTenantConfigurationImportSessionAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Import_Token, ConfigurationImportApplyRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Import_Token == null)
+                        throw new System.ArgumentNullException("x_Configuration_Import_Token");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Import-Token", ConvertToString(x_Configuration_Import_Token, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/configuration-import/sessions/{sessionId}/apply"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/configuration-import/sessions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/apply");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportOperationResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportHistoryResult> ListTenantConfigurationImportHistoryAsync(System.Guid tenantId, int? maximumCount = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/configuration-import/sessions/operations"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/configuration-import/sessions/operations");
+                    urlBuilder_.Append('?');
+                    if (maximumCount != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("maximumCount")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(maximumCount, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportHistoryResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportOperationResult> GetTenantConfigurationImportReceiptAsync(System.Guid tenantId, System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (operationId == null)
+                throw new System.ArgumentNullException("operationId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/configuration-import/sessions/operations/{operationId}"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/configuration-import/sessions/operations/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(operationId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportOperationResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<HalResourceOfConfigurationImportRollbackSessionCreatedResult> CreateTenantConfigurationRollbackSessionAsync(System.Guid tenantId, System.Guid operationId, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (operationId == null)
+                throw new System.ArgumentNullException("operationId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/configuration-import/sessions/operations/{operationId}/rollback"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/configuration-import/sessions/operations/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(operationId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/rollback");
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 201)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<HalResourceOfConfigurationImportRollbackSessionCreatedResult>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task CancelTenantConfigurationImportSessionAsync(System.Guid tenantId, System.Guid sessionId, string x_Configuration_Import_Token, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            if (sessionId == null)
+                throw new System.ArgumentNullException("sessionId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Configuration_Import_Token == null)
+                        throw new System.ArgumentNullException("x_Configuration_Import_Token");
+                    request_.Headers.TryAddWithoutValidation("X-Configuration-Import-Token", ConvertToString(x_Configuration_Import_Token, System.Globalization.CultureInfo.InvariantCulture));
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("DELETE");
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/configuration-import/sessions/{sessionId}"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/configuration-import/sessions/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(sessionId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append('?');
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 409)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Conflict", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 429)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Too Many Requests", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 503)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Service Unavailable", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 504)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Gateway Timeout", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<FileResponse> ExportTenantConfigurationPackageAsync(System.Guid tenantId, ConfigurationManifestExportView? view = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (tenantId == null)
+                throw new System.ArgumentNullException("tenantId");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+
+                    if (x_Api_Version != null)
+                        request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/vnd.islamu.tenant-configuration-package.v1alpha2+json"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+
+                    // Operation Path: "api/tenants/{tenantId}/configuration-package/export"
+                    urlBuilder_.Append("api/tenants/");
+                    urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(tenantId, System.Globalization.CultureInfo.InvariantCulture)));
+                    urlBuilder_.Append("/configuration-package/export");
+                    urlBuilder_.Append('?');
+                    if (view != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("view")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(view, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (api_version != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("api-version")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(api_version, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    urlBuilder_.Length--;
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200 || status_ == 206)
+                        {
+                            var responseStream_ = response_.Content == null ? System.IO.Stream.Null : await ReadAsStreamAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            var fileResponse_ = new FileResponse(status_, headers_, responseStream_, null, response_);
+                            disposeClient_ = false; disposeResponse_ = false; // response and client are disposed by FileResponse
+                            return fileResponse_;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Unauthorized", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Not Found", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 413)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Payload Too Large", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
         /// Get all Tenants
         /// </summary>
@@ -109365,7 +113043,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109445,7 +113122,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109520,7 +113196,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109589,7 +113264,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109625,7 +113299,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109660,7 +113333,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -109764,7 +113436,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -109817,7 +113488,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -109962,7 +113632,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110024,7 +113693,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110060,7 +113728,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110090,13 +113757,24 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
             return false;
         }
 }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum AdmissionCheckInAction
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"CheckIn")]
+        CheckIn = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Undo")]
+        Undo = 1,
+
+    }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record class AdmissionCheckInAuditItemDto
@@ -110131,7 +113809,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110159,7 +113836,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110168,7 +113844,7 @@ namespace Explore.Blazor.Client.Clients
 }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AdmissionCheckInBatchItemRequest
+    public partial class AdmissionCheckInBatchItemRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("credential")]
@@ -110188,7 +113864,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AdmissionCheckInBatchRequest
+    public partial class AdmissionCheckInBatchRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("targetId")]
@@ -110199,7 +113875,7 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.MinLength(1)]
         [System.ComponentModel.DataAnnotations.MaxLength(100)]
-        public System.Collections.Generic.ICollection<AdmissionCheckInBatchItemRequest> Items { get; set; } = new System.Collections.Generic.List<AdmissionCheckInBatchItemRequest>();
+        public System.Collections.Generic.ICollection<AdmissionCheckInBatchItemRequestDto> Items { get; set; } = new System.Collections.Generic.List<AdmissionCheckInBatchItemRequestDto>();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -110233,13 +113909,24 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
             return false;
         }
 }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum AdmissionCheckInDependencyStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Available")]
+        Available = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Unavailable")]
+        Unavailable = 1,
+
+    }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record class AdmissionCheckInHealthDto
@@ -110250,10 +113937,14 @@ namespace Explore.Blazor.Client.Clients
         public System.Guid TargetId { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; init; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInOperationalStatus>))]
+        public AdmissionCheckInOperationalStatus Status { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("infrastructureStatus")]
-        public int InfrastructureStatus { get; init; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInDependencyStatus>))]
+        public AdmissionCheckInDependencyStatus InfrastructureStatus { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -110264,13 +113955,45 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
             return false;
         }
 }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum AdmissionCheckInOperationalAction
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Stop")]
+        Stop = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Restore")]
+        Restore = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Reconcile")]
+        Reconcile = 2,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum AdmissionCheckInOperationalReasonCode
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"DeviceLoss")]
+        DeviceLoss = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ConnectivityOutage")]
+        ConnectivityOutage = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"OperatorCorrection")]
+        OperatorCorrection = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"PostIncidentReconciliation")]
+        PostIncidentReconciliation = 3,
+
+    }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class AdmissionCheckInOperationalRequestDto
@@ -110281,7 +114004,9 @@ namespace Explore.Blazor.Client.Clients
         public System.Guid TargetId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
-        public int ReasonCode { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInOperationalReasonCode>))]
+        public AdmissionCheckInOperationalReasonCode ReasonCode { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -110303,13 +114028,19 @@ namespace Explore.Blazor.Client.Clients
         public System.Guid TargetId { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("action")]
-        public int Action { get; init; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInOperationalAction>))]
+        public AdmissionCheckInOperationalAction Action { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; init; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInOperationalStatus>))]
+        public AdmissionCheckInOperationalStatus Status { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
-        public int ReasonCode { get; init; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInOperationalReasonCode>))]
+        public AdmissionCheckInOperationalReasonCode ReasonCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("occurredAtUtc")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -110324,7 +114055,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110333,7 +114063,22 @@ namespace Explore.Blazor.Client.Clients
 }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AdmissionCheckInRequest
+    public enum AdmissionCheckInOperationalStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Active")]
+        Active = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Stopped")]
+        Stopped = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Unavailable")]
+        Unavailable = 2,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AdmissionCheckInRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("targetId")]
@@ -110383,7 +114128,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110431,7 +114175,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110440,7 +114183,25 @@ namespace Explore.Blazor.Client.Clients
 }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AdmissionCheckInUndoRequest
+    public enum AdmissionCheckInUndoReasonCodeEnum
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"OperatorCorrection")]
+        OperatorCorrection = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"DuplicateScan")]
+        DuplicateScan = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"WrongTarget")]
+        WrongTarget = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ExceptionalReconciliation")]
+        ExceptionalReconciliation = 3,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AdmissionCheckInUndoRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("targetId")]
@@ -110453,7 +114214,9 @@ namespace Explore.Blazor.Client.Clients
         public string Credential { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
-        public int ReasonCode { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInUndoReasonCodeEnum>))]
+        public AdmissionCheckInUndoReasonCodeEnum ReasonCode { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -110510,7 +114273,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110565,7 +114327,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110574,14 +114335,14 @@ namespace Explore.Blazor.Client.Clients
 }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AdmissionScannerCheckInBatchRequest
+    public partial class AdmissionScannerCheckInBatchRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.MinLength(1)]
         [System.ComponentModel.DataAnnotations.MaxLength(100)]
-        public System.Collections.Generic.ICollection<AdmissionCheckInBatchItemRequest> Items { get; set; } = new System.Collections.Generic.List<AdmissionCheckInBatchItemRequest>();
+        public System.Collections.Generic.ICollection<AdmissionCheckInBatchItemRequestDto> Items { get; set; } = new System.Collections.Generic.List<AdmissionCheckInBatchItemRequestDto>();
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -110595,7 +114356,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AdmissionScannerCheckInRequest
+    public partial class AdmissionScannerCheckInRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("credential")]
@@ -110615,7 +114376,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class AdmissionScannerCheckInUndoRequest
+    public partial class AdmissionScannerCheckInUndoRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("credential")]
@@ -110624,7 +114385,9 @@ namespace Explore.Blazor.Client.Clients
         public string Credential { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
-        public int ReasonCode { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInUndoReasonCodeEnum>))]
+        public AdmissionCheckInUndoReasonCodeEnum ReasonCode { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -110688,7 +114451,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110731,7 +114493,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -110803,7 +114564,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110874,7 +114634,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110941,7 +114700,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -110967,7 +114725,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111014,7 +114771,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111109,7 +114865,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111163,7 +114918,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111268,7 +115022,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111368,7 +115121,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111425,7 +115177,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111502,7 +115253,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111574,7 +115324,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111680,7 +115429,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -111848,7 +115596,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111892,7 +115639,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111928,7 +115674,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -111963,7 +115708,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112025,7 +115769,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112293,7 +116036,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -112321,8 +116063,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112332,7 +116073,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112362,8 +116102,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112373,7 +116112,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112403,8 +116141,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112414,7 +116151,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112444,8 +116180,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112455,7 +116190,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112485,8 +116219,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112496,7 +116229,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112526,8 +116258,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112537,7 +116268,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112567,8 +116297,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; set; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112603,8 +116332,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112614,7 +116342,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112643,8 +116370,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112654,7 +116380,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112683,8 +116408,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112694,7 +116418,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112724,8 +116447,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112735,7 +116457,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112765,8 +116486,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112776,7 +116496,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112806,8 +116525,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112817,7 +116535,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112847,8 +116564,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112858,7 +116574,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112887,8 +116602,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -112898,7 +116612,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -112941,7 +116654,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113066,7 +116778,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113107,7 +116818,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113143,7 +116853,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113175,7 +116884,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113210,7 +116918,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113285,7 +116992,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113350,6 +117056,536 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class ConfigurationDirectTransferCreated
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("nonce")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Nonce { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("destinationProof")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string DestinationProof { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("nextOffset")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int NextOffset { get; init; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class ConfigurationDirectTransferProgress
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("nextOffset")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int NextOffset { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("artifactByteLength")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int ArtifactByteLength { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; init; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ConfigurationImportApplyMode
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"PreviewOnly")]
+        PreviewOnly = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"CreateNew")]
+        CreateNew = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"MergeMissing")]
+        MergeMissing = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ApplySelected")]
+        ApplySelected = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ReplacePortableConfiguration")]
+        ReplacePortableConfiguration = 4,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ReconcileManaged")]
+        ReconcileManaged = 5,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ConfigurationImportApplyRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("preview")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ConfigurationImportPreviewRequest Preview { get; set; } = new ConfigurationImportPreviewRequest();
+
+        [System.Text.Json.Serialization.JsonPropertyName("rollbackOfOperationId")]
+        public System.Guid? RollbackOfOperationId { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ConfigurationImportEffectStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Pending")]
+        Pending = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Processing")]
+        Processing = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Completed")]
+        Completed = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"DeadLettered")]
+        DeadLettered = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Unknown")]
+        Unknown = 4,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class ConfigurationImportHistoryResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operations")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Operations> Operations { get; init; } = new System.Collections.Generic.List<Operations>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ConfigurationImportOperationKind
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Apply")]
+        Apply = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ForwardRollback")]
+        ForwardRollback = 1,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class ConfigurationImportOperationResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid OperationId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportOperationKind>))]
+        public ConfigurationImportOperationKind Kind { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportOperationStatus>))]
+        public ConfigurationImportOperationStatus Status { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetScope")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportScope>))]
+        public ConfigurationImportScope TargetScope { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetTenantId")]
+        public System.Guid? TargetTenantId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceOperationId")]
+        public System.Guid? SourceOperationId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> SelectedSectionKeys { get; init; } = new System.Collections.Generic.List<string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("snapshotAvailable")]
+        public bool SnapshotAvailable { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectStatus")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportEffectStatus>))]
+        public ConfigurationImportEffectStatus EffectStatus { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectRetryCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int EffectRetryCount { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fidelityVerified")]
+        public bool FidelityVerified { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fidelityDigest")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FidelityDigest { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("omittedSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> OmittedSectionKeys { get; init; } = new System.Collections.Generic.List<string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset CompletedAt { get; init; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ConfigurationImportOperationStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Prepared")]
+        Prepared = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Applied")]
+        Applied = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Failed")]
+        Failed = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"RolledBack")]
+        RolledBack = 3,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ConfigurationImportPreviewCategory
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Changed")]
+        Changed = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Unchanged")]
+        Unchanged = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Skipped")]
+        Skipped = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Mapped")]
+        Mapped = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Blocking")]
+        Blocking = 4,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Warning")]
+        Warning = 5,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Omitted")]
+        Omitted = 6,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ExternalSetupRequired")]
+        ExternalSetupRequired = 7,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class ConfigurationImportPreviewItem
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sectionKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SectionKey { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("category")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportPreviewCategory>))]
+        public ConfigurationImportPreviewCategory Category { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ReasonCode { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceMappingIdentity")]
+        public string? SourceMappingIdentity { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetMappingIdentity")]
+        public string? TargetMappingIdentity { get; init; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ConfigurationImportPreviewRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> SelectedSectionKeys { get; set; } = new System.Collections.Generic.List<string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("mappings")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.IDictionary<string, string> Mappings { get; set; } = new System.Collections.Generic.Dictionary<string, string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("applyMode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportApplyMode>))]
+        public ConfigurationImportApplyMode ApplyMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("grantedApprovalCodes")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> GrantedApprovalCodes { get; set; } = new System.Collections.Generic.List<string>();
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class ConfigurationImportPreviewResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetScope")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportScope>))]
+        public ConfigurationImportScope TargetScope { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetTenantId")]
+        public System.Guid? TargetTenantId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportSessionState>))]
+        public ConfigurationImportSessionState State { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isApplyReady")]
+        public bool IsApplyReady { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("items")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Items2> Items { get; init; } = new System.Collections.Generic.List<Items2>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class ConfigurationImportRollbackSessionCreatedResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceOperationId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SourceOperationId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("session")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ConfigurationImportSessionCreatedResult Session { get; init; } = new ConfigurationImportSessionCreatedResult();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ConfigurationImportScope
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Instance")]
+        Instance = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Tenant")]
+        Tenant = 1,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class ConfigurationImportSessionCreatedResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("accessToken")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string AccessToken { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetScope")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportScope>))]
+        public ConfigurationImportScope TargetScope { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetTenantId")]
+        public System.Guid? TargetTenantId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportSessionState>))]
+        public ConfigurationImportSessionState State { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("artifactByteLength")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int ArtifactByteLength { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("availableSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> AvailableSectionKeys { get; init; } = new System.Collections.Generic.List<string>();
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ConfigurationImportSessionState
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Uploaded")]
+        Uploaded = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"PreviewReady")]
+        PreviewReady = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Cancelled")]
+        Cancelled = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Expired")]
+        Expired = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Consumed")]
+        Consumed = 4,
 
     }
 
@@ -113470,7 +117706,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113502,7 +117737,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113545,7 +117779,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113584,7 +117817,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113651,7 +117883,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113705,7 +117936,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113739,7 +117969,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113768,7 +117997,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113807,7 +118035,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113860,7 +118087,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -113922,7 +118148,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -113957,7 +118182,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -114019,7 +118243,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114071,7 +118294,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -114145,7 +118367,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114198,7 +118419,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114233,7 +118453,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -114288,7 +118507,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114315,7 +118533,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -114345,7 +118562,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -114403,7 +118619,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114460,7 +118675,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -114512,6 +118726,32 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class CreateConfigurationDirectTransferRequest
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceAuthority")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string SourceAuthority { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("destinationOrigin")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Uri DestinationOrigin { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("artifactDigest")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^[0-9a-f]{64}$")]
+        public string ArtifactDigest { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("artifactByteLength")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.Range(1, 4194304)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int ArtifactByteLength { get; set; } = default!;
 
     }
 
@@ -116213,8 +120453,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -116224,7 +120463,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -116974,7 +121212,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117014,7 +121251,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117227,7 +121463,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117379,7 +121614,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117449,7 +121683,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117555,7 +121788,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117591,7 +121823,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117626,7 +121857,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117705,7 +121935,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117806,7 +122035,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117870,7 +122098,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117920,7 +122147,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -117946,7 +122172,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -117995,7 +122220,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118052,7 +122276,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118171,7 +122394,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118235,7 +122457,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118267,7 +122488,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118313,7 +122533,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118354,7 +122573,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118505,7 +122723,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118565,7 +122782,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118657,7 +122873,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118706,7 +122921,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118769,7 +122983,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -118815,7 +123028,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -118864,7 +123076,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119136,7 +123347,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119168,7 +123378,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119205,7 +123414,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119240,7 +123448,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119293,7 +123500,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119492,7 +123698,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119522,7 +123727,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119582,7 +123786,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119631,7 +123834,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119703,7 +123905,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119765,7 +123966,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -119795,7 +123995,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119854,7 +124053,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -119927,7 +124125,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120015,7 +124212,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120056,7 +124252,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120118,7 +124313,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120178,7 +124372,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120258,7 +124451,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120287,7 +124479,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120321,7 +124512,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120368,7 +124558,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120403,7 +124592,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120478,7 +124666,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120507,7 +124694,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120544,7 +124730,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120579,7 +124764,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120646,7 +124830,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -120738,7 +124921,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120802,7 +124984,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120861,7 +125042,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -120918,7 +125098,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121021,7 +125200,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121057,7 +125235,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121104,7 +125281,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121139,7 +125315,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121177,7 +125352,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121328,7 +125502,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121388,7 +125561,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121480,7 +125652,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121529,7 +125700,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121699,7 +125869,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121770,7 +125939,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121837,7 +126005,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -121915,7 +126082,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -121965,7 +126131,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122014,7 +126179,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122217,7 +126381,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122262,7 +126425,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122298,7 +126460,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122333,7 +126494,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122405,7 +126565,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122461,7 +126620,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122540,7 +126698,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122576,7 +126733,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122611,7 +126767,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122677,7 +126832,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122730,7 +126884,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122803,7 +126956,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122860,7 +127012,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -122939,7 +127090,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -122995,7 +127145,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123031,7 +127180,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123066,7 +127214,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123228,7 +127375,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123305,7 +127451,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123345,7 +127490,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123397,7 +127541,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123431,7 +127574,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123501,7 +127643,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123537,7 +127678,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123563,7 +127703,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123634,7 +127773,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123667,7 +127805,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123743,7 +127880,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -123787,7 +127923,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -123955,7 +128090,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -124034,7 +128168,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -124087,7 +128220,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -124123,7 +128255,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -124158,7 +128289,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -124276,7 +128406,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -124309,8 +128438,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -124320,7 +128448,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -124350,8 +128477,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -124361,7 +128487,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -128715,7 +132840,7 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("items")]
         [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<Items2> Items { get; set; } = new System.Collections.Generic.List<Items2>();
+        public System.Collections.Generic.ICollection<Items3> Items { get; set; } = new System.Collections.Generic.List<Items3>();
 
         /// <summary>
         /// HAL hypermedia links
@@ -128749,10 +132874,14 @@ namespace Explore.Blazor.Client.Clients
         public System.Guid TargetId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInOperationalStatus>))]
+        public AdmissionCheckInOperationalStatus Status { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("infrastructureStatus")]
-        public int InfrastructureStatus { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInDependencyStatus>))]
+        public AdmissionCheckInDependencyStatus InfrastructureStatus { get; set; } = default!;
 
         /// <summary>
         /// HAL hypermedia links
@@ -128786,13 +132915,19 @@ namespace Explore.Blazor.Client.Clients
         public System.Guid TargetId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("action")]
-        public int Action { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInOperationalAction>))]
+        public AdmissionCheckInOperationalAction Action { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public int Status { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInOperationalStatus>))]
+        public AdmissionCheckInOperationalStatus Status { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
-        public int ReasonCode { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<AdmissionCheckInOperationalReasonCode>))]
+        public AdmissionCheckInOperationalReasonCode ReasonCode { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("occurredAtUtc")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -129487,6 +133622,276 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("parentFullName")]
         public string? ParentFullName { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfConfigurationImportHistoryResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operations")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Operations2> Operations { get; set; } = new System.Collections.Generic.List<Operations2>();
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfConfigurationImportOperationResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid OperationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportOperationKind>))]
+        public ConfigurationImportOperationKind Kind { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportOperationStatus>))]
+        public ConfigurationImportOperationStatus Status { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetScope")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportScope>))]
+        public ConfigurationImportScope TargetScope { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetTenantId")]
+        public System.Guid? TargetTenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceOperationId")]
+        public System.Guid? SourceOperationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> SelectedSectionKeys { get; set; } = new System.Collections.Generic.List<string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("snapshotAvailable")]
+        public bool SnapshotAvailable { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectStatus")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportEffectStatus>))]
+        public ConfigurationImportEffectStatus EffectStatus { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectRetryCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int EffectRetryCount { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fidelityVerified")]
+        public bool FidelityVerified { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fidelityDigest")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FidelityDigest { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("omittedSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> OmittedSectionKeys { get; set; } = new System.Collections.Generic.List<string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset CompletedAt { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfConfigurationImportPreviewResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetScope")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportScope>))]
+        public ConfigurationImportScope TargetScope { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetTenantId")]
+        public System.Guid? TargetTenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportSessionState>))]
+        public ConfigurationImportSessionState State { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isApplyReady")]
+        public bool IsApplyReady { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("items")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<Items4> Items { get; set; } = new System.Collections.Generic.List<Items4>();
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfConfigurationImportRollbackSessionCreatedResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceOperationId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SourceOperationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("session")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ConfigurationImportSessionCreatedResult Session { get; set; } = new ConfigurationImportSessionCreatedResult();
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfConfigurationImportSessionCreatedResult
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("accessToken")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string AccessToken { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetScope")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportScope>))]
+        public ConfigurationImportScope TargetScope { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetTenantId")]
+        public System.Guid? TargetTenantId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<ConfigurationImportSessionState>))]
+        public ConfigurationImportSessionState State { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("artifactByteLength")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int ArtifactByteLength { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("availableSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> AvailableSectionKeys { get; set; } = new System.Collections.Generic.List<string>();
 
         /// <summary>
         /// HAL hypermedia links
@@ -139282,7 +143687,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -139337,7 +143741,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -139381,7 +143784,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -139587,7 +143989,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -139637,7 +144038,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -139708,7 +144108,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -139915,7 +144314,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -139957,7 +144355,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140040,7 +144437,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140082,7 +144478,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140146,7 +144541,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class IssueAdmissionScannerCapabilityRequest
+    public partial class IssueAdmissionScannerCapabilityRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("issueRequestId")]
@@ -140158,9 +144553,10 @@ namespace Explore.Blazor.Client.Clients
         public System.Guid TargetId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("actions")]
+        // TODO(system.text.json): Add ItemConverterType with enum converter when supported
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.MinLength(1)]
-        public System.Collections.Generic.ICollection<int> Actions { get; set; } = new System.Collections.Generic.List<int>();
+        public System.Collections.Generic.ICollection<AdmissionCheckInAction> Actions { get; set; } = new System.Collections.Generic.List<AdmissionCheckInAction>();
 
         [System.Text.Json.Serialization.JsonPropertyName("deviceLabel")]
         [System.ComponentModel.DataAnnotations.Required]
@@ -140304,7 +144700,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140333,7 +144728,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140412,7 +144806,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140447,7 +144840,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140493,7 +144885,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140528,7 +144919,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140597,7 +144987,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140682,7 +145071,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140735,7 +145123,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -140796,7 +145183,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140832,7 +145218,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -140867,7 +145252,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141035,7 +145419,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141091,7 +145474,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141265,7 +145647,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141310,7 +145691,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141365,7 +145745,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141407,7 +145786,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141442,7 +145820,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141479,7 +145856,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -141511,7 +145887,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141568,7 +145943,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -141674,7 +146048,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142008,7 +146381,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142036,7 +146408,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142194,7 +146565,6 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Message { get; init; } = default!;
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142231,7 +146601,6 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("blockerCode")]
         public string? BlockerCode { get; init; } = default!;
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142303,7 +146672,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142389,7 +146757,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("assessedAt")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.DateTimeOffset AssessedAt { get; init; } = default!;
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142477,7 +146844,6 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("isLocked")]
         public bool IsLocked { get; init; } = default!;
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142505,7 +146871,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142572,7 +146937,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142665,7 +147029,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -142718,7 +147081,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -142948,7 +147310,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143078,7 +147439,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143114,7 +147474,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143152,7 +147511,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143182,7 +147540,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143208,7 +147565,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143261,7 +147617,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143287,7 +147642,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143378,7 +147732,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143438,7 +147791,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143516,7 +147868,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143547,7 +147898,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143592,7 +147942,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143616,7 +147965,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143679,7 +148027,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -143778,7 +148125,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143870,7 +148216,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143918,7 +148263,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143957,7 +148301,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -143989,7 +148332,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144085,7 +148427,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144541,7 +148882,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -144668,7 +149008,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -144706,7 +149045,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144809,7 +149147,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -144864,7 +149201,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -144928,7 +149264,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -144963,7 +149298,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145009,7 +149343,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145073,7 +149406,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145112,7 +149444,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145246,7 +149577,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145291,7 +149621,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145338,7 +149667,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145383,7 +149711,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145430,7 +149757,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145475,7 +149801,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145537,7 +149862,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145591,7 +149915,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145690,7 +150013,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145725,7 +150047,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -145858,7 +150179,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145925,7 +150245,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -145973,7 +150292,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -146043,7 +150361,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -146087,7 +150404,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -146152,7 +150468,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -146211,7 +150526,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147497,7 +151811,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147535,7 +151848,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147627,7 +151939,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147682,7 +151993,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147726,7 +152036,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147786,7 +152095,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147838,7 +152146,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -147906,7 +152213,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -147942,8 +152248,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -147953,7 +152258,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148006,8 +152310,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -148017,7 +152320,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148113,7 +152415,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148183,8 +152484,7 @@ namespace Explore.Blazor.Client.Clients
         public string? FailureCode { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("quotaExceeded")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public QuotaExceededDetails QuotaExceeded { get; init; } = new QuotaExceededDetails();
+        public QuotaExceededDetails? QuotaExceeded { get; init; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -148194,7 +152494,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148249,7 +152548,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148297,7 +152595,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148338,7 +152635,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148399,7 +152695,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148435,7 +152730,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148485,7 +152779,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148543,7 +152836,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148579,7 +152871,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148609,7 +152900,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148652,7 +152942,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -148887,7 +153176,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -148955,6 +153243,69 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class PublicLegalDocumentDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("kindCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string KindCode { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scopeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ScopeCode { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerRoleCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string OwnerRoleCode { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Title { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("summary")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Summary { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("languageTag")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string LanguageTag { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("renderedHtml")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RenderedHtml { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("version")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Version { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectiveAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset EffectiveAt { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("contentDigest")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ContentDigest { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isLocaleFallback")]
+        public bool IsLocaleFallback { get; init; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149070,7 +153421,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149133,7 +153483,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149281,7 +153630,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149331,7 +153679,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149376,7 +153723,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149437,7 +153783,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149513,7 +153858,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149572,7 +153916,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149634,7 +153977,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149695,7 +154037,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -149723,7 +154064,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149776,7 +154116,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -149892,7 +154231,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150109,7 +154447,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150153,7 +154490,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150336,7 +154672,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150370,7 +154705,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150440,7 +154774,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150553,7 +154886,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150638,7 +154970,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150770,7 +155101,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150858,7 +155188,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150893,7 +155222,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -150951,7 +155279,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -150986,7 +155313,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151070,7 +155396,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151111,7 +155436,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151208,7 +155532,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151256,7 +155579,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151318,7 +155640,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151356,7 +155677,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151387,7 +155707,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151440,7 +155759,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151482,7 +155800,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151567,7 +155884,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151655,7 +155971,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -151723,7 +156038,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -151864,7 +156178,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152014,7 +156327,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -152093,7 +156405,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -152145,7 +156456,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152267,7 +156577,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -152348,7 +156657,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152439,7 +156747,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152749,7 +157056,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -152798,7 +157104,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -152881,7 +157186,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153024,7 +157328,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -153064,7 +157367,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153128,7 +157430,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153211,7 +157512,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -153243,7 +157543,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153430,7 +157729,7 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RevokeAdmissionScannerCapabilityRequest
+    public partial class RevokeAdmissionScannerCapabilityRequestDto
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("reason")]
@@ -153506,7 +157805,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153609,52 +157907,12 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
             return false;
         }
 }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RotateListmonkIntegrationCredentialsDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("apiUsername")]
-        public string? ApiUsername { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("apiKey")]
-        public string? ApiKey { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class RotateLocalizationTmsApiKeyDto
-    {
-
-        [System.Text.Json.Serialization.JsonPropertyName("tmsApiKey")]
-        public string? TmsApiKey { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class RotateManagedControlPlaneCredentialRequestDto
@@ -153752,7 +158010,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -153787,7 +158044,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153877,7 +158133,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -153927,7 +158182,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -153995,7 +158249,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154033,7 +158286,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154119,7 +158371,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154457,7 +158708,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154514,7 +158764,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154545,7 +158794,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154568,7 +158816,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154607,7 +158854,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154672,7 +158918,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154774,7 +159019,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -154922,7 +159166,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -154994,7 +159237,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155197,7 +159439,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155235,7 +159476,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155258,7 +159498,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155495,7 +159734,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155585,7 +159823,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155633,7 +159870,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155659,7 +159895,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155695,7 +159930,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155726,7 +159960,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155763,7 +159996,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155795,7 +160027,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155830,7 +160061,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -155890,7 +160120,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -155931,7 +160160,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156040,7 +160268,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156157,7 +160384,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156258,7 +160484,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156292,7 +160517,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156357,7 +160581,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156391,7 +160614,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156433,7 +160655,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156465,7 +160686,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156518,7 +160738,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156604,7 +160823,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156637,7 +160855,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156661,7 +160878,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -156834,7 +161050,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156893,7 +161108,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -156920,7 +161134,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157163,7 +161376,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157247,7 +161459,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157321,7 +161532,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157379,7 +161589,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157441,7 +161650,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157478,7 +161686,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157542,7 +161749,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157570,7 +161776,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157622,7 +161827,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157650,7 +161854,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157714,7 +161917,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157756,7 +161958,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157791,7 +161992,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157848,7 +162048,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -157897,7 +162096,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -157995,7 +162193,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -158048,7 +162245,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162366,7 +166562,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162400,7 +166595,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162433,7 +166627,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162485,7 +166678,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162570,7 +166762,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162599,7 +166790,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162658,7 +166848,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162712,7 +166901,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162747,7 +166935,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -162873,7 +167060,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -162952,7 +167138,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163059,7 +167244,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163158,7 +167342,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163299,7 +167482,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163338,7 +167520,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163399,7 +167580,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163471,7 +167651,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163521,7 +167700,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163552,7 +167730,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163611,7 +167788,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163788,7 +167964,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163815,7 +167990,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163850,7 +168024,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163882,7 +168055,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163916,7 +168088,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -163957,7 +168128,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -163989,7 +168159,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164031,7 +168200,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164057,7 +168225,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164099,7 +168266,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164139,7 +168305,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164177,7 +168342,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164241,6 +168405,115 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class Operations
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid OperationId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        public int Kind { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetScope")]
+        public int TargetScope { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetTenantId")]
+        public System.Guid? TargetTenantId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceOperationId")]
+        public System.Guid? SourceOperationId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> SelectedSectionKeys { get; init; } = new System.Collections.Generic.List<string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("snapshotAvailable")]
+        public bool SnapshotAvailable { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectStatus")]
+        public int EffectStatus { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectRetryCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int EffectRetryCount { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fidelityVerified")]
+        public bool FidelityVerified { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fidelityDigest")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FidelityDigest { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("omittedSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> OmittedSectionKeys { get; init; } = new System.Collections.Generic.List<string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset CompletedAt { get; init; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class Items2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sectionKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SectionKey { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("category")]
+        public int Category { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ReasonCode { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceMappingIdentity")]
+        public string? SourceMappingIdentity { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetMappingIdentity")]
+        public string? TargetMappingIdentity { get; init; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164274,7 +168547,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164307,7 +168579,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164334,7 +168605,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164371,7 +168641,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164403,7 +168672,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164459,7 +168727,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164537,7 +168804,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164566,7 +168832,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164619,7 +168884,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164654,7 +168918,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164716,7 +168979,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164758,7 +169020,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164794,7 +169055,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164847,7 +169107,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164876,7 +169135,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164918,7 +169176,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -164947,7 +169204,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -164978,7 +169234,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165007,7 +169262,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165048,7 +169302,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165172,7 +169425,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165295,7 +169547,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165304,7 +169555,7 @@ namespace Explore.Blazor.Client.Clients
 }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial record class Items2
+    public partial record class Items3
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("index")]
@@ -165334,7 +169585,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165367,7 +169617,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165409,7 +169658,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165435,7 +169683,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165477,7 +169724,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165517,7 +169763,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165555,7 +169800,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165619,6 +169863,115 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class Operations2
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid OperationId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SessionId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+        public int Kind { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public int Status { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetScope")]
+        public int TargetScope { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetTenantId")]
+        public System.Guid? TargetTenantId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceOperationId")]
+        public System.Guid? SourceOperationId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> SelectedSectionKeys { get; init; } = new System.Collections.Generic.List<string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("snapshotAvailable")]
+        public bool SnapshotAvailable { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectStatus")]
+        public int EffectStatus { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("effectRetryCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int EffectRetryCount { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fidelityVerified")]
+        public bool FidelityVerified { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fidelityDigest")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FidelityDigest { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("omittedSectionKeys")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public System.Collections.Generic.ICollection<string> OmittedSectionKeys { get; init; } = new System.Collections.Generic.List<string>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset CompletedAt { get; init; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class Items4
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sectionKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string SectionKey { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("category")]
+        public int Category { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("reasonCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ReasonCode { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceMappingIdentity")]
+        public string? SourceMappingIdentity { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("targetMappingIdentity")]
+        public string? TargetMappingIdentity { get; init; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165652,7 +170005,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165685,7 +170037,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165712,7 +170063,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165749,7 +170099,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165781,7 +170130,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -165838,7 +170186,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165891,7 +170238,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165921,7 +170267,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -165950,7 +170295,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166003,7 +170347,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166038,7 +170381,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166100,7 +170442,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166135,7 +170476,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166197,7 +170537,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166239,7 +170578,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166275,7 +170613,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166328,7 +170665,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166357,7 +170693,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166399,7 +170734,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166428,7 +170762,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166459,7 +170792,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166488,7 +170820,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166529,7 +170860,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166653,7 +170983,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166776,7 +171105,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166813,7 +171141,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166862,7 +171189,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -166951,7 +171277,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -166994,7 +171319,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167035,7 +171359,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167106,7 +171429,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167153,7 +171475,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167226,7 +171547,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167296,7 +171616,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167362,7 +171681,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167445,7 +171763,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167511,7 +171828,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167582,7 +171898,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167626,7 +171941,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167672,7 +171986,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167715,7 +172028,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167761,7 +172073,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167804,7 +172115,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167856,7 +172166,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167895,7 +172204,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -167930,7 +172238,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -167982,7 +172289,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168014,7 +172320,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168051,7 +172356,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168077,7 +172381,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168105,7 +172408,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168137,7 +172439,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168175,7 +172476,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168225,7 +172525,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168270,7 +172569,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168317,7 +172615,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168362,7 +172659,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168392,7 +172688,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168421,7 +172716,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168454,7 +172748,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168503,7 +172796,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168532,7 +172824,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168621,7 +172912,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168668,7 +172958,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168711,7 +173000,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168752,7 +173040,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168791,7 +173078,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -168846,7 +173132,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168889,7 +173174,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -168930,7 +173214,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169001,7 +173284,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169048,7 +173330,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169121,7 +173402,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169191,7 +173471,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169257,7 +173536,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169340,7 +173618,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169406,7 +173683,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169477,7 +173753,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169521,7 +173796,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169567,7 +173841,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169610,7 +173883,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169656,7 +173928,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169699,7 +173970,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169751,7 +174021,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169790,7 +174059,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169825,7 +174093,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169877,7 +174144,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169909,7 +174175,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -169946,7 +174211,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -169972,7 +174236,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170000,7 +174263,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170032,7 +174294,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170079,7 +174340,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170116,7 +174376,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170166,7 +174425,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170211,7 +174469,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170258,7 +174515,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170303,7 +174559,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170333,7 +174588,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170362,7 +174616,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170395,7 +174648,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170444,7 +174696,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170473,7 +174724,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170513,7 +174763,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170568,7 +174817,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170615,7 +174863,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170658,7 +174905,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170699,7 +174945,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170729,7 +174974,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170789,7 +175033,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170847,7 +175090,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -170907,7 +175149,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -170965,7 +175206,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171025,7 +175265,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171084,7 +175323,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171132,7 +175370,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171182,7 +175419,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171212,7 +175448,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171272,7 +175507,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171330,7 +175564,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171390,7 +175623,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171448,7 +175680,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171508,7 +175739,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171567,7 +175797,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171615,7 +175844,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171665,7 +175893,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171696,7 +175923,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171736,7 +175962,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171780,7 +176005,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171819,7 +176043,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171856,7 +176079,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -171904,7 +176126,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171949,7 +176170,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -171993,7 +176213,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172024,7 +176243,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172065,7 +176283,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172104,7 +176321,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172148,7 +176364,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172187,7 +176402,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172224,7 +176438,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172272,7 +176485,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172317,7 +176529,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172361,7 +176572,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172400,7 +176610,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172438,7 +176647,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172485,7 +176693,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172531,7 +176738,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172562,7 +176768,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172603,7 +176808,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172638,7 +176842,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172744,7 +176947,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172790,7 +176992,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172825,7 +177026,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -172931,7 +177131,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -172977,7 +177176,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173016,7 +177214,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173054,7 +177251,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173101,7 +177297,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173147,7 +177342,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173188,7 +177382,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173227,7 +177420,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173265,7 +177457,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173312,7 +177503,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173358,7 +177548,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173399,7 +177588,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173438,7 +177626,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173476,7 +177663,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173523,7 +177709,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173568,7 +177753,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173615,7 +177799,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173654,7 +177837,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173692,7 +177874,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173739,7 +177920,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173785,7 +177965,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173824,7 +178003,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173862,7 +178040,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -173909,7 +178086,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173955,7 +178131,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -173994,7 +178169,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174032,7 +178206,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -174079,7 +178252,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174124,7 +178296,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -174171,7 +178342,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174217,7 +178387,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174256,7 +178425,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174294,7 +178462,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -174341,7 +178508,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174386,7 +178552,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -174433,7 +178598,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174472,7 +178636,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174510,7 +178673,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -174557,7 +178719,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174602,7 +178763,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -174649,7 +178809,6 @@ namespace Explore.Blazor.Client.Clients
             set { _additionalProperties = value; }
         }
 
-
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
         {
@@ -174694,7 +178853,6 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
-
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
