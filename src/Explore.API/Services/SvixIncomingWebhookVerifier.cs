@@ -34,7 +34,7 @@ public sealed class SvixIncomingWebhookVerifier(
         }
 
         var resolved = await secretResolver.ResolveAsync(secretRef, tenantId: null, cancellationToken);
-        if (resolved is null || string.IsNullOrWhiteSpace(resolved.Value))
+        if (!resolved.IsResolved || string.IsNullOrWhiteSpace(resolved.Value))
         {
             logger.LogWarning("Svix operational webhook rejected because the signing secret could not be resolved.");
             return IncomingWebhookVerificationResult.Rejected(

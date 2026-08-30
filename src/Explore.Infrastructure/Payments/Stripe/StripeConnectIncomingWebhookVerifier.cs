@@ -36,7 +36,7 @@ public sealed class StripeConnectIncomingWebhookVerifier(
             return IncomingWebhookVerificationResult.Rejected("stripe_connect_signature_missing");
         }
 
-        ResolvedSecret? secret = await secretResolver.ResolveAsync(
+        SecretResolutionResult secret = await secretResolver.ResolveAsync(
             options.CurrentValue.Stripe.ConnectWebhookSecretRef ?? SecretDefinitionRegistry.Keys.Stripe.WebhookSecret,
             tenantId: null,
             cancellationToken);

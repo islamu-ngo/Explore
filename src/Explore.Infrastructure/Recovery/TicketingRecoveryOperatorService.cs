@@ -42,11 +42,11 @@ public sealed class TicketingRecoveryOperatorService(
             return null;
         }
 
-        ResolvedSecret? secret = await secretResolver.ResolveAsync(
+        SecretResolutionResult secret = await secretResolver.ResolveAsync(
             SecretDefinitionRegistry.Keys.Ticketing.RecoveryManifestHmacKey,
             tenantId: null,
             cancellationToken);
-        if (secret is null ||
+        if (!secret.IsResolved ||
             !VerifyManifest(manifest, secret.Value))
         {
             return null;

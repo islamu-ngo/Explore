@@ -199,13 +199,13 @@ public sealed class StripePaymentWebhookOrderingTests
             var incomingRepository = new IncomingWebhookMessageRepository(context);
             ISecretResolver secrets = Substitute.For<ISecretResolver>();
             secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Stripe.WebhookSecret, null, Arg.Any<CancellationToken>())
-                .Returns(new ResolvedSecret(
+                .Returns(SecretResolutionResult.Resolved(new ResolvedSecret(
                     SecretDefinitionRegistry.Keys.Stripe.WebhookSecret,
                     Secret,
                     SecretSourceType.EnvironmentVariable,
                     SecretScope.Instance,
                     null,
-                    DateTimeOffset.UtcNow));
+                    DateTimeOffset.UtcNow)));
             var connectionEntity = OrganizerPaymentProviderConnection.Create(
                 Guid.CreateVersion7(), TenantId, Guid.CreateVersion7(), "stripe", "platform-test", AccountId, UtcNow.AddHours(-1));
             IOrganizerPaymentProviderConnectionRepository connections = Substitute.For<IOrganizerPaymentProviderConnectionRepository>();

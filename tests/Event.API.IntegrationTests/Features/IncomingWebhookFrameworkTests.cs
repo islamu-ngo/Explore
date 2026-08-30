@@ -248,13 +248,13 @@ public sealed class IncomingWebhookFrameworkTests
             new WebhookSecretMaterial(secret, 1));
         var secretResolver = Substitute.For<ISecretResolver>();
         secretResolver.ResolveAsync(secretRef, null, Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret(
+            .Returns(SecretResolutionResult.Resolved(new ResolvedSecret(
                 secretRef,
                 secret,
                 SecretSourceType.EnvironmentVariable,
                 SecretScope.Instance,
                 null,
-                DateTimeOffset.UtcNow));
+                DateTimeOffset.UtcNow)));
         var verifier = new SvixIncomingWebhookVerifier(
             new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
             {
@@ -660,13 +660,13 @@ public sealed class IncomingWebhookFrameworkTests
         const string secretRef = "webhooks.svix.operational_webhook_secret";
         var secretResolver = Substitute.For<ISecretResolver>();
         secretResolver.ResolveAsync(secretRef, null, Arg.Any<CancellationToken>())
-            .Returns(new ResolvedSecret(
+            .Returns(SecretResolutionResult.Resolved(new ResolvedSecret(
                 secretRef,
                 secret,
                 SecretSourceType.EnvironmentVariable,
                 SecretScope.Instance,
                 null,
-                DateTimeOffset.UtcNow));
+                DateTimeOffset.UtcNow)));
         var verifier = new SvixIncomingWebhookVerifier(
             new StaticOptionsMonitor<WebhookOptions>(new WebhookOptions
             {

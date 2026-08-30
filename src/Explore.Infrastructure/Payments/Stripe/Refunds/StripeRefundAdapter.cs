@@ -207,7 +207,7 @@ public sealed class StripeRefundAdapter(
 
     private async Task<global::Stripe.StripeClient> CreateClientAsync(CancellationToken cancellationToken)
     {
-        ResolvedSecret? secret = await secretResolver.ResolveAsync(
+        SecretResolutionResult secret = await secretResolver.ResolveAsync(
             SecretDefinitionRegistry.Keys.Stripe.PlatformSecretKey,
             tenantId: null,
             cancellationToken);

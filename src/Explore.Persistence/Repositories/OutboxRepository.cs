@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.ConfigurationManifest.Application;
+using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +11,8 @@ namespace Explore.Persistence.Repositories;
 
 public class OutboxRepository : GenericRepository<OutboxMessage, Guid>,
     IOutboxRepository,
-    IConfigurationManifestEffectOutboxRepository
+    IConfigurationManifestEffectOutboxRepository,
+    IConfigurationImportEffectOutboxRepository
 {
     private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(5);
     private readonly ExploreDbContext _dbContext;
@@ -79,6 +81,28 @@ public class OutboxRepository : GenericRepository<OutboxMessage, Guid>,
                     == ConfigurationManifestEffectOutbox.EventType
                 && ((message.Status == OutboxMessageStatus.Pending
                         && (message.NextRetryAt == null || message.NextRetryAt <= now))
+                    || (message.Status == OutboxMessageStatus.Processing
+                        && message.NextRetryAt != null
+                        && message.NextRetryAt <= now)))
+            .OrderBy(message => message.CreatedAt)
+            .ThenBy(message => message.Id)
+            .Take(batchSize)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<OutboxMessage>> GetPendingImportEffectsAsync(
+        int batchSize,
+        CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(batchSize, 1);
+        DateTime now = DateTime.UtcNow;
+        return await _dbContext.OutboxMessages
+            .AsNoTracking()
+            .Where(message =>
+                message.EventType == ConfigurationImportEffectOutbox.EventType
+                && ((message.Status == OutboxMessageStatus.Pending
+                        && (message.NextRetryAt == null
+                            || message.NextRetryAt <= now))
                     || (message.Status == OutboxMessageStatus.Processing
                         && message.NextRetryAt != null
                         && message.NextRetryAt <= now)))

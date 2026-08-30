@@ -5,6 +5,12 @@ using Explore.Domain;
 
 namespace Explore.Application.Contracts.Recovery;
 
+public sealed record TicketingRecoveryHealth(
+    TicketingRecoveryStatus Status,
+    int PendingReissues,
+    int AmbiguousEffects,
+    DateTime? OldestPendingAt);
+
 public sealed record TicketingRecoveryAggregateHealth(
     int RecoveryOnly,
     int Failed,
@@ -81,6 +87,11 @@ public interface ITicketingRecoveryOperatorStore
         Guid effectId,
         long expectedFence,
         DateTime occurredAtUtc,
+        CancellationToken cancellationToken);
+
+    Task<TicketingRecoveryHealth?> GetHealthAsync(
+        Guid tenantId,
+        Guid recoveryOperationId,
         CancellationToken cancellationToken);
 
     Task<TicketingRecoveryAggregateHealth> GetAggregateHealthAsync(

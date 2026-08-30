@@ -9,12 +9,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
 
-public sealed record TicketingRecoveryHealth(
-    TicketingRecoveryStatus Status,
-    int PendingReissues,
-    int AmbiguousEffects,
-    DateTime? OldestPendingAt);
-
 public sealed class TicketingRecoveryRepository(
     ExploreDbContext dbContext) :
     ITicketingRecoveryOperatorStore
