@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://islamu.event/.agents/contract/schema.json",
   "title": "Contribution Contract Intents",
-  "description": "Canonical schema for intents.yaml. Enforced by Event.Architecture.Tests.AgentContextIntentManifestTests. Do not relax required fields without updating the matching test.",
+  "description": "Canonical schema for intents.yaml. Enforced by dotnet run eng/agent-context/validate-contract.cs -- . --intent <intent-id>.",
   "type": "object",
   "required": ["version", "intents"],
   "additionalProperties": false,
@@ -74,7 +74,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^(AGENTS\\.md|(?:docs|dev|schemas)/.+\\.md|\\.agents/skills/_SKILL_SCHEMA\\.md)$"
+            "pattern": "^(?!.*(?:^|/)\\.\\.(?:/|$))(AGENTS\\.md|(?:docs|dev|schemas|islamic-value-sensitive-design)/.+\\.md|\\.agents/skills/_SKILL_SCHEMA\\.md)$"
           },
           "description": "Repo-relative paths; validation must verify each exists."
         },
@@ -93,12 +93,20 @@
         },
         "paths_in_scope": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+          },
           "description": "Glob allow-list of files the agent may modify for this intent."
         },
         "paths_forbidden": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+          },
           "description": "Glob deny-list. Takes precedence over paths_in_scope when a file matches both."
         },
         "minimum_tests": {
@@ -107,13 +115,13 @@
             "type": "string",
             "pattern": "^[A-Z][A-Za-z0-9.]*Tests?$"
           },
-          "description": "Test project names (e.g. Event.API.IntegrationTests). AgentContextIntentManifestTests verifies each project exists."
+          "description": "Test project names (e.g. Event.API.IntegrationTests). The contract validator verifies each project exists."
         },
         "docs_to_update": {
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^((docs|dev|schemas)/.+\\.md|\\.agents/contract/intents\\.yaml|\\.agents/skills/_SKILL_SCHEMA\\.md)$"
+            "pattern": "^(?!.*(?:^|/)\\.\\.(?:/|$))((docs|dev|schemas)/.+\\.md|\\.agents/contract/intents\\.yaml|\\.agents/skills/_SKILL_SCHEMA\\.md)$"
           },
           "description": "Docs that SHOULD be updated in the same PR if the intent causes user-visible changes."
         },
@@ -146,6 +154,56 @@
             "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
           },
           "description": "Cross-references to sibling intents by id."
+        },
+        "routing": {
+          "type": "object",
+          "required": ["precedence", "secondary", "conflict_overrides"],
+          "additionalProperties": false,
+          "properties": {
+            "precedence": {
+              "type": "string",
+              "enum": ["primary_then_secondary"]
+            },
+            "secondary": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["intent", "when_paths"],
+                "additionalProperties": false,
+                "properties": {
+                  "intent": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+                  },
+                  "when_paths": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+                    }
+                  }
+                }
+              }
+            },
+            "conflict_overrides": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["secondary_intent", "secondary_gate", "controlling_gate", "resolution"],
+                "additionalProperties": false,
+                "properties": {
+                  "secondary_intent": { "type": "string", "minLength": 3 },
+                  "secondary_gate": { "type": "string", "minLength": 3 },
+                  "controlling_gate": { "type": "string", "minLength": 3 },
+                  "resolution": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          },
+          "description": "Optional deterministic primary/secondary routing. Secondary obligations are additive; only listed conflict overrides replace a secondary gate."
         },
         "verification_commands": {
           "type": "array",

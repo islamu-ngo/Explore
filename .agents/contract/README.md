@@ -26,7 +26,7 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 
 ## How to use this contract (AI agent or contributor)
 
-1. **Classify**. Read the incoming request and resolve only the matching intent entry from `intents.yaml`; the full registry is an index, not task context. If no match, either ask one material clarification or use the `AGENTS.md` generic flow.
+1. **Classify**. Read the incoming request and resolve only the matching intent entry from `intents.yaml`; the full registry is an index, not task context. If an intent has `routing`, it is primary and matching `secondary` intents add their rules, tests, docs, acceptance, and prohibitions. Primary constraints control only conflicts named in `conflict_overrides`; every other secondary obligation remains additive. If no match, either ask one material clarification or use the `AGENTS.md` generic flow.
 2. **Load once**. Retrieve only the headings or symbols needed from `must_read_docs`, activate only matching skill routers, and load only rules matching the paths being changed. Reuse the context ledger from [Context Engineering](../CONTEXT_ENGINEERING.md); do not reread unchanged content or preload every linked resource.
 3. **Edit**. Touch only files matching `paths_in_scope`. Reject changes proposed outside the allow-list unless the user explicitly widens scope.
 4. **Verify**. Run every command in `verification_commands`. Run every test project in `minimum_tests`. Satisfy every item in `pr_checklist`. Update every doc in `docs_to_update` in the same PR.
@@ -37,7 +37,7 @@ The default bootstrap packet is the resolved intent, matching rules, selected sk
 ## Adding a new intent
 
 1. Add a new entry to `intents.yaml`.
-2. Validate the entry against `schema.json` with a compatible editor or schema tool.
+2. Run `dotnet run eng/agent-context/validate-contract.cs -- . --intent <intent-id>` to validate the complete manifest schema plus the selected intent's references, safe relative paths, test projects, benchmark parity, and deterministic routing.
 3. Link the new intent from `docs/GOVERNANCE.md` → "Decision Framework" if it introduces a new decision point.
 4. Exercise the new intent with at least one scenario in `.agents/benchmarks/cold-start-tasks.yaml` before it is considered production-ready.
 

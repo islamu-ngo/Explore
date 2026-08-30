@@ -1,4 +1,4 @@
-# ABOUTME: Twelve cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
+# ABOUTME: Thirteen cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
 # ABOUTME: Each scenario is a self-contained task a fresh AI agent should be able to complete using only AGENTS.md + the context system.
 # Version: 1 (synthetic). Target: replace each with real issue-based scenario within 4–6 weeks.
 
@@ -526,3 +526,143 @@ scenarios:
       - "Each surviving executable project has an explicit lane and nonzero execution evidence."
       - "Fast lanes do not start Docker, browsers, Aspire, brokers, or live providers."
       - "The internal-only change uses `Changelog: skip` and does not add a public change fragment."
+
+  - id: secrets-authority
+    intent_id: secrets-authority
+    summary: |
+      Replace ambiguous or database-held secret authority with explicit deployment-owned modes.
+    prompt: |
+      Implement the approved secrets authority workstream across Domain secret metadata,
+      Explore.Secrets, direct resolver consumers, persistence, supported deployment topologies,
+      safe operator visibility, and recovery documentation. Environment and Infisical must be
+      explicit authority modes with no fallback. Remove database-held secret values and obsolete
+      compatibility paths, emit no sensitive values or provider details, generate all provider
+      migrations through repository tooling, and require deployment-owned multi-replica rotation
+      convergence. Any local-development reset requires separate approval and immediate exact-target
+      proof. Apply the secondary intent for each changed API, HAL, OpenAPI, Blazor, bootstrap,
+      migration, or CI surface.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/GOVERNANCE.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/SECRETS.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/SELF_HOSTING.md"
+      - "dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-plan.md"
+      - "dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md"
+      - "dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md"
+      - ".agents/rules/work-criticality-matrix.md"
+      - ".agents/rules/auth-trust-boundaries.md"
+      - ".agents/rules/efcore-migrations.md"
+      - ".agents/skills/criticality-guardrail/SKILL.md"
+    expected_paths_in_scope:
+      - "src/Explore.Domain/Secrets/**"
+      - "src/Explore.Application/Contracts/Secrets/**"
+      - "src/Explore.Application/**/*Secret*.cs"
+      - "src/Explore.Application/Features/Management/**"
+      - "src/Explore.Application/Features/Localization/**"
+      - "src/Explore.Application/Features/Integrations/Listmonk/**"
+      - "src/Explore.Application/Features/Settings/**"
+      - "src/Explore.Application/Features/ControlPlane/**"
+      - "src/Explore.Secrets/**"
+      - "src/Explore.Persistence/Configurations/Entities/SecretBindingConfiguration.cs"
+      - "src/Explore.Persistence/ExploreDbContext*.cs"
+      - "src/Explore.Persistence/PersistenceServicesRegistration.cs"
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.Sqlite/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.SqlServer/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.MariaDb/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.MySql/Migrations/**/*.cs"
+      - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "src/Explore.Infrastructure/**/*Infisical*.cs"
+      - "src/Explore.Infrastructure/Analytics/**"
+      - "src/Explore.Infrastructure/Recovery/**"
+      - "src/Explore.Infrastructure/Storage/**"
+      - "src/Explore.Infrastructure/Services/ObjectStorageService.cs"
+      - "src/Explore.Infrastructure/Mail/**"
+      - "src/Explore.Infrastructure/Webhooks/**"
+      - "src/Explore.Infrastructure/Services/Registration/**"
+      - "src/Explore.Infrastructure/Services/Federation/**"
+      - "src/Explore.Infrastructure/Services/Cerbos*.cs"
+      - "src/Explore.Infrastructure/Services/Cerbos/**"
+      - "src/Explore.Infrastructure/Localization/**"
+      - "src/Explore.Infrastructure/Payments/Stripe/**"
+      - "src/Explore.Infrastructure/Integrations/Listmonk/**"
+      - "src/Explore.Infrastructure/HealthChecks/**"
+      - "src/Explore.API/Authentication/**"
+      - "src/Explore.API/Services/**"
+      - "src/Explore.API/Controllers/**/*Settings*.cs"
+      - "src/Explore.API/Hateoas/**"
+      - "src/Explore.AppHost/**"
+      - "src/Event.Standalone/**"
+      - "src/Event.MigrationService/**"
+      - "src/Explore.Blazor/**"
+      - "src/Explore.Blazor.Client/Pages/Admin/Instance/**"
+      - "src/Explore.Blazor.Client/Services/**"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "tests/Explore.Secrets.UnitTests/**"
+      - "tests/Event.Domain.UnitTests/**/*Secret*.cs"
+      - "tests/Event.Application.UnitTests/**/*Secret*.cs"
+      - "tests/Event.Persistence.IntegrationTests/**/*Secret*.cs"
+      - "tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseProviderBehaviorContractTests.cs"
+      - "tests/Explore.Infrastructure.Tests/**"
+      - "tests/Event.API.IntegrationTests/**/*Secret*.cs"
+      - "tests/Event.API.IntegrationTests/Features/ConfigurationManifest/**"
+      - "tests/Event.Application.UnitTests/Features/ConfigurationManifest/**"
+      - "tests/Explore.Blazor.IntegrationTests/**"
+      - "tests/Explore.Blazor.Client.Tests/**"
+      - "tests/Event.Standalone.IntegrationTests/**"
+      - "tests/Explore.Diagnostic.UnitTests/**/*DockerCompose*.cs"
+      - "tests/Event.Architecture.Tests/**/*Secret*.cs"
+      - "tests/Event.Architecture.Tests/ConfigurationManifestSchema*Tests.cs"
+      - ".env.example"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy-coolify.yml"
+      - ".github/workflows/_build-test.yml"
+      - "deploy/bootstrap/**"
+      - "schemas/islamu-event.md"
+      - "schemas/openapi_islamu-event.json"
+      - "docs/SECRETS.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/OPERATIONS.md"
+      - "docs/BACKUP_RESTORE_UPGRADE.md"
+      - "docs/TROUBLESHOOTING.md"
+      - "docs/API.md"
+      - "docs/API_CHANGELOG.md"
+      - "docs/API_CONTRACT_INVENTORY.md"
+      - "docs/BLAZOR.md"
+      - "README.md"
+      - "dev/active/secrets-refactor-control-plane/**"
+      - "islamic-value-sensitive-design/i-vsd-secrets-refactor-control-plane.md"
+    expected_verification_commands:
+      - "dotnet run eng/agent-context/validate-contract.cs -- . --intent secrets-authority"
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet ef migrations has-pending-model-changes --project src/Explore.Persistence/Explore.Persistence.csproj --startup-project src/Explore.API/Explore.API.csproj --configuration Release --context ExploreDbContext"
+    acceptance_criteria:
+      - "The request classifies as `secrets-authority`, with conditional secondary intents selected from the final changed-file set."
+      - "Environment and Infisical are explicit deployment-owned modes; a selected source never falls back and application databases contain no secret values or reversible ciphertext."
+      - "Required consumers fail closed, optional failures remain capability-local, and tenant-qualified resolution/cache state cannot cross tenant or instance boundaries."
+      - "Logs, stderr, traces, metrics, health, ProblemDetails, support artifacts, APIs, manifests, generated clients, BFF responses, and UI contain no secret values or sensitive provider details."
+      - "Migrations and snapshots are generated for every supported provider and are never hand-edited."
+      - "Rotation success and old-credential revocation require executable deployment-owned convergence across all intended replicas."
+      - "A development reset cannot run without separate approval and immediate exact-target identity proof."
+      - "No compatibility alias, dual read/write, fallback adapter, obsolete route, migration shim, or speculative secret infrastructure is introduced."
+    notes: |
+      PR0 is governance-only. PRs 1-6 use secrets-authority as the primary intent and
+      add external-infrastructure-bootstrap, add-ef-migration, add-get-endpoint,
+      add-hal-link, openapi-contract-change, blazor-component-affordance, or ci-cd-change
+      only when their final changed-file set reaches those surfaces.

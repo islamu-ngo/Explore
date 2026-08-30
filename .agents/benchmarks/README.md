@@ -7,7 +7,7 @@
 >
 > **Hypothesis under test**: If the context system is well-designed, a cold-start agent should pass each benchmark scenario without human hand-holding.
 
-Last Updated: 2026-04-24
+Last Updated: 2026-08-30
 
 ---
 
@@ -15,7 +15,7 @@ Last Updated: 2026-04-24
 
 | File | Purpose |
 |---|---|
-| [`cold-start-tasks.yaml`](cold-start-tasks.yaml) | 11 canonical scenarios with acceptance criteria, context budgets, and expected intent classification |
+| [`cold-start-tasks.yaml`](cold-start-tasks.yaml) | 13 canonical scenarios with acceptance criteria, context budgets, and expected intent classification |
 
 The YAML structure is documented by the scenario format below.
 
@@ -48,7 +48,7 @@ Benchmarks are **manual** today. A future enhancement may wire them into CI as a
 | `PARTIAL` | Correct result with one acceptance miss or one context-budget breach that did not affect correctness. |
 | `FAIL` | Incorrect classification OR missed ≥ 2 acceptance criteria OR tests red. |
 
-Target: ≥ 9 of 11 scenarios `PASS` on first attempt. If < 9 pass, the context system needs repair (see §4).
+Target: ≥ 11 of 13 scenarios `PASS` on first attempt. If < 11 pass, the context system needs repair (see §4).
 
 Context is product quality: prompt caching may reduce cost but does not satisfy a live-context or duplicate-content budget.
 
@@ -56,7 +56,7 @@ Context is product quality: prompt caching may reduce cost but does not satisfy 
 
 ## 3. Scenarios (v1)
 
-Eleven scenarios covering the primary contribution surfaces:
+Thirteen scenarios covering the primary contribution surfaces:
 
 | ID | Intent Mapped | Acceptance Summary |
 |---|---|---|
@@ -71,6 +71,8 @@ Eleven scenarios covering the primary contribution surfaces:
 | `external-infrastructure-bootstrap` | `external-infrastructure-bootstrap` | Setup-time external infrastructure onboarding with bounded secrets and recovery evidence |
 | `webhook-delivery-redesign` | `webhook-delivery-redesign` | Provider-neutral durable webhook delivery and reconciliation contract |
 | `registration-data-collection` | `registration-data-collection` | Cross-layer registration workflow with tenant, durability, API/HAL, and provider boundaries |
+| `test-suite-rationalization` | `test-suite-rationalization` | Test architecture cleanup with invariant disposition and runtime-isolated fast lanes |
+| `secrets-authority` | `secrets-authority` | Deployment-owned secret authority, zero-secret boundaries, generated migrations, and replica-safe recovery |
 
 See [`cold-start-tasks.yaml`](cold-start-tasks.yaml) for the full scenario schema (prompt, expected intent, paths, tests, acceptance criteria).
 

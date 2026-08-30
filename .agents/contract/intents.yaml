@@ -637,10 +637,7 @@ intents:
       - "dev/report/git-cliff-changelog-automation-report.md"
       - "dev/active/git-cliff-release-engineering/git-cliff-dependency-handoff.md"
       - "tests/Event.Architecture.Tests/**"
-    minimum_tests:
-      - "Documentation-only tasks: parse .agents/contract/intents.yaml and run the release-governance manual assertions."
-      - "Phase 1 completion: dotnet build --configuration Release --verbosity quiet"
-      - "Phase 1 completion: dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+    minimum_tests: []
     docs_to_update:
       - docs/CI_CD_GOVERNANCE.md
       - docs/OPERATIONS.md
@@ -658,6 +655,9 @@ intents:
       - "release.yaml and summary.md are the only human-owned release inputs; release-notes.md is fully generated."
       - "Authoritative attestation uses a previously promoted trusted bundle and SSH-signed annotated tags; deterministic evidence excludes clocks and provider identity."
       - "Embargoed security details remain outside the public checkout and public artifacts until disclosure is authorized."
+    pr_checklist:
+      - "Documentation-only CI/CD governance changes run the contract validator and release-governance manual assertions without forcing a product build or product test suite"
+      - "Phase 1 CI/CD implementation completion runs dotnet build and Event.Architecture.Tests in Release configuration"
     forbidden_without_approval:
       - "Introducing pull_request_target outside a documented metadata-only legal/status workflow threat model"
       - "Granting write-token, package, OIDC, registry, or deployment credentials to fork PR code"
@@ -683,6 +683,8 @@ intents:
         - "clean_room_tool_bootstrap"
       mandatory_reviewers:
         - platform-operations-agent
+    verification_commands:
+      - "dotnet run eng/agent-context/validate-contract.cs -- . --intent ci-cd-change"
 
   - id: external-infrastructure-bootstrap
     title: "Automate external infrastructure bootstrap or onboarding"
@@ -1019,10 +1021,13 @@ intents:
     load_rules:
       - .agents/rules/ip-clean-room.md
     paths_in_scope:
-      - ".agents/skills/"
-      - ".agents/contract/"
-      - "tests/Event.Architecture.Tests/"
-      - "dev/active/"
+      - ".agents/skills/**"
+      - ".agents/contract/**"
+      - ".agents/benchmarks/**"
+      - "tests/Event.Architecture.Tests/**"
+      - "dev/active/**"
+      - "docs/GOVERNANCE.md"
+      - "eng/agent-context/**"
     minimum_tests:
       - Event.Architecture.Tests
     docs_to_update:
@@ -1055,6 +1060,8 @@ intents:
         - "context_budget_preserved"
       mandatory_reviewers:
         - librarian-agent
+    verification_commands:
+      - "dotnet run eng/agent-context/validate-contract.cs -- . --intent create-agent-context-skill"
 
   - id: update-ai-context-disclosure
     title: "Update or extend the AI Context Disclosure Policy"
@@ -1933,6 +1940,286 @@ intents:
       - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet ef migrations has-pending-model-changes --project src/Explore.Persistence/Explore.Persistence.csproj --startup-project src/Explore.API/Explore.API.csproj --configuration Release --context ExploreDbContext"
+
+  - id: secrets-authority
+    title: "Change deployment-owned secret authority, resolution, rotation, or safe visibility"
+    category: cross-cutting
+    triggers:
+      - "secrets authority"
+      - "secret source authority"
+      - "secret resolver authority"
+      - "remove database secret values"
+      - "secret rotation and recovery"
+      - "secret provider topology"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/SECURITY-MODEL.md
+      - docs/SECRETS.md
+      - docs/CONFIGURATION.md
+      - docs/SELF_HOSTING.md
+      - docs/BACKUP_RESTORE_UPGRADE.md
+      - docs/TROUBLESHOOTING.md
+      - docs/TESTING.md
+      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-plan.md
+      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md
+      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md
+    load_skills:
+      - criticality-guardrail
+      - grill-me
+      - clean-architecture-rules
+      - dotnet-efcore-guidelines
+      - auth-patterns
+      - blazor-bff-patterns
+      - blazor-ui-conventions
+      - error-tracking
+      - epistemic-mad-review
+    load_rules:
+      - .agents/rules/work-criticality-matrix.md
+      - .agents/rules/auth-trust-boundaries.md
+      - .agents/rules/domain.md
+      - .agents/rules/application-layer.md
+      - .agents/rules/efcore-persistence.md
+      - .agents/rules/efcore-migrations.md
+      - .agents/rules/api-controllers.md
+      - .agents/rules/api-hateoas.md
+      - .agents/rules/blazor-server.md
+      - .agents/rules/blazor-client.md
+      - .agents/rules/tests.md
+    paths_in_scope:
+      - "src/Explore.Domain/Secrets/**"
+      - "src/Explore.Application/Contracts/Secrets/**"
+      - "src/Explore.Application/**/*Secret*.cs"
+      - "src/Explore.Application/Features/Management/**"
+      - "src/Explore.Application/Features/Localization/**"
+      - "src/Explore.Application/Features/Integrations/Listmonk/**"
+      - "src/Explore.Application/Features/Settings/**"
+      - "src/Explore.Application/Features/ControlPlane/**"
+      - "src/Explore.Secrets/**"
+      - "src/Explore.Persistence/Configurations/Entities/SecretBindingConfiguration.cs"
+      - "src/Explore.Persistence/ExploreDbContext*.cs"
+      - "src/Explore.Persistence/PersistenceServicesRegistration.cs"
+      - "src/Explore.Persistence/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.Sqlite/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.SqlServer/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.MariaDb/Migrations/**/*.cs"
+      - "src/Explore.Persistence.Migrations.MySql/Migrations/**/*.cs"
+      - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
+      - "src/Explore.Infrastructure/**/*Infisical*.cs"
+      - "src/Explore.Infrastructure/Analytics/**"
+      - "src/Explore.Infrastructure/Recovery/**"
+      - "src/Explore.Infrastructure/Storage/**"
+      - "src/Explore.Infrastructure/Services/ObjectStorageService.cs"
+      - "src/Explore.Infrastructure/Mail/**"
+      - "src/Explore.Infrastructure/Webhooks/**"
+      - "src/Explore.Infrastructure/Services/Registration/**"
+      - "src/Explore.Infrastructure/Services/Federation/**"
+      - "src/Explore.Infrastructure/Services/Cerbos*.cs"
+      - "src/Explore.Infrastructure/Services/Cerbos/**"
+      - "src/Explore.Infrastructure/Localization/**"
+      - "src/Explore.Infrastructure/Payments/Stripe/**"
+      - "src/Explore.Infrastructure/Integrations/Listmonk/**"
+      - "src/Explore.Infrastructure/HealthChecks/**"
+      - "src/Explore.API/Authentication/**"
+      - "src/Explore.API/Services/**"
+      - "src/Explore.API/Controllers/**/*Settings*.cs"
+      - "src/Explore.API/Hateoas/**"
+      - "src/Explore.AppHost/**"
+      - "src/Event.Standalone/**"
+      - "src/Event.MigrationService/**"
+      - "src/Explore.Blazor/**"
+      - "src/Explore.Blazor.Client/Pages/Admin/Instance/**"
+      - "src/Explore.Blazor.Client/Services/**"
+      - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+      - "tests/Explore.Secrets.UnitTests/**"
+      - "tests/Event.Domain.UnitTests/**/*Secret*.cs"
+      - "tests/Event.Application.UnitTests/**/*Secret*.cs"
+      - "tests/Event.Persistence.IntegrationTests/**/*Secret*.cs"
+      - "tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseProviderBehaviorContractTests.cs"
+      - "tests/Explore.Infrastructure.Tests/**"
+      - "tests/Event.API.IntegrationTests/**/*Secret*.cs"
+      - "tests/Event.API.IntegrationTests/Features/ConfigurationManifest/**"
+      - "tests/Event.Application.UnitTests/Features/ConfigurationManifest/**"
+      - "tests/Explore.Blazor.IntegrationTests/**"
+      - "tests/Explore.Blazor.Client.Tests/**"
+      - "tests/Event.Standalone.IntegrationTests/**"
+      - "tests/Explore.Diagnostic.UnitTests/**/*DockerCompose*.cs"
+      - "tests/Event.Architecture.Tests/**/*Secret*.cs"
+      - "tests/Event.Architecture.Tests/ConfigurationManifestSchema*Tests.cs"
+      - ".env.example"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy-coolify.yml"
+      - ".github/workflows/_build-test.yml"
+      - "deploy/bootstrap/**"
+      - "schemas/islamu-event.md"
+      - "schemas/openapi_islamu-event.json"
+      - "docs/SECRETS.md"
+      - "docs/CONFIGURATION.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/SELF_HOSTING.md"
+      - "docs/OPERATIONS.md"
+      - "docs/BACKUP_RESTORE_UPGRADE.md"
+      - "docs/TROUBLESHOOTING.md"
+      - "docs/API.md"
+      - "docs/API_CHANGELOG.md"
+      - "docs/API_CONTRACT_INVENTORY.md"
+      - "docs/BLAZOR.md"
+      - "README.md"
+      - "dev/active/secrets-refactor-control-plane/**"
+      - "islamic-value-sensitive-design/i-vsd-secrets-refactor-control-plane.md"
+    minimum_tests:
+      - Event.Domain.UnitTests
+      - Event.Application.UnitTests
+      - Event.Persistence.IntegrationTests
+      - Explore.Infrastructure.Tests
+      - Event.API.IntegrationTests
+      - Explore.Secrets.UnitTests
+      - Explore.Blazor.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Explore.Diagnostic.UnitTests
+      - Event.Standalone.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/SECRETS.md
+      - docs/CONFIGURATION.md
+      - docs/SECURITY-MODEL.md
+      - docs/SELF_HOSTING.md
+      - docs/OPERATIONS.md
+      - docs/BACKUP_RESTORE_UPGRADE.md
+      - docs/TROUBLESHOOTING.md
+      - schemas/islamu-event.md
+      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-plan.md
+      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md
+      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md
+    unique_acceptance:
+      - "Environment and Infisical are explicit deployment-owned authority modes; the selected authority never falls back to a lower source and application databases never hold secret values or reversible ciphertext"
+      - "Required consumers fail closed while optional consumers isolate an explicit unconfigured or degraded capability; provider failures never collapse into a successful absence"
+      - "Tenant, instance, source, reference, cache, and rotation state remain server-authoritative and tenant-qualified under hostile concurrency and multi-replica execution"
+      - "Logs, stderr, traces, metrics, health, ProblemDetails, support artifacts, APIs, manifests, generated clients, BFF responses, and UI contain no secret values, ciphertext, credentials, tokens, provider payloads, exception text, or sensitive coordinates"
+      - "Every rotation mode is classified as overlap-rollout, coordinated-restart, or unsupported-live; deployment evidence, not one process, owns convergence and old-credential revocation"
+      - "Operator documentation ships with each authority-changing behavior and provides truthful value-free diagnosis, rerun, rollback, backup, restore, and break-glass recovery"
+      - "Conditional API, HAL, OpenAPI, Blazor, infrastructure-bootstrap, migration, and CI obligations are inherited from the related intents actually triggered by the final changed-file set"
+    pr_checklist:
+      - "Failing invariant-breaker tests precede implementation and cover authority fallback, cross-tenant cache isolation, zero-secret output canaries, provider failure, rotation partial activation, stale replicas, or topology divergence as applicable"
+      - "The final changed-file set is reclassified against this primary intent and every applicable related intent; all combined minimum tests, docs, acceptance criteria, and forbidden actions are satisfied"
+      - "Generated EF migrations, designers, and model snapshots come only from repository tooling and all supported providers have clean, idempotent, tenant-safe evidence"
+      - "Any local-development reset has separate explicit approval plus immediate proof of environment, provider, database, container, and volume identity for the exact target"
+      - "No secret, credential, token, provider response, exception message, connection string, or sensitive coordinate appears in source defaults, tests, logs, diagnostics, generated artifacts, or review evidence"
+      - "An anonymized Epistemic MAD review challenges authority fallback, tenancy, confidentiality, migration safety, rollback, multi-replica convergence, and operator recovery before merge"
+      - "Obsolete aliases, dual reads, dual writes, routes, fields, fallback sources, and adapters are removed rather than preserved through backward-compatibility shims"
+    forbidden_without_approval:
+      - "Persisting secret values, reversible ciphertext, provider admin credentials, service-account credentials, or deployment-managed values in an application database or runtime artifact"
+      - "Falling back from the selected authority to environment, appsettings, User Secrets, configuration, database values, or another provider after absence, unauthorized, invalid, or unavailable outcomes"
+      - "Logging or returning secret values, ciphertext, credentials, tokens, connection strings, provider payloads, exception text, source coordinates, project identifiers, client identifiers, paths, or keys"
+      - "Trusting request headers, request bodies, browser claims, or caller-supplied tenant, scope, provider, binding, capability, or rotation state as authority"
+      - "Hand-editing generated migrations, designers, model snapshots, OpenAPI artifacts, contract inventories, or generated clients"
+      - "Resetting any database, container, volume, key ring, provider state, Infisical state, deployment secret store, production, shared, staging, CI evidence, unnamed, ambiguous, or unproven target"
+      - "Adding compatibility aliases, dual reads, dual writes, deprecated routes or fields, data migration shims, fallback adapters, or fictitiously reversible destructive Down paths"
+      - "Adding file secret sources, Vault or cloud-provider scaffolding, Redis or HybridCache L2, generic read-audit storage, universal rotation state machines, duplicate secret CRUD UI, Kubernetes or Helm support, or fixed resilience recipes without a measured requirement and separate approval"
+      - "Claiming multi-replica convergence, successful rotation, safe revocation, migration safety, or recovery from documentary inspection or one-process success instead of executable evidence"
+    related_agents:
+      - architect-agent
+      - backend-engineer-agent
+      - presentation-engineer-agent
+      - platform-operations-agent
+      - security-privacy-agent
+      - quality-verifier-agent
+      - change-reviewer-agent
+    criticality:
+      tier: security
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: system_level
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "deterministic_deployment_owned_authority"
+        - "fail_closed_without_source_fallback"
+        - "zero_secret_outputs_and_telemetry"
+        - "tenant_qualified_cache_and_reference_isolation"
+        - "generated_multi_provider_migrations_only"
+        - "approval_gated_proven_local_reset"
+        - "deployment_owned_multi_replica_convergence"
+        - "no_backward_compatibility"
+      mandatory_reviewers:
+        - security-privacy-agent
+        - platform-operations-agent
+        - quality-verifier-agent
+    related_intents:
+      - external-infrastructure-bootstrap
+      - add-ef-migration
+      - add-get-endpoint
+      - add-hal-link
+      - openapi-contract-change
+      - blazor-component-affordance
+      - ci-cd-change
+    routing:
+      precedence: primary_then_secondary
+      secondary:
+        - intent: external-infrastructure-bootstrap
+          when_paths:
+            - "docker-compose.yml"
+            - "src/Explore.AppHost/**"
+            - "src/Event.Standalone/**"
+            - "src/Event.MigrationService/**"
+            - "deploy/bootstrap/**"
+        - intent: add-ef-migration
+          when_paths:
+            - "src/Explore.Persistence/Configurations/Entities/SecretBindingConfiguration.cs"
+            - "src/Explore.Persistence/ExploreDbContext*.cs"
+            - "src/Explore.Persistence/Migrations/**/*.cs"
+            - "src/Explore.Persistence.Migrations.Sqlite/Migrations/**/*.cs"
+            - "src/Explore.Persistence.Migrations.SqlServer/Migrations/**/*.cs"
+            - "src/Explore.Persistence.Migrations.MariaDb/Migrations/**/*.cs"
+            - "src/Explore.Persistence.Migrations.MySql/Migrations/**/*.cs"
+            - "tests/Event.Persistence.IntegrationTests/Database/PrimaryDatabaseProviderBehaviorContractTests.cs"
+            - "schemas/islamu-event.md"
+        - intent: add-get-endpoint
+          when_paths:
+            - "src/Explore.API/Controllers/**/*Settings*.cs"
+        - intent: add-hal-link
+          when_paths:
+            - "src/Explore.API/Hateoas/**"
+        - intent: openapi-contract-change
+          when_paths:
+            - "src/Explore.API/Controllers/**/*Settings*.cs"
+            - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
+            - "schemas/openapi_islamu-event.json"
+            - "docs/API.md"
+            - "docs/API_CHANGELOG.md"
+            - "docs/API_CONTRACT_INVENTORY.md"
+        - intent: blazor-component-affordance
+          when_paths:
+            - "src/Explore.Blazor.Client/Pages/Admin/Instance/**"
+            - "tests/Explore.Blazor.Client.Tests/**"
+        - intent: ci-cd-change
+          when_paths:
+            - ".github/workflows/_build-test.yml"
+            - ".github/workflows/deploy-coolify.yml"
+      conflict_overrides:
+        - secondary_intent: openapi-contract-change
+          secondary_gate: backward_compatibility_preserved
+          controlling_gate: no_backward_compatibility
+          resolution: "Only within a secrets-authority change, remove obsolete secret-bearing API compatibility instead of preserving aliases; all other OpenAPI gates remain additive"
+    verification_commands:
+      - "dotnet run eng/agent-context/validate-contract.cs -- . --intent secrets-authority"
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
       - "dotnet ef migrations has-pending-model-changes --project src/Explore.Persistence/Explore.Persistence.csproj --startup-project src/Explore.API/Explore.API.csproj --configuration Release --context ExploreDbContext"
 
   - id: platform-privacy-erasure
