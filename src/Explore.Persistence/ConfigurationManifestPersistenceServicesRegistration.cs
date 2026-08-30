@@ -4,6 +4,8 @@
 namespace Explore.Persistence;
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Application.Features.ConfigurationManifest.Managed;
 using Explore.Persistence.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -34,6 +36,15 @@ public static class ConfigurationManifestPersistenceServicesRegistration
         services.TryAddScoped<
             IConfigurationManifestEffectOutboxRepository,
             OutboxRepository>();
+        services.TryAddScoped<
+            IConfigurationImportOperationRepository,
+            ConfigurationImportOperationRepository>();
+        services.TryAddScoped<IConfigurationImportEffectOutboxRepository,
+            OutboxRepository>();
+        services.TryAddScoped<IConfigurationDirectTransferRepository,
+            ConfigurationDirectTransferRepository>();
+        services.TryAddScoped<IConfigurationDirectTransferChunkStore,
+            ConfigurationDirectTransferChunkStore>();
 
         return services;
     }

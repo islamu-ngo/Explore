@@ -8,6 +8,8 @@ using Explore.Domain.Modules;
 using Explore.Domain.Secrets;
 using Explore.Domain.Settings.Documents;
 using Explore.Domain.Views;
+using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using StorageObject = Explore.Domain.StorageObject;
 
@@ -15,6 +17,12 @@ namespace Explore.Persistence;
 
 public partial class ExploreDbContext
 {
+    public DbSet<ConfigurationImportSession> ConfigurationImportSessions { get; set; }
+    public DbSet<ConfigurationImportStoredArtifact> ConfigurationImportArtifacts { get; set; }
+    public DbSet<ConfigurationImportOperation> ConfigurationImportOperations { get; set; }
+    public DbSet<ConfigurationDirectTransferSession> ConfigurationDirectTransferSessions { get; set; }
+    public DbSet<ConfigurationDirectTransferChunk> ConfigurationDirectTransferChunks { get; set; }
+
     // ===== Multi-tenancy =====
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<TenantUser> TenantUsers { get; set; }

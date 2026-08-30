@@ -99,6 +99,140 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Application.Features.ConfigurationManifest.Importing.ConfigurationImportSession", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("AccessTokenDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("access_token_digest")
+                        .IsFixedLength();
+
+                    b.Property<int>("ArtifactByteLength")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("artifact_byte_length");
+
+                    b.Property<string>("ArtifactDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("artifact_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("ArtifactExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("artifact_expires_at");
+
+                    b.Property<Guid>("ArtifactHandleId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("artifact_handle_id");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<int?>("PreviewApplyMode")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("preview_apply_mode");
+
+                    b.Property<string>("PreviewArtifactDigest")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preview_artifact_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("PreviewExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preview_expires_at");
+
+                    b.Property<string>("PreviewMappingDigest")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preview_mapping_digest")
+                        .IsFixedLength();
+
+                    b.Property<string>("PreviewRequiredApprovalDigest")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preview_required_approval_digest")
+                        .IsFixedLength();
+
+                    b.Property<string>("PreviewSelectedSectionsDigest")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preview_selected_sections_digest")
+                        .IsFixedLength();
+
+                    b.Property<string>("PreviewTargetRevisionDigest")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preview_target_revision_digest")
+                        .IsFixedLength();
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("revision");
+
+                    b.Property<int>("State")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("state");
+
+                    b.Property<string>("TargetAuthorityKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_authority_key");
+
+                    b.Property<int>("TargetScope")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("target_scope");
+
+                    b.Property<Guid?>("TargetTenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_tenant_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("SessionId")
+                        .HasName("pk_ie_configuration_import_sessions");
+
+                    b.HasIndex("ArtifactHandleId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_configuration_import_sessions_artifact_handle_id");
+
+                    b.HasIndex("TargetAuthorityKey", "State", "ExpiresAt")
+                        .HasDatabaseName("ix_configuration_import_sessions_target_authority_key_state_expires_at");
+
+                    b.ToTable("ie_configuration_import_sessions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_configuration_import_sessions_artifact_length", "artifact_byte_length BETWEEN 1 AND 4194304");
+
+                            t.HasCheckConstraint("ck_configuration_import_sessions_state", "state BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("ck_configuration_import_sessions_target", "((target_scope = 1 AND target_tenant_id IS NULL) OR (target_scope = 2 AND target_tenant_id IS NOT NULL))");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.AccountAuthorityKindLookup", b =>
                 {
                     b.Property<int>("Id")
@@ -3573,6 +3707,282 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasDatabaseName("ix_configuration_change_logs_setting_scope_id_scope_id");
 
                     b.ToTable("ie_configuration_change_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ConfigurationDirectTransferSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ArtifactByteLength")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("artifact_byte_length");
+
+                    b.Property<string>("ArtifactDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("artifact_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("DestinationApprovedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("destination_approved_by");
+
+                    b.Property<string>("DestinationOriginDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("destination_origin_digest")
+                        .IsFixedLength();
+
+                    b.Property<string>("DestinationProofDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("destination_proof_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<int>("LastChunkByteLength")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_chunk_byte_length");
+
+                    b.Property<string>("LastChunkDigest")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_chunk_digest")
+                        .IsFixedLength();
+
+                    b.Property<int>("LastChunkOffset")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_chunk_offset");
+
+                    b.Property<int>("NextOffset")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("next_offset");
+
+                    b.Property<string>("NonceDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("nonce_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid?>("SourceApprovedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_approved_by");
+
+                    b.Property<string>("SourceAuthority")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_authority");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TargetAuthorityKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_authority_key");
+
+                    b.Property<Guid?>("TargetTenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_configuration_direct_transfer_sessions");
+
+                    b.HasIndex("DestinationProofDigest")
+                        .IsUnique()
+                        .HasDatabaseName("ix_configuration_direct_transfer_sessions_destination_proof_digest");
+
+                    b.HasIndex("NonceDigest")
+                        .IsUnique()
+                        .HasDatabaseName("ix_configuration_direct_transfer_sessions_nonce_digest");
+
+                    b.HasIndex("TargetAuthorityKey", "CreatedAt")
+                        .HasDatabaseName("ix_configuration_direct_transfer_sessions_target_authority_key_created_at");
+
+                    b.ToTable("ie_configuration_direct_transfer_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ConfigurationImportOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<int>("ApplyMode")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("apply_mode");
+
+                    b.Property<string>("ApprovalDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("approval_digest")
+                        .IsFixedLength();
+
+                    b.Property<string>("ArtifactDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("artifact_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid?>("EffectOutboxId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("effect_outbox_id");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("failure_code");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("failure_reason");
+
+                    b.Property<string>("FidelityDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("fidelity_digest")
+                        .IsFixedLength();
+
+                    b.Property<bool>("FidelityVerified")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("fidelity_verified");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("MappingDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("mapping_digest")
+                        .IsFixedLength();
+
+                    b.Property<string>("SelectedSectionsDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("selected_sections_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("session_id");
+
+                    b.Property<Guid?>("SnapshotArtifactHandleId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("snapshot_artifact_handle_id");
+
+                    b.Property<string>("SnapshotDigest")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("snapshot_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("SnapshotExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("snapshot_expires_at");
+
+                    b.Property<Guid?>("SourceOperationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_operation_id");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("started_at");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TargetAuthorityKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_authority_key");
+
+                    b.Property<string>("TargetRevisionDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_revision_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid?>("TargetTenantId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_tenant_id");
+
+                    b.Property<string>("_omittedSectionKeys")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("omitted_section_keys");
+
+                    b.Property<string>("_selectedSectionKeys")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("selected_section_keys");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_configuration_import_operations");
+
+                    b.HasIndex("SessionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_configuration_import_operations_session_id");
+
+                    b.HasIndex("SnapshotArtifactHandleId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_configuration_import_operations_snapshot_artifact_handle_id");
+
+                    b.HasIndex("SourceOperationId")
+                        .HasDatabaseName("ix_configuration_import_operations_source_operation_id");
+
+                    b.HasIndex("TargetAuthorityKey", "StartedAt")
+                        .HasDatabaseName("ix_configuration_import_operations_target_authority_key_started_at");
+
+                    b.ToTable("ie_configuration_import_operations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_configuration_import_operations_kind", "kind BETWEEN 1 AND 2");
+
+                            t.HasCheckConstraint("ck_configuration_import_operations_status", "status BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("ck_configuration_import_operations_target", "((target_authority_key = 'instance' AND target_tenant_id IS NULL) OR (target_authority_key <> 'instance' AND target_tenant_id IS NOT NULL))");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.ConfigurationManifestOperation", b =>
@@ -28166,14 +28576,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("infisical_path");
 
-                    b.Property<byte[]>("InlineCiphertext")
-                        .HasColumnType("BLOB")
-                        .HasColumnName("inline_ciphertext");
-
-                    b.Property<int?>("InlineCiphertextVersion")
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("inline_ciphertext_version");
-
                     b.Property<bool>("IsLocked")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -28259,7 +28661,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         {
                             t.HasCheckConstraint("ck_secret_bindings_setting_scope_scope_id", "(setting_scope_id = 1 AND scope_id IS NULL) OR (setting_scope_id = 2 AND scope_id IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_secret_bindings_source_metadata", "(secret_source_type_id = 0 AND infisical_environment IS NOT NULL AND infisical_path IS NOT NULL AND infisical_key IS NOT NULL   AND environment_variable_name IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL) OR (secret_source_type_id = 1 AND inline_ciphertext IS NOT NULL AND inline_ciphertext_version IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND environment_variable_name IS NULL) OR (secret_source_type_id = 2 AND environment_variable_name IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL)");
+                            t.HasCheckConstraint("ck_secret_bindings_source_metadata", "(secret_source_type_id = 0 AND infisical_environment IS NOT NULL AND infisical_path IS NOT NULL AND infisical_key IS NOT NULL   AND environment_variable_name IS NULL) OR (secret_source_type_id = 1 AND environment_variable_name IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL)");
                         });
                 });
 
@@ -35536,6 +35938,95 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.ToTable("ie_webhook_retention_subject_kinds", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Persistence.Entities.ConfigurationDirectTransferChunk", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ByteLength")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("byte_length");
+
+                    b.Property<string>("Digest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<int>("Offset")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("offset");
+
+                    b.Property<byte[]>("ProtectedPayload")
+                        .IsRequired()
+                        .HasColumnType("BLOB")
+                        .HasColumnName("protected_payload");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("session_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_configuration_direct_transfer_chunks");
+
+                    b.HasIndex("SessionId", "Offset")
+                        .IsUnique()
+                        .HasDatabaseName("ix_configuration_direct_transfer_chunks_session_id_offset");
+
+                    b.ToTable("ie_configuration_direct_transfer_chunks", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Persistence.Entities.ConfigurationImportStoredArtifact", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ByteLength")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("byte_length");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<byte[]>("ProtectedPayload")
+                        .IsRequired()
+                        .HasMaxLength(4210688)
+                        .HasColumnType("BLOB")
+                        .HasColumnName("protected_payload");
+
+                    b.Property<string>("Sha256Digest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sha256digest")
+                        .IsFixedLength();
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_configuration_import_artifacts");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_configuration_import_artifacts_expires_at");
+
+                    b.ToTable("ie_configuration_import_artifacts", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_configuration_import_artifacts_byte_length", "byte_length BETWEEN 1 AND 4194304");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Application.Contracts.Admissions.AdmissionDeliveryIntent", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", null)
@@ -36438,6 +36929,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasConstraintName("fk_configuration_change_logs_setting_scopes_setting_scope_id");
 
                     b.Navigation("SettingScope");
+                });
+
+            modelBuilder.Entity("Explore.Domain.ConfigurationImportOperation", b =>
+                {
+                    b.HasOne("Explore.Domain.ConfigurationImportOperation", null)
+                        .WithMany()
+                        .HasForeignKey("SourceOperationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_configuration_import_operations_configuration_import_operations_source_operation_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.ConfigurationManifestTenantResult", b =>
@@ -47183,6 +47683,16 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Navigation("SubjectKindLookup");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Persistence.Entities.ConfigurationDirectTransferChunk", b =>
+                {
+                    b.HasOne("Explore.Domain.ConfigurationDirectTransferSession", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_configuration_direct_transfer_chunks_configuration_direct_transfer_sessions_session_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.Actor", b =>

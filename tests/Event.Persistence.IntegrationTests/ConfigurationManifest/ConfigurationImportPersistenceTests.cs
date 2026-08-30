@@ -1,0 +1,389 @@
+// ABOUTME: Verifies encrypted durable import bytes, target-isolated sessions, and expiry cleanup.
+// ABOUTME: Proves plaintext never reaches storage and every provider model includes generated metadata.
+
+namespace Event.Persistence.IntegrationTests.ConfigurationManifest;
+
+using System.Text;
+using Explore.Application.Features.ConfigurationManifest.Catalog;
+using Explore.Application.Features.ConfigurationManifest.Contracts;
+using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Persistence;
+using Explore.Persistence.Database;
+using Explore.Persistence.Repositories;
+using Explore.Secrets.Database;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+
+public sealed class ConfigurationImportPersistenceTests
+{
+    private static readonly DateTime OccurredAt =
+        new(2026, 8, 30, 19, 0, 0, DateTimeKind.Utc);
+
+    [Test]
+    public async Task ProtectedStore_EncryptsRoundTripsAndDeletesArtifactBytes()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        var store = new ConfigurationImportArtifactStore(
+            database.Context,
+            new EphemeralDataProtectionProvider());
+        byte[] plaintext =
+            Encoding.UTF8.GetBytes("repository-native-artifact-sentinel");
+        var handle = new ConfigurationImportArtifactHandle(Guid.CreateVersion7());
+
+        ConfigurationImportArtifactReference reference = await store.StoreAsync(
+            handle,
+            plaintext,
+            OccurredAt,
+            OccurredAt.AddMinutes(30),
+            CancellationToken.None);
+        byte[] protectedBytes = await database.ReadOnlyProtectedPayloadAsync();
+        ReadOnlyMemory<byte> roundTrip = await store.ReadAsync(
+            handle,
+            CancellationToken.None);
+        await store.DeleteAsync(handle, CancellationToken.None);
+
+        await Assert.That(reference.Sha256Digest)
+            .IsEqualTo(ConfigurationImportDigest.ComputeBytes(plaintext));
+        await Assert.That(roundTrip.ToArray()).IsEquivalentTo(plaintext);
+        await Assert.That(protectedBytes).IsNotEquivalentTo(plaintext);
+        await Assert.That(Encoding.UTF8.GetString(protectedBytes))
+            .DoesNotContain("repository-native-artifact-sentinel");
+        ConfigurationImportSessionException missing =
+            await Assert.That(async () => await store.ReadAsync(
+                    handle,
+                    CancellationToken.None))
+                .Throws<ConfigurationImportSessionException>();
+        await Assert.That(missing.FailureCode)
+            .IsEqualTo(ConfigurationImportFailureCodes.ArtifactMissing);
+    }
+
+    [Test]
+    public async Task Repository_RequiresMatchingTrustedTarget()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        var repository =
+            new ConfigurationImportSessionRepository(database.Context);
+        ConfigurationImportTarget firstTarget =
+            ConfigurationImportTarget.ForTenant(Guid.CreateVersion7());
+        ConfigurationImportTarget secondTarget =
+            ConfigurationImportTarget.ForTenant(Guid.CreateVersion7());
+        ConfigurationImportSession session = CreateSession(firstTarget);
+        await repository.AddAsync(session, CancellationToken.None);
+        database.Context.ChangeTracker.Clear();
+
+        ConfigurationImportSession? matching = await repository.GetForUpdateAsync(
+            session.SessionId,
+            firstTarget,
+            CancellationToken.None);
+        database.Context.ChangeTracker.Clear();
+        ConfigurationImportSession? crossTenant = await repository.GetForUpdateAsync(
+            session.SessionId,
+            secondTarget,
+            CancellationToken.None);
+
+        await Assert.That(matching?.SessionId).IsEqualTo(session.SessionId);
+        await Assert.That(crossTenant).IsNull();
+    }
+
+    [Test]
+    public async Task Manager_CancellationDeletesProtectedBytes()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        var store = new ConfigurationImportArtifactStore(
+            database.Context,
+            new EphemeralDataProtectionProvider());
+        var manager = new ConfigurationImportSessionManager(
+            new ConfigurationImportSessionRepository(database.Context),
+            store,
+            new EfCoreUnitOfWork(database.Context),
+            new ConfigurationImportPreviewComposer());
+        ConfigurationImportTarget target =
+            ConfigurationImportTarget.ForInstance();
+        ConfigurationImportSessionCreated created = await manager.CreateAsync(
+            target,
+            Encoding.UTF8.GetBytes("{}"),
+            OccurredAt,
+            TimeSpan.FromMinutes(20),
+            CancellationToken.None);
+        await Assert.That(created.ToString())
+            .DoesNotContain(created.AccessToken);
+
+        await manager.CancelAsync(
+            created.Session.SessionId,
+            target,
+            created.AccessToken,
+            OccurredAt.AddMinutes(1),
+            CancellationToken.None);
+
+        ConfigurationImportSessionException missing =
+            await Assert.That(async () => await store.ReadAsync(
+                    created.Session.Artifact.Handle,
+                    CancellationToken.None))
+                .Throws<ConfigurationImportSessionException>();
+        await Assert.That(missing.FailureCode)
+            .IsEqualTo(ConfigurationImportFailureCodes.ArtifactMissing);
+        await Assert.That(created.Session.State)
+            .IsEqualTo(ConfigurationImportSessionState.Cancelled);
+    }
+
+    [Test]
+    public async Task Manager_ExpiryDeletesBytesAndRetainsOnlySessionEvidence()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        var store = new ConfigurationImportArtifactStore(
+            database.Context,
+            new EphemeralDataProtectionProvider());
+        var repository =
+            new ConfigurationImportSessionRepository(database.Context);
+        var manager = new ConfigurationImportSessionManager(
+            repository,
+            store,
+            new EfCoreUnitOfWork(database.Context),
+            new ConfigurationImportPreviewComposer());
+        ConfigurationImportSessionCreated created = await manager.CreateAsync(
+            ConfigurationImportTarget.ForInstance(),
+            Encoding.UTF8.GetBytes("{}"),
+            OccurredAt,
+            TimeSpan.FromMinutes(5),
+            CancellationToken.None);
+        database.Context.ChangeTracker.Clear();
+
+        int expired = await manager.ExpireAsync(
+            OccurredAt.AddMinutes(6),
+            maximumCount: 10,
+            CancellationToken.None);
+        database.Context.ChangeTracker.Clear();
+        ConfigurationImportSession? persisted =
+            await repository.GetForUpdateAsync(
+                created.Session.SessionId,
+                ConfigurationImportTarget.ForInstance(),
+                CancellationToken.None);
+
+        await Assert.That(expired).IsEqualTo(1);
+        await Assert.That(persisted?.State)
+            .IsEqualTo(ConfigurationImportSessionState.Expired);
+        ConfigurationImportSessionException missing =
+            await Assert.That(async () => await store.ReadAsync(
+                    created.Session.Artifact.Handle,
+                    CancellationToken.None))
+                .Throws<ConfigurationImportSessionException>();
+        await Assert.That(missing.FailureCode)
+            .IsEqualTo(ConfigurationImportFailureCodes.ArtifactMissing);
+    }
+
+    [Test]
+    public async Task Manager_PreviewMutatesOnlySessionMetadata()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        var store = new ConfigurationImportArtifactStore(
+            database.Context,
+            new EphemeralDataProtectionProvider());
+        var manager = new ConfigurationImportSessionManager(
+            new ConfigurationImportSessionRepository(database.Context),
+            store,
+            new EfCoreUnitOfWork(database.Context),
+            new ConfigurationImportPreviewComposer());
+        ConfigurationImportTarget target =
+            ConfigurationImportTarget.ForInstance();
+        ConfigurationImportSessionCreated created = await manager.CreateAsync(
+            target,
+            Encoding.UTF8.GetBytes("{}"),
+            OccurredAt,
+            TimeSpan.FromMinutes(20),
+            CancellationToken.None);
+        MutationCounts before =
+            await MutationCounts.ReadAsync(database.Context);
+        var input = new ConfigurationImportPreviewInput(
+            target,
+            created.Session.ArtifactDigest,
+            ConfigurationImportDigest.Compute(["target-revision"]),
+            [
+                new ConfigurationImportSectionSnapshot(
+                    "instance.settings",
+                    ConfigurationImportDigest.Compute(["source-settings"]),
+                    ConfigurationPortabilityClass.Portable,
+                    supportsPreview: true,
+                    supportsDiff: true,
+                    requiresExternalSetup: false)
+            ],
+            [],
+            ["instance.settings"],
+            [],
+            ConfigurationImportApplyMode.ApplySelected,
+            [],
+            [],
+            OccurredAt.AddMinutes(15));
+
+        ConfigurationImportPreview preview = await manager.PreparePreviewAsync(
+            created.Session.SessionId,
+            target,
+            created.AccessToken,
+            input,
+            OccurredAt.AddMinutes(1),
+            CancellationToken.None);
+        MutationCounts after =
+            await MutationCounts.ReadAsync(database.Context);
+
+        await Assert.That(preview.Items.Select(item => item.SectionKey))
+            .Contains("instance.settings");
+        await Assert.That(created.Session.State)
+            .IsEqualTo(ConfigurationImportSessionState.PreviewReady);
+        await Assert.That(after).IsEqualTo(before);
+    }
+
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.PostgreSql)]
+    [Arguments(PrimaryDatabaseProvider.Sqlite)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb)]
+    [Arguments(PrimaryDatabaseProvider.MySql)]
+    public async Task ProviderModel_HasNoPendingImportSessionChanges(
+        PrimaryDatabaseProvider provider)
+    {
+        await using ExploreDbContext context = CreateModelContext(provider);
+
+        bool hasPendingChanges =
+            context.Database.HasPendingModelChanges();
+
+        await Assert.That(hasPendingChanges).IsFalse();
+    }
+
+    private static ConfigurationImportSession CreateSession(
+        ConfigurationImportTarget target)
+    {
+        var artifact = new ConfigurationImportArtifactReference(
+            new ConfigurationImportArtifactHandle(Guid.CreateVersion7()),
+            ConfigurationImportDigest.Compute(["artifact"]),
+            100,
+            OccurredAt.AddMinutes(30));
+        return ConfigurationImportSession.Create(
+            Guid.CreateVersion7(),
+            target,
+            artifact,
+            ConfigurationImportDigest.Compute(["token"]),
+            OccurredAt,
+            TimeSpan.FromMinutes(20));
+    }
+
+    private static ExploreDbContext CreateModelContext(
+        PrimaryDatabaseProvider provider)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureApplication(
+            optionsBuilder,
+            CreateOptions(provider));
+        return new ExploreDbContext(optionsBuilder.Options);
+    }
+
+    private static PrimaryDatabaseConnectionOptions CreateOptions(
+        PrimaryDatabaseProvider provider)
+    {
+        if (provider == PrimaryDatabaseProvider.Sqlite)
+        {
+            return new PrimaryDatabaseConnectionOptions
+            {
+                Role = PrimaryDatabaseRole.Migrator,
+                Provider = provider,
+                Database = Path.Combine(
+                    Path.GetTempPath(),
+                    $"configuration-import-model-{Guid.CreateVersion7():N}.db")
+            };
+        }
+
+        string ephemeralCredential = Guid.CreateVersion7().ToString("N");
+        return new PrimaryDatabaseConnectionOptions
+        {
+            Role = PrimaryDatabaseRole.Migrator,
+            Provider = provider,
+            Host = "localhost",
+            Database = "configuration_import_model",
+            Username = ephemeralCredential,
+            Password = ephemeralCredential,
+            TlsMode = PrimaryDatabaseTlsMode.Prefer,
+            ServerFlavor = provider switch
+            {
+                PrimaryDatabaseProvider.MariaDb =>
+                    PrimaryDatabaseServerFlavor.MariaDb,
+                PrimaryDatabaseProvider.MySql =>
+                    PrimaryDatabaseServerFlavor.MySql,
+                _ => null
+            },
+            ServerVersion = provider switch
+            {
+                PrimaryDatabaseProvider.MariaDb => new Version(11, 4),
+                PrimaryDatabaseProvider.MySql => new Version(8, 4),
+                _ => null
+            }
+        };
+    }
+
+    private sealed class TestDatabase : IAsyncDisposable
+    {
+        private readonly SqliteConnection _connection;
+
+        private TestDatabase(
+            SqliteConnection connection,
+            ExploreDbContext context)
+        {
+            _connection = connection;
+            Context = context;
+        }
+
+        public ExploreDbContext Context { get; }
+
+        public static async Task<TestDatabase> CreateAsync()
+        {
+            var connection = new SqliteConnection(
+                new SqliteConnectionStringBuilder
+                {
+                    DataSource = ":memory:"
+                }.ToString());
+            await connection.OpenAsync();
+            var options = new DbContextOptionsBuilder<ExploreDbContext>()
+                .UseSqlite(connection)
+                .UseSnakeCaseNamingConvention()
+                .Options;
+            var context = new ExploreDbContext(options);
+            await context.Database.EnsureCreatedAsync();
+            return new TestDatabase(connection, context);
+        }
+
+        public async Task<byte[]> ReadOnlyProtectedPayloadAsync()
+        {
+            await using var command = _connection.CreateCommand();
+            command.CommandText =
+                "SELECT protected_payload FROM ie_configuration_import_artifacts LIMIT 1";
+            object? result = await command.ExecuteScalarAsync();
+            return result as byte[]
+                ?? throw new InvalidOperationException(
+                    "Protected import payload was not persisted.");
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await Context.DisposeAsync();
+            await _connection.DisposeAsync();
+        }
+    }
+
+    private sealed record MutationCounts(
+        int Tenants,
+        int SystemSettings,
+        int TenantSettings,
+        int SettingsDocuments,
+        int SuccessOperations,
+        int OutboxMessages)
+    {
+        public static async Task<MutationCounts> ReadAsync(
+            ExploreDbContext context) =>
+            new(
+                await context.Tenants.CountAsync(),
+                await context.SystemSettings.CountAsync(),
+                await context.TenantSettingOverrides.CountAsync(),
+                await context.TenantSettingsDocuments.CountAsync(),
+                await context.ConfigurationManifestOperations.CountAsync(),
+                await context.OutboxMessages.CountAsync());
+    }
+}

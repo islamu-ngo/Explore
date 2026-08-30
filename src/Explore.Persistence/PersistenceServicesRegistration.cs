@@ -14,6 +14,8 @@ using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Recovery;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Waitlist;
+using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Application.Features.ConfigurationManifest.Managed;
 using Explore.Domain;
 using Explore.Persistence.Caching;
 using Explore.Persistence.Database;
@@ -336,6 +338,21 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventSessionCustomPropertyProjectionRepository, EventSessionCustomPropertyProjectionRepository>();
         services.AddScoped<IEventAggregateViewRepository, EventAggregateViewRepository>();
         services.AddScoped<ICustomPropertyGovernanceRepository, CustomPropertyGovernanceRepository>();
+        services.AddScoped<
+            IConfigurationImportSessionRepository,
+            ConfigurationImportSessionRepository>();
+        services.AddScoped<
+            IConfigurationImportArtifactStore,
+            ConfigurationImportArtifactStore>();
+        services.AddScoped<
+            IConfigurationImportOperationRepository,
+            ConfigurationImportOperationRepository>();
+        services.AddScoped<IConfigurationImportEffectOutboxRepository,
+            OutboxRepository>();
+        services.AddScoped<IConfigurationDirectTransferRepository,
+            ConfigurationDirectTransferRepository>();
+        services.AddScoped<IConfigurationDirectTransferChunkStore,
+            ConfigurationDirectTransferChunkStore>();
 
         // Event Aspect Repositories
         services.AddScoped<IEventIslamicAspectRepository, EventIslamicAspectRepository>();

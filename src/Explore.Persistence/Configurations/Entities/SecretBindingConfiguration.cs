@@ -54,8 +54,6 @@ public class SecretBindingConfiguration : IEntityTypeConfiguration<SecretBinding
         builder.Property(e => e.InfisicalPath).HasMaxLength(512);
         builder.Property(e => e.InfisicalKey).HasMaxLength(256);
         builder.Property(e => e.EnvironmentVariableName).HasMaxLength(256);
-        builder.Property(e => e.InlineCiphertext);
-        builder.Property(e => e.InlineCiphertextVersion);
 
         builder.Property(e => e.IsLocked)
             .IsRequired()
@@ -112,16 +110,13 @@ public class SecretBindingConfiguration : IEntityTypeConfiguration<SecretBinding
 
             // CHECK: exactly one metadata group populated per SourceType.
             //  SecretSourceType 0 (Infisical): env/path/key all NOT NULL, other groups NULL.
-            //  SecretSourceType 1 (InlineEncrypted): ciphertext + version NOT NULL, other groups NULL.
-            //  SecretSourceType 2 (EnvironmentVariable): variable_name NOT NULL, other groups NULL.
+            //  SecretSourceType 1 (EnvironmentVariable): variable_name NOT NULL, other groups NULL.
             t.HasCheckConstraint(
                 "ck_secret_bindings_source_metadata",
                 "(secret_source_type_id = 0 AND infisical_environment IS NOT NULL AND infisical_path IS NOT NULL AND infisical_key IS NOT NULL " +
-                "  AND environment_variable_name IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL) " +
-                "OR (secret_source_type_id = 1 AND inline_ciphertext IS NOT NULL AND inline_ciphertext_version IS NOT NULL " +
-                "  AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND environment_variable_name IS NULL) " +
-                "OR (secret_source_type_id = 2 AND environment_variable_name IS NOT NULL " +
-                "  AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL)");
+                "  AND environment_variable_name IS NULL) " +
+                "OR (secret_source_type_id = 1 AND environment_variable_name IS NOT NULL " +
+                "  AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL)");
         });
     }
 }
