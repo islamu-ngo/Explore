@@ -12,7 +12,7 @@ priority: high
 
 ## Invariants & Rules
 
-1. **Releasable Vertical Slices**: One commit is one complete vertical outcome. Bundle domain, app, persistence, API, Blazor UI, generated clients (`EventApiClient.g.cs`), schemas (`openapi_islamu-event.json`), migrations, tests, and docs together.
+1. **Smallest Releasable Vertical Slice**: One commit is the smallest complete, independently reviewable outcome—not every change related to a broad feature or workstream. Include only the layers and artifacts required for that exact behavior.
 2. **No Orphaned Generated Code**: Generated clients/schemas must travel in the commit that triggered them.
 3. **No Layer Scopes**: Scopes describe capability/engineering concern—never code layers (`api`, `domain`, `persistence`, `blazor`, `client`, `dto` are forbidden).
 4. **Cross-Domain Precedence**: When a feature spans domains, select the primary initiating capability (`registration`).
@@ -22,6 +22,8 @@ priority: high
 8. **Safe Staging**: Never use blind `git add .` on mixed trees. Explicitly name staged files per atomic commit.
 9. **Execution Protocol**: Show proposed commit plan by default; execute stage-and-commit directly when explicitly instructed.
 10. **History Invariants**: Commit `B` is the sole commit whose terminal footers are `Changelog: skip` and `Changelog-Reason: release metadata commit`. Never rewrite published history on `develop` or release lines.
+11. **Oversized Commit Gate**: A large dirty tree is evidence that more clustering is required, not permission for one umbrella commit. Split independent behaviors, refactors, tests, documentation, plans, cleanup, provider integrations, and operational changes even when they share a capability scope.
+12. **Rare Large-Commit Exception**: A commit may touch dozens or hundreds of files only when the same indivisible change necessarily applies across them—for example a mechanical repository-wide rename, generated artifacts from one source change, or one schema/migration regeneration whose files cannot build or remain truthful independently. State that necessity in the commit plan; “same feature,” “same workstream,” or “all currently dirty” is never sufficient.
 
 ## Canonical Scope Registry
 
@@ -40,6 +42,16 @@ Sort dirty working trees using this priority order:
 4. **Build & Package Config**: Central props (`Directory.Build.props`), lockfiles, CI pipelines.
 5. **Governance & Legal Docs**: `CLA.md`, `CONTRIBUTING.md`, `README.md`, ADRs.
 6. **Active Task Tracking**: Task plans, progress logs (`dev/active/*`).
+
+Then apply the atomicity gate:
+
+1. Describe each candidate commit in one benefit-led sentence.
+2. Remove every file not required to make that sentence true.
+3. Split files that implement another behavior, cleanup, plan, test-hardening effort, or operator concern.
+4. Keep generated outputs with their exact source change, but do not use generated files to absorb unrelated handwritten work.
+5. For an unusually large candidate, explain why splitting would create a broken build, orphan generated output, or a false intermediate contract. If no concrete break exists, split it.
+
+File count is a warning signal, not the definition of atomicity. Small commits are the default; very large commits are exceptional and must be structurally indivisible.
 
 ## Format & Non-Interactive CLI Recipes
 
@@ -83,6 +95,8 @@ git commit -m "fix(database): wrap session projection rebuilds in db execution s
 | `chore: update client` | *[Bundle in originating feature commit]* | Never split generated client from triggering feature. |
 | `docs: update cla` | `docs(documentation): clarify legal entity status` | Explicit engineering scope and benefit-led subject. |
 | `test: update tests` | `test(testing): harden persistence integration tests` | Descriptive subject and canonical scope. |
+| One commit for an entire multi-feature dirty tree | Separate commits for each independently reviewable behavior | Shared timing or scope does not make changes atomic. |
+| “Vertical slice” containing hundreds of loosely related files | Large commit only for one provably indivisible transformation or generated set | Atomic means smallest complete outcome, not largest complete workstream. |
 
 ## Resources
 
