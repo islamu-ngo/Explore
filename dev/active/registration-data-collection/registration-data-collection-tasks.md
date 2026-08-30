@@ -5,6 +5,10 @@
 
 Last Updated: 2026-08-27 Europe/Brussels
 
+> Test-governance update (2026-08-30): references to
+> `PrivacyErasureIntentGovernanceTests` are historical evidence only. The
+> prose/intent ratchet was retired and is not an executable product gate.
+
 ## Status Summary
 - **Overall status:** **COMPLETE at Phase 21.** All 132 implementation tasks owned by this forms/registration foundation workstream are checked.
 - **Completed:** 132/132 implementation tasks. Two historical full-project verification boxes remain open with explicit unrelated-failure attribution; they are evidence qualifications, not successor work.

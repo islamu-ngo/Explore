@@ -5,6 +5,10 @@
 
 Last Updated: 2026-08-27 Europe/Brussels
 
+> Test-governance update (2026-08-30): references to
+> `PrivacyErasureIntentGovernanceTests` are historical evidence only. The
+> prose/intent ratchet was retired and is not an executable product gate.
+
 ## WORKSTREAM COMPLETE / SUCCESSOR SPLIT (2026-08-27 Europe/Brussels)
 
 ### Current Outcome
