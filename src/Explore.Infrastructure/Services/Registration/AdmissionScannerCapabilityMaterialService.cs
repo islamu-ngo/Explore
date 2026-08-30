@@ -76,15 +76,15 @@ public sealed class AdmissionScannerCapabilityMaterialService(
     private async Task<byte[]> ResolveKeyAsync(int version, CancellationToken cancellationToken)
     {
         const string settingKey = SecretSettingKey;
-        ResolvedSecret? resolved = await secretResolver.ResolveQualifiedAsync(
+        SecretResolutionResult resolved = await secretResolver.ResolveQualifiedAsync(
             settingKey,
             SecretScope.Instance,
             null,
             $"v{version}",
             cancellationToken);
-        if (resolved is null && version == options.Value.ActiveKeyVersion)
+        if (resolved.Status == SecretResolutionStatus.Unconfigured && version == options.Value.ActiveKeyVersion)
             resolved = await secretResolver.ResolveAsync(settingKey, null, cancellationToken);
-        if (resolved is null)
+        if (!resolved.IsResolved)
             throw new InvalidOperationException(KeyUnavailableMessage);
 
         byte[] key;

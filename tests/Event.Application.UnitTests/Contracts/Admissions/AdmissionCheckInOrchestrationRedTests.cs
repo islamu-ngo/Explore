@@ -110,6 +110,19 @@ public sealed class AdmissionCheckInOrchestrationRedTests
         await Assert.That(scenario.ScannerMaterialIssueCalls).IsEqualTo(0);
         scenario.TargetStopped = false;
 
+        scenario.ScannerCapabilityStoreRejected = true;
+        object fenceRejectedIssue = await IssueScannerCapabilityAsync(scenario);
+        await Assert.That(AdmissionContractRuntime.Outcome(fenceRejectedIssue)).IsEqualTo("Rejected");
+        await Assert.That(AdmissionContractRuntime.Value<Guid>(
+            fenceRejectedIssue, "ScannerCapabilityId")).IsEqualTo(Guid.Empty);
+        await Assert.That(fenceRejectedIssue.GetType().GetProperty(
+            "PlaintextCapability")!.GetValue(fenceRejectedIssue)).IsNull();
+        await Assert.That(fenceRejectedIssue.GetType().GetProperty(
+            "Descriptor")!.GetValue(fenceRejectedIssue)).IsNull();
+        await Assert.That(scenario.ScannerMaterialIssueCalls).IsEqualTo(1);
+        await Assert.That(scenario.ScannerCapabilities).IsEmpty();
+        scenario.ScannerCapabilityStoreRejected = false;
+
         object issued = await IssueScannerCapabilityAsync(scenario);
         Guid capabilityId = AdmissionContractRuntime.Value<Guid>(issued, "ScannerCapabilityId");
         object mismatchedRevoke = await AdmissionContractRuntime.InvokeAsync(
@@ -567,6 +580,7 @@ internal sealed class CheckInScenario
     }
     internal bool FailRepository { get; set; }
     internal bool TargetStopped { get; set; }
+    internal bool ScannerCapabilityStoreRejected { get; set; }
     internal int CredentialDigestCalls { get; set; }
     internal int TenantDigestLookupCalls { get; set; }
     internal int AuthorityChecks { get; set; }
@@ -806,7 +820,8 @@ internal class CheckInPortFake : DispatchProxy
         EnsureNoPlaintextProperty(capability);
         AdmissionScannerCapability? existing = scenario.ScannerCapabilities.Values.SingleOrDefault(
             row => row.IssueRequestId == capability.IssueRequestId);
-        bool created = existing is null;
+        bool rejected = scenario.ScannerCapabilityStoreRejected;
+        bool created = !rejected && existing is null;
         AdmissionScannerCapability stored = existing ?? capability;
         if (created)
         {
@@ -815,7 +830,8 @@ internal class CheckInPortFake : DispatchProxy
 
         object payload = Payload(returnType, "AdmissionScannerCapabilityStoreResult",
             ("Created", created),
-            ("Capability", stored));
+            ("Capability", stored),
+            ("Rejected", rejected));
         return AdmissionContractRuntime.WrapAsync(returnType, payload);
     }
 

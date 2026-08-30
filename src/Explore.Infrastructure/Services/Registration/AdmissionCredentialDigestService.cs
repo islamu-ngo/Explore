@@ -122,17 +122,17 @@ public sealed class AdmissionCredentialDigestService(
     private async Task<byte[]> ResolveKeyAsync(int keyVersion, CancellationToken cancellationToken)
     {
         string settingKey = SecretDefinitionRegistry.Keys.Admissions.CredentialLookupHmacKey;
-        ResolvedSecret? resolved = await secretResolver.ResolveQualifiedAsync(
+        SecretResolutionResult resolved = await secretResolver.ResolveQualifiedAsync(
             settingKey,
             SecretScope.Instance,
             null,
             $"v{keyVersion}",
             cancellationToken);
-        if (resolved is null && keyVersion == options.Value.ActiveKeyVersion)
+        if (resolved.Status == SecretResolutionStatus.Unconfigured && keyVersion == options.Value.ActiveKeyVersion)
         {
             resolved = await secretResolver.ResolveAsync(settingKey, null, cancellationToken);
         }
-        if (resolved is null)
+        if (!resolved.IsResolved)
         {
             throw new InvalidOperationException($"Admission credential HMAC key version {keyVersion} is unavailable.");
         }

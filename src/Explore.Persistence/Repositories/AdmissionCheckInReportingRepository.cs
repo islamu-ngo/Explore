@@ -29,17 +29,32 @@ public sealed class AdmissionCheckInReportingRepository(ExploreDbContext dbConte
             select fact)
         .SingleOrDefaultAsync(cancellationToken);
 
-    public Task<AdmissionCheckInState?> GetStateAsync(
+    public Task<AdmissionCheckInEvent?> GetActiveEventAsync(
         Guid tenantId,
         Guid ticketId,
         Guid targetId,
-        CancellationToken cancellationToken) => dbContext.AdmissionCheckInStates
-        .AsNoTracking()
-        .SingleOrDefaultAsync(state =>
-            state.TenantId == tenantId &&
-            state.AdmissionTicketId == ticketId &&
-            state.AdmissionTargetId == targetId,
-            cancellationToken);
+        CancellationToken cancellationToken) => (
+            from state in dbContext.AdmissionCheckInStates.AsNoTracking()
+            join fact in dbContext.AdmissionCheckInEvents.AsNoTracking()
+                on new
+                {
+                    state.TenantId,
+                    state.AdmissionTicketId,
+                    state.AdmissionTargetId,
+                    Id = state.ActiveCheckInEventId
+                }
+                equals new
+                {
+                    fact.TenantId,
+                    fact.AdmissionTicketId,
+                    fact.AdmissionTargetId,
+                    Id = (Guid?)fact.Id
+                }
+            where state.TenantId == tenantId &&
+                  state.AdmissionTicketId == ticketId &&
+                  state.AdmissionTargetId == targetId
+            select fact)
+        .SingleOrDefaultAsync(cancellationToken);
 
     public Task<AdmissionCheckInSummaryProjection?> GetAsync(
         Guid tenantId,
@@ -82,15 +97,11 @@ public sealed class AdmissionCheckInReportingRepository(ExploreDbContext dbConte
     public async Task<IReadOnlyList<AdmissionCheckInEvent>> ListEventAuditPageAsync(
         Guid tenantId,
         Guid eventId,
-        AdmissionCheckInAuditCursor? cursor,
+        AdmissionCheckInEvent? cursor,
         int pageSize,
         CancellationToken cancellationToken)
     {
-        if (pageSize is < 1 or > MaximumAuditRows ||
-            cursor is not null &&
-            (cursor.OccurredAtUtc.Kind != DateTimeKind.Utc ||
-             cursor.CheckInId == Guid.Empty ||
-             cursor.CheckInId.Version != 7))
+        if (pageSize is < 1 or > MaximumAuditRows)
         {
             return [];
         }
@@ -109,7 +120,7 @@ public sealed class AdmissionCheckInReportingRepository(ExploreDbContext dbConte
             query = query.Where(fact =>
                 fact.OccurredAtUtc < cursor.OccurredAtUtc ||
                 fact.OccurredAtUtc == cursor.OccurredAtUtc &&
-                fact.Id.CompareTo(cursor.CheckInId) < 0);
+                fact.Id.CompareTo(cursor.Id) < 0);
         }
 
         return await query

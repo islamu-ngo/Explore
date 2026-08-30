@@ -95,7 +95,7 @@ public interface IAdmissionCheckInReportingRepository
         Guid checkInId,
         CancellationToken cancellationToken);
 
-    Task<AdmissionCheckInState?> GetStateAsync(
+    Task<AdmissionCheckInEvent?> GetActiveEventAsync(
         Guid tenantId,
         Guid ticketId,
         Guid targetId,
@@ -104,7 +104,7 @@ public interface IAdmissionCheckInReportingRepository
     Task<IReadOnlyList<AdmissionCheckInEvent>> ListEventAuditPageAsync(
         Guid tenantId,
         Guid eventId,
-        AdmissionCheckInAuditCursor? cursor,
+        AdmissionCheckInEvent? cursor,
         int pageSize,
         CancellationToken cancellationToken);
 

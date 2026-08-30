@@ -21,7 +21,6 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Exceptions;
 using Explore.Application.DTOs.RegistrationOrders;
 using Explore.Application.Hateoas;
-using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -231,7 +230,7 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
         }
 
         using JsonDocument document = await GetOpenApiDocument();
-        JsonElement batchSchema = Schema(document, "AdmissionCheckInBatchRequest");
+        JsonElement batchSchema = Schema(document, "AdmissionCheckInBatchRequestDto");
         JsonElement items = batchSchema.GetProperty("properties").GetProperty("items");
         await Assert.That(items.GetProperty("maxItems").GetInt32()).IsEqualTo(100);
         await Assert.That(items.GetProperty("minItems").GetInt32()).IsEqualTo(1);
@@ -469,19 +468,19 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
             ["issue-scanner-capability"] = (
                 "IssueAdmissionScannerCapability", AuthorizationActions.Events.ManageTickets),
             ["check-in-admissions"] = (
-                "CheckInAdmission", PermissionCodes.EventCheckInManage),
+                "CheckInAdmission", AuthorizationActions.Events.EventCheckInManage),
             ["admission-check-in-summary"] = (
-                "GetAdmissionCheckInSummary", PermissionCodes.EventCheckInView),
+                "GetAdmissionCheckInSummary", AuthorizationActions.Events.EventCheckInView),
             ["admission-check-in-audit"] = (
-                "GetAdmissionCheckInAudit", PermissionCodes.EventCheckInView),
+                "GetAdmissionCheckInAudit", AuthorizationActions.Events.EventCheckInView),
             ["admission-check-in-health"] = (
-                "GetAdmissionCheckInHealth", PermissionCodes.EventCheckInView),
+                "GetAdmissionCheckInHealth", AuthorizationActions.Events.EventCheckInView),
             ["stop-admission-check-in"] = (
-                "StopAdmissionCheckIn", PermissionCodes.EventCheckInManage),
+                "StopAdmissionCheckIn", AuthorizationActions.Events.EventCheckInManage),
             ["restore-admission-check-in"] = (
-                "RestoreAdmissionCheckIn", PermissionCodes.EventCheckInManage),
+                "RestoreAdmissionCheckIn", AuthorizationActions.Events.EventCheckInManage),
             ["reconcile-admission-check-in"] = (
-                "ReconcileAdmissionCheckIn", PermissionCodes.EventCheckInManage)
+                "ReconcileAdmissionCheckIn", AuthorizationActions.Events.EventCheckInManage)
         };
 
         foreach ((string relation, (string operationId, string permission)) in expected)
@@ -692,11 +691,12 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
         JsonElement schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
         string[] requiredSchemas =
         [
-            "IssueAdmissionScannerCapabilityRequest", "AdmissionScannerCapabilityIssuedDto",
-            "AdmissionScannerCapabilityDto", "AdmissionCheckInRequest", "AdmissionScannerCheckInRequest",
-            "AdmissionCheckInUndoRequest", "AdmissionScannerCheckInUndoRequest",
-            "AdmissionCheckInUndoReasonCodeEnum", "AdmissionCheckInBatchRequest",
-            "AdmissionScannerCheckInBatchRequest",
+            "IssueAdmissionScannerCapabilityRequestDto", "RevokeAdmissionScannerCapabilityRequestDto",
+            "AdmissionScannerCapabilityIssuedDto", "AdmissionScannerCapabilityDto",
+            "AdmissionCheckInRequestDto", "AdmissionScannerCheckInRequestDto",
+            "AdmissionCheckInUndoRequestDto", "AdmissionScannerCheckInUndoRequestDto",
+            "AdmissionCheckInUndoReasonCodeEnum", "AdmissionCheckInBatchItemRequestDto",
+            "AdmissionCheckInBatchRequestDto", "AdmissionScannerCheckInBatchRequestDto",
             "AdmissionCheckInResultDto", "AdmissionCheckInBatchResultDto",
             "AdmissionCheckInSummaryDto", "AdmissionCheckInAuditItemDto", "AdmissionCheckInAuditPageDto",
             "HalResourceOfAdmissionScannerCapabilityIssuedDto",
@@ -708,10 +708,23 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
         foreach (string schema in requiredSchemas)
             await Assert.That(schemas.TryGetProperty(schema, out _)).IsTrue().Because($"missing schema {schema}");
 
+        foreach (string removedSchema in new[]
+                 {
+                     "IssueAdmissionScannerCapabilityRequest", "RevokeAdmissionScannerCapabilityRequest",
+                     "AdmissionCheckInRequest", "AdmissionScannerCheckInRequest",
+                     "AdmissionCheckInUndoRequest", "AdmissionScannerCheckInUndoRequest",
+                     "AdmissionCheckInBatchItemRequest", "AdmissionCheckInBatchRequest",
+                     "AdmissionScannerCheckInBatchRequest"
+                 })
+        {
+            await Assert.That(schemas.TryGetProperty(removedSchema, out _)).IsFalse()
+                .Because($"pre-v1 schema alias {removedSchema} must be absent");
+        }
+
         foreach (string undoSchemaName in new[]
                  {
-                     "AdmissionCheckInUndoRequest",
-                     "AdmissionScannerCheckInUndoRequest"
+                     "AdmissionCheckInUndoRequestDto",
+                     "AdmissionScannerCheckInUndoRequestDto"
                  })
         {
             JsonElement properties = Schema(document, undoSchemaName).GetProperty("properties");
@@ -745,7 +758,7 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
             await Assert.That(auditItemProperties.TryGetProperty(forbidden, out _)).IsFalse();
 
         JsonElement capabilityIssueProperties = Schema(
-            document, "IssueAdmissionScannerCapabilityRequest").GetProperty("properties");
+            document, "IssueAdmissionScannerCapabilityRequestDto").GetProperty("properties");
         JsonElement capabilityProperties = Schema(
             document, "AdmissionScannerCapabilityDto").GetProperty("properties");
         await Assert.That(capabilityIssueProperties.TryGetProperty("targetId", out _)).IsTrue();
@@ -756,11 +769,11 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
         JsonElement staffCheckIn = paths.GetProperty(Route("CheckInAdmission").Path).GetProperty("post");
         JsonElement scannerCheckIn = paths.GetProperty(Route("ScannerCheckInAdmission").Path).GetProperty("post");
         await Assert.That(RequestSchemaReference(staffCheckIn))
-            .IsEqualTo("#/components/schemas/AdmissionCheckInRequest");
+            .IsEqualTo("#/components/schemas/AdmissionCheckInRequestDto");
         await Assert.That(RequestSchemaReference(scannerCheckIn))
-            .IsEqualTo("#/components/schemas/AdmissionScannerCheckInRequest");
-        JsonElement staffProperties = Schema(document, "AdmissionCheckInRequest").GetProperty("properties");
-        JsonElement scannerProperties = Schema(document, "AdmissionScannerCheckInRequest").GetProperty("properties");
+            .IsEqualTo("#/components/schemas/AdmissionScannerCheckInRequestDto");
+        JsonElement staffProperties = Schema(document, "AdmissionCheckInRequestDto").GetProperty("properties");
+        JsonElement scannerProperties = Schema(document, "AdmissionScannerCheckInRequestDto").GetProperty("properties");
         await Assert.That(staffProperties.TryGetProperty("targetId", out _)).IsTrue();
         await Assert.That(scannerProperties.TryGetProperty("targetId", out _)).IsFalse();
         await Assert.That(scannerProperties.TryGetProperty("eventId", out _)).IsFalse();
@@ -1133,15 +1146,15 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
             CancellationToken cancellationToken) =>
             Task.FromResult<Explore.Domain.AdmissionCheckInEvent?>(null);
 
-        public Task<Explore.Domain.AdmissionCheckInState?> GetStateAsync(
+        public Task<Explore.Domain.AdmissionCheckInEvent?> GetActiveEventAsync(
             Guid tenantId,
             Guid ticketId,
             Guid targetId,
             CancellationToken cancellationToken) =>
-            Task.FromResult<Explore.Domain.AdmissionCheckInState?>(null);
+            Task.FromResult<Explore.Domain.AdmissionCheckInEvent?>(null);
 
         public Task<IReadOnlyList<Explore.Domain.AdmissionCheckInEvent>> ListEventAuditPageAsync(Guid tenantId,
-            Guid eventId, AdmissionCheckInAuditCursor? cursor, int pageSize, CancellationToken cancellationToken) =>
+            Guid eventId, Explore.Domain.AdmissionCheckInEvent? cursor, int pageSize, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Explore.Domain.AdmissionCheckInEvent>>([]);
 
         public Task<IReadOnlyList<Explore.Domain.AdmissionTarget>> ListTargetsAsync(Guid tenantId, Guid eventId,

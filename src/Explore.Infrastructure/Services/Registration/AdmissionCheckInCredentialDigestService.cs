@@ -56,15 +56,15 @@ public sealed class AdmissionCheckInCredentialDigestService(
     private async Task<byte[]> ResolveKeyAsync(int version, CancellationToken cancellationToken)
     {
         string settingKey = SecretDefinitionRegistry.Keys.Admissions.CredentialLookupHmacKey;
-        ResolvedSecret? resolved = await secretResolver.ResolveQualifiedAsync(
+        SecretResolutionResult resolved = await secretResolver.ResolveQualifiedAsync(
             settingKey,
             SecretScope.Instance,
             null,
             $"v{version}",
             cancellationToken);
-        if (resolved is null && version == options.Value.ActiveKeyVersion)
+        if (resolved.Status == SecretResolutionStatus.Unconfigured && version == options.Value.ActiveKeyVersion)
             resolved = await secretResolver.ResolveAsync(settingKey, null, cancellationToken);
-        if (resolved is null)
+        if (!resolved.IsResolved)
             throw new InvalidOperationException("Admission credential lookup key is unavailable.");
 
         byte[] key;

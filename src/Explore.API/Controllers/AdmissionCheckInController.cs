@@ -21,8 +21,8 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.RateLimiting;
 using AppBatchRequest = Explore.Application.Contracts.Admissions.AdmissionCheckInBatchRequest;
 using AppCheckInRequest = Explore.Application.Contracts.Admissions.AdmissionCheckInRequest;
-using ApiBatchRequest = Explore.Application.DTOs.Admissions.AdmissionCheckInBatchRequest;
-using ApiCheckInRequest = Explore.Application.DTOs.Admissions.AdmissionCheckInRequest;
+using ApiBatchRequest = Explore.Application.DTOs.Admissions.AdmissionCheckInBatchRequestDto;
+using ApiCheckInRequest = Explore.Application.DTOs.Admissions.AdmissionCheckInRequestDto;
 
 namespace Explore.API.Controllers;
 
@@ -161,7 +161,7 @@ public sealed class AdmissionCheckInController(
     public async Task<ActionResult<HalResource<AdmissionCheckInResultDto>>> Undo(
         Guid eventId,
         Guid checkInId,
-        [FromBody] AdmissionCheckInUndoRequest request,
+        [FromBody] AdmissionCheckInUndoRequestDto request,
         CancellationToken cancellationToken)
     {
         if (!await CanAsync(eventId, PermissionCodes.EventCheckInManage, cancellationToken))
@@ -409,7 +409,7 @@ public sealed class AdmissionScannerCheckInController(AdmissionCheckInService se
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<HalResource<AdmissionCheckInResultDto>>> CheckIn(
-        [FromBody] AdmissionScannerCheckInRequest request,
+        [FromBody] AdmissionScannerCheckInRequestDto request,
         CancellationToken cancellationToken)
     {
         if (!TryScope(AdmissionCheckInAction.CheckIn, out AdmissionScannerRequestScope scope))
@@ -433,7 +433,7 @@ public sealed class AdmissionScannerCheckInController(AdmissionCheckInService se
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<HalResource<AdmissionCheckInBatchResultDto>>> Batch(
-        [FromBody] AdmissionScannerCheckInBatchRequest request,
+        [FromBody] AdmissionScannerCheckInBatchRequestDto request,
         CancellationToken cancellationToken)
     {
         if (!TryScope(AdmissionCheckInAction.CheckIn, out AdmissionScannerRequestScope scope))
@@ -484,7 +484,7 @@ public sealed class AdmissionScannerCheckInController(AdmissionCheckInService se
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<HalResource<AdmissionCheckInResultDto>>> Undo(
         Guid checkInId,
-        [FromBody] AdmissionScannerCheckInUndoRequest request,
+        [FromBody] AdmissionScannerCheckInUndoRequestDto request,
         CancellationToken cancellationToken)
     {
         if (!TryScope(AdmissionCheckInAction.Undo, out AdmissionScannerRequestScope scope))

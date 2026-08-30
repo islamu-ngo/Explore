@@ -639,7 +639,7 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
     }
 
     [Test]
-    public async Task DetailReadReturnsExactEventFactAndItsCurrentStateOnly()
+    public async Task DetailReadReturnsExactEventFactAndItsActiveEventOnly()
     {
         await fixture.ResetAsync();
         Guid tenantId = Guid.CreateVersion7();
@@ -668,7 +668,7 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
             eventId,
             checkInId,
             CancellationToken.None);
-        AdmissionCheckInState? state = await repository.GetStateAsync(
+        AdmissionCheckInEvent? activeEvent = await repository.GetActiveEventAsync(
             tenantId,
             ticketId,
             targetId,
@@ -680,7 +680,7 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
             CancellationToken.None);
 
         await Assert.That(fact?.Id).IsEqualTo(checkInId);
-        await Assert.That(state?.ActiveCheckInEventId).IsEqualTo(checkInId);
+        await Assert.That(activeEvent?.Id).IsEqualTo(checkInId);
         await Assert.That(wrongEvent).IsNull();
     }
 
@@ -774,22 +774,16 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
             tenantId, eventId, [targetId], CancellationToken.None);
         await using ExploreDbContext isolationContext = TenantContext(tenantId);
         var isolationRepository = new AdmissionCheckInReportingRepository(isolationContext);
-        var cursor = new AdmissionCheckInAuditCursor(page[0].OccurredAtUtc, page[0].Id);
         IReadOnlyList<AdmissionCheckInEvent> next = await isolationRepository.ListEventAuditPageAsync(
-            tenantId, eventId, cursor, 1, CancellationToken.None);
+            tenantId, eventId, page[0], 1, CancellationToken.None);
         IReadOnlyList<AdmissionCheckInEvent> wrongTenant = await isolationRepository.ListEventAuditPageAsync(
             Guid.CreateVersion7(), eventId, null, 2, CancellationToken.None);
-        IReadOnlyList<AdmissionCheckInEvent> invalidCursor = await isolationRepository.ListEventAuditPageAsync(
-            tenantId, eventId,
-            new AdmissionCheckInAuditCursor(UtcNow, Guid.Empty), 2, CancellationToken.None);
-
         await Assert.That(counter.ReaderQueries).IsEqualTo(2);
         await Assert.That(page.Count).IsEqualTo(2);
         await Assert.That(page[0].OccurredAtUtc).IsGreaterThan(page[1].OccurredAtUtc);
         await Assert.That(next).HasSingleItem();
         await Assert.That(next[0].Id).IsEqualTo(page[1].Id);
         await Assert.That(wrongTenant).IsEmpty();
-        await Assert.That(invalidCursor).IsEmpty();
         await Assert.That(targets).HasSingleItem();
         await Assert.That(targets[0].Id).IsEqualTo(targetId);
         string[] exportProperties = typeof(AdmissionCheckInAuditItem).GetProperties()
@@ -848,9 +842,8 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
 
         await using ExploreDbContext nextContext = TenantContext(tenantId);
         var nextRepository = new AdmissionCheckInReportingRepository(nextContext);
-        var cursor = new AdmissionCheckInAuditCursor(firstVisible.OccurredAtUtc, firstVisible.Id);
         IReadOnlyList<AdmissionCheckInEvent> secondPage = await nextRepository.ListEventAuditPageAsync(
-            tenantId, eventId, cursor, 2, CancellationToken.None);
+            tenantId, eventId, firstVisible, 2, CancellationToken.None);
 
         await Assert.That(secondPage).HasSingleItem();
         await Assert.That(secondPage[0].Id).IsEqualTo(expectedSecondVisible.Id);

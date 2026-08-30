@@ -71,7 +71,7 @@ public sealed class AdmissionCheckInReportingService(
             return null;
         }
 
-        AdmissionCheckInState? state = await repository.GetStateAsync(
+        AdmissionCheckInEvent? activeEvent = await repository.GetActiveEventAsync(
             request.TenantId,
             fact.AdmissionTicketId,
             fact.AdmissionTargetId,
@@ -79,7 +79,7 @@ public sealed class AdmissionCheckInReportingService(
         bool canUndo =
             (AdmissionCheckInActionEnum)fact.AdmissionCheckInActionId ==
                 AdmissionCheckInActionEnum.CheckIn &&
-            state?.ActiveCheckInEventId == fact.Id;
+            activeEvent?.Id == fact.Id;
         AdmissionCheckInOutcome outcome =
             (AdmissionCheckInActionEnum)fact.AdmissionCheckInActionId switch
             {
@@ -174,11 +174,25 @@ public sealed class AdmissionCheckInReportingService(
                 return null;
             }
 
+            AdmissionCheckInEvent? cursorEvent = null;
+            if (cursor is not null)
+            {
+                cursorEvent = await repository.GetEventAsync(
+                    request.TenantId,
+                    request.EventId,
+                    cursor.CheckInId,
+                    cancellationToken);
+                if (cursorEvent is null || cursorEvent.OccurredAtUtc != cursor.OccurredAtUtc)
+                {
+                    return null;
+                }
+            }
+
             int requestedRows = checked(request.PageSize + 1);
             IReadOnlyList<AdmissionCheckInEvent> page = await repository.ListEventAuditPageAsync(
                 request.TenantId,
                 request.EventId,
-                cursor,
+                cursorEvent,
                 requestedRows,
                 cancellationToken);
             if (page is null || page.Count > requestedRows)

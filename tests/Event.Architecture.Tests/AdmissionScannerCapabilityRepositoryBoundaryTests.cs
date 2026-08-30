@@ -122,9 +122,11 @@ public sealed class AdmissionScannerCapabilityRepositoryBoundaryTests
             type == typeof(AdmissionScannerCapabilityStoreResult));
         PropertyInfo[] outcomeProperties = storeOutcome.GetProperties();
         await Assert.That(outcomeProperties.Select(property => property.Name))
-            .IsEquivalentTo(["Created", "Capability"]);
+            .IsEquivalentTo(["Created", "Capability", "Rejected"]);
         await Assert.That(outcomeProperties.Single(property => property.Name == "Capability").PropertyType)
             .IsEqualTo(typeof(AdmissionScannerCapability));
+        await Assert.That(outcomeProperties.Single(property => property.Name == "Rejected").PropertyType)
+            .IsEqualTo(typeof(bool));
 
         MethodInfo get = methods.Single(method => method.Name == "GetAsync");
         await Assert.That(Unwrap(get.ReturnType)).Contains(typeof(AdmissionScannerCapability));

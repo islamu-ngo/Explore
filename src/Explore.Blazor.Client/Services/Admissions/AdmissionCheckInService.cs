@@ -3,6 +3,7 @@
 
 using System.Net.Http.Json;
 using System.Text.Json;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Admissions;
 using Explore.Blazor.Client.Services.Http;
 using ISLAMU.Wire.Contracts.Admissions;
@@ -91,7 +92,11 @@ public sealed class AdmissionCheckInService : IAdmissionCheckInService
             HttpMethod.Post,
             $"/api/events/{eventId:D}/admission/check-ins")
         {
-            Content = JsonContent.Create(new AdmissionStaffCheckInWireRequest(targetId, credential.Value))
+            Content = JsonContent.Create(new AdmissionCheckInRequestDto
+            {
+                TargetId = targetId,
+                Credential = credential.Value
+            })
         };
         return await _staffHttpClient.SendAsync(request, cancellationToken);
     }
@@ -109,7 +114,10 @@ public sealed class AdmissionCheckInService : IAdmissionCheckInService
             HttpMethod.Post,
             AdmissionScannerCapabilityMessageHandler.CheckInPath)
         {
-            Content = JsonContent.Create(new AdmissionScannerCheckInWireRequest(credential.Value))
+            Content = JsonContent.Create(new AdmissionScannerCheckInRequestDto
+            {
+                Credential = credential.Value
+            })
         };
         return await _scannerHttpClient.SendAsync(request, cancellationToken);
     }
@@ -132,16 +140,6 @@ public sealed class AdmissionCheckInService : IAdmissionCheckInService
         }
 
         return AdmissionCheckInUiCodes.Rejected;
-    }
-
-    private sealed record AdmissionStaffCheckInWireRequest(Guid TargetId, string Credential)
-    {
-        public override string ToString() => "AdmissionStaffCheckInWireRequest(<redacted>)";
-    }
-
-    private sealed record AdmissionScannerCheckInWireRequest(string Credential)
-    {
-        public override string ToString() => "AdmissionScannerCheckInWireRequest(<redacted>)";
     }
 
     private sealed record AdmissionCheckInWireResult(JsonElement Outcome);

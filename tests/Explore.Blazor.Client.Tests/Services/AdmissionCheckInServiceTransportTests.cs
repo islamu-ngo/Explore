@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Explore.Blazor.Client.Contracts.Services.Admissions;
 using Explore.Blazor.Client.Services.Admissions;
 using Explore.Blazor.Client.Services.Http;
@@ -68,11 +69,12 @@ public sealed class AdmissionCheckInServiceTransportTests
             new ApiClientExecutor());
         Guid eventId = Guid.CreateVersion7();
         Guid targetId = Guid.CreateVersion7();
+        AdmissionCredentialBearer credential = Credential(7);
 
         AdmissionCheckInUiResult result = await service.CheckInAsync(
             eventId,
             targetId,
-            Credential(7),
+            credential,
             CancellationToken.None);
 
         await Assert.That(result.Code).IsEqualTo(AdmissionCheckInUiCodes.CheckedIn);
@@ -82,7 +84,7 @@ public sealed class AdmissionCheckInServiceTransportTests
         await Assert.That(scannerHandler.ScannerCapability).IsEqualTo(capability);
         await Assert.That(scannerHandler.Authorization).IsNull();
         await Assert.That(scannerHandler.Cookie).IsNull();
-        await Assert.That(scannerHandler.Body).Contains("credential");
+        await AssertScannerRequestShapeAsync(scannerHandler.Body, credential.Value);
         await Assert.That(scannerHandler.Body).DoesNotContain(eventId.ToString("D"));
         await Assert.That(scannerHandler.Body).DoesNotContain(targetId.ToString("D"));
         await Assert.That(scannerHandler.Body).DoesNotContain(capability);
@@ -109,6 +111,7 @@ public sealed class AdmissionCheckInServiceTransportTests
             new ApiClientExecutor());
         Guid eventId = Guid.CreateVersion7();
         Guid targetId = Guid.CreateVersion7();
+        AdmissionCredentialBearer credential = Credential(8);
         state.Activate("first-transient-capability");
         long activeGeneration = state.Generation;
 
@@ -116,10 +119,11 @@ public sealed class AdmissionCheckInServiceTransportTests
 
         await Assert.That(state.IsActive).IsFalse();
         await Assert.That(state.Generation).IsGreaterThan(activeGeneration);
-        await service.CheckInAsync(eventId, targetId, Credential(8), CancellationToken.None);
+        await service.CheckInAsync(eventId, targetId, credential, CancellationToken.None);
         await Assert.That(staffHandler.RequestCount).IsEqualTo(1);
         await Assert.That(staffHandler.Path).IsEqualTo($"/api/events/{eventId:D}/admission/check-ins");
         await Assert.That(staffHandler.ScannerCapability).IsNull();
+        await AssertStaffRequestShapeAsync(staffHandler.Body, targetId, credential.Value);
 
         state.Activate("second-transient-capability");
         state.Dispose();
@@ -148,6 +152,30 @@ public sealed class AdmissionCheckInServiceTransportTests
                 new StringContent("{}")))
             .Throws<InvalidOperationException>();
         await Assert.That(destination.RequestCount).IsEqualTo(0);
+    }
+
+    private static async Task AssertStaffRequestShapeAsync(
+        string body,
+        Guid expectedTargetId,
+        string expectedCredential)
+    {
+        using JsonDocument document = JsonDocument.Parse(body);
+        JsonElement root = document.RootElement;
+        await Assert.That(root.EnumerateObject().Select(property => property.Name))
+            .IsEquivalentTo(["targetId", "credential"]);
+        await Assert.That(root.GetProperty("targetId").GetGuid()).IsEqualTo(expectedTargetId);
+        await Assert.That(root.GetProperty("credential").GetString()).IsEqualTo(expectedCredential);
+    }
+
+    private static async Task AssertScannerRequestShapeAsync(
+        string body,
+        string expectedCredential)
+    {
+        using JsonDocument document = JsonDocument.Parse(body);
+        JsonElement root = document.RootElement;
+        await Assert.That(root.EnumerateObject().Select(property => property.Name))
+            .IsEquivalentTo(["credential"]);
+        await Assert.That(root.GetProperty("credential").GetString()).IsEqualTo(expectedCredential);
     }
 
     private static AdmissionCredentialBearer Credential(int seed)

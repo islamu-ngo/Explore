@@ -7,7 +7,7 @@ using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.Admissions;
 
-public sealed record AdmissionCheckInRequest
+public sealed record AdmissionCheckInRequestDto
 {
     public required Guid TargetId { get; init; }
 
@@ -16,14 +16,14 @@ public sealed record AdmissionCheckInRequest
     public required string Credential { get; init; }
 }
 
-public sealed record AdmissionScannerCheckInRequest
+public sealed record AdmissionScannerCheckInRequestDto
 {
     [Required]
     [StringLength(512, MinimumLength = 1)]
     public required string Credential { get; init; }
 }
 
-public sealed record AdmissionCheckInUndoRequest
+public sealed record AdmissionCheckInUndoRequestDto
 {
     public required Guid TargetId { get; init; }
 
@@ -35,7 +35,7 @@ public sealed record AdmissionCheckInUndoRequest
     public required AdmissionCheckInUndoReasonCodeEnum ReasonCode { get; init; }
 }
 
-public sealed record AdmissionScannerCheckInUndoRequest
+public sealed record AdmissionScannerCheckInUndoRequestDto
 {
     [Required]
     [StringLength(512, MinimumLength = 1)]
@@ -45,29 +45,29 @@ public sealed record AdmissionScannerCheckInUndoRequest
     public required AdmissionCheckInUndoReasonCodeEnum ReasonCode { get; init; }
 }
 
-public sealed record AdmissionCheckInBatchItemRequest
+public sealed record AdmissionCheckInBatchItemRequestDto
 {
     [Required]
     [StringLength(512, MinimumLength = 1)]
     public required string Credential { get; init; }
 }
 
-public sealed record AdmissionCheckInBatchRequest
+public sealed record AdmissionCheckInBatchRequestDto
 {
     public required Guid TargetId { get; init; }
 
     [Required]
     [MinLength(1)]
     [MaxLength(100)]
-    public required IReadOnlyList<AdmissionCheckInBatchItemRequest> Items { get; init; }
+    public required IReadOnlyList<AdmissionCheckInBatchItemRequestDto> Items { get; init; }
 }
 
-public sealed record AdmissionScannerCheckInBatchRequest
+public sealed record AdmissionScannerCheckInBatchRequestDto
 {
     [Required]
     [MinLength(1)]
     [MaxLength(100)]
-    public required IReadOnlyList<AdmissionCheckInBatchItemRequest> Items { get; init; }
+    public required IReadOnlyList<AdmissionCheckInBatchItemRequestDto> Items { get; init; }
 }
 
 public sealed record AdmissionCheckInResultDto(
@@ -124,7 +124,7 @@ public sealed record AdmissionCheckInHealthDto(
     AdmissionCheckInOperationalStatus Status,
     AdmissionCheckInDependencyStatus InfrastructureStatus);
 
-public sealed record IssueAdmissionScannerCapabilityRequest
+public sealed record IssueAdmissionScannerCapabilityRequestDto
 {
     public required Guid IssueRequestId { get; init; }
 
@@ -141,7 +141,7 @@ public sealed record IssueAdmissionScannerCapabilityRequest
     public required DateTimeOffset ExpiresAt { get; init; }
 }
 
-public sealed record RevokeAdmissionScannerCapabilityRequest
+public sealed record RevokeAdmissionScannerCapabilityRequestDto
 {
     [Required]
     [StringLength(200, MinimumLength = 1)]

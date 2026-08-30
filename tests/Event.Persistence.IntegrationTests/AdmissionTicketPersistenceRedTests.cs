@@ -1849,18 +1849,18 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
     {
         private static readonly string Key = Convert.ToBase64String(Enumerable.Range(1, 32).Select(value => (byte)value).ToArray());
 
-        public Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId,
-            string qualifier, CancellationToken cancellationToken = default) => Task.FromResult<ResolvedSecret?>(
+        public Task<SecretResolutionResult> ResolveQualifiedAsync(string settingKey, SecretScope scope, Guid? scopeId,
+            string qualifier, CancellationToken cancellationToken = default) => Task.FromResult(
                 settingKey == Explore.Domain.Secrets.SecretDefinitionRegistry.Keys.Admissions.CredentialLookupHmacKey &&
                 qualifier == "v7"
-                    ? new ResolvedSecret(settingKey, Key, SecretSourceType.EnvironmentVariable, scope, scopeId, UtcNow)
-                    : null);
+                    ? SecretResolutionResult.Resolved(new ResolvedSecret(settingKey, Key, SecretSourceType.EnvironmentVariable, scope, scopeId, UtcNow))
+                    : SecretResolutionResult.Unconfigured);
 
-        public Task<ResolvedSecret?> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ResolvedSecret?>(null);
+        public Task<SecretResolutionResult> ResolveTenantBindingAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(SecretResolutionResult.Unconfigured);
 
         public Task InvalidateAsync(string settingKey, SecretScope scope, Guid? scopeId, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;

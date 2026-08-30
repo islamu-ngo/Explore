@@ -149,18 +149,18 @@ public sealed class AdmissionRecoveryCapabilityService(
         }
 
         string settingKey = SecretDefinitionRegistry.Keys.Admissions.RecoveryCapabilityHmacKey;
-        ResolvedSecret? resolved = await secretResolver.ResolveQualifiedAsync(
+        SecretResolutionResult resolved = await secretResolver.ResolveQualifiedAsync(
             settingKey,
             SecretScope.Instance,
             null,
             $"v{keyVersion}",
             cancellationToken);
-        if (resolved is null && keyVersion == options.Value.ActiveKeyVersion)
+        if (resolved.Status == SecretResolutionStatus.Unconfigured && keyVersion == options.Value.ActiveKeyVersion)
         {
             resolved = await secretResolver.ResolveAsync(settingKey, null, cancellationToken);
         }
 
-        if (resolved is null)
+        if (!resolved.IsResolved)
         {
             throw new InvalidOperationException("Admission recovery capability key is unavailable.");
         }

@@ -73,7 +73,7 @@ public sealed class AdmissionScannerCapabilityController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<HalResource<AdmissionScannerCapabilityIssuedDto>>> Issue(
         Guid eventId,
-        [FromBody] IssueAdmissionScannerCapabilityRequest request,
+        [FromBody] IssueAdmissionScannerCapabilityRequestDto request,
         CancellationToken cancellationToken)
     {
         if (!await CanManageAsync(eventId, cancellationToken)) return Forbidden();
@@ -127,7 +127,7 @@ public sealed class AdmissionScannerCapabilityController(
     public async Task<ActionResult<HalResource<AdmissionScannerCapabilityDto>>> Revoke(
         Guid eventId,
         Guid scannerCapabilityId,
-        [FromBody] RevokeAdmissionScannerCapabilityRequest request,
+        [FromBody] RevokeAdmissionScannerCapabilityRequestDto request,
         CancellationToken cancellationToken)
     {
         if (!await CanManageAsync(eventId, cancellationToken)) return Forbidden();
