@@ -276,6 +276,9 @@ Before submitting:
 - [ ] New C# files have `ABOUTME:` headers
 - [ ] New CSS follows layer architecture and uses design tokens
 - [ ] API contract changes include docs updates (`docs/API.md`, `docs/API_CHANGELOG.md`)
+- [ ] Configuration portability changes regenerate both v1alpha2 JSON Schemas,
+      OpenAPI, API inventory, and the NSwag client; the second generation is
+      byte-stable and no generated file was hand-edited
 - [ ] Operator/release changes update `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, or `docs/RELEASE_CHECKLIST.md` when applicable
 - [ ] Multi-session work records bounded resume and handoff state in its task-owned `*-context.md` following [Context Engineering](../.agents/CONTEXT_ENGINEERING.md#workstream-and-handoff-state)
 - [ ] Breaking changes are explicitly documented

@@ -169,3 +169,8 @@ src/
 - **Want to trace real execution flows?** Read [REQUEST_FLOWS.md](REQUEST_FLOWS.md).
 - **Ready to write code?** Follow the recipes in [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md).
 - **Need local setup instructions?** See [GETTING_STARTED.md](GETTING_STARTED.md).
+- **Changing configuration portability?** Follow
+  [CONFIGURATION_MANIFEST.md](CONFIGURATION_MANIFEST.md#contributor-guide). The
+  closed registry, schema generator, OpenAPI inventory, and generated NSwag
+  client must move together; do not hand-edit generated contracts or add a
+  compatibility reader for v1alpha1.

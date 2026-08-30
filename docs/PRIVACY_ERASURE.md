@@ -47,6 +47,22 @@ erasure request -> append authority fact (committed first)
 5. **Startup & Restore Replay**: At application startup, the startup gate replays all authority facts missing from the local checkpoint before serving traffic.
 6. **Bounded Retention**: The authority publishes a PII-free high-water/floor state. Compaction deletes only an expired contiguous prefix, preserves and pseudonymizes held evidence, and advances the floor in the same transaction.
 
+### Configuration Portability Privacy Boundary
+
+Configuration-manifest and tenant-package exports are not subject-data export
+or erasure artifacts. Their closed registry excludes PII, users, events,
+registrations, orders, payments, application data, operational state, provider
+bindings, topology, and all secret material. Import receipts retain UUIDs,
+digests, stable codes, selected section names, fidelity state, and bounded
+effect status, never configuration values or actor display data. Protected
+rollback snapshots follow their own short configuration-recovery window and do
+not replace erasure-authority, primary-database, or application-data retention
+policies.
+
+Legal-document portability copies reviewed Markdown source into a new target
+draft. It never copies publication or user-acceptance history, so migration
+cannot fabricate consent or resurrect retired legal evidence.
+
 ---
 
 ## 2. Storage Topologies: `EmbeddedSqlite`, `CoLocated`, `ExternalDatabase`

@@ -331,6 +331,11 @@ Key experience classes for manual accessibility verification:
 - Admin panels (instance, tenant, organization settings)
 - Dialog-heavy flows (event registration, aspect editing)
 - Dark mode + RTL mode variants
+- Configuration portability: keyboard-only upload and section selection,
+  blocking/warning announcement, mapping and approval labels, preview-to-apply
+  focus movement, receipt/history reading, rollback confirmation, mobile width,
+  forced colors, and RTL layout. Actions must disappear with their HAL relation
+  without leaving an enabled but unauthorized control.
 
 ---
 

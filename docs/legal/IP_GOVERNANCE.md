@@ -117,6 +117,17 @@ Before adding or updating a package, library, container image, generated compone
 - notices, source-offer, attribution, patent, trademark, hosting, seat, field-of-use, redistribution, or sublicensing requirements;
 - approval, rejection, replacement, or separately licensed path.
 
+Signed configuration extension packs remain third-party inputs even when their
+signature is trusted. Admission requires an allowlisted issuer/key, compatible
+declarative contract version, approved license expression, retained provenance,
+and independent payload validation. A signature proves origin/integrity only;
+it cannot waive licensing, authorize code, plugins, SQL, migrations, scripts,
+or grant target administration rights. Imported legal-template provenance must
+retain template ID/version, source kind, license expression, and review
+reference. Legal Markdown must be independently reviewed for the target
+operator and jurisdiction; portability is not permission to copy unlicensed
+text or a claim of legal compliance.
+
 The CI command `dotnet run .ci/scripts/validate-dependency-license-policy.cs -- .` is mandatory minimum evidence for dependency changes. It checks the repository allow/deny policy and visible exceptions; it is not legal advice and cannot prove that a commercial contract, unusual exception, asset license, service terms, or assembled distribution is compatible.
 
 A component is blocked when it would force terms onto ISLAMU-owned material, prohibit an intended distribution or hosting model, or otherwise prevent the Project Steward from offering the ISLAMU-owned work under a selected outbound license. Resolve the blocker by choosing a compatible version or replacement, or by obtaining documented separate rights that cover every intended build and distribution. Merely making a component optional, loading it dynamically, or moving it to another process does not waive review.

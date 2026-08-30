@@ -257,6 +257,14 @@ Lifecycle state changes are semantic aggregate operations. Application coordinat
 
 ## Decision Framework
 
+### Choosing The Secrets-Authority Contribution Intent
+
+| Change | Primary intent | Additive secondary intent |
+|--------|----------------|---------------------------|
+| Deployment-owned secret source, resolver policy, persistence removal, rotation, safe visibility, or topology convergence | [`secrets-authority`](../.agents/contract/intents.yaml) | Apply the path-matched bootstrap, migration, API, HAL, OpenAPI, Blazor, or CI intent declared by `secrets-authority.routing` |
+
+The primary intent owns Tier 1 authority, confidentiality, reset, convergence, and greenfield-removal constraints. Secondary obligations remain additive except for the single declared OpenAPI compatibility conflict: secrets-authority removal of obsolete secret-bearing compatibility controls that workstream, while every other OpenAPI gate still applies.
+
 ### Choosing ID Types
 
 | Type | Use When | Examples |
