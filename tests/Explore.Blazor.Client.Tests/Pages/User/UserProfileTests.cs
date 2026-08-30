@@ -120,7 +120,7 @@ public class UserProfileTests : IDisposable
                 OrganizationFullName = "Community Center",
                 Comment = "Great event",
                 Rating = 5,
-                CreatedAt = DateTimeOffset.UtcNow
+                CreatedAt = TestTime.UtcNow
             }
         ]);
 

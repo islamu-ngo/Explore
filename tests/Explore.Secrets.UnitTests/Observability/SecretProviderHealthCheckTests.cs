@@ -21,8 +21,13 @@ public class SecretProviderHealthCheckTests : IDisposable
     {
         _provider = Substitute.For<ISecretProvider>();
         _logger = Substitute.For<ILogger<SecretProviderHealthCheck>>();
-        _metrics = new SecretRefreshMetrics();
-        _healthCheck = new SecretProviderHealthCheck(_provider, _logger, _metrics);
+        var clock = new SecretsFixedTimeProvider();
+        _metrics = new SecretRefreshMetrics(clock: clock);
+        _healthCheck = new SecretProviderHealthCheck(
+            _provider,
+            _logger,
+            _metrics,
+            clock);
     }
 
     public void Dispose()
@@ -39,7 +44,7 @@ public class SecretProviderHealthCheckTests : IDisposable
                 ProviderType: SecretProviderType.Infisical,
                 IsHealthy: true,
                 ConsecutiveFailures: 0,
-                LastSuccessfulRefresh: DateTimeOffset.UtcNow,
+                LastSuccessfulRefresh: SecretsTestValues.UtcNow,
                 ErrorMessage: null));
 
         _provider.SupportsRefresh.Returns(true);
@@ -62,7 +67,7 @@ public class SecretProviderHealthCheckTests : IDisposable
                 ProviderType: SecretProviderType.Vault,
                 IsHealthy: false,
                 ConsecutiveFailures: 2, // Less than 3 = degraded
-                LastSuccessfulRefresh: DateTimeOffset.UtcNow.AddMinutes(-5),
+                LastSuccessfulRefresh: SecretsTestValues.UtcNow.AddMinutes(-5),
                 ErrorMessage: "Temporary connection issue"));
 
         _provider.SupportsRefresh.Returns(true);
@@ -85,7 +90,7 @@ public class SecretProviderHealthCheckTests : IDisposable
                 ProviderType: SecretProviderType.AzureKeyVault,
                 IsHealthy: false,
                 ConsecutiveFailures: 5, // 3+ = unhealthy
-                LastSuccessfulRefresh: DateTimeOffset.UtcNow.AddMinutes(-30),
+                LastSuccessfulRefresh: SecretsTestValues.UtcNow.AddMinutes(-30),
                 ErrorMessage: "Authentication failed"));
 
         _provider.SupportsRefresh.Returns(true);
@@ -126,7 +131,7 @@ public class SecretProviderHealthCheckTests : IDisposable
                 ProviderType: SecretProviderType.Infisical,
                 IsHealthy: true,
                 ConsecutiveFailures: 0,
-                LastSuccessfulRefresh: DateTimeOffset.UtcNow,
+                LastSuccessfulRefresh: SecretsTestValues.UtcNow,
                 ErrorMessage: null));
 
         _provider.SupportsRefresh.Returns(true);
@@ -165,7 +170,7 @@ public class SecretProviderHealthCheckTests : IDisposable
     public async Task CheckHealthAsync_ShouldIncludeLastRefreshTimestamp()
     {
         // Arrange
-        var lastRefresh = DateTimeOffset.UtcNow.AddMinutes(-10);
+        var lastRefresh = SecretsTestValues.UtcNow.AddMinutes(-10);
         _provider.GetHealthAsync(Arg.Any<CancellationToken>())
             .Returns(new ProviderHealthInfo(
                 ProviderType: SecretProviderType.Vault,
@@ -207,7 +212,7 @@ public class SecretProviderHealthCheckTests : IDisposable
                 ProviderType: SecretProviderType.Infisical,
                 IsHealthy: true,
                 ConsecutiveFailures: 0,
-                LastSuccessfulRefresh: DateTimeOffset.UtcNow,
+                LastSuccessfulRefresh: SecretsTestValues.UtcNow,
                 ErrorMessage: null));
 
         _provider.SupportsRefresh.Returns(true);

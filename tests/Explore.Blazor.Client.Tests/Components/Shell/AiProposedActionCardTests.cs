@@ -73,7 +73,7 @@ public sealed class AiProposedActionCardTests : IDisposable
             Id = Guid.CreateVersion7(),
             Kind = "CreateEventDraft",
             Status = "Rejected",
-            RejectedAt = DateTimeOffset.UtcNow,
+            RejectedAt = TestTime.UtcNow,
             PayloadJson = "{\"title\":\"Community Iftar\",\"description\":\"Plan the meal.\"}"
         };
 

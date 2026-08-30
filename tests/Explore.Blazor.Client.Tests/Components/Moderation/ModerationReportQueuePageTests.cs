@@ -108,7 +108,7 @@ public sealed class ModerationReportQueuePageTests : IDisposable
             ReasonName = "Spam",
             ReportCaseUpdatesConsent = true,
             ReportFollowUpContactConsent = false,
-            SubmittedAtUtc = DateTimeOffset.UtcNow,
+            SubmittedAtUtc = TestTime.UtcNow,
             CurrentCase = new CurrentCase2
             {
                 Id = Guid.NewGuid(),
@@ -120,7 +120,7 @@ public sealed class ModerationReportQueuePageTests : IDisposable
                 PriorityId = 4,
                 PriorityCode = "urgent",
                 PriorityName = "Urgent",
-                CreatedAtUtc = DateTimeOffset.UtcNow,
+                CreatedAtUtc = TestTime.UtcNow,
                 ConcurrencyStamp = Guid.NewGuid()
             },
             DecisionCount = 0,
@@ -154,7 +154,7 @@ public sealed class ModerationReportQueuePageTests : IDisposable
             ReasonName = "Spam",
             ReportCaseUpdatesConsent = true,
             ReportFollowUpContactConsent = false,
-            SubmittedAtUtc = DateTimeOffset.UtcNow,
+            SubmittedAtUtc = TestTime.UtcNow,
             ConcurrencyStamp = Guid.NewGuid(),
             CurrentCase = new CurrentCase
             {
@@ -167,7 +167,7 @@ public sealed class ModerationReportQueuePageTests : IDisposable
                 PriorityId = 4,
                 PriorityCode = "urgent",
                 PriorityName = "Urgent",
-                CreatedAtUtc = DateTimeOffset.UtcNow,
+                CreatedAtUtc = TestTime.UtcNow,
                 ConcurrencyStamp = Guid.NewGuid()
             },
             EvidenceItems =
@@ -185,7 +185,7 @@ public sealed class ModerationReportQueuePageTests : IDisposable
                     ClassificationId = 1,
                     ClassificationCode = "user_submitted",
                     ClassificationName = "User submitted",
-                    CreatedAtUtc = DateTimeOffset.UtcNow
+                    CreatedAtUtc = TestTime.UtcNow
                 }
             ],
             Decisions = [],

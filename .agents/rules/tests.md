@@ -16,7 +16,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef
 ---
 
 <!-- ABOUTME: Apply when editing unit, integration, architecture, or end-to-end test source files. -->
-<!-- ABOUTME: Twin copy at .omo/rules/tests.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copies live at .agents/rules/tests.md and .omo/rules/tests.md; update both paths. -->
 
 # Test Rules
 
@@ -35,12 +35,14 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-cqrs-handler, add-ef
 - **Pristine Output**: Test runs must have zero stray warnings, stack traces, or noisy logs.
 - **Runtime Realism**: Keep in-process integration tests deterministic; use explicit runtime lanes when real provider infrastructure is the behavior under test.
 - **Project Role Balance**: Assertions must live in the project matching the host profile (e.g., Domain logic in `Domain.UnitTests`, not API tests).
-- **Forward-Only Ratchets**: `ApiLiabilityRatchetTests` freezes each liability class as an **exact** allowlist, not a ceiling. Introducing an occurrence fails, and removing one without deleting its entry fails too — that second direction is what keeps the list shrinking. Every entry carries the reason it still exists. Never relax a ratchet to make a change pass; delist the entry the change actually fixed.
+- **Invariant Disposition Before Deletion**: Every removed test or baseline cohort must map to a stronger retained public-seam test, a passing semantic replacement, or intentionally removed product behavior. Counts, runtime, coverage, and mutation score are never sufficient deletion evidence.
+- **Executable Contracts, Not Source Inventories**: Reflection, runtime endpoint metadata, HTTP/HAL behavior, rendered semantics, and structured machine-consumed schemas are valid assurance seams. Raw C#, Razor, CSS, Markdown prose, class-name inventories, and historical allowlists are not product assurance.
+- **No Governance Documents As Test Inputs**: Product tests must not read `AGENTS.md`, `.agents/**`, `docs/**/*.md`, `dev/active/**`, plans, tasks, evidence, journals, or skill prose. Validate genuinely machine-consumed metadata through its production parser or an explicit `eng/` command; generators are tools, never `[Test]` methods.
 - **Substitute the Principal, Not the Identity Service**: controller tests must set real claims on `ControllerContext.HttpContext.User` rather than mocking `IUserContext` through the container. Mocking the service means the test never exercises the claim chain it claims to cover.
 - **Assert Across a Split Family**: after a controller is partitioned, contract tests that look actions up by name must search the whole family (see `EventFamilyAction`, `WebhookFamilyAction`) rather than one hardcoded class — that is what the assertion always meant.
 - **Container Runtime**: Testcontainers-backed tests need a Docker-compatible endpoint. Under Podman, export `DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock`, `TESTCONTAINERS_RYUK_DISABLED=true`, and `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`. Without them the suite reports hundreds of `DockerUnavailableException` failures that look like a mass regression — check the endpoint before the code.
 - **Zero Hard-Coded Test Secrets**: Tests must never define hard-coded passwords, tokens, API keys, or connection strings in test files or fixtures. Bind secrets via environment variables or mock secret providers (`ISecretResolver`) using keys documented in `.env.example`.
-- **Record Contract Specifications**: Follow the [canonical record-selection policy](../../docs/GOVERNANCE.md#canonical-record-selection-policy). Start Red with consumed equality, one-fact `with` variants, caller-mutation isolation, JSON construction, PATCH omitted/clear/replacement behavior, and trust-boundary attacks. Keep record/body baselines exact, and keep the published-collection exceptional-disposition baseline exact: missing new debt and stale resolved entries must both fail.
+- **Record Contract Specifications**: Follow the [canonical record-selection policy](../../docs/GOVERNANCE.md#canonical-record-selection-policy). Start Red with consumed equality, one-fact `with` variants, caller-mutation isolation, JSON construction, PATCH omitted/clear/replacement behavior, and trust-boundary attacks. Structured manifests may classify a complete machine-consumed contract surface; they must not pin source text, prose, or a historical debt inventory.
 
 ## Must Read
 - [docs/QUICK_REFERENCE.md#build-and-test-baseline](../../docs/QUICK_REFERENCE.md#build-and-test-baseline)

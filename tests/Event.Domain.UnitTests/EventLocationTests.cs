@@ -55,7 +55,7 @@ public sealed class EventLocationTests
             tenantId,
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(typeof(EventLocation).GetProperty(nameof(EventLocation.TenantId))!.SetMethod!.IsPrivate)
             .IsTrue();
@@ -71,7 +71,7 @@ public sealed class EventLocationTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(placement.LocationId).IsNull();
         await Assert.That(placement.IsToBeAnnounced).IsTrue();
@@ -87,7 +87,7 @@ public sealed class EventLocationTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(null)).IsTrue();
         await Assert.That(placement.ShowVenueName).IsFalse();
@@ -110,7 +110,7 @@ public sealed class EventLocationTests
             Guid.CreateVersion7(),
             location.Id,
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(location)).IsTrue();
     }
@@ -126,7 +126,7 @@ public sealed class EventLocationTests
             Guid.CreateVersion7(),
             location.Id,
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         MaterializeLegacyPii(location, string.Empty, "1000");
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(location)).IsFalse();
@@ -148,7 +148,7 @@ public sealed class EventLocationTests
             Guid.CreateVersion7(),
             location.Id,
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(null)).IsFalse();
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(location)).IsFalse();
@@ -174,9 +174,9 @@ public sealed class EventLocationTests
             Guid.CreateVersion7(),
             location.Id,
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
-        location.EraseOwnedPii(DateTime.UtcNow, LocationPrivacyErasureReasonEnum.AccountDeletion);
+        location.EraseOwnedPii(DomainTestClock.UtcNow, LocationPrivacyErasureReasonEnum.AccountDeletion);
 
         await Assert.That(placement.SatisfiesPublicationVenueRequirement(location)).IsFalse();
         await Assert.That(placement.IsToBeAnnounced).IsFalse();
@@ -202,7 +202,7 @@ public sealed class EventLocationTests
             Guid.CreateVersion7(),
             location.Id,
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(location.LocationKindId).IsEqualTo((int)LocationKindEnum.PrivateHome);
         await Assert.That(placement.FullDetailsAudienceId)
@@ -217,10 +217,10 @@ public sealed class EventLocationTests
         var eventId = Guid.CreateVersion7();
         var locationId = Guid.CreateVersion7();
         var actorId = Guid.CreateVersion7();
-        var first = EventLocation.CreatePhysical(tenantId, eventId, locationId, actorId, DateTime.UtcNow);
+        var first = EventLocation.CreatePhysical(tenantId, eventId, locationId, actorId, DomainTestClock.UtcNow);
 
-        first.DetachFinalReference(actorId, DateTime.UtcNow);
-        var replacement = EventLocation.CreatePhysical(tenantId, eventId, locationId, actorId, DateTime.UtcNow);
+        first.DetachFinalReference(actorId, DomainTestClock.UtcNow);
+        var replacement = EventLocation.CreatePhysical(tenantId, eventId, locationId, actorId, DomainTestClock.UtcNow);
 
         await Assert.That(first.IsDeleted).IsTrue();
         await Assert.That(replacement.Id).IsNotEqualTo(first.Id);
@@ -242,8 +242,8 @@ public sealed class EventLocationTests
         var actorId = Guid.CreateVersion7();
         var eventOneId = Guid.CreateVersion7();
         var eventTwoId = Guid.CreateVersion7();
-        var placementOne = EventLocation.CreatePhysical(tenantId, eventOneId, locationId, actorId, DateTime.UtcNow);
-        var placementTwo = EventLocation.CreatePhysical(tenantId, eventTwoId, locationId, actorId, DateTime.UtcNow);
+        var placementOne = EventLocation.CreatePhysical(tenantId, eventOneId, locationId, actorId, DomainTestClock.UtcNow);
+        var placementTwo = EventLocation.CreatePhysical(tenantId, eventTwoId, locationId, actorId, DomainTestClock.UtcNow);
         var sessionOne = CreateSession(tenantId, eventOneId, roomId);
         var sessionTwo = CreateSession(tenantId, eventTwoId, roomId);
         sessionOne.LocationId = locationId;
@@ -272,7 +272,7 @@ public sealed class EventLocationTests
             eventId,
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         session.AssignEventLocation(replacement);
 
@@ -292,7 +292,7 @@ public sealed class EventLocationTests
             eventId,
             locationId,
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
         var session = CreateSession(tenantId, eventId, null);
         var group = new EventSessionGroup { EventId = eventId, Event = null!, TenantId = tenantId, Tenant = null!, Name = "Track" };
         var agenda = new EventAgendaItem { EventId = eventId, Event = null!, TenantId = tenantId, Tenant = null!, Title = "Break" };
@@ -331,13 +331,13 @@ public sealed class EventLocationTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
         var crossTenant = EventLocation.CreatePhysical(
             Guid.CreateVersion7(),
             eventId,
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(() => session.AssignEventLocation(crossEvent)).Throws<InvalidOperationException>();
         await Assert.That(() => session.AssignEventLocation(crossTenant)).Throws<InvalidOperationException>();
@@ -354,7 +354,7 @@ public sealed class EventLocationTests
             tenantId,
             eventId,
             Guid.CreateVersion7(),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         session.AssignEventLocation(tba);
 

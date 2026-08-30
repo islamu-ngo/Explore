@@ -136,7 +136,7 @@ public sealed class ReportEventDialogTests : IDisposable
         await InvokePrivateTaskAsync(cut.Instance, "SubmitAsync");
 
         await Assert.That(cut.Markup).Contains(reasonLabel);
-        await Assert.That(cut.FindAll(".mud-select")).IsEmpty();
+        await Assert.That(cut.FindAll("select")).IsEmpty();
         await Assert.That(capturedRequest).IsNotNull();
         await Assert.That(capturedRequest!.ReasonCode).IsEqualTo("other");
         await Assert.That(capturedRequest.SubcategoryCode).IsEqualTo(subcategoryCode);

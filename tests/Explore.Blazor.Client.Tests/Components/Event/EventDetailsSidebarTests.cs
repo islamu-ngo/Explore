@@ -195,7 +195,7 @@ public sealed class EventDetailsSidebarTests : IDisposable
         Description = "An event used to verify HAL-gated registration affordances.",
         EventTypeFullName = "Conference",
         EventStatusFullName = "Published",
-        FirstSessionDate = DateTimeOffset.UtcNow.AddDays(7)
+        FirstSessionDate = TestTime.UtcNow.AddDays(7)
     };
 
     private static EventDto CreateEventDetail(Guid eventId, bool includeStartRegistrationLink) =>

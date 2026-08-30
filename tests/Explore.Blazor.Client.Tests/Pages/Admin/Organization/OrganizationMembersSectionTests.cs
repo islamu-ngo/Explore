@@ -38,7 +38,6 @@ public sealed class OrganizationMembersSectionTests : IDisposable
                 CanCreate: false));
 
         var cut = Render(organizationId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         WriteSanitizedMarkupEvidence("hal-absent.html", cut.Markup);
         await Assert.That(cut.Markup.Contains("Invite Member", StringComparison.Ordinal)).IsFalse();
@@ -57,7 +56,6 @@ public sealed class OrganizationMembersSectionTests : IDisposable
                 CanCreate: true));
 
         var cut = Render(organizationId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         WriteSanitizedMarkupEvidence("hal-present.html", cut.Markup);
         await Assert.That(cut.Markup).Contains("Invite Member");
@@ -75,7 +73,6 @@ public sealed class OrganizationMembersSectionTests : IDisposable
                 CanCreate: false));
 
         var cut = Render(organizationId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         WriteSanitizedMarkupEvidence("hal-present-creator-self.html", cut.Markup);
         await Assert.That(cut.Markup).Contains("Actions");

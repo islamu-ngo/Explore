@@ -34,7 +34,8 @@ public sealed class SecretResolverBindingTests
             scopeId: null,
             "WEBHOOK_SECRET");
         binding.Id = Guid.CreateVersion7();
-        var resolver = Resolver([binding], new Dictionary<Guid, string> { [binding.Id] = "secret" });
+        string secretValue = SecretsTestValues.CreateSecret();
+        var resolver = Resolver([binding], new Dictionary<Guid, string> { [binding.Id] = secretValue });
 
         ResolvedSecret? resolved = await resolver.ResolveAsync(
             SecretDefinitionRegistry.Keys.Stripe.WebhookSecret,
@@ -43,7 +44,7 @@ public sealed class SecretResolverBindingTests
 
         await Assert.That(resolved).IsNotNull();
         await Assert.That(resolved!.Scope).IsEqualTo(SecretScope.Instance);
-        await Assert.That(resolved.Value).IsEqualTo("secret");
+        await Assert.That(resolved.Value).IsEqualTo(secretValue);
     }
 
     [Test]
@@ -64,16 +65,18 @@ public sealed class SecretResolverBindingTests
             "TOKEN_B",
             qualifier: "connection-b");
         second.Id = Guid.CreateVersion7();
+        string firstValue = SecretsTestValues.CreateSecret();
+        string secondValue = SecretsTestValues.CreateSecret();
         var resolver = Resolver([first, second], new Dictionary<Guid, string>
         {
-            [first.Id] = "secret-a",
-            [second.Id] = "secret-b"
+            [first.Id] = firstValue,
+            [second.Id] = secondValue
         });
 
         ResolvedSecret? resolved = await resolver.ResolveTenantBindingAsync(tenantId, second.Id, CancellationToken.None);
 
         await Assert.That(resolved).IsNotNull();
-        await Assert.That(resolved!.Value).IsEqualTo("secret-b");
+        await Assert.That(resolved!.Value).IsEqualTo(secondValue);
         await Assert.That(resolved.Scope).IsEqualTo(SecretScope.Tenant);
         await Assert.That(resolved.ScopeId).IsEqualTo(tenantId);
     }
@@ -90,7 +93,12 @@ public sealed class SecretResolverBindingTests
             "WEBHOOK_SECRET",
             qualifier: "binding");
         binding.Id = Guid.CreateVersion7();
-        var resolver = Resolver([binding], new Dictionary<Guid, string> { [binding.Id] = "secret" });
+        var resolver = Resolver(
+            [binding],
+            new Dictionary<Guid, string>
+            {
+                [binding.Id] = SecretsTestValues.CreateSecret(),
+            });
 
         ResolvedSecret? resolved = await resolver.ResolveTenantBindingAsync(tenantId, binding.Id, CancellationToken.None);
 
@@ -115,10 +123,12 @@ public sealed class SecretResolverBindingTests
             "INSTANCE_PROMOTION_KEY",
             qualifier: "v7");
         instanceBinding.Id = Guid.CreateVersion7();
+        string tenantValue = SecretsTestValues.CreateSecret();
+        string instanceValue = SecretsTestValues.CreateSecret();
         var resolver = Resolver([tenantBinding, instanceBinding], new Dictionary<Guid, string>
         {
-            [tenantBinding.Id] = "tenant-secret",
-            [instanceBinding.Id] = "instance-secret"
+            [tenantBinding.Id] = tenantValue,
+            [instanceBinding.Id] = instanceValue
         });
 
         ResolvedSecret? resolved = await resolver.ResolveQualifiedAsync(
@@ -129,7 +139,7 @@ public sealed class SecretResolverBindingTests
             CancellationToken.None);
 
         await Assert.That(resolved).IsNotNull();
-        await Assert.That(resolved!.Value).IsEqualTo("instance-secret");
+        await Assert.That(resolved!.Value).IsEqualTo(instanceValue);
         await Assert.That(resolved.Scope).IsEqualTo(SecretScope.Instance);
         await Assert.That(resolved.ScopeId).IsNull();
     }
@@ -144,7 +154,12 @@ public sealed class SecretResolverBindingTests
             "PROMOTION_KEY",
             qualifier: "v1");
         binding.Id = Guid.CreateVersion7();
-        var resolver = Resolver([binding], new Dictionary<Guid, string> { [binding.Id] = "secret" });
+        var resolver = Resolver(
+            [binding],
+            new Dictionary<Guid, string>
+            {
+                [binding.Id] = SecretsTestValues.CreateSecret(),
+            });
 
         ResolvedSecret? resolved = await resolver.ResolveQualifiedAsync(
             SecretDefinitionRegistry.Keys.Promotions.CodeLookupHmacKey,

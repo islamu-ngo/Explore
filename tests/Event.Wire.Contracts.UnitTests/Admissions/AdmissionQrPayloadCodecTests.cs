@@ -8,8 +8,13 @@ namespace ISLAMU.Wire.Contracts.UnitTests.Admissions;
 
 public sealed class AdmissionQrPayloadCodecTests
 {
-    private const string Bearer = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8";
-    private const string PayloadText = "islamu-admission:v1:" + Bearer;
+    private static readonly string Bearer = Convert
+        .ToBase64String(Enumerable.Range(0, 32).Select(value => (byte)value).ToArray())
+        .TrimEnd('=')
+        .Replace('+', '-')
+        .Replace('/', '_');
+    private static readonly string PayloadText =
+        "islamu-admission:v1:" + Bearer;
 
     [Test]
     public async Task ExactV1PayloadRoundTrips()
@@ -26,20 +31,25 @@ public sealed class AdmissionQrPayloadCodecTests
     }
 
     [Test]
-    [Arguments("")]
-    [Arguments("islamu-admission:v2:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8")]
-    [Arguments("ISLAMU-admission:v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8")]
-    [Arguments("islamu-admission:v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=")]
-    [Arguments("islamu-admission:v1: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8")]
-    [Arguments("islamu-admission:v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh+")]
-    [Arguments("islamu-admission:v1:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh")]
-    [Arguments("islamu-admission:v1:___________________________________________")]
+    [MethodDataSource(nameof(MalformedPayloads))]
     public async Task MalformedAndUnknownPayloadsFailClosed(string candidate)
     {
         bool accepted = AdmissionQrPayloadCodec.TryDecode(candidate, out AdmissionQrPayload? payload);
 
         await Assert.That(accepted).IsFalse();
         await Assert.That(payload).IsNull();
+    }
+
+    public static IEnumerable<Func<string>> MalformedPayloads()
+    {
+        yield return () => string.Empty;
+        yield return () => $"islamu-admission:v2:{Bearer}";
+        yield return () => $"ISLAMU-admission:v1:{Bearer}";
+        yield return () => $"islamu-admission:v1:{Bearer}=";
+        yield return () => $"islamu-admission:v1: {Bearer}";
+        yield return () => $"islamu-admission:v1:{Bearer[..^1]}+";
+        yield return () => $"islamu-admission:v1:{Bearer[..^1]}";
+        yield return () => $"islamu-admission:v1:{new string('_', Bearer.Length)}";
     }
 
     [Test]

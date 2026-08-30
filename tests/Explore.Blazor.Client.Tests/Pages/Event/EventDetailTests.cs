@@ -19,6 +19,12 @@ public sealed class EventDetailTests : IDisposable
 {
     private readonly BlazorTestContext _ctx = new();
 
+    public EventDetailTests()
+    {
+        _ctx.Services.AddSingleton<TimeProvider>(
+            new FixedTimeProvider(TestTime.UtcNow));
+    }
+
     [Test]
     public async Task GetImageUrl_WhenFeaturedImageUriMissing_UsesPublicStorageObjectUrl()
     {
@@ -683,8 +689,8 @@ public sealed class EventDetailTests : IDisposable
             VisibilityTypeId = 1,
             VisibilityTypeFullName = "Public",
             VisibilityTypeMasterCode = "PUBLIC",
-            FirstSessionDate = DateTimeOffset.UtcNow.Date.AddDays(7),
-            LastSessionDate = DateTimeOffset.UtcNow.Date.AddDays(7),
+            FirstSessionDate = TestTime.UtcNow.Date.AddDays(7),
+            LastSessionDate = TestTime.UtcNow.Date.AddDays(7),
             AdditionalProperties = CreateHalLinks(linkRels)
         };
     }

@@ -24,6 +24,8 @@ public sealed class OrderRecoveryTests : IDisposable
 
     public OrderRecoveryTests()
     {
+        _ctx.Services.AddSingleton<TimeProvider>(
+            new FixedTimeProvider(TestTime.UtcNow));
         _service = _ctx.AddMockService<IRegistrationOrderService>();
         _nativeForms = _ctx.AddMockService<INativeRegistrationFormService>();
         _capabilityStore = _ctx.AddMockService<IGuestRegistrationOrderCapabilityStore>();
@@ -406,7 +408,7 @@ public sealed class OrderRecoveryTests : IDisposable
     public async Task AuthenticatedPayment_StartsOnlyFromExactOrderRelationAndRendersAuthoritativeFailureRetry()
     {
         var order = CreateOrder("AWAITING_PAYMENT", "Awaiting payment", "payment-acceptance", "start-payment");
-        order.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5);
+        order.ExpiresAt = TestTime.UtcNow.AddMinutes(5);
         var failed = CreatePayment("Failed", "Failed", "payment-status", "retry-payment");
         _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
         _service.GetCurrentPaymentAcceptanceAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>())
@@ -429,7 +431,7 @@ public sealed class OrderRecoveryTests : IDisposable
     public async Task AuthenticatedPayment_UnknownWithoutRetryRelationOffersNoBlindRetry()
     {
         var order = CreateOrder("AWAITING_PAYMENT", "Awaiting payment", "payment-status");
-        order.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5);
+        order.ExpiresAt = TestTime.UtcNow.AddMinutes(5);
         var payment = CreatePayment("Unknown", "Unknown", "payment-status");
         _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
         _service.GetCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>()).Returns(payment);
@@ -491,7 +493,7 @@ public sealed class OrderRecoveryTests : IDisposable
     public async Task AuthenticatedRecovery_WithActiveHold_RendersCountdown()
     {
         var order = CreateOrder("READY_FOR_CHECKOUT", "Ready for checkout");
-        order.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5);
+        order.ExpiresAt = TestTime.UtcNow.AddMinutes(5);
         _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
 
         var cut = _ctx.RenderMudComponent<OrderRecovery>(parameters => parameters
@@ -505,7 +507,7 @@ public sealed class OrderRecoveryTests : IDisposable
     [Test]
     public async Task AuthenticatedRecovery_CountdownOverOneHour_RendersTotalRemainingMinutes()
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = TestTime.UtcNow;
         await Assert.That(RegistrationOrderRecovery.Countdown(now.AddMinutes(61), now))
             .IsEqualTo("Reservation expires in 61:00.");
     }
@@ -895,7 +897,7 @@ public sealed class OrderRecoveryTests : IDisposable
     public async Task ManualEvidence_CapturesSanitizedAuthenticatedAndGuestCheckoutStates()
     {
         var authenticatedOrder = CreateOrder("READY_FOR_CHECKOUT", "Ready for checkout", "apply-promotion", "finalize");
-        authenticatedOrder.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5);
+        authenticatedOrder.ExpiresAt = TestTime.UtcNow.AddMinutes(5);
         authenticatedOrder.PreDiscountOrganizerDirectedTotalMinor = 2_000;
         authenticatedOrder.PromotionDiscountTotalMinor = 500;
         authenticatedOrder.PostDiscountOrganizerDirectedTotalMinor = 1_500;
@@ -1013,7 +1015,7 @@ public sealed class OrderRecoveryTests : IDisposable
             StatusName = statusName,
             CurrencyCode = "EUR",
             TotalDueMinor = 1250,
-            ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1),
+            ExpiresAt = TestTime.UtcNow.AddSeconds(-1),
             Lines = [new Lines2 { Quantity = 1, TicketTypeName = "General admission", SubtotalMinor = 1250, CurrencyCode = "EUR" }]
         };
 
@@ -1124,7 +1126,7 @@ public sealed class OrderRecoveryTests : IDisposable
             RegistrationOrderId = Guid.CreateVersion7(),
             StatusCode = statusCode,
             StatusName = statusName,
-            LastUpdatedAt = DateTimeOffset.UtcNow,
+            LastUpdatedAt = TestTime.UtcNow,
             _links = relations.ToDictionary(
             relation => relation,
             relation => new HalLink

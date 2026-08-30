@@ -14,7 +14,7 @@ public sealed class NotificationFanoutOccurrenceTests
         Guid tenantId = Guid.CreateVersion7();
         Guid eventId = Guid.CreateVersion7();
         Guid aggregateVersion = Guid.CreateVersion7();
-        DateTime occurredAt = DateTime.UtcNow;
+        DateTime occurredAt = DomainTestClock.UtcNow;
 
         var occurrence = NotificationFanoutOccurrence.Create(
             id,
@@ -51,7 +51,7 @@ public sealed class NotificationFanoutOccurrenceTests
     [Test]
     public async Task Supersede_ChangesOnlyExplicitLifecycleMetadata()
     {
-        DateTime now = DateTime.UtcNow;
+        DateTime now = DomainTestClock.UtcNow;
         var occurrence = NotificationFanoutOccurrence.Create(
             Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), null,
             now, now, Guid.CreateVersion7(), "{}", "{}", "{}",

@@ -869,8 +869,7 @@ public sealed class AiAssistantRailTests : IDisposable
         {
             if (!cut.Markup.Contains("csharp.png", StringComparison.Ordinal)
                 || cut.FindAll("[data-testid='ai-rail-image-chip']").Count != 1
-                || cut.Markup.Contains("Browse files", StringComparison.Ordinal)
-                || cut.Markup.Contains("mud-file-upload-files-default-template", StringComparison.Ordinal))
+                || cut.Markup.Contains("Browse files", StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Expected only the selected image chip list to render before sending.");
             }

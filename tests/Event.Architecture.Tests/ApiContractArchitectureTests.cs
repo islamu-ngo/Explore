@@ -82,7 +82,7 @@ public class ApiContractArchitectureTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("every central ProblemDetails writer must attach the stable `code` extension required by dev/active/backend-api-health-refactor/api-error-catalog.md.");
+            .Because("every central ProblemDetails writer must attach the stable machine-readable `code` extension.");
     }
 
     [Test]
@@ -194,7 +194,7 @@ public class ApiContractArchitectureTests
     }
 
     [Test]
-    [Skip("Category: API contract. Removal: enable after Phase 0B fills missing [ProducesResponseType] metadata for backend-contract-risk-register.md R-005 and dev/active/backend-api-health-refactor/backend-api-health-refactor-tasks.md Phase 0B.")]
+    [Skip("Category: API contract. Removal: enable after every public operation declares explicit response metadata.")]
     [DisplayName("Every non-hidden [Http*] action must declare response metadata")]
     public async Task EveryNonHiddenAction_MustDeclare_ResponseMetadata()
     {
@@ -242,7 +242,7 @@ public class ApiContractArchitectureTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("every public API operation must declare explicit response metadata before Phase 2 can enforce ProblemDetails-specific error contracts; see dev/active/backend-api-health-refactor/backend-api-health-refactor-tasks.md Phase 0B.");
+            .Because("every public API operation must declare explicit response metadata for generated clients and ProblemDetails contracts.");
     }
 
     [Test]

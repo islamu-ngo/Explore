@@ -32,7 +32,8 @@ public class AuditingSecretProviderDecoratorTests
             _innerProvider,
             _auditLogger,
             _logger,
-            httpContextAccessor: null);
+            httpContextAccessor: null,
+            clock: new SecretsFixedTimeProvider());
     }
 
     [Test]
@@ -130,9 +131,10 @@ public class AuditingSecretProviderDecoratorTests
     public async Task GetSecretAsync_ShouldRedactSensitiveKeys()
     {
         // Arrange
+        string secretValue = SecretsTestValues.CreateSecret();
         _innerProvider.ProviderType.Returns(SecretProviderType.Infisical);
         _innerProvider.GetSecretAsync("Database:ConnectionString", Arg.Any<CancellationToken>())
-            .Returns("Server=localhost;Password=secret");
+            .Returns(SecretsTestValues.CreateConnectionString(secretValue));
 
         // Act
         await _decorator.GetSecretAsync("Database:ConnectionString");
@@ -148,7 +150,7 @@ public class AuditingSecretProviderDecoratorTests
         // Arrange
         _innerProvider.ProviderType.Returns(SecretProviderType.Vault);
         _innerProvider.GetSecretAsync("Smtp:Password", Arg.Any<CancellationToken>())
-            .Returns("secret123");
+            .Returns(SecretsTestValues.CreateSecret());
 
         // Act
         await _decorator.GetSecretAsync("Smtp:Password");
@@ -163,7 +165,7 @@ public class AuditingSecretProviderDecoratorTests
         // Arrange
         _innerProvider.ProviderType.Returns(SecretProviderType.AzureKeyVault);
         _innerProvider.GetSecretAsync("Keycloak:BlazorClientSecret", Arg.Any<CancellationToken>())
-            .Returns("client-secret-value");
+            .Returns(SecretsTestValues.CreateSecret());
 
         // Act
         await _decorator.GetSecretAsync("Keycloak:BlazorClientSecret");
@@ -178,7 +180,7 @@ public class AuditingSecretProviderDecoratorTests
         // Arrange
         _innerProvider.ProviderType.Returns(SecretProviderType.AwsSecretsManager);
         _innerProvider.GetSecretAsync("External:ApiKey", Arg.Any<CancellationToken>())
-            .Returns("api-key-123");
+            .Returns(SecretsTestValues.CreateSecret());
 
         // Act
         await _decorator.GetSecretAsync("External:ApiKey");
@@ -270,7 +272,7 @@ public class AuditingSecretProviderDecoratorTests
             ProviderType: SecretProviderType.Infisical,
             IsHealthy: true,
             ConsecutiveFailures: 0,
-            LastSuccessfulRefresh: DateTimeOffset.UtcNow,
+            LastSuccessfulRefresh: SecretsTestValues.UtcNow,
             ErrorMessage: null);
 
         _innerProvider.GetHealthAsync(Arg.Any<CancellationToken>())
@@ -290,7 +292,10 @@ public class AuditingSecretProviderDecoratorTests
     public async Task GetSecretWithMetadataAsync_ShouldDelegateAndLog()
     {
         // Arrange
-        var secretValue = new SecretValue("secret-data", "v1", DateTimeOffset.UtcNow);
+        var secretValue = new SecretValue(
+            SecretsTestValues.CreateSecret(),
+            "v1",
+            SecretsTestValues.UtcNow);
         _innerProvider.ProviderType.Returns(SecretProviderType.AzureKeyVault);
         _innerProvider.GetSecretWithMetadataAsync("App:Setting", Arg.Any<CancellationToken>())
             .Returns(secretValue);
@@ -307,7 +312,6 @@ public class AuditingSecretProviderDecoratorTests
     public async Task AuditEntries_ShouldIncludeTimestamp()
     {
         // Arrange
-        var before = DateTimeOffset.UtcNow;
         _innerProvider.ProviderType.Returns(SecretProviderType.None);
         _innerProvider.GetSecretAsync("Test:Key", Arg.Any<CancellationToken>())
             .Returns("value");
@@ -316,8 +320,8 @@ public class AuditingSecretProviderDecoratorTests
         await _decorator.GetSecretAsync("Test:Key");
 
         // Assert
-        await Assert.That(_capturedAuditEntries[0].Timestamp).IsGreaterThanOrEqualTo(before);
-        await Assert.That(_capturedAuditEntries[0].Timestamp).IsLessThanOrEqualTo(DateTimeOffset.UtcNow);
+        await Assert.That(_capturedAuditEntries[0].Timestamp)
+            .IsEqualTo(SecretsTestValues.UtcNow);
     }
 
     [Test]

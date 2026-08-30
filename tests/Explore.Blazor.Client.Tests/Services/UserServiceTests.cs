@@ -348,7 +348,7 @@ public class UserServiceTests
         {
             Status = "completed",
             Receipt = "receipt",
-            ReceiptExpiresAtUtc = DateTime.UtcNow.AddDays(7)
+            ReceiptExpiresAtUtc = TestTime.UtcNow.UtcDateTime.AddDays(7)
         };
         _apiClient.DeleteCurrentUserAsync(
                 Arg.Any<string?>(),

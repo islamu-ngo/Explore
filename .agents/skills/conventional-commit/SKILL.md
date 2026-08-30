@@ -93,6 +93,5 @@ git commit -m "fix(database): wrap session projection rebuilds in db execution s
 
 ## Verification
 
-- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextPolicyTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
 - `git log --format='- %s' "$(git merge-base HEAD origin/develop)"..HEAD`
 - Confirm every visible subject is plain-language, every skipped commit has both trailers, and every breaking commit has the required footer.

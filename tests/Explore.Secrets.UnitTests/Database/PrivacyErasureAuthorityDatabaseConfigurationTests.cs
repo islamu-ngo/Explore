@@ -13,6 +13,8 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
     [Test]
     public async Task StructuredRolesBuildDistinctNativePostgreSqlConnections()
     {
+        string runtimePassword = SecretsTestValues.CreateSecret();
+        string migratorPassword = SecretsTestValues.CreateSecret();
         IConfiguration configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
@@ -22,9 +24,9 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
             ["PrivacyErasureAuthorityDatabase:TlsMode"] = "Required",
             ["PrivacyErasureAuthorityDatabase:TrustServerCertificate"] = "false",
             ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = "runtime_role",
-            ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = "runtime-secret",
+            ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = runtimePassword,
             ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "migrator_role",
-            ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "migrator-secret",
+            ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = migratorPassword,
         });
 
         var runtime = PrivacyErasureAuthorityDatabaseConfiguration.ResolveRuntimeConnectionString(configuration);
@@ -36,24 +38,26 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
         await Assert.That(migratorTarget.Username).IsEqualTo("migrator_role");
         await Assert.That(runtimeTarget.Host).IsEqualTo("authority.example.test");
         await Assert.That(runtimeTarget.Port).IsEqualTo(6543);
-        await Assert.That(runtime.RedactedConnectionString).DoesNotContain("runtime-secret");
-        await Assert.That(runtime.SafeSummary).DoesNotContain("runtime-secret");
+        await Assert.That(runtime.RedactedConnectionString).DoesNotContain(runtimePassword);
+        await Assert.That(runtime.SafeSummary).DoesNotContain(runtimePassword);
     }
 
     [Test]
     public async Task ExplicitStructuredValuesOutrankDiscreteSecrets()
     {
+        string fallbackPassword = SecretsTestValues.CreateSecret();
+        string explicitPassword = SecretsTestValues.CreateSecret();
         IConfiguration configuration = BuildConfiguration(new Dictionary<string, string?>
         {
-            ["PRIVACY_ERASURE_AUTHORITY_HOST"] = "secret-host",
-            ["PRIVACY_ERASURE_AUTHORITY_DATABASE"] = "secret_database",
-            ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME"] = "secret_user",
-            ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD"] = "secret-password",
+            ["PRIVACY_ERASURE_AUTHORITY_HOST"] = "fallback-host",
+            ["PRIVACY_ERASURE_AUTHORITY_DATABASE"] = "fallback_database",
+            ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME"] = "fallback_user",
+            ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD"] = fallbackPassword,
             ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
             ["PrivacyErasureAuthorityDatabase:Host"] = "explicit-host",
             ["PrivacyErasureAuthorityDatabase:Database"] = "explicit_database",
             ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = "explicit_user",
-            ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = "explicit-password",
+            ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = explicitPassword,
         });
 
         var options = PrivacyErasureAuthorityDatabaseConfiguration.BindRuntime(configuration);
@@ -61,21 +65,23 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
         await Assert.That(options.Host).IsEqualTo("explicit-host");
         await Assert.That(options.Database).IsEqualTo("explicit_database");
         await Assert.That(options.Username).IsEqualTo("explicit_user");
-        await Assert.That(options.Password).IsEqualTo("explicit-password");
+        await Assert.That(options.Password).IsEqualTo(explicitPassword);
     }
 
     [Test]
     public async Task DiscreteSecretsProjectIntoCanonicalSection()
     {
+        string runtimePassword = SecretsTestValues.CreateSecret();
+        string migratorPassword = SecretsTestValues.CreateSecret();
         var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["PRIVACY_ERASURE_AUTHORITY_HOST"] = "authority",
             ["PRIVACY_ERASURE_AUTHORITY_PORT"] = "5433",
             ["PRIVACY_ERASURE_AUTHORITY_DATABASE"] = "privacy",
             ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME"] = "runtime",
-            ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD"] = "runtime-secret",
+            ["PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD"] = runtimePassword,
             ["PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME"] = "migrator",
-            ["PRIVACY_ERASURE_AUTHORITY_MIGRATOR_PASSWORD"] = "migrator-secret",
+            ["PRIVACY_ERASURE_AUTHORITY_MIGRATOR_PASSWORD"] = migratorPassword,
             ["PRIVACY_ERASURE_AUTHORITY_TLS_MODE"] = "Required",
             ["PRIVACY_ERASURE_AUTHORITY_TRUST_SERVER_CERTIFICATE"] = "false",
         });
@@ -96,6 +102,8 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
     [Test]
     public async Task DatabaseErasureCanonicalSectionBindsDirectly()
     {
+        string runtimePassword = SecretsTestValues.CreateSecret();
+        string migratorPassword = SecretsTestValues.CreateSecret();
         IConfiguration configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             ["Database:Erasure:Provider"] = "PostgreSql",
@@ -103,9 +111,9 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
             ["Database:Erasure:Port"] = "5432",
             ["Database:Erasure:Database"] = "erasure_ledger",
             ["Database:Erasure:Runtime:Username"] = "erasure_user",
-            ["Database:Erasure:Runtime:Password"] = "erasure_pass",
+            ["Database:Erasure:Runtime:Password"] = runtimePassword,
             ["Database:Erasure:Migrator:Username"] = "erasure_admin",
-            ["Database:Erasure:Migrator:Password"] = "erasure_admin_pass",
+            ["Database:Erasure:Migrator:Password"] = migratorPassword,
         });
 
         var runtime = PrivacyErasureAuthorityDatabaseConfiguration.BindRuntime(configuration);
@@ -114,9 +122,9 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
         await Assert.That(runtime.Host).IsEqualTo("erasure-db");
         await Assert.That(runtime.Database).IsEqualTo("erasure_ledger");
         await Assert.That(runtime.Username).IsEqualTo("erasure_user");
-        await Assert.That(runtime.Password).IsEqualTo("erasure_pass");
+        await Assert.That(runtime.Password).IsEqualTo(runtimePassword);
         await Assert.That(migrator.Username).IsEqualTo("erasure_admin");
-        await Assert.That(migrator.Password).IsEqualTo("erasure_admin_pass");
+        await Assert.That(migrator.Password).IsEqualTo(migratorPassword);
     }
 
     [Test]
@@ -137,15 +145,17 @@ public sealed class PrivacyErasureAuthorityDatabaseConfigurationTests
     [Test]
     public async Task SharedRuntimeAndMigratorUsernameFailsClosed()
     {
+        string runtimePassword = SecretsTestValues.CreateSecret();
+        string migratorPassword = SecretsTestValues.CreateSecret();
         IConfiguration configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             ["PrivacyErasureAuthorityDatabase:Provider"] = "PostgreSql",
             ["PrivacyErasureAuthorityDatabase:Host"] = "authority.example.test",
             ["PrivacyErasureAuthorityDatabase:Database"] = "privacy_authority",
             ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = "shared_role",
-            ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = "runtime-secret",
+            ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = runtimePassword,
             ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = "SHARED_ROLE",
-            ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = "migrator-secret",
+            ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = migratorPassword,
         });
 
         Action act = () => PrivacyErasureAuthorityDatabaseConfiguration.BindRuntime(configuration);

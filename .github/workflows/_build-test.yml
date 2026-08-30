@@ -151,6 +151,26 @@ jobs:
         id: test_blazor_integration
         run: dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Blazor.IntegrationTests.trx
 
+      - name: Wire Contract Tests
+        if: ${{ inputs.run-fast-tests }}
+        id: test_wire_contracts
+        run: dotnet test --project tests/Event.Wire.Contracts.UnitTests/Event.Wire.Contracts.UnitTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Wire.Contracts.UnitTests.trx
+
+      - name: Generated Contract Tooling Tests
+        if: ${{ inputs.run-fast-tests }}
+        id: test_generated_contracts
+        run: dotnet test --project tests/Explore.GeneratedContracts.Tests/Explore.GeneratedContracts.Tests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.GeneratedContracts.Tests.trx
+
+      - name: Diagnostic Command Tests
+        if: ${{ inputs.run-fast-tests }}
+        id: test_diagnostic
+        run: dotnet test --project tests/Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Explore.Diagnostic.UnitTests.trx
+
+      - name: Standalone Host Tests
+        if: ${{ inputs.run-fast-tests }}
+        id: test_standalone
+        run: dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --report-trx --report-trx-filename Event.Standalone.IntegrationTests.trx
+
       - name: Upload Test Results
         if: ${{ always() && inputs.run-fast-tests }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -173,6 +193,10 @@ jobs:
           INFRASTRUCTURE_OUTCOME: ${{ steps.test_infrastructure.outcome }}
           BLAZOR_CLIENT_OUTCOME: ${{ steps.test_blazor_client.outcome }}
           BLAZOR_INTEGRATION_OUTCOME: ${{ steps.test_blazor_integration.outcome }}
+          WIRE_OUTCOME: ${{ steps.test_wire_contracts.outcome }}
+          GENERATED_OUTCOME: ${{ steps.test_generated_contracts.outcome }}
+          DIAGNOSTIC_OUTCOME: ${{ steps.test_diagnostic.outcome }}
+          STANDALONE_OUTCOME: ${{ steps.test_standalone.outcome }}
         run: |
           {
             echo "## Fast Test Evidence"
@@ -189,6 +213,10 @@ jobs:
             echo "| Explore.Infrastructure.Tests | ${INFRASTRUCTURE_OUTCOME:-not-run} |"
             echo "| Explore.Blazor.Client.Tests | ${BLAZOR_CLIENT_OUTCOME:-not-run} |"
             echo "| Explore.Blazor.IntegrationTests | ${BLAZOR_INTEGRATION_OUTCOME:-not-run} |"
+            echo "| Event.Wire.Contracts.UnitTests | ${WIRE_OUTCOME:-not-run} |"
+            echo "| Explore.GeneratedContracts.Tests | ${GENERATED_OUTCOME:-not-run} |"
+            echo "| Explore.Diagnostic.UnitTests | ${DIAGNOSTIC_OUTCOME:-not-run} |"
+            echo "| Event.Standalone.IntegrationTests | ${STANDALONE_OUTCOME:-not-run} |"
             echo
             echo "Inspect the uploaded \`test-results-fast\` artifact for project-specific TRX files and build/analyzer warning output."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -42,7 +42,7 @@ public sealed class ActorMergeTests
             actorId,
             ActorMergeProofKind.VerifiedDid,
             "did-proof:sha256:abc123",
-            DateTime.UtcNow,
+            DomainTestClock.UtcNow,
             Guid.CreateVersion7())));
     }
 
@@ -54,7 +54,7 @@ public sealed class ActorMergeTests
             Guid.CreateVersion7(),
             ActorMergeProofKind.VerifiedDid,
             "   ",
-            DateTime.UtcNow,
+            DomainTestClock.UtcNow,
             Guid.CreateVersion7())));
     }
 }

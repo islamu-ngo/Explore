@@ -155,7 +155,7 @@ public sealed class EventParticipationConfigurationTests
             (int)AdvanceRegistrationObligationEnum.NotApplicable,
             identityAccessModeId: null,
             guestRecoveryPolicy: null,
-            DateTime.UtcNow));
+            DomainTestClock.UtcNow));
 
         await Assert.That(exception.Errors.Select(error => error.Code))
             .Contains(EventParticipationConfigurationErrorCode.EventIdRequired);
@@ -171,7 +171,7 @@ public sealed class EventParticipationConfigurationTests
             (int)AdvanceRegistrationObligationEnum.NotApplicable,
             identityAccessModeId: null,
             guestRecoveryPolicy: null,
-            DateTime.UtcNow));
+            DomainTestClock.UtcNow));
 
         await Assert.That(exception.Errors.Select(error => error.Code))
             .Contains(EventParticipationConfigurationErrorCode.TenantIdRequired);
@@ -182,7 +182,7 @@ public sealed class EventParticipationConfigurationTests
     {
         var eventId = Guid.CreateVersion7();
         var tenantId = Guid.CreateVersion7();
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
         var configuration = EventParticipationConfiguration.Create(
             eventId,
             tenantId,
@@ -242,7 +242,7 @@ public sealed class EventParticipationConfigurationTests
             advanceRegistrationObligationId,
             identityAccessModeId,
             guestRecoveryPolicy,
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
     private static GuestRecoveryPolicyEnum? ToRecoveryPolicy(int? value) =>
         value.HasValue ? (GuestRecoveryPolicyEnum)value.Value : null;

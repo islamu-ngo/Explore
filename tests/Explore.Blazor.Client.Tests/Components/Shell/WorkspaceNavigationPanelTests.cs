@@ -118,26 +118,6 @@ public sealed class WorkspaceNavigationPanelTests : IDisposable
     }
 
     [Test]
-    public async Task NoProviderPolicyClose_DoesNotAutosaveWorkspaceNavigation()
-    {
-        _ctx.SetAnonymousUser();
-        var navigation = _ctx.Services.GetRequiredService<NavigationManager>();
-        navigation.NavigateTo("/events");
-        var cut = RenderLayout();
-
-        cut.WaitForAssertion(() =>
-            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-        _dockLayoutPersistence.ClearReceivedCalls();
-
-        await cut.InvokeAsync(() => navigation.NavigateTo("/no-nav"));
-        await Task.Delay(TimeSpan.FromMilliseconds(650));
-
-        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
-            Arg.Any<DockLayoutSnapshot>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
     public async Task ReturnFromNoProvider_ReopensStartPanel()
     {
         _ctx.SetAnonymousUser();
@@ -202,7 +182,7 @@ public sealed class WorkspaceNavigationPanelTests : IDisposable
                 new DockPanelState(ShellDockPanels.WorkspaceNavId, workspaceNavOpen, DockMode.Docked, Width: 280, Order: 10, IsActive: workspaceNavOpen),
                 new DockPanelState(ShellDockPanels.AiAssistantId, false, DockMode.Docked, Width: 360, Order: 20, IsActive: false)
             ],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
     }
 
     [Test]

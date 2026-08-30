@@ -39,7 +39,7 @@ public sealed class WebPushSubscriptionPanelTests : IDisposable
         var component = context.RenderMudComponent<WebPushSubscriptionPanel>(parameters => parameters
             .Add(panel => panel.CanSubscribe, true));
 
-        await WaitForAsync(() =>
+        await WaitForAsync(component, () =>
         {
             if (!component.Markup.Contains("The site will not ask again.", StringComparison.Ordinal))
             {
@@ -75,7 +75,7 @@ public sealed class WebPushSubscriptionPanelTests : IDisposable
 
         var component = context.RenderMudComponent<WebPushSubscriptionPanel>(parameters => parameters
             .Add(panel => panel.CanSubscribe, true));
-        await WaitForAsync(() =>
+        await WaitForAsync(component, () =>
         {
             if (component.FindAll("button").Count == 0)
             {
@@ -86,7 +86,7 @@ public sealed class WebPushSubscriptionPanelTests : IDisposable
 
         component.Find("button").Click();
 
-        await WaitForAsync(() => browserInterop.Received(1)
+        await WaitForAsync(component, () => browserInterop.Received(1)
             .SubscribeAsync("public-key", Arg.Any<CancellationToken>()));
         await notificationService.Received(1).SubscribeWebPushAsync(
             "device-a",
@@ -116,7 +116,7 @@ public sealed class WebPushSubscriptionPanelTests : IDisposable
 
         var component = context.RenderMudComponent<WebPushSubscriptionPanel>(parameters => parameters
             .Add(panel => panel.CanSubscribe, true));
-        await WaitForAsync(() =>
+        await WaitForAsync(component, () =>
         {
             if (!component.Markup.Contains("Enabled for this browser", StringComparison.Ordinal))
             {
@@ -126,29 +126,16 @@ public sealed class WebPushSubscriptionPanelTests : IDisposable
 
         component.Find("button").Click();
 
-        await WaitForAsync(() => browserInterop.Received(1).UnsubscribeAsync(Arg.Any<CancellationToken>()));
+        await WaitForAsync(component, () => browserInterop.Received(1).UnsubscribeAsync(Arg.Any<CancellationToken>()));
         await notificationService.DidNotReceive().UnsubscribeWebPushAsync(Arg.Any<Guid>());
     }
 
-    private static async Task WaitForAsync(Action assertion)
+    private static Task WaitForAsync<TComponent>(
+        IRenderedComponent<TComponent> rendered,
+        Action assertion)
+        where TComponent : IComponent
     {
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(3);
-        Exception? lastException = null;
-
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            try
-            {
-                assertion();
-                return;
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-                await Task.Delay(25);
-            }
-        }
-
-        throw new TimeoutException("The expected Web Push component state was not observed.", lastException);
+        rendered.WaitForAssertion(assertion);
+        return Task.CompletedTask;
     }
 }

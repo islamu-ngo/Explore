@@ -40,14 +40,16 @@ Every change must answer these eight questions **before editing any file**:
 
 ## 3. Cold-Start Flow (Zero-Knowledge Agent)
 
+> **Development Mode Notice**: This repository is in active **pre-release greenfield development** (0 users, 0 external adopters, no production releases). **Backward compatibility is explicitly rejected** in favor of the cleanest, purest architecture. Breaking changes are first-class, encouraged, and preferred over legacy shims, compatibility adapters, or obsolete ratchets. When the platform transitions to a public release/adoption phase, context engineering and governance will be comprehensively refactored.
+
 1. **CLASSIFY**: Find matching intent in [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml) and resolve its `criticality` block (`tier`, `intake_clarification_mode`, `exploration_protocol`, `testing_strategy`, `review_protocol`).
 2. **DYNAMIC ALIGNMENT & INTAKE**:
-   - **Tiers 0, 1, 2 (Sovereign / Security / Privacy)**: Mandate proactive `/grill-me` alignment on edge cases, threat models, and failure recovery before editing. Conduct exhaustive knowledge-graph blast-radius exploration. Author failing *Invariant-Breaker* tests first.
+   - **Tiers 0, 1, 2 (Sovereign / Security / Privacy)**: Mandate proactive `/grill-me` alignment on edge cases, threat models, and failure recovery before editing. Conduct exhaustive knowledge-graph blast-radius exploration. Author failing *Invariant-Breaker* tests first (concurrency races, state machines, tenant isolation).
    - **Tier 3 (Domain State)**: Perform bounded caller/callee tracing and standard clarification if requirements are ambiguous.
    - **Tier 4 (Standard UI / Docs)**: Proceed autonomously with economical context budgets, applying established conventions with minimal friction.
 3. **LOAD**: Read `must_read_docs` and matching [`.agents/rules/*.md`](.agents/rules/).
-4. **EDIT**: Work within `paths_in_scope`. Follow Clean Architecture: Domain → App → Infra → API.
-5. **VERIFY & REVIEW**: Run minimum tests. For Tiers 0–2, verify real concurrency/multi-provider engine behavior, run Stryker mutation tests (>85%), and conduct Epistemic Multi-Agent Debate (MAD) review.
+4. **EDIT**: Work within `paths_in_scope`. Follow Clean Architecture: Domain → App → Infra → API. Embrace breaking changes to eliminate legacy debt.
+5. **VERIFY & REVIEW**: Run minimum tests. For Tiers 0–2, verify real concurrency/multi-provider engine behavior, tenant boundaries, and conduct Epistemic Multi-Agent Debate (MAD) review. (Stryker mutation gating is disabled during greenfield dev).
 6. **TEACH**: Provide a comprehensive technical teaching summary explaining architectural patterns, state transitions, and rollback mechanisms.
 7. **ESCALATE**: If any rule conflicts with the request, stop and ask the user.
 
@@ -76,6 +78,8 @@ Every change must answer these eight questions **before editing any file**:
 8. **IP, clean-room, and outbound-license protection**: Never ingest third-party copyleft, source-available, proprietary, or otherwise incompatible source code, snippets, ASTs, SQL, migrations, tests, comments, or assets into implementation context or copy them into this repository. Externally informed work must pass through a source-free functional specification and use independently designed project-native structure, sequence, and organization. A dependency is forbidden unless its terms preserve every intended ISLAMU outbound licensing path or the Project Steward has documented separate licensing and distribution approval. See [`docs/legal/IP_GOVERNANCE.md`](docs/legal/IP_GOVERNANCE.md).
 9. **Agent tooling and execution boundary (No Python/JS scripts)**: Agents must NEVER run or generate ad-hoc Python (`python`, `python3`, `python -c`) or JavaScript/Node (`node`, `npm`, `node -e`) helper scripts. File edits must use native agent editing tools (`apply_patch`, `replace_file_content`, `write_to_file`). Shell tasks must use standard POSIX Bash commands. Creating scripts is an absolute last resort (only when there is overwhelming, lasting ROI); any persistent repo tool belongs in `eng/` (e.g. `eng/scripts/` or `eng/tools/`) as a C# file-based script (`dotnet run eng/.../*.cs`) or Bash script. Never put dev tools in `.ci/scripts/` (strictly for CI/CD pipelines).
 10. **Secrets Isolation & Source of Truth (Infisical or `.env` only)**: Secrets, passwords, API tokens, connection strings, and encryption keys must NEVER be hard-coded, embedded, or defined in `Explore.AppHost` (`AppHost.cs`), test files/fixtures, controllers, appsettings, or anywhere in source code. Secrets originate strictly from **Infisical** or **`.env`** (with template keys/schema documented in **`.env.example`**). Tests and local hosting must bind dynamically via environment variables or secret provider mocks—never inline plaintext credentials.
+11. **Greenfield Breaking Change Freedom (No Backward Compatibility Baggage)**: This repository is pre-release with 0 external adopters. Never preserve obsolete endpoints, bad DTO shapes, legacy columns, or adapter shims for backward compatibility. Breaking changes are encouraged whenever they simplify code or align with Clean Architecture.
+12. **Strict Test Quality Over Quantity (No Mock-Mirroring or Scraping)**: Tests MUST guard true business invariants, rich domain state machines, concurrency races, tenant isolation, and security fail-closed semantics. Prohibit tautological mock-mirroring (`Received(1)`), framework-testing boilerplate (testing EF Core cancellation), raw source-code / CSS text scraping, and ephemeral mutation test project sprawl.
 
 **Full list:** [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md)
 

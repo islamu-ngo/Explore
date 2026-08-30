@@ -10,7 +10,7 @@ public sealed class WebPushSubscriptionTests
     {
         var tenantId = Guid.CreateVersion7();
         var userId = Guid.CreateVersion7();
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
 
         var subscription = WebPushSubscription.Create(
             tenantId,
@@ -39,7 +39,7 @@ public sealed class WebPushSubscriptionTests
     [Test]
     public async Task TouchRotatesEndpointAndKeysOnlyWhileActive()
     {
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
         var subscription = WebPushSubscription.Create(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
@@ -79,7 +79,7 @@ public sealed class WebPushSubscriptionTests
     [Test]
     public async Task UnsubscribeAndDeactivateAreTerminalInactiveTransitions()
     {
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
         var subscription = WebPushSubscription.Create(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),

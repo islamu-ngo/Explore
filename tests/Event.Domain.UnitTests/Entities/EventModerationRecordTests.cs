@@ -21,7 +21,7 @@ public class EventModerationRecordTests
         var tenantId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var moderatorUserId = Guid.NewGuid();
-        var createdAt = DateTimeOffset.UtcNow;
+        var createdAt = DomainTestClock.UtcNowOffset;
 
         var record = EventModerationRecord.CreateLightModeration(
             Guid.CreateVersion7(),
@@ -58,7 +58,7 @@ public class EventModerationRecordTests
             "illegal_content",
             (int)EventStatusEnum.Published,
             null,
-            DateTimeOffset.UtcNow);
+            DomainTestClock.UtcNowOffset);
 
         await Assert.That(record.ActionKind).IsEqualTo(EventModerationActionKind.HeavyRedacted);
         await Assert.That(record.ResultingStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
@@ -77,7 +77,7 @@ public class EventModerationRecordTests
             "illegal_content",
             (int)EventStatusEnum.Published,
             null,
-            DateTimeOffset.UtcNow);
+            DomainTestClock.UtcNowOffset);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
         {
@@ -87,7 +87,7 @@ public class EventModerationRecordTests
                 Guid.NewGuid(),
                 "review_complete",
                 "correlation-456",
-                DateTimeOffset.UtcNow);
+                DomainTestClock.UtcNowOffset);
 
             return Task.CompletedTask;
         });
@@ -104,7 +104,7 @@ public class EventModerationRecordTests
             "policy_review",
             (int)EventStatusEnum.Published,
             null,
-            DateTimeOffset.UtcNow);
+            DomainTestClock.UtcNowOffset);
 
         var unmoderationRecord = EventModerationRecord.CreateUnmoderation(
             Guid.CreateVersion7(),
@@ -112,7 +112,7 @@ public class EventModerationRecordTests
             Guid.NewGuid(),
             "review_complete",
             null,
-            DateTimeOffset.UtcNow);
+            DomainTestClock.UtcNowOffset);
 
         await Assert.That(unmoderationRecord.ActionKind).IsEqualTo(EventModerationActionKind.Unmoderated);
         await Assert.That(unmoderationRecord.PreviousStatusId).IsEqualTo((int)EventStatusEnum.Moderated);
@@ -132,7 +132,7 @@ public class EventModerationRecordTests
             "policy_review",
             (int)EventStatusEnum.Published,
             null,
-            DateTimeOffset.UtcNow);
+            DomainTestClock.UtcNowOffset);
         var reportId = Guid.NewGuid();
         var decisionId = Guid.NewGuid();
 
@@ -153,7 +153,7 @@ public class EventModerationRecordTests
             "coop_decision",
             (int)EventStatusEnum.Published,
             "coop-correlation",
-            DateTimeOffset.UtcNow);
+            DomainTestClock.UtcNowOffset);
         var reportId = Guid.NewGuid();
         var decisionId = Guid.NewGuid();
 
@@ -175,7 +175,7 @@ public class EventModerationRecordTests
             "policy_review",
             (int)EventStatusEnum.Published,
             null,
-            DateTimeOffset.UtcNow);
+            DomainTestClock.UtcNowOffset);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
         {

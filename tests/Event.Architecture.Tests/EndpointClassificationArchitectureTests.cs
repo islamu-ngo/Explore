@@ -143,7 +143,7 @@ public class EndpointClassificationArchitectureTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("Admin-classified endpoints must not be anonymously reachable unless explicitly protected by SetupSecretRequired; see dev/active/backend-api-health-refactor/authorization-policy-matrix.md");
+            .Because("Admin-classified endpoints must not be anonymously reachable unless explicitly protected by SetupSecretRequired.");
     }
 
     [Test]
@@ -206,7 +206,7 @@ public class EndpointClassificationArchitectureTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("POST/PUT/PATCH/DELETE endpoints must require authorization metadata unless setup-secret gated, PublicTransactional, or explicitly documented as public ingestion/bootstrap; see dev/active/backend-api-health-refactor/endpoint-classification.md");
+            .Because("POST/PUT/PATCH/DELETE endpoints must require authorization metadata unless setup-secret gated or explicitly classified PublicTransactional.");
     }
 
     private static bool IsHttpAction(MethodInfo method)

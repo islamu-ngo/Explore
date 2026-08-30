@@ -61,7 +61,7 @@ public sealed class WebhookRetentionTests
     [Test]
     public async Task DeliveryPlan_RejectsDeadLetterHorizonShorterThanAttemptHorizon()
     {
-        var materializedAt = DateTimeOffset.UtcNow;
+        var materializedAt = DomainTestClock.UtcNowOffset;
 
         await Assert.ThrowsAsync<ArgumentException>(() => Task.FromResult(WebhookDeliveryPlanSnapshot.Create(
             Guid.CreateVersion7(),

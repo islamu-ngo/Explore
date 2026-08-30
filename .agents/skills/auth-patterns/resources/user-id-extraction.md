@@ -63,6 +63,9 @@ Do **not** route them through the chain above — merging them widens trust.
 
 Three subtly different chains once coexisted here: `UserContext` used four claims, a principal extension used
 two, and a base controller preferred `internal_user_id` first. They disagreed about who the caller was.
-`ApiLiabilityRatchetTests` now holds controller claim parsing to a named allowlist so a fourth cannot appear.
+Compiled controller dependency checks reject request-container service
+location, while principal-extension and controller behavior tests exercise the
+single canonical claim chain. Purpose-bound authentication schemes remain
+separate by protocol behavior rather than a source-file allowlist.
 
 **Related**: `auth-patterns` skill; `docs/CODEBASE_INSIGHTS.md` §15.

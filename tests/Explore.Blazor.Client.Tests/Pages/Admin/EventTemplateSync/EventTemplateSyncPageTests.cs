@@ -57,7 +57,6 @@ public sealed class EventTemplateSyncPageTests : IDisposable
 
         // Act
         var cut = RenderPage(eventId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         // Assert
         await Assert.That(cut.Markup).Contains("Warning: Event has 1 untouched local definitions");
@@ -76,7 +75,6 @@ public sealed class EventTemplateSyncPageTests : IDisposable
 
         // Act
         var cut = RenderPage(eventId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         var row = cut.FindComponent<TemplateDiffRow>();
         row.Find("input[type=\"checkbox\"]").Change(true);
@@ -96,7 +94,6 @@ public sealed class EventTemplateSyncPageTests : IDisposable
 
         // Act
         var cut = RenderPage(eventId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).DoesNotContain("Apply Sync");
 
@@ -123,7 +120,6 @@ public sealed class EventTemplateSyncPageTests : IDisposable
             .Returns(dialogReference);
 
         var cut = RenderPage(eventId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         var row = cut.FindComponent<TemplateDiffRow>();
         row.Find("input[type=\"checkbox\"]").Change(true);
@@ -155,7 +151,6 @@ public sealed class EventTemplateSyncPageTests : IDisposable
 
         // Act
         var cut = RenderPage(eventId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         // Assert
         await Assert.That(cut.Markup).Contains("Template has been modified by another operator.");
@@ -180,7 +175,6 @@ public sealed class EventTemplateSyncPageTests : IDisposable
             .Throws(CreateConflictException());
 
         var cut = RenderPage(eventId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         var row = cut.FindComponent<TemplateDiffRow>();
         row.Find("input[type=\"checkbox\"]").Change(true);

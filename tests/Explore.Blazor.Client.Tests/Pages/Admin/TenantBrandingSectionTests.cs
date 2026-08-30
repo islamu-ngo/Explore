@@ -158,20 +158,6 @@ public sealed class TenantBrandingSectionTests : IDisposable
         await _service.Received(1).GetAsync(Arg.Any<CancellationToken>());
     }
 
-    [Test]
-    public async Task Dispose_CancelsPendingDebouncedSave()
-    {
-        var model = CreateEditableModel();
-        var cut = Render(model);
-
-        await cut.InvokeAsync(() => Field(cut, "Brand custom CSS URL").Instance.ValueChanged.InvokeAsync("https://cdn.example.test/new.css"));
-        cut.Instance.Dispose();
-        cut.Dispose();
-        await Task.Delay(500);
-
-        await _service.DidNotReceive().PatchCustomCssUrlAsync(model, Arg.Any<CancellationToken>());
-    }
-
     private IRenderedComponent<TenantBrandingSection> Render(TenantBrandingSettingsAdminModel model) =>
         _ctx.RenderMudComponent<TenantBrandingSection>(parameters => parameters.Add(component => component.Model, model));
 

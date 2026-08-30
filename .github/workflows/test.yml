@@ -47,7 +47,7 @@ jobs:
 
           is_build_test_ignored() {
             case "$1" in
-              schemas/configuration-manifest-v1alpha1.schema.json) return 1 ;;
+              schemas/configuration-manifest-v1alpha2.schema.json|schemas/tenant-configuration-package-v1alpha2.schema.json) return 1 ;;
               .agents/*|.claude/*|.codex/*|.copilot/*|.gemini/*|.opencode/*|.repomix/*|.sisyphus/*|.taskmaster/*) return 0 ;;
               _bmad/*|_bmad-output/*) return 0 ;;
               docs/*|schemas/*|assets/*|dev/*|event/*) return 0 ;;
@@ -165,7 +165,7 @@ jobs:
                   run_infra="true"
                   run_arch="true"
                   ;;
-                src/Explore.Infrastructure/*|src/Explore.Persistence/*|src/Explore.Atproto.Transport/*|src/Explore.MigrationService/*|tests/Explore.Infrastructure.Tests/*|tests/Event.Persistence.IntegrationTests/*|tests/Event.MigrationService.IntegrationTests/*|tests/Event.Quartz.IntegrationTests/*)
+                src/Explore.Infrastructure/*|src/Explore.Persistence/*|src/Explore.Atproto.Transport/*|src/Event.MigrationService/*|tests/Explore.Infrastructure.Tests/*|tests/Event.Persistence.IntegrationTests/*)
                   run_infra="true"
                   run_arch="true"
                   ;;
@@ -178,17 +178,21 @@ jobs:
                   run_blazor="true"
                   run_arch="true"
                   ;;
-                src/CarpaNet/*|tests/CarpaNet.UnitTests/*)
+                src/Event.Wire.Contracts/*|tests/Event.Wire.Contracts.UnitTests/*|eng/tools/Explore.GeneratedContracts/*|tests/Explore.GeneratedContracts.Tests/*)
                   run_arch="true"
-                  run_infra="true"
                   ;;
                 src/Explore.Diagnostic/*|tests/Explore.Diagnostic.UnitTests/*)
                   run_arch="true"
                   ;;
+                src/Event.Standalone/*|tests/Event.Standalone.IntegrationTests/*)
+                  run_arch="true"
+                  run_infra="true"
+                  run_blazor="true"
+                  ;;
                 tests/Event.Architecture.Tests/*)
                   run_arch="true"
                   ;;
-                schemas/configuration-manifest-v1alpha1.schema.json|eng/configuration-manifest-schema/*)
+                schemas/configuration-manifest-v1alpha2.schema.json|schemas/tenant-configuration-package-v1alpha2.schema.json|eng/configuration-manifest-schema/*)
                   run_arch="true"
                   ;;
                 src/*)

@@ -20,9 +20,10 @@ ISLAMU Event is:
 
 CTO interpretation:
 
-- Prefer clean architecture over compatibility with immature pre-v1 contracts.
-- Do not keep bad routes, DTOs, workflows, or UI flows just because they exist.
-- Still protect data integrity, tenant isolation, security, and operator clarity.
+- **Backward compatibility in this phase is completely counterproductive**: With 0 users and 0 external adopters, breaking changes are first-class, encouraged, and prioritized to achieve the cleanest architecture.
+- Reject adapter layers, legacy route aliases, backward-compatibility shims, and obsolete ratchets.
+- Do not keep bad routes, DTOs, workflows, or UI flows just because they exist. Break and replace cleanly.
+- Still protect data integrity, tenant isolation, security fail-closed paths, and operator clarity.
 - For self-hosters, document configuration resets and upgrade actions clearly.
 
 ## Implementation-Plan Baseline
@@ -228,12 +229,14 @@ Do not plan external HTTP/email/broker calls inside DB transactions.
 
 For async side effects, prefer transactional outbox and idempotent consumers.
 
-## Testing Rules & Test-First Invariant Mandate
+## Testing Rules & Invariant Mandate (Strict Quality Over Quantity)
 
-Implementation plans must enforce **Test-First Invariant Specification**:
-- Every behavioral slice must sequence failing specification/invariant tests (Red Phase) *before* the task implementing production code (Green Phase), preventing post-hoc test tautology ("The Ugly Mirror").
-- Tests must be specified against public contracts (MediatR requests, API endpoints, ProblemDetails RFC 7807, database state invariants) rather than private implementation details.
-- Prioritize high-leverage adversarial tests (concurrency races, state machines, row locking, zero-PII log sinks) over shallow mock-heavy tests.
+Implementation plans must enforce **Quality-Over-Quantity Invariant Verification**:
+- Slices touching **Core Domain Invariants, Concurrency Races, Money/State Transitions, or Security Boundaries** sequence failing invariant tests (Red Phase) *before* production code.
+- Standard feature orchestration, CQRS commands/queries, API endpoints, and UI components implement directly and verify against public contracts.
+- **Prohibit Mock-Mirroring & Test Bloat**: Reject unit tests that mock internal dependencies (`NSubstitute.Received(1)` on repositories/caches), framework-testing boilerplate (EF Core cancellation), and raw source/CSS string scrapers.
+- **Stryker Mutation Testing**: Stryker threshold gating is disabled during active greenfield development. Do not block implementation approval on Stryker mutation scores.
+- Prioritize high-leverage adversarial tests (concurrency races, state machines, row locking, zero-PII log sinks, tenant isolation) over shallow mock-heavy tests.
 
 At each phase end, run one Release build and at most one project-level `dotnet test` command. Do not add per-task checks, test-only phases, E2E/browser projects, Playwright, Chrome DevTools MCP, app startup, Aspire/Docker startup, live-service smoke, or manual runtime walkthroughs.
 
@@ -241,10 +244,9 @@ Repository-mandated projects remain contract requirements, but distribute them a
 
 Testing posture for pre-v1:
 
-- delete obsolete backward-compatibility tests when behavior is intentionally removed,
-- do not skip tests permanently,
-- do not comment out `[Test]`,
-- every skip needs category and removal condition.
+- delete obsolete backward-compatibility tests and ratchets when behavior is intentionally removed,
+- do not preserve deprecated tests when refactoring,
+- do not skip tests permanently; delete obsolete ones outright.
 
 ## Documentation Rules
 

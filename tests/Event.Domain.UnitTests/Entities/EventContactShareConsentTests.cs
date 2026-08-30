@@ -58,7 +58,7 @@ public class EventContactShareConsentTests
     public async Task WithdrawAndRegrant_TransitionCurrentState()
     {
         EventContactShareConsent consent = CreateConsent(ContactShareConsentSubjectTypeEnum.User, Guid.CreateVersion7());
-        DateTime withdrawnAt = DateTime.UtcNow;
+        DateTime withdrawnAt = DomainTestClock.UtcNow;
 
         EventContactShareConsentHistory withdrawal = consent.Withdraw(null, consent.SubjectId, withdrawnAt);
         await Assert.That(consent.Status).IsEqualTo(ConsentStatus.Withdrawn);
@@ -74,5 +74,5 @@ public class EventContactShareConsentTests
 
     private static EventContactShareConsent CreateConsent(ContactShareConsentSubjectTypeEnum subjectType, Guid subjectId) =>
         EventContactShareConsent.Grant(Guid.CreateVersion7(), subjectType, subjectId, Guid.CreateVersion7(),
-            " test ", " Test@Example.com ", "Test consent", "v1", DateTime.UtcNow);
+            " test ", " Test@Example.com ", "Test consent", "v1", DomainTestClock.UtcNow);
 }

@@ -240,7 +240,7 @@ public sealed class MyReportsPageTests : IDisposable
             ReasonId = 1,
             ReasonCode = "spam",
             ReasonName = "Spam",
-            SubmittedAtUtc = DateTimeOffset.UtcNow,
+            SubmittedAtUtc = TestTime.UtcNow,
             ReportCaseUpdatesConsent = caseUpdates,
             ReportFollowUpContactConsent = followUp
         };

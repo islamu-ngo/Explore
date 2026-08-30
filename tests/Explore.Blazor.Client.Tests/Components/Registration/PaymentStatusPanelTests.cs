@@ -384,7 +384,7 @@ public sealed class PaymentStatusPanelTests : IDisposable
                 Id = Guid.CreateVersion7(),
                 CampaignId = Guid.CreateVersion7(),
                 StatusCode = "Pending",
-                CreatedAt = DateTimeOffset.UtcNow
+                CreatedAt = TestTime.UtcNow
             }
         ];
 
@@ -594,7 +594,7 @@ public sealed class PaymentStatusPanelTests : IDisposable
     {
         StatusCode = status,
         StatusName = status.Replace('_', ' '),
-        LastUpdatedAt = DateTimeOffset.UtcNow,
+        LastUpdatedAt = TestTime.UtcNow,
         _links = relations.ToDictionary(
             relation => relation,
             relation => new HalLink

@@ -56,7 +56,7 @@ Prove what works, what fails, and why using reproducible evidence. Keep verifica
 3. For Tier 0–2 tasks, verify that Invariant-Breaker adversarial tests exist and execute as part of the test suite.
 4. Execute static and dynamic AST log sanitization checks to confirm no sensitive PII fields (`email`, `token`, `secret`, `billing`) are emitted unmasked to log sinks.
 5. Reproduce the failure or baseline with one deterministic command and capture exit code, failing test, assertion, logs, and environment assumptions.
-6. Verify mutation test coverage against Stryker thresholds (>85% Domain/Application, >60% Infrastructure) when verifying high-criticality features.
+6. For high-criticality features, execute the named invariant-breaker scenarios at their owning public seams, including real concurrency, provider, tenant, authorization, and privacy boundaries where applicable. Mutation scores are optional diagnostics, never merge evidence or a substitute for behavior.
 7. For runtime surfaces, start only required resources, wait for health, execute the real scenario, and collect redacted logs/traces/network/visual evidence.
 8. After the owner changes inputs, rerun only invalidated checks; finish with the intent-required Release build and targeted tests.
 9. Return evidence and a root-cause handoff. Do not patch the failure.

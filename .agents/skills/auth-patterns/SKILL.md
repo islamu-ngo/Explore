@@ -30,7 +30,7 @@ priority: critical
 4. Disabling the `Tenant` query filter during runtime request handling creates cross-tenant authorization and data-isolation bugs.
 5. Validating only `aud` or only `azp` allows unauthorized clients to present otherwise valid tokens.
 6. Writing a local claim-extraction helper creates a second identity chain that will silently disagree with the first about who the caller is.
-7. Resolving `IUserContext` from `HttpContext.RequestServices` inside a controller hides an ambient dependency and is banned by `ApiLiabilityRatchetTests`.
+7. Resolving `IUserContext` from `HttpContext.RequestServices` inside a controller hides an ambient dependency and is rejected from compiled controller calls by `ApiCompiledBoundaryTests`.
 
 ## Minimal Examples
 ```csharp

@@ -30,7 +30,7 @@ public sealed class WebhookAuditEventTests
             " Pending_Work_Migrate ",
             WebhookAuditOutcome.Succeeded,
             "retention-v1",
-            DateTime.UtcNow.AddDays(365));
+            DomainTestClock.UtcNow.AddDays(365));
 
         await Assert.That(auditEvent.TenantId).IsEqualTo(tenantId);
         await Assert.That(auditEvent.PrincipalReference)
@@ -80,7 +80,7 @@ public sealed class WebhookAuditEventTests
             "retention_cleanup",
             WebhookAuditOutcome.Succeeded,
             "retention-v1",
-            DateTime.UtcNow.AddDays(365))));
+            DomainTestClock.UtcNow.AddDays(365))));
     }
 
     private static WebhookAuditEvent Create(string safeAfterJson)
@@ -102,6 +102,6 @@ public sealed class WebhookAuditEventTests
             "automatic_circuit_opened",
             WebhookAuditOutcome.Succeeded,
             "retention-v1",
-            DateTime.UtcNow.AddDays(365));
+            DomainTestClock.UtcNow.AddDays(365));
     }
 }

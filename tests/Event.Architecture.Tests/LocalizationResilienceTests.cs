@@ -8,7 +8,6 @@ namespace Event.Architecture.Tests;
 
 /// <summary>
 /// Ensures TMS resilience uses stateless readers (not DelegatingHandlers) and a single Polly pipeline per client.
-/// See blazor-localization-plan.md D7: "One pipeline per client. Custom code is two stateless readers."
 /// </summary>
 public class LocalizationResilienceTests
 {

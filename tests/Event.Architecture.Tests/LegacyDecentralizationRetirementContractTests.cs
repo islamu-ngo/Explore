@@ -1,5 +1,5 @@
 // ABOUTME: Verifies obsolete decentralization persistence is absent from the current canonical schema.
-// ABOUTME: Guards the EF snapshot, setting registry and seed rows, and schema narrative from regression.
+// ABOUTME: Guards the EF snapshot, setting registry, and compiled seed rows from regression.
 
 using Explore.Domain.Constants;
 using Explore.Domain.Settings;
@@ -39,9 +39,6 @@ public sealed class LegacyDecentralizationRetirementContractTests
             Path.Combine(migrationsDirectory, "ExploreDbContextModelSnapshot.cs"));
         var settingSeeder = await File.ReadAllTextAsync(
             Path.Combine(repositoryRoot, "src", "Explore.Persistence", "Seed", "LookupTableSeeder.cs"));
-        var schema = await File.ReadAllTextAsync(
-            Path.Combine(repositoryRoot, "schemas", "islamu-event.md"));
-
         var actualAtprotoSettingKeys = AtprotoFederationSettingDefinitions.All
             .Select(definition => definition.Key)
             .Order(StringComparer.Ordinal)
@@ -62,10 +59,6 @@ public sealed class LegacyDecentralizationRetirementContractTests
         await Assert.That(snapshot).DoesNotContain(LegacyLocalValueColumn, StringComparison.Ordinal);
         await Assert.That(snapshot).DoesNotContain(LegacyOverrideModeColumn, StringComparison.Ordinal);
         await Assert.That(settingSeeder).DoesNotContain(LegacyKey, StringComparison.OrdinalIgnoreCase);
-        await Assert.That(schema).DoesNotContain(LegacyKey, StringComparison.OrdinalIgnoreCase);
-        await Assert.That(schema).DoesNotContain(LegacyLocalValueColumn, StringComparison.Ordinal);
-        await Assert.That(schema).DoesNotContain(LegacyOverrideModeColumn, StringComparison.Ordinal);
-        await Assert.That(schema).Contains(GovernanceSettingKeys.Federation.AtprotoEventsEnabled);
     }
 
     private static string ResolveRepositoryRoot()

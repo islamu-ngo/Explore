@@ -71,7 +71,7 @@ public sealed class NotificationItemTests : IDisposable
             NotificationScopeName = "Group",
             SourceActorName = "Islamic Center",
             RecipientContextActorName = "Youth Group",
-            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = TestTime.UtcNow,
             IsRead = false
         };
     }

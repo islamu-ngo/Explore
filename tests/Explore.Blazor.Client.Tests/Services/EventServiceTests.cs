@@ -1694,8 +1694,8 @@ public class EventServiceTests
             EventTitle = "Parent Event",
             Title = "Test Session",
             Slug = "test-session",
-            StartTime = DateTimeOffset.UtcNow,
-            EndTime = DateTimeOffset.UtcNow.AddHours(1),
+            StartTime = TestTime.UtcNow,
+            EndTime = TestTime.UtcNow.AddHours(1),
             MaxAudienceAttendees = 100,
             CurrentAudienceAttendees = 10
         };

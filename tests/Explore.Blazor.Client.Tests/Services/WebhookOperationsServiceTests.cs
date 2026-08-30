@@ -31,13 +31,13 @@ public sealed class WebhookOperationsServiceTests
             StatusName = "Queued",
             Filter = new WebhookBulkReplayFilterDto
             {
-                FromUtc = DateTimeOffset.UtcNow.AddDays(-1),
-                ToUtc = DateTimeOffset.UtcNow,
+                FromUtc = TestTime.UtcNow.AddDays(-1),
+                ToUtc = TestTime.UtcNow,
                 MaxItems = 100
             },
             ReasonCode = "incident_recovery",
             ConcurrencyVersion = 1,
-            QueuedAt = DateTimeOffset.UtcNow
+            QueuedAt = TestTime.UtcNow
         };
         var collection = new HalCollectionResourceOfWebhookBulkReplayOperationDto
         {
@@ -71,8 +71,8 @@ public sealed class WebhookOperationsServiceTests
             PayloadBase64 = "e30=",
             PayloadHash = "sha256:payload",
             PayloadByteLength = 2,
-            PayloadRetentionUntil = DateTimeOffset.UtcNow.AddDays(1),
-            RetrievedAt = DateTimeOffset.UtcNow
+            PayloadRetentionUntil = TestTime.UtcNow.AddDays(1),
+            RetrievedAt = TestTime.UtcNow
         };
         _apiClient.GetWebhookMessagePayloadAsync(messageId, null, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(payload));

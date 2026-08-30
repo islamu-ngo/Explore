@@ -223,9 +223,9 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
             StatusName = isActive ? "Active" : "Ended",
             ReasonCode = "customer_support",
             TicketReference = "SUP-123",
-            StartedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10),
-            ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(20),
-            EndedAtUtc = isActive ? null : DateTimeOffset.UtcNow.AddMinutes(-1),
+            StartedAtUtc = TestTime.UtcNow.AddMinutes(-10),
+            ExpiresAtUtc = TestTime.UtcNow.AddMinutes(20),
+            EndedAtUtc = isActive ? null : TestTime.UtcNow.AddMinutes(-1),
             _links = links
         };
     }
@@ -237,7 +237,7 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
             Id = Guid.NewGuid(),
             SupportAccessSessionId = sessionId,
             TargetTenantId = _tenantId,
-            OccurredAtUtc = DateTimeOffset.UtcNow,
+            OccurredAtUtc = TestTime.UtcNow,
             EventTypeName = eventTypeName,
             RouteName = "ListTenantEvents",
             Action = "read",

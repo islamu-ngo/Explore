@@ -437,10 +437,25 @@ public sealed class StudioEventIntegrationsTests : IDisposable
     public async Task EventChange_CancelsStaleLoadAndIgnoresOldResponse()
     {
         WithEventLinks("manage-registration-channels");
-        using var started = new CancellationTokenSource();
         CancellationToken firstToken = default;
-        _service.GetConnectionsAsync(_event.TenantId!.Value, _event.Id!.Value, Arg.Do<CancellationToken>(token => firstToken = token))
-            .Returns(_ => Task.Delay(TimeSpan.FromSeconds(30), firstToken).ContinueWith(_ => Connections(Item(new { id = Guid.CreateVersion7(), name = "Stale" })), CancellationToken.None));
+        var staleLoad =
+            new TaskCompletionSource<HalCollectionResourceOfRegistrationProviderConnectionDto>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+        _service.GetConnectionsAsync(
+                _event.TenantId!.Value,
+                _event.Id!.Value,
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                firstToken = call.Arg<CancellationToken>();
+                firstToken.Register(() => staleLoad.TrySetResult(
+                    Connections(Item(new
+                    {
+                        id = Guid.CreateVersion7(),
+                        name = "Stale",
+                    }))));
+                return staleLoad.Task;
+            });
         var cut = Render();
         cut.WaitForElement("[data-testid='integrations-loading']");
 
@@ -488,16 +503,12 @@ public sealed class StudioEventIntegrationsTests : IDisposable
     }
 
     [Test]
-    public async Task RtlAndAccessibility_UseLogicalCssAndNamedControls()
+    public async Task AccessibilityRendersNamedControls()
     {
         WithEventLinks("manage-registration-channels");
-        var css = await File.ReadAllTextAsync("../../../../../src/Explore.Blazor.Client/Pages/Studio/StudioEventIntegrations.razor.css");
-
         var cut = Render();
         cut.WaitForElement("[data-testid='studio-event-integrations']");
 
-        await Assert.That(css).DoesNotContain("margin-left");
-        await Assert.That(css).DoesNotContain("padding-right");
         await Assert.That(cut.FindAll("label").Count).IsGreaterThan(0);
     }
 

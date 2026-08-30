@@ -13,7 +13,8 @@ public class SecretRefreshMetricsTests : IDisposable
 
     public SecretRefreshMetricsTests()
     {
-        _metrics = new SecretRefreshMetrics();
+        _metrics = new SecretRefreshMetrics(
+            clock: new SecretsFixedTimeProvider());
     }
 
     public void Dispose()
@@ -37,14 +38,12 @@ public class SecretRefreshMetricsTests : IDisposable
     public async Task RecordRefreshSuccess_ShouldUpdateLastSuccessfulRefresh()
     {
         // Arrange
-        var before = DateTimeOffset.UtcNow;
-
         // Act
         _metrics.RecordRefreshSuccess(SecretProviderType.Infisical, 0.5);
 
         // Assert
-        await Assert.That(_metrics.LastSuccessfulRefresh).IsGreaterThanOrEqualTo(before);
-        await Assert.That(_metrics.LastSuccessfulRefresh).IsLessThanOrEqualTo(DateTimeOffset.UtcNow);
+        await Assert.That(_metrics.LastSuccessfulRefresh)
+            .IsEqualTo(SecretsTestValues.UtcNow);
     }
 
     [Test]
@@ -98,8 +97,8 @@ public class SecretRefreshMetricsTests : IDisposable
 
         // Assert
         await Assert.That(_metrics.ConsecutiveFailures).IsEqualTo(0);
-        var now = DateTimeOffset.UtcNow;
-        await Assert.That(_metrics.LastSuccessfulRefresh).IsBetween(now.AddSeconds(-1), now.AddSeconds(1));
+        await Assert.That(_metrics.LastSuccessfulRefresh)
+            .IsEqualTo(SecretsTestValues.UtcNow);
     }
 
     [Test]

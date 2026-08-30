@@ -59,11 +59,11 @@ public sealed class LocationPrivacyLifecycleTests
         await Assert.That(location.OwnerUserId).IsEqualTo(currentUserId);
 
         await Assert.That(() => location.TransferPrivateHomeOwnership(
-                new LocationOwnershipConsent(newOwnerId, currentUserId, DateTime.UtcNow, "owner-transfer-v1")))
+                new LocationOwnershipConsent(newOwnerId, currentUserId, DomainTestClock.UtcNow, "owner-transfer-v1")))
             .Throws<ArgumentException>();
 
         location.TransferPrivateHomeOwnership(
-            new LocationOwnershipConsent(newOwnerId, newOwnerId, DateTime.UtcNow, "owner-transfer-v1"));
+            new LocationOwnershipConsent(newOwnerId, newOwnerId, DomainTestClock.UtcNow, "owner-transfer-v1"));
 
         await Assert.That(location.OwnerUserId).IsEqualTo(newOwnerId);
     }
@@ -153,7 +153,7 @@ public sealed class LocationPrivacyLifecycleTests
         var room = CreateRoom(location, "Family bedroom");
         room.Slug = "family-bedroom";
         location.Rooms.Add(room);
-        location.EraseOwnedPii(DateTime.UtcNow, LocationPrivacyErasureReasonEnum.AccountDeletion);
+        location.EraseOwnedPii(DomainTestClock.UtcNow, LocationPrivacyErasureReasonEnum.AccountDeletion);
         var tombstoneName = room.Name;
 
         await Assert.That(() => location.FullName = "Resurrected home")
@@ -189,7 +189,7 @@ public sealed class LocationPrivacyLifecycleTests
         erased.SetManualAddress("Old address", "1000");
         var erasedRoom = CreateRoom(erased, "Study");
         erased.Rooms.Add(erasedRoom);
-        erased.EraseOwnedPii(DateTime.UtcNow, LocationPrivacyErasureReasonEnum.OwnerErasureRequest);
+        erased.EraseOwnedPii(DomainTestClock.UtcNow, LocationPrivacyErasureReasonEnum.OwnerErasureRequest);
 
         var replacement = CreateLocation();
         replacement.ClassifyAsPrivateHome(ownerId);

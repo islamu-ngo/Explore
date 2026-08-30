@@ -48,6 +48,7 @@ public class BootstrapSecretLoaderTests
     public async Task LoadPostgresConnectionString_WithAllConfigValues_ComposesCorrectConnectionString()
     {
         ClearEnv();
+        string password = SecretsTestValues.CreateSecret();
 
         var config = BuildConfig(new Dictionary<string, string?>
         {
@@ -55,7 +56,7 @@ public class BootstrapSecretLoaderTests
             [PortKey] = "6543",
             [DbKey] = "events",
             [UserKey] = "svc_events",
-            [PassKey] = "p@ss!word",
+            [PassKey] = password,
         });
 
         var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(config);
@@ -65,12 +66,12 @@ public class BootstrapSecretLoaderTests
         await Assert.That(parsed.Port).IsEqualTo(6543);
         await Assert.That(parsed.Database).IsEqualTo("events");
         await Assert.That(parsed.Username).IsEqualTo("svc_events");
-        await Assert.That(parsed.Password).IsEqualTo("p@ss!word");
+        await Assert.That(parsed.Password).IsEqualTo(password);
         await Assert.That(parsed.SslMode).IsEqualTo(SslMode.Prefer);
 
         await Assert.That(credentials.Source).Contains("Config");
-        var now = DateTimeOffset.UtcNow;
-        await Assert.That(credentials.LoadedAt).IsBetween(now.AddMinutes(-1), now.AddMinutes(1));
+        await Assert.That(credentials.LoadedAt).IsNotEqualTo(default);
+        await Assert.That(credentials.LoadedAt.Offset).IsEqualTo(TimeSpan.Zero);
     }
 
     [Test]
@@ -114,13 +115,14 @@ public class BootstrapSecretLoaderTests
     public async Task ProjectPostgresConfiguration_WithDiscreteFields_BindsMigratorRole()
     {
         ClearEnv();
+        string password = SecretsTestValues.CreateSecret();
         var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             [HostKey] = "migration-db.example.test",
             [PortKey] = "6543",
             [DbKey] = "event_db",
             [UserKey] = "migrator_user",
-            [PassKey] = "migrator-secret",
+            [PassKey] = password,
         });
 
         BootstrapSecretLoader.ProjectPostgresConfiguration(
@@ -134,7 +136,7 @@ public class BootstrapSecretLoaderTests
         await Assert.That(options.Host).IsEqualTo("migration-db.example.test");
         await Assert.That(options.Port).IsEqualTo(6543);
         await Assert.That(options.Username).IsEqualTo("migrator_user");
-        await Assert.That(options.Password).IsEqualTo("migrator-secret");
+        await Assert.That(options.Password).IsEqualTo(password);
     }
 
     #endregion

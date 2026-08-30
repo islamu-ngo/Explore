@@ -149,24 +149,6 @@ public sealed class SettingsLayoutTests : IDisposable
     }
 
     [Test]
-    public async Task LayoutStylesProvideStickyDesktopAndStackedNarrowNavigation()
-    {
-        var markup = await ReadClientSourceAsync("Pages/User/Components/SettingsLayout.razor");
-        var styles = await ReadClientSourceAsync("Pages/User/Components/SettingsLayout.razor.css");
-        var scopeStyles = await ReadClientSourceAsync("Pages/User/Components/SettingsScopeSelector.razor.css");
-
-        await Assert.That(markup).Contains("settings-layout__body");
-        await Assert.That(styles).Contains("grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr)");
-        await Assert.That(styles).Contains("position: sticky");
-        await Assert.That(styles).Contains("inset-block-start: calc(var(--mud-appbar-height, 4rem) + var(--isl-space-4))");
-        await Assert.That(styles).Contains("@media (max-width: 59.997em)");
-        await Assert.That(styles).Contains("position: static");
-        await Assert.That(styles).Contains("@media (prefers-reduced-motion: reduce)");
-        await Assert.That(scopeStyles).Contains("@media (max-width: 37.5em)");
-        await Assert.That(scopeStyles).Contains("flex-direction: column");
-    }
-
-    [Test]
     public async Task PersonalSettingsPage_RerendersWhenBlazouterSectionParameterChanges()
     {
         _ctx.Services.RemoveAll<RouterStateService>();
@@ -228,21 +210,4 @@ public sealed class SettingsLayoutTests : IDisposable
         Params = new Dictionary<string, string> { ["section"] = section }
     };
 
-    private static async Task<string> ReadClientSourceAsync(string relativePath)
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null)
-        {
-            var candidate = Path.Combine(directory.FullName, "src", "Explore.Blazor.Client", relativePath);
-            if (File.Exists(candidate))
-            {
-                return await File.ReadAllTextAsync(candidate);
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new InvalidOperationException($"Could not locate src/Explore.Blazor.Client/{relativePath} from test base directory.");
-    }
 }

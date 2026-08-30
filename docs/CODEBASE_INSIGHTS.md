@@ -391,8 +391,10 @@ delegates to the same extensions so `IUserContext` consumers cannot drift from t
 privacy-erasure receipt principals validate their own claims at the authentication boundary. They are protocol
 validation, not ambient user identity, and collapsing them into the chain above would widen trust.
 
-The `ApiLiabilityRatchetTests` guardrail keeps `HttpContext.RequestServices` out of controllers entirely and
-holds controller claim parsing to a named, comment-justified allowlist.
+`ApiCompiledBoundaryTests` keeps `HttpContext.RequestServices` out of
+controllers through compiled call metadata. Principal-extension and controller
+behavior tests protect the canonical identity chain and purpose-bound protocol
+schemes without a source-file allowlist.
 
 ---
 

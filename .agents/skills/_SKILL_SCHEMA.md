@@ -85,7 +85,9 @@ Section names beyond these are allowed when they communicate the domain more dir
 
 ## 7. Enforcement
 
-`tests/Event.Architecture.Tests/AgentContextPolicyTests.cs` enforces canonical routes, agent model tiers, context-budget keys, and removal of generic dev context files. Routing quality remains a review judgment: tests can catch missing metadata and size limits, but cannot prove that a description selects the right tasks.
+Skill metadata is reviewed against this schema and by the harness that consumes
+the frontmatter. Product tests do not enforce documentation wording, routing
+judgment, context budgets, or repository file inventories.
 
 ## 8. Migration Debt (v1)
 

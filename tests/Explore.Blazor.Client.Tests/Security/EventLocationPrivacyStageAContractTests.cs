@@ -120,7 +120,7 @@ public sealed class EventLocationPrivacyStageAContractTests : IDisposable
         var eventId = Guid.NewGuid();
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
-        var start = DateTimeOffset.UtcNow.AddDays(7);
+        var start = TestTime.UtcNow.AddDays(7);
         var session = new EventSessionListDto
         {
             Id = Guid.NewGuid(),

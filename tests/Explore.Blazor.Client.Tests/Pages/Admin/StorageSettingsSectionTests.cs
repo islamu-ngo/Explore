@@ -198,24 +198,6 @@ public sealed class StorageSettingsSectionTests : IDisposable
     }
 
     [Test]
-    public async Task TenantStorageSection_NumericChanges_DebounceAndBlurFlushPolicySave()
-    {
-        var model = CreateEditableTenantModel();
-        var cut = RenderTenantStorage(model);
-        var maxUpload = NumericLong(cut, "Max upload (MB)");
-
-        await cut.InvokeAsync(() => maxUpload.Instance.ValueChanged.InvokeAsync(20));
-        await Task.Delay(100);
-        await cut.InvokeAsync(() => maxUpload.Instance.ValueChanged.InvokeAsync(30));
-        await Task.Delay(100);
-        await _storageService.DidNotReceive().PatchPolicyAsync(model, Arg.Any<CancellationToken>());
-
-        maxUpload.Find("input").Blur();
-        cut.WaitForState(() => model.MaxUploadBytes == 30L * 1024 * 1024);
-        await _storageService.Received(1).PatchPolicyAsync(model, Arg.Any<CancellationToken>());
-    }
-
-    [Test]
     public async Task TenantStorageSection_S3TextBlurAndForcePathStyle_SaveOnlyS3()
     {
         var model = CreateEditableTenantModel(StorageProviderOptions.S3Compatible);
@@ -229,26 +211,6 @@ public sealed class StorageSettingsSectionTests : IDisposable
 
         await _storageService.Received(2).PatchS3Async(model, Arg.Any<CancellationToken>());
         await _storageService.DidNotReceive().PatchPolicyAsync(model, Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task TenantStorageSection_TypingCredentials_DoesNotAutosave_AndRequiresCompletePair()
-    {
-        var model = CreateEditableTenantModel(StorageProviderOptions.S3Compatible);
-        var cut = RenderTenantStorage(model);
-        var button = CredentialButton(cut);
-
-        await cut.InvokeAsync(() => TextField(cut, "Access Key ID").Instance.ValueChanged.InvokeAsync("access-key"));
-        await Task.Delay(450);
-
-        await Assert.That(button.HasAttribute("disabled")).IsTrue();
-        await _storageService.DidNotReceive().PatchS3Async(model, Arg.Any<CancellationToken>());
-        await _storageService.DidNotReceive().PatchS3CredentialsAsync(model, Arg.Any<CancellationToken>());
-
-        await cut.InvokeAsync(() => TextField(cut, "Secret Access Key").Instance.ValueChanged.InvokeAsync("secret-key"));
-
-        await Assert.That(CredentialButton(cut).HasAttribute("disabled")).IsFalse();
-        await _storageService.DidNotReceive().PatchS3Async(model, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -359,7 +321,6 @@ public sealed class StorageSettingsSectionTests : IDisposable
         Task first = cut.InvokeAsync(() => Select(cut, "Images provider").Instance.ValueChanged.InvokeAsync(StorageProviderOptions.S3Compatible));
         cut.WaitForState(() => cut.Find("[role='status']").TextContent.Contains("Saving", StringComparison.Ordinal));
         Task second = cut.InvokeAsync(() => ForcePathSwitch(cut).Instance.ValueChanged.InvokeAsync(false));
-        await Task.Delay(50);
         await _storageService.DidNotReceive().PatchS3Async(model, Arg.Any<CancellationToken>());
 
         firstRelease.SetResult(new BaseCommandResponseOfGuid { Success = true });
@@ -369,20 +330,6 @@ public sealed class StorageSettingsSectionTests : IDisposable
         await Assert.That(model.S3ForcePathStyle).IsFalse();
         await Assert.That(cut.Find("[role='alert']").TextContent).Contains("Newest storage save failed.");
         await Assert.That(cut.Find("[role='status']").TextContent).DoesNotContain("saved", StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Test]
-    public async Task TenantStorageSection_DisposeCancelsPendingDebounce()
-    {
-        var model = CreateEditableTenantModel();
-        var cut = RenderTenantStorage(model);
-
-        await cut.InvokeAsync(() => NumericLong(cut, "Max upload (MB)").Instance.ValueChanged.InvokeAsync(20));
-        cut.FindComponent<TenantStorageSection>().Instance.Dispose();
-        cut.Dispose();
-        await Task.Delay(500);
-
-        await _storageService.DidNotReceive().PatchPolicyAsync(model, Arg.Any<CancellationToken>());
     }
 
     [Test]

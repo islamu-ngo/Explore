@@ -172,6 +172,6 @@ public sealed class TemplateSyncServiceTests
         Skipped = [],
         Conflicts = [],
         NewProvenanceVersion = version,
-        SyncedAt = DateTimeOffset.UtcNow
+        SyncedAt = TestTime.UtcNow
     };
 }

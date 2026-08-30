@@ -21,7 +21,7 @@ public class EventRoleAssignmentTests
     [Test]
     public async Task Create_WithActiveStatus_InitializesVersionAndEffectiveWindow()
     {
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
         var assignment = CreateAssignment(EventRoleAssignmentStatus.Active, now.AddMinutes(-1), now.AddMinutes(30));
 
         await Assert.That(assignment.Version).IsEqualTo(1);
@@ -31,7 +31,7 @@ public class EventRoleAssignmentTests
     [Test]
     public async Task IsEffectiveAt_WhenExpiredByTimeButStatusActive_ReturnsFalse()
     {
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
         var assignment = CreateAssignment(EventRoleAssignmentStatus.Active, now.AddHours(-2), now.AddHours(-1));
 
         await Assert.That(assignment.Status).IsEqualTo(EventRoleAssignmentStatus.Active);
@@ -41,7 +41,7 @@ public class EventRoleAssignmentTests
     [Test]
     public async Task Revoke_TransitionsToRevokedAndIncrementsVersion()
     {
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
         var actorUserId = Guid.NewGuid();
         var assignment = CreateAssignment(EventRoleAssignmentStatus.Active, now.AddMinutes(-1), null);
 
@@ -57,7 +57,7 @@ public class EventRoleAssignmentTests
     [Test]
     public async Task MarkExpired_WhenExpirationReached_TransitionsToExpiredAndIncrementsVersion()
     {
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
         var assignment = CreateAssignment(EventRoleAssignmentStatus.Active, now.AddHours(-2), now.AddHours(-1));
 
         assignment.MarkExpired(now);
@@ -70,7 +70,7 @@ public class EventRoleAssignmentTests
     [Test]
     public async Task UpdateValidityWindow_WhenTerminal_Throws()
     {
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
         var assignment = CreateAssignment(EventRoleAssignmentStatus.Active, now.AddMinutes(-1), null);
         assignment.Revoke(Guid.NewGuid(), now);
 

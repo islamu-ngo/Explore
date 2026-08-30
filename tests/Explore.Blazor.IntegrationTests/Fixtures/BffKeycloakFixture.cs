@@ -44,8 +44,10 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
             .WithCommand("start-dev", "--import-realm", "--http-port=8080")
             .WithEnvironment("KC_HEALTH_ENABLED", "true")
             .WithEnvironment("KC_HTTP_ENABLED", "true")
-            .WithEnvironment("KEYCLOAK_ADMIN", "admin")
-            .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", "admin")
+            .WithEnvironment("KEYCLOAK_ADMIN", "test-admin")
+            .WithEnvironment(
+                "KEYCLOAK_ADMIN_PASSWORD",
+                Guid.CreateVersion7().ToString("N"))
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilHttpRequestIsSucceeded(request =>
                     request
@@ -57,8 +59,6 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
 
         using var startupCts = new CancellationTokenSource(StartupTimeout);
         await _container.StartAsync(startupCts.Token);
-
-        await Task.Delay(TimeSpan.FromSeconds(3));
 
         var host = _container.Hostname;
         var port = _container.GetMappedPublicPort(8080);

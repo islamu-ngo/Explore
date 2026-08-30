@@ -1,7 +1,6 @@
 // ABOUTME: Verifies login/logout redirect behavior and accessible ATProto handle submission.
 // ABOUTME: Guards the BFF boundary by proving ATProto handles are posted and never copied into browser URLs.
 
-using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -10,6 +9,7 @@ using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Client.Tests.Common;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -456,23 +456,36 @@ public class AuthRedirectPagesTests : IDisposable
 
     private static async Task WaitForNavigationAsync(BunitNavigationManager navigationManager, Func<string, bool> predicate, int timeoutMs = 5000)
     {
-        var stopwatch = Stopwatch.StartNew();
-        while (stopwatch.ElapsedMilliseconds < timeoutMs)
+        if (predicate(navigationManager.Uri))
+        {
+            return;
+        }
+
+        var navigationObserved = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnLocationChanged(object? _, LocationChangedEventArgs args)
+        {
+            if (predicate(args.Location))
+            {
+                navigationObserved.TrySetResult();
+            }
+        }
+
+        navigationManager.LocationChanged += OnLocationChanged;
+        try
         {
             if (predicate(navigationManager.Uri))
             {
                 return;
             }
 
-            await Task.Delay(10);
+            await navigationObserved.Task.WaitAsync(
+                TimeSpan.FromMilliseconds(timeoutMs));
         }
-
-        if (predicate(navigationManager.Uri))
+        finally
         {
-            return;
+            navigationManager.LocationChanged -= OnLocationChanged;
         }
-
-        throw new InvalidOperationException($"Expected navigation did not occur. Last URI: {navigationManager.Uri}");
     }
 
     private static bool IsChallengeNavigation(string uri, string provider, string returnUrl, string? loginHint = null)

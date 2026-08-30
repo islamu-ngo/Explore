@@ -39,7 +39,7 @@ public class LocationsTests : IDisposable
 
     private static void SelectTab(IRenderedComponent<DynamicComponent> cut, string tabName)
     {
-        var tab = cut.FindAll(".mud-tab").First(x => x.TextContent.Contains(tabName, StringComparison.OrdinalIgnoreCase));
+        var tab = cut.FindAll("[role='tab']").First(x => x.TextContent.Contains(tabName, StringComparison.OrdinalIgnoreCase));
         tab.Click();
     }
 
@@ -127,7 +127,7 @@ public class LocationsTests : IDisposable
         bool hasCreate = cut.FindAll("button")
             .Any(button => button.TextContent.Trim() == "Create");
         await Assert.That(hasCreate).IsFalse();
-        await Assert.That(cut.FindAll(".mud-icon-button")).IsEmpty();
+        await Assert.That(cut.FindAll("button[aria-label^='Edit'], button[aria-label^='Delete']")).IsEmpty();
     }
 
     [Test]

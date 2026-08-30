@@ -343,7 +343,7 @@ public sealed class EventReportingServiceTests
             ReasonId = 1,
             ReasonCode = reasonCode,
             ReasonName = reasonName,
-            SubmittedAtUtc = DateTimeOffset.UtcNow
+            SubmittedAtUtc = TestTime.UtcNow
         }, new HalLinkTestLink("self", "/api/event-reports/my/report", "GET"));
     }
 

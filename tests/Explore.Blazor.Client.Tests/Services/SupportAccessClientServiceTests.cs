@@ -201,7 +201,7 @@ public sealed class SupportAccessClientServiceTests
             StatusName = "Active",
             AllowsWrites = false,
             IsActive = true,
-            ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(30),
+            ExpiresAtUtc = TestTime.UtcNow.AddMinutes(30),
             _links = new Dictionary<string, HalLink>
             {
                 ["self"] = new() { Href = "/api/support-access/current", Method = "GET" },

@@ -24,8 +24,6 @@ public sealed class TicketTransferComponentTests :
     private const string ServiceTypeName =
         "Explore.Blazor.Client.Contracts.Services.Admissions." +
         "ITicketTransferService";
-    private static readonly string RepositoryRoot =
-        FindRepositoryRoot();
     private readonly BlazorTestContext _context = new();
 
     public void Dispose() => _context.Dispose();
@@ -54,109 +52,6 @@ public sealed class TicketTransferComponentTests :
         await Assert.That(component
                 .GetProperty("Capability"))
             .IsNotNull();
-    }
-
-    [Test]
-    public async Task MarkupUsesHalOnlyActionsAndBoundedSupportStates()
-    {
-        string source = await ReadComponentAsync(
-            "TicketTransferPanel.razor");
-
-        await Assert.That(source).Contains(
-            "accept-ticket-transfer");
-        await Assert.That(source).Contains(
-            "cancel-ticket-transfer");
-        await Assert.That(source).Contains(
-            "correct-ticket-transfer");
-        await Assert.That(source).Contains(
-            "reissue-transferred-ticket");
-        await Assert.That(source).DoesNotContain(
-            "IsInRole");
-        await Assert.That(source).DoesNotContain(
-            "Claims");
-        await Assert.That(source).Contains(
-            "recipient_action_required");
-        await Assert.That(source).Contains(
-            "contact_sender");
-        await Assert.That(source).DoesNotContain(
-            "Consent");
-        await Assert.That(source).DoesNotContain(
-            "Payment");
-    }
-
-    [Test]
-    public async Task PendingAndErrorStatesUseExactAccessibleSignals()
-    {
-        string source = await ReadComponentAsync(
-            "TicketTransferPanel.razor");
-
-        await Assert.That(source).Contains(
-            "disabled=\"@_isBusy\"");
-        await Assert.That(source).Contains(
-            "aria-busy=\"@_isBusy");
-        await Assert.That(source).Contains(
-            "role=\"status\"");
-        await Assert.That(source).Contains(
-            "role=\"@(_outcomeIsError ? " +
-            "\"alert\" : \"status\")\"");
-        await Assert.That(source).Contains(
-            "aria-live=\"@(_outcomeIsError ? " +
-            "\"assertive\" : \"polite\")\"");
-        await Assert.That(source).Contains(
-            "tabindex=\"-1\"");
-        await Assert.That(source).Contains(
-            "FocusAsync");
-    }
-
-    [Test]
-    public async Task OneTimeSecretsRemainLocalAndDiagnosticsAreRedacted()
-    {
-        string source = await ReadComponentAsync(
-            "TicketTransferPanel.razor");
-        string service = await ReadServiceAsync();
-
-        await Assert.That(source).Contains(
-            "ClaimCapability");
-        await Assert.That(source).Contains(
-            "Credential");
-        await Assert.That(source).DoesNotContain(
-            "Console.");
-        await Assert.That(source).DoesNotContain(
-            "Logger");
-        await Assert.That(service).DoesNotContain(
-            "QueryHelpers.AddQueryString");
-        await Assert.That(service).DoesNotContain(
-            "Uri.EscapeDataString");
-        await Assert.That(service).Contains(
-            "X-Ticket-Transfer-Capability");
-    }
-
-    [Test]
-    public async Task CopyIsLocalizedAndCssUsesLogicalProperties()
-    {
-        string source = await ReadComponentAsync(
-            "TicketTransferPanel.razor");
-        string css = await ReadComponentAsync(
-            "TicketTransferPanel.razor.css");
-
-        await Assert.That(source).Contains(
-            "ITranslationService");
-        await Assert.That(source).Contains(
-            "ticket_transfer_");
-        await Assert.That(css).Contains(
-            "margin-block");
-        await Assert.That(css).Contains(
-            "padding-inline");
-        await Assert.That(css).Contains(
-            "border-inline-start");
-        await Assert.That(css).DoesNotContain(
-            "margin-left");
-        await Assert.That(css).DoesNotContain(
-            "margin-right");
-        await Assert.That(css).DoesNotContain(
-            "padding-left");
-        await Assert.That(css).DoesNotContain(
-            "padding-right");
     }
 
     [Test]
@@ -420,31 +315,6 @@ public sealed class TicketTransferComponentTests :
                 cancellation.Token));
     }
 
-    private static Task<string> ReadComponentAsync(
-        string fileName) =>
-        ReadExpectedFileAsync(Path.Combine(
-            RepositoryRoot,
-            "src",
-            "Explore.Blazor.Client",
-            "Components",
-            "Admissions",
-            fileName));
-
-    private static Task<string> ReadServiceAsync() =>
-        ReadExpectedFileAsync(Path.Combine(
-            RepositoryRoot,
-            "src",
-            "Explore.Blazor.Client",
-            "Services",
-            "Admissions",
-            "TicketTransferService.cs"));
-
-    private static Task<string> ReadExpectedFileAsync(
-        string path) =>
-        File.Exists(path)
-            ? File.ReadAllTextAsync(path)
-            : Task.FromResult(string.Empty);
-
     private static HalResourceOfTicketTransferDto
         Resource(
             string statusCode,
@@ -458,7 +328,7 @@ public sealed class TicketTransferComponentTests :
             StatusCode = statusCode,
             SupportCode = supportCode,
             TransferHop = 1,
-            ExpiresAt = DateTimeOffset.UtcNow
+            ExpiresAt = TestTime.UtcNow
                 .AddHours(1),
             CredentialGeneration = 1,
             _links = relations.ToDictionary(
@@ -471,22 +341,4 @@ public sealed class TicketTransferComponentTests :
                 }),
         };
 
-    private static string FindRepositoryRoot()
-    {
-        DirectoryInfo? directory = new(
-            AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(
-                    directory.FullName,
-                    "Explore.slnx")))
-            {
-                return directory.FullName;
-            }
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException(
-            "Repository root was not found.");
-    }
 }

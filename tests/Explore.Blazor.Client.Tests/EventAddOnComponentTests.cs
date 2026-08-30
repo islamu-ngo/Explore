@@ -1,162 +1,140 @@
 // ABOUTME: Defines prospective optional, HAL-driven, accessible, localized add-on component contracts.
 // ABOUTME: Pins unchecked defaults, exact totals, focus/live status, RTL-safe CSS, and service isolation.
 
-using System.Reflection;
+using AngleSharp.Dom;
+using Bunit;
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Registration;
+using Explore.Blazor.Client.Contracts.Services;
+using Explore.Blazor.Client.Pages.Studio;
+using Explore.Blazor.Client.Tests.Common;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 
 namespace Explore.Blazor.Client.Tests;
 
 public sealed class EventAddOnComponentTests
 {
-    private const string ComponentTypeName =
-        "Explore.Blazor.Client.Components.Registration.EventAddOnSelector";
-    private const string ServiceTypeName =
-        "Explore.Blazor.Client.Contracts.Services.IEventAddOnService";
-    private static readonly string RepositoryRoot = FindRepositoryRoot();
-    private static readonly string ComponentPath = Path.Combine(
-        RepositoryRoot,
-        "src",
-        "Explore.Blazor.Client",
-        "Components",
-        "Registration",
-        "EventAddOnSelector.razor");
-    private static readonly string CssPath = ComponentPath + ".css";
-
     [Test]
-    public async Task ComponentAndServiceContractsExistWithoutTransportOrTokenDependencies()
+    public async Task BuyerSurfaceRendersUncheckedUnavailableAndBadInputStates()
     {
-        Type? component = typeof(Program).Assembly.GetType(ComponentTypeName);
-        Type? service = typeof(Program).Assembly.GetType(ServiceTypeName);
-        await Assert.That(component).IsNotNull();
-        await Assert.That(service).IsNotNull();
-        await Assert.That(File.Exists(ComponentPath)).IsTrue();
-        if (service is null)
-        {
-            return;
-        }
+        using var context = new BlazorTestContext();
+        IEventAddOnService service = Substitute.For<IEventAddOnService>();
+        context.Services.AddSingleton(service);
+        Guid eventId = Guid.CreateVersion7();
+        Guid orderId = Guid.CreateVersion7();
+        Guid availableId = Guid.CreateVersion7();
+        HalResourceOfEventAddOnCatalogDto catalog = Catalog(
+            eventId,
+            [
+                Item(availableId, "Lunch", true, 2),
+                Item(Guid.CreateVersion7(), "Parking", false, 0),
+            ]);
+        HalResourceOfRegistrationOrderAddOnSummaryDto order = Order(orderId);
+        service.GetCatalogAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfEventAddOnCatalogDto?>(catalog));
+        service.GetOrderAsync(
+                eventId,
+                orderId,
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfRegistrationOrderAddOnSummaryDto?>(order));
 
-        foreach (string method in new[]
-                 {
-                     "GetCatalogAsync",
-                     "GetOrderAsync",
-                     "ReserveAsync",
-                     "FulfillAsync",
-                     "RefundAsync",
-                 })
-        {
-            await Assert.That(service.GetMethod(method)).IsNotNull();
-        }
+        IRenderedComponent<EventAddOnSelector> rendered =
+            context.Render<EventAddOnSelector>(parameters => parameters
+                .Add(component => component.EventId, eventId)
+                .Add(component => component.RegistrationOrderId, orderId));
+        rendered.WaitForState(() => rendered.FindAll("input[type=checkbox]").Count == 2);
+
+        IElement[] checkboxes = rendered.FindAll("input[type=checkbox]").ToArray();
+        await Assert.That(checkboxes.All(input => !input.HasAttribute("checked"))).IsTrue();
+        await Assert.That(checkboxes[1].HasAttribute("disabled")).IsTrue();
+        await Assert.That(rendered.FindAll("button[type=submit]")).IsEmpty();
+
+        checkboxes[0].Change(true);
+        IElement quantity = rendered.Find($"#event-add-on-{availableId:N}-quantity");
+        await Assert.That(quantity.GetAttribute("value")).IsEqualTo("1");
+        await Assert.That(rendered.FindAll("button[type=submit]").Count).IsEqualTo(1);
+
+        quantity.Change("not-a-number");
+        await Assert.That(rendered.FindAll("button[type=submit]")).IsEmpty();
+        await Assert.That(
+                rendered.Find($"#event-add-on-{availableId:N}-quantity")
+                    .GetAttribute("value"))
+            .IsEqualTo("0");
     }
 
     [Test]
-    public async Task EveryAddOnStartsUnselectedAndNoMarkupMakesItRequired()
+    public async Task OrganizerSurfaceRendersOnlyServerAdvertisedLifecycleActions()
     {
-        await Assert.That(File.Exists(ComponentPath)).IsTrue();
-        if (!File.Exists(ComponentPath))
+        using var context = new BlazorTestContext();
+        IEventAddOnService service = Substitute.For<IEventAddOnService>();
+        context.Services.AddSingleton(service);
+        Guid eventId = Guid.CreateVersion7();
+        HalResourceOfEventAddOnCatalogDto resource = Catalog(eventId, []);
+        resource._links = new Dictionary<string, HalLink>
         {
-            return;
-        }
+            ["create-event-add-on-catalog-draft"] =
+                new() { Href = $"/api/events/{eventId}/add-ons/management" },
+        };
+        service.GetManagementAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<HalResourceOfEventAddOnCatalogDto?>(resource));
 
-        string source = await File.ReadAllTextAsync(ComponentPath);
-        await Assert.That(source).Contains("<fieldset");
-        await Assert.That(source).Contains("<legend");
-        await Assert.That(source).Contains("add_on_optional");
-        await Assert.That(source).Contains("Quantity = 0");
-        await Assert.That(source).Contains("!item.IsAvailable");
-        await Assert.That(source).DoesNotContain("required");
-        await Assert.That(source).DoesNotContain("checked=\"checked\"");
-        await Assert.That(source).DoesNotContain("preselected");
-        await Assert.That(source).DoesNotContain("must add");
-        await Assert.That(source).DoesNotContain("don't miss out");
+        IRenderedComponent<EventAddOnCatalogEditor> rendered =
+            context.Render<EventAddOnCatalogEditor>(parameters =>
+                parameters.Add(component => component.EventId, eventId));
+        rendered.WaitForState(() =>
+            rendered.Markup.Contains("Create add-on catalog", StringComparison.Ordinal));
+
+        await Assert.That(rendered.Markup).Contains("Create add-on catalog");
+        await Assert.That(rendered.Markup).DoesNotContain("Add catalog item");
+        await Assert.That(rendered.Markup).DoesNotContain("Publish catalog");
+        await Assert.That(rendered.Markup).DoesNotContain("Retire catalog");
+        await Assert.That(rendered.Find("main").GetAttribute("aria-labelledby"))
+            .IsEqualTo("add-on-editor-title");
+        await Assert.That(rendered.Find("[role=status]").GetAttribute("aria-live"))
+            .IsEqualTo("polite");
     }
 
-    [Test]
-    public async Task ActionsAreRenderedOnlyFromHalRelationsNeverRolesOrClaims()
-    {
-        await Assert.That(File.Exists(ComponentPath)).IsTrue();
-        if (!File.Exists(ComponentPath))
+    private static HalResourceOfEventAddOnCatalogDto Catalog(
+        Guid eventId,
+        ICollection<EventAddOnCatalogItemDto> items) =>
+        new()
         {
-            return;
-        }
+            Id = Guid.CreateVersion7(),
+            CurrencyCode = "EUR",
+            VersionNumber = 1,
+            Items = items,
+        };
 
-        string source = await File.ReadAllTextAsync(ComponentPath);
-        await Assert.That(source).Contains("reserve-event-add-ons");
-        await Assert.That(source).Contains("fulfill-event-add-on");
-        await Assert.That(source).Contains("refund-event-add-on");
-        await Assert.That(source).Contains("_links");
-        await Assert.That(source).Contains("HasLineRelation(line.Id, FulfillRelation)");
-        await Assert.That(source).Contains("HasLineRelation(line.Id, RefundRelation)");
-        await Assert.That(source).DoesNotContain("HasRelation(FulfillRelation)");
-        await Assert.That(source).DoesNotContain("HasRelation(RefundRelation)");
-        await Assert.That(source).DoesNotContain("IsInRole");
-        await Assert.That(source).DoesNotContain("ClaimsPrincipal");
-        await Assert.That(source).DoesNotContain("AuthorizeView");
-        await Assert.That(source).DoesNotContain("User.IsInRole");
-    }
-
-    [Test]
-    public async Task ComponentProvidesSemanticLiveStatusAndDeterministicFocus()
-    {
-        await Assert.That(File.Exists(ComponentPath)).IsTrue();
-        if (!File.Exists(ComponentPath))
+    private static EventAddOnCatalogItemDto Item(
+        Guid id,
+        string name,
+        bool available,
+        int maximumSelectableQuantity) =>
+        new()
         {
-            return;
-        }
+            Id = id,
+            Name = name,
+            UnitPriceMinor = 500,
+            CurrencyCode = "EUR",
+            MaximumSelectableQuantity = maximumSelectableQuantity,
+            IsAvailable = available,
+            FulfillmentDisclosure = "Collect at the service desk.",
+            RefundDisclosure = "Refund before fulfillment.",
+        };
 
-        string source = await File.ReadAllTextAsync(ComponentPath);
-        await Assert.That(source).Contains("IAccessibilityFocusService");
-        await Assert.That(source).Contains("Focus");
-        await Assert.That(source).Contains("role=\"status\"");
-        await Assert.That(source).Contains("aria-live=\"polite\"");
-        await Assert.That(source).Contains("aria-busy");
-        await Assert.That(source).Contains("aria-describedby");
-        await Assert.That(source).Contains("CurrencyCode");
-        await Assert.That(source).Contains("LineTotalMinor");
-    }
-
-    [Test]
-    public async Task TextIsLocalizedAndCssUsesOnlyLogicalRtlSafeProperties()
-    {
-        await Assert.That(File.Exists(ComponentPath)).IsTrue();
-        await Assert.That(File.Exists(CssPath)).IsTrue();
-        if (!File.Exists(ComponentPath) || !File.Exists(CssPath))
+    private static HalResourceOfRegistrationOrderAddOnSummaryDto Order(Guid orderId) =>
+        new()
         {
-            return;
-        }
-
-        string source = await File.ReadAllTextAsync(ComponentPath);
-        string css = await File.ReadAllTextAsync(CssPath);
-        await Assert.That(source).Contains("ITranslationService");
-        await Assert.That(source).Contains("Translation.T");
-        await Assert.That(source).Contains("CultureInfo");
-        await Assert.That(css).Contains("padding-inline");
-        await Assert.That(css).Contains("margin-block");
-        foreach (string forbidden in new[]
-                 {
-                     "margin-left",
-                     "margin-right",
-                     "padding-left",
-                     "padding-right",
-                     "text-align: left",
-                     "text-align: right",
-                 })
-        {
-            await Assert.That(css).DoesNotContain(forbidden);
-        }
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "Explore.slnx")))
+            CurrencyCode = "EUR",
+            AddOnTotalMinor = 0,
+            Lines = [],
+            _links = new Dictionary<string, HalLink>
             {
-                return directory.FullName;
-            }
+                ["reserve-event-add-ons"] =
+                    new() { Href = $"/api/registration-orders/{orderId}/add-ons" },
+            },
+        };
 
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException("Repository root was not found.");
-    }
 }

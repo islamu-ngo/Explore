@@ -335,12 +335,11 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
     }
 
     [Test]
-    public async Task StructureUsesLogicalRtlSafeContractsWithoutDirectionalOverrides()
+    public async Task StructureUsesSemanticRtlNeutralMarkup()
     {
         var cut = Render(Event(CheckInRelation));
         string rootClass = cut.Find("[data-testid='studio-admission-check-in']").ClassName ?? string.Empty;
         string markup = cut.Markup.ToLowerInvariant();
-        string css = await File.ReadAllTextAsync(ScannerCssPath());
 
         await Assert.That(rootClass).Contains("studio-admission-check-in");
         await Assert.That(cut.FindAll("[dir='ltr']")).IsEmpty();
@@ -348,14 +347,6 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
         await Assert.That(markup).DoesNotContain("margin-right");
         await Assert.That(markup).DoesNotContain("text-align: left");
         await Assert.That(markup).DoesNotContain("text-align: right");
-        await Assert.That(css).DoesNotContain("--mud-palette");
-        await Assert.That(css).DoesNotContain("margin-left");
-        await Assert.That(css).DoesNotContain("margin-right");
-        await Assert.That(css).DoesNotContain("padding-left");
-        await Assert.That(css).DoesNotContain("padding-right");
-        await Assert.That(css).DoesNotContain("forced-color-adjust: none");
-        await Assert.That(css).Contains("minmax(min(100%, 16rem), 1fr)");
-        await Assert.That(css).Contains("min-block-size: var(--isl-target-min)");
     }
 
     [Test]
@@ -529,17 +520,6 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
         object rendered = findComponent.MakeGenericMethod(RequireComponent()).Invoke(null, [cut])!;
         object instance = rendered.GetType().GetProperty("Instance")!.GetValue(rendered)!;
         ((IDisposable)instance).Dispose();
-    }
-
-    private static string ScannerCssPath()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
-        {
-            directory = directory.Parent;
-        }
-
-        return Path.Combine(directory!.FullName, "src", "Explore.Blazor.Client", "Pages", "Studio", "StudioAdmissionCheckIn.razor.css");
     }
 
     private static Type RequireComponent() => typeof(EventDto).Assembly.GetType(ComponentName)

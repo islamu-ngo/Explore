@@ -74,8 +74,8 @@ public sealed class EventPromotionServiceTests
             Code = "CODE",
             DiscountKind = "fixed",
             FixedDiscountMinor = 100,
-            StartsAtUtc = DateTimeOffset.UtcNow,
-            EndsAtUtc = DateTimeOffset.UtcNow.AddDays(1),
+            StartsAtUtc = TestTime.UtcNow,
+            EndsAtUtc = TestTime.UtcNow.AddDays(1),
             EligibleTicketTypeIds = []
         };
         var revise = new RevisePromotionRequest
@@ -83,8 +83,8 @@ public sealed class EventPromotionServiceTests
             DisplayLabel = "Revised launch",
             DiscountKind = "fixed",
             FixedDiscountMinor = 200,
-            StartsAtUtc = DateTimeOffset.UtcNow,
-            EndsAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+            StartsAtUtc = TestTime.UtcNow,
+            EndsAtUtc = TestTime.UtcNow.AddDays(2),
             EligibleTicketTypeIds = []
         };
         var code = new PromotionCodeRequest { Code = "CODE" };

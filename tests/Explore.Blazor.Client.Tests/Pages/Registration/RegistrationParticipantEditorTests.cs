@@ -45,7 +45,7 @@ public sealed class RegistrationParticipantEditorTests : IDisposable
     {
         var eventId = Guid.CreateVersion7();
         var orderId = Guid.CreateVersion7();
-        var deadline = DateTimeOffset.UtcNow.AddDays(5);
+        var deadline = TestTime.UtcNow.AddDays(5);
         _service.GetCurrentParticipantsAsync(eventId, orderId, Arg.Any<CancellationToken>())
             .Returns(Participants(orderId,
                 "{ \"ticketTypeName\":\"Employee\", \"quantity\":1, \"participantDataCollectionModeId\":5, \"participantDataCollectionModeCode\":\"DEFERRED_ASSIGNMENT\", \"requiresGuardian\":false }",

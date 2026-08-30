@@ -1,1187 +1,427 @@
-// ABOUTME: Endpoint authorization matrix — verifies that every API endpoint enforces the correct
-// ABOUTME: authentication and authorization behavior across all personas (anonymous, regular user,
-// ABOUTME: tenant admin, instance admin). Uses Local RBAC mode with mocked IAdminContext.
+// ABOUTME: Discovers every API route/verb and verifies its unique authorization classification.
+// ABOUTME: Probes public and protected HTTP behavior without duplicating critical feature scenarios.
 
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Security;
 using System.Text;
+using System.Text.RegularExpressions;
 using Event.Api.IntegrationTests.Fixtures;
-using Explore.Application.Contracts.Identity;
-using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Models;
-using Explore.Domain.Constants;
-using Explore.Persistence;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Configuration;
+using Explore.API.Filters;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
-using NSubstitute;
+using TUnit.Assertions;
 using TUnit.Core;
-using TUnit.Core.Interfaces;
 
 namespace Event.Api.IntegrationTests.Features;
 
-/// <summary>
-/// Systematically validates authentication and authorization enforcement across all API endpoints.
-/// Each test targets a representative endpoint from each authorization tier:
-/// <list type="bullet">
-/// <item><b>Tier 0 — Public</b>: [AllowAnonymous] endpoints return 200 for unauthenticated requests</item>
-/// <item><b>Tier 1 — Authenticated</b>: [Authorize] endpoints return 401 for anonymous, 200/403 for authenticated</item>
-/// <item><b>Tier 2 — Instance Admin</b>: Instance-scoped resources denied for non-admins</item>
-/// <item><b>Tier 3 — Tenant Admin</b>: Tenant-scoped writes denied for regular users</item>
-/// <item><b>Tier 4 — Self-Service</b>: Personal data (notifications, settings) accessible to all authenticated</item>
-/// </list>
-///
-/// <para>Uses Local RBAC mode with NSubstitute mocks for IAdminContext/ITenantContext
-/// to control authorization decisions without seeding domain data.</para>
-/// </summary>
-[Category(TestCategories.Security)]
-[ClassDataSource<KeycloakOnlyFixture>(Shared = SharedType.PerAssembly)]
-[NotInParallel("SecurityInfra")]
-public class EndpointAuthorizationMatrixTests : IAsyncDisposable
+[NotInParallel("ApiTestFixture")]
+[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
+public class EndpointAuthorizationMatrixTests
 {
-    private readonly KeycloakOnlyFixture _keycloak;
-
-    private readonly WebApplicationFactory<Program> _instanceAdminFactory;
-    private readonly HttpClient _instanceAdminClient;
-
-    private readonly WebApplicationFactory<Program> _tenantAdminFactory;
-    private readonly HttpClient _tenantAdminClient;
-
-    private readonly WebApplicationFactory<Program> _regularUserFactory;
-    private readonly HttpClient _regularUserClient;
-
-    private readonly HttpClient _anonymousClient;
-
-    private static readonly Guid DefaultTenantId = PlatformDefaults.DefaultTenantId;
-
-    public EndpointAuthorizationMatrixTests(KeycloakOnlyFixture keycloak)
-    {
-        _keycloak = keycloak;
-
-        _instanceAdminFactory = CreateFactory(CreateInstanceAdminContext());
-        _instanceAdminClient = _instanceAdminFactory.CreateClient();
-
-        _tenantAdminFactory = CreateFactory(CreateTenantAdminContext());
-        _tenantAdminClient = _tenantAdminFactory.CreateClient();
-
-        _regularUserFactory = CreateFactory(CreateRegularUserContext());
-        _regularUserClient = _regularUserFactory.CreateClient();
-
-        _anonymousClient = _regularUserFactory.CreateClient();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        _instanceAdminClient.Dispose();
-        _tenantAdminClient.Dispose();
-        _regularUserClient.Dispose();
-        _anonymousClient.Dispose();
-        await _instanceAdminFactory.DisposeAsync();
-        await _tenantAdminFactory.DisposeAsync();
-        await _regularUserFactory.DisposeAsync();
-    }
-
-    #region Tier 0 — Public Endpoints (AllowAnonymous)
-
-    [Test]
-    public async Task Matrix_Public_EventFormats_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/eventformat");
-    }
-
-    [Test]
-    public async Task Matrix_Public_EventStatuses_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/eventstatus");
-    }
-
-    [Test]
-    public async Task Matrix_Public_EventTypes_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/eventtype");
-    }
-
-    [Test]
-    public async Task Matrix_Public_Categories_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/category");
-    }
-
-    [Test]
-    public async Task Matrix_Public_Tags_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/tag");
-    }
-
-    [Test]
-    public async Task Matrix_Public_Languages_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/language");
-    }
-
-    [Test]
-    public async Task Matrix_Public_Roles_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/role");
-    }
-
-    [Test]
-    public async Task Matrix_Public_Events_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/event");
-    }
-
-    [Test]
-    public async Task Matrix_Public_Organizations_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/organization");
-    }
-
-    [Test]
-    public async Task Matrix_Public_Groups_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/group");
-    }
-
-    [Test]
-    public async Task Matrix_Protected_Locations_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/location");
-    }
-
-    [Test]
-    public async Task Matrix_Public_EventSessions_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/eventsession");
-    }
-
-    [Test]
-    public async Task Matrix_Public_TenantNavigation_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/tenant/navigation");
-    }
-
-    [Test]
-    public async Task Matrix_Public_FooterConfig_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/footer/config");
-    }
-
-    [Test]
-    public async Task Matrix_Public_Translations_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/translation/en");
-    }
-
-    [Test]
-    public async Task Matrix_Public_ModulesAvailable_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/module/available");
-    }
-
-    [Test]
-    public async Task Matrix_Public_PublicExperienceSettings_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/publicexperience/settings");
-    }
-
-    [Test]
-    public async Task Matrix_Public_Actors_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/actor");
-    }
-
-    [Test]
-    public async Task Matrix_Public_OnboardingStatus_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/instanceonboarding/status");
-    }
-
-    [Test]
-    public async Task Matrix_Public_RegistrationScopes_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/registrationscope");
-    }
-
-    [Test]
-    public async Task Matrix_Public_ScheduleItemKinds_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/scheduleitemkind");
-    }
-
-    [Test]
-    public async Task Matrix_Public_EventSessionKinds_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/eventsessionkind");
-    }
-
-    [Test]
-    public async Task Matrix_Public_AuthProviderStatus_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/instance/settings/auth-provider/status");
-    }
-
-    [Test]
-    public async Task Matrix_Public_AuthzProviderStatus_AnonymousOK()
-    {
-        await AssertAnonymousOk("/api/instance/settings/authz-provider/status");
-    }
-
-    #endregion
-
-    #region Tier 1 — Authenticated Endpoints (401 for Anonymous)
-
-    [Test]
-    public async Task Matrix_Auth_EventMy_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/event/my");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_UserSync_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/user/sync", HttpMethod.Post);
-    }
-
-    [Test]
-    public async Task Matrix_Auth_Notifications_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/notification");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_ExternalApiKeys_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/externalapikey");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_TenantUserRoleGrants_CreateAnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/tenant-user-role-grants", HttpMethod.Post);
-    }
-
-    [Test]
-    public async Task Matrix_Auth_RegistrationOrders_ListAnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/events/00000000-0000-0000-0000-000000000001/registration-orders");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_RegistrationOrders_DetailAnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/events/00000000-0000-0000-0000-000000000001/registration-orders/00000000-0000-0000-0000-000000000002");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_RegistrationOrderParticipants_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/events/00000000-0000-0000-0000-000000000001/registration-orders/00000000-0000-0000-0000-000000000002/participants");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_RegistrationOrderDelete_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized(
-            "/api/events/00000000-0000-0000-0000-000000000001/registration-orders/00000000-0000-0000-0000-000000000002",
-            HttpMethod.Delete);
-    }
-
-    [Test]
-    public async Task Matrix_Auth_TenantUserRoleGrants_ListAnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/tenant-user-role-grants");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_TenantUserRoleGrants_DetailAnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/tenant-user-role-grants/00000000-0000-0000-0000-000000000001");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_OrganizationMembers_ListAnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/OrganizationMember/00000000-0000-0000-0000-000000000001");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_OrganizationMembers_DetailAnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/OrganizationMember/member/00000000-0000-0000-0000-000000000001");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_UserAppearance_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/user/appearance");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_Settings_UserCategory_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/settings/user/appearance");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_Settings_TenantCategory_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/settings/tenant/appearance");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_TenantOnboardingStatus_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/tenantonboarding/status");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_UserAuthority_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/user/admin-authority");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_UserOrganizations_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/user/00000000-0000-0000-0000-000000000001/organizations");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_TenantStorageSettingsPatch_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/tenant/settings/storage", HttpMethod.Patch);
-    }
-
-    [Test]
-    public async Task Matrix_Auth_TenantBrandingSettingsDocumentPatch_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/tenant/settings/documents/branding", HttpMethod.Patch);
-    }
-
-    [Test]
-    public async Task Matrix_Auth_FooterLinkGroups_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/footer/link-groups");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_FooterSettingsGet_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/footer/settings");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_FooterSettingsPatch_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/footer/settings", HttpMethod.Patch);
-    }
-
-    [Test]
-    public async Task Matrix_Auth_Features_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/features/my-flags");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_UiThemes_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/admin/ui-themes");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_LocalizationAdmin_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/admin/localization/configuration");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_CustomPropertyGovernance_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/admin/custom-property-definitions/governance-report");
-    }
-
-    [Test]
-    public async Task Matrix_Auth_CustomPropertyProjectionAdmin_AnonymousDenied()
-    {
-        await AssertAnonymousUnauthorized("/api/admin/custom-property-projections/status");
-    }
-
-    #endregion
-
-    #region Tier 2 — Instance Admin Only Endpoints
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsModules_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/modules", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("instance settings should only be accessible to instance admins");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsModules_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/modules", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read instance settings modules");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsBranding_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/branding", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("instance branding settings should only be accessible to instance admins");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsBranding_InstanceAdminOK()
+    private static readonly HashSet<string> ScopedOptionalQueryParameters = new(StringComparer.OrdinalIgnoreCase)
     {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/branding", token);
+        "actorId",
+        "eventId",
+        "eventSessionId",
+        "eventTemplateId",
+        "locationId",
+        "tenantId"
+    };
 
-        var response = await _instanceAdminClient.SendAsync(request);
+    private readonly ApiTestFixture _fixture;
 
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read instance branding settings");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsDeploymentMode_TenantAdminDenied()
-    {
-        var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/deployment-mode", token);
-
-        var response = await _tenantAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("deployment mode settings should only be accessible to instance admins, not tenant admins");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsStorage_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/storage", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read storage settings");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsSmtp_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/smtp", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read SMTP settings");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsAnalytics_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/analytics-governance", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("analytics governance should only be accessible to instance admins");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsTenantDelegation_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/tenant-delegation", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read tenant delegation settings");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsRenderPolicy_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/render-policy", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read render policy settings");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsFooterGovernance_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/footer-governance", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read footer governance settings");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsAuthProvider_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/auth-provider", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read auth provider settings");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_KeycloakRealmDoctor_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/doctor", token);
-        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("Keycloak realm diagnostics should only be accessible to instance admins");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_KeycloakRealmDoctor_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/doctor", token);
-        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to run read-only Keycloak realm diagnostics");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_KeycloakRealmSyncPreview_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/sync-preview", token);
-        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("Keycloak realm sync preview should only be accessible to instance admins");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_KeycloakRealmSyncPreview_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/sync-preview", token);
-        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to preview read-only Keycloak realm sync plans");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_KeycloakRealmSyncApply_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/sync-apply", token);
-        request.Content = new StringContent("{\"backupConfirmed\":true}", Encoding.UTF8, "application/json");
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("Keycloak realm sync apply should only be accessible to instance admins");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_KeycloakRealmSyncApply_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/sync-apply", token);
-        request.Content = new StringContent("{\"backupConfirmed\":true}", Encoding.UTF8, "application/json");
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to apply backup-confirmed additive Keycloak realm repairs");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_KeycloakClientSecretRotate_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/client-secret/rotate", token);
-        request.Content = new StringContent("{\"secretOwnershipMode\":\"deployment-managed\"}", Encoding.UTF8, "application/json");
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("Keycloak client-secret rotation should only be accessible to instance admins");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_KeycloakClientSecretRotate_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/instance/settings/auth-provider/keycloak/client-secret/rotate", token);
-        request.Content = new StringContent("{\"secretOwnershipMode\":\"deployment-managed\"}", Encoding.UTF8, "application/json");
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should receive safe operator instructions for deployment-managed Keycloak secrets");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsAuthzProvider_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/authz-provider", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read authz provider settings");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsDomains_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/domains", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read domain settings");
-    }
-
-    [Test]
-    public async Task Matrix_InstanceAdmin_InstanceSettingsOrganizations_InstanceAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/organizations", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin should be able to read organization settings");
-    }
-
-    #endregion
-
-    #region Tier 3 — Tenant Admin Endpoints
-
-    [Test]
-    public async Task Matrix_TenantAdmin_TenantList_TenantAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenant", token);
-
-        var response = await _tenantAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be able to list tenants");
-    }
-
-    [Test]
-    public async Task Matrix_TenantAdmin_CategoryCreate_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/category", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied category creation (403) or get validation error (400)");
-    }
-
-    [Test]
-    public async Task Matrix_TenantAdmin_TagCreate_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/tag", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied tag creation");
-    }
-
-    [Test]
-    public async Task Matrix_TenantAdmin_LocationCreate_RegularUserDenied()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/location", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular user should be denied location creation");
-    }
-
-    [Test]
-    public async Task Matrix_TenantAdmin_TenantUserRoleGrantList_TenantAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenant-user-role-grants", token);
-
-        var response = await _tenantAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be able to list tenant user role grants");
-    }
-
-    [Test]
-    public async Task Matrix_TenantAdmin_SettingsTenantCategory_TenantAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/settings/tenant/appearance", token);
-
-        var response = await _tenantAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be able to read tenant settings");
-    }
-
-    [Test]
-    public async Task Matrix_TenantAdmin_TenantCount_TenantAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenant/count", token);
-
-        var response = await _tenantAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("tenant admin should be able to view tenant count");
-    }
-
-    [Test]
-    public async Task Matrix_TenantAdmin_TenantOnboardingStatus_TenantAdminOK()
-    {
-        var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenantonboarding/status", token);
-
-        var response = await _tenantAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("tenant onboarding status is gated to multi-tenant deployments and the matrix fixture runs in single-tenant mode");
-    }
-
-    #endregion
-
-    #region Tier 4 — Self-Service / All Authenticated
-
-    [Test]
-    public async Task Matrix_SelfService_Notifications_RegularUserOK()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/notification", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("notifications are personal data — all authenticated users can view their own");
-    }
-
-    [Test]
-    public async Task Matrix_SelfService_UserSync_RegularUserOK()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/user/sync", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(new[] { HttpStatusCode.OK, HttpStatusCode.NoContent, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("user sync should work for all authenticated users");
-    }
-
-    [Test]
-    public async Task Matrix_SelfService_UserAppearance_RegularUserOK()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/user/appearance", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("user appearance preferences should be accessible to all authenticated users");
-    }
-
-    [Test]
-    public async Task Matrix_SelfService_SettingsUserCategory_RegularUserOK()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/settings/user/appearance", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("user settings should be accessible to all authenticated users");
-    }
-
-    [Test]
-    public async Task Matrix_SelfService_RegistrationOrderCreate_RegularUserOK()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(
-            HttpMethod.Post,
-            "/api/events/00000000-0000-0000-0000-000000000001/registration-orders",
-            token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(new[] { HttpStatusCode.OK, HttpStatusCode.Created, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("registration order creation should be available to all authenticated users " +
-        "(actual status depends on request body validation)");
-    }
-
-    [Test]
-    public async Task Matrix_SelfService_FeaturesMyFlags_RegularUserOK()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/features/my-flags", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("feature flags should be accessible to all authenticated users");
-    }
-
-    [Test]
-    public async Task Matrix_SelfService_UserAuthority_RegularUserOK()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/user/admin-authority", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("user authority check should be accessible to all authenticated users");
-    }
-
-    #endregion
-
-    #region Tier 5 — Cross-Role Verification
-
-    [Test]
-    public async Task Matrix_CrossRole_InstanceAdmin_CanAccessTenantEndpoints()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenant", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin has full access including tenant endpoints");
-    }
-
-    [Test]
-    public async Task Matrix_CrossRole_InstanceAdmin_CanAccessTenantUserRoleGrants()
-    {
-        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenant-user-role-grants", token);
-
-        var response = await _instanceAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("instance admin can access tenant user role grant management");
-    }
-
-    [Test]
-    public async Task Matrix_CrossRole_RegularUser_DeniedTenantCreation()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/tenant", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest }).Contains(response.StatusCode).Because("regular users should be denied tenant creation or fail request validation before creation");
-    }
-
-    [Test]
-    public async Task Matrix_CrossRole_RegularUser_DeniedTenantUserRoleGrantCreation()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Post, "/api/tenant-user-role-grants", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("regular users should not be able to create tenant user role grants");
-    }
-
-    [Test]
-    public async Task Matrix_CrossRole_RegularUser_CanAccessVisibleExternalApiKeys()
+    public EndpointAuthorizationMatrixTests(ApiTestFixture fixture)
     {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/externalapikey", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because("regular users can list external API keys visible to the current user");
+        _fixture = fixture;
     }
 
     [Test]
-    public async Task Matrix_CrossRole_TenantAdmin_DeniedInstanceSettings()
-    {
-        var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/instance/settings/modules", token);
-
-        var response = await _tenantAdminClient.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden).Because("tenant admins should not be able to access instance settings");
-    }
-
-    #endregion
-
-    #region Helpers
-
-    private async Task AssertAnonymousOk(string url)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        var response = await _anonymousClient.SendAsync(request);
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK).Because($"[AllowAnonymous] endpoint {url} should return 200 for unauthenticated requests");
-    }
-
-    private async Task AssertAnonymousUnauthorized(string url, HttpMethod? method = null)
-    {
-        using var request = new HttpRequestMessage(method ?? HttpMethod.Get, url);
-        var response = await _anonymousClient.SendAsync(request);
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized).Because($"[Authorize] endpoint {url} should return 401 for unauthenticated requests");
-    }
-
-    private static HttpRequestMessage Auth(HttpMethod method, string url, string token)
+    public async Task EveryDiscoveredRouteVerbHasOneAuthorizationClassification()
     {
-        var request = new HttpRequestMessage(method, url);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        IReadOnlyList<ApiDescription> endpoints = GetApiDescriptions();
+        var failures = new List<string>();
 
-        if (method == HttpMethod.Post || method == HttpMethod.Put || method == HttpMethod.Patch)
+        foreach (IGrouping<string, ApiDescription> duplicate in endpoints
+            .GroupBy(
+                endpoint =>
+                    $"{endpoint.HttpMethod} {endpoint.RelativePath}",
+                StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() != 1))
         {
-            request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+            failures.Add(
+                $"{duplicate.Key}: discovered {duplicate.Count()} times");
         }
 
-        return request;
-    }
-
-    private static IAdminContext CreateInstanceAdminContext()
-    {
-        var ctx = Substitute.For<IAdminContext>();
-        ctx.UserId.Returns(Guid.NewGuid());
-        ctx.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
-        ctx.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
-        ctx.IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
-        ctx.IsTenantAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
-        ctx.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
-        ctx.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(
-            new List<Guid> { DefaultTenantId }.AsReadOnly());
-        ctx.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(
-            new List<Guid>().AsReadOnly());
-        return ctx;
-    }
-
-    private static IAdminContext CreateTenantAdminContext()
-    {
-        var ctx = Substitute.For<IAdminContext>();
-        ctx.UserId.Returns(Guid.NewGuid());
-        ctx.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
-        ctx.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
-        ctx.IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
-        ctx.IsTenantAdminAsync(DefaultTenantId, Arg.Any<CancellationToken>()).Returns(true);
-        ctx.IsTenantAdminAsync(Arg.Is<Guid>(id => id != DefaultTenantId), Arg.Any<CancellationToken>()).Returns(false);
-        ctx.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
-        ctx.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(
-            new List<Guid> { DefaultTenantId }.AsReadOnly());
-        ctx.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(
-            new List<Guid>().AsReadOnly());
-        return ctx;
-    }
-
-    private static IAdminContext CreateRegularUserContext()
-    {
-        var ctx = Substitute.For<IAdminContext>();
-        ctx.UserId.Returns(Guid.NewGuid());
-        ctx.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
-        ctx.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
-        ctx.IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
-        ctx.IsTenantAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
-        ctx.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
-        ctx.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(
-            new List<Guid>().AsReadOnly());
-        ctx.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(
-            new List<Guid>().AsReadOnly());
-        return ctx;
-    }
-
-    private WebApplicationFactory<Program> CreateFactory(IAdminContext adminContext)
-    {
-        var tenantContext = Substitute.For<Explore.Application.Contracts.Infrastructure.ITenantContext>();
-        tenantContext.TenantId.Returns(DefaultTenantId);
-
-        var cerbosConfigResolver = Substitute.For<ICerbosConfigResolver>();
-        cerbosConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns((CerbosConfiguration?)null);
-
-        return new MatrixWebApplicationFactory(
-            _keycloak.Authority, _keycloak.MetadataAddress,
-            adminContext, tenantContext, cerbosConfigResolver);
-    }
-
-    #endregion
-
-    #region WebApplicationFactory
-
-    private sealed class MatrixWebApplicationFactory : WebApplicationFactory<Program>
-    {
-        private readonly string _keycloakAuthority;
-        private readonly string _keycloakMetadataAddress;
-        private readonly IAdminContext _adminContext;
-        private readonly Explore.Application.Contracts.Infrastructure.ITenantContext _tenantContext;
-        private readonly ICerbosConfigResolver _cerbosConfigResolver;
-
-        public MatrixWebApplicationFactory(
-            string keycloakAuthority,
-            string keycloakMetadataAddress,
-            IAdminContext adminContext,
-            Explore.Application.Contracts.Infrastructure.ITenantContext tenantContext,
-            ICerbosConfigResolver cerbosConfigResolver)
+        foreach (ApiDescription endpoint in endpoints)
         {
-            _keycloakAuthority = keycloakAuthority;
-            _keycloakMetadataAddress = keycloakMetadataAddress;
-            _adminContext = adminContext;
-            _tenantContext = tenantContext;
-            _cerbosConfigResolver = cerbosConfigResolver;
-        }
+            var metadata = endpoint.ActionDescriptor.EndpointMetadata;
+            bool hasAllowAnonymous = metadata.OfType<IAllowAnonymous>().Any();
+            bool hasAuthorizationRequirement =
+                metadata.OfType<IAuthorizeData>().Any()
+                || metadata.OfType<SetupSecretRequiredAttribute>().Any();
 
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
-        {
-            builder.UseEnvironment("Testing");
-
-            builder.ConfigureAppConfiguration((_, config) =>
+            if (!hasAllowAnonymous && !hasAuthorizationRequirement)
             {
-                var testConfig = new Dictionary<string, string?>
-                {
-                    ["Database:Provider"] = "PostgreSql",
-                    ["Database:Host"] = "localhost",
-                    ["Database:Port"] = "5432",
-                    ["Database:Database"] = "test_matrix",
-                    ["Database:Runtime:Username"] = "postgres",
-                    ["Database:Runtime:Password"] = "postgres",
-                    ["Database:Runtime:TlsMode"] = "Prefer",
-                    ["Database:Runtime:TrustServerCertificate"] = "false",
-                    ["Keycloak:Authority"] = _keycloakAuthority,
-                    ["Keycloak:Realm"] = KeycloakContainerFixture.RealmName,
-                    ["Keycloak:Audience"] = "islamu-event-api",
-                    ["Keycloak:RequireHttpsMetadata"] = "false",
-                    ["Keycloak:MetadataAddress"] = _keycloakMetadataAddress,
-                    ["S3Settings:Region"] = "us-east-1",
-                    ["S3Settings:BucketName"] = "test-bucket",
-                    ["S3Settings:AccessKeyId"] = "test-key",
-                    ["S3Settings:SecretAccessKey"] = "test-secret",
-                    ["S3Settings:Endpoint"] = "https://s3.example.com",
-                    ["Deployment:Mode"] = "SingleTenant",
-                    ["Deployment:DefaultTenantId"] = DefaultTenantId.ToString(),
-                    ["Testing:HostProfile"] = TestHostProfile.Security,
-                    ["Testing:SkipJwtAuthorityWarmup"] = "true",
-                    ["Cerbos:GrpcEndpoint"] = "http://localhost:19999",
-                    ["Cerbos:PlaintextMode"] = "true",
-                };
-
-                config.AddInMemoryCollection(testConfig);
-            });
-
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveExploreDbContextRegistrations();
-
-                services.AddInMemoryExploreDbContext($"MatrixDb_{Guid.NewGuid():N}");
-
-                services.RemoveAll<IDistributedCache>();
-                services.AddDistributedMemoryCache();
-
-                services.RemoveAll<IAdminContext>();
-                services.AddScoped(_ => _adminContext);
-
-                services.RemoveAll<Explore.Application.Contracts.Infrastructure.ITenantContext>();
-                services.AddScoped(_ => _tenantContext);
-
-                services.RemoveAll<ICerbosConfigResolver>();
-                services.AddScoped(_ => _cerbosConfigResolver);
-
-                services.AddSingleton<IHostedService, MatrixSystemSettingSeeder>();
-            });
-
-            builder.ConfigureTestServices(services =>
-            {
-                services.RemoveAll<Microsoft.AspNetCore.Authentication.IClaimsTransformation>();
-                services.AddSingleton<Microsoft.AspNetCore.Authentication.IClaimsTransformation>(
-                    new TestInternalUserClaimsTransformation(
-                        _adminContext.UserId
-                        ?? throw new InvalidOperationException("The matrix persona requires a deterministic user ID.")));
-
-                services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
-                {
-                    options.RequireHttpsMetadata = false;
-                    options.Authority = _keycloakAuthority;
-                    options.MetadataAddress = _keycloakMetadataAddress;
-                    options.TokenValidationParameters.ValidIssuer = _keycloakAuthority;
-                    options.TokenValidationParameters.ValidIssuers = [_keycloakAuthority];
-                    options.BackchannelHttpHandler = new SocketsHttpHandler
-                    {
-                        PooledConnectionLifetime = TimeSpan.FromMinutes(2),
-                        SslOptions = new SslClientAuthenticationOptions
-                        {
-                            RemoteCertificateValidationCallback = (_, _, _, sslPolicyErrors) =>
-                                sslPolicyErrors == System.Net.Security.SslPolicyErrors.None
-                        },
-                        ConnectCallback = async (context, cancellationToken) =>
-                        {
-                            var socket = new System.Net.Sockets.Socket(
-                                System.Net.Sockets.AddressFamily.InterNetwork,
-                                System.Net.Sockets.SocketType.Stream,
-                                System.Net.Sockets.ProtocolType.Tcp);
-                            try
-                            {
-                                await socket.ConnectAsync(context.DnsEndPoint, cancellationToken);
-                                return new System.Net.Sockets.NetworkStream(socket, ownsSocket: true);
-                            }
-                            catch
-                            {
-                                socket.Dispose();
-                                throw;
-                            }
-                        }
-                    };
-                });
-            });
+                failures.Add(
+                    $"{endpoint.HttpMethod} {endpoint.RelativePath}: "
+                    + "authorization classification is missing");
+            }
         }
+
+        await Assert.That(endpoints).IsNotEmpty();
+        await Assert.That(failures).IsEmpty()
+            .Because("every discovered route/verb must be unique and classified exactly once");
     }
 
-    private sealed class MatrixSystemSettingSeeder : IHostedService
+    [Test]
+    public async Task Public_Get_Endpoints_ReturnOk()
     {
-        private readonly IServiceProvider _serviceProvider;
+        var endpoints = GetApiDescriptions()
+            .Where(description => IsHttpMethod(description, HttpMethod.Get))
+            .Where(description => !IsProtected(description))
+            .Where(description => !IsPublicSmokeException(description));
 
-        public MatrixSystemSettingSeeder(IServiceProvider serviceProvider)
+        var failures = new List<string>();
+
+        foreach (var description in endpoints)
         {
-            _serviceProvider = serviceProvider;
-        }
+            var path = BuildPath(description);
+            Console.WriteLine($"Testing endpoint: {path}");
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            request.Headers.TryAddWithoutValidation("Prefer", "return=minimal");
 
-        public async Task StartAsync(CancellationToken cancellationToken)
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            var response = await _fixture.Client.SendAsync(request);
 
-            dbContext.SystemSettings.Add(new Explore.Domain.SystemSetting
+            var hasPathParams = description.ParameterDescriptions.Any(p => p.Source == BindingSource.Path);
+            var isSuccess = response.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent
+                || (response.StatusCode == HttpStatusCode.NotFound
+                    && (hasPathParams || DeclaresStatus(description, (int)HttpStatusCode.NotFound)))
+                || (response.StatusCode == HttpStatusCode.Forbidden
+                    && DeclaresStatus(description, (int)HttpStatusCode.Forbidden))
+                || (response.StatusCode == HttpStatusCode.ServiceUnavailable
+                    && DeclaresStatus(description, (int)HttpStatusCode.ServiceUnavailable));
+
+            if (!isSuccess)
             {
-                Id = Guid.NewGuid(),
-                SettingKey = GovernanceSettingKeys.Security.AuthorizationProvider,
-                Value = "\"local\"",
-                ValueType = Explore.Domain.SettingValueType.String,
-                IsLocked = false,
-                Category = "Security",
-                Description = "Authorization provider (local RBAC)",
-                DisplayOrder = 0,
-                CreatedAt = DateTime.UtcNow
-            });
-
-            await dbContext.SaveChangesAsync(cancellationToken);
+                failures.Add($"{path} => {(int)response.StatusCode} {response.StatusCode}");
+            }
         }
 
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        await Assert.That(failures).IsEmpty()
+            .Because($"Public GET endpoints should return success or an explicitly declared safe read outcome. Failures: {string.Join("; ", failures)}");
     }
 
-    #endregion
+    [Test]
+    public async Task Protected_Endpoints_ReturnUnauthorized_Or_Forbidden()
+    {
+        var endpoints = GetApiDescriptions()
+            .Where(description => IsProtected(description))
+            .Where(description => !IsProtectedSmokeException(description));
+
+        var failures = new List<string>();
+
+        foreach (var description in endpoints)
+        {
+            var path = BuildPath(description);
+            using var request = new HttpRequestMessage(new HttpMethod(description.HttpMethod ?? HttpMethod.Get.Method), path)
+            {
+                Content = BuildBody(description)
+            };
+            request.Headers.Accept.Add(MediaTypeWithQualityHeaderValue.Parse("*/*"));
+
+            var response = await _fixture.Client.SendAsync(request);
+            var isUnauthorized = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+                || (IsSetupSecretProtected(description) && response.StatusCode == HttpStatusCode.Gone)
+                || (IsAdmissionScannerEndpoint(description) && response.StatusCode == HttpStatusCode.NotFound);
+
+            if (!isUnauthorized)
+            {
+                failures.Add($"{description.HttpMethod} {path} => {(int)response.StatusCode} {response.StatusCode}");
+            }
+        }
+
+        await Assert.That(failures).IsEmpty()
+            .Because($"Protected endpoints should challenge or forbid anonymous callers. Failures: {string.Join("; ", failures)}");
+    }
+
+    [Test]
+    public async Task Public_Write_Endpoints_DoNotReturnUnauthorized_Or_ServerError()
+    {
+        var endpoints = GetApiDescriptions()
+            .Where(description => !IsProtected(description))
+            .Where(description => !IsHttpMethod(description, HttpMethod.Get));
+
+        var failures = new List<string>();
+
+        foreach (var description in endpoints)
+        {
+            var path = BuildPath(description);
+            using var request = new HttpRequestMessage(new HttpMethod(description.HttpMethod ?? HttpMethod.Post.Method), path)
+            {
+                Content = BuildBody(description)
+            };
+
+            var response = await _fixture.Client.SendAsync(request);
+            var isUnauthorized = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+            var isServerError = (int)response.StatusCode >= 500;
+
+            if (isUnauthorized || isServerError)
+            {
+                failures.Add($"{description.HttpMethod} {path} => {(int)response.StatusCode} {response.StatusCode}");
+            }
+        }
+
+        await Assert.That(failures).IsEmpty()
+            .Because($"Public write endpoints should not challenge anonymous callers or return 5xx. Failures: {string.Join("; ", failures)}");
+    }
+
+    private IReadOnlyList<ApiDescription> GetApiDescriptions()
+    {
+        var provider = _fixture.Factory.Services.GetRequiredService<IApiDescriptionGroupCollectionProvider>();
+        return provider.ApiDescriptionGroups.Items.SelectMany(group => group.Items).ToList();
+    }
+
+    private static bool IsProtected(ApiDescription description)
+    {
+        var metadata = description.ActionDescriptor.EndpointMetadata;
+        var hasAllowAnonymous = metadata.OfType<IAllowAnonymous>().Any();
+        var hasAuthorize = metadata.OfType<IAuthorizeData>().Any();
+        var hasSetupSecretRequirement = metadata.OfType<SetupSecretRequiredAttribute>().Any();
+
+        return (hasAuthorize && !hasAllowAnonymous) || hasSetupSecretRequirement;
+    }
+
+    private static bool IsSetupSecretProtected(ApiDescription description)
+    {
+        return description.ActionDescriptor.EndpointMetadata.OfType<SetupSecretRequiredAttribute>().Any();
+    }
+
+    private static bool IsAdmissionScannerEndpoint(ApiDescription description)
+    {
+        return description.RelativePath?.StartsWith(
+            "api/admission/scanner/check-ins",
+            StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static bool IsHttpMethod(ApiDescription description, HttpMethod method)
+    {
+        return string.Equals(description.HttpMethod, method.Method, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool DeclaresStatus(ApiDescription description, int statusCode)
+    {
+        return description.SupportedResponseTypes.Any(response => response.StatusCode == statusCode);
+    }
+
+    private static bool IsProtectedSmokeException(ApiDescription description)
+    {
+        var path = description.RelativePath ?? string.Empty;
+
+        // The setup package download is a binary-only endpoint. MVC content negotiation can
+        // reject generic anonymous smoke probes before the setup-secret filter materializes
+        // the expected challenge; dedicated onboarding tests cover this route.
+        return path.Contains(
+            "instanceonboarding/authz-provider-configuration/package",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsPublicSmokeException(ApiDescription description)
+    {
+        var path = description.RelativePath ?? string.Empty;
+        return path.Contains("tenant/navigation", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildPath(ApiDescription description)
+    {
+        var relativePath = description.RelativePath ?? string.Empty;
+        var path = "/" + relativePath.TrimStart('/');
+
+        foreach (var parameter in description.ParameterDescriptions.Where(p => p.Source == BindingSource.Path))
+        {
+            var value = GetSampleValue(parameter, description);
+            path = ReplaceRouteParameter(path, parameter.Name, value);
+        }
+
+        var queryParameters = description.ParameterDescriptions
+            .Where(p => p.Source == BindingSource.Query)
+            .Where(p => p.IsRequired || IsSafeOptionalScopeParameter(p))
+            .Where(p => !string.IsNullOrWhiteSpace(p.Name))
+            .ToList();
+
+        if (queryParameters.Count > 0)
+        {
+            var query = new QueryBuilder();
+            foreach (var parameter in queryParameters)
+            {
+                var value = GetSampleValue(parameter, description);
+                query.Add(parameter.Name!, value);
+            }
+
+            path += query.ToQueryString().ToString();
+        }
+
+        return path;
+    }
+
+    private static string ReplaceRouteParameter(string path, string? name, string value)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return path;
+        }
+
+        var escapedName = Regex.Escape(name);
+        var pattern = $@"\{{\*?{escapedName}(?:\:[^}}]+)?\}}";
+        return Regex.Replace(path, pattern, value);
+    }
+
+    private static string GetSampleValue(ApiParameterDescription parameter, ApiDescription description)
+    {
+        var type = Nullable.GetUnderlyingType(parameter.Type ?? typeof(string)) ?? parameter.Type ?? typeof(string);
+
+        if (description.RelativePath != null &&
+            (description.RelativePath.Contains($"*{{{parameter.Name}}}") || description.RelativePath.Contains($"**{{{parameter.Name}}}")))
+        {
+            return "test/file.txt";
+        }
+
+        if (TryGetEnumerableElementType(type, out var elementType))
+        {
+            type = elementType;
+        }
+
+        if (type == typeof(Guid))
+        {
+            return Guid.NewGuid().ToString();
+        }
+
+        if (type == typeof(DateOnly))
+        {
+            return DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
+        {
+            return DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        if (type == typeof(int) || type == typeof(long) || type == typeof(short))
+        {
+            return "1";
+        }
+
+        if (type == typeof(bool))
+        {
+            return "true";
+        }
+
+        if (type.IsEnum)
+        {
+            return "1";
+        }
+
+        if (string.Equals(parameter.Name, "did", StringComparison.OrdinalIgnoreCase))
+        {
+            return "did:plc:test";
+        }
+
+        if (description.RelativePath?.StartsWith("api/translation/{languageCode}", StringComparison.OrdinalIgnoreCase) == true &&
+            string.Equals(parameter.Name, "languageCode", StringComparison.OrdinalIgnoreCase))
+        {
+            return "en";
+        }
+
+        return "test";
+    }
+
+    private static bool IsSafeOptionalScopeParameter(ApiParameterDescription parameter)
+    {
+        if (string.IsNullOrWhiteSpace(parameter.Name))
+        {
+            return false;
+        }
+
+        return ScopedOptionalQueryParameters.Contains(parameter.Name);
+    }
+
+    private static bool TryGetEnumerableElementType(Type type, out Type elementType)
+    {
+        if (type.IsArray)
+        {
+            elementType = type.GetElementType()!;
+            return true;
+        }
+
+        var enumerableInterface = type
+            .GetInterfaces()
+            .Append(type)
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+
+        if (enumerableInterface is not null)
+        {
+            elementType = enumerableInterface.GetGenericArguments()[0];
+            return true;
+        }
+
+        elementType = typeof(object);
+        return false;
+    }
+
+    private static HttpContent? BuildBody(ApiDescription description)
+    {
+        var bodyParameter = description.ParameterDescriptions.FirstOrDefault(p => p.Source == BindingSource.Body);
+        if (bodyParameter == null)
+        {
+            return null;
+        }
+
+        var type = bodyParameter.Type ?? typeof(object);
+        var payload = GetSamplePayload(type);
+
+        return new StringContent(payload, Encoding.UTF8, "application/json");
+    }
+
+    private static string GetSamplePayload(Type type)
+    {
+        if (type.Name == "RegistrationParticipantRequest")
+        {
+            return "{\"participantTypeId\":1,\"details\":{}}";
+        }
+
+        if (type.Name == "RegistrationTicketAssignmentsRequest")
+        {
+            return "{\"assignments\":[]}";
+        }
+
+        if (type.Name == "RegistrationTicketDeferralsRequest")
+        {
+            return $"{{\"assignments\":[],\"assignmentDeadline\":\"{DateTime.UtcNow.AddDays(1):O}\"}}";
+        }
+
+        if (type == typeof(string))
+        {
+            return "\"test\"";
+        }
+
+        if (type == typeof(Guid))
+        {
+            return $"\"{Guid.CreateVersion7()}\"";
+        }
+
+        if (type == typeof(int) || type == typeof(long) || type == typeof(short))
+        {
+            return "1";
+        }
+
+        if (type == typeof(bool))
+        {
+            return "true";
+        }
+
+        return "{}";
+    }
 }

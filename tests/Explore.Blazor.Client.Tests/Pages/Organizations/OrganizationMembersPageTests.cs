@@ -37,7 +37,6 @@ public sealed class OrganizationMembersPageTests : IDisposable
                 CanCreate: false));
 
         var cut = _ctx.RenderMudComponent<OrganizationMembers>();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup.Contains("Invite Member", StringComparison.Ordinal)).IsFalse();
         await Assert.That(cut.Markup.Contains("Actions", StringComparison.Ordinal)).IsFalse();
@@ -54,7 +53,6 @@ public sealed class OrganizationMembersPageTests : IDisposable
                 CanCreate: true));
 
         var cut = _ctx.RenderMudComponent<OrganizationMembers>();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).Contains("Invite Member");
         await Assert.That(cut.Markup).Contains("Actions");

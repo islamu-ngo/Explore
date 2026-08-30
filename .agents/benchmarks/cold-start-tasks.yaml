@@ -1,9 +1,9 @@
-# ABOUTME: Eleven cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
+# ABOUTME: Twelve cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
 # ABOUTME: Each scenario is a self-contained task a fresh AI agent should be able to complete using only AGENTS.md + the context system.
 # Version: 1 (synthetic). Target: replace each with real issue-based scenario within 4–6 weeks.
 
 version: 1
-last_updated: "2026-08-20"
+last_updated: "2026-08-30"
 owner: "context-system-maintainers"
 
 context_budget:
@@ -480,3 +480,49 @@ scenarios:
       - "Provider calls happen outside database transactions and are coordinated through the existing durable inbox/outbox pattern."
       - "Organizer and participant actions render only from HAL links, including Studio sidebar sections."
       - "No Hi.Events code, compatibility shim, floating-point money, public-ID authorization, or tenant-level platform monetization is introduced."
+
+  - id: test-suite-rationalization
+    intent_id: test-suite-rationalization
+    summary: |
+      Rationalize every test cohort while preserving critical behavior at executable public seams.
+    prompt: |
+      Refactor the repository test suite to remove internal mock call mirrors, EF cancellation
+      boilerplate, raw source and prose scrapers, historical allowlists, fixed sleeps, and
+      mutation wrapper projects. Preserve critical domain, concurrency, tenant, security,
+      privacy, HAL, BFF, provider, migration, generated-contract, and release invariants.
+      Product behavior must not change and fast lanes must not acquire runtime infrastructure.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/GOVERNANCE.md"
+      - "docs/TESTING.md"
+      - "docs/OPERATIONS.md"
+      - "dev/active/test-suite-rationalization/test-suite-rationalization-plan.md"
+      - "dev/active/test-suite-rationalization/test-suite-rationalization-context.md"
+      - "dev/active/test-suite-rationalization/test-suite-rationalization-tasks.md"
+      - ".agents/rules/tests.md"
+      - ".agents/rules/work-criticality-matrix.md"
+      - ".agents/skills/refactor-safely/SKILL.md"
+      - ".agents/skills/criticality-guardrail/SKILL.md"
+    expected_paths_in_scope:
+      - "tests/**"
+      - "eng/release/tests/**"
+      - "Explore.slnx"
+      - ".github/workflows/*test*.yml"
+      - "docs/TESTING.md"
+      - "dev/active/test-suite-rationalization/**"
+    expected_paths_forbidden:
+      - "src/**"
+      - "src/**/Migrations/**"
+      - "schemas/openapi_islamu-event.json"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "The request classifies as `test-suite-rationalization`, not separate layer feature intents."
+      - "Every deleted cohort maps to stronger retained behavior, a passing semantic replacement, or intentionally removed behavior."
+      - "Critical invariant coverage fails closed until stronger replacement evidence passes."
+      - "Tests assert domain, HTTP, persistence, HAL, rendered semantics, generated contracts, or provider behavior rather than internal calls or source text."
+      - "Each surviving executable project has an explicit lane and nonzero execution evidence."
+      - "Fast lanes do not start Docker, browsers, Aspire, brokers, or live providers."
+      - "The internal-only change uses `Changelog: skip` and does not add a public change fragment."

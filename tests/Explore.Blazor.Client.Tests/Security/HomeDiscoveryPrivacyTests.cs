@@ -21,34 +21,6 @@ public sealed class HomeDiscoveryPrivacyTests
     }
 
     [Test]
-    public async Task BrowserGeolocationModuleHasNoPersistenceNetworkAnalyticsOrLoggingSink()
-    {
-        var source = await File.ReadAllTextAsync(Path.Combine(
-            FindRepositoryRoot(),
-            "src",
-            "Explore.Blazor.Client",
-            "wwwroot",
-            "js",
-            "home-discovery.js"));
-
-        foreach (var forbidden in new[]
-                 {
-                     "localStorage",
-                     "sessionStorage",
-                     "fetch(",
-                     "XMLHttpRequest",
-                     "sendBeacon",
-                     "analytics",
-                     "console.",
-                     "location.href",
-                     "history.pushState"
-                 })
-        {
-            await Assert.That(source).DoesNotContain(forbidden);
-        }
-    }
-
-    [Test]
     public async Task PersistentHomeStateContainsCompositePayloadButNoBrowserPosition()
     {
         var componentType = typeof(Explore.Blazor.Client.Components.Discovery.HomeDiscoveryExperience);
@@ -139,19 +111,4 @@ public sealed class HomeDiscoveryPrivacyTests
         await discoveryService.Received(1).LoadAsync(null, "online", Arg.Any<CancellationToken>());
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException("Could not locate repository root.");
-    }
 }

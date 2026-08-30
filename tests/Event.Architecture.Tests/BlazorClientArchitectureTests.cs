@@ -104,6 +104,7 @@ public class BlazorClientArchitectureTests
         "PersistentComponentState",
         "AuthenticationStateProvider",
         "HttpClient",
+        "TimeProvider",
         "IHttpClientFactory", // already interface but listed to be explicit
     };
 

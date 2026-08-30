@@ -48,7 +48,7 @@ public class SecretProviderOptionsValidatorTests
                 Url = null,
                 ProjectId = "project-id",
                 ClientId = "client-id",
-                ClientSecret = "client-secret",
+                ClientSecret = SecretsTestValues.CreateSecret(),
                 Environment = "dev"
             }
         };
@@ -73,7 +73,7 @@ public class SecretProviderOptionsValidatorTests
                 Url = "https://infisical.example.com",
                 ProjectId = null,
                 ClientId = "client-id",
-                ClientSecret = "client-secret",
+                ClientSecret = SecretsTestValues.CreateSecret(),
                 Environment = "dev"
             }
         };
@@ -98,7 +98,7 @@ public class SecretProviderOptionsValidatorTests
                 Url = "not-a-valid-url",
                 ProjectId = "project-id",
                 ClientId = "client-id",
-                ClientSecret = "client-secret",
+                ClientSecret = SecretsTestValues.CreateSecret(),
                 Environment = "dev"
             }
         };
@@ -123,7 +123,7 @@ public class SecretProviderOptionsValidatorTests
                 Url = "https://infisical.example.com",
                 ProjectId = "project-id",
                 ClientId = "client-id",
-                ClientSecret = "client-secret",
+                ClientSecret = SecretsTestValues.CreateSecret(),
                 Environment = "dev"
             }
         };

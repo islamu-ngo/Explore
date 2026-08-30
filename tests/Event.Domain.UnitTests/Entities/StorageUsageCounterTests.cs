@@ -22,7 +22,7 @@ public class StorageUsageCounterTests
     public async Task Reserve_WhenQuotaWouldBeExceeded_ThrowsInvalidOperationException()
     {
         var counter = CreateCounter();
-        counter.Recalculate(usedBytes: 800, reservedBytes: 100, quarantinedBytes: 0, objectCount: 2, DateTime.UtcNow);
+        counter.Recalculate(usedBytes: 800, reservedBytes: 100, quarantinedBytes: 0, objectCount: 2, DomainTestClock.UtcNow);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
         {

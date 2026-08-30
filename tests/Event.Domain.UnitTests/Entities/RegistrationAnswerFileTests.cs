@@ -90,20 +90,20 @@ public sealed class RegistrationAnswerFileTests
             Guid.CreateVersion7(),
             CreateFileField(tenantId),
             CreateStorageObject(Guid.CreateVersion7()),
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(Act).Throws<ArgumentException>();
     }
 
     private static RegistrationFormField CreateFileField(Guid tenantId)
     {
-        var form = RegistrationForm.Create(tenantId, Guid.CreateVersion7(), "native", "files", "Files", DateTime.UtcNow);
-        var version = RegistrationFormVersion.Create(form, 1, "en", null, null, DateTime.UtcNow);
-        var section = RegistrationFormSection.Create(Guid.CreateVersion7(), version, 1, "Documents", DateTime.UtcNow);
+        var form = RegistrationForm.Create(tenantId, Guid.CreateVersion7(), "native", "files", "Files", DomainTestClock.UtcNow);
+        var version = RegistrationFormVersion.Create(form, 1, "en", null, null, DomainTestClock.UtcNow);
+        var section = RegistrationFormSection.Create(Guid.CreateVersion7(), version, 1, "Documents", DomainTestClock.UtcNow);
         return RegistrationFormField.Create(
             Guid.CreateVersion7(), section, 1, "native", "document", "Document",
             RegistrationFieldTypeEnum.File, 1, RegistrationOrganizerVisibilityEnum.AuthorizedOrganizers,
-            false, false, DateTime.UtcNow);
+            false, false, DomainTestClock.UtcNow);
     }
 
     private static StorageObject CreateStorageObject(Guid tenantId) => new()

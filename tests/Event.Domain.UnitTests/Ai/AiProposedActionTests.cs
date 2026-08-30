@@ -40,7 +40,7 @@ public class AiProposedActionTests
         var userId = Guid.CreateVersion7();
         var eventId = Guid.CreateVersion7();
 
-        action.Confirm(userId, DateTime.UtcNow);
+        action.Confirm(userId, DomainTestClock.UtcNow);
         action.MarkExecuted(eventId);
 
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Executed);
@@ -53,11 +53,11 @@ public class AiProposedActionTests
         var action = CreateAction();
         var userId = Guid.CreateVersion7();
 
-        action.Reject(userId, DateTime.UtcNow);
+        action.Reject(userId, DomainTestClock.UtcNow);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
         {
-            action.Confirm(userId, DateTime.UtcNow);
+            action.Confirm(userId, DomainTestClock.UtcNow);
             return Task.CompletedTask;
         });
     }
@@ -83,7 +83,7 @@ public class AiProposedActionTests
             ConversationId = Guid.CreateVersion7(),
             Kind = AiProposedActionKind.CreateEventDraft,
             PayloadJson = "{\"title\":\"Community Iftar\"}",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DomainTestClock.UtcNow
         };
     }
 }

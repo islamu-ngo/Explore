@@ -64,7 +64,7 @@ public sealed class WebhookConsumerProviderBindingSecurityBoundaryTests
                 "app_substituted",
                 profile,
                 WebhookProviderCapability.AppPortal,
-                DateTimeOffset.UtcNow)));
+                DomainTestClock.UtcNowOffset)));
 
         binding.RepairAndVerifyOwnership(
             canonicalInstanceId,
@@ -73,7 +73,7 @@ public sealed class WebhookConsumerProviderBindingSecurityBoundaryTests
             "app_verified",
             profile,
             WebhookProviderCapability.AppPortal,
-            DateTimeOffset.UtcNow);
+            DomainTestClock.UtcNowOffset);
 
         await Assert.That(binding.InstanceId).IsEqualTo(canonicalInstanceId);
         await Assert.That(binding.ApplicationUid)
@@ -89,5 +89,5 @@ public sealed class WebhookConsumerProviderBindingSecurityBoundaryTests
             "1.96.1",
             WebhookProviderCapability.AppPortal,
             "svix-self-hosted-1.96.1-v1",
-            DateTimeOffset.UtcNow);
+            DomainTestClock.UtcNowOffset);
 }

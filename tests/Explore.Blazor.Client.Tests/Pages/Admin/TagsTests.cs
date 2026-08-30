@@ -41,7 +41,7 @@ public class TagsTests : IDisposable
 
     private static void SelectTab(IRenderedComponent<DynamicComponent> cut, string tabName)
     {
-        var tab = cut.FindAll(".mud-tab").First(x => x.TextContent.Contains(tabName, StringComparison.OrdinalIgnoreCase));
+        var tab = cut.FindAll("[role='tab']").First(x => x.TextContent.Contains(tabName, StringComparison.OrdinalIgnoreCase));
         tab.Click();
     }
 

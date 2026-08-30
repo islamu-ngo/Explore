@@ -83,7 +83,7 @@ public sealed class TicketsTests : IDisposable
                     IncludedQuantity = 1
                 }
             ],
-            IssuedAtUtc = DateTimeOffset.UtcNow,
+            IssuedAtUtc = TestTime.UtcNow,
             StatusCode = "ACTIVE",
             DisplayReference = "TKT-1234"
         };

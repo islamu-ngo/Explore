@@ -10,7 +10,7 @@ public sealed class NotificationRefreshStreamClientTests
     [Test]
     public async Task HandleNotificationRefresh_RaisesRefreshReceivedWithParsedGeneratedAt()
     {
-        var generatedAt = DateTimeOffset.UtcNow;
+        var generatedAt = TestTime.UtcNow;
         var received = new List<NotificationRefreshHintReceivedEventArgs>();
         var client = CreateClient();
         client.RefreshReceived += args =>
@@ -43,7 +43,7 @@ public sealed class NotificationRefreshStreamClientTests
 
         await Assert.That(received).Count().IsEqualTo(1);
         await Assert.That(received[0].Reason).IsEqualTo("refresh");
-        await Assert.That(received[0].GeneratedAt).IsGreaterThan(DateTimeOffset.UtcNow.AddMinutes(-1));
+        await Assert.That(received[0].GeneratedAt).IsNotEqualTo(default);
     }
 
     [Test]

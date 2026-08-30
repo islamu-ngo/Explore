@@ -287,21 +287,6 @@ public sealed class StudioEventPromotionsTests : IDisposable
     }
 
     [Test]
-    public async Task CssIsolation_UsesBemAndLogicalProperties()
-    {
-        var css = await File.ReadAllTextAsync(Path.Combine(
-            RepositoryRoot(),
-            "src/Explore.Blazor.Client/Pages/Studio/StudioEventPromotions.razor.css"));
-
-        await Assert.That(css).Contains(".studio-event-promotions__");
-        await Assert.That(css).Contains("padding-inline:");
-        await Assert.That(css).DoesNotContain("margin-left:");
-        await Assert.That(css).DoesNotContain("margin-right:");
-        await Assert.That(css).DoesNotContain("padding-left:");
-        await Assert.That(css).DoesNotContain("padding-right:");
-    }
-
-    [Test]
     public async Task RenderedEvidence_IsSanitizedAndDeterministic()
     {
         var eventId = Guid.Parse("019fcf29-f8d4-7d83-94c5-08ba1e7f1202");

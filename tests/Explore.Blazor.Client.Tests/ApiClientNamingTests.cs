@@ -10,7 +10,7 @@ namespace Explore.Blazor.Client.Tests;
 /// <summary>
 /// Guardrail tests that enforce the ergonomics bar on the generated <see cref="IEventApiClient"/>.
 ///
-/// Created during Phase 0 of <c>dev/active/api-contract-stabilization/</c>. These tests protect
+/// These tests protect
 /// the stabilized API OpenAPI surface from regressing back to duplicate URL-segment aliases or
 /// unstable operation IDs that force NSwag collision-disambiguation suffixes such as
 /// <c>Foo2Async</c>, <c>Foo3Async</c>, or <c>TenantGET2Async</c>.

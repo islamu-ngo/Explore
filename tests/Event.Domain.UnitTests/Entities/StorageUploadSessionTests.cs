@@ -50,11 +50,11 @@ public class StorageUploadSessionTests
     public async Task Cancel_WhenFinalized_ThrowsInvalidOperationException()
     {
         var session = CreateSession();
-        session.Finalize(Guid.CreateVersion7(), "tenants/default/final.png", null, DateTime.UtcNow);
+        session.Finalize(Guid.CreateVersion7(), "tenants/default/final.png", null, DomainTestClock.UtcNow);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
         {
-            session.Cancel(DateTime.UtcNow);
+            session.Cancel(DomainTestClock.UtcNow);
             return Task.CompletedTask;
         });
     }
@@ -63,7 +63,7 @@ public class StorageUploadSessionTests
     public async Task MarkExpired_WhenReserved_SetsExpiredFailureCode()
     {
         var session = CreateSession();
-        var utcNow = DateTime.UtcNow;
+        var utcNow = DomainTestClock.UtcNow;
 
         session.MarkExpired(utcNow);
 
@@ -88,7 +88,7 @@ public class StorageUploadSessionTests
             Purpose = StorageObjectPurposes.Attachment,
             Visibility = StorageObjectVisibilities.AuthenticatedTenant,
             Status = StorageUploadSessionStates.Reserved,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(15)
+            ExpiresAt = DomainTestClock.UtcNow.AddMinutes(15)
         };
     }
 }

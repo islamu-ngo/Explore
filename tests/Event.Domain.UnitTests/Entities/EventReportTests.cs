@@ -144,7 +144,7 @@ public class EventReportTests
     public async Task UpdateStatus_WhenClosed_RejectsFurtherTransitions()
     {
         var report = CreateReport();
-        var now = DateTime.UtcNow;
+        var now = DomainTestClock.UtcNow;
         report.UpdateStatus(EventReportStatus.Dismissed, now);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -186,7 +186,7 @@ public class EventReportTests
             Guid.CreateVersion7(),
             "default",
             EventReportPriority.High,
-            DateTime.UtcNow.AddDays(1));
+            DomainTestClock.UtcNow.AddDays(1));
         var moderatorUserId = Guid.CreateVersion7();
         var now = new DateTime(2026, 7, 2, 10, 0, 0, DateTimeKind.Utc);
 
@@ -206,7 +206,7 @@ public class EventReportTests
             Guid.CreateVersion7(),
             "default",
             EventReportPriority.Normal,
-            DateTime.UtcNow.AddDays(1));
+            DomainTestClock.UtcNow.AddDays(1));
         var now = new DateTime(2026, 7, 2, 10, 30, 0, DateTimeKind.Utc);
 
         caseItem.Triage("urgent-safety", EventReportPriority.Urgent, now);

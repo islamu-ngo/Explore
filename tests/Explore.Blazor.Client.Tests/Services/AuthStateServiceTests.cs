@@ -11,7 +11,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// Key design decisions tested:
 /// - GetCurrentUserIdAsync returns string (JWT claims are strings)
 /// - GetCurrentTenantIdAsync returns Guid (parsed from string claims)
-/// - Fallback chain for user ID: sub → nameidentifier → sid (AGENTS.md rule #8)
+/// - Fallback chain for user ID: sub → nameidentifier → sid
 /// - Multi-tenant vs single-tenant mode behavior
 /// </para>
 /// <para>
@@ -83,7 +83,7 @@ public class AuthStateServiceTests
     [Test]
     public async Task GetCurrentUserIdAsync_PrefersSubClaim_WhenBothSubAndNameIdentifierPresent()
     {
-        // Arrange — both sub and nameidentifier present; sub must win per AGENTS.md rule #8
+        // Arrange — both sub and nameidentifier are present; sub must win.
         var subUserId = Guid.NewGuid();
         var nameIdUserId = Guid.NewGuid();
         var authStateProvider = Substitute.For<AuthenticationStateProvider>();

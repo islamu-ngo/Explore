@@ -42,7 +42,7 @@ public sealed class WebhookBulkReplayPanelTests : IDisposable
                         ExcludedIneligibleLocalStateCount = 1,
                         MaximumItemsPerOperation = 100,
                         MaximumReservedItemsPerTenant = 500,
-                        PreviewedAt = DateTimeOffset.UtcNow
+                        PreviewedAt = TestTime.UtcNow
                     }));
             });
         _operations.ScheduleBulkReplayAsync(
@@ -143,8 +143,8 @@ public sealed class WebhookBulkReplayPanelTests : IDisposable
             StatusName = "Queued",
             Filter = new WebhookBulkReplayFilterDto
             {
-                FromUtc = DateTimeOffset.UtcNow.AddDays(-1),
-                ToUtc = DateTimeOffset.UtcNow,
+                FromUtc = TestTime.UtcNow.AddDays(-1),
+                ToUtc = TestTime.UtcNow,
                 MaxItems = 100
             },
             ReasonCode = "incident_recovery",
@@ -153,7 +153,7 @@ public sealed class WebhookBulkReplayPanelTests : IDisposable
             EstimatedExcludedCount = 0,
             ScheduledCount = 0,
             ConcurrencyVersion = 3,
-            QueuedAt = DateTimeOffset.UtcNow
+            QueuedAt = TestTime.UtcNow
         };
 
     private static bool HasAttribute(

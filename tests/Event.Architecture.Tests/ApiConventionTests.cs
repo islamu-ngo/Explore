@@ -162,7 +162,7 @@ public class ApiConventionTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("API controllers must stay thin HTTP adapters and dispatch through MediatR or API services; repository access belongs behind Application/Persistence boundaries. See dev/active/backend-api-health-refactor/backend-api-health-refactor-tasks.md Phase 0B and backend-contract-risk-register.md R-007/R-010.");
+            .Because("API controllers must stay thin HTTP adapters; repository access belongs behind Application/Persistence boundaries.");
     }
 
     [Test]
@@ -201,7 +201,7 @@ public class ApiConventionTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("API actions must expose DTO/HAL/ProblemDetails contracts, never Domain entities. Mapping belongs in Application handlers and API assemblers. See dev/active/backend-api-health-refactor/backend-api-health-refactor-tasks.md Phase 0B.");
+            .Because("API actions must expose DTO/HAL/ProblemDetails contracts, never Domain entities; mapping belongs in handlers and assemblers.");
     }
 
     [Test]
@@ -228,7 +228,7 @@ public class ApiConventionTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("controllers must never bypass tenant filters directly; cross-tenant reads require explicit host/system execution APIs with reason logging. See dev/active/backend-api-health-refactor/tenant-execution-model.md and backend-contract-risk-register.md R-001/R-002/R-014.");
+            .Because("controllers must never bypass tenant filters; cross-tenant reads require explicit host/system execution APIs with reason logging.");
     }
 
     #endregion

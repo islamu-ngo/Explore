@@ -149,16 +149,19 @@ Use reviewable architectural slices. Every phase in `plan.md` defines high-level
 > - All granular task breakdowns (`Task N.M`), Red/Green/Refactor task sequences, and actionable execution checklists belong **strictly in `tasks.md`**.
 > - Ephemeral session progress, worktree dirty scopes, test pass counts, and handoffs belong **strictly in `context.md`**.
 
-#### Behavioral Slice Rule: Test-First Invariant Task Sequencing (in `tasks.md`)
-To prevent **Post-Hoc Test Tautology ("The Ugly Mirror")** where agents write code first and generate self-fulfilling tests that mirror implementation bugs, every phase introducing or modifying behavioral logic MUST break down its actionable tasks in **`tasks.md`** in **Test-First Invariant order**, binding Red tasks directly to Section 3 Scenarios:
+#### Behavioral Slice Rule: Invariant-First Slicing (in `tasks.md`)
+To prevent **Post-Hoc Test Tautology ("The Ugly Mirror")** on critical paths while avoiding excessive test toil on standard orchestration, structure tasks in `tasks.md` with appropriate rigor:
 
-1. **Task N.1 (Red Phase): Author Invariant & Contract Specification Tests for Scenarios <X.Y>**
-   - Author failing tests against public interfaces, MediatR requests, or API contracts *before* implementing production logic.
-   - Assert domain invariants, checked integer arithmetic, state transitions, fail-closed error responses (RFC 7807), tenant boundary isolation, and the adversarial "Worst Break" scenarios from Section 3.
-   - Run or verify that the test fails for the expected missing capability (red anchor).
-2. **Task N.2 (Green Phase): Implement Handlers, Entities & Domain Logic**
-   - Author production C# code strictly to satisfy the test specifications.
-3. **Task N.3 (Refactor & Wire Up): Clean Architecture & Registration**
+1. **High-Criticality Slices (Money, Concurrency Races, Aggregate State Machines, Security Boundaries):**
+   - **Task N.1 (Red Phase): Author Invariant & Contract Specification Tests for Scenarios <X.Y>**
+     - Author failing tests against domain invariants, checked arithmetic, aggregate state transitions, fail-closed error responses (RFC 7807), or tenant isolation *before* implementing production logic.
+   - **Task N.2 (Green Phase): Implement Handlers, Entities & Domain Logic**
+     - Author production C# code strictly to satisfy the invariant contracts.
+2. **Standard Slices (CQRS Orchestration, API Endpoints, UI Components):**
+   - Implement the slice directly and verify against public contracts (integration route responses, HAL affordances, domain value objects).
+   - Prohibit tautological mock-mirroring (`NSubstitute.Received(1)` on internal repositories/caches), framework cancellation tests, or raw C#/CSS text scraping.
+
+3. **Task N.Next (Refactor & Wire Up): Clean Architecture & DI Registration**
    - Refactor for performance, memory allocation, and zero-PII logging (`StarRedactor`/`HmacRedactor`), and wire DI service registrations.
 
 #### Atomic Task Verification Rule (in `tasks.md`)
@@ -179,8 +182,8 @@ Every implementation workstream MUST sequence its **Changelog Contribution & Com
 
 ## 7. Testing Strategy
 
-Keep this section short and high-leverage. Every implementation plan must define:
-1. **Test-First Invariant Anchors**: Detail which test project (e.g., `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Event.Persistence.IntegrationTests`) hosts the Red-phase specification tests.
+Keep this section short and high-leverage (strict **Quality over Quantity**):
+1. **Invariant Anchors**: Detail which test project (e.g., `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Event.Persistence.IntegrationTests`) hosts the invariant and contract tests.
 2. **High-Leverage Adversarial Scenarios**: Prioritize high-value invariant tests (concurrency races, state machine exhaustiveness, real DB transaction boundaries, zero-PII log sinks, tenant isolation) over shallow mock-heavy boilerplate tests.
 3. **Phase Verification Lane**: Assign exactly one fastest relevant non-browser test project to each phase, never repeat a project without a concrete reason, and never schedule more than one `dotnet test` command in a phase. Do not plan E2E, Playwright, browser automation, Chrome DevTools MCP, visual QA, live-app smoke, Aspire/Docker startup, or manual runtime verification.
 

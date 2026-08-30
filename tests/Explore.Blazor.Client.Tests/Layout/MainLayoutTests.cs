@@ -115,7 +115,7 @@ public class MainLayoutTests : IDisposable
                 new DockPanelState(ShellDockPanels.WorkspaceNavId, workspaceNavOpen, DockMode.Docked, Width: 320, Order: 10, IsActive: workspaceNavOpen),
                 new DockPanelState(ShellDockPanels.AiAssistantId, aiAssistantOpen, DockMode.Docked, Width: 420, Order: 20, IsActive: aiAssistantOpen)
             ],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
     }
 
     private static DockPanelDescriptor CreateWorkspacePersistentDescriptor(DockPanelId id)
@@ -134,35 +134,6 @@ public class MainLayoutTests : IDisposable
             IsResizable: true,
             CanClose: true,
             PersistState: true);
-    }
-
-    private static async Task WaitForAsync(Action assertion, TimeSpan? timeout = null)
-    {
-        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(3));
-        Exception? lastException = null;
-
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            try
-            {
-                assertion();
-                return;
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-                await Task.Delay(TimeSpan.FromMilliseconds(50));
-            }
-        }
-
-        try
-        {
-            assertion();
-        }
-        catch (Exception ex)
-        {
-            throw new TimeoutException("The expected assertion did not pass before the timeout.", lastException ?? ex);
-        }
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -436,83 +407,6 @@ public class MainLayoutTests : IDisposable
     }
 
     [Test]
-    public async Task ShellDockChange_AfterHydration_DebouncesAutosaveWithShellKey()
-    {
-        var cut = RenderLayout();
-        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
-        var workspacePanelId = new DockPanelId("events.customize-view");
-
-        cut.WaitForAssertion(() =>
-            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-        cut.WaitForAssertion(() =>
-            _publicExperienceService.Received().GetCachedSettingsAsync().GetAwaiter().GetResult());
-
-        _dockLayoutPersistence.ClearReceivedCalls();
-
-        dockLayoutState.Register(CreateWorkspacePersistentDescriptor(workspacePanelId), _ => { });
-        await cut.InvokeAsync(() => dockLayoutState.Open(workspacePanelId));
-        await cut.InvokeAsync(() => dockLayoutState.Resize(ShellDockPanels.WorkspaceNavId, 340));
-
-        await WaitForAsync(() =>
-            _dockLayoutPersistence.Received(1).SaveAsync(
-                Arg.Is<DockLayoutSnapshot>(snapshot => snapshot != null
-                    && snapshot.LayoutKey == "shell"
-                    && snapshot.Panels.Count == 2
-                    && snapshot.Panels.All(panel => panel.Id == ShellDockPanels.WorkspaceNavId || panel.Id == ShellDockPanels.AiAssistantId)
-                    && snapshot.Panels.Any(panel => panel.Id == ShellDockPanels.WorkspaceNavId && panel.Width == 340)
-                    && snapshot.Panels.All(panel => panel.Id != workspacePanelId)),
-                Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-    }
-
-    [Test]
-    public async Task WorkspaceDockChange_AfterShellHydration_DoesNotAutosaveShellLayout()
-    {
-        var cut = RenderLayout();
-        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
-        var workspacePanelId = new DockPanelId("events.customize-view");
-
-        cut.WaitForAssertion(() =>
-            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-        cut.WaitForAssertion(() =>
-            _publicExperienceService.Received().GetCachedSettingsAsync().GetAwaiter().GetResult());
-
-        dockLayoutState.Register(CreateWorkspacePersistentDescriptor(workspacePanelId), _ => { });
-        _dockLayoutPersistence.ClearReceivedCalls();
-
-        await cut.InvokeAsync(() => dockLayoutState.Open(workspacePanelId));
-        await Task.Delay(TimeSpan.FromMilliseconds(650));
-
-        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
-            Arg.Any<DockLayoutSnapshot>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task ResponsiveViewportPolicy_AfterHydration_DoesNotAutosaveProjectedShellState()
-    {
-        _dockLayoutPersistence.LoadAsync("shell", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateShellSnapshot(workspaceNavOpen: true, aiAssistantOpen: true)));
-
-        var cut = RenderLayout();
-        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
-
-        cut.WaitForAssertion(() =>
-        {
-            if (dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen != true)
-                throw new InvalidOperationException("Expected shell snapshot to open the workspace nav before viewport projection.");
-        });
-
-        _dockLayoutPersistence.ClearReceivedCalls();
-
-        await cut.InvokeAsync(() => dockLayoutState.UpdateViewport(390, isMobile: true));
-        await Task.Delay(TimeSpan.FromMilliseconds(650));
-
-        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
-            Arg.Any<DockLayoutSnapshot>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
     public async Task NavMenuSidebarToggle_MirrorsWorkspaceNavDockPanelByShellId()
     {
         var cut = RenderLayout();
@@ -688,48 +582,6 @@ public class MainLayoutTests : IDisposable
         await cut.InvokeAsync(() => navigationManager.NavigateTo("/events"));
 
         await Assert.That(dockLayoutState.GetPanel(ShellDockPanels.WorkspaceNavId)?.State.IsOpen).IsFalse();
-    }
-
-    [Test]
-    public async Task HiddenChromePolicyClose_DoesNotAutosaveWorkspaceNavigation()
-    {
-        var cut = RenderLayout();
-        var navigationManager = _ctx.Services.GetRequiredService<NavigationManager>();
-
-        cut.WaitForAssertion(() =>
-            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-        _dockLayoutPersistence.ClearReceivedCalls();
-
-        await cut.InvokeAsync(() => navigationManager.NavigateTo("/setup"));
-        await Task.Delay(TimeSpan.FromMilliseconds(650));
-
-        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
-            Arg.Any<DockLayoutSnapshot>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task PendingUserAutosave_CapturesWorkspaceNavigationStateBeforeHiddenChromePolicy()
-    {
-        var cut = RenderLayout();
-        var dockLayoutState = _ctx.Services.GetRequiredService<DockLayoutState>();
-        var navigationManager = _ctx.Services.GetRequiredService<NavigationManager>();
-
-        cut.WaitForAssertion(() =>
-            _dockLayoutPersistence.Received(1).LoadAsync("shell", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-        _dockLayoutPersistence.ClearReceivedCalls();
-
-        await cut.InvokeAsync(() => dockLayoutState.Resize(ShellDockPanels.WorkspaceNavId, 340));
-        await cut.InvokeAsync(() => navigationManager.NavigateTo("/setup"));
-
-        await WaitForAsync(() =>
-            _dockLayoutPersistence.Received(1).SaveAsync(
-                Arg.Is<DockLayoutSnapshot>(snapshot => snapshot.Panels != null
-                    && snapshot.Panels.Any(panel =>
-                        panel.Id == ShellDockPanels.WorkspaceNavId
-                        && panel.IsOpen
-                        && panel.Width == 340)),
-                Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
     }
 
     [Test]

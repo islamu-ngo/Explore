@@ -22,9 +22,9 @@ public sealed class EventOrganizerClaimTests
             claimantActorId,
             "DOMAIN_EMAIL",
             "evidence-reference",
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
-        claim.Approve(@event, reviewerUserId, "VERIFIED_CONTROL", DateTime.UtcNow);
+        claim.Approve(@event, reviewerUserId, "VERIFIED_CONTROL", DomainTestClock.UtcNow);
 
         await Assert.That(claim.StatusId).IsEqualTo((int)EventOrganizerClaimStatusEnum.Approved);
         await Assert.That(@event.OrganizerActorId).IsEqualTo(claimantActorId);
@@ -45,11 +45,11 @@ public sealed class EventOrganizerClaimTests
             Guid.CreateVersion7(),
             "DOMAIN_EMAIL",
             "evidence-reference",
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
-        claim.Approve(@event, reviewerUserId, "VERIFIED_CONTROL", DateTime.UtcNow);
+        claim.Approve(@event, reviewerUserId, "VERIFIED_CONTROL", DomainTestClock.UtcNow);
 
-        await Assert.That(() => claim.Approve(@event, reviewerUserId, "VERIFIED_CONTROL", DateTime.UtcNow))
+        await Assert.That(() => claim.Approve(@event, reviewerUserId, "VERIFIED_CONTROL", DomainTestClock.UtcNow))
             .Throws<InvalidOperationException>();
     }
 
@@ -63,10 +63,10 @@ public sealed class EventOrganizerClaimTests
             Guid.CreateVersion7(),
             "DOMAIN_EMAIL",
             "evidence-reference",
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
         var @event = CreateEvent(Guid.CreateVersion7(), eventId);
 
-        await Assert.That(() => claim.Approve(@event, Guid.CreateVersion7(), "VERIFIED_CONTROL", DateTime.UtcNow))
+        await Assert.That(() => claim.Approve(@event, Guid.CreateVersion7(), "VERIFIED_CONTROL", DomainTestClock.UtcNow))
             .Throws<InvalidOperationException>();
         await Assert.That(@event.OrganizerActorId).IsNull();
     }

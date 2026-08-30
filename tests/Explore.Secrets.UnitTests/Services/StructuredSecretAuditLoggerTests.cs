@@ -28,7 +28,7 @@ public class StructuredSecretAuditLoggerTests
             Operation: SecretOperation.Access,
             ProviderType: SecretProviderType.Infisical,
             KeyPattern: "Database:Host",
-            Timestamp: DateTimeOffset.UtcNow,
+            Timestamp: SecretsTestValues.UtcNow,
             Success: true);
 
         // Act
@@ -51,7 +51,7 @@ public class StructuredSecretAuditLoggerTests
             Operation: SecretOperation.RefreshFailed,
             ProviderType: SecretProviderType.Vault,
             KeyPattern: null,
-            Timestamp: DateTimeOffset.UtcNow,
+            Timestamp: SecretsTestValues.UtcNow,
             Success: false,
             ErrorMessage: "Connection timeout");
 
@@ -75,7 +75,7 @@ public class StructuredSecretAuditLoggerTests
             Operation: SecretOperation.Initialize,
             ProviderType: SecretProviderType.AzureKeyVault,
             KeyPattern: null,
-            Timestamp: DateTimeOffset.UtcNow,
+            Timestamp: SecretsTestValues.UtcNow,
             Success: true);
 
         // Act & Assert - Should complete without exception
@@ -90,7 +90,7 @@ public class StructuredSecretAuditLoggerTests
             Operation: SecretOperation.Refresh,
             ProviderType: SecretProviderType.Infisical,
             KeyPattern: null,
-            Timestamp: DateTimeOffset.UtcNow,
+            Timestamp: SecretsTestValues.UtcNow,
             Success: true);
 
         // Act
@@ -113,7 +113,7 @@ public class StructuredSecretAuditLoggerTests
             Operation: SecretOperation.Initialize,
             ProviderType: SecretProviderType.None,
             KeyPattern: null,
-            Timestamp: DateTimeOffset.UtcNow,
+            Timestamp: SecretsTestValues.UtcNow,
             Success: true);
 
         // Act & Assert
@@ -129,7 +129,7 @@ public class StructuredSecretAuditLoggerTests
             Operation: SecretOperation.Access,
             ProviderType: SecretProviderType.AwsSecretsManager,
             KeyPattern: "App:***",
-            Timestamp: DateTimeOffset.UtcNow,
+            Timestamp: SecretsTestValues.UtcNow,
             UserId: "user-123",
             CorrelationId: "corr-456",
             Success: true,

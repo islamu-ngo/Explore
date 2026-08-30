@@ -30,21 +30,23 @@ priority: high
 3. Distinguish verified codebase reality from plan aspiration. Do not approve claims you did not verify.
 4. Apply the `grill-me` Socratic stress test to the plan's technical claims, including rollback safety, tenant boundaries, query-performance thresholds, operator clarity, failure modes, and **"The Worst Break" Adversarial Scenario** (the single most catastrophic failure mode); unresolved material answers block approval.
 5. **3-Dimensional Evaluation Model**: Evaluate the plan across three distinct dimensions:
-   - **Completeness**: Are all declared capabilities, I-VSD mitigations, and Red/Green tasks present?
+   - **Completeness**: Are all declared capabilities, I-VSD mitigations, and requirements present?
    - **Correctness**: Do invariant test scenarios cover boundary conditions, concurrency races, and negative failure paths?
    - **Coherence**: Does the design adhere to Clean Architecture, HAL link affordances, tenant isolation, and transactional outbox patterns?
-6. **Test-First Invariant Verification**: Verify that the plan sequences failing contract/invariant tests (Red Phase) bound to named Scenarios *before* production code (Green Phase); block approval for plans with post-hoc test clustering or tautological test risks.
-7. **4-Point "Right-Sizing" Rule**: Mandate a PR split ("Split before approval") when 2+ symptoms match: (1) Scope contains multi-intent "and also" clauses, (2) Plan exceeds reviewable task capacity (< 8-10 major tasks), (3) Migration, API contract churn, and UI enablement combined in one big-bang phase, (4) Backend CQRS slice could ship independently of Blazor UI.
-8. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
+6. **Invariant-First & Quality-Over-Quantity Verification**: Verify that the plan specifies failing invariant tests (Red Phase) bound to named Scenarios *before* production code for **Core Domain Invariants, Concurrency Races, and Security Boundaries**. Block plans that introduce tautological mock-mirroring tests (`NSubstitute.Received(1)` on internal repositories/caches), framework-testing boilerplate (EF Core cancellation), or raw source-code / CSS text scraping.
+7. **Greenfield Breaking Change Posture**: ISLAMU Event is pre-v1 with 0 external adopters. The CTO rejects backward-compatibility shims, deprecated route aliases, and adapter baggage. Approve clean breaking changes and structural simplifications over legacy preservation.
+8. **4-Point "Right-Sizing" Rule**: Mandate a PR split ("Split before approval") when 2+ symptoms match: (1) Scope contains multi-intent "and also" clauses, (2) Plan exceeds reviewable task capacity (< 8-10 major tasks), (3) Migration, API contract churn, and UI enablement combined in one big-bang phase, (4) Backend CQRS slice could ship independently of Blazor UI.
+9. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
 
 ## Top Anti-Patterns
 1. Reviewing only the narrative architecture while ignoring stale or vague `context.md` and `tasks.md`, or allowing `plan.md` to be polluted with granular task checklists (`- [ ]`) and session handoffs.
 2. **Approving Oversized "And Also" Workstreams**, which allow large multi-layered changes to proceed as single monolithic plans instead of enforcing reviewable PR boundaries.
-3. **Approving Post-Hoc Test Tautology ("The Ugly Mirror")**, which allows agents to write tests after implementation or rely on shallow mock-heavy tests that mirror bugs instead of enforcing invariants.
-4. **Ignoring Missing Scenarios and Worst-Break Failure Modes**, which allows happy-path-only plans to pass review without negative boundary or concurrency tests.
-5. Treating missing migration, tenant-isolation, or operator-recovery detail as a minor documentation issue.
-6. Accepting UI/BFF-local authorization or affordance logic instead of API/HAL-authoritative behavior.
-7. Producing generic best-practice feedback that does not name files, plan sections, risks, or required corrections.
+3. **Approving Backward-Compatibility Shims & Legacy Baggage**, which introduces deprecated endpoint aliases or adapter layers in a greenfield project with zero external users.
+4. **Approving Mock-Mirroring Test Bloat ("The Ugly Mirror")**, which allows agents to write tests that mock internal dependencies and assert method calls instead of enforcing domain invariants and contract behavior.
+5. **Ignoring Missing Scenarios and Worst-Break Failure Modes**, which allows happy-path-only plans to pass review without negative boundary or concurrency tests.
+6. Treating missing migration, tenant-isolation, or operator-recovery detail as a minor documentation issue.
+7. Accepting UI/BFF-local authorization or affordance logic instead of API/HAL-authoritative behavior.
+8. Producing generic best-practice feedback that does not name files, plan sections, risks, or required corrections.
 
 ## Minimal Examples
 ```text

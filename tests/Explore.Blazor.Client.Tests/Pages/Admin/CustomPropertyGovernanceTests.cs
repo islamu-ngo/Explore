@@ -155,7 +155,7 @@ public class CustomPropertyGovernanceTests : IDisposable
             IsAnalyticsRelevant = false,
             IsSystemOwned = false,
             ActiveInstanceCount = 42,
-            LastUsedAt = DateTimeOffset.UtcNow,
+            LastUsedAt = TestTime.UtcNow,
             Recommendation = PromotionRecommendation.ConsiderLayer2Promotion
         };
 

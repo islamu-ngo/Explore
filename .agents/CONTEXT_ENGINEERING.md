@@ -3,6 +3,18 @@
 
 # Context Engineering Contract
 
+## 0. Repository Lifecycle & Greenfield Development Mandate
+
+> [!IMPORTANT]
+> **Active Pre-Release Greenfield Mode**: This platform is in rapid pre-alpha development with **zero users, zero adopters, and zero production release commitments**.
+> 
+> 1. **Backward Compatibility is Explicitly Rejected**: Agents must NEVER preserve bad routes, legacy DTO shapes, deprecated schema columns, or obsolete ratchets for backward compatibility. Breaking changes are first-class, expected, and encouraged whenever they improve architecture or clean up debt.
+> 2. **Context Engineering Refactor Guarantee**: When the repository eventually transitions to a public release or adoption phase where backward compatibility becomes required, **the maintainers will comprehensively refactor this context engineering framework, testing governance, and CI rules**. Agents must NOT worry about future compatibility constraints during this development phase.
+> 3. **Strict Quality Over Quantity in Testing**:
+>    - **DO Test**: Rich domain state transitions, pure business invariants, concurrency race conditions, multi-tenant isolation boundaries, and fail-closed security perimeters.
+>    - **DO NOT Test**: Mock-mirroring boilerplate (`Received(1)` on internal repositories/caches), framework mechanics (e.g. EF Core cancellation tokens), raw C# or CSS source-text scraping, or ephemeral mutation test project sprawl.
+>    - **Stryker Mutation Gating**: Stryker threshold gating (>85%) is disabled during active greenfield development to preserve agent speed and prevent low-value micro-test churn.
+
 ## Objective
 
 Give the main agent the smallest decision-complete working set. Repository context is retrieved once, summarized once, and reused until the underlying file or decision changes.
@@ -77,11 +89,11 @@ Context budgets dynamically adapt based on the task's criticality tier resolved 
 
 | Criticality Tier | Exploration Protocol | Intake & Inquiry Mode | Test Strategy | Multi-Agent Review |
 |---|---|---|---|---|
-| **Tier 0: Sovereign** | Exhaustive Knowledge Graph (callers, callees, outbox, DB locks, ADRs) | Mandatory `/grill-me` (money flows, hold expiration, refund authority) | Invariant-Breaker concurrency tests + Postgres + Stryker (>85%) | Anonymized Epistemic MAD (Weighted Voting) |
-| **Tier 1: Security** | Exhaustive Graph + Policy (Cerbos, BFF, global filters, tokens) | Mandatory `/grill-me` (threat modeling, fail-closed auth, tenant spoofing) | Invariant-Breakers + multi-provider DB tests + Stryker (>85%) | Anonymized Epistemic MAD (Weighted Voting) |
+| **Tier 0: Sovereign** | Exhaustive Knowledge Graph (callers, callees, outbox, DB locks, ADRs) | Mandatory `/grill-me` (money flows, hold expiration, refund authority) | Invariant-Breaker concurrency tests + Postgres container races | Anonymized Epistemic MAD (Weighted Voting) |
+| **Tier 1: Security** | Exhaustive Graph + Policy (Cerbos, BFF, global filters, tokens) | Mandatory `/grill-me` (threat modeling, fail-closed auth, tenant spoofing) | Invariant-Breakers + multi-provider DB tests + tenant isolation | Anonymized Epistemic MAD (Weighted Voting) |
 | **Tier 2: Privacy** | Exhaustive Data Flow (all `*Pii` fields, `IAiContextGateway`, log sinks) | Mandatory `/grill-me` (erasure authority, anti-resurrection, receipt tokens) | Invariant-Breakers + log sink PII scans + purge tests | Anonymized Epistemic MAD (Weighted Voting) |
-| **Tier 3: Domain State** | Bounded caller/callee tracing of target aggregate/handler | Standard Q&A (only if requirements are ambiguous) | Behavioral CQRS unit and integration tests | Peer Review (`backend-engineer-agent`) |
-| **Tier 4: Standard** | Local surface reading (target razor/css/doc file only) | Autonomous defaults (zero unnecessary interruptions) | Affordance & component render tests | Lightweight Self-Check (`presentation-engineer-agent`) |
+| **Tier 3: Domain State** | Bounded caller/callee tracing of target aggregate/handler | Standard Q&A (only if requirements are ambiguous) | Pure domain invariant & CQRS contract tests | Peer Review (`backend-engineer-agent`) |
+| **Tier 4: Standard** | Local surface reading (target razor/css/doc file only) | Autonomous defaults (zero unnecessary interruptions) | HAL affordance & component render tests (`_links`) | Lightweight Self-Check (`presentation-engineer-agent`) |
 
 ## In-Session Test Economy & Clean Architecture Scoping
 
@@ -192,7 +204,6 @@ For Tier 0 (Sovereign), Tier 1 (Security), and Tier 2 (Privacy) changes, agents 
 |---|---|---|
 | `test-results.txt` | Fast-loop TUnit slice output (`--treenode-filter`) or full project test output | Every code change |
 | `invariant-breaker-results.txt` | Concurrency race, tenant spoofing, double-capture, or replay adversarial test logs | Tiers 0–1 |
-| `stryker-report.txt` | Stryker mutation score (>85%) for the modified handler/aggregate | Tiers 0–2 |
 | `blast-radius.yaml` | Pre-flight knowledge graph dump (callers, callees, impacted flows, tests) | Multi-layer changes |
 | `summary.md` | What was tested, what was observed, why it is sufficient, what was omitted | Always |
 

@@ -52,7 +52,8 @@ public class EnvironmentSecretProviderTests
     public async Task GetSecretAsync_WhenEnvVarExists_ShouldReturnValue()
     {
         // Arrange
-        Environment.SetEnvironmentVariable("TEST__SECRET", "secret-value");
+        string secretValue = SecretsTestValues.CreateSecret();
+        Environment.SetEnvironmentVariable("TEST__SECRET", secretValue);
         await _provider.InitializeAsync();
 
         try
@@ -61,7 +62,7 @@ public class EnvironmentSecretProviderTests
             var result = await _provider.GetSecretAsync("Test:Secret");
 
             // Assert
-            await Assert.That(result).IsEqualTo("secret-value");
+            await Assert.That(result).IsEqualTo(secretValue);
         }
         finally
         {

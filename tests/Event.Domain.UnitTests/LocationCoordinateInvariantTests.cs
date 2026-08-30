@@ -75,7 +75,7 @@ public sealed class LocationCoordinateInvariantTests
         location.ClassifyAsPrivateHome(Guid.CreateVersion7());
         location.SetProviderAddress("Private address", "1000", GeoCoordinate.Create(50.8503, 4.3517));
 
-        location.EraseOwnedPii(DateTime.UtcNow, LocationPrivacyErasureReasonEnum.OwnerErasureRequest);
+        location.EraseOwnedPii(DomainTestClock.UtcNow, LocationPrivacyErasureReasonEnum.OwnerErasureRequest);
 
         await Assert.That(location.Pii).IsNull();
         await Assert.That(location.GetCoordinate()).IsNull();

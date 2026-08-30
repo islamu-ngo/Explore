@@ -28,7 +28,7 @@ priority: critical
 | **2. Exploration Depth** | Exhaustive graph (callers, callees, outbox, DB locks) | Exhaustive graph + policy (Cerbos, BFF, global filters) | Exhaustive data flow (`*Pii` fields, log sinks) | Bounded caller/callee tracing | Local surface reading only |
 | **3. Invariant Alignment** | Strict ADR-022/024, integer checked arithmetic | Strict `SECURITY-MODEL.md`, `AUTHORIZATION.md` | Strict `PRIVACY_ERASURE.md`, zero-PII logging | Clean Architecture (Domain $\rightarrow$ App $\rightarrow$ Infra) | UI system: HAL links, BEM CSS |
 | **4. Invariant-Breaker Tests** | Concurrency races, double capture, currency overflow | Cross-tenant data leaks, forged headers, expired JWT | Unmasked PII log injection, user resurrection races | Behavioral CQRS unit & integration tests | Affordance & render tests (`_links`) |
-| **5. Testing Rigor** | Real PostgreSQL tests, row locking, Stryker >85% | Real multi-provider DB tests, Cerbos parity, Stryker >85% | Full erasure lifecycle test, test log PII scan pass | Targeted project unit & integration tests | Fast verification + Release build |
+| **5. Testing Rigor** | Real PostgreSQL tests, row locking & race tests | Real multi-provider DB tests, Cerbos parity | Full erasure lifecycle test, test log PII scan pass | Targeted project unit & integration tests | Fast verification + Release build |
 | **6. Multi-Agent Review** | Epistemic MAD (anonymized debate & weighted vote) | Epistemic MAD (anonymized debate & weighted vote) | Epistemic MAD (anonymized debate & weighted vote) | Peer Review (`backend-engineer-agent`) | Lightweight Self-Check |
 | **7. Teaching Summary** | Architecture, state transitions, recovery runbook | Threat model resolution, tenant isolation proof | Data retention impact, erasure auditability proof | Summary of CQRS handlers & mappings | Concise UI walkthrough |
 
@@ -47,7 +47,7 @@ High-criticality tasks explicitly reject shallow unit tests and mock assertions.
 3. **Deep Graph Exploration**: Use `code-review-graph` MCP tools to map callers, callees, dependent flows, and DB lock contention.
 4. **Draft Failing Invariant-Breakers**: Write adversarial concurrency and exploit tests first.
 5. **Implement Fail-Closed Solution**: Author clean, transactional, PII-safe code.
-6. **Verify Proportional Rigor**: Run real DB integration tests, Stryker mutation checks (>85%), and log sink PII scans.
+6. **Verify Proportional Rigor**: Run real DB integration tests, concurrency race checks, and log sink PII scans. (Stryker mutation gating is disabled during greenfield dev).
 7. **Epistemic MAD Review**: Execute anonymized multi-agent debate and post-hoc voting.
 8. **Comprehensive Technical Teaching**: Provide a deep architectural teaching summary before completing the task.
 

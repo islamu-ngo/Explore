@@ -110,7 +110,7 @@ public sealed class EventTicketCatalogVersionTests
     {
         EventTicketCatalogVersion catalog = CreateCatalog();
         EventTicketType ticketType = AddFreeTicketWithEventEntitlement(catalog);
-        catalog.DeleteTicketType(ticketType, DateTime.UtcNow, Guid.CreateVersion7());
+        catalog.DeleteTicketType(ticketType, DomainTestClock.UtcNow, Guid.CreateVersion7());
 
         await Assert.That(() => catalog.Publish()).Throws<InvalidOperationException>();
         await Assert.That(catalog.TicketCatalogStatusId).IsEqualTo((int)TicketCatalogStatusEnum.Draft);
@@ -123,7 +123,7 @@ public sealed class EventTicketCatalogVersionTests
         AddFreeTicketWithEventEntitlement(catalog);
         EventTicketType deletedTicketType = CreateTicket(catalog, "USD", TicketPricingModeEnum.Free, null, null, null);
         catalog.AddTicketType(deletedTicketType, null);
-        catalog.DeleteTicketType(deletedTicketType, DateTime.UtcNow, Guid.CreateVersion7());
+        catalog.DeleteTicketType(deletedTicketType, DomainTestClock.UtcNow, Guid.CreateVersion7());
 
         catalog.Publish();
 
@@ -162,7 +162,7 @@ public sealed class EventTicketCatalogVersionTests
         EventTicketType liveTicketType = AddFreeTicketWithEventEntitlement(catalog);
         EventTicketType deletedTicketType = CreateTicket(catalog, "USD", TicketPricingModeEnum.Free, null, null, null);
         catalog.AddTicketType(deletedTicketType, null);
-        catalog.DeleteTicketType(deletedTicketType, DateTime.UtcNow, Guid.CreateVersion7());
+        catalog.DeleteTicketType(deletedTicketType, DomainTestClock.UtcNow, Guid.CreateVersion7());
         catalog.Publish();
 
         EventTicketCatalogVersion clone = catalog.CloneToDraft();
@@ -188,7 +188,7 @@ public sealed class EventTicketCatalogVersionTests
 
         catalog.UpdateCommercialDisclosures("merchant", "refund", "support");
         catalog.Publish();
-        await Assert.That(() => catalog.DeleteTicketType(ticketType, DateTime.UtcNow, Guid.CreateVersion7()))
+        await Assert.That(() => catalog.DeleteTicketType(ticketType, DomainTestClock.UtcNow, Guid.CreateVersion7()))
             .Throws<InvalidOperationException>();
     }
 
@@ -248,9 +248,9 @@ public sealed class EventTicketCatalogVersionTests
             true);
 
         await Assert.That(() => catalog.DeleteTicketType(ticketType, default, Guid.CreateVersion7())).Throws<ArgumentException>();
-        await Assert.That(() => catalog.DeleteTicketType(ticketType, DateTime.UtcNow, Guid.Empty)).Throws<ArgumentException>();
+        await Assert.That(() => catalog.DeleteTicketType(ticketType, DomainTestClock.UtcNow, Guid.Empty)).Throws<ArgumentException>();
         await Assert.That(() => pool.Delete(default, Guid.CreateVersion7())).Throws<ArgumentException>();
-        await Assert.That(() => pool.Delete(DateTime.UtcNow, Guid.Empty)).Throws<ArgumentException>();
+        await Assert.That(() => pool.Delete(DomainTestClock.UtcNow, Guid.Empty)).Throws<ArgumentException>();
     }
 
     [Test]

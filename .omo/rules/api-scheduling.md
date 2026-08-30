@@ -12,7 +12,7 @@ related_intents: [schedule-background-work, add-cqrs-handler, external-infrastru
 ---
 
 <!-- ABOUTME: Path-scoped rules for Quartz jobs, scheduler composition, and API-hosted background services. -->
-<!-- ABOUTME: Twin copy at .agents/rules/api-scheduling.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copies live at .agents/rules/api-scheduling.md and .omo/rules/api-scheduling.md; update both paths. -->
 
 # API Scheduling And Background Work Rules
 
@@ -40,7 +40,10 @@ Not every hosted service is a periodic sweep, and forcing one into the scheduler
 | `ManagedControlPlaneRegistrationWorker` | Retry-until-registered bootstrap that returns on success — a recurring trigger would never stop |
 | Queue/event-driven drains, startup gates | Not interval-driven at all |
 
-Each exception is recorded with its reason in the `ApiLiabilityRatchetTests` timer-loop baseline.
+These are semantic categories, not a source allowlist. `QuartzSchedulerCompositionTests`
+proves the registered recurring-job manifest and queue-drain boundaries through
+runtime composition; owning outbox and bootstrap tests prove the listed
+non-periodic services keep their distinct behavior.
 
 ## Operator Impact
 Any change to a job's identifier, log event name, health-check name, metric name, or configuration key is an operator-visible change and must be documented in `docs/OPERATIONS.md` in the same slice. Self-hosters alert on these.

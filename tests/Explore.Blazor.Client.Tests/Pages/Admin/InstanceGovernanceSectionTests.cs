@@ -118,8 +118,7 @@ public class InstanceGovernanceSectionTests : IDisposable
 
         var cut = RenderGovernanceSection(renderPolicy: renderPolicy);
 
-        await Assert.That(cut.FindAll(".instance-governance__preset-card .mud-tooltip-root").Count).IsEqualTo(5);
-        await Assert.That(cut.FindAll(".mud-tooltip-root").Count).IsGreaterThanOrEqualTo(5);
+        await Assert.That(cut.FindAll(".instance-governance__preset-card button").Count).IsEqualTo(5);
         await Assert.That(cut.Markup).Contains("Runtime Render Policy");
     }
 

@@ -137,7 +137,7 @@ public sealed class InstancePlanCatalogTests : IDisposable
         var cut = _ctx.RenderMudComponent<InstancePlanDetail>(parameters => parameters.Add(p => p.Key, "community"));
 
         cut.WaitForAssertion(() => cut.Markup.Contains("No plan versions", StringComparison.Ordinal));
-        await Assert.That(cut.Find(".mud-alert [dir='auto']").TextContent).Contains("No plan versions");
+        await Assert.That(cut.Find("[role='status'] [dir='auto']").TextContent).Contains("No plan versions");
     }
 
     [Test]

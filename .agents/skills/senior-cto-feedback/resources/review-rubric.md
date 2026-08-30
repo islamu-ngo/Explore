@@ -14,21 +14,22 @@ Evaluate every plan across three primary dimensions:
 
 | Dimension | Core Question | Primary Failure Indicators |
 |---|---|---|
-| **Completeness** | Are all declared capabilities, I-VSD mitigations, requirements, and Red/Green tasks present without gaps? | Missing edge cases, skipped I-VSD mitigations, missing rollback plan, undeclared task dependencies. |
-| **Correctness** | Do the invariant test scenarios cover boundary conditions, concurrency races, and negative failure paths? | Tautological "Ugly Mirror" tests, missing negative scenarios, unverified database queries, missing tenant predicates. |
-| **Coherence** | Does the design adhere to Clean Architecture, HAL link affordances, tenant isolation, and transactional outbox patterns? | Layer pollution (DTOs in Domain, logic in Controllers), UI-local authorization, unstated open assumptions. |
+| **Completeness** | Are all declared capabilities, I-VSD mitigations, requirements, and execution tasks present without gaps? | Missing edge cases, skipped I-VSD mitigations, missing rollback plan, undeclared task dependencies. |
+| **Correctness** | Do invariant test scenarios cover boundary conditions, concurrency races, and negative failure paths? | Tautological "Ugly Mirror" mock tests, framework boilerplate tests, missing negative scenarios, unverified database queries, missing tenant predicates. |
+| **Coherence** | Does the design adhere to Clean Architecture, HAL link affordances, tenant isolation, and transactional outbox patterns? | Layer pollution (DTOs in Domain, logic in Controllers), UI-local authorization, backward-compatibility shims, unstated open assumptions. |
 
 ## 1. Strategic Fit
 
 | Score | Meaning |
 |---|---|
-| 5 | Clearly advances product/platform strategy with limited accidental complexity |
+| 5 | Clearly advances product/platform strategy with limited accidental complexity and clean breaking changes |
 | 3 | Useful but scope, sequencing, ownership, or operator value is unclear |
-| 1 | Adds complexity without a strong platform reason |
+| 1 | Adds complexity, backward-compatibility baggage, or test bloat without platform value |
 
 Questions:
 
 - Does this solve a real product/platform problem?
+- Does it cleanly break and replace obsolete contracts instead of adding backward-compatibility shims?
 - Is this the right layer of the system for the capability?
 - Does it reduce future complexity or create a new permanent burden?
 - Is the plan aligned with self-hostable and enterprise expectations?

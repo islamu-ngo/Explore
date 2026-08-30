@@ -9,7 +9,10 @@ namespace Explore.Blazor.Client.Tests.Components.Event;
 public class EventCardTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
-    private static readonly DateTimeOffset TestDate = new(DateTimeOffset.Now.Year, 7, 25, 17, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset TestNow =
+        new(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset TestDate =
+        new(2026, 7, 25, 17, 0, 0, TimeSpan.Zero);
     private static readonly string ExpectedDetailedDate =
         $"{TestDate.ToString("ddd", CultureInfo.InvariantCulture)}, {TestDate.ToString("MMM", CultureInfo.InvariantCulture).ToUpperInvariant()} {TestDate:dd}, {TestDate.ToString("h:mm tt", CultureInfo.InvariantCulture)}";
     private const string LongestTicketPriceSummary = "Free and other ticket options";
@@ -17,6 +20,8 @@ public class EventCardTests : IDisposable
     public EventCardTests()
     {
         _ctx = new BlazorTestContext();
+        _ctx.Services.AddSingleton<TimeProvider>(
+            new FixedTimeProvider(TestNow));
     }
 
     public void Dispose()
@@ -229,7 +234,7 @@ public class EventCardTests : IDisposable
     public async Task EventCard_FormatsOtherYearScheduleWithYear()
     {
         var eventDto = CreateTestEvent();
-        var pastDate = new DateTimeOffset(DateTimeOffset.Now.Year - 1, 7, 25, 17, 0, 0, TimeSpan.Zero);
+        var pastDate = new DateTimeOffset(2025, 7, 25, 17, 0, 0, TimeSpan.Zero);
         eventDto = eventDto with { FirstSessionDate = pastDate };
         var expected =
             $"{pastDate.ToString("ddd", CultureInfo.InvariantCulture)}, {pastDate.ToString("MMM", CultureInfo.InvariantCulture).ToUpperInvariant()} {pastDate:dd}, {pastDate:yyyy}, {pastDate.ToString("h:mm tt", CultureInfo.InvariantCulture)}";
@@ -527,30 +532,4 @@ public class EventCardTests : IDisposable
         await Assert.That(card.TextContent).Contains("AT Protocol");
     }
 
-    [Test]
-    public async Task EventDetail_SourceIncludesVisibleShareAction()
-    {
-        var eventDetailPath = FindSourceFilePath("src", "Explore.Blazor.Client", "Pages", "Events", "EventDetail.razor");
-        var source = await File.ReadAllTextAsync(eventDetailPath);
-
-        await Assert.That(source).Contains("Share Event");
-        await Assert.That(source).Contains("ShareEventAsync");
-    }
-
-    private static string FindSourceFilePath(params string[] relativeSegments)
-    {
-        var current = new DirectoryInfo(AppContext.BaseDirectory);
-        while (current is not null)
-        {
-            var candidate = Path.Combine([current.FullName, .. relativeSegments]);
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-
-            current = current.Parent;
-        }
-
-        throw new FileNotFoundException($"Could not locate source file: {Path.Combine(relativeSegments)}");
-    }
 }

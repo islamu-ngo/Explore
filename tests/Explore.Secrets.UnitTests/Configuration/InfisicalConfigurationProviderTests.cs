@@ -14,13 +14,14 @@ public sealed class InfisicalConfigurationProviderTests
     [Test]
     public async Task AddInfisical_WhenCredentialsAreConfigured_AddsConfiguredSource()
     {
+        string clientSecret = SecretsTestValues.CreateSecret();
         var bootstrapConfiguration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Infisical:Url"] = "https://secrets.example.test",
                 ["Infisical:ProjectId"] = "project-id",
                 ["Infisical:ClientId"] = "client-id",
-                ["Infisical:ClientSecret"] = "client-secret",
+                ["Infisical:ClientSecret"] = clientSecret,
                 ["Infisical:Environment"] = "staging",
                 ["Infisical:Paths:0"] = "/api",
                 ["Infisical:Paths:1"] = "/keycloak",
@@ -37,7 +38,7 @@ public sealed class InfisicalConfigurationProviderTests
         await Assert.That(infisicalSource.Url).IsEqualTo("https://secrets.example.test");
         await Assert.That(infisicalSource.ProjectId).IsEqualTo("project-id");
         await Assert.That(infisicalSource.ClientId).IsEqualTo("client-id");
-        await Assert.That(infisicalSource.ClientSecret).IsEqualTo("client-secret");
+        await Assert.That(infisicalSource.ClientSecret).IsEqualTo(clientSecret);
         await Assert.That(infisicalSource.Environment).IsEqualTo("staging");
         await Assert.That(infisicalSource.Paths.SequenceEqual(["/api", "/keycloak"])).IsTrue();
     }

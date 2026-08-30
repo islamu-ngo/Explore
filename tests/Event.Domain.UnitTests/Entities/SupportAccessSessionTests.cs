@@ -40,7 +40,7 @@ public class SupportAccessSessionTests
     [Test]
     public async Task Stop_WhenActive_MakesSessionTerminal()
     {
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = DomainTestClock.UtcNowOffset;
         var session = CreateSession(startedAt);
         var stoppedAt = startedAt.AddMinutes(5);
 
@@ -56,7 +56,7 @@ public class SupportAccessSessionTests
     [Test]
     public async Task Expire_AfterStop_ThrowsInvalidOperationException()
     {
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = DomainTestClock.UtcNowOffset;
         var session = CreateSession(startedAt);
         session.Stop(startedAt.AddMinutes(1));
 
@@ -70,7 +70,7 @@ public class SupportAccessSessionTests
     [Test]
     public async Task Revoke_WithPolicyReason_MakesSessionRevoked()
     {
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = DomainTestClock.UtcNowOffset;
         var session = CreateSession(startedAt);
 
         session.Revoke(startedAt.AddMinutes(2), SupportAccessEndReasonEnum.RevokedByPolicy, "kill switch");
@@ -83,7 +83,7 @@ public class SupportAccessSessionTests
     [Test]
     public async Task Start_WhenExpiryIsNotAfterStart_ThrowsArgumentException()
     {
-        var startedAt = DateTimeOffset.UtcNow;
+        var startedAt = DomainTestClock.UtcNowOffset;
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
         {
@@ -104,7 +104,7 @@ public class SupportAccessSessionTests
     [Test]
     public async Task CreateAuditEvent_StoresBoundedJsonMetadata()
     {
-        var session = CreateSession(DateTimeOffset.UtcNow);
+        var session = CreateSession(DomainTestClock.UtcNowOffset);
 
         var auditEvent = SupportAccessAuditEvent.Create(
             session.Id,
@@ -112,7 +112,7 @@ public class SupportAccessSessionTests
             session.ActorUserId ?? throw new InvalidOperationException(),
             session.TargetTenantId,
             "allowed",
-            DateTimeOffset.UtcNow,
+            DomainTestClock.UtcNowOffset,
             routeName: "TenantSettings_Get",
             action: "view",
             httpStatusCode: 200,
@@ -128,7 +128,7 @@ public class SupportAccessSessionTests
     [Test]
     public async Task CreateAuditEvent_WithInvalidJsonMetadata_ThrowsArgumentException()
     {
-        var session = CreateSession(DateTimeOffset.UtcNow);
+        var session = CreateSession(DomainTestClock.UtcNowOffset);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
         {
@@ -138,7 +138,7 @@ public class SupportAccessSessionTests
                 session.ActorUserId ?? throw new InvalidOperationException(),
                 session.TargetTenantId,
                 "denied",
-                DateTimeOffset.UtcNow,
+                DomainTestClock.UtcNowOffset,
                 sanitizedMetadataJson: "{not-json");
 
             return Task.CompletedTask;

@@ -158,13 +158,13 @@ public sealed class WebhookLookupParityTests
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Explore.slnx")))
         {
             directory = directory.Parent;
         }
 
         return directory?.FullName
-            ?? throw new DirectoryNotFoundException("Repository root containing AGENTS.md was not found.");
+            ?? throw new DirectoryNotFoundException("Repository root containing Explore.slnx was not found.");
     }
 
     private static string ToMasterCode(string name)

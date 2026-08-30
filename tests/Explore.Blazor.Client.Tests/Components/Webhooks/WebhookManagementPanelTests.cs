@@ -117,8 +117,8 @@ public sealed class WebhookManagementPanelTests : IDisposable
                     PayloadBase64 = Convert.ToBase64String("{\"event\":\"published\"}"u8),
                     PayloadHash = message.PayloadHash,
                     PayloadByteLength = 21,
-                    PayloadRetentionUntil = DateTimeOffset.UtcNow.AddDays(1),
-                    RetrievedAt = DateTimeOffset.UtcNow
+                    PayloadRetentionUntil = TestTime.UtcNow.AddDays(1),
+                    RetrievedAt = TestTime.UtcNow
                 })));
         _webhookOperations.PauseEndpointAsync(
                 endpoint.Id!.Value,
@@ -457,14 +457,6 @@ public sealed class WebhookManagementPanelTests : IDisposable
         await Assert.That(cut.FindAll("button[aria-label='View delivery attempts']").Count)
             .IsEqualTo(2);
 
-        var markup = await ReadClientSourceAsync("Components/Webhooks/WebhookManagementPanel.razor");
-        var styles = await ReadClientSourceAsync("Components/Webhooks/WebhookManagementPanel.razor.css");
-        await Assert.That(markup).Contains("Breakpoint=\"Breakpoint.Xl\"");
-        await Assert.That(styles).Contains("@media (max-width: 37.497em)");
-        await Assert.That(styles).Contains(".webhook-management__desktop-table");
-        await Assert.That(styles).Contains("display: none");
-        await Assert.That(styles).Contains(".webhook-management__mobile-list");
-        await Assert.That(styles).Contains("display: grid");
     }
 
     private IRenderedComponent<WebhookManagementPanel> RenderPanel(
@@ -533,7 +525,7 @@ public sealed class WebhookManagementPanelTests : IDisposable
                     EventTypeName = "event.published",
                     EventTypeGroupName = "event",
                     IsEnabled = true,
-                    CreatedAt = DateTimeOffset.UtcNow
+                    CreatedAt = TestTime.UtcNow
                 }
             ]
         };
@@ -549,8 +541,8 @@ public sealed class WebhookManagementPanelTests : IDisposable
             ConsumerId = consumerId,
             ConsumerName = consumer.Name,
             PayloadHash = "sha256:1234567890abcdef",
-            PayloadRetentionUntil = DateTimeOffset.UtcNow.AddDays(14),
-            CreatedAt = DateTimeOffset.UtcNow
+            PayloadRetentionUntil = TestTime.UtcNow.AddDays(14),
+            CreatedAt = TestTime.UtcNow
         };
 
         var attempt = new HalResourceOfWebhookDeliveryAttemptDto
@@ -566,11 +558,11 @@ public sealed class WebhookManagementPanelTests : IDisposable
             OutcomeId = 4,
             OutcomeCode = "FAILED",
             OutcomeName = "Failed",
-            ScheduledAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            ScheduledAt = TestTime.UtcNow.AddMinutes(-5),
             HttpStatusCode = 500,
             FailureCategory = "http_non_success",
             DurationMs = 1200,
-            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
+            CreatedAt = TestTime.UtcNow.AddMinutes(-5)
         };
 
         if (includeActionLinks)
@@ -665,25 +657,4 @@ public sealed class WebhookManagementPanelTests : IDisposable
         && field.AdditionalAttributes?.TryGetValue(name, out var value) == true
         && string.Equals(value?.ToString(), expectedValue, StringComparison.Ordinal);
 
-    private static async Task<string> ReadClientSourceAsync(string relativePath)
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            var candidate = Path.Combine(
-                directory.FullName,
-                "src",
-                "Explore.Blazor.Client",
-                relativePath);
-            if (File.Exists(candidate))
-            {
-                return await File.ReadAllTextAsync(candidate);
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new InvalidOperationException(
-            $"Could not locate src/Explore.Blazor.Client/{relativePath} from test base directory.");
-    }
 }

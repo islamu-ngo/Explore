@@ -47,7 +47,7 @@ public sealed class WebhookConsumerOwnershipTests
             ownership,
             "Accounting integration",
             WebhookProviderMode.Local,
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(consumer.Id.Version).IsEqualTo(7);
         await Assert.That(consumer.ConsumerKind).IsEqualTo(ownerKind);
@@ -69,7 +69,7 @@ public sealed class WebhookConsumerOwnershipTests
                 null),
                 "Invalid tenant owner",
                 WebhookProviderMode.Local,
-                DateTime.UtcNow)));
+                DomainTestClock.UtcNow)));
 
         await Assert.ThrowsAsync<ArgumentException>(() => Task.FromResult(
             WebhookConsumer.Create(WebhookOwnershipScope.Create(
@@ -81,7 +81,7 @@ public sealed class WebhookConsumerOwnershipTests
                 null),
                 "Missing organization owner",
                 WebhookProviderMode.Local,
-                DateTime.UtcNow)));
+                DomainTestClock.UtcNow)));
     }
 
     private static Guid? Parse(string? value) =>

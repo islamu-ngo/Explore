@@ -268,7 +268,7 @@ public sealed class EventReportModerationServiceTests
             ReasonName = "Spam",
             ReportCaseUpdatesConsent = true,
             ReportFollowUpContactConsent = false,
-            SubmittedAtUtc = DateTimeOffset.UtcNow,
+            SubmittedAtUtc = TestTime.UtcNow,
             CurrentCase = new CurrentCase2
             {
                 Id = Guid.NewGuid(),
@@ -280,7 +280,7 @@ public sealed class EventReportModerationServiceTests
                 PriorityId = 4,
                 PriorityCode = priorityCode,
                 PriorityName = priorityName,
-                CreatedAtUtc = DateTimeOffset.UtcNow,
+                CreatedAtUtc = TestTime.UtcNow,
                 ConcurrencyStamp = Guid.NewGuid()
             },
             DecisionCount = 1,

@@ -6,6 +6,7 @@ using AngleSharp.Dom;
 using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
 using Explore.Blazor.Client.Pages.Events;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -160,7 +161,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             });
         var cut = RenderLayout();
 
-        NavigateTo(cut, "Paid Events");
+        await NavigateTo(cut, "Paid Events");
 
         cut.WaitForElement("[data-testid='tenant-paid-policy-section']");
         await _paidEventPolicyService.Received(1).GetTenantAsync(_tenantId, Arg.Any<CancellationToken>());
@@ -194,11 +195,11 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             }.InitializeForEditing());
         var cut = RenderLayout();
 
-        NavigateTo(cut, "Branding");
+        await NavigateTo(cut, "Branding");
         await Assert.That(cut.Markup).Contains("Brand display name", StringComparison.Ordinal);
         await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.Ordinal);
 
-        NavigateTo(cut, "Object Storage");
+        await NavigateTo(cut, "Object Storage");
         await Assert.That(cut.Markup).Contains("Tenant Storage Provider", StringComparison.Ordinal);
         await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.Ordinal);
     }
@@ -209,7 +210,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         ConfigureAuthorizedManagement(CreateManagementModel());
         var cut = RenderLayout();
 
-        NavigateTo(cut, "Public Experience");
+        await NavigateTo(cut, "Public Experience");
 
         await Assert.That(cut.Markup).Contains("Save Public Experience", StringComparison.Ordinal);
     }
@@ -222,7 +223,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
 
         foreach (string section in new[] { "Render Policy", "Domain", "MCP Adapter", "Community Guidelines" })
         {
-            NavigateTo(cut, section);
+            await NavigateTo(cut, section);
             await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.Ordinal);
         }
 
@@ -304,9 +305,19 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             .QuerySelector("input")
         ?? throw new InvalidOperationException($"Policy switch input '{label}' not found.");
 
-    private static void NavigateTo(IRenderedComponent<DynamicComponent> cut, string section) =>
-        cut.FindAll(".mud-list-item").Single(element =>
-            element.TextContent.Trim().Equals(section, StringComparison.OrdinalIgnoreCase)).Click();
+    private static Task NavigateTo(
+        IRenderedComponent<DynamicComponent> cut,
+        string section)
+    {
+        IRenderedComponent<MudListItem<string>> item =
+            cut.FindComponents<MudListItem<string>>().Single(component =>
+                string.Equals(
+                    component.Instance.Text,
+                    section,
+                    StringComparison.OrdinalIgnoreCase));
+        return cut.InvokeAsync(() =>
+            item.Instance.OnClick.InvokeAsync(new MouseEventArgs()));
+    }
 
     private static SettingGroupResponseDto CreatePolicyCategory(string category) => category switch
     {

@@ -145,19 +145,24 @@ public sealed class TranslationServiceTests : IDisposable
     public async Task GetTranslationsAsync_ConcurrentColdCalls_SerializeThroughSingleApiFetch()
     {
         var fetchCount = 0;
+        var fetchStarted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var fetchResult =
+            new TaskCompletionSource<IDictionary<string, string>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
         _apiClient.GetTranslationByLanguageAsync("en", null, null, Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 Interlocked.Increment(ref fetchCount);
-                return Task.Run<IDictionary<string, string>>(async () =>
-                {
-                    await Task.Delay(50);
-                    return new Dictionary<string, string> { ["ui.concurrent"] = "Loaded" };
-                });
+                fetchStarted.TrySetResult();
+                return fetchResult.Task;
             });
 
         var firstTask = _service.GetTranslationsAsync("en");
+        await fetchStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var secondTask = _service.GetTranslationsAsync("en");
+        fetchResult.SetResult(
+            new Dictionary<string, string> { ["ui.concurrent"] = "Loaded" });
         var results = await Task.WhenAll(firstTask, secondTask);
 
         await Assert.That(results[0]["ui.concurrent"]).IsEqualTo("Loaded");

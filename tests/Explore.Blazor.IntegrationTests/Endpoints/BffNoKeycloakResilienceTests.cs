@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.HealthChecks;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.DataProtection;
@@ -364,6 +365,13 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
 
                 services.RemoveAll<IDistributedCache>();
                 services.AddDistributedMemoryCache();
+
+                services.RemoveAll<IExploreApiReadinessProbe>();
+                var readiness =
+                    Substitute.For<IExploreApiReadinessProbe>();
+                readiness.EnsureReadyAsync(Arg.Any<CancellationToken>())
+                    .Returns(Task.CompletedTask);
+                services.AddSingleton(readiness);
 
                 services.RemoveAll<IBffResolverConfigurationProvider>();
                 var mockResolverConfiguration = Substitute.For<IBffResolverConfigurationProvider>();

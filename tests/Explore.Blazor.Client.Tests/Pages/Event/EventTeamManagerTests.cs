@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
+using MudBlazor;
 using System.Text.RegularExpressions;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
@@ -33,7 +34,7 @@ public sealed class EventTeamManagerTests : IDisposable
 
         await Assert.That(cut.Markup).Contains("Event Team");
         await Assert.That(cut.Markup.Contains("Assign Role", StringComparison.Ordinal)).IsFalse();
-        await Assert.That(cut.FindAll(".mud-menu").Count).IsEqualTo(0);
+        await Assert.That(cut.FindComponents<MudMenu>().Count).IsEqualTo(0);
     }
 
     [Test]
@@ -93,7 +94,7 @@ public sealed class EventTeamManagerTests : IDisposable
         CaptureMarkup("hal-present.html", cut.Markup);
 
         await Assert.That(cut.Markup).Contains("Assign Role");
-        await Assert.That(cut.FindAll(".mud-menu").Count).IsEqualTo(2);
+        await Assert.That(cut.FindComponents<MudMenu>().Count).IsEqualTo(2);
     }
 
     private static HalCollectionResourceOfEventTeamMemberDto TeamCollection(
@@ -132,9 +133,9 @@ public sealed class EventTeamManagerTests : IDisposable
             RoleName = "Manager",
             RoleMasterCode = "event.manager",
             Status = 2,
-            StartsAtUtc = DateTimeOffset.UtcNow,
+            StartsAtUtc = TestTime.UtcNow,
             IsEffective = isEffective,
-            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedAt = TestTime.UtcNow,
             _links = withRevokeLink
                 ? new Dictionary<string, HalLink> { ["revoke"] = new() { Href = "/api/eventteam/revoke", Method = "DELETE" } }
                 : []

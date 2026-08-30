@@ -55,7 +55,6 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
         _templateSyncService.GetDiffAsync(sessionId, 0).Returns(diff);
 
         var cut = RenderPage(sessionId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).Contains("Warning: Session has 1 untouched local definitions");
         await Assert.That(cut.Markup).Contains("Modified (1)");
@@ -71,7 +70,6 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
         _templateSyncService.GetDiffAsync(sessionId, 0).Returns(diff);
 
         var cut = RenderPage(sessionId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         var row = cut.FindComponent<TemplateDiffRow>();
         row.Find("input[type=\"checkbox\"]").Change(true);
@@ -88,7 +86,6 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
         _templateSyncService.GetDiffAsync(sessionId, 0).Returns(diff);
 
         var cut = RenderPage(sessionId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).DoesNotContain("Apply Sync");
 
@@ -113,7 +110,6 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             .Returns(dialogReference);
 
         var cut = RenderPage(sessionId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         var row = cut.FindComponent<TemplateDiffRow>();
         row.Find("input[type=\"checkbox\"]").Change(true);
@@ -141,7 +137,6 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
         _templateSyncService.GetDiffAsync(sessionId, 0).Throws(CreateConflictException());
 
         var cut = RenderPage(sessionId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).Contains("Template has been modified by another operator.");
         await Assert.That(cut.Markup).Contains("Reload Diff");
@@ -164,7 +159,6 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             .Throws(CreateConflictException());
 
         var cut = RenderPage(sessionId);
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
 
         var row = cut.FindComponent<TemplateDiffRow>();
         row.Find("input[type=\"checkbox\"]").Change(true);

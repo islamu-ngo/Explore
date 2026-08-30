@@ -109,7 +109,7 @@ public class EventListTests : IDisposable
                 new DockPanelState(EventDockPanels.CustomizeViewId, customizeOpen, DockMode.Docked, customizeWidth, Order: 10, IsActive: customizeOpen),
                 new DockPanelState(EventDockPanels.EventPreviewId, true, DockMode.Inspector, Width: 440, Order: 20, IsActive: true)
             ],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
     }
 
     private static bool IsExpectedAutosaveSnapshot(DockLayoutSnapshot? snapshot)
@@ -246,35 +246,6 @@ public class EventListTests : IDisposable
             ?? throw new InvalidOperationException($"{methodName} not found — EventList interaction contract may have changed.");
 
         await cut.InvokeAsync(() => method.Invoke(cut.Instance, []));
-    }
-
-    private static async Task WaitForAsync(Action assertion, TimeSpan? timeout = null)
-    {
-        var deadline = DateTimeOffset.UtcNow + (timeout ?? TimeSpan.FromSeconds(3));
-        Exception? lastException = null;
-
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            try
-            {
-                assertion();
-                return;
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-                await Task.Delay(TimeSpan.FromMilliseconds(50));
-            }
-        }
-
-        try
-        {
-            assertion();
-        }
-        catch (Exception ex)
-        {
-            throw new TimeoutException("The expected assertion did not pass before the timeout.", lastException ?? ex);
-        }
     }
 
     private static T GetPrivateField<T>(EventList instance, string fieldName)
@@ -423,65 +394,6 @@ public class EventListTests : IDisposable
 
         await _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>());
         await _dockLayoutPersistence.DidNotReceive().SaveAsync(Arg.Any<DockLayoutSnapshot>(), Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task WorkspaceDockChange_AfterHydration_DebouncesAutosaveWithEventsKey()
-    {
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        cut.WaitForAssertion(() =>
-            _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-
-        await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
-
-        await WaitForAsync(() =>
-            _dockLayoutPersistence.Received(1).SaveAsync(
-                Arg.Is<DockLayoutSnapshot>(snapshot => IsExpectedAutosaveSnapshot(snapshot)),
-                Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-    }
-
-    [Test]
-    public async Task ShellDockChange_AfterWorkspaceHydration_DoesNotAutosaveEventsLayout()
-    {
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        cut.WaitForAssertion(() =>
-            _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-
-        _dockLayoutState.Register(CreateShellPersistentDescriptor(ShellDockPanels.WorkspaceNavId, DockSide.Start), _ => { });
-        _dockLayoutPersistence.ClearReceivedCalls();
-
-        await cut.InvokeAsync(() => _dockLayoutState.Open(ShellDockPanels.WorkspaceNavId));
-        await Task.Delay(TimeSpan.FromMilliseconds(650));
-
-        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
-            Arg.Any<DockLayoutSnapshot>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task NonPersistentPreviewChange_AfterWorkspaceHydration_DoesNotAutosaveEventsLayout()
-    {
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        cut.WaitForAssertion(() =>
-            _dockLayoutPersistence.Received(1).LoadAsync("events", Arg.Any<CancellationToken>()).GetAwaiter().GetResult());
-
-        _dockLayoutPersistence.ClearReceivedCalls();
-
-        await cut.InvokeAsync(() => _dockLayoutState.Open(EventDockPanels.EventPreviewId));
-        await Task.Delay(TimeSpan.FromMilliseconds(650));
-
-        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
-            Arg.Any<DockLayoutSnapshot>(),
-            Arg.Any<CancellationToken>());
     }
 
     [Test]

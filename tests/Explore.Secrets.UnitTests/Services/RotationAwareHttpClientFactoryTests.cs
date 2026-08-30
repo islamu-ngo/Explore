@@ -148,6 +148,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
     public async Task CreateClient_WithCredentials_ShouldApplyCredentials()
     {
         // Arrange
+        string bearerToken = SecretsTestValues.CreateSecret();
         var credentials = new HttpClientCredentialOptions
         {
             Clients = new Dictionary<string, HttpClientCredential>
@@ -155,7 +156,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
                 ["api-client"] = new HttpClientCredential
                 {
                     BaseAddress = "https://api.example.com",
-                    BearerToken = "test-token-123",
+                    BearerToken = bearerToken,
                     Timeout = TimeSpan.FromSeconds(30)
                 }
             }
@@ -169,7 +170,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         await Assert.That(client.BaseAddress).IsEqualTo(new Uri("https://api.example.com"));
         await Assert.That(client.DefaultRequestHeaders.Authorization).IsNotNull();
         await Assert.That(client.DefaultRequestHeaders.Authorization!.Scheme).IsEqualTo("Bearer");
-        await Assert.That(client.DefaultRequestHeaders.Authorization.Parameter).IsEqualTo("test-token-123");
+        await Assert.That(client.DefaultRequestHeaders.Authorization.Parameter).IsEqualTo(bearerToken);
         await Assert.That(client.Timeout).IsEqualTo(TimeSpan.FromSeconds(30));
     }
 
@@ -177,13 +178,14 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
     public async Task CreateClient_WithApiKey_ShouldAddApiKeyHeader()
     {
         // Arrange
+        string apiKey = SecretsTestValues.CreateSecret();
         var credentials = new HttpClientCredentialOptions
         {
             Clients = new Dictionary<string, HttpClientCredential>
             {
                 ["api-client"] = new HttpClientCredential
                 {
-                    ApiKey = "my-api-key-123"
+                    ApiKey = apiKey
                 }
             }
         };
@@ -194,7 +196,7 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
 
         // Assert
         await Assert.That(client.DefaultRequestHeaders.TryGetValues("X-API-Key", out var values)).IsTrue();
-        await Assert.That(values).Contains("my-api-key-123");
+        await Assert.That(values).Contains(apiKey);
     }
 
     [Test]
@@ -254,9 +256,6 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
         // Act
         await factory.ForceRotateAsync("test-client");
 
-        // Allow time for rotation
-        await Task.Delay(100);
-
         // Assert
         var newClient = factory.CreateClient("test-client");
         await Assert.That(ReferenceEquals(newClient, originalClient)).IsFalse();
@@ -301,7 +300,6 @@ public class RotationAwareHttpClientFactoryTests : IDisposable
 
         // Act
         await factory.ForceRotateAllAsync();
-        await Task.Delay(100);
 
         // Assert
         var newClient1 = factory.CreateClient("client-1");

@@ -1223,7 +1223,7 @@ public class FallbackAuthorizationServiceTests
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "AGENTS.md")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Explore.slnx")))
         {
             directory = directory.Parent;
         }

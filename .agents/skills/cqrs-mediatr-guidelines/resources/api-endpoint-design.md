@@ -73,7 +73,9 @@ Rules are evaluated in declaration order, and a policy composes: a stricter vari
 rather than copied (`GuestStartFailures = OrderLifecycleFailures.AuthenticationRequired(...)`).
 
 See `docs/API.md` § "Handler-Generated Failures" for which of the two to reach for. Do not hand-roll a private
-failure-to-status mapper — `ApiLiabilityRatchetTests` holds those to a named allowlist.
+failure-to-status mapper; `CommandResponseResultMapperTests` and focused HTTP
+ProblemDetails scenarios prove typed failure-code behavior without inspecting
+controller source.
 
 ## Handler Pattern Boundary
 

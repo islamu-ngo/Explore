@@ -760,7 +760,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
+        var snoozedUntil = TestTime.UtcNow.AddHours(3);
         var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
         _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
@@ -777,7 +777,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        var snoozedUntil = DateTimeOffset.UtcNow.AddDays(1);
+        var snoozedUntil = TestTime.UtcNow.AddDays(1);
         var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
         _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
@@ -794,7 +794,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
+        var snoozedUntil = TestTime.UtcNow.AddHours(3);
         var response = new BaseCommandResponseOfGuid { Success = false };
         _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
@@ -811,7 +811,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
+        var snoozedUntil = TestTime.UtcNow.AddHours(3);
         _apiClient.SnoozeNotificationAsync(notificationId, Arg.Any<DateTimeOffset?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
@@ -827,7 +827,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
+        var snoozedUntil = TestTime.UtcNow.AddHours(3);
         _apiClient.SnoozeNotificationAsync(notificationId, Arg.Any<DateTimeOffset?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 

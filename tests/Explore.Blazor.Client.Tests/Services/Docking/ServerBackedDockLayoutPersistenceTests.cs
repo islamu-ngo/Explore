@@ -114,7 +114,7 @@ public sealed class ServerBackedDockLayoutPersistenceTests
             new DockPanelState(ShellDockPanels.WorkspaceNavId, true, DockMode.Collapsed, 320, 10, true),
             new DockPanelState(ShellDockPanels.AiAssistantId, true, DockMode.Docked, 420, 20, true)
         ],
-        DateTimeOffset.UtcNow);
+        TestTime.UtcNow);
 
     private static SettingGroupResponseDto Settings(params (string Key, string Value)[] values) => new()
     {

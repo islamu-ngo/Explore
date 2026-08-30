@@ -54,7 +54,6 @@ Quartz.NET is the single internal scheduler, including for Basic Dispatch Mode. 
 ```
 
 ## Verification Hooks
-- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextPolicyTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
 - `dotnet build --configuration Release --verbosity quiet`
 
 ## Related Skills

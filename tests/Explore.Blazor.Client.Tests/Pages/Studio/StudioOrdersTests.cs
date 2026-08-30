@@ -196,7 +196,7 @@ public sealed class StudioOrdersTests : IDisposable
             {
                 StatusCode = "NeedsReconciliation",
                 StatusName = "Needs reconciliation",
-                LastUpdatedAt = DateTimeOffset.UtcNow,
+                LastUpdatedAt = TestTime.UtcNow,
                 FailureCode = "PAYMENT_RETRY_NOT_AVAILABLE"
             });
 

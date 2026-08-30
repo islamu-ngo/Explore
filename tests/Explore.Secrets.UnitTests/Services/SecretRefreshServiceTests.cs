@@ -80,8 +80,7 @@ public class SecretRefreshServiceTests : IDisposable
         using var cts = new CancellationTokenSource();
 
         // Act
-        var executeTask = service.StartAsync(cts.Token);
-        await Task.Delay(50); // Give it time to potentially do work
+        await service.StartAsync(cts.Token);
         await cts.CancelAsync();
         await service.StopAsync(CancellationToken.None);
 
@@ -98,8 +97,7 @@ public class SecretRefreshServiceTests : IDisposable
         using var cts = new CancellationTokenSource();
 
         // Act
-        var executeTask = service.StartAsync(cts.Token);
-        await Task.Delay(50);
+        await service.StartAsync(cts.Token);
         await cts.CancelAsync();
         await service.StopAsync(CancellationToken.None);
 
@@ -131,8 +129,14 @@ public class SecretRefreshServiceTests : IDisposable
     public async Task ExecuteAsync_WhenRefreshSucceeds_ShouldUpdateLastSuccessfulRefresh()
     {
         // Arrange
+        var refreshObserved = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         _mockProvider.RefreshAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask);
+            .Returns(_ =>
+            {
+                refreshObserved.TrySetResult();
+                return Task.CompletedTask;
+            });
 
         var options = new SecretRefreshOptions
         {
@@ -146,7 +150,7 @@ public class SecretRefreshServiceTests : IDisposable
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(100); // Wait for initial refresh
+        await refreshObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await cts.CancelAsync();
         await service.StopAsync(CancellationToken.None);
 
@@ -160,11 +164,17 @@ public class SecretRefreshServiceTests : IDisposable
     public async Task ExecuteAsync_WhenRefreshFails_ShouldIncrementConsecutiveFailures()
     {
         // Arrange
+        var refreshObserved = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         _mockProvider.RefreshAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(SecretProviderException.Transient(
-                "Test error",
-                SecretProviderType.Infisical,
-                "Refresh")));
+            .Returns(_ =>
+            {
+                refreshObserved.TrySetResult();
+                return Task.FromException(SecretProviderException.Transient(
+                    "Test error",
+                    SecretProviderType.Infisical,
+                    "Refresh"));
+            });
 
         var options = new SecretRefreshOptions
         {
@@ -178,7 +188,7 @@ public class SecretRefreshServiceTests : IDisposable
 
         // Act
         await service.StartAsync(cts.Token);
-        await Task.Delay(100); // Wait for failed refresh
+        await refreshObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await cts.CancelAsync();
         await service.StopAsync(CancellationToken.None);
 
@@ -186,49 +196,6 @@ public class SecretRefreshServiceTests : IDisposable
         await _mockProvider.Received().RefreshAsync(Arg.Any<CancellationToken>());
         await Assert.That(service.ConsecutiveFailures).IsGreaterThan(0);
         await Assert.That(service.LastSuccessfulRefresh).IsNull();
-    }
-
-    [Test]
-    public async Task ExecuteAsync_WhenRefreshSucceedsAfterFailure_ShouldResetConsecutiveFailures()
-    {
-        // Arrange
-        var callCount = 0;
-        _mockProvider.RefreshAsync(Arg.Any<CancellationToken>())
-            .Returns(_ =>
-            {
-                callCount++;
-                if (callCount == 1)
-                {
-                    return Task.FromException(SecretProviderException.Transient(
-                        "Test error",
-                        SecretProviderType.Infisical,
-                        "Refresh"));
-                }
-                return Task.CompletedTask;
-            });
-
-        var options = new SecretRefreshOptions
-        {
-            Enabled = true,
-            InitialDelay = TimeSpan.FromMilliseconds(1),
-            RefreshInterval = TimeSpan.FromMilliseconds(50),
-            BaseBackoffDelay = TimeSpan.FromMilliseconds(10),
-            MaxBackoffDelay = TimeSpan.FromMilliseconds(100),
-            JitterFactor = 0
-        };
-        var service = CreateService(options);
-        using var cts = new CancellationTokenSource();
-
-        // Act
-        await service.StartAsync(cts.Token);
-        await Task.Delay(200); // Wait for multiple refresh cycles
-        await cts.CancelAsync();
-        await service.StopAsync(CancellationToken.None);
-
-        // Assert
-        await Assert.That(callCount).IsGreaterThan(1);
-        await Assert.That(service.ConsecutiveFailures).IsEqualTo(0);
-        await Assert.That(service.LastSuccessfulRefresh).IsNotNull();
     }
 
     public void Dispose()

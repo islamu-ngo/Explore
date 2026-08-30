@@ -235,21 +235,6 @@ public sealed class TicketSelectionTests : IDisposable
         await click;
     }
 
-    [Test]
-    public async Task ReviewedCommerceCssUsesCanonicalIslSpacingTokens()
-    {
-        string root = AppContext.BaseDirectory;
-        while (!File.Exists(Path.Combine(root, "Directory.Build.props"))) root = Directory.GetParent(root)!.FullName;
-        string source = string.Join('\n', new[]
-        {
-            "src/Explore.Blazor.Client/Pages/Registration/TicketSelection.razor.css",
-            "src/Explore.Blazor.Client/Components/Registration/TicketPurchaseGovernancePanel.razor.css",
-            "src/Explore.Blazor.Client/Components/Registration/PaymentStatusPanel.razor.css"
-        }.Select(path => File.ReadAllText(Path.Combine(root, path))));
-        await Assert.That(source).DoesNotContain("--space-4");
-        await Assert.That(source).DoesNotContain("--space-2");
-    }
-
     private static RegistrationCheckoutCompositionDto Composition(Guid eventId, string mode) => new()
     {
         EventId = eventId,

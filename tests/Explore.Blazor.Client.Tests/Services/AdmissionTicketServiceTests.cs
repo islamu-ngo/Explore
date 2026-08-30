@@ -153,7 +153,7 @@ public sealed class AdmissionTicketServiceTests
                     IncludedQuantity = 1
                 }
             ],
-            IssuedAtUtc = DateTimeOffset.UtcNow,
+            IssuedAtUtc = TestTime.UtcNow,
             StatusCode = "ACTIVE",
             DisplayReference = "TKT-1234",
             _links = new Dictionary<string, HalLink>

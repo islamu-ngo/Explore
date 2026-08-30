@@ -185,30 +185,6 @@ public sealed class ParticipantReadinessComponentTests :
             .DoesNotContain("payment");
     }
 
-    [Test]
-    public async Task IsolatedStylesUseLogicalRtlSafeProperties()
-    {
-        string root = FindRepositoryRoot();
-        string path = Path.Combine(
-            root,
-            "src",
-            "Explore.Blazor.Client",
-            "Components",
-            "Admissions",
-            "ParticipantReadinessPanel.razor.css");
-        await Assert.That(File.Exists(path)).IsTrue();
-        string css = await File.ReadAllTextAsync(
-            path);
-
-        await Assert.That(css).Contains("margin-inline");
-        await Assert.That(css).Contains(
-            "border-inline-start");
-        await Assert.That(css).DoesNotContain("margin-left");
-        await Assert.That(css).DoesNotContain("margin-right");
-        await Assert.That(css).DoesNotContain("text-align: left");
-        await Assert.That(css).DoesNotContain("text-align: right");
-    }
-
     private RenderedReadiness Render(
         ReadinessServiceProxy proxy)
     {
@@ -284,26 +260,6 @@ public sealed class ParticipantReadinessComponentTests :
             ActiveAdmissionAvailable = false,
             _links = links,
         };
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        DirectoryInfo? directory = new(
-            AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(
-                    directory.FullName,
-                    "Explore.slnx")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException(
-            "Repository root was not found.");
     }
 
     private sealed class RenderedReadiness(

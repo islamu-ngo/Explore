@@ -53,7 +53,7 @@ public sealed class EventLocationPrivacyAuditTests
         var tenantId = Guid.CreateVersion7();
         var eventLocationId = Guid.CreateVersion7();
         var actorId = Guid.CreateVersion7();
-        var occurredAt = DateTime.UtcNow;
+        var occurredAt = DomainTestClock.UtcNow;
 
         await Assert.That(() => EventLocationDisclosureAudit.Create(
                 tenantId,
@@ -113,7 +113,7 @@ public sealed class EventLocationPrivacyAuditTests
             Guid.CreateVersion7(),
             EventLocationExactReadPurposeEnum.SupportCaseReview,
             false,
-            DateTime.UtcNow,
+            DomainTestClock.UtcNow,
             Guid.CreateVersion7(),
             Guid.CreateVersion7());
 
@@ -259,7 +259,7 @@ public sealed class EventLocationPrivacyAuditTests
                 1,
                 2,
                 (EventLocationDisclosureAuditReasonEnum)999,
-                DateTime.UtcNow))
+                DomainTestClock.UtcNow))
             .Throws<ArgumentOutOfRangeException>();
         await Assert.That(() => EventLocationExactReadAudit.Create(
                 Guid.CreateVersion7(),
@@ -267,7 +267,7 @@ public sealed class EventLocationPrivacyAuditTests
                 Guid.CreateVersion7(),
                 (EventLocationExactReadPurposeEnum)999,
                 false,
-                DateTime.UtcNow,
+                DomainTestClock.UtcNow,
                 Guid.CreateVersion7(),
                 null))
             .Throws<ArgumentOutOfRangeException>();
@@ -278,8 +278,8 @@ public sealed class EventLocationPrivacyAuditTests
                 Guid.CreateVersion7(),
                 (PrivacyErasureReasonCode)999,
                 1,
-                DateTime.UtcNow,
-                DateTime.UtcNow))
+                DomainTestClock.UtcNow,
+                DomainTestClock.UtcNow))
             .Throws<ArgumentOutOfRangeException>();
 
         Type[] factoryTypes =
@@ -307,7 +307,7 @@ public sealed class EventLocationPrivacyAuditTests
         };
         location.ClassifyAsPrivateHome(Guid.CreateVersion7());
         await Assert.That(() => location.EraseOwnedPii(
-                DateTime.UtcNow,
+                DomainTestClock.UtcNow,
                 (LocationPrivacyErasureReasonEnum)999))
             .Throws<ArgumentOutOfRangeException>();
     }

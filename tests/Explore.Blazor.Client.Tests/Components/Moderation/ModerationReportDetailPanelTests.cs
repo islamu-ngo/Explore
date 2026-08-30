@@ -104,7 +104,7 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
             ReportCaseUpdatesConsent = true,
             ReportFollowUpContactConsent = false,
             ReporterLocale = "en",
-            SubmittedAtUtc = DateTimeOffset.UtcNow,
+            SubmittedAtUtc = TestTime.UtcNow,
             ConcurrencyStamp = Guid.NewGuid(),
             CurrentCase = new CurrentCase
             {
@@ -117,7 +117,7 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
                 PriorityId = 4,
                 PriorityCode = "urgent",
                 PriorityName = "Urgent",
-                CreatedAtUtc = DateTimeOffset.UtcNow,
+                CreatedAtUtc = TestTime.UtcNow,
                 ConcurrencyStamp = Guid.NewGuid()
             },
             EvidenceItems =
@@ -135,7 +135,7 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
                     ClassificationId = 1,
                     ClassificationCode = "user_submitted",
                     ClassificationName = "User submitted",
-                    CreatedAtUtc = DateTimeOffset.UtcNow
+                    CreatedAtUtc = TestTime.UtcNow
                 }
             ],
             Signals =
@@ -155,7 +155,7 @@ public sealed class ModerationReportDetailPanelTests : IDisposable
                     VerdictCode = "flagged",
                     VerdictName = "Flagged",
                     RecommendedActionName = "Review",
-                    CreatedAtUtc = DateTimeOffset.UtcNow
+                    CreatedAtUtc = TestTime.UtcNow
                 }
             ],
             Decisions = [],

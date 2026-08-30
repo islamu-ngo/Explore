@@ -107,7 +107,7 @@ public sealed class TicketDetailTests : IDisposable
                     IncludedQuantity = 1
                 }
             ],
-            IssuedAtUtc = DateTimeOffset.UtcNow,
+            IssuedAtUtc = TestTime.UtcNow,
             StatusCode = status,
             DisplayReference = "TKT-1234",
             _links = new Dictionary<string, HalLink>

@@ -5,27 +5,19 @@
 
 ## Minimum Commands
 
-Run these for a new or materially changed skill:
-
-```bash
-dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
-```
-
 Run a diff whitespace check for files touched:
 
 ```bash
-git diff --check -- .agents/contract/intents.yaml .agents/skills tests/Event.Architecture.Tests/AgentContextPolicyTests.cs
+git diff --check -- .agents/contract/intents.yaml .agents/skills
 ```
 
-When the full architecture project has unrelated failures, still prove the context-policy lane with its focused TUnit filter:
-
-```bash
-dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextPolicyTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1
-```
+Validate changed frontmatter against `.agents/skills/_SKILL_SCHEMA.md` and
+resolve every changed resource link manually.
 
 ## When To Run More
 
-Run the full build when shared test infrastructure, project files, or application code changed.
+Run the full build only when shared test infrastructure, project files, or
+application code changed. Prose-only skill changes do not run product tests.
 
 ## Manual Checks
 

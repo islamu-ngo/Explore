@@ -8,13 +8,6 @@ namespace Event.Architecture.Tests.Privacy;
 
 public sealed class PrivacyErasureContractArchitectureTests
 {
-    private static readonly string[] RequiredSchemaTables =
-    [
-        "privacy_erasure_sagas",
-        "privacy_erasure_provider_work",
-        "privacy_erasure_policy_coverage"
-    ];
-
     [Test]
     public async Task PrivacyErasureContracts_ExposeOnlyTypedBoundedFields()
     {
@@ -38,18 +31,6 @@ public sealed class PrivacyErasureContractArchitectureTests
         await Assert.That(contracts.SelectMany(type => type.GetProperties())
             .Any(property => property.PropertyType == typeof(string)))
             .IsFalse();
-    }
-
-    [Test]
-    public async Task PrivacyErasureSchemaArtifact_ListsLifecycleTables()
-    {
-        string artifact = await File.ReadAllTextAsync(ContextSystemHelpers.RepoPath(
-            "schemas", "islamu-event.md"));
-
-        foreach (string table in RequiredSchemaTables)
-        {
-            await Assert.That(artifact).Contains($"Table \"{table}\"");
-        }
     }
 
 }

@@ -456,67 +456,6 @@ public sealed partial class PersistenceCapabilityBoundaryArchitectureTests
             .Because("provider branches and internal imports must retain exact fingerprints until their removal phases");
     }
 
-    [Test]
-    public async Task ViolationRegistry_ShouldBeMachineReviewableAndTaskBound()
-    {
-        PersistenceViolationRegistry registry = await ReadRegistryAsync();
-        string taskLedgerPath = ContextSystemHelpers.RepoPath(
-            "dev",
-            "active",
-            "efcore-first-persistence-hardening",
-            "efcore-first-persistence-hardening-tasks.md");
-        string taskLedger = await File.ReadAllTextAsync(taskLedgerPath);
-        var knownTasks = TaskIdPattern()
-            .Matches(taskLedger)
-            .Select(match => match.Groups["task"].Value)
-            .ToHashSet(StringComparer.Ordinal);
-        var violations = new List<string>();
-
-        if (registry.SchemaVersion != 1)
-        {
-            violations.Add($"unsupported schema version {registry.SchemaVersion}");
-        }
-        if (registry.Aboutme.Length != 2 ||
-            registry.Aboutme.Any(string.IsNullOrWhiteSpace))
-        {
-            violations.Add("registry must carry exactly two ABOUTME summaries");
-        }
-        if (registry.ApprovedProviderPrimitivePathPrefixes.Distinct(StringComparer.Ordinal).Count() !=
-            registry.ApprovedProviderPrimitivePathPrefixes.Length ||
-            registry.ApprovedProviderPrimitivePathPrefixes.Any(prefix =>
-                !prefix.StartsWith("src/Explore.Persistence/", StringComparison.Ordinal) ||
-                !prefix.EndsWith("/", StringComparison.Ordinal)))
-        {
-            violations.Add("approved provider primitive prefixes must be unique, bounded persistence paths");
-        }
-
-        ValidateOwnerEntries(
-            "rawEf",
-            registry.RawEf.Select(entry => (entry.Path, entry.Count, entry.RemovalTask)),
-            knownTasks,
-            violations);
-        ValidateOwnerEntries(
-            "directAdo",
-            registry.DirectAdo.Select(entry => (entry.Path, entry.Count, entry.RemovalTask)),
-            knownTasks,
-            violations);
-        ValidateFingerprintEntries(
-            "physicalNames",
-            registry.PhysicalNames.Select(entry =>
-                (entry.Category, entry.MatchCount, entry.OwnerCount, entry.RemovalTasks)),
-            knownTasks,
-            violations);
-        ValidateFingerprintEntries(
-            "seams",
-            registry.Seams.Select(entry =>
-                (entry.Category, entry.MatchCount, entry.OwnerCount, entry.RemovalTasks)),
-            knownTasks,
-            violations);
-
-        await Assert.That(violations).IsEmpty()
-            .Because("the temporary registry must be exact, shrinking, machine-reviewable, and task-bound");
-    }
-
     private static IReadOnlyList<string> FindRawEfViolations(string path, string source)
     {
         string relativePath = Path.GetRelativePath(ContextSystemHelpers.RepoRoot, path)
@@ -651,66 +590,6 @@ public sealed partial class PersistenceCapabilityBoundaryArchitectureTests
             .ToLowerInvariant();
     }
 
-    private static void ValidateOwnerEntries(
-        string category,
-        IEnumerable<(string Path, int Count, string RemovalTask)> entries,
-        IReadOnlySet<string> knownTasks,
-        ICollection<string> violations)
-    {
-        var materialized = entries.ToArray();
-        foreach (IGrouping<string, (string Path, int Count, string RemovalTask)> duplicate in
-                 materialized.GroupBy(entry => entry.Path, StringComparer.Ordinal)
-                     .Where(group => group.Count() > 1))
-        {
-            violations.Add($"{category}: duplicate owner {duplicate.Key}");
-        }
-
-        foreach ((string path, int count, string removalTask) in materialized)
-        {
-            if (!path.StartsWith("src/Explore.Persistence/", StringComparison.Ordinal) ||
-                count <= 0)
-            {
-                violations.Add($"{category}: invalid owner bound {path}/{count}");
-            }
-            if (!knownTasks.Contains(removalTask))
-            {
-                violations.Add($"{category}: unknown removal task {removalTask} for {path}");
-            }
-        }
-    }
-
-    private static void ValidateFingerprintEntries(
-        string category,
-        IEnumerable<(string Name, int MatchCount, int OwnerCount, string[] RemovalTasks)> entries,
-        IReadOnlySet<string> knownTasks,
-        ICollection<string> violations)
-    {
-        var materialized = entries.ToArray();
-        if (materialized.Select(entry => entry.Name).Distinct(StringComparer.Ordinal).Count() !=
-            materialized.Length)
-        {
-            violations.Add($"{category}: duplicate fingerprint category");
-        }
-
-        foreach ((string name, int matchCount, int ownerCount, string[] removalTasks) in materialized)
-        {
-            if (string.IsNullOrWhiteSpace(name) ||
-                matchCount <= 0 ||
-                ownerCount <= 0 ||
-                ownerCount > matchCount)
-            {
-                violations.Add($"{category}: invalid fingerprint bounds for {name}");
-            }
-            foreach (string removalTask in removalTasks)
-            {
-                if (!knownTasks.Contains(removalTask))
-                {
-                    violations.Add($"{category}: unknown removal task {removalTask} for {name}");
-                }
-            }
-        }
-    }
-
     private static string RelativePath(string path) =>
         Path.GetRelativePath(ContextSystemHelpers.RepoRoot, path)
             .Replace(Path.DirectorySeparatorChar, '/');
@@ -777,9 +656,6 @@ public sealed partial class PersistenceCapabilityBoundaryArchitectureTests
         @"^using .*\.Internal(?:;|\.)",
         RegexOptions.CultureInvariant | RegexOptions.Multiline)]
     private static partial Regex InternalImportPattern();
-
-    [GeneratedRegex(@"\*\*(?<task>\d+\.\d+)\s", RegexOptions.CultureInvariant)]
-    private static partial Regex TaskIdPattern();
 
     private sealed record PersistenceViolationRegistry(
         string[] Aboutme,

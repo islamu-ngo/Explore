@@ -24,9 +24,10 @@ priority: high
 2. Follow I-VSD `planning` mode: reuse one shared repository evidence packet, create the draft `islamic-value-sensitive-design/i-vsd-<task-name>.md`, resolve material branches through `grill-me`, draft the triad, then revalidate its `IVSD-*` mappings before declaring it plan-aligned. The plan request satisfies the normal I-VSD agreement prompt but never suppresses necessary user questions.
 3. Verify every claimed path, symbol, test, contract, and configuration key from repository evidence, then classify the work against every relevant intent and carry its docs, skills, rules, scope, tests, acceptance criteria, forbidden moves, and **Release & Changelog Strategy** into the plan.
 4. **Behavior vs. Code Separation & Scenario Contract**: In `plan.md`, define externally observable behavior contracts using RFC 2119 keywords (`SHALL`/`MUST`) and concrete `WHEN`/`THEN` scenarios before designing code. Implementation details (classes, handlers, migrations) belong strictly in Section 5 Architecture. Classify changes as `Behavioral Delta` (requiring scenarios) vs `Non-Behavioral Delta` (pure refactor/tooling).
-5. **Test-First Invariant Sequencing**: Every behavioral implementation phase MUST sequence task authoring failing specification/invariant tests (Red Phase) *before* the task implementing the production code (Green Phase), binding each Red task directly to named `WHEN`/`THEN` Scenarios.
-6. **Strict Deferrable Open Questions Gate**: Unknowns in `plan.md` Section 2.6 are strictly for genuinely deferrable details that will not alter scope, architectural patterns, or task breakdown. If an unknown would shift the task sequence, resolve it via `grill-me` before finalizing the plan.
-7. **Dev-Doc Triad Single Responsibility**: Maintain strict separation of concerns across artifacts:
+5. **Invariant-First Slicing & Quality Over Quantity**: Sequence failing invariant/specification tests (Red Phase) *before* production code (Green Phase) specifically for **Core Domain Invariants, Concurrency Races, State Machines, and Security Boundaries**. Standard CQRS commands/queries, API endpoints, and UI components do NOT require dogmatic Red/Green micro-task decomposition; implement them directly and verify via targeted contract/integration tests without boilerplate mock-mirroring (`NSubstitute.Received(1)`).
+6. **Greenfield Breaking Change Freedom**: This platform is pre-release (0 users, 0 external adopters). Never plan backward-compatibility shims, deprecated route aliases, or legacy compatibility layers. Break and replace cleanly to achieve optimal architecture.
+7. **Strict Deferrable Open Questions Gate**: Unknowns in `plan.md` Section 2.6 are strictly for genuinely deferrable details that will not alter scope, architectural patterns, or task breakdown. If an unknown would shift the task sequence, resolve it via `grill-me` before finalizing the plan.
+8. **Dev-Doc Triad Single Responsibility**: Maintain strict separation of concerns across artifacts:
    - `*-plan.md`: Canonical architectural design, current state, design decisions, and phase-level exit criteria (no granular execution tasks, checkboxes, dynamic status, or session handoffs).
    - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes with atomic verification criteria, dynamic status, and phase verification gates).
    - `*-context.md`: The sole active working memory (session progress, quick resume, blockers, validation baseline results, and dated session handoffs).
@@ -35,11 +36,12 @@ priority: high
 1. Memory-based planning, which turns assumptions about the repository into false implementation facts.
 2. **Behavior/Implementation Conflation**, which describes code modifications instead of observable system behavior contracts and leaves requirements without testable `WHEN`/`THEN` scenarios.
 3. **Non-Deferrable Open Questions Debt**, which postpones foundational scope or architectural decisions into open questions instead of resolving them during intake.
-4. **Post-Hoc Test Tautology ("The Ugly Mirror")**, which writes code first and tests afterwards, producing self-fulfilling tests that mirror implementation bugs and mock away real failure modes.
-5. Future-state-first planning, which designs changes before reporting what exists, what is missing, and what evidence supports those conclusions.
-6. Verification sprawl, which wastes implementation time on per-task checks, multiple test commands, app startup, browser automation, Playwright, Chrome DevTools MCP, Aspire, Docker, or live-service smoke tests.
-7. Stale checkbox debt, which postpones task updates until a separate refresh command and leaves completed implementation appearing unfinished.
-8. **Dev-Doc Triad Bleed / Duplication**, which pollutes `plan.md` with granular task checklists (`- [ ]`), dynamic execution statuses (`IN PROGRESS`), or session handoffs, duplicating `tasks.md` and `context.md`.
+4. **Mock-Mirroring & Tautological Test Debt ("The Ugly Mirror")**, which writes unit tests that mock internal dependencies and assert method call counts (`Received(1)`), framework behavior (EF Core cancellation), or raw source/CSS strings instead of enforcing real domain invariants.
+5. **Backward-Compatibility Hesitation**, which introduces deprecated endpoint aliases, adapter shims, or migration baggage in a greenfield project with zero external users.
+6. Future-state-first planning, which designs changes before reporting what exists, what is missing, and what evidence supports those conclusions.
+7. Verification sprawl, which wastes implementation time on per-task checks, multiple test commands, app startup, browser automation, Playwright, Chrome DevTools MCP, Aspire, Docker, or live-service smoke tests.
+8. Stale checkbox debt, which postpones task updates until a separate refresh command and leaves completed implementation appearing unfinished.
+9. **Dev-Doc Triad Bleed / Duplication**, which pollutes `plan.md` with granular task checklists (`- [ ]`), dynamic execution statuses (`IN PROGRESS`), or session handoffs, duplicating `tasks.md` and `context.md`.
 
 ## Minimal Examples
 ```text

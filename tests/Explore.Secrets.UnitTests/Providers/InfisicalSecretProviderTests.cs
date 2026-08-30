@@ -31,7 +31,7 @@ public class InfisicalSecretProviderTests
                 Url = "https://infisical.example.com",
                 ProjectId = "test-project-id",
                 ClientId = "test-client-id",
-                ClientSecret = "test-client-secret",
+                ClientSecret = SecretsTestValues.CreateSecret(),
                 Environment = "dev"
             }
         };
@@ -68,7 +68,7 @@ public class InfisicalSecretProviderTests
             Url = "https://infisical.example.com",
             ProjectId = null,
             ClientId = "test-client-id",
-            ClientSecret = "test-client-secret"
+            ClientSecret = SecretsTestValues.CreateSecret()
         });
 
         // Act
@@ -90,7 +90,7 @@ public class InfisicalSecretProviderTests
             Url = "https://infisical.example.com",
             ProjectId = "test-project",
             ClientId = null,
-            ClientSecret = "test-client-secret"
+            ClientSecret = SecretsTestValues.CreateSecret()
         });
 
         // Act

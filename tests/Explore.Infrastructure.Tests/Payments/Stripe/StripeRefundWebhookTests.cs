@@ -345,7 +345,11 @@ public sealed class StripeRefundWebhookTests
         PaidCheckoutProviderDisclosure.Create(
             "stripe", "OrganizerDirect", "direct-charge", "EXAMPLE EVENT", "test", "instance-operator"),
         [PaidOrderAcceptanceLineFact.Create(Guid.CreateVersion7(), "Admission", 1, 1_000, 0, 1_000)],
-        CreatedAt.AddMinutes(-3));
+        CreatedAt.AddMinutes(-3),
+        organizerPaymentProviderConnectionId: Guid.CreateVersion7(),
+        connectPlatformId: "platform-test",
+        externalAccountId: AccountId,
+        merchantCountryCode: "BE");
 
     private sealed class StaticOptionsMonitor<T>(T currentValue) : IOptionsMonitor<T>
     {

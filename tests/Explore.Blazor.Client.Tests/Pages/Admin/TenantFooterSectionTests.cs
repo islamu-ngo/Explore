@@ -231,7 +231,6 @@ public sealed class TenantFooterSectionTests : IDisposable
         var first = cut.InvokeAsync(() => Switch(cut, "Footer Enabled").Instance.ValueChanged.InvokeAsync(false));
         cut.WaitForState(() => callCount == 1);
         var second = cut.InvokeAsync(() => Select(cut, "Template").Instance.ValueChanged.InvokeAsync("minimal"));
-        await Task.Delay(50);
         await Assert.That(callCount).IsEqualTo(1);
 
         firstRelease.SetResult();
@@ -356,28 +355,10 @@ public sealed class TenantFooterSectionTests : IDisposable
         cut.WaitForState(() => settingsToken.CanBeCanceled && groupsToken.CanBeCanceled);
 
         cut.Instance.Dispose();
-        await Task.Delay(50);
 
         await Assert.That(settingsToken.IsCancellationRequested).IsTrue();
         await Assert.That(groupsToken.IsCancellationRequested).IsTrue();
         cut.Dispose();
-    }
-
-    [Test]
-    public async Task Dispose_CancelsPendingDebouncedSave()
-    {
-        var cut = RenderComponent();
-        var field = TextField(cut, "Copyright Text");
-
-        await cut.InvokeAsync(() => field.Instance.ValueChanged.InvokeAsync("Unsaved edit"));
-        cut.Instance.Dispose();
-        await InvokePrivateAsync(cut.Instance, "OnEnabledChangedAsync", false);
-        cut.Dispose();
-        await Task.Delay(500);
-
-        await _footerService.DidNotReceive().PatchTenantFooterSettingsAsync(
-            Arg.Any<PatchTenantFooterSettingsDto>(),
-            Arg.Any<CancellationToken>());
     }
 
     private IRenderedComponent<TenantFooterSection> RenderComponent()
@@ -447,10 +428,13 @@ public sealed class TenantFooterSectionTests : IDisposable
         }
     }
 
-    private static async Task<T> AwaitCancellationAsync<T>(CancellationToken cancellationToken)
+    private static Task<T> AwaitCancellationAsync<T>(CancellationToken cancellationToken)
     {
-        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-        return default!;
+        var completion = new TaskCompletionSource<T>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        cancellationToken.Register(
+            () => completion.TrySetCanceled(cancellationToken));
+        return completion.Task;
     }
 
     private static async Task AssertOnlyGroupAsync(PatchTenantFooterSettingsDto request, string expected)

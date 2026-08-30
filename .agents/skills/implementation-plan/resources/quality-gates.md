@@ -26,15 +26,16 @@
 - **Change Classification** is explicitly declared (`Behavioral Delta` vs `Non-Behavioral Delta`).
 - Intent docs, skills, rules, scope, tests, docs impact, acceptance criteria, and forbidden moves are reflected in the plan.
 - The **Release & Changelog Strategy** is classified (Conventional Commit scopes, `docs/releases/changes/CHG-*.yaml` fragment requirement for high-impact/breaking changes, or explicit `Changelog: skip` trailers).
-- Security, authorization, privacy, abuse, multi-tenancy, federation, localization, accessibility, product, observability, operations, migration, and compatibility are each classified with rationale.
+- Security, authorization, privacy, abuse, multi-tenancy, federation, localization, accessibility, product, observability, operations, and migration are each classified with rationale.
 - Clean Architecture ownership and API/HAL/BFF trust boundaries are explicit where applicable.
-- No compatibility shim, enforcement bypass, destructive migration, or scope exception is assumed without approval.
+- **Greenfield Breaking Change Freedom**: Backward-compatibility shims, deprecated route aliases, and legacy adapters are forbidden in pre-v1. Cleanly break and replace obsolete structures.
 
-## Executability & Test-First Gate
+## Executability & Invariant-First Gate
 
 - The plan reports current state before proposed future state.
 - **Behavior vs. Code Separation**: Section 3 defines observable system behavior using RFC 2119 keywords (`SHALL`/`MUST`) and concrete `WHEN`/`THEN` scenarios without polluting behavioral contracts with internal class names or library choices.
-- **Scenario-Bound Red Tasks**: Every behavioral slice sequences task authoring failing invariant tests (Task N.1: Red Phase) directly bound to named Section 3 Scenarios *before* implementing production logic (Task N.2: Green Phase), preventing post-hoc test tautology.
+- **Invariant-First Slicing**: High-criticality slices (money, concurrency races, aggregate state transitions, security boundaries) sequence authoring failing invariant tests (Task N.1: Red Phase) directly bound to named Section 3 Scenarios *before* implementing production logic (Task N.2: Green Phase). Standard feature/CQRS orchestration and UI slices implement directly and verify against public contracts.
+- **Strict Quality Over Quantity in Tests**: Tests MUST NOT use mock-mirroring (`NSubstitute.Received(1)` on internal repositories/caches), framework-testing boilerplate (testing EF Core cancellation), or raw C#/CSS text scraping. Tests assert observable outcomes, state transitions, and RFC 7807 ProblemDetails.
 - **Atomic Verification Criteria**: Every single task checkbox in `tasks.md` states its concrete verification assertion (`- [ ] N.M ... and verify ...`).
 - **Strict Deferrable Open Questions**: Unknowns in Section 2.6 contain only genuinely deferrable details; non-deferrable branches were resolved during intake.
 - Every task names exact files or a bounded investigation that will discover them.

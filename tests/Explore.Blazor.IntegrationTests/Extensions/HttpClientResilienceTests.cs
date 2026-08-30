@@ -100,6 +100,8 @@ public sealed class HttpClientResilienceTests
                 async (Guid conversationId) =>
                 {
                     Interlocked.Increment(ref wrapper._callCount);
+                    // Elapsed latency is the contract under test: this request must
+                    // outlive the historical four-second timeout without retrying.
                     await Task.Delay(delay);
                     return Results.Accepted(
                         $"/api/ai/assistant/conversations/{conversationId}/runs/{Guid.CreateVersion7()}",

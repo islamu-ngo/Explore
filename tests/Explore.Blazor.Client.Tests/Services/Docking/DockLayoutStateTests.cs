@@ -107,7 +107,7 @@ public sealed class DockLayoutStateTests
         state.RestoreSnapshot(new DockLayoutSnapshot(
             "shell",
             [new DockPanelState(ShellNavId, true, DockMode.Docked, Width: 300, Order: 10, IsActive: true)],
-            DateTimeOffset.UtcNow), "shell", DockScope.Shell);
+            TestTime.UtcNow), "shell", DockScope.Shell);
         await Assert.That(state.LastChangeReason).IsEqualTo(DockLayoutChangeReason.SnapshotRestore);
     }
 
@@ -516,7 +516,7 @@ public sealed class DockLayoutStateTests
         var wrongKeySnapshot = new DockLayoutSnapshot(
             "shell",
             [new DockPanelState(workspaceId, IsOpen: true, Mode: DockMode.Docked, Width: 360, Order: 10, IsActive: true)],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
         state.RestoreSnapshot(wrongKeySnapshot, "events", DockScope.Workspace);
 
         await Assert.That(state.GetPanel(workspaceId)?.State.IsOpen).IsFalse();
@@ -527,7 +527,7 @@ public sealed class DockLayoutStateTests
                 new DockPanelState(shellId, IsOpen: true, Mode: DockMode.Docked, Width: 300, Order: 10, IsActive: true),
                 new DockPanelState(workspaceId, IsOpen: true, Mode: DockMode.Docked, Width: 360, Order: 10, IsActive: true)
             ],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
         state.RestoreSnapshot(mixedScopeSnapshot, "events", DockScope.Workspace);
 
         await Assert.That(state.GetPanel(shellId)?.State.IsOpen).IsFalse();
@@ -545,7 +545,7 @@ public sealed class DockLayoutStateTests
         var staleSnapshot = new DockLayoutSnapshot(
             "shell",
             [new DockPanelState(legacyLeftNavId, IsOpen: true, Mode: DockMode.Docked, Width: 300, Order: 10, IsActive: true)],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
         state.RestoreSnapshot(staleSnapshot, "shell", DockScope.Shell);
 
         await Assert.That(state.GetPanel(legacyLeftNavId)).IsNull();
@@ -567,7 +567,7 @@ public sealed class DockLayoutStateTests
                 new DockPanelState(firstId, IsOpen: true, Mode: DockMode.Docked, Width: 320, Order: 20, IsActive: true),
                 new DockPanelState(secondId, IsOpen: true, Mode: DockMode.Docked, Width: 320, Order: 10, IsActive: true)
             ],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
 
         state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 
@@ -595,7 +595,7 @@ public sealed class DockLayoutStateTests
                 new DockPanelState(startId, IsOpen: true, Mode: DockMode.Docked, Width: 320, Order: 10, IsActive: true),
                 new DockPanelState(endId, IsOpen: true, Mode: DockMode.Docked, Width: 320, Order: 20, IsActive: true)
             ],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
 
         state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 
@@ -623,7 +623,7 @@ public sealed class DockLayoutStateTests
                 new DockPanelState(firstId, IsOpen: true, Mode: DockMode.Docked, Width: 320, Order: 20, IsActive: false),
                 new DockPanelState(secondId, IsOpen: true, Mode: DockMode.Docked, Width: 320, Order: 10, IsActive: false)
             ],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
 
         state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 
@@ -654,7 +654,7 @@ public sealed class DockLayoutStateTests
         var snapshot = new DockLayoutSnapshot(
             "events",
             [new DockPanelState(pinnedId, IsOpen: false, Mode: DockMode.Docked, Width: 640, Order: 0, IsActive: false)],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
 
         state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 
@@ -678,7 +678,7 @@ public sealed class DockLayoutStateTests
                 new DockPanelState(unknownId, IsOpen: true, Mode: DockMode.Docked, Width: 999, Order: 0, IsActive: true),
                 new DockPanelState(knownId, IsOpen: true, Mode: DockMode.Docked, Width: 900, Order: 0, IsActive: true)
             ],
-            DateTimeOffset.UtcNow);
+            TestTime.UtcNow);
 
         state.RestoreSnapshot(snapshot, "events", DockScope.Workspace);
 

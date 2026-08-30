@@ -80,7 +80,7 @@ public class AiConversationTests
             "Community Iftar",
             "Public Ramadan event",
             conversation.UserId,
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(reference.Kind).IsEqualTo(AiReferenceKind.Event);
         await Assert.That(reference.ReferenceId).IsEqualTo(eventId);
@@ -91,14 +91,14 @@ public class AiConversationTests
     public async Task ProposeAction_StoresPayloadWithoutExecutingSideEffects()
     {
         var conversation = CreateConversation();
-        var message = conversation.AddMessage(AiMessageRole.Assistant, "I drafted an event.", null, DateTime.UtcNow);
+        var message = conversation.AddMessage(AiMessageRole.Assistant, "I drafted an event.", null, DomainTestClock.UtcNow);
 
         var action = conversation.ProposeAction(
             AiProposedActionKind.CreateEventDraft,
             "{\"title\":\"Community Iftar\"}",
             message.Id,
             null,
-            DateTime.UtcNow);
+            DomainTestClock.UtcNow);
 
         await Assert.That(action.Status).IsEqualTo(AiProposedActionStatus.Proposed);
         await Assert.That(action.Kind).IsEqualTo(AiProposedActionKind.CreateEventDraft);
@@ -109,11 +109,11 @@ public class AiConversationTests
     public async Task AddMessage_WhenConversationBlocked_ThrowsInvalidOperationException()
     {
         var conversation = CreateConversation();
-        conversation.Block("ai_assistant_disabled", DateTime.UtcNow);
+        conversation.Block("ai_assistant_disabled", DomainTestClock.UtcNow);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
         {
-            conversation.AddMessage(AiMessageRole.User, "Hello", conversation.UserId, DateTime.UtcNow);
+            conversation.AddMessage(AiMessageRole.User, "Hello", conversation.UserId, DomainTestClock.UtcNow);
             return Task.CompletedTask;
         });
     }
@@ -127,7 +127,7 @@ public class AiConversationTests
             Id = Guid.CreateVersion7(),
             TenantId = Guid.CreateVersion7(),
             UserId = userId,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = DomainTestClock.UtcNow,
             CreatedBy = userId
         };
     }

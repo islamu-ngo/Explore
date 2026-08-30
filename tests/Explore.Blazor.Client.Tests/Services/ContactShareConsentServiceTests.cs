@@ -90,7 +90,7 @@ public class ContactShareConsentServiceTests
                 PurposeCode = "ORGANIZER_FUTURE_COMMUNICATIONS",
                 Status = 1, // Granted
                 EmailSnapshot = "user@example.com",
-                GrantedAt = DateTimeOffset.UtcNow.AddDays(-5)
+                GrantedAt = TestTime.UtcNow.AddDays(-5)
             }
         };
         _apiClient.GetUserContactShareConsentsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -128,8 +128,8 @@ public class ContactShareConsentServiceTests
                 PurposeCode = "ORGANIZER_FUTURE_COMMUNICATIONS",
                 Status = 2, // Withdrawn
                 EmailSnapshot = "user@example.com",
-                GrantedAt = DateTimeOffset.UtcNow,
-                WithdrawnAt = DateTimeOffset.UtcNow
+                GrantedAt = TestTime.UtcNow,
+                WithdrawnAt = TestTime.UtcNow
             }
         };
         _apiClient.GetUserContactShareConsentsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -184,7 +184,7 @@ public class ContactShareConsentServiceTests
                 {
                     ConsentId = Guid.NewGuid(),
                     Email = "user1@example.com",
-                    GrantedAt = DateTimeOffset.UtcNow,
+                    GrantedAt = TestTime.UtcNow,
                     PurposeCode = "ORGANIZER_FUTURE_COMMUNICATIONS"
                 }
             },

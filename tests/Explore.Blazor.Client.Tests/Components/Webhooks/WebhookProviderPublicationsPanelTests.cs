@@ -104,9 +104,9 @@ public sealed class WebhookProviderPublicationsPanelTests : IDisposable
             EventContractVersion = 1,
             ProviderConfigurationVersion = "selfhost-v1.96.1-v1",
             RetentionPolicyVersion = "retention-v1",
-            PreparedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
-            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
-            UpdatedAt = DateTimeOffset.UtcNow
+            PreparedAt = TestTime.UtcNow.AddMinutes(-5),
+            CreatedAt = TestTime.UtcNow.AddMinutes(-5),
+            UpdatedAt = TestTime.UtcNow
         };
 
     private static bool HasAttribute(

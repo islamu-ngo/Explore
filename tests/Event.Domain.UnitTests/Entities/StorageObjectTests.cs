@@ -41,7 +41,7 @@ public class StorageObjectTests
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
         {
-            entity.MarkQuarantined(null, " ", DateTime.UtcNow);
+            entity.MarkQuarantined(null, " ", DomainTestClock.UtcNow);
             return Task.CompletedTask;
         });
     }

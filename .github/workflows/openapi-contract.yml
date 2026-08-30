@@ -60,7 +60,7 @@ jobs:
           fi
 
           changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA")"
-          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(src/Explore\.API/.*\.(cs|csproj|json)$|src/Explore\.Application/.*\.cs$|src/Explore\.Domain/.*\.cs$|tests/Event\.API\.IntegrationTests/.*\.(cs|csproj)$|tests/Explore\.GeneratedContracts\.Tests/.*\.(cs|csproj)$|eng/tools/Explore\.GeneratedContracts/.*|src/Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|schemas/openapi_islamu-event\.json$|docs/API_CONTRACT_INVENTORY\.md$|docs/API_CONTRACT_TEST_DEBT\.md$|docs/API_CHANGELOG\.md$|Directory\.Packages\.props$|dotnet-tools\.json$|global\.json$|\.ci/spectral\.yaml$|\.ci/scripts/validate-api-contract-skip-inventory\.cs$|\.github/workflows/openapi-contract\.yml$)' || true)"
+          relevant_files="$(printf '%s\n' "$changed_files" | grep -E '^(src/Explore\.API/.*\.(cs|csproj|json)$|src/Explore\.Application/.*\.cs$|src/Explore\.Domain/.*\.cs$|tests/Event\.API\.IntegrationTests/.*\.(cs|csproj)$|tests/Explore\.GeneratedContracts\.Tests/.*\.(cs|csproj)$|eng/tools/Explore\.GeneratedContracts/.*|eng/tools/Explore\.ApiContractInventory/.*|src/Explore\.Blazor\.Client/(nswag\.json|Explore\.Blazor\.Client\.csproj|Clients/EventApiClient\.g\.cs)$|schemas/openapi_islamu-event\.json$|docs/API_CONTRACT_INVENTORY\.md$|docs/API_CONTRACT_TEST_DEBT\.md$|docs/API_CHANGELOG\.md$|Directory\.Packages\.props$|dotnet-tools\.json$|global\.json$|\.ci/spectral\.yaml$|\.ci/scripts/validate-api-contract-skip-inventory\.cs$|\.github/workflows/openapi-contract\.yml$)' || true)"
 
           if [ -n "$relevant_files" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
@@ -120,7 +120,7 @@ jobs:
 
       - name: Regenerate API Contract Inventory
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename api-contract-inventory.trx
+        run: dotnet run --project eng/tools/Explore.ApiContractInventory/Explore.ApiContractInventory.csproj --configuration Release --no-build
 
       - name: Regenerate Blazor API Client
         if: steps.changes.outputs.relevant == 'true'
@@ -316,7 +316,7 @@ jobs:
 
       - name: Verify API Contract Inventory Determinism
         if: steps.changes.outputs.relevant == 'true'
-        run: dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress --report-trx --report-trx-filename api-contract-inventory-determinism.trx
+        run: dotnet run --project eng/tools/Explore.ApiContractInventory/Explore.ApiContractInventory.csproj --configuration Release --no-build
 
       - name: Verify Client Determinism
         if: steps.changes.outputs.relevant == 'true'

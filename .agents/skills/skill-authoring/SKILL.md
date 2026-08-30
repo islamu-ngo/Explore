@@ -29,5 +29,5 @@ priority: high
 4. Validate metadata, links, size, routing boundaries, and exact verification commands.
 
 ## Verification
-- `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/AgentContextPolicyTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1`
-- `git diff --check -- .agents/contract/intents.yaml .agents/skills tests/Event.Architecture.Tests/AgentContextPolicyTests.cs`
+- `git diff --check -- .agents/contract/intents.yaml .agents/skills`
+- Manually validate changed frontmatter against [../_SKILL_SCHEMA.md](../_SKILL_SCHEMA.md).

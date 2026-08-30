@@ -10,7 +10,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, openapi-contract-change,
 ---
 
 <!-- ABOUTME: Path-scoped rules for Explore.API controller actions and route contracts. -->
-<!-- ABOUTME: Twin copy at .omo/rules/api-controllers.md. When modifying this file, update both paths. -->
+<!-- ABOUTME: Twin copies live at .agents/rules/api-controllers.md and .omo/rules/api-controllers.md; update both paths. -->
 
 # API Controller Rules
 
@@ -35,7 +35,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, openapi-contract-change,
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`
 - Tests: `Event.API.IntegrationTests`, `Event.Architecture.Tests`
-- `ApiLiabilityRatchetTests` holds service location, controller claim parsing, private failure switches, and controller size to exact allowlists. The allowlists may only shrink: adding an occurrence fails, and removing one without deleting its entry also fails.
+- `ApiCompiledBoundaryTests` rejects request-container service location from compiled controller calls and constructors. Principal-extension tests and HTTP ProblemDetails contracts own identity and failure behavior; line counts and historical source allowlists are not gates.
 - A controller split must leave `schemas/openapi_islamu-event.json` semantically unchanged apart from `tags`. Verify by diffing operationIds and the `components` section, then regenerating the NSwag client and confirming no method name moved.
 
 ## Related

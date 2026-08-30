@@ -31,11 +31,14 @@ Each project has a specific role. Run individually — never use solution-level 
 | `Explore.Secrets.UnitTests` | Infrastructure | Secret provider logic, encryption, restart-based credential rotation | No |
 | `Explore.Infrastructure.Tests` | Infrastructure | Provider adapters, configuration resolvers, authorization fallback behavior, and focused provider runtime checks | No for `Category!=Runtime`; Docker/Mailpit/RabbitMQ for runtime lanes |
 | `Event.Persistence.IntegrationTests` | Persistence | EF Core queries, repository behavior, provider migrations | PostgreSQL plus the real-engine provider matrix |
-| `Event.Persistence.MutationTests` | Persistence | Fast linked contracts for provider capability, physical naming, conflict classification, and metadata resolution | No |
 | `Event.API.IntegrationTests` | API | HTTP endpoints, middleware, auth flows | Full stack |
 | `Explore.Blazor.IntegrationTests` | BFF | Middleware pipeline, auth endpoints, delegating handlers | No |
 | `Explore.Blazor.Client.Tests` | UI | Component rendering, service behavior | No |
+| `Event.Wire.Contracts.UnitTests` | Wire contracts | Parsed/serialized protocol values and redacted bearer semantics | No |
+| `Explore.Diagnostic.UnitTests` | Diagnostic tooling | Doctor exit codes, bounded command evidence, and redaction | No |
+| `Event.Standalone.IntegrationTests` | Standalone host | In-process transport, combined host graph, configuration, and API parity | No |
 | `ISLAMU.ReleaseEngineering.Tests` | Release engineering | Commit/scope policy, canonical artifacts, Git trust, renderer, tag-anchored attestation, provider adapter plans | No (spawns `git`, `ssh-keygen`, and disposable repositories under the temp directory) |
+| `Event.Benchmarks` | Benchmarks | Advisory BenchmarkDotNet performance scenarios; build-only in PRs and executed by `performance-smoke.yml` | Optional PostgreSQL only for the dedicated provider benchmark |
 
 ### Run Commands
 
@@ -47,6 +50,9 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 dotnet test --project tests/Explore.GeneratedContracts.Tests/Explore.GeneratedContracts.Tests.csproj --configuration Release --verbosity quiet
 dotnet test --project tests/Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
 dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1
+dotnet test --project tests/Event.Wire.Contracts.UnitTests/Event.Wire.Contracts.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Explore.Diagnostic.UnitTests/Explore.Diagnostic.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet
 
 # Release engineering (no infrastructure needed — builds disposable Git repositories)
 dotnet test --project eng/release/tests/ISLAMU.ReleaseEngineering.Tests/ISLAMU.ReleaseEngineering.Tests.csproj --configuration Release --verbosity quiet
@@ -64,6 +70,9 @@ dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.Integ
 
 # UI tests
 dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
+
+# Benchmarks are non-gating and run only in the scheduled/manual performance workflow.
+dotnet build tests/Event.Benchmarks/Event.Benchmarks.csproj --configuration Release --verbosity quiet
 
 ```
 
@@ -153,7 +162,7 @@ The governed API-contract commands remain separate from lifecycle selectors:
 dotnet build src/Explore.API/Explore.API.csproj --configuration Release --no-restore --verbosity minimal
 dotnet build tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
 dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/OpenApiDocument_*" --minimum-expected-tests 5 --no-progress
-dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build -- --treenode-filter "/*/*/*/ApiContractInventory_Generate_WritesMarkdownToDocs" --minimum-expected-tests 1 --no-progress
+dotnet run --project eng/tools/Explore.ApiContractInventory/Explore.ApiContractInventory.csproj --configuration Release
 dotnet build src/Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --no-restore --verbosity quiet
 ```
 
@@ -348,10 +357,6 @@ tree filter can bypass the intended TUnit isolation and obscure which engine
 failed.
 
 ```bash
-# Fast model/decision lane
-dotnet test --project tests/Event.Persistence.MutationTests/Event.Persistence.MutationTests.csproj \
-  --configuration Release -- --minimum-expected-tests 111
-
 # SQL Server, MariaDB, and MySQL generated-initial/runtime behavior
 dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj \
   --configuration Release --no-build -- \
@@ -380,43 +385,27 @@ projection/parameter count, duration, elapsed time, and cardinality. SQL,
 parameter values, connection strings, and entity identifiers are never
 retained.
 
-The critical mutation lane uses Stryker 4.16.0 and the checked-in bounded
-configuration:
-
-```bash
-dotnet tool install dotnet-stryker \
-  --tool-path /tmp/islamu-event-stryker \
-  --version 4.16.0
-
-(cd tests/Event.Persistence.MutationTests && \
-  /tmp/islamu-event-stryker/dotnet-stryker \
-    --config-file stryker-config.persistence.yaml)
-```
-
-The configured break threshold is 86%. Migrations, generated artifacts,
-provider SQL primitives, exception prose, and unrelated repositories are
-outside this mutation slice.
-
 ## Architecture Tests
 
-### Forward-Only Liability Ratchets
+### Executable Architecture Contracts
 
-`ApiLiabilityRatchetTests` freezes each liability class the API is actively removing — controller service
-location, controller claim parsing, private failure switches, hand-rolled timer loops, controller size, and
-HAL registration boilerplate.
+Architecture tests enforce rules through compiled assembly/type relationships,
+reflection, runtime endpoint and dependency-injection metadata, HTTP/HAL
+behavior, or parsed machine-consumed schemas. They must not freeze raw C#,
+Razor, CSS, Markdown prose, class-name inventories, line counts, or historical
+debt allowlists.
 
-Each baseline is an **exact allowlist, not a ceiling**, and that is the point:
+Structured manifests are appropriate only when they are shipped
+machine-consumed contracts or generator inputs and the test derives the
+complete current surface independently. A stale historical exemption is not a
+contract. When no executable seam can prove a style preference, use an analyzer
+or review guidance instead of a source-text test.
 
-- introducing a new occurrence fails, and
-- removing an occurrence *without deleting its allowlist entry* also fails.
-
-The second direction is what makes the lists shrink monotonically — a completed migration cannot leave a stale
-entry behind for the count to silently refill into. Every entry carries the reason it still exists. Never relax
-a ratchet to make a change pass; delist the entry the change actually fixed.
-
-`HateoasRegistrationGraphTests` does the same job for the HAL service graph: it pins lifetime uniformity,
-duplicate-free registration, and assembler-to-policy pairing, and prints the full descriptor inventory so a
-registration refactor can be diffed entry by entry.
+Product tests never consume `AGENTS.md`, `.agents/**`, Markdown under `docs/`,
+active plans/tasks/evidence, journals, or skill prose. If automation consumes a
+machine-readable artifact, validate it through the consuming parser or an
+explicit tool under `eng/`. Documentation generators are invoked directly and
+must not masquerade as TUnit tests.
 
 
 `Event.Architecture.Tests` enforces project-wide conventions through reflection-based tests. These are not optional — they are CI gates.

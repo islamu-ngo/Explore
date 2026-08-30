@@ -176,7 +176,6 @@ public class HomeTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert
         await Assert.That(cut.Markup).Contains("Northside Masjid");
@@ -225,7 +224,6 @@ public class HomeTests : IDisposable
         });
 
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         var richTextBlock = cut.FindAll(".organization-home__block")
             .Single(element => element.TextContent.Contains("<strong>Community update</strong>", StringComparison.Ordinal));
@@ -254,7 +252,6 @@ public class HomeTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert
         await Assert.That(cut.Markup).Contains("Organization home is not available yet");
@@ -275,7 +272,6 @@ public class HomeTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         await Assert.That(cut.Markup).Contains("Browsing events in");
         await Assert.That(cut.Markup).DoesNotContain("Discover events");
@@ -294,7 +290,6 @@ public class HomeTests : IDisposable
 
         // Act - Should not throw
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert - Should render without crash
         await Assert.That(cut.Markup).DoesNotContain("mud-skeleton");

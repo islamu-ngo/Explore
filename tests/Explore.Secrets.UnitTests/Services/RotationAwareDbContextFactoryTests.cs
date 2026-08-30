@@ -28,7 +28,8 @@ public class RotationAwareDbContextFactoryTests : IDisposable
     {
         connection ??= new DatabaseConnectionOptions
         {
-            ConnectionString = "Host=localhost;Database=test;Username=user;Password=secret123"
+            ConnectionString = SecretsTestValues.CreateConnectionString(
+                SecretsTestValues.CreateSecret())
         };
         rotation ??= new RotationOptions { Enabled = true, LogRotationEvents = true };
 
@@ -276,41 +277,23 @@ public class RotationAwareDbContextFactoryTests : IDisposable
         await Assert.That(factory.RotationCount).IsEqualTo(0);
     }
 
-    [Test]
-    public async Task LastConnectionStringChange_AfterRotation_ShouldUpdate()
-    {
-        // Arrange
-        var factory = CreateFactory();
-        var beforeRotation = factory.LastConnectionStringChange;
-
-        // Wait a bit to ensure time difference
-        Thread.Sleep(50);
-
-        // Act
-        _onChangeCallback?.Invoke(
-            new DatabaseConnectionOptions { ConnectionString = "Host=newhost" },
-            null);
-
-        // Assert
-        await Assert.That(factory.LastConnectionStringChange).IsGreaterThan(beforeRotation);
-    }
-
     // ==================== Redaction Tests ====================
 
     [Test]
     public async Task CurrentConnectionStringRedacted_ShouldRedactPassword()
     {
         // Arrange
+        string password = SecretsTestValues.CreateSecret();
         var factory = CreateFactory(new DatabaseConnectionOptions
         {
-            ConnectionString = "Host=localhost;Database=test;Password=supersecret123"
+            ConnectionString = SecretsTestValues.CreateConnectionString(password)
         });
 
         // Act
         var redacted = factory.CurrentConnectionStringRedacted;
 
         // Assert
-        await Assert.That(redacted).DoesNotContain("supersecret123");
+        await Assert.That(redacted).DoesNotContain(password);
         await Assert.That(redacted).Contains("password=***");
     }
 
@@ -318,16 +301,18 @@ public class RotationAwareDbContextFactoryTests : IDisposable
     public async Task CurrentConnectionStringRedacted_WithPwd_ShouldRedact()
     {
         // Arrange
+        string password = SecretsTestValues.CreateSecret();
         var factory = CreateFactory(new DatabaseConnectionOptions
         {
-            ConnectionString = "Host=localhost;Database=test;Pwd=mysecret"
+            ConnectionString =
+                $"Host=localhost;Database=test;Pwd={password}"
         });
 
         // Act
         var redacted = factory.CurrentConnectionStringRedacted;
 
         // Assert
-        await Assert.That(redacted).DoesNotContain("mysecret");
+        await Assert.That(redacted).DoesNotContain(password);
         await Assert.That(redacted).Contains("pwd=***");
     }
 

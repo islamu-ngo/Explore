@@ -760,7 +760,11 @@ public sealed class CompositeOutboxMessageDispatcherTests
                 "instance-operator"),
             [PaidOrderAcceptanceLineFact.Create(
                 Guid.CreateVersion7(), "Admission", 1, 500, 0, 500)],
-            DateTime.UtcNow.AddHours(-1));
+            DateTime.UtcNow.AddHours(-1),
+            organizerPaymentProviderConnectionId: Guid.CreateVersion7(),
+            connectPlatformId: "platform-test",
+            externalAccountId: "acct_example",
+            merchantCountryCode: "BE");
 
     private static BusinessMetrics CreateMetrics()
     {

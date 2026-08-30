@@ -93,7 +93,7 @@ public sealed class WebhookAggregateSchemaInvariantTests
     [Test]
     public async Task Factories_CreateVersionSevenIdentifiers_AndRejectInvalidOwnership()
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = DomainTestClock.UtcNowOffset;
         var plan = WebhookDeliveryPlanSnapshot.Create(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
@@ -132,7 +132,7 @@ public sealed class WebhookAggregateSchemaInvariantTests
     [Test]
     public async Task PendingLocalTarget_ExplicitMigrationAdvancesOnlyItsFrozenConfigurationFacts()
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = DomainTestClock.UtcNowOffset;
         var tenantId = Guid.CreateVersion7();
         var consumerId = Guid.CreateVersion7();
         var messageId = Guid.CreateVersion7();
@@ -195,7 +195,7 @@ public sealed class WebhookAggregateSchemaInvariantTests
     [Test]
     public async Task EndpointCredentialRotation_RecordsDedicatedActivationTime()
     {
-        var activatedAt = DateTime.UtcNow;
+        var activatedAt = DomainTestClock.UtcNow;
         var endpoint = new WebhookEndpoint
         {
             Id = Guid.CreateVersion7(),
