@@ -601,22 +601,11 @@ static LocalPlatformResources AddLocalPlatform(
     IResourceBuilder<RedisResource>? cache)
 {
     var configuration = builder.Configuration;
-    var configuredKeycloakBlazorClientSecret = configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"];
-    var keycloakBlazorClientSecret = string.IsNullOrWhiteSpace(configuredKeycloakBlazorClientSecret)
-        ? builder.AddParameter(
-            "keycloak-blazor-client-secret",
-            new GenerateParameterDefault
-            {
-                MinLength = 32,
-                Special = false
-            },
-            secret: true,
-            persist: true)
-        : builder.AddParameter(
-            "keycloak-blazor-client-secret",
-            () => configuredKeycloakBlazorClientSecret,
-            publishValueAsDefault: false,
-            secret: true);
+    var keycloakBlazorClientSecret = builder.AddParameter(
+        "keycloak-blazor-client-secret",
+        () => configuration["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? string.Empty,
+        publishValueAsDefault: false,
+        secret: true);
     var cerbosAdminUsername = ConfiguredValue(configuration, "CERBOS_ADMIN_USERNAME", string.Empty);
     var cerbosAdminCredentialHash = ConfiguredValue(
         configuration,
@@ -737,7 +726,7 @@ static LocalPlatformResources AddLocalPlatform(
     if (includeSvix)
     {
         svixDb = builder.AddContainer("svix-postgres", "postgres", "13.4")
-            .WithEnvironment("POSTGRES_PASSWORD", configuration["SVIX_DB_PASSWORD"] ?? "postgres")
+            .WithEnvironment("POSTGRES_PASSWORD", configuration["SVIX_DB_PASSWORD"] ?? string.Empty)
             .WithEnvironment("POSTGRES_USER", configuration["SVIX_DB_USER"] ?? "postgres")
             .WithEnvironment("POSTGRES_DB", configuration["SVIX_DB_NAME"] ?? "postgres")
             .WithVolume("islamu-event-svix-postgres-data", "/var/lib/postgresql/data");
@@ -751,14 +740,14 @@ static LocalPlatformResources AddLocalPlatform(
                 "SVIX_DB_DSN",
                 BuildPostgresUrl(
                     configuration["SVIX_DB_USER"] ?? "postgres",
-                    configuration["SVIX_DB_PASSWORD"] ?? "postgres",
+                    configuration["SVIX_DB_PASSWORD"] ?? string.Empty,
                     "svix-postgres",
                     5432,
                     configuration["SVIX_DB_NAME"] ?? "postgres",
                     string.Empty))
             .WithEnvironment("SVIX_QUEUE_TYPE", configuration["SVIX_QUEUE_TYPE"] ?? "redis")
             .WithEnvironment("SVIX_CACHE_TYPE", configuration["SVIX_CACHE_TYPE"] ?? "redis")
-            .WithEnvironment("SVIX_JWT_SECRET", configuration["SVIX_JWT_SECRET"] ?? "local-dev-svix-jwt-secret-change-me")
+            .WithEnvironment("SVIX_JWT_SECRET", configuration["SVIX_JWT_SECRET"] ?? string.Empty)
             .WithHttpEndpoint(targetPort: 8071, port: 8071, name: "http")
             .WaitFor(svixDb);
 
@@ -790,7 +779,7 @@ static LocalPlatformResources AddLocalPlatform(
     {
         weblateDb = builder.AddContainer("weblate-postgres", "postgres", "18-alpine")
             .WithEnvironment("POSTGRES_USER", configuration["WEBLATE_POSTGRES_USER"] ?? "weblate")
-            .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? "weblate_password")
+            .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? string.Empty)
             .WithEnvironment("POSTGRES_DB", configuration["WEBLATE_POSTGRES_DB"] ?? "weblate")
             .WithVolume("islamu-event-weblate-postgres-data", "/var/lib/postgresql");
 
@@ -805,7 +794,7 @@ static LocalPlatformResources AddLocalPlatform(
             .WithEnvironment("POSTGRES_HOST", "weblate-postgres")
             .WithEnvironment("POSTGRES_PORT", "5432")
             .WithEnvironment("POSTGRES_USER", configuration["WEBLATE_POSTGRES_USER"] ?? "weblate")
-            .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? "weblate_password")
+            .WithEnvironment("POSTGRES_PASSWORD", configuration["WEBLATE_POSTGRES_PASSWORD"] ?? string.Empty)
             .WithEnvironment("POSTGRES_DB", configuration["WEBLATE_POSTGRES_DB"] ?? "weblate")
             .WithHttpEndpoint(targetPort: 8080, port: 8083, name: "http")
             .WithVolume("islamu-event-weblate-data", "/app/data")
@@ -824,7 +813,7 @@ static LocalPlatformResources AddLocalPlatform(
 
         var coopDb = builder.AddContainer("coop-postgres", "postgres", "18-alpine")
             .WithEnvironment("POSTGRES_USER", configuration["COOP_DATABASE_USER"] ?? "coop")
-            .WithEnvironment("POSTGRES_PASSWORD", configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+            .WithEnvironment("POSTGRES_PASSWORD", configuration["COOP_DATABASE_PASSWORD"] ?? string.Empty)
             .WithEnvironment("POSTGRES_DB", configuration["COOP_DATABASE_NAME"] ?? "coop")
             .WithVolume("islamu-event-coop-postgres-data", "/var/lib/postgresql");
 
@@ -840,16 +829,16 @@ static LocalPlatformResources AddLocalPlatform(
             .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
             .WithEnvironment("DATABASE_PORT", "5432")
             .WithEnvironment("DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
-            .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+            .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? string.Empty)
             .WithEnvironment("DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
             .WithEnvironment("API_SERVER_DATABASE_HOST", "coop-postgres")
             .WithEnvironment("API_SERVER_DATABASE_PORT", "5432")
             .WithEnvironment("API_SERVER_DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
-            .WithEnvironment("API_SERVER_DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+            .WithEnvironment("API_SERVER_DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? string.Empty)
             .WithEnvironment("API_SERVER_DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
             .WithEnvironment("SCYLLA_HOSTS", builder.Configuration["COOP_SCYLLA_HOSTS"] ?? "coop-scylla")
             .WithEnvironment("SCYLLA_USERNAME", builder.Configuration["COOP_SCYLLA_USERNAME"] ?? "cassandra")
-            .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? "cassandra")
+            .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? string.Empty)
             .WithEnvironment("SCYLLA_LOCAL_DATACENTER", builder.Configuration["COOP_SCYLLA_LOCAL_DATACENTER"] ?? "datacenter1")
             .WithEnvironment("SCYLLA_SSL", builder.Configuration["COOP_SCYLLA_SSL"] ?? "false")
             .WaitFor(coopDb);
@@ -862,18 +851,18 @@ static LocalPlatformResources AddLocalPlatform(
             .WithEnvironment("OTEL_SERVICE_NAME", builder.Configuration["COOP_OTEL_SERVICE_NAME"] ?? "coop")
             .WithEnvironment("PORT", "8080")
             .WithEnvironment("UI_URL", builder.Configuration["COOP_UI_URL"] ?? BuildHttpUri("localhost", 3001))
-            .WithEnvironment("SESSION_SECRET", builder.Configuration["COOP_SESSION_SECRET"] ?? "local-dev-coop-session-secret")
+            .WithEnvironment("SESSION_SECRET", builder.Configuration["COOP_SESSION_SECRET"] ?? string.Empty)
             .WithEnvironment("DATABASE_HOST", "coop-postgres")
             .WithEnvironment("DATABASE_READ_ONLY_HOST", "coop-postgres")
             .WithEnvironment("DATABASE_PORT", "5432")
             .WithEnvironment("DATABASE_USER", builder.Configuration["COOP_DATABASE_USER"] ?? "coop")
-            .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? "coop_password")
+            .WithEnvironment("DATABASE_PASSWORD", builder.Configuration["COOP_DATABASE_PASSWORD"] ?? string.Empty)
             .WithEnvironment("DATABASE_NAME", builder.Configuration["COOP_DATABASE_NAME"] ?? "coop")
             .WithEnvironment("WAREHOUSE_ADAPTER", builder.Configuration["COOP_WAREHOUSE_ADAPTER"] ?? "noop")
             .WithEnvironment("ANALYTICS_ADAPTER", builder.Configuration["COOP_ANALYTICS_ADAPTER"] ?? "noop")
             .WithEnvironment("SCYLLA_HOSTS", builder.Configuration["COOP_SCYLLA_HOSTS"] ?? "coop-scylla")
             .WithEnvironment("SCYLLA_USERNAME", builder.Configuration["COOP_SCYLLA_USERNAME"] ?? "cassandra")
-            .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? "cassandra")
+            .WithEnvironment("SCYLLA_PASSWORD", builder.Configuration["COOP_SCYLLA_PASSWORD"] ?? string.Empty)
             .WithEnvironment("SCYLLA_LOCAL_DATACENTER", builder.Configuration["COOP_SCYLLA_LOCAL_DATACENTER"] ?? "datacenter1")
             .WithEnvironment("SCYLLA_SSL", builder.Configuration["COOP_SCYLLA_SSL"] ?? "false")
             .WithHttpEndpoint(targetPort: 8080, port: 8082, name: "http")
@@ -900,7 +889,7 @@ static LocalPlatformResources AddLocalPlatform(
 
         pgAdmin = builder.AddContainer("pgadmin", "dpage/pgadmin4", "latest")
             .WithEnvironment("PGADMIN_DEFAULT_EMAIL", "admin@openislamu.org")
-            .WithEnvironment("PGADMIN_DEFAULT_PASSWORD", "admin")
+            .WithEnvironment("PGADMIN_DEFAULT_PASSWORD", configuration["PGADMIN_DEFAULT_PASSWORD"] ?? string.Empty)
             .WithEnvironment("PGADMIN_DISABLE_POSTFIX", "true")
             .WithEnvironment("PGADMIN_SERVER_JSON_FILE", "/pgadmin4/servers.json")
             .WithEnvironment("PGADMIN_REPLACE_SERVERS_ON_STARTUP", "True")
@@ -1020,9 +1009,7 @@ static void AddLocalFormbricks(IDistributedApplicationBuilder builder)
     const string hubTag = "latest@sha256:4dc0c4f26cf999b3bf4a26d7b09634fc65ae23cbb30c9ad82042da019d231458";
 
     IResourceBuilder<ParameterResource> Secret(string name, string key) =>
-        string.IsNullOrWhiteSpace(builder.Configuration[key])
-            ? builder.AddParameter(name, new GenerateParameterDefault { MinLength = 32, Special = false }, secret: true, persist: true)
-            : builder.AddParameter(name, () => builder.Configuration[key]!, publishValueAsDefault: false, secret: true);
+        builder.AddParameter(name, () => builder.Configuration[key] ?? string.Empty, publishValueAsDefault: false, secret: true);
 
     var nextAuthSecret = Secret("formbricks-nextauth-secret", "FORMBRICKS_NEXTAUTH_SECRET");
     var encryptionKey = Secret("formbricks-encryption-key", "FORMBRICKS_ENCRYPTION_KEY");
@@ -1032,7 +1019,7 @@ static void AddLocalFormbricks(IDistributedApplicationBuilder builder)
 
     var postgres = builder.AddContainer("formbricks-postgres", "pgvector/pgvector", "pg18")
         .WithEnvironment("POSTGRES_USER", "postgres")
-        .WithEnvironment("POSTGRES_PASSWORD", "postgres")
+        .WithEnvironment("POSTGRES_PASSWORD", builder.Configuration["FORMBRICKS_DATABASE_PASSWORD"] ?? string.Empty)
         .WithEnvironment("POSTGRES_DB", "formbricks")
         .WithVolume("islamu-event-formbricks-postgres-data", "/var/lib/postgresql");
 
@@ -1223,7 +1210,6 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         $"/auth/realms/{keycloakRealm}/.well-known/openid-configuration");
     var cerbosGrpcEndpoint = HttpEndpointFromHostAndPort(resources.Cerbos, "grpc");
     var cerbosHttpEndpoint = EndpointUrl(resources.Cerbos, "http");
-    var minioApiEndpoint = EndpointUrl(resources.Minio, "api");
     var webhookProvider = ConfiguredValue(
         configuration,
         "WEBHOOKS_PROVIDER",
@@ -1252,10 +1238,6 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("Cerbos__AdminPasswordHash", cerbosAdminCredentialHash)
         .WithEnvironment("CERBOS_ADMIN_USERNAME", cerbosAdminUsername)
         .WithEnvironment("CERBOS_ADMIN_PASSWORD", cerbosAdminPassword)
-        .WithEnvironment("S3Settings__Endpoint", minioApiEndpoint)
-        .WithEnvironment("S3Settings__PublicEndpoint", minioApiEndpoint)
-        .WithEnvironment("S3Settings__Region", configuration["STORAGE_S3_REGION"] ?? "us-east-1")
-        .WithEnvironment("S3Settings__BucketName", configuration["STORAGE_S3_BUCKET_NAME"] ?? "explore")
         .WithEnvironment("STORAGE_S3_ACCESS_KEY_ID", configuration["STORAGE_S3_ACCESS_KEY_ID"] ?? string.Empty)
         .WithEnvironment("STORAGE_S3_SECRET_ACCESS_KEY", configuration["STORAGE_S3_SECRET_ACCESS_KEY"] ?? string.Empty)
         .WithEnvironment("Reporting__Enabled", configuration["REPORTING_ENABLED"] ?? "true")
@@ -1266,9 +1248,9 @@ static IResourceBuilder<ProjectResource> ConfigureLocalPlatformApi(
         .WithEnvironment("Reporting__ExecuteDecisions", configuration["REPORTING_EXECUTE_DECISIONS"] ?? "true")
         .WithEnvironment("Reporting__Osprey__Enabled", resources.Osprey is not null ? (configuration["REPORTING_OSPREY_ENABLED"] ?? "false") : "false")
         .WithEnvironment("Reporting__Osprey__AllowLocalProviderEndpoints", configuration["REPORTING_OSPREY_ALLOW_LOCAL_PROVIDER_ENDPOINTS"] ?? "true")
-        .WithEnvironment("Reporting__Coop__ApiKey", configuration["REPORTING_COOP_API_KEY"] ?? "local-dev-coop-api-key")
+        .WithEnvironment("Reporting__Coop__ApiKey", configuration["REPORTING_COOP_API_KEY"] ?? string.Empty)
         .WithEnvironment("Reporting__Coop__AllowLocalProviderEndpoints", configuration["REPORTING_COOP_ALLOW_LOCAL_PROVIDER_ENDPOINTS"] ?? "true")
-        .WithEnvironment("Reporting__Coop__WebhookSecret", configuration["REPORTING_COOP_WEBHOOK_SECRET"] ?? "local-dev-coop-webhook-secret")
+        .WithEnvironment("Reporting__Coop__WebhookSecret", configuration["REPORTING_COOP_WEBHOOK_SECRET"] ?? string.Empty)
         .WithEnvironment("Webhooks__Enabled", configuration["WEBHOOKS_ENABLED"] ?? "true")
         .WithEnvironment("Webhooks__Provider", webhookProvider);
 

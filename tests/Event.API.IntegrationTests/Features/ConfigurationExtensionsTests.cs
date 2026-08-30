@@ -11,7 +11,7 @@ namespace Event.Api.IntegrationTests.Features;
 public sealed class ConfigurationExtensionsTests
 {
     [Test]
-    public async Task AddInfisicalCompatibility_MapsCerbosUsePolicyScopeFromInfisicalKey()
+    public async Task AddSecretAuthorityConfiguration_MapsCerbosUsePolicyScopeFromAuthoritativeKey()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -22,7 +22,7 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsKeycloakClientIdsForApiProviderManagement()
+    public async Task AddSecretAuthorityConfiguration_MapsKeycloakClientIdsForApiProviderManagement()
     {
         var canonical = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -40,7 +40,7 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_DoesNotOverrideCanonicalCerbosUsePolicyScope()
+    public async Task AddSecretAuthorityConfiguration_DoesNotOverrideCanonicalCerbosUsePolicyScope()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -52,7 +52,7 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsCerbosHttpEndpointToAdminApiEndpoint()
+    public async Task AddSecretAuthorityConfiguration_MapsCerbosHttpEndpointToAdminApiEndpoint()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -64,24 +64,26 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsCerbosTlsAndAdminApiCredentials()
+    public async Task AddSecretAuthorityConfiguration_MapsCerbosTlsWithoutCredentialAliases()
     {
+        var username = Guid.NewGuid().ToString("N");
+        var password = Guid.NewGuid().ToString("N");
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             ["CERBOS_USE_TLS"] = "true",
             ["CERBOS_PLAINTEXT_MODE"] = "false",
-            ["CERBOS_ADMIN_USERNAME"] = "cerbos-admin",
-            ["CERBOS_ADMIN_PASSWORD"] = "server-side-password"
+            ["CERBOS_ADMIN_USERNAME"] = username,
+            ["CERBOS_ADMIN_PASSWORD"] = password
         });
 
         await Assert.That(configuration["Cerbos:UseTls"]).IsEqualTo("true");
         await Assert.That(configuration["Cerbos:PlaintextMode"]).IsEqualTo("false");
-        await Assert.That(configuration["Cerbos:AdminApi:AdminUsername"]).IsEqualTo("cerbos-admin");
-        await Assert.That(configuration["Cerbos:AdminApi:AdminPassword"]).IsEqualTo("server-side-password");
+        await Assert.That(configuration["Cerbos:AdminApi:AdminUsername"]).IsNull();
+        await Assert.That(configuration["Cerbos:AdminApi:AdminPassword"]).IsNull();
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsAuthorizationProviderIntentWithoutOverridingCanonicalValue()
+    public async Task AddSecretAuthorityConfiguration_MapsAuthorizationProviderIntentWithoutOverridingCanonicalValue()
     {
         var mapped = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -98,7 +100,7 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsDatabaseFolderAgnosticKeys()
+    public async Task AddSecretAuthorityConfiguration_MapsDatabaseFolderAgnosticKeys()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -127,7 +129,7 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_DoesNotOverrideExplicitStructuredDatabaseContract()
+    public async Task AddSecretAuthorityConfiguration_DoesNotOverrideExplicitStructuredDatabaseContract()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -153,7 +155,7 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsPrivacyErasureAuthorityKeys()
+    public async Task AddSecretAuthorityConfiguration_MapsPrivacyErasureAuthorityKeys()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -182,7 +184,7 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsErasureFolderAliases()
+    public async Task AddSecretAuthorityConfiguration_MapsErasureFolderAliases()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -221,7 +223,7 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_DoesNotOverrideCanonicalPrivacyErasureAuthorityKeys()
+    public async Task AddSecretAuthorityConfiguration_DoesNotOverrideCanonicalPrivacyErasureAuthorityKeys()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -260,14 +262,16 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsMailSmtpKeys()
+    public async Task AddSecretAuthorityConfiguration_MapsNonSecretMailSmtpKeysOnly()
     {
+        var username = Guid.NewGuid().ToString("N");
+        var password = Guid.NewGuid().ToString("N");
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             ["MAIL_SMTP_HOST"] = "mailpit",
             ["MAIL_SMTP_PORT"] = "1025",
-            ["MAIL_SMTP_USERNAME"] = "smtp-user",
-            ["MAIL_SMTP_PASSWORD"] = "smtp-secret",
+            ["MAIL_SMTP_USERNAME"] = username,
+            ["MAIL_SMTP_PASSWORD"] = password,
             ["MAIL_SMTP_ENCRYPTION"] = "None",
             ["MAIL_SMTP_FROM_ADDRESS"] = "noreply@localhost",
             ["MAIL_SMTP_FROM_NAME"] = "ISLAMU Event Dev"
@@ -275,15 +279,15 @@ public sealed class ConfigurationExtensionsTests
 
         await Assert.That(configuration["Smtp:Host"]).IsEqualTo("mailpit");
         await Assert.That(configuration["Smtp:Port"]).IsEqualTo("1025");
-        await Assert.That(configuration["Smtp:Username"]).IsEqualTo("smtp-user");
-        await Assert.That(configuration["Smtp:Password"]).IsEqualTo("smtp-secret");
+        await Assert.That(configuration["Smtp:Username"]).IsNull();
+        await Assert.That(configuration["Smtp:Password"]).IsNull();
         await Assert.That(configuration["Smtp:Encryption"]).IsEqualTo("None");
         await Assert.That(configuration["Smtp:FromAddress"]).IsEqualTo("noreply@localhost");
         await Assert.That(configuration["Smtp:FromName"]).IsEqualTo("ISLAMU Event Dev");
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsApiFolderVapidKeys()
+    public async Task AddSecretAuthorityConfiguration_MapsApiFolderVapidKeys()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -299,7 +303,7 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
-    public async Task AddInfisicalCompatibility_MapsDocumentedGeocodingEnvironmentContract()
+    public async Task AddSecretAuthorityConfiguration_MapsDocumentedGeocodingEnvironmentContract()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
@@ -346,7 +350,7 @@ public sealed class ConfigurationExtensionsTests
         var builder = new ConfigurationBuilder()
             .AddInMemoryCollection(values);
 
-        builder.AddInfisicalCompatibility();
+        builder.AddSecretAuthorityConfiguration();
         return builder.Build();
     }
 }

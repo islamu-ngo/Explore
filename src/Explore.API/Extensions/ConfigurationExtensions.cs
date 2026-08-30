@@ -5,27 +5,22 @@ namespace Explore.API.Extensions;
 
 using Explore.Domain.Constants;
 using Explore.Domain.Secrets;
+using Explore.Secrets.Configuration;
 using Explore.Secrets.Database;
-using Explore.Secrets.Extensions;
 
 public static class ConfigurationExtensions
 {
     /// <summary>
     /// Adds Infisical secrets and maps them to canonical .NET configuration keys.
     /// </summary>
-    public static void AddInfisicalCompatibility(this IConfigurationBuilder configBuilder)
+    public static void AddSecretAuthorityConfiguration(this IConfigurationBuilder configBuilder)
     {
         var bootstrapConfig = configBuilder.Build();
-
-        configBuilder.AddInfisical(bootstrapConfig, source =>
-        {
-            source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/database", "/database/erasure", "/api", "/blazor", "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk"]);
-            source.ThrowOnFirstLoadFailure = false;
-        });
-
-        var configWithSecrets = configBuilder.Build();
-        ApplyMapping(configBuilder, configWithSecrets);
+        IConfiguration authority = SecretAuthorityConfiguration.Build(
+            bootstrapConfig,
+            "/keycloak", "/database", "/database/erasure", "/api", "/blazor",
+            "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk");
+        ApplyMapping(configBuilder, authority);
         PrivacyErasureAuthorityDatabaseConfiguration.ProjectDiscreteConfiguration(configBuilder);
     }
 
@@ -102,8 +97,6 @@ public static class ConfigurationExtensions
                 "Cerbos:PlaintextMode",
                 "CERBOS_PLAINTEXT_MODE",
                 "CERBOS__PLAINTEXT_MODE"));
-        var cerbosAdminUsername = ReadFirst(config, "Cerbos:AdminApi:AdminUsername", "CERBOS_ADMIN_USERNAME");
-        var cerbosAdminPassword = ReadFirst(config, "Cerbos:AdminApi:AdminPassword", "CERBOS_ADMIN_PASSWORD");
         var authorizationProvider = ReadFirst(config, "Authorization:Provider", "AUTHORIZATION_PROVIDER")?.Trim();
         var deploymentMode = NormalizeDeploymentMode(config["DEPLOYMENT_MODE"]);
         var managedControlPlaneEnabled = NormalizeBoolean(ReadFirst(
@@ -168,8 +161,6 @@ public static class ConfigurationExtensions
             : !string.IsNullOrWhiteSpace(aiEndpointUrl) && !string.IsNullOrWhiteSpace(aiModelId);
         var smtpHost = ReadFirst(config, "MAIL_SMTP_HOST", "SMTP_HOST", "Smtp:Host");
         var smtpPort = ReadFirst(config, "MAIL_SMTP_PORT", "SMTP_PORT", "Smtp:Port");
-        var smtpUsername = ReadFirst(config, "MAIL_SMTP_USERNAME", "SMTP_USERNAME", "Smtp:Username");
-        var smtpPassword = ReadFirst(config, "MAIL_SMTP_PASSWORD", "SMTP_PASSWORD", "Smtp:Password");
         var smtpEncryption = ReadFirst(config, "MAIL_SMTP_ENCRYPTION", "SMTP_SECURITY", "Smtp:Encryption");
         var smtpFromAddress = ReadFirst(config, "MAIL_SMTP_FROM_ADDRESS", "SMTP_FROM_ADDRESS", "Smtp:FromAddress");
         var smtpFromName = ReadFirst(config, "MAIL_SMTP_FROM_NAME", "SMTP_FROM_NAME", "Smtp:FromName");
@@ -231,18 +222,8 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Keycloak:Audience", "islamu-event-api");
         TrySet(mappedConfig, config, "Keycloak:RequireHttpsMetadata", "true");
 
-        // S3
-        TrySet(mappedConfig, config, "S3Settings:Region", ReadFirst(config, "STORAGE_S3_REGION", "Storage:S3Region", "Storage:S3:Region", "ISLAMU_EVENT_REGION"));
-        TrySet(mappedConfig, config, "S3Settings:BucketName", ReadFirst(config, "STORAGE_S3_BUCKET_NAME", "Storage:S3BucketName", "Storage:S3:BucketName", "ISLAMU_EVENT_PRIVATE_BUCKET_NAME"));
-        TrySet(mappedConfig, config, "S3Settings:AccessKeyId", ReadFirst(config, "STORAGE_S3_ACCESS_KEY_ID", "Storage:S3AccessKeyId", "Storage:S3:AccessKeyId", "ISLAMU_EVENT_PRIVATE_ACCESS_KEY_ID"));
-        TrySet(mappedConfig, config, "S3Settings:SecretAccessKey", ReadFirst(config, "STORAGE_S3_SECRET_ACCESS_KEY", "Storage:S3SecretAccessKey", "Storage:S3:SecretAccessKey", "ISLAMU_EVENT_PRIVATE_SECRET_ACCESS_KEY_ID"));
-        TrySet(mappedConfig, config, "S3Settings:Endpoint", ReadFirst(config, "STORAGE_S3_ENDPOINT", "Storage:S3Endpoint", "Storage:S3:Endpoint", "ISLAMU_EVENT_S3_ENDPOINT"));
-        TrySet(mappedConfig, config, "S3Settings:PublicEndpoint", ReadFirst(config, "STORAGE_S3_PUBLIC_ENDPOINT", "Storage:S3PublicEndpoint", "Storage:S3:PublicEndpoint", "ISLAMU_EVENT_S3_PUBLIC_ENDPOINT"));
-
         TrySet(mappedConfig, config, "Smtp:Host", smtpHost);
         TrySet(mappedConfig, config, "Smtp:Port", smtpPort);
-        TrySet(mappedConfig, config, "Smtp:Username", smtpUsername);
-        TrySet(mappedConfig, config, "Smtp:Password", smtpPassword);
         TrySet(mappedConfig, config, "Smtp:Encryption", smtpEncryption);
         TrySet(mappedConfig, config, "Smtp:FromAddress", smtpFromAddress);
         TrySet(mappedConfig, config, "Smtp:FromName", smtpFromName);
@@ -304,8 +285,6 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Cerbos:UsePolicyScope", cerbosUsePolicyScope);
         TrySet(mappedConfig, config, "Cerbos:UseTls", cerbosUseTls);
         TrySet(mappedConfig, config, "Cerbos:PlaintextMode", cerbosPlaintextMode);
-        TrySet(mappedConfig, config, "Cerbos:AdminApi:AdminUsername", cerbosAdminUsername);
-        TrySet(mappedConfig, config, "Cerbos:AdminApi:AdminPassword", cerbosAdminPassword);
         TrySet(mappedConfig, config, "Authorization:Provider", authorizationProvider);
 
         // Deployment

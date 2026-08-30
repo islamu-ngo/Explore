@@ -55,7 +55,7 @@ COPY --from=publish /app/publish .
 # Secret management is handled by the application via AddSecretManagement()
 # Configure via environment variables:
 #   SECRET_PROVIDER=infisical (or "none" for env vars only)
-#   Infisical__ProjectId, Infisical__ClientId, Infisical__ClientSecret, etc.
+#   SecretProvider__Infisical__ProjectId/ClientId/ClientSecret, etc.
 #   Licensing__AutoMapper__LicenseKey, Licensing__MediatR__LicenseKey (commercial builds only)
 # See docs/CONFIGURATION.md for full list of options
 
