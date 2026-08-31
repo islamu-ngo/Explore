@@ -19,8 +19,9 @@ public sealed class SetupTerminalSecretBoundaryTests
             var capabilities = new SetupCliTerminalCapabilities(
                 (bits & 1) != 0, (bits & 2) != 0, (bits & 4) != 0,
                 (bits & 8) != 0, (bits & 16) != 0, (bits & 32) != 0, false);
-            var driver = new SetupTerminalFakeDriver(capabilities, Events('m', Sentinel));
-            SetupTerminalResult result = new SetupTerminalSession(driver).Run(65_536, 4 * 1024 * 1024);
+            using var driver = new SetupTerminalFakeDriver(capabilities, Events('m', Sentinel));
+            using var session = new SetupTerminalSession(driver);
+            SetupTerminalResult result = session.Run(65_536, 4 * 1024 * 1024);
             bool allowed = (bits & 7) == 7 && (bits & 56) == 0;
 
             await Assert.That(result.Outcome == SetupTerminalOutcome.Completed).IsEqualTo(allowed).Because($"facts={bits}");
@@ -33,7 +34,7 @@ public sealed class SetupTerminalSecretBoundaryTests
     [Test]
     public async Task MachineModeIsBlockedBeforeWorkflowAndNeverReadsKeys()
     {
-        var driver = SafeDriver(Events('m', Sentinel));
+        using var driver = SafeDriver(Events('m', Sentinel));
         var workflow = new SetupTerminalWorkflow(driver);
         var app = new SetupCliApplication(workflow);
         SetupCliExitCode exit = app.Run(Invocation(["tui", "--machine"], SetupCliMode.Machine));
@@ -62,7 +63,7 @@ public sealed class SetupTerminalSecretBoundaryTests
 
         foreach ((string name, SetupTerminalEvent[] events) in vectors)
         {
-            var driver = SafeDriver(events);
+            using var driver = SafeDriver(events);
             using var session = new SetupTerminalSession(driver);
             SetupTerminalResult result = session.Run(65_536, 4 * 1024 * 1024);
             session.Dispose();
@@ -78,18 +79,22 @@ public sealed class SetupTerminalSecretBoundaryTests
     [Test]
     public async Task KeyboardEditingIsDeterministicMaskedAndBounded()
     {
-        var edited = SafeDriver([
+        using var edited = SafeDriver([
             SetupTerminalEvent.Character('m'), SetupTerminalEvent.Character('a'), SetupTerminalEvent.Character('é'),
             SetupTerminalEvent.Backspace(), SetupTerminalEvent.Character('z'), SetupTerminalEvent.Enter()]);
-        SetupTerminalResult completed = new SetupTerminalSession(edited, maximumSecretCharacters: 3).Run(256, 1024);
-        var exact = SafeDriver([SetupTerminalEvent.Character('m'), SetupTerminalEvent.Character('a'), SetupTerminalEvent.Character('b'), SetupTerminalEvent.Enter()]);
-        var plusOne = SafeDriver([SetupTerminalEvent.Character('m'), SetupTerminalEvent.Character('a'), SetupTerminalEvent.Character('b'), SetupTerminalEvent.Character('c')]);
-        var unsupported = SafeDriver([SetupTerminalEvent.Character('m'), SetupTerminalEvent.Character('a'), SetupTerminalEvent.UnsupportedKey()]);
+        using var exact = SafeDriver([SetupTerminalEvent.Character('m'), SetupTerminalEvent.Character('a'), SetupTerminalEvent.Character('b'), SetupTerminalEvent.Enter()]);
+        using var plusOne = SafeDriver([SetupTerminalEvent.Character('m'), SetupTerminalEvent.Character('a'), SetupTerminalEvent.Character('b'), SetupTerminalEvent.Character('c')]);
+        using var unsupported = SafeDriver([SetupTerminalEvent.Character('m'), SetupTerminalEvent.Character('a'), SetupTerminalEvent.UnsupportedKey()]);
+        using var editedSession = new SetupTerminalSession(edited, maximumSecretCharacters: 3);
+        using var exactSession = new SetupTerminalSession(exact, maximumSecretCharacters: 2);
+        using var plusOneSession = new SetupTerminalSession(plusOne, maximumSecretCharacters: 2);
+        using var unsupportedSession = new SetupTerminalSession(unsupported);
+        SetupTerminalResult completed = editedSession.Run(256, 1024);
 
         await Assert.That(completed.Outcome).IsEqualTo(SetupTerminalOutcome.Completed);
-        await Assert.That(new SetupTerminalSession(exact, maximumSecretCharacters: 2).Run(256, 1024).Outcome).IsEqualTo(SetupTerminalOutcome.Completed);
-        await Assert.That(new SetupTerminalSession(plusOne, maximumSecretCharacters: 2).Run(256, 1024).DiagnosticCode).IsEqualTo("terminal-secret-bound-exceeded");
-        await Assert.That(new SetupTerminalSession(unsupported).Run(256, 1024).DiagnosticCode).IsEqualTo("terminal-key-unsupported");
+        await Assert.That(exactSession.Run(256, 1024).Outcome).IsEqualTo(SetupTerminalOutcome.Completed);
+        await Assert.That(plusOneSession.Run(256, 1024).DiagnosticCode).IsEqualTo("terminal-secret-bound-exceeded");
+        await Assert.That(unsupportedSession.Run(256, 1024).DiagnosticCode).IsEqualTo("terminal-key-unsupported");
         await Assert.That(string.Concat(edited.Writes).Any(character => character is '\u001b' or '\r' or '\u007f')).IsFalse();
         await Assert.That(string.Concat(edited.Writes)).DoesNotContain("az", StringComparison.Ordinal);
     }
@@ -98,8 +103,9 @@ public sealed class SetupTerminalSecretBoundaryTests
     public async Task ProtectedWriteUsesCoreBytesOnceAndLeavesNoValueInPublicSurfaces()
     {
         var writer = new SetupTerminalFakeProtectedWriter();
-        var driver = SafeDriver(Events('m', Sentinel));
-        SetupTerminalResult result = new SetupTerminalSession(driver, writer).Run(65_536, 4 * 1024 * 1024);
+        using var driver = SafeDriver(Events('m', Sentinel));
+        using var session = new SetupTerminalSession(driver, writer);
+        SetupTerminalResult result = session.Run(65_536, 4 * 1024 * 1024);
         string projection = SafeProjection(driver, result) + writer;
 
         await Assert.That(result.Outcome).IsEqualTo(SetupTerminalOutcome.Completed);
@@ -116,8 +122,9 @@ public sealed class SetupTerminalSecretBoundaryTests
     public async Task AccessibilityContractAndNonColorOutputAreTruthfulAndUsable()
     {
         SetupTerminalAccessibility accessibility = SetupTerminalAccessibility.Current;
-        var driver = SafeDriver(Events('m', "valid"));
-        SetupTerminalResult result = new SetupTerminalSession(driver).Run(128, 1024);
+        using var driver = SafeDriver(Events('m', "valid"));
+        using var session = new SetupTerminalSession(driver);
+        SetupTerminalResult result = session.Run(128, 1024);
 
         await Assert.That(accessibility.Supported).IsEqualTo(
             SetupTerminalAccessibilityFeature.KeyboardBasicUnicode | SetupTerminalAccessibilityFeature.NonColorStatus |
@@ -147,6 +154,6 @@ public sealed class SetupTerminalSecretBoundaryTests
     private static string SafeProjection(SetupTerminalFakeDriver driver, SetupTerminalResult result) =>
         string.Concat(driver.Writes) + string.Concat(driver.EventLog) + result + result.DiagnosticCode + result.Digest;
 
-    private sealed class EmptyInput : ISetupCliInput { public ReadOnlyMemory<byte> Read(string path, int maximumBytes) => []; }
+    private sealed class EmptyInput : ISetupCliInput { public ReadOnlyMemory<byte> Read(string path, int maximumBytes) => ReadOnlyMemory<byte>.Empty; }
     private sealed class NullWriter : ISetupCliWriter { public void Write(string path, ReadOnlyMemory<byte> bytes, int maximumBytes) { } }
 }
