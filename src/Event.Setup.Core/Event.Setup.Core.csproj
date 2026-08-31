@@ -1,0 +1,14 @@
+<!-- ABOUTME: Defines the package-free deterministic core boundary for Setup Assistant workflows. -->
+<!-- ABOUTME: References only shared wire contracts and exposes no runtime adapter capability. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Event.Wire.Contracts\Event.Wire.Contracts.csproj" />
+  </ItemGroup>
+</Project>
