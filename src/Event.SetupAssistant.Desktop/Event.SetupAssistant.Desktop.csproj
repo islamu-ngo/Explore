@@ -1,0 +1,16 @@
+<!-- ABOUTME: Defines the disabled package-free desktop target contract shell. -->
+<!-- ABOUTME: Successor B owns desktop runtime selection, implementation, and activation. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <SetupTargetEnabled>false</SetupTargetEnabled>
+    <SetupTargetRole>ContractShell</SetupTargetRole>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Event.SetupAssistant\Event.SetupAssistant.csproj" />
+  </ItemGroup>
+</Project>

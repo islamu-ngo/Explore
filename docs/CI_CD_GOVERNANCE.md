@@ -317,6 +317,48 @@ Package input changes must commit the matching lock-file changes in the same PR.
 
 Dockerfiles must copy the root restore inputs (`global.json`, `Directory.Build.props`, `Directory.Packages.props`), project files, and relevant `packages.lock.json` files before running `dotnet restore --locked-mode` inside the build stage. This preserves Docker layer caching while keeping NuGet resolution deterministic.
 
+### Setup Assistant Foundation CI Boundary
+
+The `Build & Test` change detector treats all five Setup source trees, all five
+focused test trees, `eng/setup-assistant/**`, every nested Setup
+`packages.lock.json`, and both generated ratchet JSON files as Setup-relevant.
+Those paths route both `Event.Architecture.Tests` and the reusable workflow's
+`Setup Project Gates`; root dependency, solution, CI-script, or workflow changes
+continue to route every lane. The top-level check remains always present and
+reports an intentional no-op for unrelated documentation or dedicated-workflow
+changes.
+
+Successor A is package-free: `Event.Setup.Core` points inward to
+`Event.Wire.Contracts`; the shared Assistant and disabled Browser/Desktop shells
+point inward through Core/Assistant; the CLI points only to Core; and each test
+project points only to its owning source project. The Setup lane restores in
+locked mode and builds all five focused test projects in Release. These projects
+are currently empty TUnit scaffolds, so architecture contracts are the behavior
+gate; a nonzero test-count safeguard must be added to a focused project command
+when that project gains test classes. Integration services, live targets, and
+browser-runtime services remain disabled.
+
+All ten Setup lock files are tracked and are discovered automatically by the
+recursive NuGet license-policy scan. Terminal.Gui, Avalonia, Sharprompt, and any
+replacement GUI/TUI package remain blocked from project references, lock files,
+and policy exceptions. The five product projects contain no product package
+graph. Actual GUI framework selection and Browser/Desktop activation belong to
+successor B and require independent dependency, I-VSD, CTO, user, and target
+approval; successor A does not provide runtime GUI support.
+
+`eng/setup-assistant/GenerateSetupAssistantRatchets.cs` owns the tracked browser
+capability and frozen-contract JSON ratchets. CI runs only its non-mutating
+`--check` mode immediately after locked restore and fails on missing or stale
+bytes; CI must never run `--write`. Source project files, C# source, tests,
+locks, generator source, generated ratchets, and future browser source
+`wwwroot` remain tracked. Only generated `bin/`, `obj/`, build-output
+`wwwroot`, publish output, package staging, `releases/`, and `artifacts/` remain
+ignored.
+
+This lane inherits top-level `permissions: contents: read`, disables checkout
+credential persistence, receives no PR secrets, and has no write, OIDC, signing,
+publish, deployment, or release authority.
+
 ### NuGet Vulnerability Audit Policy
 
 Fast CI runs `dotnet list Explore.sln package --vulnerable --include-transitive --format json --output-version 1 --no-restore` after locked restore, then parses the report with `.ci/scripts/validate-nuget-vulnerabilities.cs`. The parser writes retained JSON and markdown summary evidence under `artifacts/dependencies/`, splitting findings by direct/transitive package relationship and advisory severity. Any vulnerable direct or transitive package reported by NuGet fails the `Build & Test` lane; temporary advisory exceptions require an owner, date, advisory URL, affected package/version, package relationship, severity, compensating control, and removal condition recorded in this document before the workflow may be weakened.

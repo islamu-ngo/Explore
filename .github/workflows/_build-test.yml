@@ -29,6 +29,10 @@ on:
         required: false
         type: boolean
         default: true
+      run-setup-tests:
+        required: false
+        type: boolean
+        default: true
       run-infrastructure-tests:
         required: false
         type: boolean
@@ -83,6 +87,13 @@ jobs:
         if: ${{ inputs.run-fast-tests }}
         run: dotnet restore --locked-mode
 
+      - name: Check Setup Assistant Ratchets
+        if: ${{ inputs.run-fast-tests }}
+        run: |
+          dotnet run eng/setup-assistant/GenerateSetupAssistantRatchets.cs -- --check
+          dotnet run --project eng/setup-assistant/EnvironmentCatalogueGenerator/EnvironmentCatalogueGenerator.csproj --configuration "$DOTNET_CONFIGURATION" --no-restore -- --check
+          dotnet run --project eng/setup-assistant/SetupCliCommandSchemaGenerator/SetupCliCommandSchemaGenerator.csproj --configuration "$DOTNET_CONFIGURATION" --no-restore -- --check
+
       - name: Restore .NET Tools
         if: ${{ inputs.run-fast-tests }}
         run: dotnet tool restore
@@ -115,6 +126,21 @@ jobs:
           set -o pipefail
           mkdir -p artifacts/build
           dotnet build --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false 2>&1 | tee artifacts/build/fast-build.log
+
+      - name: Setup Project Gates
+        if: ${{ inputs.run-fast-tests && inputs.run-setup-tests }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for project in \
+            tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj \
+            tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj \
+            tests/Event.SetupAssistant.Browser.Tests/Event.SetupAssistant.Browser.Tests.csproj \
+            tests/Event.SetupAssistant.Desktop.Tests/Event.SetupAssistant.Desktop.Tests.csproj \
+            tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj
+          do
+            dotnet build "$project" --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
+          done
 
       - name: Unit Tests — Application
         if: ${{ inputs.run-fast-tests && inputs.run-app-tests }}

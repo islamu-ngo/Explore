@@ -1,0 +1,16 @@
+<!-- ABOUTME: Defines the disabled package-free shared presentation contract shell. -->
+<!-- ABOUTME: Successor B owns framework selection and any runtime activation. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <SetupTargetEnabled>false</SetupTargetEnabled>
+    <SetupTargetRole>ContractShell</SetupTargetRole>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Event.Setup.Core\Event.Setup.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -28,6 +28,7 @@ jobs:
       run-app-tests: ${{ steps.changes.outputs.run-app-tests }}
       run-domain-tests: ${{ steps.changes.outputs.run-domain-tests }}
       run-architecture-tests: ${{ steps.changes.outputs.run-architecture-tests }}
+      run-setup-tests: ${{ steps.changes.outputs.run-setup-tests }}
       run-infrastructure-tests: ${{ steps.changes.outputs.run-infrastructure-tests }}
       run-blazor-tests: ${{ steps.changes.outputs.run-blazor-tests }}
       run-secrets-tests: ${{ steps.changes.outputs.run-secrets-tests }}
@@ -47,6 +48,7 @@ jobs:
 
           is_build_test_ignored() {
             case "$1" in
+              .env.example|docker-compose.yml|docs/CONFIGURATION.md|eng/setup-assistant/generated/environment-catalogue.json) return 1 ;;
               schemas/configuration-manifest-v1alpha2.schema.json|schemas/tenant-configuration-package-v1alpha2.schema.json) return 1 ;;
               .agents/*|.claude/*|.codex/*|.copilot/*|.gemini/*|.opencode/*|.repomix/*|.sisyphus/*|.taskmaster/*) return 0 ;;
               _bmad/*|_bmad-output/*) return 0 ;;
@@ -84,6 +86,7 @@ jobs:
             echo "run-app-tests=true" >> "$GITHUB_OUTPUT"
             echo "run-domain-tests=true" >> "$GITHUB_OUTPUT"
             echo "run-architecture-tests=true" >> "$GITHUB_OUTPUT"
+            echo "run-setup-tests=true" >> "$GITHUB_OUTPUT"
             echo "run-infrastructure-tests=true" >> "$GITHUB_OUTPUT"
             echo "run-blazor-tests=true" >> "$GITHUB_OUTPUT"
             echo "run-secrets-tests=true" >> "$GITHUB_OUTPUT"
@@ -109,6 +112,7 @@ jobs:
             echo "run-app-tests=false" >> "$GITHUB_OUTPUT"
             echo "run-domain-tests=false" >> "$GITHUB_OUTPUT"
             echo "run-architecture-tests=false" >> "$GITHUB_OUTPUT"
+            echo "run-setup-tests=false" >> "$GITHUB_OUTPUT"
             echo "run-infrastructure-tests=false" >> "$GITHUB_OUTPUT"
             echo "run-blazor-tests=false" >> "$GITHUB_OUTPUT"
             echo "run-secrets-tests=false" >> "$GITHUB_OUTPUT"
@@ -125,6 +129,7 @@ jobs:
           run_app="false"
           run_domain="false"
           run_arch="false"
+          run_setup="false"
           run_infra="false"
           run_blazor="false"
           run_secrets="false"
@@ -142,6 +147,7 @@ jobs:
             run_app="true"
             run_domain="true"
             run_arch="true"
+            run_setup="true"
             run_infra="true"
             run_blazor="true"
             run_secrets="true"
@@ -178,6 +184,10 @@ jobs:
                   run_blazor="true"
                   run_arch="true"
                   ;;
+                .env.example|docker-compose.yml|docs/CONFIGURATION.md|src/Event.Setup.Core/*|src/Event.SetupAssistant/*|src/Event.SetupAssistant.Browser/*|src/Event.SetupAssistant.Desktop/*|src/Event.SetupAssistant.Cli/*|tests/Event.Setup*.Tests/*|eng/setup-assistant/generated/browser-release-capabilities.json|eng/setup-assistant/generated/frozen-contract-baseline.json|eng/setup-assistant/generated/environment-catalogue.json|eng/setup-assistant/*)
+                  run_arch="true"
+                  run_setup="true"
+                  ;;
                 src/Event.Wire.Contracts/*|tests/Event.Wire.Contracts.UnitTests/*|eng/tools/Explore.GeneratedContracts/*|tests/Explore.GeneratedContracts.Tests/*)
                   run_arch="true"
                   ;;
@@ -199,6 +209,7 @@ jobs:
                   run_app="true"
                   run_domain="true"
                   run_arch="true"
+                  run_setup="true"
                   run_infra="true"
                   run_blazor="true"
                   run_secrets="true"
@@ -210,6 +221,7 @@ jobs:
           echo "run-app-tests=$run_app" >> "$GITHUB_OUTPUT"
           echo "run-domain-tests=$run_domain" >> "$GITHUB_OUTPUT"
           echo "run-architecture-tests=$run_arch" >> "$GITHUB_OUTPUT"
+          echo "run-setup-tests=$run_setup" >> "$GITHUB_OUTPUT"
           echo "run-infrastructure-tests=$run_infra" >> "$GITHUB_OUTPUT"
           echo "run-blazor-tests=$run_blazor" >> "$GITHUB_OUTPUT"
           echo "run-secrets-tests=$run_secrets" >> "$GITHUB_OUTPUT"
@@ -222,6 +234,7 @@ jobs:
             echo "| Application Unit Tests | $run_app |"
             echo "| Domain Unit Tests | $run_domain |"
             echo "| Architecture Tests | $run_arch |"
+            echo "| Setup Project Gates | $run_setup |"
             echo "| Infrastructure Tests | $run_infra |"
             echo "| Blazor UI Tests | $run_blazor |"
             echo "| Secrets Tests | $run_secrets |"
@@ -240,6 +253,7 @@ jobs:
       run-app-tests: ${{ needs.detect-build-test-changes.outputs.run-app-tests == 'true' }}
       run-domain-tests: ${{ needs.detect-build-test-changes.outputs.run-domain-tests == 'true' }}
       run-architecture-tests: ${{ needs.detect-build-test-changes.outputs.run-architecture-tests == 'true' }}
+      run-setup-tests: ${{ needs.detect-build-test-changes.outputs.run-setup-tests == 'true' }}
       run-infrastructure-tests: ${{ needs.detect-build-test-changes.outputs.run-infrastructure-tests == 'true' }}
       run-blazor-tests: ${{ needs.detect-build-test-changes.outputs.run-blazor-tests == 'true' }}
       run-secrets-tests: ${{ needs.detect-build-test-changes.outputs.run-secrets-tests == 'true' }}
