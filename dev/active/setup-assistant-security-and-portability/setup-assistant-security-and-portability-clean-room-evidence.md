@@ -3,14 +3,15 @@
 
 # Setup Assistant Security And Portability — Clean-Room Evidence
 
-Last Updated: 2026-08-30 Europe/Brussels
+Last Updated: 2026-08-31 Europe/Brussels
 
 ## Identity
 
 - **Workstream:** `setup-assistant-security-and-portability`
-- **Intent:** Plan a shipped, offline-first Avalonia desktop/browser product,
-  deterministic CLI/TUI, and later agent skill for non-secret portability and
-  relevant-only deployment configuration.
+- **Intent:** Preserve the complete Setup Assistant umbrella while handing off
+  seven separately reviewed successors: offline foundation, presentation
+  targets, composition scale, live control-plane, application-data migration,
+  sovereign payment migration, and release/agent contracts.
 - **Research boundary:** Official framework, platform, standards, and package
   metadata only. No third-party source, snippet, AST, test, schema, prose,
   visual asset, or implementation structure was retained.
@@ -19,7 +20,7 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 | Locator | Verified fact |
 |---|---|
-| `dev/active/configuration-manifest/configuration-manifest-context.md` | The user closed ConfigurationManifest for archival on 2026-08-30 after v1alpha2 contracts, legal documents, protected import sessions, semantic preview, and scope-safe HTTP/HAL/BFF/generated-client contracts. Later planned phases are explicitly retired, not implementation evidence. |
+| `dev/active/configuration-manifest/configuration-manifest-context.md` | ConfigurationManifest is active; Setup consumes only its frozen v1alpha2/no-secret/legal Markdown extraction contract and does not inherit server implementation details. |
 | `src/Explore.Application/Features/ConfigurationManifest/Contracts/ConfigurationManifestV1Alpha2.cs` | Current versioned manifest and tenant-package wire contracts are Application-owned and depend on Domain legal limits. |
 | `src/Explore.Application/Features/ConfigurationManifest/Catalog/ConfigurationPortabilityRegistry.cs` | A closed 21-entry registry classifies portable and excluded sections, including explicit secret, PII, application-data, operational-state, provider-binding, and topology exclusions. |
 | `src/Explore.Domain/LegalMarkdownContract.cs` | A deterministic, network-free constrained legal Markdown parser/renderer already rejects raw HTML, remote resources, unsafe links, malformed placeholders, and inaccessible heading order. |
@@ -74,6 +75,42 @@ Accessed 2026-08-30 through public official documentation or package metadata:
   or claims legal approval.
 - Every shipped target has an exact lock graph, SBOM, notices, checksum,
   signature/provenance status, support tier, and truthful release identity.
+- Offline foundation is the first independently shippable delivery. Setup Core
+  remains pure and offline: it has no network, database, provider, server,
+  secret-readback, persistence, or local-authority behavior.
+- Live control-plane work uses generated server HTTP/HAL contracts. Target,
+  tenant, authorization, provider, import, transfer, and secret-binding
+  authority remains in repository-native server layers; Setup receives only
+  scoped capability and value-free state and never reads raw secrets or
+  provider coordinates.
+- Application-data migration is a separate server-owned custody program using
+  repository-native privacy/tenant authority, durable mappings/checkpoints,
+  protected staging, generated provider migrations, transactional outbox, and
+  source retention. Portable configuration carries no application data or PII.
+- Sovereign payment migration is a separate optional Tier 0 program using the
+  repository's `OrganizerDirect`, immutable recipient/currency facts,
+  deterministic refund allocation, checked ledger, provider reconciliation,
+  and unknown-outcome authority. Configuration and Setup Core derive no money
+  truth.
+- Release and agent contracts describe only independently implemented and
+  evidenced subsets. Missing evidence disables the target/capability and never
+  enables a fallback or compatibility shim.
+
+## Successor Functional Handoffs
+
+| Boundary | Source-free implementation handoff | Required fresh evidence before implementation |
+|---|---|---|
+| A foundation-offline | Reuse package-free wire contracts; build deterministic non-secret catalogue, dotenv, legal, CLI/TUI workflows in pure Setup Core and outer local adapters. | Current I-VSD, corrected CTO/user approval, exact dependency/AFC/SSO evidence. |
+| B presentation-targets | Adapt A contracts to shared Avalonia, browser, and desktop; browser secret capability remains release-disabled and desktop writes fail closed. | Target dependency/security/accessibility review; exact browser bundle/origin/request/storage evidence; filesystem/ACL/link/atomicity evidence. |
+| C composition-scale | Treat YAML/directory as bounded inputs that converge on unchanged canonical v1alpha2 JSON; profiles exist only from measured evidence. | Stable A2/A3 contracts and named cardinality/resource evidence. |
+| D live-control-plane | Consume generated server APIs/HAL; server reauthorizes target, tenant, replay, provider and transfer state; no local authority or secret readback. | Fresh Tier 1/I-VSD/CTO/user approval and green ConfigurationManifest Tier 1/tenant/replay/atomicity evidence; the gate cannot be bypassed. |
+| E application-data-migration | Use server Domain/Application/Persistence/API authority for category custody, tenant-qualified mappings, checkpoints, idempotency, privacy/erasure, outbox, receipts, and source retention; Setup is an adapter. | Fresh Tier 2 custody/erasure and Tier 1 tenant review, I-VSD/CTO/user approval, generated provider/database evidence. |
+| F sovereign-payment-migration | Use server-owned payment/refund state and real provider/ledger contracts. Before SA-1140, deterministically race stale/replayed capability plus tenant mismatch at the public seam and prove zero cross-tenant rows, zero provider/outbox money intent, unchanged checked balances, one durable value-free conflict receipt, and zero PII/secret logs. | Fresh Tier 0 Grill-Me/I-VSD/CTO/user approval, real database/provider contract, provider/legal/operator decision evidence; no sleeps or internal mocks. |
+| G release-and-agent-contract | Package and document only selected green subsets; teach only implemented versioned no-secret CLI behavior and require human approval for mutation. | Each owning successor green plus exact locks/SBOM/provenance/signing/support and applicable legal/security/privacy/payment evidence. |
+
+Dependencies are one-way A -> B/C -> D -> E; F depends on D/E contracts and is
+independently optional; G runs per shipped subset and at final reconciliation.
+No handoff inherits umbrella or predecessor approval.
 
 ## Resolved Architecture Decisions
 
@@ -85,10 +122,12 @@ Accessed 2026-08-30 through public official documentation or package metadata:
    parse/render/readiness logic, offline validation, diffs, workflow states,
    secret generation policies, and value-safe diagnostics. It references only
    `Event.Wire.Contracts` and BCL APIs.
-3. Existing `Explore.Application` retains live target authority, import
-   sessions, authorization, and persistence coordination. The Setup Assistant
-   does not call live APIs and does not claim the retired atomic-apply,
-   managed-ownership, or direct-transfer phases exist.
+3. Existing repository-native server layers retain live target/tenant,
+   authorization, import, transfer, provider, persistence, privacy, and payment
+   authority. Offline successor A does not call live APIs. Successors D/E/F
+   consume generated server APIs and HAL only after independent approval; Setup
+   Core remains offline/pure with no direct database/provider access or secret
+   readback and never claims local atomic-apply, ownership, or money authority.
 4. Avalonia shared UI and Terminal.Gui TUI are adapters over `Event.Setup.Core`;
    neither owns validation, rendering, readiness, or secret classification.
 5. Avalonia `12.1.1` and Terminal.Gui `2.4.17` are candidates, not approvals.
@@ -129,6 +168,17 @@ Accessed 2026-08-30 through public official documentation or package metadata:
 - **Stop condition:** unknown, commercial, proprietary, source-available,
   field-of-use, or outbound-incompatible material blocks the target until a
   compatible replacement or documented steward/legal approval exists.
+
+## Review And Evidence State
+
+- Current I-VSD reviewed input revision:
+  `sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f`;
+  status `current`, disposition `plan-aligned`, mappings F001-F046/M001-M046.
+- The first CTO review decision is `Split before approval`; it grants no
+  approval to this corrected handoff.
+- The user approved the complete objective, while corrected exact-revision
+  approval awaits final hashes and fresh CTO review.
+- Foundation A is the sole active successor and remains blocked before SA-110.
 
 ## Evidence Limits
 

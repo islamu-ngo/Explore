@@ -3,7 +3,7 @@
 
 # Setup Assistant Security And Portability — Implementation Plan
 
-Last Updated: 2026-08-30 Europe/Brussels
+Last Updated: 2026-08-31 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -12,7 +12,9 @@ Last Updated: 2026-08-30 Europe/Brussels
   as the next workstream after ConfigurationManifest.
 - **Task directory:**
   `dev/active/setup-assistant-security-and-portability/`
-- **Planning status:** Draft; awaiting user review.
+- **Planning status:** Umbrella program corrected after the first CTO decision
+  `Split before approval`; implementation remains blocked pending fresh
+  revision-bound CTO review and exact-revision user approval.
 - **Change classification:** Behavioral Delta. This work adds a shipped
   cross-platform product, command contract, secret-handling workflows,
   generated deployment artifacts, legal-content authoring, packaging, and
@@ -27,19 +29,19 @@ Last Updated: 2026-08-30 Europe/Brussels
 - **Supporting intents:** `ci-cd-change`,
   `ip-clean-room-governance`, and `create-agent-context-skill`.
 - **Inherited contracts:** `legal-identity-authority-change` and the
-  user-closed ConfigurationManifest workstream govern legal role authority, immutable
+  active ConfigurationManifest workstream govern legal role authority, immutable
   publication/acceptance evidence, tenant isolation, server-side apply, and
-  migration behavior already present in the authoritative worktree. This plan
+  configuration migration behavior already present in the authoritative worktree. This plan
   consumes the frozen v1alpha2 wire/schema/registry/import-preview baseline
-  rather than redefines those boundaries. Retired ConfigurationManifest
-  Phases 19–23 are not implementation evidence and are not silently inherited.
+  rather than redefining those boundaries. Open ConfigurationManifest phase
+  gates are upstream verification state, not Setup implementation evidence.
 - **Fallback scope contract:** No current intent names a new Avalonia shipped
   product. The inferred source scope is the new `src/Event.Setup*` projects,
   corresponding `tests/Event.Setup*` projects, package/solution/CI/release
   integration, generated environment assets, setup documentation, and the
-  post-CLI agent skill. Server changes are limited to extracting pure contracts
-  and registering generated catalogue checks; live API behavior remains out of
-  scope.
+  post-CLI agent skill, live target adapters, and separately authorized
+  migration orchestration. Server behavior remains authoritative and uses
+  existing API/HAL/BFF, import-session, transfer, and transactional seams.
 - **Relevant skills:** implementation-plan, i-vsd, grill-me,
   criticality-guardrail, clean-architecture-rules, ip-clean-room,
   agentic-research, accessibility, skill-authoring, auth-patterns,
@@ -55,12 +57,17 @@ Last Updated: 2026-08-30 Europe/Brussels
 - **I-VSD document:**
   [i-vsd-setup-assistant-security-and-portability.md](../../../islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md)
 - **I-VSD reviewed input revision:**
-  `sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637`
-- **I-VSD status / disposition:** `current` / `plan-aligned`.
+  `sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f`
+- **I-VSD status / disposition:** `current` / `plan-aligned`; expanded
+  findings `IVSD-F037`–`IVSD-F046` preserve the named Tier 0/1/2 gates.
 - **Clean-room evidence:**
   [setup-assistant-security-and-portability-clean-room-evidence.md](setup-assistant-security-and-portability-clean-room-evidence.md)
-- **CTO review:** Not reviewed.
-- **User approval:** Awaiting approval for this exact workstream revision.
+- **First CTO review:** [Split before approval](setup-assistant-security-and-portability-cto-review.md), bound to the prior plan/tasks revisions.
+- **Correction review:** Awaiting fresh revision-bound read-only CTO review;
+  the first review does not approve this corrected revision.
+- **User direction:** The user approved the full Setup Assistant objective on
+  2026-08-31. Exact-revision implementation approval for this corrected bundle
+  awaits binding after final plan/tasks hashes and fresh CTO review.
 - **Grill-Me intake:** The existing I-VSD consultation records the user’s
   material choices: web plus desktop, protective no-secret browser default,
   optional trust-based web secret mode, open/auditable browser source,
@@ -68,9 +75,41 @@ Last Updated: 2026-08-30 Europe/Brussels
   Markdown, Terminal.Gui plus machine CLI, compatible FOSS only, no embedded
   AI, and a post-CLI agent skill. Repository evidence resolves the remaining
   architecture: reuse package-free `Event.Wire.Contracts`, add a pure
-  `Event.Setup.Core`, keep all live authority server-side, and ship hosted
+  `Event.Setup.Core`, keep all live authority server-side, promote the former
+  deferred composition, live-target, secret-binding, application-data, and
+  payment-operation work into explicit later phases, and ship hosted
   secret mode disabled until independent evidence approves the exact release.
-  No material user decision remains open.
+  The 2026-08-31 expansion is user-directed; I-VSD and CTO revalidation remain
+  mandatory before those new high-criticality phases start.
+
+### 0.1 Umbrella Program And Successor Approval Boundaries
+
+This directory is the canonical umbrella for the complete user-approved Setup
+Assistant program. It preserves all requirements, Scenarios 3.1-3.15, 41 SA
+IDs, and 12 phase gates, but it grants implementation authority to no successor.
+Successor directories are intentionally not created by this correction.
+
+| Successor boundary | Independently reviewable PR slices | Entry and owned outcome |
+|---|---|---|
+| **A. `setup-assistant-foundation-offline`** | A1 SA-110-SA-130 architecture/dependency/CI; A2 SA-210-SA-230 wire/core; A3 SA-310-SA-340 catalogue/offline; A4 SA-410-SA-430 CLI/TUI | Sole active successor. After fresh tier-appropriate intake and corrected-revision CTO/user approval, ships the non-secret offline CLI/TUI with no live authority. |
+| **B. `setup-assistant-presentation-targets`** | B1 SA-510-SA-540 shared Avalonia/legal; B2 SA-610-SA-640 browser; B3 SA-710-SA-730 desktop | Requires stable A public contracts plus target dependency, security, accessibility, and named release evidence; each target ships or remains disabled independently. |
+| **C. `setup-assistant-composition-scale`** | C1 SA-810 and SA-820 canonical composition; C2 SA-830 measured profiles | Requires stable A2/A3 contracts; canonical JSON remains unchanged and every larger profile is separately evidenced. |
+| **D. `setup-assistant-live-control-plane`** | D1 SA-910 Red plus server enrollment/authorization contracts; D2 SA-920 and SA-930 server behavior/generated contract; D3 SA-1010 Red plus SA-1020 and SA-1030 Setup adapters/UI | Requires fresh Tier 1 intake, current I-VSD, fresh CTO/user approval, and green ConfigurationManifest Tier 1/tenant/atomicity evidence. Backend precedes activation; Setup owns no local authority. |
+| **E. `setup-application-data-migration`** | E1 SA-1110 privacy/tenant Red; E2 SA-1120 Domain/Persistence/outbox; E3 SA-1130 API/HAL/generated client; E4 Setup UI activation | Requires D contracts plus fresh Tier 2 custody/erasure and Tier 1 tenant intake, current I-VSD, fresh CTO/user approval, and named privacy/provider evidence. |
+| **F. `setup-sovereign-payment-migration`** | F1 dedicated Worst Break Red and Tier 0 decision record; F2 SA-1140 Domain/Persistence/provider reconciliation; F3 API/HAL/Setup activation | Requires D/E contracts and independent Tier 0 Grill-Me, current I-VSD, fresh CTO/user approval, and provider/legal/operator evidence. It may remain permanently disabled. |
+| **G. `setup-release-and-agent-contract`** | G1 SA-1210 and SA-1220 per selected target/capability; G2 SA-1240 only after CLI schema ships; G3 SA-1250 program reconciliation | Requires each owning successor green; release evidence describes only its implemented/evidenced subset. |
+
+Dependencies are one-way: A -> B/C -> D -> E; F depends on D/E contracts but is
+independently optional; G runs for each shippable subset and again for final
+program reconciliation. No later successor inherits umbrella, A, prior-user,
+or prior-CTO approval. Before implementation, each successor MUST bind the
+current I-VSD revision plus fresh tier-appropriate intake, CTO review, explicit
+user approval, and its named evidence to its own exact plan/tasks revisions.
+Missing evidence leaves that successor or capability disabled; it does not
+create a compatibility shim or authorize another boundary.
+
+Foundation A is the sole active successor. Until its corrected hashes receive
+fresh CTO review and exact-revision user approval, SA-110 remains blocked.
 
 ## 1. Executive Summary
 
@@ -93,6 +132,11 @@ The product will provide:
 - deterministic release artifacts, SBOMs, checksums, signatures/provenance,
   and truthful support claims; and
 - a schema-compliant agent skill created only after the CLI contract is real.
+- canonical JSON compiled from bounded YAML or directory/multi-file authoring;
+- target-authorized live handoff, secret-binding/provider readiness, and
+  direct-transfer orchestration without portable secret values; and
+- separately reviewed application-data and sovereign payment-operation
+  migration with receipts, restartability, and rollback boundaries.
 
 The architectural center is not Avalonia. It is a package-free, deterministic
 contract and workflow core. UI, terminal, filesystem, and browser concerns are
@@ -102,12 +146,12 @@ publication, and acceptance remains in ISLAMU Event.
 
 ### Explicit non-goals
 
-- No live instance import/export API client, OAuth/device flow, token storage,
-  Infisical read/write, provider connectivity test, or live secret retrieval.
 - No combined manifest-plus-dotenv artifact.
 - No embedded AI, model SDK, prompt runtime, inference, or agent loop.
-- No PWA/service worker, auto-update, downloaded plugin/template pack, mobile
-  target, or direct instance-to-instance transfer.
+- No raw secret value in a portable artifact, process argument, machine JSON,
+  support report, migration receipt, or application-data payload.
+- No PWA/service worker, auto-update, downloaded executable plugin, or mobile
+  target in this revision.
 - No legal advice, auto-publication, fabricated acceptance, or migration of
   historical acceptance evidence.
 - No backward-compatibility layer for Application-owned v1alpha2 contract
@@ -150,7 +194,7 @@ Test Coverage:
 | Claim | Evidence | Confidence | Notes |
 |---|---|---:|---|
 | No Setup Assistant project exists | `Explore.slnx`; project inventory under `src/` and `tests/` | High | New projects are explicitly marked new in Section 6. |
-| ConfigurationManifest is closed for archival by explicit user decision | `configuration-manifest-context.md`; closure disposition dated 2026-08-30 | High | Setup consumes the frozen current v1alpha2/schema/registry/import-preview baseline; retired phases are not represented as implemented. |
+| ConfigurationManifest is an active upstream dependency | `configuration-manifest-context.md`; active continuation dated 2026-08-31 | High | Setup consumes only the frozen v1alpha2/schema/registry/no-secret wire baseline and does not inherit server implementation details. |
 | v1alpha2 wire contracts are Application-owned | `src/Explore.Application/Features/ConfigurationManifest/Contracts/ConfigurationManifestV1Alpha2.cs` | High | This currently forces the schema tool to reference all Application. |
 | A closed portability registry exists | `ConfigurationPortabilityRegistry.cs` | High | It has 21 entries and explicit excluded authority classes. |
 | Import preview and HTTP foundations exist | `src/Explore.Application/Features/ConfigurationManifest/Importing/**`; instance/tenant import controllers and generated contracts | High | Strict parser, target-bound session, coverage/diff composer, and upload/preview/refresh/cancel transport exist; atomic apply remains server-side and outside this offline Setup workstream. |
@@ -232,10 +276,9 @@ Test Coverage:
    behavior.
 3. Environment relevance and defaults are implicit across prose, Compose, host
    configuration, and secret registry.
-4. ConfigurationManifest is closed with a frozen current baseline, but its
-   retired atomic-apply, live migration UI, managed-ownership, and transfer
-   phases are not implementation evidence. Setup extraction must preserve the
-   current bytes and must not imply those retired capabilities exist.
+4. ConfigurationManifest remains active with a frozen Setup-facing wire
+   baseline. Setup extraction must preserve those bytes and must not treat
+   upstream server capabilities as Setup implementation evidence.
 5. Browser-local execution can be overclaimed as origin-independent security.
 6. Desktop/browser/terminal secret surfaces have distinct leakage paths and
    cannot share one generic “save file” adapter.
@@ -253,10 +296,10 @@ structure or trust-boundary architecture:
 |---|---|---|
 | Exact approved Avalonia package graph | Official metadata identifies `12.1.1` as current stable candidate; no restore/license scan performed | SA-120 either approves the exact graph or stops Phase 1 |
 | Exact approved Terminal.Gui package graph | Official metadata identifies `2.4.17` as current stable candidate | SA-120 |
-| Final OS/version support floor | Official Avalonia tiers are known; release-runner and packaging evidence is absent | SA-810 publishes only evidenced combinations |
+| Final OS/version support floor | Official Avalonia tiers are known; release-runner and packaging evidence is absent | SA-1210 publishes only evidenced combinations |
 | Which legal templates receive counsel approval | No approved template pack exists | SA-530 may ship blank/project-authored approved templates only |
 | Which locally generated secret classes are provider-valid | Secret definitions exist; provider acceptance evidence is incomplete | SA-330 admits only independently documented generators |
-| Whether AppImage or Flatpak clears target review | Official sandbox behavior is known; tool/license/release graph is not | SA-810 keeps each format disabled until approved |
+| Whether AppImage or Flatpak clears target review | Official sandbox behavior is known; tool/license/release graph is not | SA-1210 keeps each format disabled until approved |
 
 Hosted web secret-mode enablement is not an open question: the capability is
 implemented behind a release gate and remains disabled until the named
@@ -531,6 +574,90 @@ legal publication handoff, live apply, or authority broadening.
 - **THEN** it stops safely, directs secret completion to the local human UI,
   and never invents commands or handles values.
 
+### Requirement 3.13: Composed Authoring Has One Canonical Output
+
+The assistant **SHALL** accept bounded YAML and directory/multi-file authoring
+inputs only as source composition formats and **MUST** compile them into the
+single canonical v1alpha2 JSON artifact before preview, transfer, or apply.
+
+#### Scenario 3.13A: Deterministic composition
+
+- **GIVEN** equivalent single-file JSON, YAML, and directory sources
+- **WHEN** each source is normalized and compiled
+- **THEN** all produce the same canonical bytes, digest, section coverage, and
+  diagnostics without embedding source paths or ordering accidents.
+
+#### Scenario 3.13B: Composition ambiguity or oversized input
+
+- **GIVEN** duplicate keys, conflicting fragments, links, traversal, cycles,
+  unknown files, excessive depth/count/bytes, or an unmeasured larger profile
+- **WHEN** composition begins
+- **THEN** it fails closed before producing a partial artifact; larger limits
+  remain disabled until measured resource evidence approves a named profile.
+
+### Requirement 3.14: Live Target And Secret-Binding Authority
+
+Live operations **MUST** use explicit target enrollment, short-lived scoped
+authorization, server-provided HAL capabilities, and target-local secret
+binding/provider identifiers. The assistant **MUST NOT** treat portable source
+identity or a secret reference as authority and **MUST NOT** retrieve raw
+provider secret values.
+
+#### Scenario 3.14A: Authorized live handoff
+
+- **GIVEN** a verified target, authenticated operator, fresh capability, and
+  preview-ready canonical artifact
+- **WHEN** the operator requests import, direct transfer, binding completion,
+  or provider readiness
+- **THEN** the server reauthorizes the target and tenant, advertises the exact
+  allowed action, returns value-free state, and records a resumable receipt.
+
+#### Scenario 3.14B: Stale, replayed, or cross-target authority
+
+- **GIVEN** an expired token, stale HAL capability, mismatched tenant, replayed
+  transfer, source authority claim, or unavailable provider
+- **WHEN** a live action is attempted
+- **THEN** the operation fails closed with RFC 7807 details, changes no target
+  state, exposes no provider coordinates/value, and preserves safe retry.
+
+### Requirement 3.15: Application-Data And Sovereign Migration
+
+Application-data and payment-operation migration **MUST** be explicit,
+category-selectable, tenant-isolated, resumable, idempotent, and independently
+authorized from configuration portability. Money state **MUST NOT** be
+reconstructed from configuration or silently replayed.
+
+#### Scenario 3.15A: Resumable application-data migration
+
+- **GIVEN** approved events, users, registrations, orders, tickets, uploaded
+  files, or other selected application-data categories
+- **WHEN** migration is interrupted and resumed
+- **THEN** stable source identities, target mappings, checkpoints, integrity
+  digests, and receipts prevent duplicates and cross-tenant writes.
+
+#### Scenario 3.15B: Payment and refund authority conflict
+
+- **GIVEN** sale-control, review, handoff, reconciliation, refund, or payment
+  state whose provider/ledger authority is incomplete, stale, or conflicting
+- **WHEN** migration or operational handoff is requested
+- **THEN** the sovereign operation pauses without money mutation, requires
+  target/provider reconciliation and explicit approval, and records zero-PII,
+  value-safe evidence for recovery.
+
+#### Scenario 3.15C: Worst Break Red — Replayed cross-tenant sovereign race
+
+- **Owner:** Successor F, slice F1, before SA-1140 production code.
+- **GIVEN** a stale or replayed capability and tenant mismatch racing payment
+  finalization/refund through the public server seam
+- **WHEN** deterministic coordination releases both operations against the real
+  owning database and provider contract under a bounded timeout
+- **THEN** the Red test MUST assert zero cross-tenant rows, zero provider/outbox
+  money intent, unchanged checked ledger balances, exactly one durable
+  value-free conflict receipt, and zero PII or secret logs.
+- **Test constraint:** Subscribe to exact coordination/state signals before the
+  race. Fixed sleeps, polling luck, internal mocks, and fake ownership
+  boundaries are forbidden.
+
 ## 4. Non-Negotiable Constraints
 
 1. Every source file starts with two `ABOUTME:` lines.
@@ -545,13 +672,15 @@ legal publication handoff, live apply, or authority broadening.
 5. Server runtime validation and authorization remain authoritative for target
    state, tenant identity, policy ceilings, reference mappings, locks,
    transactional apply, legal publication, and acceptance.
-6. Manifests/packages contain no secret, PII, provider credential, operational
-   state, deployment topology, or secret reference.
+6. Manifests/packages contain no secret value, PII, provider credential,
+   operational state, or deployment topology. Opaque secret-binding/provider
+   identifiers live only in a separate target-local deployment plan and never
+   grant authority.
 7. `.env` and portable configuration remain separate artifacts with different
    sensitivity labels and no combined archive by default.
-8. Secret values originate only from explicit local human entry or approved
-   local cryptographic generation. The assistant never reads Infisical or live
-   instances.
+8. Secret values originate only from explicit local human entry, approved
+   local cryptographic generation, or target-authorized provider writes. The
+   assistant never reads raw values back from Infisical or a live instance.
 9. Secret workflows have no analytics, telemetry, remote logs, crash upload,
    CSP report, update call, source map value, or developer-tools package in
    production.
@@ -702,16 +831,55 @@ legal publication handoff, live apply, or authority broadening.
   Browser static bundle, and six CLI RIDs. Wayland-native, AppImage, Flatpak,
   global tool, and reciprocal-license boundaries remain target gates.
 
+### 5.10 Source composition and scale profiles
+
+- **Decision:** YAML and directory inputs are authoring adapters that compile
+  through one normalized composition model into canonical v1alpha2 JSON.
+- **Why:** Multiple wire formats would multiply validation, signature, and
+  compatibility authority. One output keeps server/import contracts frozen.
+- **Alternatives:** YAML as a second wire contract, implicit file merges, and
+  unbounded directory discovery are rejected.
+- **Consequences:** source paths never enter canonical bytes; conflicts fail
+  closed; larger count/size profiles require measured memory/time evidence and
+  explicit generated limits.
+
+### 5.11 Live target and secret-provider adapters
+
+- **Decision:** Add a networked outer adapter around the pure Core using
+  short-lived target enrollment, generated wire contracts, HAL affordances,
+  and server-authoritative import/transfer/provider operations.
+- **Why:** Setup may guide and orchestrate live work but cannot own tenant,
+  target, credential, provider, or transaction authority.
+- **Alternatives:** long-lived bearer storage, direct database access, direct
+  provider SDK use from Core/UI, and trusting source instance identity are
+  rejected.
+- **Consequences:** encrypted saved profiles are optional and contain only
+  target identity plus revocable credential handles; secret values are write-
+  only and provider coordinates remain server-side.
+
+### 5.12 Application-data and sovereign migration engine
+
+- **Decision:** Treat application data and payment operations as separate
+  server-owned migration plans with category checkpoints, idempotency keys,
+  mapping ledgers, receipts, and an outbox-backed commit boundary.
+- **Why:** Configuration portability cannot safely represent aggregates,
+  files, money, provider state, or reconciliation authority.
+- **Alternatives:** database copying, configuration-embedded payloads,
+  best-effort batch replay, and silent payment reconstruction are rejected.
+- **Consequences:** Tier 0 payment actions receive their own approval and
+  reconciliation state machine; failure pauses or compensates without
+  deleting source state.
+
 ## 6. Implementation Phases
 
 ### Phase 1: Contract Freeze, Dependency Gate, And Project Boundaries
 
 - **Goal:** Establish a green, license-approved, executable architecture before
   feature code.
-- **Depends on:** the 2026-08-30 user closure of ConfigurationManifest, the
-  current v1alpha2 contracts/schema/registry/import-preview outputs frozen as
-  the extraction baseline, user approval of this Setup revision, and
-  revision-bound CTO review.
+- **Depends on:** ConfigurationManifest's frozen v1alpha2 wire contract,
+  schema/registry/import-preview outputs and no-secret boundary as the
+  extraction baseline, the current plan-aligned I-VSD revision, and fresh
+  revision-bound CTO plus exact-revision user approval for successor A.
 - **Relevant files:**
   - Existing: `Explore.slnx`, `Directory.Packages.props`,
     `Directory.Build.props`, `.github/workflows/test.yml`,
@@ -913,37 +1081,154 @@ legal publication handoff, live apply, or authority broadening.
 - **Rollback / failure handling:** A failing target adapter is omitted from the
   support matrix; it does not fall back to unprotected writes.
 
-### Phase 8: Packaging, Provenance, Documentation, And Agent Skill
+### Phase 8: YAML, Directory Composition, And Measured Scale
+
+- **Goal:** Add ergonomic source composition without creating a second wire
+  contract or weakening canonical limits.
+- **Depends on:** Phases 2–5.
+- **Relevant files:** new Setup Core composition adapters and tests, CLI/TUI/UI
+  source pickers, generated composition schema/coverage, and existing
+  v1alpha2 codecs/schemas.
+- **Related skills/rules:** criticality-guardrail, clean-architecture-rules,
+  accessibility, tests rule.
+- **Acceptance criteria:**
+  - JSON, YAML, and directory/multi-file inputs converge to identical canonical
+    v1alpha2 JSON, digests, coverage, and diagnostics.
+  - Duplicate/conflicting fragments, links, traversal, cycles, unknown files,
+    and partial output fail closed.
+  - Canonical limits remain the default; any larger named profile is generated
+    only from measured memory/time evidence and stays compatible with target
+    server limits.
+  - Secret references, provider identifiers, and application data cannot be
+    smuggled through composition metadata.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Disable the source adapter or larger profile
+  without changing canonical JSON parsing or existing artifacts.
+
+### Phase 9: Live Target Enrollment And Secret-Provider Binding
+
+- **Goal:** Connect Setup to a live target through explicit short-lived
+  authority while keeping raw secrets and provider coordinates out of portable
+  artifacts and machine surfaces.
+- **Depends on:** Stable A/B/C contracts; fresh Tier 1 intake, current I-VSD,
+  fresh CTO and exact-revision user approval for successor D; and its named
+  tenant/authorization/replay/provider evidence.
+- **Relevant files:** new networked Setup adapter and tests; generated live
+  wire contracts; existing authentication, API/HAL/BFF, secret-provider,
+  import-session, and operator documentation surfaces.
+- **Related skills/rules:** auth-patterns, blazor-bff-patterns,
+  criticality-guardrail, ip-clean-room, secret isolation.
+- **Acceptance criteria:**
+  - Target enrollment uses a bounded device/interactive authorization flow,
+    explicit tenant selection, short-lived scopes, revocation, and no token in
+    logs, arguments, machine JSON, or portable artifacts.
+  - Optional saved profiles are platform-protected and contain only target
+    identity plus revocable credential handles.
+  - Secret bindings/provider identifiers are target-local, allowlisted,
+    value-free, and never treated as authority.
+  - Infisical/provider operations are server-authorized write/readiness flows;
+    Setup never reads raw secret values or exposes provider coordinates.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Revoke enrollment and delete the local
+  protected handle. Offline/no-secret authoring remains fully usable.
+
+### Phase 10: Live Apply And Direct-Transfer Orchestration
+
+- **Goal:** Adapt the frozen configuration import, managed-apply, rollback, and
+  mutually approved direct-transfer protocols into Setup workflows.
+- **Depends on:** Phase 9 and green upstream ConfigurationManifest Tier 1,
+  tenant-isolation, replay, and atomicity gates. Missing evidence disables live
+  apply/direct transfer; the gate cannot be bypassed.
+- **Relevant files:** new Setup live-operation adapters/workspaces/tests;
+  existing generated API client, HAL relations, import-session/direct-transfer
+  contracts, receipts, and operations documentation.
+- **Related skills/rules:** auth-patterns, blazor-bff-patterns,
+  criticality-guardrail, accessibility, error-tracking.
+- **Acceptance criteria:**
+  - Setup follows server HAL affordances for preview, apply, managed approval,
+    transfer, history, cancellation, and forward rollback.
+  - Capabilities remain header-only, expiring, target-qualified, replay-fenced,
+    and absent from saved profiles/support evidence.
+  - Interrupted transfer resumes from verified chunks; promotion is atomic and
+    never deletes source state.
+  - Setup displays committed configuration separately from pending effects and
+    never claims local completion before the server receipt does.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Cancel or expire the target session and use
+  server forward rollback where advertised; never synthesize local rollback.
+
+### Phase 11: Application-Data And Sovereign Operations Migration
+
+- **Goal:** Add independently authorized migration for application aggregates,
+  files, and payment operational handoff without conflating it with
+  configuration portability.
+- **Depends on:** D contracts. Successor E requires fresh Tier 2 custody/erasure
+  and Tier 1 tenant intake plus current I-VSD, fresh CTO/user approval, and
+  named evidence. Successor F independently requires D/E contracts, Tier 0
+  Grill-Me, current I-VSD, fresh CTO/user approval, explicit payment/provider/
+  legal/operator decisions, and the F1 Worst Break Red before SA-1140.
+- **Relevant files:** new server-side migration Domain/Application/Persistence/
+  API contracts and tests; Setup migration adapters/workspaces; outbox,
+  protected staging, mapping/checkpoint/receipt, payment, privacy, and operator
+  documentation surfaces.
+- **Related skills/rules:** criticality-guardrail, grill-me, auth-patterns,
+  cqrs-mediatr-guidelines, dotnet-efcore-guidelines, outbox-pattern,
+  error-tracking, accessibility.
+- **Acceptance criteria:**
+  - Events, users, registrations, orders, tickets, uploaded files, and other
+    application-data categories are explicit, tenant-isolated, resumable,
+    idempotent, integrity-checked, and source-retaining.
+  - Identity/reference mappings and checkpoints are durable; interruption or
+    replay cannot duplicate aggregates or cross tenant boundaries.
+  - Sale-control, review, handoff, reconciliation, refund, and payment
+    operations use a separate sovereign state machine with explicit provider
+    reconciliation and approval before any money mutation.
+  - Before SA-1140 production code, successor F owns the Scenario 3.15C Worst
+    Break Red against the real owning database/provider contract with
+    deterministic coordination and a bounded timeout; all exact zero-mutation,
+    ledger, receipt, and log assertions MUST fail for the intended reason.
+  - Receipts and telemetry are zero-PII/value-safe; secrets and provider
+    credentials never enter migration payloads.
+- **Phase-end verification:**
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Pause at the last durable checkpoint,
+  compensate only through domain-approved operations, retain source state, and
+  require reconciliation before retrying sovereign actions.
+
+### Phase 12: Packaging, Provenance, Documentation, And Agent Skill
 
 - **Goal:** Produce governed multi-target release outputs, operator/security
-  documentation, and the post-CLI skill.
-- **Depends on:** Phases 1–7 and the exact public capabilities selected for the
-  release.
-- **Relevant files:**
-  - New: `eng/setup-assistant/**`, Setup CI/release workflow paths, package
-    manifests, SBOM/notices/checksum/provenance evidence, Setup docs,
-    `.agents/skills/setup-assistant-cli/**`,
-    `docs/releases/changes/CHG-*.yaml`.
-  - Existing: release policy/runbook/checklist, scope registry, CI governance,
-    security/configuration/secrets/self-hosting/troubleshooting docs,
-    `.agents/contract/intents.yaml`, skill schema, architecture tests.
+  documentation, and the post-CLI skill for the exact implemented capability
+  set.
+- **Depends on:** Each selected owning successor and its phase gate being
+  green. G runs per independently shippable subset and again for final program
+  reconciliation; unevidenced later successors do not block an offline release.
+- **Relevant files:** new `eng/setup-assistant/**`, Setup CI/release workflow
+  paths, package manifests, SBOM/notices/checksum/provenance evidence, Setup
+  docs, `.agents/skills/setup-assistant-cli/**`, and
+  `docs/releases/changes/CHG-*.yaml`; existing release and governance surfaces.
 - **Related skills/rules:** ci-cd intent, ip-clean-room, skill-authoring,
   conventional-commit, criticality-guardrail.
 - **Acceptance criteria:**
-  - Required archives/packages cover evidenced Windows, Linux, macOS, browser,
-    and CLI targets; experimental/optional formats remain absent until gated.
+  - Required archives/packages cover only evidenced targets and implemented
+    capabilities; experimental formats remain absent until independently gated.
   - Release identity converges across commit, version, RID/format, locks, SBOM,
     build manifest, checksums, signatures/notarization, source, and
     reproducibility.
-  - Docs state origin trust, browser/desktop/terminal limitations, secret
-    completion, recovery, incident, support, accessibility, localization,
-    package support, and no-live-authority boundaries.
-  - Public release scope `setup` is governed.
+  - Docs cover offline, live, composition, secret-binding, transfer,
+    application-data, sovereign recovery, accessibility, and support boundaries.
   - Agent skill routes only implemented compatible CLI commands, defaults to
     no-secret dry-run machine mode, rejects secret inputs/TUI automation, and
-    requires human approval.
-  - I-VSD, threat model, dependency evidence, accessibility/security/legal
-    escalations, and Tier 2 change fragment match shipped capabilities.
+    requires human approval for every live or mutating operation.
+  - I-VSD, CTO/MAD reviews, threat models, dependency evidence, and the Tier 2
+    change fragment match the shipped subset.
 - **Phase-end verification:**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
@@ -970,6 +1255,13 @@ legal publication handoff, live apply, or authority broadening.
 - `Event.SetupAssistant.Desktop.Tests`: real temporary-filesystem link,
   overwrite, permission, atomicity, cleanup, and race invariants on supported
   runners.
+- `Event.Setup.Core.Tests`: YAML/directory composition convergence, conflict
+  rejection, canonical limits, and measured scale profiles.
+- `Event.API.IntegrationTests`: live enrollment, scoped capability, tenant
+  isolation, secret-provider readiness, and RFC 7807 fail-closed behavior.
+- `Event.Persistence.IntegrationTests`: application-data checkpoints,
+  idempotency, mapping integrity, outbox atomicity, and sovereign-operation
+  concurrency on real providers.
 - `Event.Architecture.Tests`: project-reference boundaries, dependency/license
   coverage, no AI/provider/telemetry/network leakage, generator convergence,
   source/lock/release/skill contracts.
@@ -989,7 +1281,13 @@ legal publication handoff, live apply, or authority broadening.
 - incompatible package/license/native/tooling graphs and mismatched
   artifact/SBOM/checksum/signature/source identities;
 - skill/CLI version drift, invented commands, secret-bearing files, and
-  authority-broadening writes without approval.
+  authority-broadening writes without approval;
+- **Worst Break Red (successor F):** stale/replayed capability plus tenant
+  mismatch racing finalization/refund through the public seam, deterministically
+  coordinated under a bounded timeout against the real owning database and
+  provider contract, asserting zero cross-tenant rows, zero provider/outbox
+  money intent, unchanged checked ledger balances, one durable value-free
+  conflict receipt, and zero PII/secret logs.
 
 Tests assert public codecs, workflow results, command JSON, file state, package
 manifests, and closed error codes. They do not assert internal call counts,
@@ -1075,8 +1373,11 @@ The linked I-VSD report is provider-responsibility design reasoning, not a
 fatwa, Sharia certification, security certification, legal advice,
 accessibility certification, or proof of zero disclosure. Its reviewed input
 revision is
-`sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637`;
-status is `current`; disposition is `plan-aligned`.
+`sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f`;
+status is `current`; disposition is `plan-aligned`. Findings `IVSD-F001`
+through `IVSD-F046` map one-to-one to mitigations `IVSD-M001` through
+`IVSD-M046`. This sequencing/status correction preserves all provider-controlled
+behavior and therefore does not invalidate the current report.
 
 | I-VSD mapping | Scenario and task mapping | Disposition |
 |---|---|---|
@@ -1092,30 +1393,45 @@ status is `current`; disposition is `plan-aligned`.
 | `IVSD-F010` / `IVSD-M010` | 3.7; SA-710, SA-720, SA-730 | Platform-safe desktop writes |
 | `IVSD-F011` / `IVSD-M011` | 3.4, 3.7; SA-330, SA-630, SA-720, SA-730 | Minimize lifetime; no erasure claim |
 | `IVSD-F012` / `IVSD-M012` | 3.4, 3.6; SA-110, SA-610, SA-640, SA-730 | Observability-free secret paths |
-| `IVSD-F013` / `IVSD-M013` | 3.11; SA-110, SA-120, SA-810, SA-820 | Target-specific dependency approval |
-| `IVSD-F014` / `IVSD-M014` | 3.11; SA-810, SA-820 | Signed, identified, verifiable releases |
-| `IVSD-F015` / `IVSD-M015` | 3.10, 3.11; SA-510, SA-810, SA-820 | Evidence-backed support matrix |
-| `IVSD-F016` / `IVSD-M016` | 3.11; SA-120, SA-130, SA-640, SA-810 | Track browser source; ignore generated output |
-| `IVSD-F017` / `IVSD-M017` | 3.5, 3.11; SA-630, SA-640, SA-820 | Official identity and fork disclosure |
+| `IVSD-F013` / `IVSD-M013` | 3.11; SA-110, SA-120, SA-1210, SA-1220 | Target-specific dependency approval |
+| `IVSD-F014` / `IVSD-M014` | 3.11; SA-1210, SA-1220 | Signed, identified, verifiable releases |
+| `IVSD-F015` / `IVSD-M015` | 3.10, 3.11; SA-510, SA-1210, SA-1220 | Evidence-backed support matrix |
+| `IVSD-F016` / `IVSD-M016` | 3.11; SA-120, SA-130, SA-640, SA-1210 | Track browser source; ignore generated output |
+| `IVSD-F017` / `IVSD-M017` | 3.5, 3.11; SA-630, SA-640, SA-1220 | Official identity and fork disclosure |
 | `IVSD-F018` / `IVSD-M018` | 3.10; SA-510, SA-520, SA-530 | Accessible GUI behavior |
 | `IVSD-F019` / `IVSD-M019` | 3.10; SA-510, SA-520 | Bundled localization and RTL |
 | `IVSD-F020` / `IVSD-M020` | 3.2, 3.3, 3.4; SA-320, SA-330, SA-340 | No live secret authority |
-| `IVSD-F021` / `IVSD-M021` | 3.5, 3.11; SA-630, SA-640, SA-820 | Truthful security claims |
-| `IVSD-F022` / `IVSD-M022` | 3.4–3.7, 3.11; SA-610, SA-710, SA-810, SA-820 | Adversarial evidence and external release gates |
+| `IVSD-F021` / `IVSD-M021` | 3.5, 3.11; SA-630, SA-640, SA-1220 | Truthful security claims |
+| `IVSD-F022` / `IVSD-M022` | 3.4–3.7, 3.11; SA-610, SA-710, SA-1210, SA-1220 | Adversarial evidence and external release gates |
 | `IVSD-F023` / `IVSD-M023` | 3.8; SA-210, SA-340, SA-530, SA-540 | Typed role-scoped legal source |
 | `IVSD-F024` / `IVSD-M024` | 3.8; SA-210, SA-340, SA-530, SA-540 | Never rewrite publication/acceptance evidence |
-| `IVSD-F025` / `IVSD-M025` | 3.8; SA-540, SA-820 | Approved local non-certifying templates only |
+| `IVSD-F025` / `IVSD-M025` | 3.8; SA-540, SA-1220 | Approved local non-certifying templates only |
 | `IVSD-F026` / `IVSD-M026` | 3.8; SA-210, SA-220, SA-540 | One constrained Markdown codec |
 | `IVSD-F027` / `IVSD-M027` | 3.2, 3.8; SA-210, SA-340, SA-540 | Portable legal source and metadata |
 | `IVSD-F028` / `IVSD-M028` | 3.2, 3.8; SA-210, SA-340, SA-540 | Bounded localized content and usable diff |
 | `IVSD-F029` / `IVSD-M029` | 3.9, 3.10; SA-410, SA-420, SA-430 | First-class CLI/TUI |
 | `IVSD-F030` / `IVSD-M030` | 3.9; SA-410, SA-420 | Versioned JSON, exits, help, dry-run, digests |
 | `IVSD-F031` / `IVSD-M031` | 3.4, 3.9; SA-410, SA-420, SA-430 | Terminal secret boundary |
-| `IVSD-F032` / `IVSD-M032` | 3.12; SA-840 | Skill rejects secret access |
-| `IVSD-F033` / `IVSD-M033` | 3.12; SA-110, SA-840 | No embedded AI/provider dependency |
-| `IVSD-F034` / `IVSD-M034` | 3.8, 3.12; SA-420, SA-530, SA-540, SA-840 | Human approval gates |
-| `IVSD-F035` / `IVSD-M035` | 3.10; SA-430, SA-520, SA-820 | Truthful TUI/browser accessibility evidence |
-| `IVSD-F036` / `IVSD-M036` | 3.12; SA-410, SA-420, SA-840 | Skill only after verified CLI contract |
+| `IVSD-F032` / `IVSD-M032` | 3.12; SA-1240 | Skill rejects secret access |
+| `IVSD-F033` / `IVSD-M033` | 3.12; SA-110, SA-1240 | No embedded AI/provider dependency |
+| `IVSD-F034` / `IVSD-M034` | 3.8, 3.12; SA-420, SA-530, SA-540, SA-1240 | Human approval gates |
+| `IVSD-F035` / `IVSD-M035` | 3.10; SA-430, SA-520, SA-1220 | Truthful TUI/browser accessibility evidence |
+| `IVSD-F036` / `IVSD-M036` | 3.12; SA-410, SA-420, SA-1240 | Skill only after verified CLI contract |
+| `IVSD-F037` / `IVSD-M037` | Scenario 3.13; SA-810, SA-820, SA-830, SA-1220, SA-1250 | Canonical composition and evidence-bound scale |
+| `IVSD-F038` / `IVSD-M038` | Scenarios 3.14 and 3.15; SA-910, SA-920, SA-1010, SA-1030, SA-1110, SA-1120, SA-1130, SA-1250 | Tenant authority across live and migrated records |
+| `IVSD-F039` / `IVSD-M039` | Scenario 3.14; SA-910, SA-920, SA-1010, SA-1020, SA-1030, SA-1250 | Fresh scoped replay-fenced authorization |
+| `IVSD-F040` / `IVSD-M040` | Scenario 3.14; SA-910, SA-930, SA-1220, SA-1250 | Write-only coordinate-free provider binding |
+| `IVSD-F041` / `IVSD-M041` | Scenario 3.15A; Tier 2 custody/erasure gate before SA-1110; SA-1110, SA-1120, SA-1130, SA-1220, SA-1250 | Separate application-data custody contract |
+| `IVSD-F042` / `IVSD-M042` | Scenario 3.15A; SA-1110, SA-1120, SA-1130, SA-1250 | Durable idempotent migration continuity |
+| `IVSD-F043` / `IVSD-M043` | Scenario 3.15B; Tier 0 decision gate before SA-1110 and provider/ledger reconciliation gate before SA-1140; SA-1110, SA-1140, SA-1220, SA-1250 | Sovereign-money reconciliation before mutation |
+| `IVSD-F044` / `IVSD-M044` | Scenarios 3.14A and 3.15A; SA-1030, SA-1120, SA-1130, SA-1220, SA-1250 | Source retention and operator autonomy |
+| `IVSD-F045` / `IVSD-M045` | Scenarios 3.14A-B and 3.15A-B; SA-1010, SA-1020, SA-1030, SA-1110, SA-1120, SA-1130, SA-1140, SA-1220, SA-1250 | Truthful pending/unknown/recovery state |
+| `IVSD-F046` / `IVSD-M046` | Scenarios 3.12, 3.14, and 3.15; SA-1020, SA-1030, SA-1110, SA-1130, SA-1140, SA-1240, SA-1250 | Category-level human agency |
+
+These F037-F046 mappings reproduce the current I-VSD Planning Handoff without
+changing them. Their successor gates remain blocking: current I-VSD is necessary
+but no later successor may begin without its fresh tier-appropriate intake,
+CTO review, exact-revision user approval, and named evidence.
 
 ### Escalation gates
 
@@ -1145,9 +1461,9 @@ status is `current`; disposition is `plan-aligned`.
 | Command automation | Untrusted arguments/files, unstable prose, skill drift, agent secret request | CLI process and external agent | Versioned machine JSON, stable exits, non-secret machine mode, explicit paths/dry-run, skill version gate, human approval |
 | Release identity | Dependency substitution, incompatible license, unsigned package, stale web bundle, false support claim | Restore/build/package/sign/host chain | Locked graph, vulnerability/license gates, SBOM/checksum/provenance, signatures/notarization, immutable capability/support manifests |
 
-- **Authentication/authorization:** Not applicable to the offline first
-  release. No token or live API path exists. Future live operations require a
-  separate auth/BFF plan and HAL authority.
+- **Authentication/authorization:** Applicable to Phases 9–11. Enrollment,
+  tokens, target/tenant authority, HAL affordances, and every live mutation
+  fail closed server-side; offline authoring remains unauthenticated.
 - **Tenant isolation:** Applicable to artifact scope. Tenant packages cannot
   contain instance authority; source names/IDs never become trusted target
   authority.
@@ -1156,7 +1472,8 @@ status is `current`; disposition is `plan-aligned`.
 - **Browser origin:** Critical. The origin controls delivered code; disclosure,
   reproducibility, source, digests, CSP, and review provide evidence but not
   technical impossibility.
-- **Rate limiting:** Not applicable without a server endpoint.
+- **Rate limiting:** Applicable to enrollment, provider readiness, transfer,
+  live apply, and migration endpoints.
 - **Idempotency:** File writes use digest/target identity and explicit overwrite;
   commands are deterministic and dry-run capable.
 - **Auditability:** No secret activity audit captures values. Release and
@@ -1177,7 +1494,7 @@ status is `current`; disposition is `plan-aligned`.
 | Localization | Applicable | All security consequences, diagnostics explanations, help, and templates are bundled before secret mode. |
 | Accessibility | Applicable | Avalonia desktop, browser partial support, and Terminal.Gui require distinct evidence and honest alternatives. |
 | Product autonomy | Applicable | No-secret/default offline paths reduce dependence on ISLAMU hosting and Infisical. |
-| Payments | Not applicable to Setup authority | Portable paid-policy intent may be displayed, but sovereign payment execution/credentials remain excluded and server-authoritative. |
+| Payments | Applicable in Phase 11 | Sovereign sale-control, reconciliation, handoff, and refund operations remain server/provider-authoritative and independently approved. |
 | Legal authority | Applicable | Instance/tenant/organizer roles, templates, publication, and acceptance remain explicit and separate. |
 
 ## 12. Observability And Operations
@@ -1201,9 +1518,10 @@ status is `current`; disposition is `plan-aligned`.
 - This is pre-v1 greenfield. Move v1alpha2 contracts once; delete old
   Application/Domain owners and migrate all callers with no compatibility
   namespace, type forwarding, serializer alias, or duplicate schema.
-- No database migration is planned for Setup Assistant. Existing server
-  legal/import persistence remains authoritative and outside this offline
-  product.
+- Phases 9–11 may add server persistence for enrollment, protected credential
+  handles, migration plans, checkpoints, mappings, receipts, and sovereign
+  operation state. EF migrations are generated for every provider and are
+  never hand-edited.
 - Existing generated schema bytes are the frozen extraction baseline. A future
   intentional contract change requires a new approved workstream and a Setup
   plan/I-VSD refresh before extraction continues.
@@ -1221,17 +1539,21 @@ status is `current`; disposition is `plan-aligned`.
 | Risk | Likelihood | Impact | Mitigation | Detection signal | Owner/task |
 |---|---:|---:|---|---|---|
 | Frozen manifest contract drifts during extraction | Low | High | Pin the archive disposition and fail byte/schema/registry convergence before moving owners | Any diff from the recorded v1alpha2/schema/registry baseline | SA-110, SA-210 |
-| Hidden package/native/license incompatibility | Medium | Critical | Full target graph, scanner, legal decision, target exclusion | Unknown/denied metadata or lock/SBOM mismatch | SA-120, SA-810 |
+| Hidden package/native/license incompatibility | Medium | Critical | Full target graph, scanner, legal decision, target exclusion | Unknown/denied metadata or lock/SBOM mismatch | SA-120, SA-1210 |
 | Hosted build exfiltrates secrets | Low after controls | Critical | Disabled-by-default capability, preload, deny policy, independent review | Request/storage evidence or origin mismatch | SA-610–SA-640 |
 | Managed memory retains secrets | High | High | Minimize copies/lifetime; clear state; no erasure claim | Heap/DOM/state review findings | SA-330, SA-630, SA-730 |
 | Unsafe desktop overwrite/link race | Medium | Critical | Handle-first platform adapters and real filesystem invariants | Permission/link/identity mismatch | SA-710–SA-730 |
 | Environment catalogue drifts from runtime/Compose | Medium | High | One generator/check graph and closed convergence tests | Generated artifact diff or unknown key | SA-310, SA-320 |
-| Cross-platform claim exceeds evidence | Medium | High | Release support manifest per exact OS/RID/format | Missing package/sign/accessibility evidence | SA-810, SA-820 |
-| Browser accessibility is materially incomplete | High | High | Honest limitation, semantic controls, desktop/CLI alternative | Missing platform accessibility evidence | SA-520, SA-820 |
+| Cross-platform claim exceeds evidence | Medium | High | Release support manifest per exact OS/RID/format | Missing package/sign/accessibility evidence | SA-1210, SA-1220 |
+| Browser accessibility is materially incomplete | High | High | Honest limitation, semantic controls, desktop/CLI alternative | Missing platform accessibility evidence | SA-520, SA-1220 |
 | TUI leaks through terminal/process surfaces | Medium | Critical | TTY-only secret state; no args/env/stdin/stdout/history | Captured output/process contract failure | SA-410–SA-430 |
-| Legal template or role claim misleads | Medium | Critical | Blank/approved templates only, provenance and legal gate | Missing approval or wrong-scope validation | SA-530, SA-820 |
-| Skill invents commands or handles secrets | Medium | High | Create after CLI; version gate; machine-only no-secret workflow | Schema/version mismatch or secret input | SA-840 |
-| Release docs expose overconfident claims | Medium | High | I-VSD/claim review and identified-release wording | Claim inventory/review failure | SA-820, SA-850 |
+| Legal template or role claim misleads | Medium | Critical | Blank/approved templates only, provenance and legal gate | Missing approval or wrong-scope validation | SA-530, SA-1220 |
+| Composition ambiguity changes canonical meaning | Medium | High | One normalized merge model, closed conflicts, canonical byte convergence | Cross-format digest or diagnostic mismatch | SA-810–SA-830 |
+| Live credential or tenant authority is replayed | Medium | Critical | Short-lived scoped enrollment, HAL reauthorization, protected handles, revocation | Replay/cross-target invariant failure | SA-910–SA-1030 |
+| Application migration duplicates or crosses tenants | Medium | Critical | Durable mappings/checkpoints/idempotency and real-provider races | Duplicate aggregate or tenant-isolation failure | SA-1110–SA-1130 |
+| Payment handoff mutates money without reconciliation | Medium | Critical | Separate sovereign state machine, provider reconciliation, explicit approval | Ledger/provider/receipt mismatch | SA-1110, SA-1140 |
+| Skill invents commands or handles secrets | Medium | High | Create after CLI; version gate; machine-only no-secret workflow | Schema/version mismatch or secret input | SA-1240 |
+| Release docs expose overconfident claims | Medium | High | I-VSD/claim review and identified-release wording | Claim inventory/review failure | SA-1220, SA-1250 |
 
 ## 15. Success Metrics And Definition Of Done
 
@@ -1254,6 +1576,13 @@ status is `current`; disposition is `plan-aligned`.
 - Hosted secret mode is enabled only if exact-bundle independent evidence
   passes; otherwise the complete no-secret product ships without it.
 - Agent skill matches the implemented CLI and cannot ingest secrets.
+- YAML and directory inputs converge to the canonical JSON artifact, and
+  larger profiles exist only with measured evidence.
+- Live target enrollment, secret bindings, import/transfer, and saved profiles
+  are scoped, revocable, tenant-safe, and value-free outside human/provider
+  write boundaries.
+- Application-data migration is resumable and idempotent; sovereign payment
+  handoff cannot mutate money without reconciliation and explicit approval.
 - Every phase’s single build/test gate is green, the Tier 2 change fragment is
   valid, I-VSD is current/plan-aligned, and CTO/user approvals bind the final
   revision.
@@ -1308,9 +1637,8 @@ does not make browser accessibility equal to desktop, client-side WASM does not
 remove origin trust, and a successful local file write does not prove safe
 permissions on every filesystem. The plan therefore treats support,
 secret-mode enablement, and package formats as evidence-backed release
-capabilities rather than aspirations. The second risk is archive-boundary
-confusion: ConfigurationManifest was closed by explicit user decision with
-later planned phases retired rather than implemented. Setup must preserve the
-frozen current wire/schema/registry behavior and must never market retired
-atomic-apply, live migration, managed ownership, or direct-transfer work as an
-existing capability.
+capabilities rather than aspirations. The second risk is dependency-boundary
+confusion: ConfigurationManifest is an active server workstream while Setup is
+still planning-only. Setup must preserve the frozen wire/schema/registry
+behavior and must never market upstream server work as an existing Setup
+capability.

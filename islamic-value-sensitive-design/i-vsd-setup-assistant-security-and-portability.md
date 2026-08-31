@@ -3,7 +3,7 @@
 
 # I-VSD Consultancy Report: Setup Assistant Security And Portability
 
-Last Updated: 2026-08-30
+Last Updated: 2026-08-31
 
 ## Review Metadata
 
@@ -13,10 +13,10 @@ Last Updated: 2026-08-30
 - Report kind: consultancy-report
 - Report status: current
 - Disposition: plan-aligned
-- Evidence cutoff: 2026-08-30
-- Reviewed input revision: `sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637`
-- Supersedes: standalone revision
-  `sha256:b053b7f69ca3822efbd1dc2333d2138d6361df8dd5eade311a2f43e2532b17ef`
+- Evidence cutoff: 2026-08-31
+- Reviewed input revision: `sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f`
+- Supersedes: plan-aligned revision
+  `sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637`
 
 ## Scope
 
@@ -41,6 +41,10 @@ It covers:
   decision;
 - client-side-only web processing with no secret-bearing request to ISLAMU or
   another server;
+- the approved expanded plan for bounded YAML/directory composition, live
+  target enrollment and write-only secret-provider binding, direct-transfer/
+  live apply orchestration, and separately gated application-data/payment-
+  operation migration;
 - desktop file permissions, atomic writes, overwrite safety, memory,
   clipboard, logging, crash, update, and packaging risks;
 - a complete per-target FOSS dependency gate covering direct, transitive,
@@ -160,6 +164,20 @@ boundary.
 22. Official Avalonia documentation classifies browser/WASM accessibility as
     partial and Arch/other unlisted Linux distributions as Tier 3, so shared
     code cannot justify uniform support claims.
+23. The expanded plan keeps YAML/directory inputs as bounded source adapters
+    that converge on canonical v1alpha2 JSON; they do not become wire formats.
+24. Live target, tenant, HAL, provider, import, transfer, and transaction
+    authority remains server-side. Setup receives short-lived scoped authority
+    and value-free state only.
+25. Repository privacy erasure is authority-first, replayable, fenced against
+    resurrection, payload-free in audit/receipts, and retention-governed. Data
+    migration must preserve rather than replace that authority.
+26. The current payment baseline is `OrganizerDirect`; merchant recipient and
+    currency are pinned, partial refunds have deterministic line allocation,
+    and provider acceptance is not terminal until reconciliation.
+27. The current user instruction approves implementation of the exact reviewed
+    revision. Revision-bound CTO review and the plan's Tier 0/1/2 gates remain
+    independent authority boundaries rather than approval formalities.
 
 ## Requested Direction Coverage
 
@@ -189,6 +207,10 @@ boundary.
 | Same functional experience across GUI and TUI | Functional Parity Contract |
 | Agent-automatable commands | Versioned Command And Machine-Output Contract |
 | Agentic skill instead of embedded AI | Setup Assistant Agentic Skill and No Embedded AI Boundary |
+| YAML and directory composition | IVSD-F037/M037 and Scenario 3.13 / SA-810–SA-830 mapping |
+| Live enrollment and secret-provider binding | IVSD-F038–F040 / M038–M040 and Scenario 3.14 / SA-910–SA-1030 mapping |
+| Application-data custody and privacy | IVSD-F041–F042, F044–F046 / matching mitigations and Scenario 3.15 / SA-1110–SA-1130 mapping |
+| Payment/refund operational migration | IVSD-F043, F045–F046 / matching mitigations and Tier 0 SA-1110/SA-1140 gates |
 | All prior consultation recommendations | Architecture, security, packaging, rejected alternatives, and validation sections |
 
 ## Findings
@@ -233,6 +255,16 @@ boundary.
 | IVSD-F034 | accepted | High | Human-approval requirement | Autonomy, Justice; Design/Governance | Agent-generated configuration can silently broaden policy or publish legal text without informed review | E007, E032-E033; design validation | IVSD-M034 | Agent Governance + Product |
 | IVSD-F035 | accepted | High | TUI accessibility limitation | Justice, Truthfulness; Design/Evaluation | Terminal.Gui functional parity does not prove screen-reader, RTL, color, Unicode, or small-terminal parity | E029-E030; official functional evidence only | IVSD-M035 | Accessibility + CLI |
 | IVSD-F036 | accepted | Critical | Skill-lifecycle requirement | Promise-Keeping, Truthfulness; Governance | Publishing a skill before versioned commands exist teaches fictional or stale behavior | E032-E033; skill-contract evidence | IVSD-M036 | Skill owner + CLI owner |
+| IVSD-F037 | accepted | High | Composition-integrity requirement | Amanah, Truthfulness; Technical | YAML/directory ambiguity, path metadata, or unmeasured scale can change canonical meaning or conceal prohibited content | E034-E037; plan and task traceability | IVSD-M037 | Setup Core; SA-810–SA-830 |
+| IVSD-F038 | accepted | Blocker | Tenant-isolation boundary | Justice, Rights of People; Technical/Governance | Source identifiers, mappings, profiles, or capabilities can cross target or tenant authority during live and data migration | E034-E036, E038; repository and plan traceability | IVSD-M038 | Server authorization; SA-910, SA-1110–SA-1130 |
+| IVSD-F039 | accepted | Blocker | Authorization/replay boundary | Amanah, Non-Harm; Technical | Stale HAL, bearer replay, duplicate transfer, or local authority synthesis can mutate the wrong target or repeat effects | E034-E036; plan/task traceability | IVSD-M039 | Security; SA-910–SA-1030 |
+| IVSD-F040 | accepted | Blocker | Secret-provider boundary | Privacy, Avoiding Spying; Technical/Operational | Secret readback or provider-coordinate disclosure would turn Setup into a privileged extraction and reconnaissance client | E004-E006, E034-E036; repository and plan traceability | IVSD-M040 | Secrets + Security; SA-910–SA-930 |
+| IVSD-F041 | accepted | Blocker | Data/PII custody boundary | Rights of People, Privacy; Technical/Governance | Application-data migration creates custody, purpose, retention, erasure, access, staging, and breach responsibilities independent of configuration portability | E034-E036, E039; repository and plan traceability | IVSD-M041 | Privacy authority; SA-1110–SA-1130 |
+| IVSD-F042 | accepted | Critical | Migration-continuity requirement | Amanah, Promise-Keeping; Technical/Operational | Non-durable checkpoints, mappings, or idempotency can duplicate, omit, corrupt, or resurrect application records after interruption | E034-E036, E039; repository and plan traceability | IVSD-M042 | Migration owner; SA-1110–SA-1130 |
+| IVSD-F043 | accepted | Blocker | Sovereign-money boundary | Justice, Amanah; Financial/Governance | Migrating payment/refund operations without provider, ledger, currency, recipient, and allocation reconciliation can mutate money falsely or unfairly | E034-E036, E040; repository and plan traceability | IVSD-M043 | Tier 0 payment authority; SA-1110, SA-1140 |
+| IVSD-F044 | accepted | Critical | Source-retention and autonomy requirement | Autonomy, Rights of People; Strategic/Operational | Destructive or coerced transfer can strand operators, erase remedy evidence, or create lock-in before target completion is proven | E034-E036; plan/task traceability | IVSD-M044 | Product + Operations; SA-1030, SA-1120–SA-1130 |
+| IVSD-F045 | accepted | Critical | Truthful-recovery requirement | Truthfulness, Avoiding Gharar; Design/Operational | Progress, receipts, rollback, refund, or completion claims can mislead users when server/provider effects remain pending, unknown, or compensating | E034-E036, E040; repository and plan traceability | IVSD-M045 | Operations + UX; SA-1010–SA-1140 |
+| IVSD-F046 | accepted | High | Human-agency requirement | Autonomy, Justice; Design/Governance | Bundled migration categories or agent/live defaults can broaden data, payment, or target authority without informed category-level approval | E034-E036; plan/task traceability | IVSD-M046 | Product + Governance; SA-1020, SA-1030, SA-1110–SA-1140, SA-1240 |
 
 ### IVSD-F001 — The Setup Assistant Advances Credible Self-Hosting
 
@@ -616,19 +648,21 @@ secret entry must not trigger a TMS request.
 
 ### IVSD-F020 — The App Generates Secrets; It Does Not Retrieve Them
 
-Initial releases must not:
+Offline/no-secret workflows and Phases 1–8 must not:
 
-- connect to Infisical;
+- connect directly to Infisical or another secret provider;
 - retrieve existing server environment variables;
 - query container process environments;
-- call instance endpoints for credentials;
+- call instance endpoints for credential values;
 - import browser password-manager secrets automatically;
-- test credentials against providers;
+- test credentials directly against providers; or
 - transfer `.env` between instances.
 
-Live authorized manifest export/import may be added later because manifests are
-non-secret. Any live secret-provider integration is a separate Tier 1 security
-workstream and I-VSD refresh.
+The approved Phase 9 expansion permits only target-authorized write and
+value-free readiness operations through server adapters under IVSD-F040/M040.
+It does not permit raw readback, direct provider SDK use, provider-coordinate
+disclosure, portable secret bindings, or machine/agent secret handling.
+IVSD-F020 therefore remains accepted rather than superseded.
 
 ### IVSD-F021 — Legal Transparency Does Not Change Technical Capability
 
@@ -906,6 +940,115 @@ Do not create an operational skill that names commands until:
 
 An early planning draft may describe principles, but it must not masquerade as
 usable operational guidance.
+
+### IVSD-F037 — Composition Must Not Create Competing Meaning
+
+YAML and directory trees are bounded authoring inputs, not new portable wire
+authorities. Duplicate keys, implicit merge precedence, links, traversal,
+cycles, unknown files, source ordering, and unmeasured expansion must fail
+before partial output. Every accepted representation compiles through one
+normalized model to the same canonical v1alpha2 JSON bytes, digest, coverage,
+and diagnostics. Named larger profiles remain disabled until measured and
+compatible with the target server's enforced limits.
+
+### IVSD-F038 — Every Live And Migrated Record Retains Tenant Authority
+
+A source tenant ID, profile, receipt, object ID, or human label is correlation
+evidence only. The target server reauthorizes the actor, target, tenant,
+category, and action for every enrollment, apply, transfer, resume, and
+promotion. Durable mappings are tenant-qualified and immutable. Any missing,
+ambiguous, or conflicting lineage pauses without write; no instance
+administrator fallback silently acquires tenant or merchant authority.
+
+### IVSD-F039 — Authorization Is Fresh, Scoped, And Replay-Fenced
+
+Setup may display server HAL affordances but cannot invent authority from a
+previous response. Enrollment and operation capabilities are short-lived,
+header-only, target-qualified, revocable, and bound to request identity and
+idempotency. Saved profiles hold only protected revocable handles. Expiry,
+revocation, stale HAL, retry, cancellation, and duplicate delivery produce a
+value-free durable state rather than a second effect or local rollback claim.
+
+### IVSD-F040 — Provider Bindings Are Write-Only And Coordinate-Free
+
+The expanded scope does not supersede IVSD-F020's raw-value prohibition.
+Setup may submit a new human-entered value to a server-authorized write or ask
+for value-free readiness, but it never retrieves an existing value, enumerates
+provider paths/projects/environments, receives provider credentials, or uses a
+provider SDK directly. Target-local opaque binding identifiers remain outside
+portable artifacts and grant no authority. Any unavailable allowlist,
+provider, or policy response fails closed without fallback to environment or
+plaintext storage.
+
+### IVSD-F041 — Application Data Creates A Separate Custody Contract
+
+Events, users, registrations, orders, tickets, files, and their PII cannot ride
+inside configuration artifacts. Before a category moves, the operator sees its
+purpose, source and target custodians, data classes, compatibility blockers,
+retention and source-retention behavior, privacy/erasure authority, and
+failure consequences. Protected staging is purpose-limited and bounded. The
+existing authority-first erasure fact, anti-resurrection fence, canonical PII
+paths, and payload-free evidence remain authoritative across source, staging,
+and target; migration cannot restore erased data or bypass a pending erasure.
+
+### IVSD-F042 — Resume Must Be Durable And Idempotent
+
+A resumable label is truthful only when category selection, source identity,
+target mapping, integrity digest, checkpoint generation, idempotency key, and
+receipt survive interruption and concurrent retry. Commit and side effects
+use the server transaction/outbox boundary. A conflicting mapping, digest,
+checkpoint, or unknown effect pauses for reconciliation. Retry resumes the
+same plan; it does not create a best-effort replacement plan or duplicate
+aggregate.
+
+### IVSD-F043 — Money Requires Provider And Ledger Reconciliation
+
+Payment migration is a separate sovereign state machine, never inferred from
+configuration or ordinary data copies. The current repository baseline resolves
+safe defaults: `OrganizerDirect` remains the only active profile; organizer
+recipient and currency snapshots remain immutable; payout authority remains
+with the organizer/provider rather than Setup; partial refunds use accepted
+line allocations; and provider acceptance is pending until reconciliation.
+Before SA-1110, Tier 0 intake must bind hold-expiration/finalization race
+precedence, payout routing, and partial-refund/fee allocation to those current
+contracts or disable the sovereign slice. Before SA-1140, exact target/provider
+identities, ledger totals, amounts, currencies, recipients, idempotency,
+refund capacity, unknown outcomes, and approval actors require executable
+reconciliation evidence. Conflict pauses with no money mutation.
+
+This is not a conclusion about riba, halal status, financial regulation, or
+legal liability. Those conclusions remain with qualified scholarly, legal,
+provider, and deployment authorities.
+
+### IVSD-F044 — Migration Preserves Source State And Exit Choice
+
+Direct transfer and application migration copy through explicit, category-
+selectable plans. They never delete or disable source state as an implicit
+success step. Source retention continues until independently governed expiry,
+erasure, or operator action after target integrity and recovery evidence are
+available. Offline export/import remains usable where technically applicable,
+and revoking enrollment does not make an operator's canonical source artifact
+unusable.
+
+### IVSD-F045 — Recovery Evidence Must Match Authoritative State
+
+Setup distinguishes uploaded, staged, validated, mapped, committed, effects
+pending, provider pending, reconciled, compensated, failed, cancelled, and
+unknown. A local request, accepted API call, chunk completion, or provider
+handoff is not completion. Receipts contain stable plan/category/checkpoint and
+integrity evidence but no secret, PII, provider coordinate, raw exception, or
+false rollback promise. Only authoritative server/provider reconciliation can
+advance the corresponding completion claim.
+
+### IVSD-F046 — Live And Migration Actions Preserve Human Agency
+
+Enrollment, target/tenant selection, category selection, secret write, apply,
+direct-transfer approval, payment handoff, compensation, retry after conflict,
+and source deletion are distinct approvals. No default bundles all categories
+or treats a prior configuration approval as consent to data or money movement.
+Agents and automation may prepare non-secret plans and bounded diffs, but every
+live or mutating authority transition remains an explicit human action exposed
+by current server HAL policy.
 
 ## Recommendations
 
@@ -1675,20 +1818,35 @@ Both targets share:
 Secret values must never be placed in accessible names, announcements, or
 error text.
 
-### Future Capabilities Requiring Separate Approval
+### Expanded Capabilities And Separate Approval Gates
 
-- live instance manifest export/import;
-- OAuth/device authorization;
-- token persistence;
-- Infisical read/write;
-- provider credential tests;
-- encrypted saved secret profiles;
-- PWA/service worker;
-- auto-update;
-- runtime plugins or downloaded configuration packs;
-- direct instance-to-instance transfer;
-- application-data migration;
-- mobile targets.
+The user approved the exact reviewed plan revision for implementation, but that
+approval does not collapse server, provider, privacy, payment, or release
+authority. The expanded capabilities remain gated as follows:
+
+- bounded YAML/directory composition may start at SA-810 under IVSD-F037/M037;
+- live enrollment, optional protected handles, and target-local provider writes
+  may start only after SA-910's fresh Tier 1 adversarial boundary and the
+  revision-bound CTO review;
+- live apply and direct transfer remain target-authoritative, mutually approved,
+  replay-fenced, resumable, source-retaining, and dependent on green or
+  explicitly waived upstream ConfigurationManifest gates;
+- application-data migration remains category-selectable and subject to the
+  existing privacy-erasure authority, anti-resurrection, retention, and PII
+  custody rules;
+- SA-1110 cannot start until Tier 0 intake records hold/finalization precedence,
+  OrganizerDirect payout routing, partial-refund/fee allocation, category
+  custody, erasure ordering, and recovery evidence contracts;
+- SA-1140 cannot start until exact payment/provider actors and coordinates are
+  supplied through server authority, reconciliation evidence exists, and the
+  explicit payment/provider decision gate is recorded; and
+- missing operational, privacy, provider, legal, accessibility, security, or
+  payment evidence disables only the affected capability and never authorizes
+  a weaker fallback.
+
+PWA/service worker, auto-update, runtime plugins or downloaded packs, mobile,
+raw secret retrieval, direct provider SDK access from Setup, and destructive
+source migration remain outside this revision.
 
 ## Mitigation Register
 
@@ -1730,6 +1888,16 @@ error text.
 | IVSD-M034 | Require human approval for writes, legal publication, live apply, and authority broadening | F034 |
 | IVSD-M035 | Publish separate TUI accessibility/terminal evidence and preserve GUI alternatives | F035 |
 | IVSD-M036 | Publish the operational skill only after the implemented CLI/version contract is verified | F036 |
+| IVSD-M037 | Compile bounded JSON/YAML/directory sources through one normalized model; reject ambiguity and evidence-free scale before output | F037 |
+| IVSD-M038 | Reauthorize exact target, tenant, category, and actor server-side; keep mappings tenant-qualified and fail closed on lineage conflict | F038 |
+| IVSD-M039 | Use short-lived target-qualified HAL capabilities, protected revocable handles, request binding, expiry, and replay fencing for every live effect | F039 |
+| IVSD-M040 | Permit only server-authorized write/readiness operations; prohibit raw readback, provider-coordinate disclosure, portable bindings, and provider SDK access from Setup | F040 |
+| IVSD-M041 | Establish category-level custody, purpose, staging, retention, erasure, anti-resurrection, and PII-safe evidence before application-data movement | F041 |
+| IVSD-M042 | Persist immutable plan scope, mappings, checkpoints, digests, idempotency, receipts, and outbox effects; reconcile conflicts before resume | F042 |
+| IVSD-M043 | Separate sovereign operations and require Tier 0 decisions plus provider/ledger/recipient/currency/refund reconciliation before money mutation | F043 |
+| IVSD-M044 | Retain source state, preserve offline exit paths, and require separate governed action for expiry, erasure, disablement, or deletion | F044 |
+| IVSD-M045 | Expose authoritative granular states and value-free receipts; never claim completion, refund, rollback, or recovery before reconciliation | F045 |
+| IVSD-M046 | Require distinct informed human approvals for enrollment, categories, writes, apply, transfer, payment, compensation, conflict retry, and deletion | F046 |
 
 ### Rejected Alternatives
 
@@ -1789,6 +1957,24 @@ error text.
     process listings, shell history, and tool logs can disclose them.
 27. **Publish the skill before the CLI exists.** Rejected because it would
     teach fictional commands and unsafe assumptions.
+28. **Treat YAML as a second wire format or merge directories implicitly.**
+    Rejected because source syntax and ordering would become competing authority.
+29. **Store long-lived bearer tokens or provider coordinates in profiles.**
+    Rejected because profile convenience would create extraction, replay, and
+    cross-target reconnaissance risk.
+30. **Read provider secrets back to verify migration.** Rejected; readiness and
+    write outcomes remain value-free and server-authoritative.
+31. **Copy application tables or databases directly.** Rejected because it
+    bypasses tenant authorization, aggregate invariants, erasure fences,
+    mappings, idempotency, and provider truth.
+32. **Delete source data after target promotion.** Rejected as an implicit
+    transfer effect; source retention, expiry, erasure, and deletion remain
+    separately governed decisions.
+33. **Reconstruct payment/refund state from configuration or copied rows.**
+    Rejected because only reconciled provider and ledger evidence can authorize
+    sovereign state.
+34. **Display request acceptance as migration/refund completion.** Rejected
+    because pending, unknown, and compensating states require truthful recovery.
 
 ## Common Overlooked Failures And Outcomes
 
@@ -1841,7 +2027,18 @@ secret-bearing dotenv generation.
 - agent publishes legal text or applies configuration without approval;
 - embedded AI adds provider keys, telemetry, or nondeterministic behavior;
 - GPL/AGPL dependency is linked into a target expected to remain
-  alternatively licensable without explicit approval.
+  alternatively licensable without explicit approval;
+- YAML merge order, aliases, paths, or directory enumeration change canonical
+  meaning;
+- a source tenant/object identifier is trusted as target authority;
+- an expired capability or retried chunk repeats a live effect;
+- a provider-readiness endpoint leaks a secret value or provider coordinate;
+- migration staging outlives its purpose or bypasses erasure/retention;
+- resume creates duplicate records or resurrects erased PII;
+- target promotion deletes source state before recovery is proven;
+- payment rows are copied without provider/ledger reconciliation; and
+- Setup reports applied, refunded, rolled back, or complete while effects are
+  pending or unknown.
 
 ### Possible bad outcomes
 
@@ -1867,7 +2064,14 @@ secret-bearing dotenv generation.
 - terminal secret disclosure;
 - stale skills producing invalid artifacts;
 - loss of an intended outbound licensing path;
-- AI-provider lock-in and unnecessary privacy obligations.
+- AI-provider lock-in and unnecessary privacy obligations;
+- cross-tenant disclosure or mutation;
+- PII copied beyond its stated purpose or resurrected after erasure;
+- duplicate, omitted, or corrupt application records after retry;
+- irreversible source loss and migration lock-in;
+- payment/refund mutation against the wrong recipient, amount, currency, or
+  allocation; and
+- users acting on false completion or recovery evidence.
 
 ### Positive outcomes if implemented responsibly
 
@@ -1933,6 +2137,10 @@ secret-bearing dotenv generation.
 | Skill maintainer | Commands and guidance remain aligned | version range, executable examples, schema/link tests |
 | Third-party self-hoster | Freedom to audit and host compliant code | tracked source, AGPL obligations, brand distinction |
 | People affected by compromise | Protection from downstream misuse | minimum exposure, incident process, no overclaims |
+| Source and target tenant operators | Controlled, reversible movement without authority broadening | explicit enrollment, category selection, tenant-qualified mappings, source retention |
+| Migrated users and data subjects | Purpose-limited custody, privacy, erasure, and no resurrection | authority-first erasure, protected bounded staging, PII-free evidence |
+| Buyers and organizer merchants | Correct recipient, amount, currency, refund, and reconciliation truth | separate Tier 0 state machine, immutable snapshots, provider/ledger reconciliation |
+| Support and recovery operators | Actionable evidence without secrets or PII | granular authoritative states, value-free receipts, explicit unknown/reconciliation paths |
 
 ## I-VSD Principles And Domains
 
@@ -1999,6 +2207,24 @@ Domain review:
   command contract is real.
 - No explicit decision identifies which Setup executables, if any, may become
   AGPL-only because of reciprocal dependencies.
+- No composition implementation or measured larger scale profile exists.
+- No target-enrollment, capability-replay, revocation, saved-profile, or
+  secret-provider write/readiness evidence exists.
+- No proof yet shows provider coordinates and raw values are absent from every
+  live response, log, receipt, diagnostic, and support surface.
+- No application-data category inventory, target compatibility matrix,
+  migration mapping/checkpoint store, protected-staging retention rule, or
+  production custody assignment exists.
+- No migration evidence yet proves tenant isolation, concurrent idempotent
+  resume, file integrity, authority-first erasure replay, anti-resurrection,
+  or source retention.
+- No Tier 0 decision record yet binds hold-expiration/finalization precedence,
+  payout routing, and partial-refund/fee allocation to the migration state
+  machine; this blocks SA-1110.
+- No exact provider/ledger reconciliation fixture, actor approval matrix, or
+  sovereign recovery rehearsal exists; this blocks SA-1140.
+- No stakeholder or operational evidence shows users understand category
+  custody, pending/unknown states, source retention, or irreversible actions.
 
 The current evidence supports design reasoning and repository implementation
 traceability only. It does not establish stakeholder or operational validation.
@@ -2019,11 +2245,25 @@ traceability only. It does not establish stakeholder or operational validation.
   audits before release.
 - Release-engineering approval for signing, notarization, SBOM, provenance,
   package retention, and update policy.
-- Fresh I-VSD review before Infisical integration, live credential tests,
-  service worker/PWA, auto-update, token persistence, plugins, or live secret
-  retrieval.
+- Fresh I-VSD review before raw secret retrieval, direct Setup-to-provider SDK
+  access, provider credential read/test flows, service worker/PWA, auto-update,
+  non-revocable token persistence, plugins, or any provider authority broader
+  than IVSD-F040/M040.
 - Agent-context review before publishing the skill, plus security review of
   every command the skill may invoke.
+- Tier 1 authorization and replay review before SA-910; no live capability may
+  ship with long-lived plaintext authority, source-ID authority, provider
+  coordinate disclosure, or secret readback.
+- Tier 2 privacy/custody review before SA-1110 must bind category purposes,
+  custodians, retention, staging disposal, authority-first erasure ordering,
+  anti-resurrection fences, and value-free recovery evidence.
+- Tier 0 intake before SA-1110 must record current hold-expiration versus
+  payment-finalization precedence, `OrganizerDirect` payout routing, and
+  deterministic partial-refund/fee allocation. An unresolved branch disables
+  sovereign migration rather than selecting a fallback.
+- SA-1140 additionally requires exact provider and ledger reconciliation
+  evidence, explicit authorized actors, idempotent unknown-outcome recovery,
+  and provider/legal/operational approval for the enabled deployment profile.
 - Qualified Sunni scholarly review only if future product claims, contracts,
   payment features, or marketing introduce religious-legal conclusions. No
   such ruling is made here.
@@ -2053,6 +2293,13 @@ traceability only. It does not establish stakeholder or operational validation.
 | E031 | `eng/release/src/ISLAMU.ReleaseEngineering/Program.cs` and schema-generator `Program.cs` | Existing deterministic command, exit, bounded-output, and help conventions |
 | E032 | `.agents/skills/_SKILL_SCHEMA.md` | Required skill metadata, progressive disclosure, and verification shape |
 | E033 | `.agents/skills/skill-authoring/SKILL.md` and resources | Skill lifecycle, command-evidence, and no-fiction requirements |
+| E034 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-plan.md` | Exact expanded scenarios, authority boundaries, phases, risks, and plan mappings |
+| E035 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` | Exact SA-810–SA-1250 acceptance, dependencies, and verification gates |
+| E036 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-context.md` | Current review state, user-directed expansion, known risks, and handoff |
+| E037 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md` | Source-free repository facts, architecture decisions, attestation, and evidence limits |
+| E038 | `docs/AUTHORIZATION.md`, `docs/MULTI_TENANCY.md`, and repository authorization/tenant contracts | Existing server-owned actor, target, and tenant authority boundary |
+| E039 | `docs/PRIVACY_ERASURE.md` and repository privacy-erasure authority contracts | Authority-first ordering, anti-resurrection fencing, payload-free receipts, replay, and retention |
+| E040 | `docs/PAYMENTS.md`, `islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md`, and repository payment/refund contracts | OrganizerDirect, immutable recipient/currency, deterministic allocation, idempotency, and reconciliation truth |
 
 ### Official Functional References
 
@@ -2078,11 +2325,26 @@ references. No external source code, AST, schema, tests, migrations, prose,
 assets, screenshots, or product implementation structure was retained or
 copied.
 
-The reviewed repository input digest covers E001-E006, E008-E009, E017,
-E022-E027, and E031-E033 plus the current configuration-manifest
-plan/context/tasks and guide.
-E007 is cross-report context and is excluded from the digest to avoid circular
-report hashes.
+The current planning review is bound to the exact four workstream inputs below.
+Paths are sorted by their UTF-8 repository-relative path. For each file, the
+aggregate preimage appends `path`, one NUL byte, the ASCII decimal byte length,
+one NUL byte, then the exact raw file bytes. SHA-256 is computed once over that
+concatenated sequence; no newline normalization, report bytes, Git metadata, or
+external content is included.
+
+| Included input | Bytes | File SHA-256 |
+|---|---:|---|
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md` | 11154 | `92ea594823cb6345a90c94ed86712864f8fa2dae19c5a906817b00b75f7dd4d9` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-context.md` | 15657 | `b81cb0c799a71349645cb7835463d7b412fd21417df9daf7ce63a20a53a6e6b8` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-plan.md` | 90137 | `50faab56942c8abd374f6f0ea138dd31b6b3446fa29aae1b44939faa90d380ce` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` | 48741 | `a20314c464247f5f934d49a29d19e33866ebc6b114d1019e72f886e7cf2de170` |
+
+The resulting reviewed input revision is
+`sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f`.
+E038-E040 are repository-native corroborating evidence used to resolve
+repository-answerable authority branches; they are not part of the four-file
+revision digest. E007 remains cross-report context and is excluded to avoid
+circular report hashes.
 User decisions on 2026-08-29 additionally establish:
 
 - web and desktop targets;
@@ -2100,7 +2362,7 @@ User decisions on 2026-08-29 additionally establish:
 - Terminal.Gui TUI plus versioned CLI commands;
 - an external agentic skill instead of embedded AI.
 
-Planning revalidation on 2026-08-30 additionally reviewed:
+Planning revalidation on 2026-08-30 reviewed:
 
 - `dev/active/setup-assistant-security-and-portability/`
   `setup-assistant-security-and-portability-clean-room-evidence.md`;
@@ -2114,9 +2376,11 @@ Planning revalidation on 2026-08-30 additionally reviewed:
 - .NET 10 CSP and Unix file-mode documentation, Windows SignTool, Apple
   notarization, SLSA provenance, and Flatpak sandbox/portal guidance.
 
-The planning reviewed-input revision is the SHA-256 digest of the source-free
-clean-room evidence packet. The completed triad was rechecked against that
-packet; repeated review-state metadata is not part of the digest.
+Planning-mode revalidation on 2026-08-31 additionally reviewed exact expanded
+Scenarios 3.13–3.15, Phases 8–11, SA-810–SA-1250, the current workstream
+context, and the source-free clean-room evidence under the deterministic digest
+method above. It also resolved privacy ordering and payment-authority defaults
+from E038-E040 without browsing or ingesting third-party implementation source.
 
 ## Missing Evidence
 
@@ -2143,7 +2407,21 @@ packet; repeated review-state metadata is not part of the digest.
 - final CLI command/JSON/exit-code contract;
 - terminal security/accessibility matrix;
 - skill routing, resources, compatible CLI range, and executable examples;
-- Project Steward/legal decision for any reciprocal AGPL-only target.
+- Project Steward/legal decision for any reciprocal AGPL-only target;
+- measured composition scale evidence and target-compatible limits;
+- live enrollment/capability/revocation and cross-tenant adversarial evidence;
+- exact target-local provider allowlist and proof of value/coordinate-free
+  write/readiness contracts;
+- category-level application-data/PII custody, purpose, compatibility,
+  retention, staging-disposal, and source-retention records;
+- concurrent resume/idempotency, mapping, integrity, outbox, erasure replay,
+  and anti-resurrection evidence;
+- Tier 0 hold/finalization, payout routing, and partial-refund/fee allocation
+  decision record required before SA-1110;
+- exact provider/ledger/payment reconciliation and recovery rehearsal required
+  before SA-1140; and
+- stakeholder evidence for migration comprehension, category autonomy,
+  pending/unknown status, and recovery usability.
 
 ## Context Inventory
 
@@ -2205,7 +2483,20 @@ mitigation into:
 24. FOSS/reciprocal license target map and SBOMs;
 25. external-agent approval and no-secret scenarios;
 26. a schema-compliant skill created only after CLI implementation;
-27. architecture tests proving no embedded AI/provider dependency.
+27. architecture tests proving no embedded AI/provider dependency;
+28. canonical JSON/YAML/directory composition and bounded scale;
+29. live target/tenant enrollment, revocation, and replay fencing;
+30. write-only target-local secret binding without provider-coordinate exposure;
+31. HAL-authoritative live apply, transfer, cancellation, receipt, and recovery;
+32. application-data category custody, privacy, retention, and source retention;
+33. durable tenant-qualified mappings, checkpoints, idempotency, integrity, and
+    outbox effects;
+34. authority-first erasure replay and anti-resurrection through migration;
+35. Tier 0 hold/finalization, payout, and partial-refund/fee decisions;
+36. provider/ledger/recipient/currency/refund reconciliation before money
+    mutation;
+37. granular value-free recovery evidence and truthful pending/unknown states;
+38. category-level human approval and no agent authority broadening.
 
 Planning owns architecture sequencing and task status. This report owns
 provider-responsibility constraints and refresh triggers.
@@ -2215,26 +2506,66 @@ provider-responsibility constraints and refresh triggers.
 - **Workstream:** `setup-assistant-security-and-portability`
 - **Status:** current
 - **Reviewed input revision:**
-  `sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637`
-- **Findings and mitigations:** `IVSD-F001` through `IVSD-F036` remain accepted
-  and map one-to-one to `IVSD-M001` through `IVSD-M036`.
-- **Required plan mappings:** Plan Section 9 maps every finding/mitigation to
-  named Scenarios 3.1–3.12 and tasks SA-110 through SA-850.
-- **Disposition:** `plan-aligned`.
-- **Escalations required before implementation:** user approval and
-  revision-bound Senior CTO review. SA-110 must pin the archived
-  ConfigurationManifest v1alpha2/schema/registry/import-preview baseline and
-  fail on drift or capability overclaim.
+  `sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f`
+- **Findings and mitigations:** `IVSD-F001` through `IVSD-F046` are accepted
+  and map one-to-one, without renumbering, to `IVSD-M001` through
+  `IVSD-M046`.
+- **Required plan mappings for preserved scope:** Plan Section 9 maps
+  `IVSD-F001/M001` through `IVSD-F036/M036` to Scenarios 3.1–3.12 and
+  SA-110–SA-1240. SA-1250 performs final I-VSD/criticality reconciliation and
+  disables any unevidenced shipped capability.
+- **Required plan mappings for expanded scope:**
+  - `IVSD-F037/M037` -> Scenario 3.13; SA-810, SA-820, SA-830, SA-1220,
+    SA-1250.
+  - `IVSD-F038/M038` -> Scenarios 3.14 and 3.15; SA-910, SA-920, SA-1010,
+    SA-1030, SA-1110, SA-1120, SA-1130, SA-1250.
+  - `IVSD-F039/M039` -> Scenario 3.14; SA-910, SA-920, SA-1010, SA-1020,
+    SA-1030, SA-1250.
+  - `IVSD-F040/M040` -> Scenario 3.14; SA-910, SA-930, SA-1220, SA-1250.
+  - `IVSD-F041/M041` -> Scenario 3.15A; Tier 2 custody/erasure gate before
+    SA-1110; SA-1110, SA-1120, SA-1130, SA-1220, SA-1250.
+  - `IVSD-F042/M042` -> Scenario 3.15A; SA-1110, SA-1120, SA-1130,
+    SA-1250.
+  - `IVSD-F043/M043` -> Scenario 3.15B; Tier 0 decision gate before SA-1110
+    and provider/ledger reconciliation gate before SA-1140; SA-1110, SA-1140,
+    SA-1220, SA-1250.
+  - `IVSD-F044/M044` -> Scenarios 3.14A and 3.15A; SA-1030, SA-1120,
+    SA-1130, SA-1220, SA-1250.
+  - `IVSD-F045/M045` -> Scenarios 3.14A–B and 3.15A–B; SA-1010, SA-1020,
+    SA-1030, SA-1110, SA-1120, SA-1130, SA-1140, SA-1220, SA-1250.
+  - `IVSD-F046/M046` -> Scenarios 3.12, 3.14, and 3.15; SA-1020, SA-1030,
+    SA-1110, SA-1130, SA-1140, SA-1240, SA-1250.
+- **Disposition:** `plan-aligned`. The user's current instruction approves the
+  exact reviewed revision for implementation; it does not grant CTO, provider,
+  legal, privacy, payment, release, or scholarly authority.
+- **Mandatory before SA-110:** revision-bound Senior CTO review; SA-110 then
+  pins the frozen ConfigurationManifest v1alpha2/schema/registry/import-preview
+  baseline and fails on drift or capability overclaim.
+- **Mandatory before SA-910:** Tier 1 adversarial authorization, tenant,
+  replay, provider-coordinate, and readback evidence plus fresh CTO approval
+  for the live-authority phase.
+- **Mandatory before SA-1110:** Tier 2 category custody/PII/retention/staging,
+  authority-first erasure, anti-resurrection, and value-free receipt decisions;
+  and Tier 0 decisions binding hold-expiration/finalization precedence,
+  `OrganizerDirect` payout routing, and partial-refund/fee allocation. Any
+  unresolved branch leaves Phase 11 disabled.
+- **Mandatory before SA-1140:** exact target/provider/ledger/recipient/currency/
+  refund reconciliation evidence, authorized approval actors, idempotent
+  unknown-outcome recovery, and the explicit payment/provider decision record.
+  No fail-open or guessed provider behavior is permitted.
 - **Escalations required before release:** exact-graph dependency/license
-  review, security review for hosted secret mode, legal review for origin and
-  template claims, target accessibility evidence, and release-engineering
-  signing/package approval. Missing evidence leaves the exact capability or
-  target disabled.
-- **Refresh triggers:** product scope, stakeholder authority, environment
-  relevance/default semantics, secret flows, browser origin/CSP/storage,
-  desktop persistence, legal kinds/templates/publication, CLI/schema/TUI,
-  agent approval, embedded-AI boundary, dependency license, package support,
-  signing/provenance, or a mapped task mitigation changes materially.
+  review, security review for hosted secret mode and live capabilities, legal
+  review for origin/templates/payment claims, target accessibility evidence,
+  privacy and payment operational rehearsal, and release-engineering signing/
+  package approval. Missing evidence leaves the exact capability or target
+  disabled.
+- **Refresh triggers:** product scope, stakeholder or provider authority,
+  composition semantics/limits, target enrollment/HAL/capabilities, secret
+  write/readback/provider-coordinate behavior, data categories/custody/PII/
+  retention/erasure, mapping/checkpoint/idempotency, source retention, payment/
+  refund/payout/reconciliation, recovery claims, human approvals, dependency
+  license, package support, signing/provenance, or any mapped mitigation/task
+  changes materially.
 
 ## Review Lifecycle
 
@@ -2246,6 +2577,8 @@ provider-responsibility constraints and refresh triggers.
 | 2026-08-29 | current / ready-for-planning | current / ready-for-planning | User confirmed open browser source, broadened to compatible FOSS, and added Terminal.Gui CLI/TUI plus an external agentic skill | This revision, reviewed input `sha256:b053b7f69ca3822efbd1dc2333d2138d6361df8dd5eade311a2f43e2532b17ef` |
 | 2026-08-30 | current / ready-for-planning | current / plan-aligned | Repository-grounded implementation plan, clean-room evidence, scenarios, architecture, tasks, and release gates completed | Workstream evidence `sha256:c76acd050aa7b0bf1e49a2bb1cc7634e470566489be828f7610586c49cdc27aa` |
 | 2026-08-30 | current / plan-aligned | current / plan-aligned | User closed ConfigurationManifest for archival; Setup now pins the frozen current baseline and rejects capability overclaim | Workstream evidence `sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637` |
+| 2026-08-31 | current / plan-aligned | stale / changes-required | User promoted ConfigurationManifest deferred composition, live authority, secret-provider, application-data, and payment-operation scope into Setup phases | Expanded plan Scenarios 3.13–3.15 and Phases 8–11 require fresh findings and revision binding |
+| 2026-08-31 | stale / changes-required | current / plan-aligned | Planning-mode revalidation added IVSD-F037–F046/M037–M046, resolved repository-answerable privacy/payment defaults, mapped every accepted ID, and preserved fail-closed Tier 0/1/2 gates | Exact four-file review revision `sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f` |
 
 Refresh this report when:
 
@@ -2262,4 +2595,4 @@ Refresh this report when:
 - packaging, signing, official identity, source availability, or legal copy
   changes;
 - implementation evidence, stakeholder feedback, incidents, or audits change
-  any IVSD-F001 through IVSD-F036 conclusion.
+  any IVSD-F001 through IVSD-F046 conclusion.

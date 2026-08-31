@@ -3,20 +3,22 @@
 
 # Setup Assistant Security And Portability — Task Checklist
 
-Last Updated: 2026-08-30 Europe/Brussels
+Last Updated: 2026-08-31 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Draft; implementation not started.
-- **Completed:** 0/28 implementation tasks; phase verification is tracked
+- **Overall status:** Umbrella correction awaiting fresh revision-bound CTO
+  review and exact-revision user approval; implementation not started.
+- **Completed:** 0/41 implementation tasks; phase verification is tracked
   separately.
-- **Current priority:** User review and revision-bound Senior CTO review.
-- **Next recommended slice:** `SA-110`.
-- **Upstream disposition:** ConfigurationManifest was closed for archival by
-  explicit user decision on 2026-08-30. SA-110 pins its current
-  v1alpha2/schema/registry/import-preview outputs as the frozen extraction
-  baseline; retired later phases are not implementation evidence.
-- **Blocker:** User approval and revision-bound CTO review are not yet
+- **Current priority:** Approve successor A foundation-offline on the corrected
+  exact revision.
+- **Next recommended slice:** `SA-110`, only after successor A approval.
+- **Upstream disposition:** ConfigurationManifest is active. SA-110 consumes
+  only its frozen v1alpha2/schema/registry/import-preview/no-secret contract;
+  upstream server work is not Setup implementation evidence.
+- **Blocker:** The first CTO review decided `Split before approval`; fresh CTO
+  review and exact-revision user approval of this corrected bundle are not yet
   recorded.
 - **Plan:**
   [setup-assistant-security-and-portability-plan.md](setup-assistant-security-and-portability-plan.md)
@@ -27,10 +29,34 @@ Last Updated: 2026-08-30 Europe/Brussels
 - **I-VSD report:**
   [i-vsd-setup-assistant-security-and-portability.md](../../../islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md)
 - **I-VSD reviewed input revision:**
-  `sha256:8c86d6be6f612861bba9c4ea641a451722fe0d6b5feccad09ac310b5cdce1637`
-- **I-VSD status / disposition:** `current` / `plan-aligned`.
-- **CTO review:** Not reviewed.
-- **User approval:** Awaiting approval for this exact workstream revision.
+  `sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f`
+- **I-VSD status / disposition:** `current` / `plan-aligned`; expanded
+  findings `IVSD-F037`–`IVSD-F046` preserve the named Tier 0/1/2 gates.
+- **First CTO review:** [Split before approval](setup-assistant-security-and-portability-cto-review.md), bound to prior plan/tasks hashes.
+- **Correction review:** Awaiting fresh revision-bound read-only CTO review.
+- **User direction:** Full objective approved on 2026-08-31; corrected
+  exact-revision implementation approval awaits binding after final hashes.
+
+## Successor Ownership Ledger
+
+This remains the sole checkbox ledger for the umbrella program; no successor
+directory exists yet. Ownership does not transfer approval.
+
+| Successor | PR slices and SA ownership | State / entry gate |
+|---|---|---|
+| A foundation-offline | A1 SA-110-SA-130; A2 SA-210-SA-230; A3 SA-310-SA-340; A4 SA-410-SA-430 | **Sole active successor**, blocked on fresh tier-appropriate intake, CTO, and exact-revision user approval |
+| B presentation-targets | B1 SA-510-SA-540; B2 SA-610-SA-640; B3 SA-710-SA-730 | Inactive; stable A contracts plus fresh target intake/I-VSD/CTO/user approvals and dependency/security/accessibility evidence |
+| C composition-scale | C1 SA-810/SA-820; C2 SA-830 | Inactive; stable A2/A3 plus fresh scale intake/I-VSD/CTO/user approvals and measured-profile evidence |
+| D live-control-plane | D1 SA-910 Red/server contracts; D2 SA-920/SA-930 server/generated contracts; D3 SA-1010 Red plus SA-1020/SA-1030 adapters/UI | Inactive; fresh Tier 1/I-VSD/CTO/user approval and green ConfigurationManifest Tier 1/tenant/replay/atomicity evidence |
+| E application-data-migration | E1 SA-1110 privacy/tenant Red; E2 SA-1120; E3 SA-1130; E4 Setup UI activation | Inactive; D contracts plus fresh Tier 2 custody/erasure, Tier 1 tenant, I-VSD/CTO/user approval, and named privacy/provider evidence |
+| F sovereign-payment-migration | F1 dedicated Worst Break Red/Tier 0 record; F2 SA-1140 Domain/Persistence/provider reconciliation; F3 API/HAL/Setup activation | Inactive and optional; D/E contracts plus fresh Tier 0/I-VSD/CTO/user and provider/legal/operator approvals |
+| G release-and-agent-contract | G1 SA-1210/SA-1220 per subset; G2 SA-1240 after CLI schema; G3 SA-1250 reconciliation | Inactive; each owning successor green; evidence describes only the selected subset |
+
+One-way dependencies are A -> B/C -> D -> E; F depends on D/E contracts and is
+independently optional; G runs per shippable subset and at final reconciliation.
+No successor inherits umbrella or predecessor approval. Each must receive the
+current I-VSD plus fresh tier-appropriate intake, CTO review, exact-revision
+user approval, and named evidence before any owned checkbox starts.
 
 ## Implementation Maintenance Rules
 
@@ -92,7 +118,8 @@ Plan reference: Phase 1 and Sections 4, 5.1, 5.4, 5.7, and 5.9.
   - **Focused Red selector:**
     `dotnet run --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupAssistantArchitectureTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** M
-  - **Dependencies:** User approval and revision-bound CTO review.
+  - **Dependencies:** Current/plan-aligned I-VSD and fresh revision-bound CTO
+    plus exact-revision user approval for successor A.
   - **Guidance:** criticality-guardrail, clean-architecture-rules,
     ip-clean-room, tests rule.
 
@@ -474,89 +501,275 @@ Plan reference: Phase 7 and Sections 3.4, 3.7, and 5.6.
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.SetupAssistant.Desktop.Tests/Event.SetupAssistant.Desktop.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 8: Packaging, Provenance, Documentation, And Agent Skill
+## Phase 8: YAML, Directory Composition, And Measured Scale
 
-Plan reference: Phase 8 and Sections 3.10–3.12, 5.9, 8, and 9.
+Plan reference: Phase 8 and Sections 3.13 and 5.10.
 
-- [ ] **SA-810 — Implement governed multi-target packaging and verify `SetupReleaseContractTests` accepts only evidenced RIDs/formats, approved graphs, immutable identity, and truthful support tiers**
-  - **Files:** new `eng/setup-assistant/**`, CI/release workflow integration,
-    Windows/macOS/Linux/browser/CLI package manifests, Architecture tests;
-    existing release policy and scope registry.
-  - **Acceptance:** Required stable outputs cover supported Windows/macOS/Linux
-    desktop, static Browser, and six CLI RIDs; Linux X11/XWayland is baseline;
-    native Wayland, AppImage, Flatpak, global tool, and extra architectures
-    remain absent until target gates pass; no commercial packaging tool,
-    mutable artifact, floating dependency, or unsupported “cross-platform”
-    claim enters release.
+- [ ] **SA-810 — Author composition Invariant-Breakers and verify `SetupCompositionInvariantTests` rejects ambiguous, unsafe, non-canonical, and oversized source trees before output**
+  - **Files:** new Setup Core composition tests and fixtures.
+  - **Acceptance:** Red tests cover JSON/YAML parity, duplicate keys,
+    conflicting fragments, deterministic ordering, links, traversal, cycles,
+    unknown files, depth/count/byte ceilings, source-path omission, and
+    secret/provider/application-data smuggling.
+  - **Focused selector:**
+    `dotnet run --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupCompositionInvariantTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** L
+  - **Dependencies:** Phases 2–5.
+  - **Guidance:** criticality-guardrail, tests rule.
+
+- [ ] **SA-820 — Implement bounded YAML and directory composition and verify all accepted inputs compile through one normalized model to byte-identical canonical v1alpha2 JSON**
+  - **Files:** new `src/Event.Setup.Core/Composition/**`, CLI/TUI/Avalonia
+    source adapters, generated composition schema and focused tests.
+  - **Acceptance:** Source formats add no wire identity; conflicts fail before
+    partial output; canonical serializer/validator owns final bytes; digests,
+    coverage, diagnostics, and legal limits match single-file JSON.
+  - **Effort:** XL
+  - **Dependencies:** SA-810.
+  - **Guidance:** clean-architecture-rules, ip-clean-room.
+
+- [ ] **SA-830 — Add measured scale profiles and verify `SetupCompositionScaleTests` keeps canonical defaults while enabling only evidence-backed limits compatible with the target server**
+  - **Files:** new Setup Core scale profiles/benchmarks, generated limits,
+    docs and tests.
+  - **Acceptance:** Memory/time/stack evidence owns every larger profile;
+    unknown or target-incompatible profiles remain disabled; UI/CLI disclose
+    selected limits and never silently raise them.
+  - **Focused selector:**
+    `dotnet run --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupCompositionScaleTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** M
+  - **Dependencies:** SA-820.
+  - **Guidance:** criticality-guardrail.
+
+### Phase 8 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release --verbosity quiet`
+
+## Phase 9: Live Target Enrollment And Secret-Provider Binding
+
+Plan reference: Phase 9 and Sections 3.14 and 5.11.
+
+- [ ] **SA-910 — Author live-authority Invariant-Breakers and verify `SetupLiveAuthoritySecurityTests` rejects token leakage, replay, cross-target tenancy, source authority, provider-coordinate disclosure, and secret readback**
+  - **Files:** new API and Setup live-adapter security tests.
+  - **Acceptance:** Red tests cover enrollment expiry/revocation, tenant scope,
+    HAL authority, protected profile handles, write-only secret binding,
+    provider readiness, RFC 7807 errors, and value-free logs/support evidence.
+  - **Focused selector:**
+    `dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupLiveAuthoritySecurityTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** L
+  - **Dependencies:** Phase 8 and fresh I-VSD/CTO approval.
+  - **Guidance:** auth-patterns, criticality-guardrail.
+
+- [ ] **SA-920 — Implement target enrollment, revocation, and optional protected profiles and verify short-lived scoped authority never enters portable artifacts or machine/process surfaces**
+  - **Files:** new live Setup adapter, enrollment wire contracts, server
+    authorization endpoints/handlers, platform profile store and tests.
+  - **Acceptance:** Interactive/device authorization binds exact target and
+    tenant; profiles store only target identity and revocable protected handles;
+    expiry/revocation clears authority; no long-lived plaintext token exists.
+  - **Effort:** XL
+  - **Dependencies:** SA-910.
+  - **Guidance:** auth-patterns, clean-architecture-rules.
+
+- [ ] **SA-930 — Implement target-local secret-binding/provider readiness and verify Setup can write or test approved bindings without reading raw values or exposing provider coordinates**
+  - **Files:** new Setup provider workflows, existing/new server secret-provider
+    API/Application adapters, HAL policy, tests and operator docs.
+  - **Acceptance:** Allowlisted binding identifiers remain outside portable
+    artifacts; provider access is server-authorized and tenant-qualified;
+    write/readiness responses are value-free; failures do not fall back.
+  - **Effort:** XL
+  - **Dependencies:** SA-920.
+  - **Guidance:** criticality-guardrail, secret isolation, error-tracking.
+
+### Phase 9 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 10: Live Apply And Direct-Transfer Orchestration
+
+Plan reference: Phase 10 and Sections 3.14 and 5.11.
+
+- [ ] **SA-1010 — Author live-operation contract tests and verify `SetupConfigurationOperationContractTests` rejects stale HAL, expired capabilities, replay, target mismatch, false completion, and local rollback authority**
+  - **Files:** new Setup live-operation tests over generated API contracts.
+  - **Acceptance:** Red tests pin preview/apply/managed review/history/rollback/
+    transfer affordances, header-only capabilities, target scope, receipts,
+    pending effects, cancellation, expiry, and resumable failure states.
+  - **Focused selector:**
+    `dotnet run --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupConfigurationOperationContractTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** L
+  - **Dependencies:** Phase 9 and green ConfigurationManifest Tier 1,
+    tenant-isolation, replay, and atomicity gates. Missing evidence disables
+    successor D live work and cannot be waived.
+  - **Guidance:** auth-patterns, accessibility.
+
+- [ ] **SA-1020 — Implement live import, managed apply, receipt, effect, cancellation, and forward-rollback workflows and verify every action is server-HAL-gated and target-authoritative**
+  - **Files:** new Setup live configuration adapters/workspaces; existing
+    generated clients and ConfigurationManifest operation contracts.
+  - **Acceptance:** Setup uploads canonical artifacts, preserves capability
+    headers, renders server preview/receipt/effect truth, supports distinct
+    reviewer/applier roles, and never synthesizes completion or rollback.
+  - **Effort:** XL
+  - **Dependencies:** SA-1010.
+  - **Guidance:** accessibility, auth-patterns, blazor-bff-patterns.
+
+- [ ] **SA-1030 — Implement mutually approved resumable direct-transfer workflows and verify chunk resume, atomic promotion, expiry, replay fencing, source retention, and SSRF-safe destination policy**
+  - **Files:** new Setup transfer adapters/workspaces and focused tests;
+    existing direct-transfer contracts.
+  - **Acceptance:** Both target actors approve; capabilities and chunks remain
+    bounded; promotion relies on server atomic claim; cancellation/expiry
+    cleans target staging; source state is never deleted.
+  - **Focused selector:**
+    `dotnet run --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupDirectTransferWorkflowTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** XL
+  - **Dependencies:** SA-1020.
+  - **Guidance:** criticality-guardrail, error-tracking.
+
+### Phase 10 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release --verbosity quiet`
+
+## Phase 11: Application-Data And Sovereign Operations Migration
+
+Plan reference: Phase 11 and Sections 3.15 and 5.12.
+
+- [ ] **SA-1110 — Author Tier 1/Tier 2 application-migration Invariant-Breakers and verify `SetupApplicationMigrationInvariantTests` rejects cross-tenant mappings, duplicate replay, checkpoint races, and secret/PII telemetry**
+  - **Files:** new Domain/Application/Persistence/API migration tests and MAD
+    evidence scaffold.
+  - **Acceptance:** Successor E Red tests cover category authority, immutable
+    source IDs, target mappings, idempotency, concurrent resume, file integrity,
+    privacy, and tenant isolation. The same evidence handoff records, but does
+    not complete, successor F slice F1: the dedicated named Worst Break Red is
+    independently owned and must run before SA-1140 production code against the
+    real owning database/provider contract.
+  - **Focused selector:**
+    `dotnet run --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupApplicationMigrationInvariantTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** XL
+  - **Dependencies:** Phase 10 and successor E's fresh Tier 2 custody/erasure,
+    Tier 1 tenant, current I-VSD, CTO, user, and named evidence gates. The
+    `IVSD-F043/M043` Tier 0 boundary decision is recorded before SA-1110 as
+    mapped, but it does not grant successor F implementation approval.
+  - **Guidance:** criticality-guardrail, grill-me, dotnet-efcore-guidelines.
+
+- [ ] **SA-1120 — Implement durable migration plans, mappings, checkpoints, protected staging, receipts, and outbox atomicity and verify interruption/replay cannot duplicate or cross tenant boundaries**
+  - **Files:** new server Domain/Application/Persistence migration feature,
+    generated provider migrations, repositories and tests.
+  - **Acceptance:** Category selection and target scope are immutable;
+    checkpoints/mappings/idempotency are durable; files are digest-verified;
+    commit and effects use transactional outbox; source remains intact.
+  - **Effort:** XL
+  - **Dependencies:** SA-1110.
+  - **Guidance:** cqrs-mediatr-guidelines, dotnet-efcore-guidelines,
+    outbox-pattern.
+
+- [ ] **SA-1130 — Implement events, users, registrations, orders, tickets, uploaded-file, and other application-data API/HAL/Setup workflows and verify resumable category progress and recovery remain truthful**
+  - **Files:** new migration API/HAL/generated-client/Setup adapters/workspaces,
+    tests and operations docs.
+  - **Acceptance:** Every category has explicit authorization, compatibility,
+    mapping blockers, progress, receipt, retry/cancel, and completion state;
+    users/PII follow privacy authority; no configuration artifact carries data.
+  - **Effort:** XL
+  - **Dependencies:** SA-1120.
+  - **Guidance:** auth-patterns, accessibility, criticality-guardrail.
+
+- [ ] **SA-1140 — Implement sale-control, review, handoff, reconciliation, and refund migration state machines and verify money cannot mutate before target/provider reconciliation and explicit approval**
+  - **Files:** new sovereign migration Domain/Application/Persistence/API and
+    Setup workflow contracts, real-provider concurrency tests, runbooks.
+  - **Acceptance:** Payment operations are separate from data/config imports.
+    Before production code, F1's **Worst Break Red — Replayed cross-tenant
+    sovereign race** uses deterministic coordination and a bounded timeout at
+    the public seam with the real owning database/provider contract, without
+    sleeps or internal mocks. A stale/replayed capability plus tenant mismatch
+    races finalization/refund and asserts zero cross-tenant rows, zero
+    provider/outbox money intent, unchanged checked ledger balances, exactly
+    one durable value-free conflict receipt, and zero PII/secret logs. Checked
+    amounts/currencies/provider identities reconcile; conflicting or stale
+    state pauses; retries are idempotent; compensation follows repository-native
+    domain authority.
+  - **Focused selector:**
+    `dotnet run --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupPaymentMigrationInvariantTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** XL
+  - **Dependencies:** D/E contracts; F1 Worst Break Red failing for the intended
+    reason; fresh Tier 0 Grill-Me, current I-VSD, CTO and exact-revision user
+    approval; exact provider/ledger/recipient/currency/refund reconciliation
+    and provider/legal/operator evidence.
+  - **Guidance:** criticality-guardrail, outbox-pattern, error-tracking.
+
+### Phase 11 Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Phase 12: Packaging, Provenance, Documentation, And Agent Skill
+
+Plan reference: Phase 12 and Sections 3.10–3.15, 5.9–5.12, 8, and 9.
+
+- [ ] **SA-1210 — Implement governed multi-target packaging and verify `SetupReleaseContractTests` accepts only evidenced RIDs/formats, approved graphs, immutable identity, and truthful capability/support tiers**
+  - **Files:** new `eng/setup-assistant/**`, CI/release integration, package
+    manifests and Architecture tests; existing release policy/scope registry.
+  - **Acceptance:** Outputs contain only implemented/evidenced offline/live/
+    migration capabilities; no commercial tool, mutable artifact, floating
+    dependency, or unsupported cross-platform claim enters release.
   - **Focused selector:**
     `dotnet run --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupReleaseContractTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** XL
-  - **Dependencies:** Phases 1–7.
+  - **Dependencies:** Each selected owning successor and its verification gate
+    are green; an unevidenced successor/capability is omitted rather than
+    delaying or broadening an independently shippable subset.
   - **Guidance:** ci-cd intent, ip-clean-room.
 
-- [ ] **SA-820 — Implement release identity, signing/notarization, SBOM, checksums, provenance, claims, support, incident, and operator contracts and verify every advertised capability has matching evidence or remains disabled**
-  - **Files:** new/updated Setup release manifests and evidence,
-    `docs/SECURITY-MODEL.md`, `docs/CONFIGURATION.md`, `docs/SECRETS.md`,
-    `docs/SELF_HOSTING.md`, `docs/ACCESSIBILITY.md`,
-    `docs/LOCALIZATION.md`, `docs/OPERATIONS.md`,
-    `docs/TROUBLESHOOTING.md`, release governance/runbooks/checklists,
-    `eng/release/policy/scope-registry.yaml`.
-  - **Acceptance:** One identity joins version, commit, RID/format, lock digest,
-    SBOM, build manifest, checksums, source, signature/notarization,
-    reproducibility, and support status; public `setup` scope exists; docs teach
-    origin trust, no-secret/secret boundaries, desktop/browser/terminal limits,
-    recovery, incident, accessibility, localization, packages, and no-live
-    authority; signing keys remain external secrets; missing independent
-    security/legal/accessibility/package evidence disables the exact claim.
+- [ ] **SA-1220 — Implement release identity, signing/notarization, SBOM, checksums, provenance, claims, support, incident, migration, and operator contracts and verify every advertised capability has evidence or remains disabled**
+  - **Files:** Setup release manifests/evidence, security/configuration/secrets/
+    self-hosting/accessibility/localization/operations/troubleshooting docs,
+    release governance and scope registry.
+  - **Acceptance:** One identity joins version, commit, target, locks, SBOM,
+    build manifest, checksums, source, signing, reproducibility and support;
+    docs teach composition, live authority, provider binding, transfer,
+    application migration, payment recovery, and disabled capability gates.
   - **Effort:** XL
-  - **Dependencies:** SA-810.
+  - **Dependencies:** SA-1210.
   - **Guidance:** ci-cd, i-vsd, conventional-commit, ip-clean-room.
 
-- [ ] **SA-840 — Create the version-gated `setup-assistant-cli` skill and verify `SetupAssistantSkillContractTests` proves routing, links, examples, no-secret defaults, human approval, and CLI/schema compatibility**
-  - **Files:** new
-    `.agents/skills/setup-assistant-cli/SKILL.md`,
-    focused resources, intent registration, Architecture tests.
-  - **Acceptance:** Description routes setup generation/validation/diff/
-    explanation while excluding CLI implementation and secret ingestion; body
-    uses implemented machine commands only, checks compatible version, defaults
-    no-secret/dry-run, never reads secret-bearing files or drives TUI, requires
-    approval before writes, and hands secret completion to the local human UI;
-    all resources have ABOUTME lines and schema/link checks pass.
+- [ ] **SA-1240 — Create the version-gated `setup-assistant-cli` skill and verify `SetupAssistantSkillContractTests` proves implemented-command routing, no-secret defaults, scoped live approvals, and CLI/schema compatibility**
+  - **Files:** new `.agents/skills/setup-assistant-cli/**`, intent registration,
+    Architecture tests.
+  - **Acceptance:** Skill uses implemented machine commands only, rejects
+    secret-bearing inputs and TUI automation, defaults no-secret/dry-run,
+    requires explicit approval before every write/live/migration action, and
+    never broadens target/payment authority.
   - **Focused selector:**
     `dotnet run --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupAssistantSkillContractTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** L
-  - **Dependencies:** SA-420, SA-820.
+  - **Dependencies:** SA-420, SA-1220.
   - **Guidance:** `create-agent-context-skill` intent, skill-authoring.
 
-### Phase 8 Verification — RUN ONCE AFTER SA-810 THROUGH SA-840
+### Phase 12 Verification — RUN ONCE AFTER SA-1210 THROUGH SA-1240
 
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
-- [ ] **SA-850 — Complete I-VSD/criticality reconciliation, create the Tier 2 change fragment, and verify final commit composition only after every phase gate is Green**
-  - **Files:** existing I-VSD report and dev-doc triad; new append-only
-    `docs/releases/changes/CHG-YYYY-NNNN.yaml`; clean-room, MAD/security, legal,
-    accessibility, dependency, release, and verification evidence.
-  - **Acceptance:** Every `IVSD-F/M` mapping matches shipped capabilities;
-    missing external evidence leaves its target disabled; anonymized Tier 1
-    security review is resolved; implementation tasks and phase gates are all
-    checked; release engine creates and validates the fragment through
-    `ReleaseInputPolicy`; terminal subject uses `feat(setup): ...` and exact
-    `Change-Id: CHG-YYYY-NNNN` footer; `BREAKING CHANGE:` appears only when the
-    public contract warrants it; no commit is created unless the user
-    explicitly authorizes committing.
+- [ ] **SA-1250 — Complete I-VSD/criticality reconciliation, create the Tier 2 change fragment, and verify final commit composition only after every phase gate is Green**
+  - **Files:** existing I-VSD report/dev-doc triad; new append-only change
+    fragment; clean-room, MAD/security, privacy, payment, legal, accessibility,
+    dependency, release, and verification evidence.
+  - **Acceptance:** Every I-VSD mapping matches shipped capabilities; missing
+    evidence disables its capability; Tier 0/1 MAD findings are resolved;
+    every task/gate is checked; `ReleaseInputPolicy` validates the fragment;
+    terminal `feat(setup): ...` composition has exact `Change-Id` and required
+    breaking footer; no commit is created without explicit user authorization.
   - **Effort:** M
-  - **Dependencies:** SA-820, SA-840, all Phase 1–8 verification checkboxes.
+  - **Dependencies:** SA-1220, SA-1240, all Phase 1–12 verification checkboxes.
   - **Guidance:** criticality-guardrail, epistemic-mad-review,
     conventional-commit, review-pr, i-vsd.
 
 ## Remaining / Deferred Work
 
-- Live instance API/HAL/BFF operations, OAuth/device authorization, tokens,
-  Infisical access, provider connectivity tests, encrypted saved profiles,
-  PWA/service worker, auto-update, plugins/downloaded packs, direct transfer,
-  application data, and mobile targets require separate approved workstreams.
-- Hosted browser secret mode is implemented only as a gated capability and
+- Live API/HAL/BFF, authorization, provider binding, saved profiles, direct
+  transfer, and application-data/payment migration are no longer deferred;
+  they are owned by Phases 9–11 and remain blocked by their explicit review
+  gates.
+- PWA/service worker, auto-update, downloaded executable plugins/packs, and
+  mobile targets require a later approved workstream.
+- Hosted browser secret mode is planned only as a gated capability and
   remains disabled until exact-bundle independent security and legal evidence
   passes.
 - Native Wayland, AppImage, Flatpak, framework-dependent global tool, and any
