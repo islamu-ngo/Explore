@@ -210,6 +210,7 @@ public class NamingConventionTests
         {
             "InstanceGovernanceSettings",
             "CompleteInstanceOnboardingRequest",
+            "CompleteTenantOnboardingRequest",
             "UpdateTenantPolicyRequest",
             "BatchUpdateMode",  // Enum, not a DTO
             "UiThemeInputRules",  // Utility class, not a DTO

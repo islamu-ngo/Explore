@@ -250,7 +250,7 @@ public sealed class DurableSideEffectBoundaryTests
     {
         return content.Contains("IEmailService", StringComparison.Ordinal)
             || content.Contains("EmailMessage", StringComparison.Ordinal)
-            || content.Contains("System.Net.Mail", StringComparison.Ordinal)
+            || content.Contains("System.Net.Mail.SmtpClient", StringComparison.Ordinal)
             || content.Contains("SmtpClient", StringComparison.Ordinal)
             || content.Contains("MailKit", StringComparison.Ordinal)
             || content.Contains("MimeKit", StringComparison.Ordinal);

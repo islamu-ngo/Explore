@@ -265,6 +265,12 @@ Lifecycle state changes are semantic aggregate operations. Application coordinat
 
 The primary intent owns Tier 1 authority, confidentiality, reset, convergence, and greenfield-removal constraints. Secondary obligations remain additive except for the single declared OpenAPI compatibility conflict: secrets-authority removal of obsolete secret-bearing compatibility controls that workstream, while every other OpenAPI gate still applies.
 
+### Choosing The Strong-Typing And Reflection Remediation Contribution Intent
+
+| Change | Primary intent | Scope and constraints |
+|--------|----------------|-----------------------|
+| Mixed product-source and test strong-typing remediation, runtime-dispatch elimination, typed DID/identity/authorization boundaries, and assurance audit | [`strong-typing-refactor`](../.agents/contract/intents.yaml) | Governs cross-layer strong-typing refactoring, invariant-disposition before deletion, no backward-compatibility, and zero-drift generated artifacts |
+
 ### Choosing ID Types
 
 | Type | Use When | Examples |

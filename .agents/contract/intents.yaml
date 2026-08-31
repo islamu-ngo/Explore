@@ -309,9 +309,9 @@ intents:
       - docs/GOVERNANCE.md
       - docs/TESTING.md
       - docs/OPERATIONS.md
-      - dev/active/test-suite-rationalization/test-suite-rationalization-plan.md
-      - dev/active/test-suite-rationalization/test-suite-rationalization-context.md
-      - dev/active/test-suite-rationalization/test-suite-rationalization-tasks.md
+      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-plan.md
+      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-context.md
+      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-tasks.md
     load_skills:
       - refactor-safely
       - criticality-guardrail
@@ -362,9 +362,9 @@ intents:
       - docs/GOVERNANCE.md
       - docs/AGENTIC_CONTEXT_ENGINEERING.md
       - docs/QUICK_REFERENCE.md
-      - dev/active/test-suite-rationalization/test-suite-rationalization-plan.md
-      - dev/active/test-suite-rationalization/test-suite-rationalization-context.md
-      - dev/active/test-suite-rationalization/test-suite-rationalization-tasks.md
+      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-plan.md
+      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-context.md
+      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-tasks.md
     unique_acceptance:
       - "Every test cohort is retained, semantically replaced, or deleted with an explicit invariant disposition"
       - "Critical money, state-machine, concurrency, tenant, security, privacy, HAL, BFF, provider, migration, and protocol coverage fails closed until stronger replacement evidence passes"
@@ -1078,8 +1078,8 @@ intents:
     must_read_docs:
       - docs/AI_CONTEXT_SECURITY.md
       - docs/adr/ADR-012-ai-context-disclosure-policy.md
-      - dev/active/ai-context-disclosure-policy/field-classification-matrix.md
-      - dev/active/ai-context-disclosure-policy/ai-context-disclosure-policy-plan.md
+      - dev/zarchive/ai-context-disclosure-policy/field-classification-matrix.md
+      - dev/zarchive/ai-context-disclosure-policy/ai-context-disclosure-policy-plan.md
       - AGENTS.md
       - docs/SECURITY-MODEL.md
       - docs/AUTHORIZATION.md
@@ -1115,8 +1115,8 @@ intents:
       - Event.Architecture.Tests
     docs_to_update:
       - docs/AI_CONTEXT_SECURITY.md
-      - dev/active/ai-context-disclosure-policy/field-classification-matrix.md
-      - dev/active/ai-context-disclosure-policy/mcp-tool-audit.md
+      - dev/zarchive/ai-context-disclosure-policy/field-classification-matrix.md
+      - dev/zarchive/ai-context-disclosure-policy/mcp-tool-audit.md
     unique_acceptance:
       - "AiContextDisclosureRegistry.CreateDefault() covers every public persisted property on every *Pii entity (reflection test passes)"
       - "IAiContextGateway is the only path to disclose entity fields to the AI prompt (bypass test passes)"
@@ -1178,9 +1178,9 @@ intents:
       - docs/TESTING.md
       - docs/legal/IP_GOVERNANCE.md
       - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
-      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-plan.md
-      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-context.md
-      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-tasks.md
+      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-plan.md
+      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-context.md
+      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-tasks.md
     load_skills:
       - clean-architecture-rules
       - cqrs-mediatr-guidelines
@@ -1248,7 +1248,7 @@ intents:
       - "docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md"
       - "docs/releases/changes/CHG-*.yaml"
       - "islamic-value-sensitive-design/i-vsd-branding-legal-identity-authority.md"
-      - "dev/active/branding-legal-identity-authority/**"
+      - "dev/zarchive/branding-legal-identity-authority/**"
     paths_forbidden:
       - ".claude/settings*.json"
       - ".design-sync/**"
@@ -1282,9 +1282,9 @@ intents:
       - docs/TROUBLESHOOTING.md
       - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
       - schemas/islamu-event.md
-      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-plan.md
-      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-context.md
-      - dev/active/branding-legal-identity-authority/branding-legal-identity-authority-tasks.md
+      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-plan.md
+      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-context.md
+      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-tasks.md
     unique_acceptance:
       - "Cosmetic branding, tenant directory operator, instance operator, and organizer merchant remain independent authoritative roles"
       - "Every tenant creation path atomically creates both canonical typed documents and cannot bypass identity readiness when requesting Active"
@@ -1743,13 +1743,11 @@ intents:
       - docs/OPERATIONS.md
       - docs/TESTING.md
       - docs/legal/IP_GOVERNANCE.md
-      - docs/adr/ADR-020-inbound-webhook-intake-and-event-sourcing.md
-      - docs/adr/ADR-021-durable-outbound-webhook-delivery.md
       - docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md
       - islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md
-      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
-      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md
-      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
+      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
+      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-context.md
+      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
     load_skills:
       - clean-architecture-rules
       - cqrs-mediatr-guidelines
@@ -1817,8 +1815,6 @@ intents:
       - "schemas/islamu-event.md"
       - ".env.example"
       - "docker-compose.yml"
-      - "docs/adr/ADR-020-inbound-webhook-intake-and-event-sourcing.md"
-      - "docs/adr/ADR-021-durable-outbound-webhook-delivery.md"
       - "docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md"
       - "islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md"
       - "docs/API.md"
@@ -1836,7 +1832,7 @@ intents:
       - "docs/BACKUP_RESTORE_UPGRADE.md"
       - "docs/TROUBLESHOOTING.md"
       - "docs/WEBHOOKS.md"
-      - "dev/active/webhook-delivery-redesign/**"
+      - "dev/zarchive/webhook-delivery-redesign/**"
     paths_forbidden:
       - ".claude/settings*.json"
       - ".design-sync/**"
@@ -1868,9 +1864,9 @@ intents:
       - docs/OPERATIONS.md
       - docs/TROUBLESHOOTING.md
       - schemas/islamu-event.md
-      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-context.md
-      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
-      - dev/active/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
+      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-context.md
+      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
+      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
     unique_acceptance:
       - "PostgreSQL exact bytes, SHA-256, and provenance are the sole payload, signing, idempotency, and transmission authority; parsed JSON is never authoritative"
       - "Inbound acceptance, effect receipt or durable external outbox, attempt evidence, and settlement preserve one transaction boundary with verified tenant ownership"
@@ -1963,9 +1959,9 @@ intents:
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
       - docs/TESTING.md
-      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-plan.md
-      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md
-      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md
+      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-plan.md
+      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md
+      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md
     load_skills:
       - criticality-guardrail
       - grill-me
@@ -2067,7 +2063,7 @@ intents:
       - "docs/API_CONTRACT_INVENTORY.md"
       - "docs/BLAZOR.md"
       - "README.md"
-      - "dev/active/secrets-refactor-control-plane/**"
+      - "dev/zarchive/secrets-refactor-control-plane/**"
       - "islamic-value-sensitive-design/i-vsd-secrets-refactor-control-plane.md"
     minimum_tests:
       - Event.Domain.UnitTests
@@ -2090,11 +2086,11 @@ intents:
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
       - schemas/islamu-event.md
-      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-plan.md
-      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md
-      - dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md
+      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-plan.md
+      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md
+      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md
     unique_acceptance:
-      - "Environment and Infisical are explicit deployment-owned authority modes; the selected authority never falls back to a lower source and application databases never hold secret values or reversible ciphertext"
+      - "Environment and Infisical are explicit deployment-owned authority modes; UserSecrets is an explicit Development/Testing-only local authority; the selected authority never falls back to a lower source and application databases never hold secret values or reversible ciphertext"
       - "Required consumers fail closed while optional consumers isolate an explicit unconfigured or degraded capability; provider failures never collapse into a successful absence"
       - "Tenant, instance, source, reference, cache, and rotation state remain server-authoritative and tenant-qualified under hostile concurrency and multi-replica execution"
       - "Logs, stderr, traces, metrics, health, ProblemDetails, support artifacts, APIs, manifests, generated clients, BFF responses, and UI contain no secret values, ciphertext, credentials, tokens, provider payloads, exception text, or sensitive coordinates"
@@ -2236,15 +2232,16 @@ intents:
     must_read_docs:
       - AGENTS.md
       - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
       - docs/PRIVACY_ERASURE.md
       - docs/CONFIGURATION.md
       - docs/SELF_HOSTING.md
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
       - docs/TESTING.md
-      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-plan.md
-      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-context.md
-      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md
+      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-plan.md
+      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-context.md
+      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md
     load_skills:
       - clean-architecture-rules
       - dotnet-efcore-guidelines
@@ -2271,9 +2268,9 @@ intents:
       - "docs/BACKUP_RESTORE_UPGRADE.md"
       - "docs/TROUBLESHOOTING.md"
       - "docs/TESTING.md"
-      - "dev/active/multi-database-persistence-unification/multi-database-persistence-unification-plan.md"
-      - "dev/active/multi-database-persistence-unification/multi-database-persistence-unification-context.md"
-      - "dev/active/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md"
+      - "dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-plan.md"
+      - "dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-context.md"
+      - "dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md"
     paths_forbidden:
       - "src/**/Migrations/**/*.cs"
       - "src/**/*ModelSnapshot.cs"
@@ -2288,9 +2285,9 @@ intents:
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
       - docs/TESTING.md
-      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-plan.md
-      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-context.md
-      - dev/active/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md
+      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-plan.md
+      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-context.md
+      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md
     unique_acceptance:
       - "Primary application and Data Protection persistence retain PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL provider composition without collapsing provider migration owners or history tables"
       - "PrivacyErasure:Authority:Topology keeps EmbeddedSqlite with any primary provider, CoLocated only for PostgreSQL or SQLite, and ExternalDatabase only for separate PostgreSQL"
@@ -2345,3 +2342,136 @@ intents:
       - "dotnet build --configuration Release --verbosity quiet"
       - 'dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/PrimaryDatabaseProviderCompositionTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1'
       - 'dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release -- --treenode-filter "/*/*/ProviderMigrationOwnershipTests/*" --minimum-expected-tests 1 --no-progress --maximum-parallel-tests 1'
+
+  - id: strong-typing-refactor
+    title: "Remediate strong-typing boundaries and replace reflection and source assurance"
+    category: cross-cutting
+    triggers:
+      - "remediate strong typing and reflection debt"
+      - "strong typing and reflection refactor"
+      - "strong typing refactor"
+      - "replace reflection with typed behavior"
+      - "remove test reflection and source assurance"
+      - "typed assurance refactor"
+    must_read_docs:
+      - AGENTS.md
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/TESTING.md
+      - docs/SECURITY-MODEL.md
+      - docs/DOMAIN.md
+      - docs/RECORD_CONTRACTS.md
+      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-plan.md
+      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-context.md
+      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-tasks.md
+    load_skills:
+      - clean-architecture-rules
+      - refactor-safely
+      - criticality-guardrail
+      - auth-patterns
+      - dotnet-efcore-guidelines
+      - blazor-ui-conventions
+      - accessibility
+      - i-vsd
+    load_rules:
+      - .agents/rules/domain.md
+      - .agents/rules/application-layer.md
+      - .agents/rules/efcore-persistence.md
+      - .agents/rules/api-controllers.md
+      - .agents/rules/api-hateoas.md
+      - .agents/rules/blazor-client.md
+      - .agents/rules/tests.md
+      - .agents/rules/work-criticality-matrix.md
+    paths_in_scope:
+      - "src/Explore.Domain/**/*.cs"
+      - "src/Explore.Application/**/*.cs"
+      - "src/Explore.Infrastructure/**/*.cs"
+      - "src/Explore.Persistence/**/*.cs"
+      - "src/Explore.API/**/*.cs"
+      - "src/Event.Web.BffHosting/**/*.cs"
+      - "src/Explore.Blazor/**/*.cs"
+      - "src/Explore.Blazor.Client/**/*.cs"
+      - "src/Explore.Blazor.Client/**/*.razor"
+      - "src/Explore.Blazor.Client/**/*.razor.cs"
+      - "src/Explore.Secrets/**/*.cs"
+      - "src/Explore.ServiceDefaults/**/*.cs"
+      - "eng/tools/Explore.AssuranceAudit/**"
+      - "eng/tools/Explore.ApiContractInventory/**"
+      - "tests/**/*.cs"
+      - "docs/TESTING.md"
+      - "docs/GOVERNANCE.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/RECORD_CONTRACTS.md"
+      - "docs/SECURITY-MODEL.md"
+      - "docs/DOMAIN.md"
+      - "docs/BLAZOR.md"
+      - "dev/active/strong-typing-reflection-remediation/**"
+    paths_forbidden:
+      - "src/**/Migrations/**"
+      - "src/**/*ModelSnapshot.cs"
+      - "src/**/*.Designer.cs"
+      - "schemas/openapi_islamu-event.json"
+    minimum_tests:
+      - Event.Domain.UnitTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+      - Event.Persistence.IntegrationTests
+      - Event.API.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Explore.Blazor.IntegrationTests
+      - Explore.Infrastructure.Tests
+      - Explore.Secrets.UnitTests
+      - Explore.GeneratedContracts.Tests
+    docs_to_update:
+      - docs/TESTING.md
+      - docs/GOVERNANCE.md
+      - docs/RECORD_CONTRACTS.md
+      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-context.md
+      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-tasks.md
+    unique_acceptance:
+      - "Every removed reflection or source-assurance cohort has an explicit invariant disposition and passing replacement before deletion"
+      - "Live AT Protocol DIDs parse once at ingress, preserve case-sensitive value, and emit exact scalars without storage or wire drift"
+      - "Ambient platform-user identity resolves through one canonical Application authority with purpose-separated BFF, provider, and session helpers"
+      - "API Admin endpoints use one API-local policy with unchanged authorization cohorts, and client mutation controls render only from HAL relations"
+      - "Database query, ordering, tenant, and concurrency behavior is proven on real providers without source scraping or fixed sleeps"
+      - "Generated OpenAPI schemas, client classes, and EF model snapshots show expected zero drift"
+    pr_checklist:
+      - "No runtime-name behavior dispatch, string-selected production types, or raw product-source assurance remain in migrated cohorts"
+      - "Public and internal DID representation remains scalar on wire and storage without compatibility converters or shims"
+      - "Client mutation affordances are governed solely by HAL links; browser-side role/claim inference is removed"
+      - "All affected project test suites pass in Release configuration without flaky sleeps or mock-mirroring"
+      - "Changelog and release notes comply with Conventional Commits"
+    forbidden_without_approval:
+      - "Adding backward-compatibility overloads, adapters, aliases, or dual readers"
+      - "Hand-editing generated OpenAPI, client code, EF migrations, or model snapshots"
+      - "Scraping source code, CSS, or markdown files to assert business behavior"
+      - "Adding new external NuGet packages or dependencies without license review"
+      - "Logging raw claim values, DIDs, secrets, or PII"
+    related_agents:
+      - architect-agent
+      - security-privacy-agent
+      - quality-verifier-agent
+      - backend-engineer-agent
+      - presentation-engineer-agent
+      - change-reviewer-agent
+    criticality:
+      tier: security
+      required_model_tier: advanced
+      verification_depth: exhaustive
+      tenancy_scope: system_level
+      rollback_strategy: forward_fix_only
+      intake_clarification_mode: mandatory_grill_me
+      exploration_protocol: exhaustive_graph_blast_radius
+      testing_strategy: adversarial_concurrency_invariant_breakers
+      review_protocol: anonymized_epistemic_mad
+      safety_gates:
+        - "invariant_disposition_before_deletion"
+        - "no_backward_compatibility"
+        - "generated_artifacts_untouched"
+        - "zero_pii_in_diagnostics"
+      mandatory_reviewers:
+        - security-privacy-agent
+        - quality-verifier-agent
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
