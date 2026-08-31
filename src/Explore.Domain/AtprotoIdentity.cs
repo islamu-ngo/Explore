@@ -3,6 +3,7 @@
 
 using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Domain;
 
@@ -34,11 +35,10 @@ public class AtprotoIdentity : IAuditableEntity, ISoftDeletable, IConcurrencyAwa
     public Guid? DeletedBy { get; set; }
     public Guid ConcurrencyStamp { get; set; }
 
-    public void RefreshVerifiedMetadata(string did, string? handle, string pdsHost, string? signingKey, DateTime resolvedAt)
+    public void RefreshVerifiedMetadata(AtprotoDid did, string? handle, string pdsHost, string? signingKey, DateTime resolvedAt)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(did);
         ArgumentException.ThrowIfNullOrWhiteSpace(pdsHost);
-        if (!string.Equals(Did, did, StringComparison.Ordinal))
+        if (!string.Equals(Did, did.Value, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Verified metadata cannot change the identity DID.");
         }

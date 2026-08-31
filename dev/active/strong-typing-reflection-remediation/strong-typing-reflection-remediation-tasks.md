@@ -7,16 +7,16 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Approved; implementation not started
-- **Completed:** 0/39 implementation tasks; phase verification tracked separately
-- **Current priority:** Task 0.1 — add the mixed-source intent
-- **Next recommended slice:** Phase 0 — Governance And Assurance Classification
+- **Overall status:** Implementation in progress (Phase 2 next)
+- **Completed:** 6/39 implementation tasks; Phase 0 and Phase 1 verified
+- **Current priority:** Phase 2 — Platform Identity Authority (Task 2.1)
+- **Next recommended slice:** Phase 2 (Tasks 2.1–2.4)
 - **I-VSD report:** `islamic-value-sensitive-design/i-vsd-strong-typing-reflection-remediation.md`
 - **I-VSD reviewed input revision:** `sha256:1a2fa2e4cfaca23086cb49648c0111b5be9c68e85ab5abdddee08e20b1f9b157`
 - **I-VSD status / disposition:** current / plan-aligned
 - **CTO review:** Not reviewed
 - **User approval:** Approved by the user on 2026-08-30 for this exact workstream revision
-- **Primary intent:** new `strong-typing-refactor` intent created by Task 0.1
+- **Primary intent:** `strong-typing-refactor`
 - **Change classification:** Behavioral Delta with behavior-preserving structural sub-slices
 
 ## Implementation Maintenance Rules
@@ -35,23 +35,23 @@ Last Updated: 2026-08-30 Europe/Brussels
 - Never revert, overwrite, stage, or claim unrelated dirty-tree changes.
 - No backward-compatibility alias, overload, adapter, fallback, or deprecated route survives a completed phase.
 
-## Phase 0 — Governance And Assurance Classification [NOT STARTED]
+## Phase 0 — Governance And Assurance Classification [COMPLETED]
 
-- [ ] **0.1 Add the mixed-source intent and verify contract routing selects `strong-typing-refactor`.**
+- [x] **0.1 Add the mixed-source intent and verify contract routing selects `strong-typing-refactor`.**
   - **Files:** `.agents/contract/intents.yaml` (existing, already dirty outside this workstream), `.agents/contract/schema.json` only if existing fields cannot represent the route, `.agents/contract/README.md`, `.agents/benchmarks/cold-start-tasks.yaml`, `docs/GOVERNANCE.md`.
   - **Acceptance:** execute this bootstrap slice under the existing `create-agent-context-skill` intent; add a primary cross-cutting intent with exact paths, Tier 1 criticality, required skills/rules, minimum projects, docs, no-compatibility gate, generated-artifact prohibitions, and invariant-disposition acceptance; remove stale missing-triad references without creating another triad; both `dotnet run eng/agent-context/validate-contract.cs -- . --intent strong-typing-refactor` and unscoped `dotnet run eng/agent-context/validate-contract.cs -- .` exit zero; the benchmark scenario selects the new intent.
   - **Effort:** M
   - **Dependencies:** user approval
   - **Guidance:** Plan Decisions 5.1 and 5.9; `test-suite-rationalization` is related evidence, not a parent intent.
 
-- [ ] **0.2 Refresh graph and AST evidence and verify every candidate has a semantic category and owning phase.**
+- [x] **0.2 Refresh graph and AST evidence and verify every candidate has a semantic category and owning phase.**
   - **Files:** `.omo/evidence/<date>-strong-typing-reflection-remediation/blast-radius.yaml` (new implementation evidence), workstream context (status only), `tests/Shared/**`, relevant existing mutation projects and `tests/Event.Benchmarks/**` as transitive-consumer evidence, no persistent source-file debt allowlist.
   - **Acceptance:** capture callers, callees, flows, tests, benchmark/fixture consumers, mutation-project consumers, and current AST counts; classify each report item, the nonexistent `AddressGovernancePolicyTests.cs` citation, every transitive helper, and every current `docs/TESTING.md` reflection exception as typed behavior, compiled metadata, machine artifact, physical/protocol metadata, runtime dispatch, source/prose assurance, or cited-but-absent; verify every runtime-dispatch/source-assurance candidate maps to Tasks 2.x–9.x and every retained candidate has an invariant reason; add no new mutation wrapper project while mutation gating remains disabled.
   - **Effort:** M
   - **Dependencies:** 0.1
   - **Guidance:** Plan Sections 2.0, 5.2, 5.8; evidence must contain no source excerpts, secrets, PII, claim values, or DIDs.
 
-- [ ] **0.3 Add routing and taxonomy architecture contracts and verify synthetic violations fail for the intended reason.**
+- [x] **0.3 Add routing and taxonomy architecture contracts and verify synthetic violations fail for the intended reason.**
   - **Files:** `tests/Event.Architecture.Tests/*StrongTyping*` (new or existing focused class), `docs/TESTING.md`, `docs/QUICK_REFERENCE.md` only if a canonical invariant changes.
   - **Acceptance:** red fixtures fail when the new intent is incomplete/ambiguous or a test seam is misclassified; green contracts prove valid intent references, benchmark parity, no stale active-doc dependency, and the existing executable-architecture taxonomy extended with runtime-name behavior-dispatch and automated-enforcement rules; focused selector `/*/*/*StrongTypingIntentArchitectureTests/*` passes after the fix.
   - **Effort:** M
@@ -60,26 +60,26 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 ### Phase 0 Verification — Run Once After Tasks 0.1–0.3
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 1 — AT Protocol DID Semantic Boundary [NOT STARTED]
+## Phase 1 — AT Protocol DID Semantic Boundary [COMPLETED]
 
-- [ ] **1.1 Red Phase: specify live DID ingress and erasure behavior against current string APIs and verify malformed input or direct tombstone mutation fails the desired contract.**
+- [x] **1.1 Red Phase: specify live DID ingress and erasure behavior against current string APIs and verify malformed input or direct tombstone mutation fails the desired contract.**
   - **Files:** `tests/Event.Domain.UnitTests/Entities/AtprotoIdentityDidBoundaryTests.cs` (new), `tests/Event.Domain.UnitTests/Entities/AtprotoIdentityLifecycleTests.cs`, `tests/Event.Domain.UnitTests/PrivacyErasureContractTests.cs`.
   - **Acceptance:** compiling tests bind Scenarios 3.5A–3.5C to exact case-sensitive value preservation, generic AT Protocol syntax, 2048-character bound, no query/fragment/whitespace/control input, redacted diagnostics, and aggregate-owned tombstone behavior; focused selector `/*/*/*AtprotoIdentityDidBoundaryTests/*` fails because the current string ingress accepts a prohibited value or permits direct erasure mutation.
   - **Effort:** M
   - **Dependencies:** Phase 0
   - **Guidance:** `IVSD-F003/M003`, `IVSD-F004/M004`; official AT Protocol DID profile, not a copied implementation.
 
-- [ ] **1.2 Green Phase: implement the Domain DID value and aggregate-owned live/refresh/erasure transitions and verify the red anchors pass.**
+- [x] **1.2 Green Phase: implement the Domain DID value and aggregate-owned live/refresh/erasure transitions and verify the red anchors pass.**
   - **Files:** `src/Explore.Domain/ValueObjects/AtprotoDid.cs` (new), `src/Explore.Domain/AtprotoIdentity.cs`, minimal Domain callers/build fixes.
   - **Acceptance:** live DID parsing is explicit and exact; entity creation/refresh accepts `AtprotoDid`; scalar `Did` storage remains a private/controlled owner field; privacy erasure is an aggregate operation that emits an internal tombstone without parsing it as live; no dual string overload or implicit conversion exists; focused DID/lifecycle selectors pass.
   - **Effort:** L
   - **Dependencies:** 1.1
   - **Guidance:** Plan Decisions 5.6 and 5.7; Domain remains framework-free.
 
-- [ ] **1.3 Migrate Domain identity constructors and documentation and verify all Domain live-DID callers use the semantic value without scalar storage changes.**
+- [x] **1.3 Migrate Domain identity constructors and documentation and verify all Domain live-DID callers use the semantic value without scalar storage changes.**
   - **Files:** graph/LSP-discovered `AtprotoIdentity` callers across `src/**`, all test projects, `tests/Event.Benchmarks/**`, fixtures/seeds, repositories, privacy erasure, serialization boundaries, `docs/RECORD_CONTRACTS.md`, `docs/DOMAIN.md`.
   - **Acceptance:** migrate every object initializer/direct DID mutation to the new factory/aggregate transition or exact scalar egress in one atomic cutover; Domain creation/refresh passes `AtprotoDid`; unsupported methods remain syntactically representable but support is evaluated outside the value; scalar wire/database/index shape is unchanged; no public setter, string overload, implicit conversion, or compatibility adapter remains; the solution-wide Release build and focused Domain DID/lifecycle tests pass.
   - **Effort:** XL
@@ -88,8 +88,8 @@ Last Updated: 2026-08-30 Europe/Brussels
 
 ### Phase 1 Verification — Run Once After Tasks 1.1–1.3
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 2 — Platform Identity Authority [NOT STARTED]
 

@@ -2,6 +2,7 @@
 // ABOUTME: Rejects empty identifiers and malformed or unbounded DIDs before gateway dispatch.
 
 using Explore.Application.Features.Authentication.Atproto.Models;
+using Explore.Domain.ValueObjects;
 using FluentValidation;
 
 namespace Explore.Application.Features.Authentication.Atproto.Validators;
@@ -15,7 +16,6 @@ public sealed class AtprotoCurrentSessionIdentityValidator : AbstractValidator<A
         RuleFor(identity => identity.Did)
             .NotEmpty()
             .MaximumLength(2048)
-            .Must(did => did.StartsWith("did:", StringComparison.Ordinal)
-                         && did.All(character => !char.IsWhiteSpace(character) && !char.IsControl(character)));
+            .Must(did => AtprotoDid.TryParse(did, out _));
     }
 }

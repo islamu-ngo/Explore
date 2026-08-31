@@ -4,6 +4,7 @@
 namespace Event.Domain.UnitTests.Entities;
 
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 
 public sealed class AtprotoIdentityLifecycleTests
 {
@@ -117,6 +118,33 @@ public sealed class AtprotoIdentityLifecycleTests
         await Assert.That(() => identity.Suspend("compromised-key", TransitionedAt, by))
             .Throws<InvalidOperationException>();
         await Assert.That(() => identity.Reinstate("key-rotated", TransitionedAt, by))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task RefreshVerifiedMetadata_WithMatchingDid_UpdatesState()
+    {
+        var identity = CreateIdentity(isActive: false);
+        var did = AtprotoDid.Parse(identity.Did);
+        var resolvedAt = TransitionedAt.AddHours(2);
+
+        identity.RefreshVerifiedMetadata(did, " NEW-HANDLE.EXAMPLE.COM ", "https://new-pds.example", "key-123", resolvedAt);
+
+        await Assert.That(identity.IsActive).IsTrue();
+        await Assert.That(identity.Handle).IsEqualTo("new-handle.example.com");
+        await Assert.That(identity.PdsHost).IsEqualTo("https://new-pds.example");
+        await Assert.That(identity.SigningKey).IsEqualTo("key-123");
+        await Assert.That(identity.LastResolvedAt).IsEqualTo(resolvedAt);
+        await Assert.That(identity.LastSeenAt).IsEqualTo(resolvedAt);
+    }
+
+    [Test]
+    public async Task RefreshVerifiedMetadata_WithMismatchedDid_ThrowsInvalidOperationException()
+    {
+        var identity = CreateIdentity(isActive: false);
+        var differentDid = AtprotoDid.Parse("did:plc:different-owner-456");
+
+        await Assert.That(() => identity.RefreshVerifiedMetadata(differentDid, "handle", "https://pds.example", null, TransitionedAt))
             .Throws<InvalidOperationException>();
     }
 

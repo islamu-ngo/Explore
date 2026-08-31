@@ -2,6 +2,7 @@
 // ABOUTME: Rejects malformed DID, PDS, key identifiers, and oversized OAuth session envelopes.
 
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
+using Explore.Domain.ValueObjects;
 using FluentValidation;
 
 namespace Explore.Application.Features.Authentication.Atproto.Validators;
@@ -15,8 +16,7 @@ public sealed class BootstrapAtprotoSessionCommandValidator : AbstractValidator<
         RuleFor(command => command.ExpectedDid)
             .NotEmpty()
             .MaximumLength(2048)
-            .Must(did => did.StartsWith("did:", StringComparison.Ordinal)
-                         && did.All(character => !char.IsWhiteSpace(character) && !char.IsControl(character)));
+            .Must(did => AtprotoDid.TryParse(did, out _));
         RuleFor(command => command.ExpectedPdsUri)
             .NotEmpty()
             .MaximumLength(2048)

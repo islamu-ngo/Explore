@@ -8,6 +8,7 @@ using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Application.Features.Authentication.Atproto.Services;
 
@@ -63,7 +64,7 @@ public sealed class AtprotoSubjectOnboardingOperation(
 
             identity.ActorId = represented.Id;
             identity.Actor = represented;
-            identity.RefreshVerifiedMetadata(verified.Did, verified.Handle, verified.PdsUri.AbsoluteUri, null, at);
+            identity.RefreshVerifiedMetadata(AtprotoDid.Parse(verified.Did), verified.Handle, verified.PdsUri.AbsoluteUri, null, at);
             identity.UpdatedAt = at;
             identity.UpdatedBy = user.Id;
             await identities.Update(identity).ConfigureAwait(false);

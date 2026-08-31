@@ -12,37 +12,36 @@ Last Updated: 2026-08-30 Europe/Brussels
 - **I-VSD status / disposition:** current / plan-aligned
 - **CTO review:** Not reviewed
 - **User approval:** Approved by the user on 2026-08-30 for this exact workstream revision
-- **Planning status:** Approved; implementation has not started
+- **Planning status:** Approved; Phase 0 and Phase 1 completed and verified
 - **Change classification:** Behavioral Delta with behavior-preserving structural sub-slices
 
-## Session Progress — 2026-08-30 Europe/Brussels
+## Session Progress — 2026-08-31 Europe/Brussels
 
 ### COMPLETED
 
-- Classified the current contract and found no existing intent that permits the mixed `src/**` plus test scope.
-- Loaded implementation-plan, I-VSD, Grill-Me, Clean Architecture, auth, EF Core, Blazor, IP clean-room, criticality, test, and release guidance.
-- Verified every major submitted archetype against current repository files and identified stale/inaccurate report entries.
-- Audited identity/claim/header/route owners and purpose-specific trust boundaries.
-- Audited reflection runtimes, EF metadata, source scraping, Blazor dynamic tests, and primitive candidates.
-- Completed official-source research for `nameof`, real-provider EF tests, standard headers, bUnit typed parameters, value objects, DID Core, and the AT Protocol DID profile.
-- Created the evidence packet, I-VSD report, plan, task ledger, and this context.
-- Passed the final independent consistency audit with no critical, high, or decision-blocking medium findings; all 39 tasks, 19 scenarios, I-VSD mappings, phase gates, paths, commands, and evidence hashes agree.
-- Recorded user approval for this exact workstream revision.
+- **Task 0.1**: Added primary cross-cutting intent `strong-typing-refactor` to `.agents/contract/intents.yaml`, added matching scenario to `.agents/benchmarks/cold-start-tasks.yaml`, updated `docs/GOVERNANCE.md` Decision Framework, cleaned up stale missing-triad active paths in archived intents, and verified `dotnet run eng/agent-context/validate-contract.cs -- . --intent strong-typing-refactor` and unscoped `validate-contract.cs` exit 0.
+- **Task 0.2**: Refreshed `code-review-graph` blast-radius and AST inventory into `.omo/evidence/2026-08-31-strong-typing-reflection-remediation/blast-radius.yaml` with semantic categories and phase mappings for all candidates without raw source excerpts or PII.
+- **Task 0.3**: Added `StrongTypingIntentArchitectureTests` in `tests/Event.Architecture.Tests/StrongTypingIntentArchitectureTests.cs`, verified intent integrity, benchmark parity, and executable architecture rules.
+- **Phase 0 Verification**: Solution builds in Release configuration (`dotnet build --configuration Release --verbosity quiet`) with 0 errors, and all 511 tests in `Event.Architecture.Tests` pass (`dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`).
+- **Task 1.1**: Created red Invariant-Breaker Domain tests in `tests/Event.Domain.UnitTests/ValueObjects/AtprotoDidTests.cs` and `tests/Event.Domain.UnitTests/Entities/AtprotoIdentityDidBoundaryTests.cs`, proving case-sensitive value preservation, AT Protocol syntax validation, 2048-character bounds, no query/fragment/whitespace/percent encoding, and tombstone distinction.
+- **Task 1.2**: Implemented `AtprotoDid` value object in `src/Explore.Domain/ValueObjects/AtprotoDid.cs` using source-generated regex, ordinal comparisons, explicit scalar conversions, and updated `AtprotoIdentity.RefreshVerifiedMetadata` to accept `AtprotoDid`.
+- **Task 1.3**: Migrated Domain and Application callers (e.g. `AtprotoSubjectOnboardingOperation.cs`, `BootstrapAtprotoSessionCommandValidator.cs`, `AtprotoCurrentSessionIdentityValidator.cs`, and `AtprotoIdentityLifecycleTests.cs`) to `AtprotoDid`.
+- **Phase 1 Verification**: Solution builds cleanly in Release configuration (`dotnet build --configuration Release --verbosity quiet`) with 0 errors, and all 1079 tests in `Event.Domain.UnitTests` pass (`dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`).
 
 ### IN PROGRESS
 
-- No implementation task has started.
+- Phase 2 — Platform Identity Authority.
 
 ### NEXT
 
-1. Optional Senior CTO review binds to this exact approved plan/tasks/I-VSD revision.
-2. Start Task 0.1 and keep the task ledger current.
+1. Task 2.1: Add hostile-principal matrices and verify conflicting, malformed, provider-linked, and excluded schemes expose current divergence in `tests/Explore.Infrastructure.Tests/Identity/`.
+2. Task 2.2: Implement `PlatformPrincipalReader` in `Explore.Infrastructure` with deterministic priority order and scheme exclusion.
+3. Task 2.3: Reconcile `IUserContext`, `IAdminContext`, and middleware to use `PlatformPrincipalReader`.
+4. Task 2.4: Update and verify all identity authority tests.
 
 ### BLOCKERS
 
-- **Tooling evidence blocker at implementation start:** The repository-required code-review graph was unavailable in this planning session. Task 0.2 must refresh caller/callee/affected-flow evidence before product edits.
-- **Shared-worktree constraint:** `develop` is ahead of `origin/develop` and has extensive unrelated tracked/untracked changes, including files cited by this workstream. Implementation must patch only owned files, never revert or overwrite unrelated work, and stop for an exact conflict.
-- **Contract baseline issue:** The current dirty `test-suite-rationalization` intent references a missing active triad. Task 0.1 replaces this category's mixed-source routing with a dedicated valid intent without creating duplicate planning docs.
+- None. Phase 0 and Phase 1 gates are verified green.
 
 ## Quick Resume
 
