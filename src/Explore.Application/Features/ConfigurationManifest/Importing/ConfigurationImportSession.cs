@@ -127,6 +127,11 @@ public interface IConfigurationImportArtifactStore
     Task DeleteAsync(
         ConfigurationImportArtifactHandle handle,
         CancellationToken cancellationToken);
+
+    Task<int> DeleteExpiredAsync(
+        DateTime occurredAt,
+        int maximumCount,
+        CancellationToken cancellationToken);
 }
 
 public interface IConfigurationImportSessionRepository

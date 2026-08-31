@@ -16,6 +16,7 @@ using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Authorization;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.ConfigurationManifest.Contracts;
@@ -253,7 +254,9 @@ public sealed class ConfigurationImportSessionControllerTests
                 ArtifactByteLength: 2,
                 AvailableSectionKeys: ["instance.settings"]));
         var controller =
-            new InstanceConfigurationImportSessionsController(mediator)
+            new InstanceConfigurationImportSessionsController(
+                mediator,
+                Substitute.For<IAuthorizationProvider>())
             {
                 ControllerContext = new ControllerContext
                 {

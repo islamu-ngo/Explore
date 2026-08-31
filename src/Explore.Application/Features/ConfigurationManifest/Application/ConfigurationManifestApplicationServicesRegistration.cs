@@ -67,6 +67,7 @@ public static class ConfigurationManifestApplicationServicesRegistration
             ConfigurationImportTenantIdentityMutationBoundary>();
         services.TryAddScoped<ConfigurationImportSectionApplier>();
         services.TryAddScoped<ConfigurationImportApplyService>();
+        services.TryAddScoped<ConfigurationManagedApplyScheduleService>();
         services.TryAddScoped<ConfigurationDirectTransferService>();
         services.TryAddScoped<IConfigurationImportEffectDelivery,
             ConfigurationImportEffectDelivery>();

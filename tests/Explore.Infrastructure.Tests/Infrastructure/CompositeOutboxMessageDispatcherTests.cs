@@ -14,6 +14,7 @@ using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Application.Features.Management.Handlers.Commands;
 using Explore.Application.Features.Management.Requests.Commands;
 using Explore.Application.Features.ConfigurationManifest.Application;
+using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Application.Models.InternalEvents;
 using Explore.Application.Services;
 using Explore.Application.Services.Registration;
@@ -478,6 +479,24 @@ public sealed class CompositeOutboxMessageDispatcherTests
     }
 
     [Test]
+    public async Task DispatchAsync_WithConfigurationImportEffects_RoutesClaimedMessage()
+    {
+        var importDelivery = new CapturingImportEffectDelivery();
+        CompositeOutboxMessageDispatcher dispatcher = CreateDispatcher(
+            Substitute.For<IEventPublishedNotificationFanoutService>(),
+            Substitute.For<IEventModerationNotificationFanoutService>(),
+            importEffectDelivery: importDelivery);
+        OutboxMessage message = ConfigurationImportEffectOutbox.Create(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            DateTime.UtcNow);
+
+        await dispatcher.DispatchAsync(message);
+
+        await Assert.That(importDelivery.Message).IsSameReferenceAs(message);
+    }
+
+    [Test]
     [Category("EventLocationPrivacy")]
     public async Task ReconcileDeadLetterAsync_WithUnsupportedEventType_Throws()
     {
@@ -655,7 +674,8 @@ public sealed class CompositeOutboxMessageDispatcherTests
         IAdmissionEventCancellationService? admissionEventCancellationService = null,
         IRefundAttemptRepository? refundRepository = null,
         IRefundCreator? refundCreator = null,
-        IConfigurationManifestEffectDispatcher? manifestEffectDispatcher = null)
+        IConfigurationManifestEffectDispatcher? manifestEffectDispatcher = null,
+        IConfigurationImportEffectDelivery? importEffectDelivery = null)
     {
         HybridCache selectedCache = cache ?? new RecordingHybridCache();
         var correctionPlanner = Substitute.For<IAtprotoLocationPrivacyCorrectionPlanner>();
@@ -701,7 +721,9 @@ public sealed class CompositeOutboxMessageDispatcherTests
             mediator ?? Substitute.For<IMediator>(),
             NullLogger<CompositeOutboxMessageDispatcher>.Instance,
             manifestEffectDispatcher
-                ?? Substitute.For<IConfigurationManifestEffectDispatcher>());
+                ?? Substitute.For<IConfigurationManifestEffectDispatcher>(),
+            importEffectDelivery
+                ?? Substitute.For<IConfigurationImportEffectDelivery>());
     }
 
     private static PaidOrderAcceptanceSnapshot RefundAcceptance(Guid tenantId) =>
@@ -868,6 +890,27 @@ public sealed class CompositeOutboxMessageDispatcherTests
             Payload = JsonSerializer.Serialize(payload),
             CreatedAt = new DateTime(2026, 7, 19, 12, 0, 0, DateTimeKind.Utc)
         };
+    }
+
+    private sealed class CapturingImportEffectDelivery
+        : IConfigurationImportEffectDelivery
+    {
+        public OutboxMessage? Message { get; private set; }
+
+        public Task DrainPendingAsync(
+            CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task DeliverAsync(
+            Guid outboxMessageId,
+            CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task DispatchClaimedAsync(
+            OutboxMessage message,
+            CancellationToken cancellationToken)
+        {
+            Message = message;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class RecordingHybridCache : HybridCache

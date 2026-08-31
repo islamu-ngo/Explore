@@ -39,6 +39,8 @@ public sealed class ConfigurationImportApplyRequest
 
     public Guid? RollbackOfOperationId { get; init; }
 
+    public Guid? ManagedScheduleId { get; init; }
+
     public override string ToString() => nameof(ConfigurationImportApplyRequest);
 }
 

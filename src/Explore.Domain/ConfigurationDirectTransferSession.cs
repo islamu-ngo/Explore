@@ -10,7 +10,9 @@ public enum ConfigurationDirectTransferStatus
     Receiving = 3,
     Received = 4,
     Cancelled = 5,
-    Expired = 6
+    Expired = 6,
+    Promoting = 7,
+    Promoted = 8
 }
 
 public sealed class ConfigurationDirectTransferSession
@@ -199,7 +201,9 @@ public sealed class ConfigurationDirectTransferSession
     public void Cancel(DateTime occurredAt)
     {
         RequireUtc(occurredAt, nameof(occurredAt));
-        if (Status == ConfigurationDirectTransferStatus.Received)
+        if (Status is ConfigurationDirectTransferStatus.Received
+            or ConfigurationDirectTransferStatus.Promoting
+            or ConfigurationDirectTransferStatus.Promoted)
             throw new InvalidOperationException("A received transfer cannot be cancelled.");
         if (Status == ConfigurationDirectTransferStatus.Cancelled)
             return;
@@ -226,7 +230,9 @@ public sealed class ConfigurationDirectTransferSession
         }
         if (Status is ConfigurationDirectTransferStatus.Cancelled
             or ConfigurationDirectTransferStatus.Expired
-            or ConfigurationDirectTransferStatus.Received)
+            or ConfigurationDirectTransferStatus.Received
+            or ConfigurationDirectTransferStatus.Promoting
+            or ConfigurationDirectTransferStatus.Promoted)
         {
             throw new InvalidOperationException("Transfer session is terminal.");
         }

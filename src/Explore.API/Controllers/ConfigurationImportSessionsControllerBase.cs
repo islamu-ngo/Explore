@@ -6,7 +6,10 @@ namespace Explore.API.Controllers;
 using System.Buffers;
 using Explore.API.ConfigurationImport;
 using Explore.API.Hateoas;
+using Explore.Application.Authorization;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Application.Features.ConfigurationManifest.Requests.Commands;
 using Explore.Application.Hateoas;
 using Microsoft.AspNetCore.Mvc;
 
@@ -121,7 +124,8 @@ public abstract class ConfigurationImportSessionsControllerBase
     private protected HalResource<ConfigurationImportOperationResult>
         WithOperationLinks(
         ConfigurationImportOperationResult operation,
-        Guid? tenantId)
+        Guid? tenantId,
+        bool canRollback)
     {
         object receiptValues = tenantId is { } targetTenantId
             ? new { tenantId = targetTenantId, operationId = operation.OperationId }
@@ -152,7 +156,7 @@ public abstract class ConfigurationImportSessionsControllerBase
                         Url.Link(historyRoute, historyValues)
                         ?? throw new InvalidOperationException(
                             "Configuration import history route is unavailable.")));
-        return operation.SnapshotAvailable
+        return operation.SnapshotAvailable && canRollback
             ? resource.WithLink(
                 LinkRelations.CreateConfigurationImportRollback,
                 HalLink.CreateAction(
@@ -161,5 +165,35 @@ public abstract class ConfigurationImportSessionsControllerBase
                         "Configuration import rollback route is unavailable."),
                     HttpMethods.Post))
             : resource;
+    }
+
+    private protected async Task<bool> CanUpdateAsync(
+        IAuthorizationProvider authorization,
+        Guid? tenantId,
+        CancellationToken cancellationToken)
+    {
+        bool tenant = tenantId.HasValue;
+        AuthorizationDecision decision = await authorization.AuthorizeAsync(
+            new AuthorizationRequest(
+                tenant
+                    ? ResourceKinds.TenantSetting
+                    : ResourceKinds.InstanceSetting,
+                tenant
+                    ? CreateTenantConfigurationImportSessionCommand.ResourceKey
+                    : CreateInstanceConfigurationImportSessionCommand.ResourceKey,
+                tenant
+                    ? AuthorizationActions.TenantSettings.Update
+                    : AuthorizationActions.InstanceSettings.Update,
+                tenant
+                    ? new AuthorizationScope(TenantId: tenantId!.Value.ToString("D"))
+                    : AuthorizationScope.Empty,
+                tenant
+                    ? new TenantSettingAuthorizationFacts(
+                        tenantId!.Value,
+                        CreateTenantConfigurationImportSessionCommand.ResourceKey)
+                    : InstanceScopedAuthorizationFacts.Instance,
+                new AuthorizationSubject(RequiredUserId)),
+            cancellationToken);
+        return decision.IsAllowed;
     }
 }

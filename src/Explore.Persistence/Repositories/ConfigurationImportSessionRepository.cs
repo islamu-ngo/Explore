@@ -48,9 +48,7 @@ public sealed class ConfigurationImportSessionRepository(
         return await dbContext.Set<ConfigurationImportSession>()
             .Where(session =>
                 session.ExpiresAt <= occurredAt
-                && (session.State == ConfigurationImportSessionState.Uploaded
-                    || session.State
-                        == ConfigurationImportSessionState.PreviewReady))
+                && session.State != ConfigurationImportSessionState.Expired)
             .OrderBy(session => session.ExpiresAt)
             .ThenBy(session => session.SessionId)
             .Take(maximumCount)

@@ -3989,6 +3989,86 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.ConfigurationManagedApplySchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AppliedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("applied_by");
+
+                    b.Property<DateTime>("ApplyBefore")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("apply_before");
+
+                    b.Property<DateTime>("ApplyNotBefore")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("apply_not_before");
+
+                    b.Property<string>("ArtifactDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("artifact_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ManagedPlanDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("managed_plan_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int")
+                        .HasColumnName("revision");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TargetAuthorityKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("target_authority_key");
+
+                    b.Property<string>("TargetRevisionDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("target_revision_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("uploaded_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_configuration_managed_apply_schedules");
+
+                    b.HasIndex("TargetAuthorityKey", "Status", "ApplyNotBefore")
+                        .HasDatabaseName("ix_configuration_managed_apply_schedules_target_authority_key_status_apply_not_before");
+
+                    b.ToTable("configuration_managed_apply_schedules", "islamu_event");
+                });
+
             modelBuilder.Entity("Explore.Domain.ConfigurationManifestOperation", b =>
                 {
                     b.Property<Guid>("Id")

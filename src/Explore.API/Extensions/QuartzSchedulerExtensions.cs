@@ -534,6 +534,15 @@ public static class QuartzSchedulerExtensions
             TimeSpan.FromDays(1),
             desiredRecurringJobs);
 
+        AddSweepJob<ConfigurationPortabilityRetentionCleanupJob>(
+            quartz,
+            QuartzSchedulerKeys.ConfigurationPortabilityRetentionCleanup,
+            "Removes expired protected configuration import, snapshot, and transfer bytes.",
+            enabled: true,
+            initialDelaySeconds: 300,
+            TimeSpan.FromHours(1),
+            desiredRecurringJobs);
+
         var organizerPayment = Bind<OrganizerPaymentReadinessReconciliationOptions>(
             configuration,
             OrganizerPaymentReadinessReconciliationOptions.SectionName);

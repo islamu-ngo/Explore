@@ -120,6 +120,55 @@ public sealed class ConfigurationImportPersistenceTests
     }
 
     [Test]
+    public async Task ManagedApplySchedule_PersistsTargetAndOptimisticReviewState()
+    {
+        await using TestDatabase database = await TestDatabase.CreateAsync();
+        var repository = new ConfigurationManagedApplyScheduleRepository(
+            database.Context);
+        string digest = ConfigurationImportDigest.Compute(["managed-plan"]);
+        Guid uploader = Guid.CreateVersion7();
+        Guid reviewer = Guid.CreateVersion7();
+        ConfigurationManagedApplySchedule schedule =
+            ConfigurationManagedApplySchedule.Create(
+                Guid.CreateVersion7(),
+                "instance",
+                digest,
+                digest,
+                digest,
+                uploader,
+                OccurredAt.AddMinutes(5),
+                OccurredAt.AddHours(1),
+                OccurredAt);
+
+        await repository.AddAsync(schedule, CancellationToken.None);
+        database.Context.ChangeTracker.Clear();
+        ConfigurationManagedApplySchedule? persisted =
+            await repository.GetForUpdateAsync(
+                schedule.Id,
+                "instance",
+                CancellationToken.None);
+        ConfigurationManagedApplySchedule? wrongTarget =
+            await repository.GetForUpdateAsync(
+                schedule.Id,
+                "tenant:other",
+                CancellationToken.None);
+
+        await Assert.That(persisted).IsNotNull();
+        await Assert.That(wrongTarget).IsNull();
+        persisted!.Approve(reviewer, OccurredAt.AddMinutes(1));
+        await repository.UpdateAsync(persisted, CancellationToken.None);
+        database.Context.ChangeTracker.Clear();
+        ConfigurationManagedApplySchedule? approved =
+            await repository.GetForUpdateAsync(
+                schedule.Id,
+                "instance",
+                CancellationToken.None);
+        await Assert.That(approved?.Status)
+            .IsEqualTo(ConfigurationManagedApplyScheduleStatus.Approved);
+        await Assert.That(approved?.Revision).IsEqualTo(2);
+    }
+
+    [Test]
     public async Task Repository_RequiresMatchingTrustedTarget()
     {
         await using TestDatabase database = await TestDatabase.CreateAsync();

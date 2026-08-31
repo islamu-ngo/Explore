@@ -210,27 +210,29 @@ public static class ConfigurationExtensionPackValidator
     {
         IEnumerable<string> fields =
         [
-            pack.PackId,
-            pack.PackVersion,
-            pack.Provenance.Publisher,
-            pack.Provenance.SourceReference,
-            pack.Provenance.LicenseExpression,
+            Field("pack.id", pack.PackId),
+            Field("pack.version", pack.PackVersion),
+            Field("provenance.publisher", pack.Provenance.Publisher),
+            Field("provenance.source", pack.Provenance.SourceReference),
+            Field("provenance.license", pack.Provenance.LicenseExpression),
             .. pack.Descriptors
                 .OrderBy(descriptor => descriptor.SectionKey, StringComparer.Ordinal)
                 .SelectMany(descriptor => new[]
                 {
-                    descriptor.SectionKey,
-                    descriptor.SchemaVersion.ToString(
-                        System.Globalization.CultureInfo.InvariantCulture),
-                    descriptor.MinimumEventVersion,
-                    descriptor.MaximumEventVersion,
-                    descriptor.PayloadDigest,
-                    string.Join(',', descriptor.Dependencies.Order(StringComparer.Ordinal)),
-                    string.Join(',', descriptor.OwnedFieldPaths.Order(StringComparer.Ordinal))
+                    Field($"descriptor.{descriptor.SectionKey}.schema", descriptor.SchemaVersion.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture)),
+                    Field($"descriptor.{descriptor.SectionKey}.minimum", descriptor.MinimumEventVersion),
+                    Field($"descriptor.{descriptor.SectionKey}.maximum", descriptor.MaximumEventVersion),
+                    Field($"descriptor.{descriptor.SectionKey}.payload", descriptor.PayloadDigest),
+                    Field($"descriptor.{descriptor.SectionKey}.dependencies", string.Join(',', descriptor.Dependencies.Order(StringComparer.Ordinal))),
+                    Field($"descriptor.{descriptor.SectionKey}.owned", string.Join(',', descriptor.OwnedFieldPaths.Order(StringComparer.Ordinal)))
                 })
         ];
         return ConfigurationImportDigest.Compute(fields);
     }
+
+    private static string Field(string name, string value) =>
+        $"{name.Length}:{name}{value.Length}:{value}";
 
     private static bool IsManagedFieldPath(string path) =>
         !string.IsNullOrWhiteSpace(path)

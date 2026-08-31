@@ -31,6 +31,7 @@ public sealed class ConfigurationManagedApplySchedule
     public ConfigurationManagedApplyScheduleStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
+    public int Revision { get; private set; }
 
     public static ConfigurationManagedApplySchedule Create(
         Guid id,
@@ -66,7 +67,8 @@ public sealed class ConfigurationManagedApplySchedule
             ApplyNotBefore = applyNotBefore,
             ApplyBefore = applyBefore,
             Status = ConfigurationManagedApplyScheduleStatus.AwaitingReview,
-            CreatedAt = createdAt
+            CreatedAt = createdAt,
+            Revision = 1
         };
     }
 
@@ -83,6 +85,7 @@ public sealed class ConfigurationManagedApplySchedule
         }
         ReviewedBy = reviewerUserId;
         Status = ConfigurationManagedApplyScheduleStatus.Approved;
+        Revision = checked(Revision + 1);
     }
 
     public void Apply(
@@ -109,11 +112,13 @@ public sealed class ConfigurationManagedApplySchedule
         {
             Status = ConfigurationManagedApplyScheduleStatus.Stale;
             CompletedAt = occurredAt;
+            Revision = checked(Revision + 1);
             return;
         }
         AppliedBy = applierUserId;
         Status = ConfigurationManagedApplyScheduleStatus.Applied;
         CompletedAt = occurredAt;
+        Revision = checked(Revision + 1);
     }
 
     public void Cancel(DateTime occurredAt)
@@ -127,6 +132,7 @@ public sealed class ConfigurationManagedApplySchedule
         }
         Status = ConfigurationManagedApplyScheduleStatus.Cancelled;
         CompletedAt = occurredAt;
+        Revision = checked(Revision + 1);
     }
 
     private static string Normalize(string value)

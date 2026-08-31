@@ -15,6 +15,7 @@ using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Application.Features.ConfigurationManifest.Requests.Commands;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using Explore.Application.Hateoas;
+using Explore.Application.Contracts.Infrastructure;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Timeouts;
@@ -28,7 +29,8 @@ using Microsoft.AspNetCore.RateLimiting;
 [Route("api/control-plane/configuration-import/sessions")]
 [Tags("Control Plane Configuration")]
 public sealed class InstanceConfigurationImportSessionsController(
-    IMediator mediator)
+    IMediator mediator,
+    IAuthorizationProvider authorization)
     : ConfigurationImportSessionsControllerBase
 {
     [HttpPost("", Name = RouteNames.CreateInstanceConfigurationImportSession)]
@@ -150,9 +152,10 @@ public sealed class InstanceConfigurationImportSessionsController(
                 sessionId,
                 accessToken,
                 request.Preview,
-                request.RollbackOfOperationId),
+                request.RollbackOfOperationId,
+                request.ManagedScheduleId),
             cancellationToken);
-        return Ok(WithOperationLinks(result, tenantId: null));
+        return Ok(WithOperationLinks(result, tenantId: null, canRollback: true));
     }
 
     [HttpGet(
@@ -194,7 +197,13 @@ public sealed class InstanceConfigurationImportSessionsController(
         ConfigurationImportOperationResult result = await mediator.Send(
             new GetInstanceConfigurationImportReceiptQuery(operationId),
             cancellationToken);
-        return Ok(WithOperationLinks(result, tenantId: null));
+        return Ok(WithOperationLinks(
+            result,
+            tenantId: null,
+            await CanUpdateAsync(
+                authorization,
+                tenantId: null,
+                cancellationToken)));
     }
 
     [HttpPost(

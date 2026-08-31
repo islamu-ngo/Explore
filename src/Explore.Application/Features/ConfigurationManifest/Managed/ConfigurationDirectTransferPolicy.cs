@@ -9,7 +9,7 @@ using System.Net.Sockets;
 public static class ConfigurationDirectTransferPolicy
 {
     public const string DestinationPath =
-        "/api/configuration-transfers/v1alpha1/sessions";
+        "/api/configuration-transfers/v1alpha2";
 
     public static Uri ValidateDestinationOrigin(
         Uri origin,
@@ -37,6 +37,9 @@ public static class ConfigurationDirectTransferPolicy
 
     private static bool IsPublic(IPAddress address)
     {
+        if (address.IsIPv4MappedToIPv6)
+            address = address.MapToIPv4();
+
         if (IPAddress.IsLoopback(address)
             || address.Equals(IPAddress.Any)
             || address.Equals(IPAddress.IPv6Any)

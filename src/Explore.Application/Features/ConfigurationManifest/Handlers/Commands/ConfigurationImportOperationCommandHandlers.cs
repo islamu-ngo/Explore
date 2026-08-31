@@ -20,6 +20,7 @@ public sealed class ApplyInstanceConfigurationImportCommandHandler(
             request.AccessToken,
             request.Preview,
             request.RollbackOfOperationId,
+            request.ManagedScheduleId,
             cancellationToken);
 }
 
@@ -37,6 +38,7 @@ public sealed class ApplyTenantConfigurationImportCommandHandler(
             request.AccessToken,
             request.Preview,
             request.RollbackOfOperationId,
+            request.ManagedScheduleId,
             cancellationToken);
 }
 

@@ -760,6 +760,14 @@ reviewer, and applier identities and a fresh revision. The ordinary
 `ReconcileManaged` import mode remains blocked until an approved ownership plan
 is integrated, preventing accidental continuous overwrite.
 
+Managed apply windows are durable target-qualified review records. An uploader
+creates a schedule from a `PreviewReady` session using the header-only import
+capability; a different authenticated reviewer approves it. The ordinary apply
+request may then include `managedScheduleId`, and a third actor can apply only
+inside the UTC window. Artifact, selected sections, mappings, approvals, mode,
+and current target revision are rebound inside the same serializable import
+transaction, so stale or mismatched schedules fail before mutation.
+
 Direct transfer is an optional staging protocol, not a trust shortcut. It
 requires distinct source and destination approvals, an HTTPS public destination
 on port 443, nonce/proof/artifact binding, bounded resumable chunks, expiry,
@@ -787,6 +795,11 @@ Retain source artifacts and receipts according to the deployment's protected
 configuration-record policy. The application retains rollback snapshots only
 for the bounded `ConfigurationImportSessionLimits.SnapshotRetention` window;
 operators must not treat that window as backup retention.
+The platform-owned Quartz job
+`configuration-portability-retention-cleanup` runs hourly in bounded batches
+and deletes expired encrypted upload bytes, rollback snapshots, and abandoned
+direct-transfer chunks while retaining value-minimized session and receipt
+evidence.
 
 ### Source and ingestion failures
 

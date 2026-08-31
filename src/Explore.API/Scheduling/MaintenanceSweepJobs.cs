@@ -7,6 +7,8 @@ using Explore.Application.Contracts.Webhooks;
 using Quartz;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.OrganizerPaymentConnections;
+using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Application.Features.ConfigurationManifest.Managed;
 
 namespace Explore.API.Scheduling;
 
@@ -130,6 +132,41 @@ public sealed class RegistrationRetentionCleanupJob(
             "Scheduled job {JobName} completed. DeletedRows={DeletedRows}",
             ScheduledJobNames.RegistrationRetentionCleanup,
             deleted);
+    }
+}
+
+/// <inheritdoc cref="IdempotencyCleanupJob"/>
+[DisallowConcurrentExecution]
+public sealed class ConfigurationPortabilityRetentionCleanupJob(
+    ConfigurationImportSessionManager sessions,
+    IConfigurationImportArtifactStore artifacts,
+    IConfigurationDirectTransferChunkStore transferChunks,
+    ILogger<ConfigurationPortabilityRetentionCleanupJob> logger) : IJob
+{
+    private const int BatchSize = 1_000;
+
+    public async Task Execute(IJobExecutionContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        DateTime occurredAt = DateTime.UtcNow;
+        int expiredSessions = await sessions.ExpireAsync(
+            occurredAt,
+            BatchSize,
+            context.CancellationToken);
+        int expiredArtifacts = await artifacts.DeleteExpiredAsync(
+            occurredAt,
+            BatchSize,
+            context.CancellationToken);
+        int expiredChunks = await transferChunks.DeleteExpiredAsync(
+            occurredAt,
+            BatchSize,
+            context.CancellationToken);
+        logger.LogInformation(
+            "Scheduled job {JobName} completed. ExpiredSessions={ExpiredSessions} ExpiredArtifacts={ExpiredArtifacts} ExpiredChunks={ExpiredChunks}",
+            ScheduledJobNames.ConfigurationPortabilityRetentionCleanup,
+            expiredSessions,
+            expiredArtifacts,
+            expiredChunks);
     }
 }
 

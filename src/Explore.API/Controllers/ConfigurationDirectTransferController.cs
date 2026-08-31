@@ -33,11 +33,19 @@ public sealed record CreateConfigurationDirectTransferRequest(
 [ApiVersion("0.1")]
 [Authorize]
 [EndpointClassification(EndpointClass.Admin)]
-[Route("api/configuration-transfers")]
+[Route("api/configuration-transfers/v1alpha2")]
 [Tags("Configuration Transfer")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
 [RequestTimeout(RequestTimeoutExtensions.ControlPlanePolicy)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status504GatewayTimeout)]
 public sealed class ConfigurationDirectTransferController(
     ConfigurationDirectTransferService transfers,
     IAuthorizationProvider authorization)
@@ -65,6 +73,7 @@ public sealed class ConfigurationDirectTransferController(
         CreateAsync(ConfigurationImportTarget.ForTenant(tenantId), request, cancellationToken);
 
     [HttpPost("instance/{sessionId:guid}/source-approval", Name = RouteNames.ApproveInstanceConfigurationTransferSource)]
+    [ProducesResponseType(typeof(ConfigurationDirectTransferProgress), StatusCodes.Status200OK)]
     public Task<ActionResult<ConfigurationDirectTransferProgress>> ApproveInstanceSource(
         Guid sessionId,
         [FromHeader(Name = NonceHeader), Required] string nonce,
@@ -78,6 +87,7 @@ public sealed class ConfigurationDirectTransferController(
             cancellationToken);
 
     [HttpPost("tenants/{tenantId:guid}/{sessionId:guid}/source-approval", Name = RouteNames.ApproveTenantConfigurationTransferSource)]
+    [ProducesResponseType(typeof(ConfigurationDirectTransferProgress), StatusCodes.Status200OK)]
     public Task<ActionResult<ConfigurationDirectTransferProgress>> ApproveTenantSource(
         Guid tenantId,
         Guid sessionId,
@@ -93,6 +103,7 @@ public sealed class ConfigurationDirectTransferController(
 
     [HttpPut("instance/{sessionId:guid}/chunks", Name = RouteNames.AppendInstanceConfigurationTransferChunk)]
     [Consumes("application/octet-stream")]
+    [ProducesResponseType(typeof(ConfigurationDirectTransferProgress), StatusCodes.Status200OK)]
     public Task<ActionResult<ConfigurationDirectTransferProgress>> AppendInstance(
         Guid sessionId,
         [FromHeader(Name = NonceHeader), Required] string nonce,
@@ -111,6 +122,7 @@ public sealed class ConfigurationDirectTransferController(
 
     [HttpPut("tenants/{tenantId:guid}/{sessionId:guid}/chunks", Name = RouteNames.AppendTenantConfigurationTransferChunk)]
     [Consumes("application/octet-stream")]
+    [ProducesResponseType(typeof(ConfigurationDirectTransferProgress), StatusCodes.Status200OK)]
     public Task<ActionResult<ConfigurationDirectTransferProgress>> AppendTenant(
         Guid tenantId,
         Guid sessionId,
@@ -129,6 +141,7 @@ public sealed class ConfigurationDirectTransferController(
             cancellationToken);
 
     [HttpPost("instance/{sessionId:guid}/complete", Name = RouteNames.CompleteInstanceConfigurationTransfer)]
+    [ProducesResponseType(typeof(ConfigurationDirectTransferProgress), StatusCodes.Status200OK)]
     public Task<ActionResult<ConfigurationDirectTransferProgress>> CompleteInstance(
         Guid sessionId,
         [FromHeader(Name = NonceHeader), Required] string nonce,
@@ -142,6 +155,7 @@ public sealed class ConfigurationDirectTransferController(
             cancellationToken);
 
     [HttpPost("tenants/{tenantId:guid}/{sessionId:guid}/complete", Name = RouteNames.CompleteTenantConfigurationTransfer)]
+    [ProducesResponseType(typeof(ConfigurationDirectTransferProgress), StatusCodes.Status200OK)]
     public Task<ActionResult<ConfigurationDirectTransferProgress>> CompleteTenant(
         Guid tenantId,
         Guid sessionId,
@@ -185,6 +199,7 @@ public sealed class ConfigurationDirectTransferController(
             cancellationToken);
 
     [HttpDelete("instance/{sessionId:guid}", Name = RouteNames.CancelInstanceConfigurationTransfer)]
+    [ProducesResponseType(typeof(ConfigurationDirectTransferProgress), StatusCodes.Status200OK)]
     public Task<ActionResult<ConfigurationDirectTransferProgress>> CancelInstance(
         Guid sessionId,
         [FromHeader(Name = NonceHeader), Required] string nonce,
@@ -198,6 +213,7 @@ public sealed class ConfigurationDirectTransferController(
             cancellationToken);
 
     [HttpDelete("tenants/{tenantId:guid}/{sessionId:guid}", Name = RouteNames.CancelTenantConfigurationTransfer)]
+    [ProducesResponseType(typeof(ConfigurationDirectTransferProgress), StatusCodes.Status200OK)]
     public Task<ActionResult<ConfigurationDirectTransferProgress>> CancelTenant(
         Guid tenantId,
         Guid sessionId,

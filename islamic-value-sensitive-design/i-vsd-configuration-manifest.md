@@ -3,7 +3,7 @@
 
 # I-VSD Project-Case Review: Configuration Portability And Administration
 
-Last Updated: 2026-08-30
+Last Updated: 2026-08-31
 
 ## Review Metadata
 
@@ -11,9 +11,9 @@ Last Updated: 2026-08-30
 - Subject: configuration-manifest portability and administration
 - Workstream: configuration-manifest
 - Report kind: project-case-review
-- Report status: plan-aligned
-- Disposition: active-continuation
-- Evidence cutoff: 2026-08-30
+- Report status: current
+- Disposition: plan-aligned
+- Evidence cutoff: 2026-08-31
 - Reviewed input revision: `sha256:b1bb05932eef7c11ec0af43b307d4afdb4eac17ac3b8d563f095cbe16c99f26d`
 - Supersedes: the 2026-08-26 revision of this report
 

@@ -13,7 +13,9 @@ namespace Explore.Blazor.Client.Services.ControlPlane;
 
 internal sealed record ConfigurationPortabilityCapabilities(
     bool CanImport,
-    bool CanExport,
+    bool CanExportOverrides,
+    bool CanExportPortable,
+    bool CanExportTenantPackage,
     bool CanViewHistory,
     bool CanCreateCloneTarget,
     Guid? TenantId);
@@ -128,10 +130,11 @@ internal sealed class ConfigurationPortabilityService(
                     ControlPlaneLinkRelations.CreateConfigurationImportSession),
                 ControlPlaneHal.HasLink(
                     resource._links,
-                    ControlPlaneLinkRelations.ExportConfigurationOverrides)
-                || ControlPlaneHal.HasLink(
+                    ControlPlaneLinkRelations.ExportConfigurationOverrides),
+                ControlPlaneHal.HasLink(
                     resource._links,
                     ControlPlaneLinkRelations.ExportConfigurationPortable),
+                CanExportTenantPackage: false,
                 ControlPlaneHal.HasLink(
                     resource._links,
                     ControlPlaneLinkRelations.ConfigurationImportHistory),
@@ -159,6 +162,8 @@ internal sealed class ConfigurationPortabilityService(
             ControlPlaneHal.HasLink(
                 status._links,
                 ControlPlaneLinkRelations.CreateConfigurationImportSession),
+            CanExportOverrides: false,
+            CanExportPortable: false,
             ControlPlaneHal.HasLink(
                 status._links,
                 ControlPlaneLinkRelations.ExportTenantConfigurationPackage),
@@ -182,7 +187,7 @@ internal sealed class ConfigurationPortabilityService(
 
         ConfigurationPortabilityCapabilities capabilities =
             await GetCapabilitiesAsync(scope, cancellationToken);
-        if (!capabilities.CanExport
+        if (!capabilities.CanExportTenantPackage
             || tenantId is null
             || capabilities.TenantId != tenantId)
         {

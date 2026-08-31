@@ -1113,6 +1113,18 @@ public static class RouteNames
         "CancelInstanceConfigurationTransfer";
     public const string CancelTenantConfigurationTransfer =
         "CancelTenantConfigurationTransfer";
+    public const string CreateInstanceConfigurationManagedApplySchedule =
+        "CreateInstanceConfigurationManagedApplySchedule";
+    public const string CreateTenantConfigurationManagedApplySchedule =
+        "CreateTenantConfigurationManagedApplySchedule";
+    public const string ApproveInstanceConfigurationManagedApplySchedule =
+        "ApproveInstanceConfigurationManagedApplySchedule";
+    public const string ApproveTenantConfigurationManagedApplySchedule =
+        "ApproveTenantConfigurationManagedApplySchedule";
+    public const string CancelInstanceConfigurationManagedApplySchedule =
+        "CancelInstanceConfigurationManagedApplySchedule";
+    public const string CancelTenantConfigurationManagedApplySchedule =
+        "CancelTenantConfigurationManagedApplySchedule";
     public const string GetControlPlaneDomains = "GetControlPlaneDomains";
     public const string GetControlPlaneOperations = "GetControlPlaneOperations";
     public const string GetControlPlaneDeploymentModeRunbook = "GetControlPlaneDeploymentModeRunbook";

@@ -144,6 +144,29 @@ public sealed class ConfigurationImportArtifactRepository(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<int> DeleteExpiredAsync(
+        DateTime occurredAt,
+        int maximumCount,
+        CancellationToken cancellationToken)
+    {
+        if (occurredAt.Kind != DateTimeKind.Utc)
+            throw new ArgumentException("UTC timestamp required.", nameof(occurredAt));
+        if (maximumCount is < 1 or > 1_000)
+            throw new ArgumentOutOfRangeException(nameof(maximumCount));
+        ConfigurationImportStoredArtifact[] expired = await dbContext
+            .Set<ConfigurationImportStoredArtifact>()
+            .Where(artifact => artifact.ExpiresAt <= occurredAt)
+            .OrderBy(artifact => artifact.ExpiresAt)
+            .ThenBy(artifact => artifact.Id)
+            .Take(maximumCount)
+            .ToArrayAsync(cancellationToken);
+        if (expired.Length == 0)
+            return 0;
+        dbContext.RemoveRange(expired);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return expired.Length;
+    }
+
     private static ConfigurationImportArtifactReference Reference(
         ConfigurationImportStoredArtifact stored) =>
         new(

@@ -24,6 +24,23 @@ public interface IConfigurationDirectTransferRepository
     Task UpdateAsync(
         ConfigurationDirectTransferSession session,
         CancellationToken cancellationToken);
+
+    Task<bool> TryClaimPromotionAsync(
+        Guid sessionId,
+        ConfigurationImportTarget target,
+        string nonceDigest,
+        string destinationProofDigest,
+        DateTime occurredAt,
+        CancellationToken cancellationToken);
+
+    Task ReleasePromotionAsync(
+        Guid sessionId,
+        CancellationToken cancellationToken);
+
+    Task CompletePromotionAsync(
+        Guid sessionId,
+        DateTime occurredAt,
+        CancellationToken cancellationToken);
 }
 
 public interface IConfigurationDirectTransferChunkStore
@@ -39,6 +56,13 @@ public interface IConfigurationDirectTransferChunkStore
     Task<ReadOnlyMemory<byte>> AssembleAsync(
         Guid sessionId,
         int expectedByteLength,
+        CancellationToken cancellationToken);
+
+    Task DeleteAsync(Guid sessionId, CancellationToken cancellationToken);
+
+    Task<int> DeleteExpiredAsync(
+        DateTime occurredAt,
+        int maximumCount,
         CancellationToken cancellationToken);
 }
 
@@ -74,6 +98,7 @@ public sealed class ConfigurationDirectTransferService(
     IConfigurationDirectTransferChunkStore chunks,
     IConfigurationTransferDestinationResolver destinations,
     ConfigurationImportSessionApplicationService imports,
+    ConfigurationImportArtifactParser parser,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUser,
     TimeProvider timeProvider)
@@ -212,8 +237,10 @@ public sealed class ConfigurationDirectTransferService(
         ConfigurationImportTarget target,
         string nonce,
         string destinationProof,
-        CancellationToken cancellationToken) =>
-        await unitOfWork.ExecuteInTransactionAsync(
+        CancellationToken cancellationToken)
+    {
+        (ConfigurationDirectTransferProgress Progress, string? FailureCode) result =
+            await unitOfWork.ExecuteInTransactionAsync(
             async token =>
             {
                 ConfigurationDirectTransferSession session =
@@ -228,11 +255,29 @@ public sealed class ConfigurationDirectTransferService(
                     session.ArtifactByteLength,
                     token);
                 string digest = ConfigurationImportDigest.ComputeBytes(artifact.Span);
+                try
+                {
+                    if (target.Scope == ConfigurationImportScope.Instance)
+                        _ = parser.Parse(artifact);
+                    else
+                        _ = parser.ParseTenantPackage(artifact);
+                }
+                catch (ConfigurationImportSessionException exception)
+                {
+                    session.Cancel(UtcNow());
+                    await chunks.DeleteAsync(session.Id, token);
+                    await sessions.UpdateAsync(session, token);
+                    return (Progress(session), exception.FailureCode);
+                }
                 session.Complete(digest, Digest(nonce), UtcNow());
                 await sessions.UpdateAsync(session, token);
-                return Progress(session);
+                return (Progress(session), (string?)null);
             },
             cancellationToken);
+        if (result.FailureCode is { } failureCode)
+            throw new ConfigurationImportSessionException(failureCode);
+        return result.Progress;
+    }
 
     public async Task<ConfigurationImportSessionCreatedResult> PromoteAsync(
         Guid sessionId,
@@ -241,27 +286,67 @@ public sealed class ConfigurationDirectTransferService(
         string destinationProof,
         CancellationToken cancellationToken)
     {
-        ConfigurationDirectTransferSession session = await AuthorizedAsync(
+        bool claimed = await sessions.TryClaimPromotionAsync(
             sessionId,
             target,
-            nonce,
-            destinationProof,
+            Digest(nonce),
+            Digest(destinationProof),
+            UtcNow(),
             cancellationToken);
-        if (session.Status != ConfigurationDirectTransferStatus.Received)
+        if (!claimed)
         {
-            throw new ConfigurationImportSessionException(
-                ConfigurationImportFailureCodes.ApplyBlocked);
-        }
-        ReadOnlyMemory<byte> artifact = await chunks.AssembleAsync(
-            session.Id,
-            session.ArtifactByteLength,
-            cancellationToken);
-        return target.Scope == ConfigurationImportScope.Instance
-            ? await imports.CreateInstanceAsync(artifact, cancellationToken)
-            : await imports.CreateTenantAsync(
-                target.TenantId!.Value,
-                artifact,
+            _ = await AuthorizedAsync(
+                sessionId,
+                target,
+                nonce,
+                destinationProof,
                 cancellationToken);
+            throw new ConfigurationImportSessionException(
+                ConfigurationImportFailureCodes.Replayed);
+        }
+
+        ConfigurationDirectTransferSession session =
+            await sessions.GetForUpdateAsync(
+                sessionId,
+                target.AuthorityKey,
+                cancellationToken)
+            ?? throw new ConfigurationImportSessionException(
+                ConfigurationImportFailureCodes.ArtifactMissing);
+        ConfigurationImportSessionCreatedResult created;
+        try
+        {
+            ReadOnlyMemory<byte> artifact = await chunks.AssembleAsync(
+                session.Id,
+                session.ArtifactByteLength,
+                cancellationToken);
+            created =
+                target.Scope == ConfigurationImportScope.Instance
+                    ? await imports.CreateInstanceAsync(
+                        artifact,
+                        cancellationToken)
+                    : await imports.CreateTenantAsync(
+                        target.TenantId!.Value,
+                        artifact,
+                        cancellationToken);
+        }
+        catch
+        {
+            await sessions.ReleasePromotionAsync(
+                session.Id,
+                CancellationToken.None);
+            throw;
+        }
+        await unitOfWork.ExecuteInTransactionAsync(
+            async token =>
+            {
+                await sessions.CompletePromotionAsync(
+                    session.Id,
+                    UtcNow(),
+                    token);
+                await chunks.DeleteAsync(session.Id, token);
+            },
+            CancellationToken.None);
+        return created;
     }
 
     public async Task<ConfigurationDirectTransferProgress> CancelAsync(
@@ -270,12 +355,21 @@ public sealed class ConfigurationDirectTransferService(
         string nonce,
         string destinationProof,
         CancellationToken cancellationToken) =>
-        await MutateAsync(
-            sessionId,
-            target,
-            nonce,
-            destinationProof,
-            session => session.Cancel(UtcNow()),
+        await unitOfWork.ExecuteInTransactionAsync(
+            async token =>
+            {
+                ConfigurationDirectTransferSession session =
+                    await AuthorizedAsync(
+                        sessionId,
+                        target,
+                        nonce,
+                        destinationProof,
+                        token);
+                session.Cancel(UtcNow());
+                await chunks.DeleteAsync(session.Id, token);
+                await sessions.UpdateAsync(session, token);
+                return Progress(session);
+            },
             cancellationToken);
 
     private async Task<ConfigurationDirectTransferProgress> MutateAsync(
@@ -326,6 +420,9 @@ public sealed class ConfigurationDirectTransferService(
             throw new ConfigurationImportSessionException(
                 ConfigurationImportFailureCodes.TokenInvalid);
         }
+        if (UtcNow() >= session.ExpiresAt)
+            throw new ConfigurationImportSessionException(
+                ConfigurationImportFailureCodes.Expired);
         return session;
     }
 

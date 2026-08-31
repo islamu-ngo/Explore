@@ -3998,6 +3998,86 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.ConfigurationManagedApplySchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AppliedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("applied_by");
+
+                    b.Property<DateTime>("ApplyBefore")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("apply_before");
+
+                    b.Property<DateTime>("ApplyNotBefore")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("apply_not_before");
+
+                    b.Property<string>("ArtifactDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("artifact_digest")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ManagedPlanDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("managed_plan_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int")
+                        .HasColumnName("revision");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TargetAuthorityKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("target_authority_key");
+
+                    b.Property<string>("TargetRevisionDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("target_revision_digest")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("uploaded_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_configuration_managed_apply_schedules");
+
+                    b.HasIndex("TargetAuthorityKey", "Status", "ApplyNotBefore")
+                        .HasDatabaseName("ix_ie_configuration_managed_apply_schedules_target_auth_6d106ad4");
+
+                    b.ToTable("ie_configuration_managed_apply_schedules", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.ConfigurationManifestOperation", b =>
                 {
                     b.Property<Guid>("Id")

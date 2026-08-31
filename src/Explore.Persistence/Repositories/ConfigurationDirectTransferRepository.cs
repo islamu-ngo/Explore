@@ -40,6 +40,55 @@ public sealed class ConfigurationDirectTransferRepository(ExploreDbContext dbCon
         dbContext.Update(session);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<bool> TryClaimPromotionAsync(
+        Guid sessionId,
+        ConfigurationImportTarget target,
+        string nonceDigest,
+        string destinationProofDigest,
+        DateTime occurredAt,
+        CancellationToken cancellationToken) =>
+        await dbContext.Set<ConfigurationDirectTransferSession>()
+            .Where(session =>
+                session.Id == sessionId
+                && session.TargetAuthorityKey == target.AuthorityKey
+                && session.TargetTenantId == target.TenantId
+                && session.NonceDigest == nonceDigest
+                && session.DestinationProofDigest == destinationProofDigest
+                && session.ExpiresAt > occurredAt
+                && session.Status == ConfigurationDirectTransferStatus.Received)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    session => session.Status,
+                    ConfigurationDirectTransferStatus.Promoting),
+                cancellationToken) == 1;
+
+    public async Task ReleasePromotionAsync(
+        Guid sessionId,
+        CancellationToken cancellationToken) =>
+        _ = await dbContext.Set<ConfigurationDirectTransferSession>()
+            .Where(session => session.Id == sessionId
+                && session.Status == ConfigurationDirectTransferStatus.Promoting)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    session => session.Status,
+                    ConfigurationDirectTransferStatus.Received),
+                cancellationToken);
+
+    public async Task CompletePromotionAsync(
+        Guid sessionId,
+        DateTime occurredAt,
+        CancellationToken cancellationToken) =>
+        _ = await dbContext.Set<ConfigurationDirectTransferSession>()
+            .Where(session => session.Id == sessionId
+                && session.Status == ConfigurationDirectTransferStatus.Promoting)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(
+                        session => session.Status,
+                        ConfigurationDirectTransferStatus.Promoted)
+                    .SetProperty(session => session.CompletedAt, occurredAt),
+                cancellationToken);
 }
 
 public sealed class ConfigurationDirectTransferChunkRepository(
@@ -137,5 +186,34 @@ public sealed class ConfigurationDirectTransferChunkRepository(
                 ConfigurationImportFailureCodes.ArtifactIntegrityInvalid);
         }
         return assembled;
+    }
+
+    public async Task DeleteAsync(
+        Guid sessionId,
+        CancellationToken cancellationToken)
+    {
+        await dbContext.Set<ConfigurationDirectTransferChunk>()
+            .Where(chunk => chunk.SessionId == sessionId)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    public async Task<int> DeleteExpiredAsync(
+        DateTime occurredAt,
+        int maximumCount,
+        CancellationToken cancellationToken)
+    {
+        Guid[] ids = await dbContext
+            .Set<ConfigurationDirectTransferChunk>()
+            .Where(chunk => chunk.ExpiresAt <= occurredAt)
+            .OrderBy(chunk => chunk.ExpiresAt)
+            .ThenBy(chunk => chunk.Id)
+            .Select(chunk => chunk.Id)
+            .Take(maximumCount)
+            .ToArrayAsync(cancellationToken);
+        return ids.Length == 0
+            ? 0
+            : await dbContext.Set<ConfigurationDirectTransferChunk>()
+                .Where(chunk => ids.Contains(chunk.Id))
+                .ExecuteDeleteAsync(cancellationToken);
     }
 }

@@ -105,7 +105,8 @@ public sealed class ConfigurationImportSessionContractTests
 
         await Assert.That(store.IsInterface).IsTrue();
         await Assert.That(methods.Select(method => method.Name))
-            .IsEquivalentTo(["DeleteAsync", "ReadAsync", "StoreAsync"]);
+            .IsEquivalentTo(
+                ["DeleteAsync", "DeleteExpiredAsync", "ReadAsync", "StoreAsync"]);
         await Assert.That(methods
             .SelectMany(method => method.GetParameters())
             .Any(parameter => parameter.ParameterType == typeof(Uri)

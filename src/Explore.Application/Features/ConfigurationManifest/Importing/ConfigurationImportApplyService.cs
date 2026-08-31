@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
 using Explore.Application.Features.ConfigurationManifest.Contracts;
+using Explore.Application.Features.ConfigurationManifest.Managed;
 using Explore.Domain;
 using Microsoft.Extensions.Logging;
 
@@ -67,6 +68,7 @@ public sealed class ConfigurationImportApplyService(
     IUnitOfWork unitOfWork,
     IConfigurationImportEffectOutboxRepository outbox,
     IConfigurationImportEffectDelivery effectDelivery,
+    ConfigurationManagedApplyScheduleService managedSchedules,
     ICurrentUserService currentUser,
     TimeProvider timeProvider,
     ILogger<ConfigurationImportApplyService> logger)
@@ -76,6 +78,7 @@ public sealed class ConfigurationImportApplyService(
         string accessToken,
         ConfigurationImportPreviewRequest request,
         Guid? sourceOperationId,
+        Guid? managedScheduleId,
         CancellationToken cancellationToken) =>
         ApplyAsync(
             sessionId,
@@ -83,6 +86,7 @@ public sealed class ConfigurationImportApplyService(
             accessToken,
             request,
             sourceOperationId,
+            managedScheduleId,
             cancellationToken);
 
     public Task<ConfigurationImportOperationResult> ApplyTenantAsync(
@@ -91,6 +95,7 @@ public sealed class ConfigurationImportApplyService(
         string accessToken,
         ConfigurationImportPreviewRequest request,
         Guid? sourceOperationId,
+        Guid? managedScheduleId,
         CancellationToken cancellationToken) =>
         ApplyAsync(
             sessionId,
@@ -98,6 +103,7 @@ public sealed class ConfigurationImportApplyService(
             accessToken,
             request,
             sourceOperationId,
+            managedScheduleId,
             cancellationToken);
 
     public async Task<ConfigurationImportRollbackSessionCreatedResult>
@@ -143,9 +149,14 @@ public sealed class ConfigurationImportApplyService(
                 now,
                 ConfigurationImportSessionLimits.DefaultSessionLifetime,
                 cancellationToken);
+        ConfigurationImportSessionCreatedResult mapped =
+            Map(created, operation.SelectedSectionKeys);
         return new ConfigurationImportRollbackSessionCreatedResult(
             operationId,
-            Map(created, operation.SelectedSectionKeys));
+            mapped with
+            {
+                AccessToken = $"{operationId:D}.{mapped.AccessToken}"
+            });
     }
 
     public async Task<ConfigurationImportOperationResult> GetReceiptAsync(
@@ -188,6 +199,7 @@ public sealed class ConfigurationImportApplyService(
         string accessToken,
         ConfigurationImportPreviewRequest request,
         Guid? sourceOperationId,
+        Guid? managedScheduleId,
         CancellationToken cancellationToken)
     {
         Validate(request);
@@ -221,6 +233,7 @@ public sealed class ConfigurationImportApplyService(
                             accessToken,
                             request,
                             sourceOperationId,
+                            managedScheduleId,
                             actorUserId,
                             startedAt,
                             innerToken),
@@ -288,12 +301,17 @@ public sealed class ConfigurationImportApplyService(
         string accessToken,
         ConfigurationImportPreviewRequest request,
         Guid? sourceOperationId,
+        Guid? managedScheduleId,
         Guid actorUserId,
         DateTime startedAt,
         CancellationToken cancellationToken)
     {
         DateTime now = UtcNow();
-        string tokenDigest = ConfigurationImportSessionManager.DigestToken(accessToken);
+        string sessionAccessToken = ResolveSessionAccessToken(
+            accessToken,
+            sourceOperationId);
+        string tokenDigest = ConfigurationImportSessionManager.DigestToken(
+            sessionAccessToken);
         ConfigurationImportSession session = await sessions.GetForUpdateAsync(
                 sessionId,
                 target,
@@ -354,6 +372,18 @@ public sealed class ConfigurationImportApplyService(
         {
             throw new ConfigurationImportSessionException(
                 ConfigurationImportFailureCodes.StalePreview);
+        }
+
+        if (managedScheduleId is { } scheduleId)
+        {
+            await managedSchedules.AuthorizeApplyAsync(
+                scheduleId,
+                target,
+                session.ArtifactDigest,
+                freshPreview.Binding,
+                actorUserId,
+                now,
+                cancellationToken);
         }
 
         DateTime snapshotExpiresAt = now.Add(
@@ -537,6 +567,22 @@ public sealed class ConfigurationImportApplyService(
             created.Session.ArtifactByteLength,
             [.. availableSectionKeys
                 .Order(StringComparer.Ordinal)]);
+
+    private static string ResolveSessionAccessToken(
+        string accessToken,
+        Guid? sourceOperationId)
+    {
+        if (sourceOperationId is null)
+            return accessToken;
+        string prefix = $"{sourceOperationId.Value:D}.";
+        if (!accessToken.StartsWith(prefix, StringComparison.Ordinal)
+            || accessToken.Length == prefix.Length)
+        {
+            throw new ConfigurationImportSessionException(
+                ConfigurationImportFailureCodes.RollbackUnavailable);
+        }
+        return accessToken[prefix.Length..];
+    }
 
     private async Task<ConfigurationImportOperationResult> MapAsync(
         ConfigurationImportOperation operation,

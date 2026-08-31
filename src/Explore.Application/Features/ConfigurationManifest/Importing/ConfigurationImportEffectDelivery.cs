@@ -14,6 +14,9 @@ public interface IConfigurationImportEffectDelivery
 {
     Task DrainPendingAsync(CancellationToken cancellationToken);
     Task DeliverAsync(Guid messageId, CancellationToken cancellationToken);
+    Task DispatchClaimedAsync(
+        OutboxMessage message,
+        CancellationToken cancellationToken);
 }
 
 public sealed class ConfigurationImportEffectDelivery(
@@ -45,6 +48,20 @@ public sealed class ConfigurationImportEffectDelivery(
         await DeliverAsync(message, cancellationToken);
     }
 
+    public async Task DispatchClaimedAsync(
+        OutboxMessage message,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ConfigurationImportOperation operation =
+            await operations.GetByIdForEffectAsync(
+                message.AggregateId,
+                cancellationToken)
+            ?? throw new InvalidOperationException(
+                "Configuration import operation was not found.");
+        await InvalidateAsync(operation, cancellationToken);
+    }
+
     private async Task DeliverAsync(
         OutboxMessage message,
         CancellationToken cancellationToken)
@@ -59,13 +76,7 @@ public sealed class ConfigurationImportEffectDelivery(
             return;
         try
         {
-            ConfigurationImportOperation operation =
-                await operations.GetByIdForEffectAsync(
-                    message.AggregateId,
-                    cancellationToken)
-                ?? throw new InvalidOperationException(
-                    "Configuration import operation was not found.");
-            await InvalidateAsync(operation, cancellationToken);
+            await DispatchClaimedAsync(message, cancellationToken);
             if (!await outbox.MarkAsCompleted(
                     message.Id,
                     lease.Value,

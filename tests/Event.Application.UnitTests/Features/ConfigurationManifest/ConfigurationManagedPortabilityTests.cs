@@ -34,6 +34,23 @@ public sealed class ConfigurationExtensionAndOwnershipTests
     }
 
     [Test]
+    public async Task SignedPack_BindsFieldMeaningNotOnlySortedValues()
+    {
+        using ECDsa signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        ConfigurationExtensionPack pack = Pack(Json("{\"enabled\":true}"), signer);
+        ConfigurationExtensionPack tampered = pack with
+        {
+            PackId = pack.Provenance.Publisher,
+            Provenance = pack.Provenance with { Publisher = pack.PackId }
+        };
+
+        await Assert.That(ConfigurationExtensionPackValidator.Validate(
+                tampered,
+                Policy(signer)).IsValid)
+            .IsFalse();
+    }
+
+    [Test]
     public async Task OwnershipPlanner_PreservesUnmanagedFieldsAndRequiresTakeover()
     {
         ConfigurationManagedFieldRequest request = new(
@@ -128,6 +145,11 @@ public sealed class ConfigurationDirectTransferSecurityTests
                 ConfigurationDirectTransferPolicy.ValidateDestinationOrigin(
                     new Uri("https://internal.example/"),
                     [IPAddress.Parse("10.0.0.8")]))
+            .Throws<ArgumentException>();
+        await Assert.That(() =>
+                ConfigurationDirectTransferPolicy.ValidateDestinationOrigin(
+                    new Uri("https://mapped.example/"),
+                    [IPAddress.Parse("::ffff:127.0.0.1")]))
             .Throws<ArgumentException>();
 
         Uri endpoint = ConfigurationDirectTransferPolicy.ValidateDestinationOrigin(

@@ -43,6 +43,8 @@ public static class ConfigurationManifestPersistenceServicesRegistration
             OutboxRepository>();
         services.TryAddScoped<IConfigurationDirectTransferRepository,
             ConfigurationDirectTransferRepository>();
+        services.TryAddScoped<IConfigurationManagedApplyScheduleRepository,
+            ConfigurationManagedApplyScheduleRepository>();
         services.TryAddScoped<IConfigurationDirectTransferChunkStore,
             ConfigurationDirectTransferChunkRepository>();
 

@@ -39,22 +39,26 @@
     }
     else
     {
-        @if (_capabilities?.CanExport == true)
+        @if (_capabilities is { } capabilities
+            && (capabilities.CanExportOverrides
+                || capabilities.CanExportPortable
+                || capabilities.CanExportTenantPackage))
         {
             <section aria-labelledby="@ExportHeadingId">
                 <MudText Id="@ExportHeadingId" Typo="Typo.subtitle1" HtmlTag="h3">
                     @T("configurationPortability.export.heading", "Export")
                 </MudText>
                 <div class="configuration-portability__actions">
-                    <MudButton Variant="Variant.Outlined"
-                               StartIcon="@Icons.Material.Filled.Download"
-                               Disabled="_busy"
-                               OnClick="@(() => DownloadAsync(ConfigurationManifestExportView.Overrides))">
-                        @(Scope == ConfigurationImportScope.Instance
-                            ? T("configurationPortability.export.overrides", "Download overrides")
-                            : T("configurationPortability.export.tenant", "Download tenant package"))
-                    </MudButton>
-                    @if (Scope == ConfigurationImportScope.Instance)
+                    @if (capabilities.CanExportOverrides)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.Download"
+                                   Disabled="_busy"
+                                   OnClick="@(() => DownloadAsync(ConfigurationManifestExportView.Overrides))">
+                            @T("configurationPortability.export.overrides", "Download overrides")
+                        </MudButton>
+                    }
+                    @if (capabilities.CanExportPortable)
                     {
                         <MudButton Variant="Variant.Outlined"
                                    StartIcon="@Icons.Material.Filled.Download"
@@ -63,7 +67,16 @@
                             @T("configurationPortability.export.portable", "Download portable")
                         </MudButton>
                     }
-                    else if (_capabilities.CanCreateCloneTarget)
+                    @if (capabilities.CanExportTenantPackage)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.Download"
+                                   Disabled="_busy"
+                                   OnClick="@(() => DownloadAsync(ConfigurationManifestExportView.Overrides))">
+                            @T("configurationPortability.export.tenant", "Download tenant package")
+                        </MudButton>
+                    }
+                    @if (Scope == ConfigurationImportScope.Tenant && capabilities.CanCreateCloneTarget)
                     {
                         <MudButton Variant="Variant.Outlined"
                                    StartIcon="@Icons.Material.Filled.ContentCopy"
@@ -72,7 +85,7 @@
                         </MudButton>
                     }
                 </div>
-                @if (Scope == ConfigurationImportScope.Tenant && _capabilities.CanCreateCloneTarget)
+                @if (Scope == ConfigurationImportScope.Tenant && capabilities.CanCreateCloneTarget)
                 {
                     <MudText Typo="Typo.caption" dir="auto">
                         @T("configurationPortability.clone.help", "Clone is a source-safe workflow: download this package, create an authorized target tenant, then import it from that target tenant's portability section. The source is never changed or deleted.")
@@ -401,7 +414,12 @@
     }
 
     private Task RefreshPreviewAsync() => RunAsync(
-        RefreshPreviewCoreAsync,
+        async () =>
+        {
+            await RefreshPreviewCoreAsync();
+            await Announcer.AnnouncePoliteAsync(
+                T("configurationPortability.preview.updated", "Configuration preview updated."));
+        },
         "preview",
         T("configurationPortability.error.preview", "The preview is stale or invalid. Refresh capabilities and try again."));
 
@@ -458,6 +476,8 @@
             TenantId,
             operationId,
             _disposal.Token);
+        await Announcer.AnnouncePoliteAsync(
+            T("configurationPortability.receipt.loaded", "Configuration receipt loaded."));
     }, "receipt", T("configurationPortability.error.receipt", "The migration receipt could not be loaded."));
 
     private Task CreateRollbackAsync() => RunAsync(async () =>

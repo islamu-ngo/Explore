@@ -123,7 +123,8 @@ public sealed record ApplyInstanceConfigurationImportCommand(
     Guid SessionId,
     string AccessToken,
     ConfigurationImportPreviewRequest Preview,
-    Guid? RollbackOfOperationId = null)
+    Guid? RollbackOfOperationId = null,
+    Guid? ManagedScheduleId = null)
     : IRequest<ConfigurationImportOperationResult>, ISecureRequest
 {
     string? ISecureRequest.ResourceId =>
@@ -140,7 +141,8 @@ public sealed record ApplyTenantConfigurationImportCommand(
     Guid SessionId,
     string AccessToken,
     ConfigurationImportPreviewRequest Preview,
-    Guid? RollbackOfOperationId = null)
+    Guid? RollbackOfOperationId = null,
+    Guid? ManagedScheduleId = null)
     : IRequest<ConfigurationImportOperationResult>, ISecureRequest
 {
     string? ISecureRequest.ResourceId =>
