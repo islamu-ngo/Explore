@@ -7,8 +7,7 @@ using System.Reflection;
 using System.Text.Json;
 using Event.Application.UnitTests.Features.ConfigurationManifest;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.PaidEventPolicies;
 using Explore.Application.Features.ConfigurationManifest.Compilation;
 using Explore.Application.Features.ConfigurationManifest.Preflight;
@@ -222,7 +221,7 @@ public sealed class ConfigurationManifestPaidEventPolicyAuthorityTests
         {
             _ = JsonSerializer.Deserialize(
                 payload,
-                ConfigurationManifestJsonContext.Default
+                ConfigurationPortabilityJsonContext.Default
                     .ConfigurationManifestPaidEventPolicyPayloadV1Alpha2);
         }
         catch (JsonException caught)

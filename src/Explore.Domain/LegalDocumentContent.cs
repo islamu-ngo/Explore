@@ -5,19 +5,6 @@ namespace Explore.Domain;
 
 using System.Text;
 
-public static class LegalDocumentContentLimits
-{
-    public const int MaximumDocumentsPerScope = 16;
-    public const int MaximumLocalesPerDocument = 32;
-    public const int MaximumMarkdownUtf8BytesPerLocale = 256 * 1024;
-    public const int MaximumLinksPerLocale = 128;
-    public const int MaximumPlaceholdersPerLocale = 64;
-    public const int MaximumTitleLength = 200;
-    public const int MaximumSummaryLength = 500;
-    public const int MaximumLanguageTagLength = 35;
-    public const int MaximumLinkLength = 2048;
-}
-
 public sealed record LegalDocumentTemplateProvenance
 {
     private LegalDocumentTemplateProvenance(
@@ -99,11 +86,11 @@ public sealed class LegalDocumentLocalizedSource
         string normalizedLanguage = NormalizeLanguageTag(languageTag);
         string normalizedTitle = NormalizeText(
             title,
-            LegalDocumentContentLimits.MaximumTitleLength,
+            ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumTitleLength,
             nameof(title));
         string normalizedSummary = NormalizeText(
             summary,
-            LegalDocumentContentLimits.MaximumSummaryLength,
+            ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumSummaryLength,
             nameof(summary));
         ArgumentNullException.ThrowIfNull(markdown);
         string normalizedMarkdown = markdown.Replace(
@@ -115,13 +102,13 @@ public sealed class LegalDocumentLocalizedSource
 
         int byteCount = Encoding.UTF8.GetByteCount(normalizedMarkdown);
         if (byteCount is < 1 or >
-            LegalDocumentContentLimits.MaximumMarkdownUtf8BytesPerLocale)
+            ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumMarkdownUtf8BytesPerLocale)
         {
             throw new ArgumentOutOfRangeException(nameof(markdown));
         }
 
-        LegalMarkdownInspection shape =
-            LegalMarkdownContract.Inspect(normalizedMarkdown);
+        ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownInspection shape =
+            ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownCodec.Inspect(normalizedMarkdown);
         return new LegalDocumentLocalizedSource
         {
             Id = Guid.CreateVersion7(),
@@ -150,7 +137,7 @@ public sealed class LegalDocumentLocalizedSource
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(languageTag);
         string normalized = languageTag.Trim();
-        if (normalized.Length > LegalDocumentContentLimits.MaximumLanguageTagLength)
+        if (normalized.Length > ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumLanguageTagLength)
             throw new ArgumentOutOfRangeException(nameof(languageTag));
 
         string[] segments = normalized.Split(

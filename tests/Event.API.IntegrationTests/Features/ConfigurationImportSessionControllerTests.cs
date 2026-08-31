@@ -19,7 +19,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.ControlPlane;
 using Explore.Application.DTOs.Tenant;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Application.Features.ConfigurationManifest.Requests.Commands;
 using Explore.Application.Hateoas;

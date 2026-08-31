@@ -5,12 +5,12 @@ namespace Explore.Application.Features.ConfigurationManifest.Importing;
 
 using System.Security.Cryptography;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public static class ConfigurationImportSessionLimits
 {
     public const int MaximumArtifactBytes =
-        ConfigurationManifestContentLimits.MaximumArtifactUtf8Bytes;
+        ConfigurationPortabilityContentLimits.MaximumArtifactUtf8Bytes;
 
     public static TimeSpan DefaultSessionLifetime { get; } =
         TimeSpan.FromMinutes(30);

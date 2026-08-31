@@ -4,7 +4,7 @@
 namespace Explore.API.OpenApi;
 
 using Explore.API.Hateoas;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 

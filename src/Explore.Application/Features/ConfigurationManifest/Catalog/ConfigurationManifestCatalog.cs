@@ -4,7 +4,7 @@
 namespace Explore.Application.Features.ConfigurationManifest.Catalog;
 
 using System.Collections.Frozen;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Settings;
 using Explore.Domain.Settings;
 using Explore.Domain.Settings.Definitions;

@@ -1,14 +1,16 @@
-// ABOUTME: Provides strict source-generated JSON metadata for v1alpha2 portability artifacts.
-// ABOUTME: Uses canonical camel-case names and rejects unmapped members through contract metadata.
+// ABOUTME: Provides source-generated JSON metadata for package-free v1alpha2 portability artifacts.
+// ABOUTME: Preserves strict camel-case, case-sensitive, compact, null-omitting wire behavior.
 
-namespace Explore.Application.Features.ConfigurationManifest.Serialization;
+namespace ISLAMU.Wire.Contracts.ConfigurationPortability;
 
+using System.Text.Json;
 using System.Text.Json.Serialization;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
 
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     PropertyNameCaseInsensitive = false,
+    AllowTrailingCommas = false,
+    ReadCommentHandling = JsonCommentHandling.Disallow,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     GenerationMode = JsonSourceGenerationMode.Metadata,
     WriteIndented = false)]
@@ -16,4 +18,4 @@ using Explore.Application.Features.ConfigurationManifest.Contracts;
 [JsonSerializable(typeof(TenantConfigurationPackageV1Alpha2))]
 [JsonSerializable(typeof(ConfigurationManifestLegalDocumentV1Alpha2))]
 [JsonSerializable(typeof(ConfigurationManifestPaidEventPolicyPayloadV1Alpha2))]
-public sealed partial class ConfigurationManifestJsonContext : JsonSerializerContext;
+public sealed partial class ConfigurationPortabilityJsonContext : JsonSerializerContext;

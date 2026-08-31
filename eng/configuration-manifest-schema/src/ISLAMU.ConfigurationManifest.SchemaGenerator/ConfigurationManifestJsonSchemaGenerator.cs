@@ -1,4 +1,4 @@
-// ABOUTME: Generates the governed ConfigurationManifest JSON Schema from explicit Application metadata.
+// ABOUTME: Generates the governed ConfigurationManifest JSON Schema from explicit Wire metadata.
 // ABOUTME: Emits culture-invariant ordered UTF-8 bytes with every typed object closed by construction.
 
 namespace ISLAMU.ConfigurationManifest.SchemaGenerator;
@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Explore.Application.DTOs.PaidEventPolicies;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Validation;
 using Explore.Domain;
 using Explore.Domain.Settings;
@@ -552,7 +552,7 @@ public static class ConfigurationManifestJsonSchemaGenerator
                     ["type"] = "array",
                     ["minItems"] = 1,
                     ["maxItems"] =
-                        LegalDocumentContentLimits.MaximumLocalesPerDocument,
+                        ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumLocalesPerDocument,
                     ["items"] = Ref("legalDocumentLocalizedSource")
                 },
                 ["proposedEffectiveAt"] = new JsonObject
@@ -580,14 +580,14 @@ public static class ConfigurationManifestJsonSchemaGenerator
             new JsonObject
             {
                 ["languageTag"] = BoundedString(
-                    LegalDocumentContentLimits.MaximumLanguageTagLength,
+                    ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumLanguageTagLength,
                     "^(?:[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*|x(?:-[A-Za-z0-9]{1,8})+)$"),
                 ["markdown"] = BoundedString(
-                    LegalDocumentContentLimits.MaximumMarkdownUtf8BytesPerLocale),
+                    ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumMarkdownUtf8BytesPerLocale),
                 ["summary"] = BoundedString(
-                    LegalDocumentContentLimits.MaximumSummaryLength),
+                    ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumSummaryLength),
                 ["title"] = BoundedString(
-                    LegalDocumentContentLimits.MaximumTitleLength)
+                    ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumTitleLength)
             },
             ["languageTag", "markdown", "summary", "title"]);
 

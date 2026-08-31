@@ -4,7 +4,7 @@
 namespace Explore.Application.Features.ConfigurationManifest.Compilation;
 
 using System.Collections.Immutable;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Ingestion;
 
 public sealed record ConfigurationManifestApplyPlan(

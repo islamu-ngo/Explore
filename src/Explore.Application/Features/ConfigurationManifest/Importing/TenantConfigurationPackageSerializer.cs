@@ -4,8 +4,7 @@
 namespace Explore.Application.Features.ConfigurationManifest.Importing;
 
 using System.Text.Json;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public static class TenantConfigurationPackageSerializer
 {
@@ -57,7 +56,7 @@ public static class TenantConfigurationPackageSerializer
         ArgumentNullException.ThrowIfNull(package);
         return JsonSerializer.SerializeToUtf8Bytes(
             package,
-            ConfigurationManifestJsonContext.Default
+            ConfigurationPortabilityJsonContext.Default
                 .TenantConfigurationPackageV1Alpha2);
     }
 }

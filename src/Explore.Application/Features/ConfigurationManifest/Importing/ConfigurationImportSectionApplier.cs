@@ -9,8 +9,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
 using Explore.Application.Features.ConfigurationManifest.Compilation;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.PaidEventPolicies;
 using Explore.Application.Settings;
 using Explore.Domain;
@@ -474,7 +473,7 @@ public sealed class ConfigurationImportSectionApplier(
     private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha2
         DeserializePaidPolicy(ConfigurationManifestDocumentV1Alpha2 document) =>
         document.Payload.Deserialize(
-            ConfigurationManifestJsonContext.Default
+            ConfigurationPortabilityJsonContext.Default
                 .ConfigurationManifestPaidEventPolicyPayloadV1Alpha2)
         ?? throw Blocked("configuration_import_paid_policy_invalid");
 

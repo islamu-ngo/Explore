@@ -8,7 +8,7 @@ using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.ConfigurationManifest.Compilation;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Services.Registration;

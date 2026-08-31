@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Text.Json;
 using Event.Application.UnitTests.Features.ConfigurationManifest;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Compilation;
 using Explore.Application.Features.ConfigurationManifest.Ingestion;
 using Explore.Application.Features.ConfigurationManifest.Validation;

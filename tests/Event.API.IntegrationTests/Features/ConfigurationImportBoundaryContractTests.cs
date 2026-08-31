@@ -5,7 +5,7 @@ namespace Event.Api.IntegrationTests.Features;
 
 using System.Reflection;
 using Explore.API.Extensions;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public sealed class ConfigurationImportBoundaryContractTests
 {
@@ -19,7 +19,7 @@ public sealed class ConfigurationImportBoundaryContractTests
         int maximumBytes = ReadStatic<int>(boundary, "MaximumUploadBytes");
 
         await Assert.That(maximumBytes)
-            .IsEqualTo(ConfigurationManifestContentLimits.MaximumArtifactUtf8Bytes);
+            .IsEqualTo(ConfigurationPortabilityContentLimits.MaximumArtifactUtf8Bytes);
     }
 
     [Test]

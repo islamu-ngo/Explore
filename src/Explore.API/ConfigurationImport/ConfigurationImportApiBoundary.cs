@@ -3,12 +3,12 @@
 
 namespace Explore.API.ConfigurationImport;
 
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public static class ConfigurationImportApiBoundary
 {
     public const int MaximumUploadBytes =
-        ConfigurationManifestContentLimits.MaximumArtifactUtf8Bytes;
+        ConfigurationPortabilityContentLimits.MaximumArtifactUtf8Bytes;
     public const string AccessTokenHeader =
         "X-Configuration-Import-Token";
     public const string UploadRateLimitPolicy =

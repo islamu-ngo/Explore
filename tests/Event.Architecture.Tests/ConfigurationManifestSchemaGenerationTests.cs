@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Text.Json;
 using Explore.Application.DTOs.PaidEventPolicies;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Domain;
 using Explore.Domain.Settings;
 using Explore.Domain.Settings.Definitions;
@@ -135,7 +135,7 @@ public sealed class ConfigurationManifestSchemaGenerationTests
                 ]
             }
         };
-        Type serializer = typeof(ConfigurationManifestV1Alpha2).Assembly.GetType(
+        Type serializer = typeof(ConfigurationManifestCatalog).Assembly.GetType(
             "Explore.Application.Features.ConfigurationManifest.Application.ConfigurationManifestExportJsonSerializer")
             ?? throw new InvalidOperationException("Missing canonical export serializer.");
         MethodInfo serialize = serializer.GetMethod(

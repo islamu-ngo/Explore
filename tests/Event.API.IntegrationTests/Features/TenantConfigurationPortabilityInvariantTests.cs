@@ -4,9 +4,8 @@
 namespace Event.Api.IntegrationTests.Features;
 
 using System.Text.Json;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Importing;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
 
 public sealed class TenantConfigurationPackageAuthorityTests
 {

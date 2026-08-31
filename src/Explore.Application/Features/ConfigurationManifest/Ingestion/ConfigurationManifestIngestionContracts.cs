@@ -3,7 +3,7 @@
 
 namespace Explore.Application.Features.ConfigurationManifest.Ingestion;
 
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public enum ConfigurationManifestMode
 {

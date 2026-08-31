@@ -21,6 +21,9 @@
         "type": "Transitive",
         "resolved": "10.0.10",
         "contentHash": "Tx0R6PY9MNSh0mDKSxbpHLuuec93IxF1cel+1ithQnMNr/vbfLSSHOQHGHIppAJCGfPcEo/wO1Ylj+QpXtzo3A=="
+      },
+      "event.wire.contracts": {
+        "type": "Project"
       }
     }
   }

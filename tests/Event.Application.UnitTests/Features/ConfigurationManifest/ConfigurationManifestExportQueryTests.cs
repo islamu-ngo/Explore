@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.Json;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Domain;
 
 public sealed class ConfigurationManifestExportQueryTests

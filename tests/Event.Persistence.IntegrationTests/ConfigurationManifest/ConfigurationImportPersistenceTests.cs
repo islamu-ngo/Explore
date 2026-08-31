@@ -5,7 +5,7 @@ namespace Event.Persistence.IntegrationTests.ConfigurationManifest;
 
 using System.Text;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Application.Features.ConfigurationManifest.Managed;
 using Explore.Domain;

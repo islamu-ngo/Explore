@@ -6,9 +6,8 @@ namespace Event.Application.UnitTests.Features.ConfigurationManifest;
 using System.Text;
 using System.Text.Json;
 using Explore.Application.DTOs.PaidEventPolicies;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Importing;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
 
 public sealed class ConfigurationImportArtifactParserTests
 {
@@ -17,7 +16,7 @@ public sealed class ConfigurationImportArtifactParserTests
     {
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(
             ConfigurationManifestTestData.Valid(),
-            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
+            ConfigurationPortabilityJsonContext.Default.ConfigurationManifestV1Alpha2);
 
         ConfigurationImportParsedArtifact parsed =
             new ConfigurationImportArtifactParser().Parse(bytes);
@@ -35,7 +34,7 @@ public sealed class ConfigurationImportArtifactParserTests
         string canonical = Encoding.UTF8.GetString(
             JsonSerializer.SerializeToUtf8Bytes(
                 ConfigurationManifestTestData.Valid(),
-                ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2));
+                ConfigurationPortabilityJsonContext.Default.ConfigurationManifestV1Alpha2));
         string duplicate = canonical.Replace(
             "\"kind\":\"ConfigurationManifest\",",
             "\"kind\":\"ConfigurationManifest\",\"kind\":\"ConfigurationManifest\",",
@@ -115,7 +114,7 @@ public sealed class ConfigurationImportArtifactParserTests
         };
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(
             package,
-            ConfigurationManifestJsonContext.Default
+            ConfigurationPortabilityJsonContext.Default
                 .TenantConfigurationPackageV1Alpha2);
 
         ConfigurationImportParsedTenantPackage parsed =
@@ -150,7 +149,7 @@ public sealed class ConfigurationImportArtifactParserTests
         };
         byte[] wrongAuthorityBytes = JsonSerializer.SerializeToUtf8Bytes(
             wrongAuthority,
-            ConfigurationManifestJsonContext.Default
+            ConfigurationPortabilityJsonContext.Default
                 .TenantConfigurationPackageV1Alpha2);
 
         ConfigurationImportSessionException failure =

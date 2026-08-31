@@ -4,7 +4,7 @@
 using System.Text.Json;
 using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Features.ConfigurationManifest.Compilation;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Ingestion;
 using Explore.Application.Settings;
 using Explore.Domain;

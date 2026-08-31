@@ -4,8 +4,7 @@
 namespace Explore.Application.Features.ConfigurationManifest.Application;
 
 using System.Text.Json;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 
 internal static class ConfigurationManifestExportJsonSerializer
@@ -156,7 +155,7 @@ internal static class ConfigurationManifestExportJsonSerializer
             writer.WritePropertyName(key);
             JsonElement element = JsonSerializer.SerializeToElement(
                 legalDocument,
-                ConfigurationManifestJsonContext.Default
+                ConfigurationPortabilityJsonContext.Default
                     .ConfigurationManifestLegalDocumentV1Alpha2);
             WriteCanonicalJson(writer, element);
         }

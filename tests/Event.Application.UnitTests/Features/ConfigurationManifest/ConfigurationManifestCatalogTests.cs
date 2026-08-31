@@ -4,7 +4,7 @@
 namespace Event.Application.UnitTests.Features.ConfigurationManifest;
 
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Settings;
 using Explore.Domain.Settings;
 using Explore.Domain.Settings.Documents;

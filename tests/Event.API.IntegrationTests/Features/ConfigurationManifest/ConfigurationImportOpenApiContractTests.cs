@@ -8,7 +8,7 @@ using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.ConfigurationImport;
 using Explore.API.Hateoas;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 [ClassDataSource<ContractApiFixture>(Shared = SharedType.PerAssembly)]
 public sealed class ConfigurationImportOpenApiContractTests(

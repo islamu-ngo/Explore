@@ -6,8 +6,7 @@ namespace Explore.Infrastructure.ConfigurationManifest;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Ingestion;
 using Explore.Application.Features.ConfigurationManifest.Validation;
 
@@ -125,7 +124,7 @@ public sealed class ConfigurationManifestReader : IConfigurationManifestReader
         {
             manifest = JsonSerializer.Deserialize(
                 content,
-                ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2)
+                ConfigurationPortabilityJsonContext.Default.ConfigurationManifestV1Alpha2)
                     ?? throw new JsonException(
                         "The configuration manifest root was null.");
         }

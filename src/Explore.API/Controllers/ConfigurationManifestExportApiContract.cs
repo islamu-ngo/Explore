@@ -3,7 +3,7 @@
 
 namespace Explore.API.Controllers;
 
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 
 public static class ConfigurationManifestExportApiContract

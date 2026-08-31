@@ -4,8 +4,7 @@
 namespace Explore.Application.Features.ConfigurationManifest.Importing;
 
 using System.Text.Json;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Validation;
 
 public sealed record ConfigurationImportParsedArtifact(
@@ -46,21 +45,8 @@ public sealed class ConfigurationImportArtifactParser
 
         try
         {
-            using JsonDocument document = JsonDocument.Parse(
-                artifact,
-                new JsonDocumentOptions
-                {
-                    AllowTrailingCommas = false,
-                    CommentHandling = JsonCommentHandling.Disallow,
-                    MaxDepth = MaximumDepth
-                });
-            EnsureNoDuplicateProperties(document.RootElement);
             ConfigurationManifestV1Alpha2 manifest =
-                JsonSerializer.Deserialize(
-                    artifact.Span,
-                    ConfigurationManifestJsonContext.Default
-                        .ConfigurationManifestV1Alpha2)
-                ?? throw new JsonException();
+                ConfigurationPortabilityJsonCodec.ParseConfigurationManifest(artifact);
             ConfigurationManifestValidationResult validation =
                 ConfigurationManifestValidator.Validate(manifest);
             if (!validation.IsValid)
@@ -78,6 +64,13 @@ public sealed class ConfigurationImportArtifactParser
         {
             throw;
         }
+        catch (ConfigurationPortabilityContractException exception)
+        {
+            throw new ConfigurationImportSessionException(
+                exception.Code == ConfigurationPortabilityDiagnosticCodes.TooLarge
+                    ? ConfigurationImportFailureCodes.TooLarge
+                    : ConfigurationImportFailureCodes.ContractInvalid);
+        }
         catch (JsonException)
         {
             throw new ConfigurationImportSessionException(
@@ -92,14 +85,8 @@ public sealed class ConfigurationImportArtifactParser
 
         try
         {
-            using JsonDocument document = ParseDocument(artifact);
-            EnsureNoDuplicateProperties(document.RootElement);
             TenantConfigurationPackageV1Alpha2 package =
-                JsonSerializer.Deserialize(
-                    artifact.Span,
-                    ConfigurationManifestJsonContext.Default
-                        .TenantConfigurationPackageV1Alpha2)
-                ?? throw new JsonException();
+                ConfigurationPortabilityJsonCodec.ParseTenantConfigurationPackage(artifact);
             ConfigurationManifestValidationResult validation =
                 ConfigurationManifestValidator.Validate(package);
             if (!validation.IsValid)
@@ -116,6 +103,13 @@ public sealed class ConfigurationImportArtifactParser
         catch (ConfigurationImportSessionException)
         {
             throw;
+        }
+        catch (ConfigurationPortabilityContractException exception)
+        {
+            throw new ConfigurationImportSessionException(
+                exception.Code == ConfigurationPortabilityDiagnosticCodes.TooLarge
+                    ? ConfigurationImportFailureCodes.TooLarge
+                    : ConfigurationImportFailureCodes.ContractInvalid);
         }
         catch (JsonException)
         {

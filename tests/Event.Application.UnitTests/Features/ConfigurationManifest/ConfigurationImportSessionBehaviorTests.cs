@@ -6,7 +6,7 @@ namespace Event.Application.UnitTests.Features.ConfigurationManifest;
 using System.Security.Cryptography;
 using System.Text;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Importing;
 
 public sealed class ConfigurationImportSessionBehaviorTests

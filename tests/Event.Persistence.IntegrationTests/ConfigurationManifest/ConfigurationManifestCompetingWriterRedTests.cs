@@ -9,7 +9,7 @@ using System.Data.Common;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Event.Persistence.IntegrationTests.ConfigurationManifest;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Compilation;
 using Explore.Application.Features.PaidEventPolicies;
 using Explore.Application.Features.ConfigurationManifest.Application;

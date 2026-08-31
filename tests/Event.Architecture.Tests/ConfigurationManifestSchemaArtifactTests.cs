@@ -10,10 +10,8 @@ public sealed class ConfigurationManifestSchemaArtifactTests
     {
         string newContract = ContextSystemHelpers.RepoPath(
             "src",
-            "Explore.Application",
-            "Features",
-            "ConfigurationManifest",
-            "Contracts",
+            "Event.Wire.Contracts",
+            "ConfigurationPortability",
             "ConfigurationManifestV1Alpha2.cs");
         string oldContract = ContextSystemHelpers.RepoPath(
             "src",

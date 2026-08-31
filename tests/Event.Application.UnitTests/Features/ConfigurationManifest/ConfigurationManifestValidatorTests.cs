@@ -5,7 +5,7 @@ namespace Event.Application.UnitTests.Features.ConfigurationManifest;
 
 using System.Text.Json;
 using Explore.Application.DTOs.PaidEventPolicies;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Validation;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;

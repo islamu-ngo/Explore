@@ -4,7 +4,7 @@
 namespace Event.Application.UnitTests.Features.ConfigurationManifest;
 
 using System.Text.Json;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 internal static class ConfigurationManifestTestData
 {

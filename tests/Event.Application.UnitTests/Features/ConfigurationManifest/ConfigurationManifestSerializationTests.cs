@@ -4,8 +4,7 @@
 namespace Event.Application.UnitTests.Features.ConfigurationManifest;
 
 using System.Text.Json;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public sealed class ConfigurationManifestSerializationTests
 {
@@ -20,7 +19,7 @@ public sealed class ConfigurationManifestSerializationTests
 
         string json = JsonSerializer.Serialize(
             manifest,
-            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
+            ConfigurationPortabilityJsonContext.Default.ConfigurationManifestV1Alpha2);
 
         await Assert.That(json.Contains("\"$schema\"", StringComparison.Ordinal)).IsTrue();
         await Assert.That(json.Contains("\"apiVersion\"", StringComparison.Ordinal)).IsTrue();
@@ -54,7 +53,7 @@ public sealed class ConfigurationManifestSerializationTests
         {
             _ = JsonSerializer.Deserialize(
                 json,
-                ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
+                ConfigurationPortabilityJsonContext.Default.ConfigurationManifestV1Alpha2);
         }
         catch (JsonException caught)
         {
@@ -70,11 +69,11 @@ public sealed class ConfigurationManifestSerializationTests
         ConfigurationManifestV1Alpha2 expected = ConfigurationManifestTestData.Valid();
         string json = JsonSerializer.Serialize(
             expected,
-            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
+            ConfigurationPortabilityJsonContext.Default.ConfigurationManifestV1Alpha2);
 
         ConfigurationManifestV1Alpha2? actual = JsonSerializer.Deserialize(
             json,
-            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
+            ConfigurationPortabilityJsonContext.Default.ConfigurationManifestV1Alpha2);
 
         await Assert.That(actual).IsNotNull();
         await Assert.That(actual!.Schema).IsEqualTo(expected.Schema);

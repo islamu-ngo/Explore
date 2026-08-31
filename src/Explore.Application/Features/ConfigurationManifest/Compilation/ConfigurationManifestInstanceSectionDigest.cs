@@ -5,7 +5,7 @@ namespace Explore.Application.Features.ConfigurationManifest.Compilation;
 
 using System.Security.Cryptography;
 using System.Text.Json;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 internal static class ConfigurationManifestInstanceSectionDigest
 {

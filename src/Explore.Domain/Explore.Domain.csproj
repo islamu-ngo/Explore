@@ -10,4 +10,8 @@
     <PackageReference Include="Microsoft.Extensions.Compliance.Abstractions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Event.Wire.Contracts\Event.Wire.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>

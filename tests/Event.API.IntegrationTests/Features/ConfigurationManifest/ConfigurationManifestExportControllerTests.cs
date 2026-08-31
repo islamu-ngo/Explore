@@ -10,7 +10,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Attributes;
 using Explore.API.Filters;
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

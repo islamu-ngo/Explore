@@ -197,6 +197,7 @@
       "explore.domain": {
         "type": "Project",
         "dependencies": {
+          "Event.Wire.Contracts": "[1.0.0, )",
           "Microsoft.Extensions.Compliance.Abstractions": "[10.8.0, )"
         }
       },

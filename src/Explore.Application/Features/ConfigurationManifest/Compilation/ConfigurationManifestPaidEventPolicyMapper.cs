@@ -4,7 +4,7 @@
 namespace Explore.Application.Features.ConfigurationManifest.Compilation;
 
 using Explore.Application.DTOs.PaidEventPolicies;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Domain;
 using Explore.Domain.Enums;
 

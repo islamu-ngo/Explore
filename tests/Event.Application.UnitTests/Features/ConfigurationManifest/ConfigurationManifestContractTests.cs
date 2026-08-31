@@ -12,7 +12,7 @@ using Explore.Application.Settings;
 public sealed class ConfigurationManifestContractTests
 {
     private const string ContractNamespace =
-        "Explore.Application.Features.ConfigurationManifest.Contracts.";
+        "ISLAMU.Wire.Contracts.ConfigurationPortability.";
 
     private static readonly Assembly ApplicationAssembly =
         typeof(SettingUpsertService).Assembly;

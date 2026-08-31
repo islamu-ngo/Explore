@@ -143,27 +143,27 @@ public sealed class LegalDocumentLocalizedSourceConfiguration
             table.HasCheckConstraint(
                 "ck_legal_document_localized_sources_counts",
                 $"utf8_byte_count >= 1 AND utf8_byte_count <= " +
-                $"{LegalDocumentContentLimits.MaximumMarkdownUtf8BytesPerLocale} " +
+                $"{ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumMarkdownUtf8BytesPerLocale} " +
                 $"AND link_count >= 0 AND link_count <= " +
-                $"{LegalDocumentContentLimits.MaximumLinksPerLocale} " +
+                $"{ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumLinksPerLocale} " +
                 $"AND placeholder_count >= 0 AND placeholder_count <= " +
-                $"{LegalDocumentContentLimits.MaximumPlaceholdersPerLocale}");
+                $"{ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumPlaceholdersPerLocale}");
         });
 
         builder.HasKey(source => source.Id);
         builder.Property(source => source.LanguageTag)
-            .HasMaxLength(LegalDocumentContentLimits.MaximumLanguageTagLength)
+            .HasMaxLength(ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumLanguageTagLength)
             .IsUnicode(false)
             .IsRequired();
         builder.Property(source => source.Title)
-            .HasMaxLength(LegalDocumentContentLimits.MaximumTitleLength)
+            .HasMaxLength(ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumTitleLength)
             .IsRequired();
         builder.Property(source => source.Summary)
-            .HasMaxLength(LegalDocumentContentLimits.MaximumSummaryLength)
+            .HasMaxLength(ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumSummaryLength)
             .IsRequired();
         builder.Property(source => source.Markdown)
             .HasMaxLength(
-                LegalDocumentContentLimits.MaximumMarkdownUtf8BytesPerLocale)
+                ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumMarkdownUtf8BytesPerLocale)
             .IsRequired();
         builder.Property(source => source.Utf8ByteCount)
             .HasColumnName("utf8_byte_count")

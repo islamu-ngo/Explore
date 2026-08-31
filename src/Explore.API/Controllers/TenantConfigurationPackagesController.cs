@@ -8,7 +8,7 @@ using Explore.API.Attributes;
 using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;

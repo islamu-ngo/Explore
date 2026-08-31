@@ -1,7 +1,7 @@
 // ABOUTME: Parses and renders the single constrained Markdown grammar used by legal documents.
 // ABOUTME: Produces deterministic encoded HTML without I/O and value-safe readiness diagnostics.
 
-namespace Explore.Domain;
+namespace ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 using System.Collections.Immutable;
 using System.Text;
@@ -11,6 +11,16 @@ public static class LegalMarkdownDiagnosticCodes
 {
     public const string IdentityUnresolved = "legal_markdown_identity_unresolved";
     public const string LinkTextWeak = "legal_markdown_link_text_weak";
+}
+
+public sealed class LegalMarkdownContractException : ArgumentException
+{
+    internal LegalMarkdownContractException(string message, string parameterName)
+        : base(message, parameterName)
+    {
+    }
+
+    public override string ToString() => $"{GetType().Name}: {Message}";
 }
 
 public sealed class LegalMarkdownDiagnostic
@@ -62,10 +72,8 @@ public sealed class LegalMarkdownRenderResult
     public ImmutableArray<LegalMarkdownDiagnostic> Diagnostics { get; }
 }
 
-public static class LegalMarkdownContract
+public static class LegalMarkdownCodec
 {
-    private const int MaximumIdentityValueLength = 500;
-
     private static readonly HashSet<string> WeakLinkLabels =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -76,8 +84,18 @@ public static class LegalMarkdownContract
             "read more"
         };
 
+    public static string Normalize(string markdown)
+    {
+        ArgumentNullException.ThrowIfNull(markdown);
+        return markdown.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
+    }
+
     public static LegalMarkdownInspection Inspect(string markdown)
     {
+        ArgumentNullException.ThrowIfNull(markdown);
+        if (Encoding.UTF8.GetByteCount(markdown) > LegalMarkdownContentLimits.MaximumMarkdownUtf8BytesPerLocale)
+            throw new ArgumentOutOfRangeException(nameof(markdown));
         ParseResult result = Parse(markdown, identityValues: null, render: false);
         return new LegalMarkdownInspection(
             result.LinkTargets.Length,
@@ -89,14 +107,17 @@ public static class LegalMarkdownContract
         string markdown,
         IReadOnlyDictionary<string, string> identityValues)
     {
+        ArgumentNullException.ThrowIfNull(markdown);
         ArgumentNullException.ThrowIfNull(identityValues);
+        if (Encoding.UTF8.GetByteCount(markdown) > LegalMarkdownContentLimits.MaximumMarkdownUtf8BytesPerLocale)
+            throw new ArgumentOutOfRangeException(nameof(markdown));
         foreach ((string key, string value) in identityValues)
         {
             ValidatePlaceholder(key, nameof(identityValues));
             if (string.IsNullOrWhiteSpace(value)
-                || value.Length > MaximumIdentityValueLength)
+                || value.Length > LegalMarkdownContentLimits.MaximumIdentityValueLength)
             {
-                throw new ArgumentException(
+                throw new LegalMarkdownContractException(
                     "Legal identity values must be nonblank and bounded.",
                     nameof(identityValues));
             }
@@ -117,7 +138,7 @@ public static class LegalMarkdownContract
 
     internal static void ValidateLink(string value)
     {
-        if (value.Length is < 1 or > LegalDocumentContentLimits.MaximumLinkLength
+        if (value.Length is < 1 or > LegalMarkdownContentLimits.MaximumLinkLength
             || !Uri.TryCreate(value, UriKind.Absolute, out Uri? uri)
             || !string.Equals(
                 uri.Scheme,
@@ -133,7 +154,7 @@ public static class LegalMarkdownContract
             || !string.IsNullOrEmpty(uri.Query)
             || !string.IsNullOrEmpty(uri.Fragment))
         {
-            throw new ArgumentException("Legal Markdown link is unsafe.", nameof(value));
+            throw new LegalMarkdownContractException("Legal Markdown link is unsafe.", nameof(value));
         }
     }
 
@@ -144,28 +165,27 @@ public static class LegalMarkdownContract
     {
         ArgumentNullException.ThrowIfNull(markdown);
         if (markdown.Length == 0)
-            throw new ArgumentException("Legal Markdown is required.", nameof(markdown));
+            throw new LegalMarkdownContractException("Legal Markdown is required.", nameof(markdown));
         if (markdown.Contains('\r', StringComparison.Ordinal))
         {
-            throw new ArgumentException(
+            throw new LegalMarkdownContractException(
                 "Legal Markdown must use canonical line endings.",
                 nameof(markdown));
         }
 
-        if (markdown.Contains('<', StringComparison.Ordinal)
-            || markdown.Contains('>', StringComparison.Ordinal))
+        if (markdown.Contains('<', StringComparison.Ordinal))
         {
-            throw new ArgumentException(
+            throw new LegalMarkdownContractException(
                 "Raw HTML and autolinks are not allowed.",
                 nameof(markdown));
         }
 
         if (markdown.Contains("![", StringComparison.Ordinal))
-            throw new ArgumentException("Embedded resources are not allowed.", nameof(markdown));
+            throw new LegalMarkdownContractException("Embedded resources are not allowed.", nameof(markdown));
         if (markdown.Contains("```", StringComparison.Ordinal)
             || markdown.Contains("~~~", StringComparison.Ordinal))
         {
-            throw new ArgumentException(
+            throw new LegalMarkdownContractException(
                 "Executable or fenced content is not allowed.",
                 nameof(markdown));
         }
@@ -193,7 +213,7 @@ public static class LegalMarkdownContract
                     || previousHeadingLevel > 0
                         && headingLevel > previousHeadingLevel + 1)
                 {
-                    throw new ArgumentException(
+                    throw new LegalMarkdownContractException(
                         "Legal Markdown heading order is inaccessible.",
                         nameof(markdown));
                 }
@@ -231,7 +251,7 @@ public static class LegalMarkdownContract
 
             if (line.StartsWith('#'))
             {
-                throw new ArgumentException(
+                throw new LegalMarkdownContractException(
                     "Legal Markdown heading syntax is invalid.",
                     nameof(markdown));
             }
@@ -314,10 +334,10 @@ public static class LegalMarkdownContract
                 html.Append("</p>\n");
         }
 
-        if (links.Count > LegalDocumentContentLimits.MaximumLinksPerLocale)
+        if (links.Count > LegalMarkdownContentLimits.MaximumLinksPerLocale)
             throw new ArgumentOutOfRangeException(nameof(markdown));
         if (placeholders.Count >
-            LegalDocumentContentLimits.MaximumPlaceholdersPerLocale)
+            LegalMarkdownContentLimits.MaximumPlaceholdersPerLocale)
         {
             throw new ArgumentOutOfRangeException(nameof(markdown));
         }
@@ -346,7 +366,7 @@ public static class LegalMarkdownContract
                 int end = value.IndexOf("}}", cursor + 2, StringComparison.Ordinal);
                 if (end < 0)
                 {
-                    throw new ArgumentException(
+                    throw new LegalMarkdownContractException(
                         "Legal identity placeholder is incomplete.",
                         nameof(value));
                 }
@@ -377,7 +397,7 @@ public static class LegalMarkdownContract
             if (Matches(value, cursor, "}}")
                 || value[cursor] is '{' or '}')
             {
-                throw new ArgumentException(
+                throw new LegalMarkdownContractException(
                     "Legal identity placeholder is malformed.",
                     nameof(value));
             }
@@ -389,7 +409,7 @@ public static class LegalMarkdownContract
                     ? -1
                     : value.IndexOf(')', labelEnd + 2);
                 if (labelEnd < 0 || urlEnd < 0)
-                    throw new ArgumentException("Markdown link is incomplete.", nameof(value));
+                    throw new LegalMarkdownContractException("Markdown link is incomplete.", nameof(value));
 
                 string label = value[(cursor + 1)..labelEnd];
                 string target = value[(labelEnd + 2)..urlEnd];
@@ -397,7 +417,7 @@ public static class LegalMarkdownContract
                     || label.Contains('[', StringComparison.Ordinal)
                     || label.Contains(']', StringComparison.Ordinal))
                 {
-                    throw new ArgumentException(
+                    throw new LegalMarkdownContractException(
                         "Markdown link text is invalid.",
                         nameof(value));
                 }
@@ -433,7 +453,7 @@ public static class LegalMarkdownContract
 
             if (value[cursor] == ']')
             {
-                throw new ArgumentException(
+                throw new LegalMarkdownContractException(
                     "Markdown punctuation is malformed.",
                     nameof(value));
             }
@@ -442,7 +462,7 @@ public static class LegalMarkdownContract
             {
                 int end = value.IndexOf("**", cursor + 2, StringComparison.Ordinal);
                 if (end <= cursor + 2)
-                    throw new ArgumentException("Strong emphasis is incomplete.", nameof(value));
+                    throw new LegalMarkdownContractException("Strong emphasis is incomplete.", nameof(value));
                 if (render)
                     html.Append("<strong>");
                 AppendInline(
@@ -463,7 +483,7 @@ public static class LegalMarkdownContract
             {
                 int end = value.IndexOf('*', cursor + 1);
                 if (end <= cursor + 1)
-                    throw new ArgumentException("Emphasis is incomplete.", nameof(value));
+                    throw new LegalMarkdownContractException("Emphasis is incomplete.", nameof(value));
                 if (render)
                     html.Append("<em>");
                 AppendInline(
@@ -484,7 +504,7 @@ public static class LegalMarkdownContract
             {
                 int end = value.IndexOf('`', cursor + 1);
                 if (end <= cursor + 1)
-                    throw new ArgumentException("Inline code is incomplete.", nameof(value));
+                    throw new LegalMarkdownContractException("Inline code is incomplete.", nameof(value));
                 if (render)
                 {
                     html.Append("<code>")
@@ -499,7 +519,7 @@ public static class LegalMarkdownContract
             if (value[cursor] == '\\')
             {
                 if (cursor + 1 >= value.Length)
-                    throw new ArgumentException("Markdown escape is incomplete.", nameof(value));
+                    throw new LegalMarkdownContractException("Markdown escape is incomplete.", nameof(value));
                 if (render)
                     html.Append(HtmlEncoder.Default.Encode(value[cursor + 1].ToString()));
                 cursor += 2;
@@ -579,7 +599,7 @@ public static class LegalMarkdownContract
                 !char.IsAsciiLetterOrDigit(character)
                 && character is not '_' and not '-' and not '.'))
         {
-            throw new ArgumentException(
+            throw new LegalMarkdownContractException(
                 "Legal identity placeholder is invalid.",
                 parameterName);
         }

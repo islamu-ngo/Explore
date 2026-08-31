@@ -8,8 +8,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Text.Json;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public static class ConfigurationImportArtifactSnapshotFactory
 {
@@ -19,7 +18,7 @@ public static class ConfigurationImportArtifactSnapshotFactory
         ArgumentNullException.ThrowIfNull(manifest);
         JsonElement root = JsonSerializer.SerializeToElement(
             manifest,
-            ConfigurationManifestJsonContext.Default.ConfigurationManifestV1Alpha2);
+            ConfigurationPortabilityJsonContext.Default.ConfigurationManifestV1Alpha2);
         JsonElement spec = root.GetProperty("spec");
         JsonElement instance = spec.GetProperty("instance");
         JsonElement tenants = spec.GetProperty("tenants");
@@ -56,7 +55,7 @@ public static class ConfigurationImportArtifactSnapshotFactory
                 ConfigurationImportFailureCodes.TargetMismatch);
         JsonElement root = JsonSerializer.SerializeToElement(
             tenant,
-            ConfigurationManifestJsonContext.Default
+            ConfigurationPortabilityJsonContext.Default
                 .ConfigurationManifestTenantV1Alpha2);
         JsonElement spec = root.GetProperty("spec");
 
@@ -77,7 +76,7 @@ public static class ConfigurationImportArtifactSnapshotFactory
         ArgumentNullException.ThrowIfNull(package);
         JsonElement root = JsonSerializer.SerializeToElement(
             package,
-            ConfigurationManifestJsonContext.Default
+            ConfigurationPortabilityJsonContext.Default
                 .TenantConfigurationPackageV1Alpha2);
         JsonElement spec = root.GetProperty("spec");
 

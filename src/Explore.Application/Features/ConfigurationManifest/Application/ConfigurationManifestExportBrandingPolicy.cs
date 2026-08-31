@@ -4,7 +4,7 @@
 namespace Explore.Application.Features.ConfigurationManifest.Application;
 
 using System.Text.Json;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Domain.Settings.Definitions;
 using Explore.Domain.Settings.Documents;
 

@@ -10,7 +10,7 @@ using Explore.API.ConfigurationImport;
 using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Application.Features.ConfigurationManifest.Requests.Commands;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;

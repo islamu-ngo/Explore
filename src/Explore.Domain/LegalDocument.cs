@@ -410,7 +410,7 @@ public sealed class LegalDocumentVersion
         DateTime occurredAt)
     {
         ArgumentNullException.ThrowIfNull(sources);
-        if (sources.Count is < 1 or > LegalDocumentContentLimits.MaximumLocalesPerDocument)
+        if (sources.Count is < 1 or > ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumLocalesPerDocument)
             throw new ArgumentOutOfRangeException(nameof(sources));
         if (!Enum.IsDefined(audience))
             throw new ArgumentOutOfRangeException(nameof(audience));

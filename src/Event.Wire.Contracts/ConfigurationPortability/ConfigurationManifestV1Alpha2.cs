@@ -1,11 +1,11 @@
 // ABOUTME: Declares strict v1alpha2 instance and tenant configuration portability artifacts.
 // ABOUTME: Keeps source provenance separate from trusted target authority.
 
-namespace Explore.Application.Features.ConfigurationManifest.Contracts;
+namespace ISLAMU.Wire.Contracts.ConfigurationPortability;
 
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Explore.Domain;
 
 public static class ConfigurationManifestContractMetadata
 {
@@ -27,19 +27,21 @@ public static class TenantConfigurationPackageContractMetadata
         "application/vnd.islamu.tenant-configuration-package.v1alpha2+json";
 }
 
-public static class ConfigurationManifestContentLimits
+public static class ConfigurationPortabilityContentLimits
 {
     public const int MaximumArtifactUtf8Bytes = 4 * 1024 * 1024;
+    public const int MaximumJsonDepth = 32;
+    public const int MaximumTenantCount = 256;
     public const int MaximumLegalDocumentsPerScope =
-        LegalDocumentContentLimits.MaximumDocumentsPerScope;
+        LegalMarkdownContentLimits.MaximumDocumentsPerScope;
     public const int MaximumLegalLocalesPerDocument =
-        LegalDocumentContentLimits.MaximumLocalesPerDocument;
+        LegalMarkdownContentLimits.MaximumLocalesPerDocument;
     public const int MaximumLegalMarkdownUtf8BytesPerLocale =
-        LegalDocumentContentLimits.MaximumMarkdownUtf8BytesPerLocale;
+        LegalMarkdownContentLimits.MaximumMarkdownUtf8BytesPerLocale;
     public const int MaximumLegalLinksPerLocale =
-        LegalDocumentContentLimits.MaximumLinksPerLocale;
+        LegalMarkdownContentLimits.MaximumLinksPerLocale;
     public const int MaximumLegalPlaceholdersPerLocale =
-        LegalDocumentContentLimits.MaximumPlaceholdersPerLocale;
+        LegalMarkdownContentLimits.MaximumPlaceholdersPerLocale;
 }
 
 public static class ConfigurationManifestExportMetadataValues
@@ -82,6 +84,8 @@ public sealed record ConfigurationManifestMetadataV1Alpha2
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ConfigurationManifestExportMetadataV1Alpha2
 {
+    private IReadOnlyList<string> _sovereignLockedFields = Array.Empty<string>();
+
     public required string View { get; init; }
 
     public required bool EffectiveValuesFlattened { get; init; }
@@ -92,30 +96,52 @@ public sealed record ConfigurationManifestExportMetadataV1Alpha2
 
     public required bool SovereignValuesOmitted { get; init; }
 
-    public required IReadOnlyList<string> SovereignLockedFields { get; init; }
+    public required IReadOnlyList<string> SovereignLockedFields
+    {
+        get => _sovereignLockedFields;
+        init => _sovereignLockedFields = Snapshot.List(value);
+    }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ConfigurationManifestSpecV1Alpha2
 {
+    private IReadOnlyList<ConfigurationManifestTenantV1Alpha2> _tenants = Array.Empty<ConfigurationManifestTenantV1Alpha2>();
+
     public required ConfigurationManifestInstanceV1Alpha2 Instance { get; init; }
 
-    public required IReadOnlyList<ConfigurationManifestTenantV1Alpha2> Tenants { get; init; }
+    public required IReadOnlyList<ConfigurationManifestTenantV1Alpha2> Tenants
+    {
+        get => _tenants;
+        init => _tenants = Snapshot.List(value);
+    }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ConfigurationManifestInstanceV1Alpha2
 {
-    public required IReadOnlyDictionary<string, JsonElement> Settings { get; init; }
+    private IReadOnlyDictionary<string, JsonElement> _settings = Snapshot.Dictionary<string, JsonElement>(null);
+    private IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> _documents = Snapshot.Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(null);
+    private IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2> _legalDocuments = Snapshot.Dictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>(null);
 
-    public required IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2>
-        Documents { get; init; }
+    public required IReadOnlyDictionary<string, JsonElement> Settings
+    {
+        get => _settings;
+        init => _settings = Snapshot.Dictionary(value);
+    }
+
+    public required IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> Documents
+    {
+        get => _documents;
+        init => _documents = Snapshot.Dictionary(value);
+    }
 
     [JsonRequired]
-    public IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>
-        LegalDocuments { get; init; } =
-        new Dictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>(
-            StringComparer.Ordinal);
+    public IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2> LegalDocuments
+    {
+        get => _legalDocuments;
+        init => _legalDocuments = Snapshot.Dictionary(value);
+    }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -135,18 +161,30 @@ public sealed record ConfigurationManifestTenantMetadataV1Alpha2
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ConfigurationManifestTenantSpecV1Alpha2
 {
+    private IReadOnlyDictionary<string, JsonElement> _settings = Snapshot.Dictionary<string, JsonElement>(null);
+    private IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> _documents = Snapshot.Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(null);
+    private IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2> _legalDocuments = Snapshot.Dictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>(null);
+
     public required string DisplayName { get; init; }
 
-    public required IReadOnlyDictionary<string, JsonElement> Settings { get; init; }
+    public required IReadOnlyDictionary<string, JsonElement> Settings
+    {
+        get => _settings;
+        init => _settings = Snapshot.Dictionary(value);
+    }
 
-    public required IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2>
-        Documents { get; init; }
+    public required IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> Documents
+    {
+        get => _documents;
+        init => _documents = Snapshot.Dictionary(value);
+    }
 
     [JsonRequired]
-    public IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>
-        LegalDocuments { get; init; } =
-        new Dictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>(
-            StringComparer.Ordinal);
+    public IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2> LegalDocuments
+    {
+        get => _legalDocuments;
+        init => _legalDocuments = Snapshot.Dictionary(value);
+    }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -172,21 +210,41 @@ public sealed record ConfigurationManifestBrandingPayloadV1Alpha2
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ConfigurationManifestPaidEventPolicyPayloadV1Alpha2
 {
+    private IReadOnlyList<int> _allowedOrganizerKindIds = Array.Empty<int>();
+    private IReadOnlyList<string> _allowedCurrencyCodes = Array.Empty<string>();
+    private IReadOnlyList<int> _refundProtectionIds = Array.Empty<int>();
+    private IReadOnlyList<ConfigurationManifestPaidEventPolicyCurrencyRiskLimitV1Alpha2> _currencyRiskLimits = Array.Empty<ConfigurationManifestPaidEventPolicyCurrencyRiskLimitV1Alpha2>();
+
     public required bool IsPaymentsEnabled { get; init; }
 
-    public required IReadOnlyList<int> AllowedOrganizerKindIds { get; init; }
+    public required IReadOnlyList<int> AllowedOrganizerKindIds
+    {
+        get => _allowedOrganizerKindIds;
+        init => _allowedOrganizerKindIds = Snapshot.List(value);
+    }
 
     public required bool RequiresLocalVerification { get; init; }
 
-    public required IReadOnlyList<string> AllowedCurrencyCodes { get; init; }
+    public required IReadOnlyList<string> AllowedCurrencyCodes
+    {
+        get => _allowedCurrencyCodes;
+        init => _allowedCurrencyCodes = Snapshot.List(value);
+    }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public required string? DefaultCurrencyCode { get; init; }
 
-    public required IReadOnlyList<int> RefundProtectionIds { get; init; }
+    public required IReadOnlyList<int> RefundProtectionIds
+    {
+        get => _refundProtectionIds;
+        init => _refundProtectionIds = Snapshot.List(value);
+    }
 
-    public required IReadOnlyList<ConfigurationManifestPaidEventPolicyCurrencyRiskLimitV1Alpha2>
-        CurrencyRiskLimits { get; init; }
+    public required IReadOnlyList<ConfigurationManifestPaidEventPolicyCurrencyRiskLimitV1Alpha2> CurrencyRiskLimits
+    {
+        get => _currencyRiskLimits;
+        init => _currencyRiskLimits = Snapshot.List(value);
+    }
 
     public required bool RequiresFirstPaidEventReview { get; init; }
 
@@ -248,23 +306,38 @@ public sealed record TenantConfigurationPackageSourceV1Alpha2
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record TenantConfigurationPackageSpecV1Alpha2
 {
+    private IReadOnlyDictionary<string, JsonElement> _settings = Snapshot.Dictionary<string, JsonElement>(null);
+    private IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> _documents = Snapshot.Dictionary<string, ConfigurationManifestDocumentV1Alpha2>(null);
+    private IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2> _legalDocuments = Snapshot.Dictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>(null);
+
     public required string DisplayName { get; init; }
 
-    public required IReadOnlyDictionary<string, JsonElement> Settings { get; init; }
+    public required IReadOnlyDictionary<string, JsonElement> Settings
+    {
+        get => _settings;
+        init => _settings = Snapshot.Dictionary(value);
+    }
 
-    public required IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2>
-        Documents { get; init; }
+    public required IReadOnlyDictionary<string, ConfigurationManifestDocumentV1Alpha2> Documents
+    {
+        get => _documents;
+        init => _documents = Snapshot.Dictionary(value);
+    }
 
     [JsonRequired]
-    public IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>
-        LegalDocuments { get; init; } =
-        new Dictionary<string, ConfigurationManifestLegalDocumentV1Alpha2>(
-            StringComparer.Ordinal);
+    public IReadOnlyDictionary<string, ConfigurationManifestLegalDocumentV1Alpha2> LegalDocuments
+    {
+        get => _legalDocuments;
+        init => _legalDocuments = Snapshot.Dictionary(value);
+    }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ConfigurationManifestLegalDocumentV1Alpha2
 {
+    private IReadOnlyList<string> _jurisdictionAssumptions = Array.Empty<string>();
+    private IReadOnlyList<ConfigurationManifestLegalDocumentLocalizedSourceV1Alpha2> _localizations = Array.Empty<ConfigurationManifestLegalDocumentLocalizedSourceV1Alpha2>();
+
     public required string Kind { get; init; }
 
     public required string Audience { get; init; }
@@ -283,14 +356,16 @@ public sealed record ConfigurationManifestLegalDocumentV1Alpha2
         TemplateProvenance { get; init; }
 
     [JsonRequired]
-    public IReadOnlyList<string> JurisdictionAssumptions { get; init; } =
-        Array.Empty<string>();
-
-    public required IReadOnlyList<
-        ConfigurationManifestLegalDocumentLocalizedSourceV1Alpha2> Localizations
+    public IReadOnlyList<string> JurisdictionAssumptions
     {
-        get;
-        init;
+        get => _jurisdictionAssumptions;
+        init => _jurisdictionAssumptions = Snapshot.List(value);
+    }
+
+    public required IReadOnlyList<ConfigurationManifestLegalDocumentLocalizedSourceV1Alpha2> Localizations
+    {
+        get => _localizations;
+        init => _localizations = Snapshot.List(value);
     }
 }
 
@@ -328,4 +403,17 @@ public enum ConfigurationImportApplyMode
     ApplySelected,
     ReplacePortableConfiguration,
     ReconcileManaged
+}
+
+internal static class Snapshot
+{
+    internal static IReadOnlyDictionary<TKey, TValue> Dictionary<TKey, TValue>(
+        IReadOnlyDictionary<TKey, TValue>? values) where TKey : notnull =>
+        new ReadOnlyDictionary<TKey, TValue>(
+            values is null
+                ? new Dictionary<TKey, TValue>()
+                : new Dictionary<TKey, TValue>(values));
+
+    internal static IReadOnlyList<T> List<T>(IEnumerable<T>? values) =>
+        values is null ? null! : Array.AsReadOnly(values.ToArray());
 }

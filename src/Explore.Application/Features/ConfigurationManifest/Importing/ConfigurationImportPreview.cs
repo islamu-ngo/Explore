@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public enum ConfigurationImportPreviewCategory
 {

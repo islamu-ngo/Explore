@@ -1,5 +1,5 @@
 <!-- ABOUTME: Defines the deterministic ConfigurationManifest JSON Schema generator executable. -->
-<!-- ABOUTME: References Application contracts only and adds no third-party runtime dependency. -->
+<!-- ABOUTME: References Wire contracts directly and adds no third-party runtime dependency. -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -9,6 +9,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../../src/Event.Wire.Contracts/Event.Wire.Contracts.csproj" />
     <ProjectReference Include="../../../../src/Explore.Application/Explore.Application.csproj" />
   </ItemGroup>
 </Project>

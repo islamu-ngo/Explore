@@ -5,6 +5,7 @@ namespace Explore.Application.Features.ConfigurationManifest.LegalDocuments;
 
 using System.Collections.Immutable;
 using Explore.Domain;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public static class LegalDocumentRenderDiagnosticCodes
 {
@@ -87,7 +88,7 @@ public sealed class LegalDocumentRenderingService
         ArgumentNullException.ThrowIfNull(source);
         ValidateRequestedLanguage(requestedLanguageTag);
         LegalMarkdownRenderResult rendered =
-            LegalMarkdownContract.Render(source.Markdown, identityValues);
+            ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownCodec.Render(source.Markdown, identityValues);
         return CreateView(
             rendered,
             source,
@@ -176,7 +177,7 @@ public sealed class LegalDocumentRenderingService
         }
 
         LegalMarkdownRenderResult rendered =
-            LegalMarkdownContract.Render(source.Markdown, identityValues);
+            ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownCodec.Render(source.Markdown, identityValues);
         return CreateView(
             rendered,
             source,
@@ -279,7 +280,7 @@ public sealed class LegalDocumentRenderingService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
         string normalized = value.Trim();
-        if (normalized.Length > LegalDocumentContentLimits.MaximumLanguageTagLength)
+        if (normalized.Length > ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumLanguageTagLength)
             throw new ArgumentOutOfRangeException(nameof(value));
         return normalized;
     }

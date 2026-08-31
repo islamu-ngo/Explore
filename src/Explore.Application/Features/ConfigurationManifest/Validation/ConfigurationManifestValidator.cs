@@ -7,8 +7,7 @@ using System.Globalization;
 using System.Text.Json;
 using Explore.Application.DTOs.PaidEventPolicies;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Compilation;
 using Explore.Application.Features.ConfigurationManifest.Preflight;
 using Explore.Application.Settings;
@@ -409,7 +408,7 @@ public static class ConfigurationManifestValidator
         string path,
         List<ConfigurationManifestValidationError> errors)
     {
-        if (documents.Count > LegalDocumentContentLimits.MaximumDocumentsPerScope)
+        if (documents.Count > ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumDocumentsPerScope)
         {
             AddLegalDocumentError(errors, path);
             return;
@@ -444,7 +443,7 @@ public static class ConfigurationManifestValidator
                     string.IsNullOrWhiteSpace(value) || value.Length > 100)
                 || document.Localizations is null
                 || document.Localizations.Count is < 1 or >
-                    LegalDocumentContentLimits.MaximumLocalesPerDocument
+                    ISLAMU.Wire.Contracts.ConfigurationPortability.LegalMarkdownContentLimits.MaximumLocalesPerDocument
                 || document.Localizations.Any(localization =>
                     localization is null))
             {
@@ -928,7 +927,7 @@ public static class ConfigurationManifestValidator
     private static ConfigurationManifestPaidEventPolicyPayloadV1Alpha2
         DeserializePaidEventPolicyPayload(JsonElement payload) =>
         payload.Deserialize(
-            ConfigurationManifestJsonContext.Default
+            ConfigurationPortabilityJsonContext.Default
                 .ConfigurationManifestPaidEventPolicyPayloadV1Alpha2)
         ?? throw new JsonException("The paid-event policy payload is required.");
 

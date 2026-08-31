@@ -5,7 +5,7 @@ namespace Event.Application.UnitTests.Features.ConfigurationManifest;
 
 using System.Reflection;
 using Explore.Application.Features.ConfigurationManifest.Compilation;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public sealed class ConfigurationImportSessionContractTests
 {
@@ -29,7 +29,7 @@ public sealed class ConfigurationImportSessionContractTests
             "MaximumSessionLifetime");
 
         await Assert.That(maximumBytes)
-            .IsEqualTo(ConfigurationManifestContentLimits.MaximumArtifactUtf8Bytes);
+            .IsEqualTo(ConfigurationPortabilityContentLimits.MaximumArtifactUtf8Bytes);
         await Assert.That(defaultLifetime).IsGreaterThan(TimeSpan.Zero);
         await Assert.That(defaultLifetime).IsLessThanOrEqualTo(TimeSpan.FromHours(1));
         await Assert.That(maximumLifetime).IsGreaterThanOrEqualTo(defaultLifetime);

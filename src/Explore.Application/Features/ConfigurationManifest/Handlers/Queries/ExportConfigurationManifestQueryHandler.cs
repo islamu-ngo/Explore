@@ -9,8 +9,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.PaidEventPolicies;
 using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Compilation;
 using Explore.Application.Features.ConfigurationManifest.Requests.Queries;
 using Explore.Application.Features.ConfigurationManifest.Validation;
@@ -407,7 +406,7 @@ public sealed class ExportConfigurationManifestQueryHandler(
                 ConfigurationManifestDocumentKeys.InstancePaidEventPolicy].SchemaVersion,
             Payload = JsonSerializer.SerializeToElement(
                 payload,
-                ConfigurationManifestJsonContext.Default
+                ConfigurationPortabilityJsonContext.Default
                     .ConfigurationManifestPaidEventPolicyPayloadV1Alpha2)
         };
 

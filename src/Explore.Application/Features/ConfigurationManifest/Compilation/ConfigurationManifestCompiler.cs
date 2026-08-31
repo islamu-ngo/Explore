@@ -6,9 +6,8 @@ namespace Explore.Application.Features.ConfigurationManifest.Compilation;
 using System.Collections.Immutable;
 using System.Text.Json;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
-using Explore.Application.Features.ConfigurationManifest.Contracts;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 using Explore.Application.Features.ConfigurationManifest.Ingestion;
-using Explore.Application.Features.ConfigurationManifest.Serialization;
 using Explore.Application.Features.ConfigurationManifest.Validation;
 using Explore.Domain;
 using Explore.Domain.Settings.Documents;
@@ -170,7 +169,7 @@ public static class ConfigurationManifestCompiler
         }
 
         return document.Payload.Deserialize(
-                ConfigurationManifestJsonContext.Default
+                ConfigurationPortabilityJsonContext.Default
                     .ConfigurationManifestPaidEventPolicyPayloadV1Alpha2)
             ?? throw ConfigurationManifestCompilationException.ContractInvalid();
     }
