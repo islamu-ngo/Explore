@@ -2,6 +2,7 @@
 // ABOUTME: Keeps command handlers free of Console, Environment, and File access and performs no environment-value reads.
 
 using ISLAMU.Event.SetupAssistant.Cli;
+using ISLAMU.Event.SetupAssistant.Cli.Tui;
 
 return SetupCliProgram.Run(args);
 
@@ -22,7 +23,8 @@ internal static class SetupCliProgram
                 Console.IsInputRedirected, Console.IsOutputRedirected, Console.IsErrorRedirected,
                 !Console.IsOutputRedirected);
             var invocation = new SetupCliInvocation(args, mode, io, terminal, new SetupCliEnvironmentPresence([]));
-            return (int)new SetupCliApplication().Run(invocation);
+            ISetupTerminalWorkflow terminalWorkflow = new SetupTerminalWorkflow(new ConsoleSetupTerminalDriver(terminal));
+            return (int)new SetupCliApplication(terminalWorkflow).Run(invocation);
         }
         catch (ArgumentException)
         {
