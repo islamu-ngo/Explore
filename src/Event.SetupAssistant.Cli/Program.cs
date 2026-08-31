@@ -23,7 +23,8 @@ internal static class SetupCliProgram
                 Console.IsInputRedirected, Console.IsOutputRedirected, Console.IsErrorRedirected,
                 !Console.IsOutputRedirected);
             var invocation = new SetupCliInvocation(args, mode, io, terminal, new SetupCliEnvironmentPresence([]));
-            ISetupTerminalWorkflow terminalWorkflow = new SetupTerminalWorkflow(new ConsoleSetupTerminalDriver(terminal));
+            using var terminalDriver = new ConsoleSetupTerminalDriver(terminal);
+            ISetupTerminalWorkflow terminalWorkflow = new SetupTerminalWorkflow(terminalDriver);
             return (int)new SetupCliApplication(terminalWorkflow).Run(invocation);
         }
         catch (ArgumentException)
