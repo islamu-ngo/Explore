@@ -300,6 +300,12 @@ then starting the previous images. If no matched authority backup exists, keep
 the service offline; deleting the floor or reconstructing erased facts from
 restored PII is not a recovery path.
 
+The external-secret-authority contraction is also forward-only for secret values.
+Generated EF `Down` methods can recreate removed legacy columns, but they cannot
+reconstruct deleted ciphertext. Never treat that schema shape as value recovery.
+Rollback requires the external authority values needed by the previous images and,
+when legacy database state is required, a verified pre-upgrade database restore.
+
 | Situation | Rollback Action |
 |---|---|
 | No schema/data migration ran | Revert images and restart services. |

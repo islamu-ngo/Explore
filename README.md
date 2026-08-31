@@ -13,8 +13,8 @@ ISLAMU Event powers ISLAMU’s Islamic events instance, but the software itself 
 > Pre-1.0 notice: ISLAMU Event is still before v1. Breaking changes may happen between releases. We avoid data-loss-class breaks where possible, but configuration changes may be required.
 
 Operator references: [Self-hosting](docs/SELF_HOSTING.md) ·
-[Configuration](docs/CONFIGURATION.md) · [Secrets](docs/SECRETS.md) ·
-[Troubleshooting](docs/TROUBLESHOOTING.md)
+[Configuration](docs/CONFIGURATION.md) · [Configuration Manifest](docs/CONFIGURATION_MANIFEST.md) ·
+[Secrets](docs/SECRETS.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
 
 ![GitHub Workflow Status][github-workflow-status-shield]
 [![GitHub License][github-license-shield]][github-license-link]
@@ -82,6 +82,7 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
 - **🔐 Enterprise Security:** BFF pattern, built-in local authorization, environment-first secrets, and HATEOAS REST API; Cerbos, Keycloak, and Infisical integrations remain optional
 - **🛡️ Absolute Data Sovereignty:** Self-host on your own infrastructure (Docker, Coolify, Aspire, On-Prem) with total control over user and attendee data.
+- **📜 Declarative Configuration Manifests & Portability:** Automated Day 0 bootstrap and preview-first Day 2 configuration portability via strict, schema-validated JSON artifacts (`ConfigurationManifest` for instance administrators and `TenantConfigurationPackage` for tenant administrators). Features dry-run validation, side-effect-free preview diffs with target mapping, transactional atomic application of selected sections, pre-apply snapshots, append-only receipts, forward rollback, and zero secret/PII/payment data leakage — see [Configuration Manifest][configuration-manifest-doc]
 - **🎛️ Multi-Instance & Fleet Orchestration Ready:** Complete programmatic management support via configuration manifests and built-in management APIs (`/api/management/*`). For operators and Official Partners running fleets of instances at scale, a separate standalone fleet-orchestrator—**ISLAMU Event Control Plane**—is in development to glue multiple instances with PaaS engines (such as Coolify) for automated provisioning, SLA monitoring, and cross-instance backups.
 
 ## Deployment & Hosting Options
@@ -198,7 +199,7 @@ The README is the entrypoint for new readers. [docs/index.md](docs/index.md) is 
 |---|---|---|
 | Evaluator | [Project](docs/PROJECT.md), [Architecture](docs/ARCHITECTURE.md), [Security Model](docs/SECURITY-MODEL.md) | You want product scope, status, and architecture context. |
 | Local developer | [Getting Started](docs/GETTING_STARTED.md), [Testing](docs/TESTING.md), [Troubleshooting](docs/TROUBLESHOOTING.md) | You want to build, run, and validate the app locally. |
-| Self-hoster/operator | [Self-Hosting](docs/SELF_HOSTING.md), [Configuration](docs/CONFIGURATION.md), [Operations](docs/OPERATIONS.md), [Backup/Restore/Upgrade](docs/BACKUP_RESTORE_UPGRADE.md), [ERP Integration](docs/ERP_INTEGRATION_GUIDE.md) | You want Docker Compose, infrastructure, secrets, health checks, upgrades, or ERP white-label embedding. |
+| Self-hoster/operator | [Self-Hosting](docs/SELF_HOSTING.md), [Configuration](docs/CONFIGURATION.md), [Configuration Manifest](docs/CONFIGURATION_MANIFEST.md), [Operations](docs/OPERATIONS.md), [Backup/Restore/Upgrade](docs/BACKUP_RESTORE_UPGRADE.md), [ERP Integration](docs/ERP_INTEGRATION_GUIDE.md) | You want Docker Compose, infrastructure, secrets, configuration manifests/portability, health checks, upgrades, or ERP white-label embedding. |
 | Contributor | [First Contribution](docs/FIRST_CONTRIBUTION.md), [Contributing](docs/CONTRIBUTING.md), [Quick Reference](docs/QUICK_REFERENCE.md) | You want the shortest safe path to a docs-only or small-bug PR. |
 | API integrator | [API Cookbook](docs/API_COOKBOOK.md), [API Reference](docs/API.md), [API Changelog](docs/API_CHANGELOG.md) | You want task-first API examples before the full API reference. |
 | Frontend contributor | [Blazor](docs/BLAZOR.md) | You want client architecture, render policies, and UI conventions. |
@@ -360,6 +361,7 @@ The AGPL-3.0-or-later license and any alternative license offered by ISLAMU appl
 [domain-doc]: docs/DOMAIN.md
 [operations-doc]: docs/OPERATIONS.md
 [configuration-doc]: docs/CONFIGURATION.md
+[configuration-manifest-doc]: docs/CONFIGURATION_MANIFEST.md
 [troubleshooting-doc]: docs/TROUBLESHOOTING.md
 [governance-doc]: docs/GOVERNANCE.md
 [quick-reference-doc]: docs/QUICK_REFERENCE.md

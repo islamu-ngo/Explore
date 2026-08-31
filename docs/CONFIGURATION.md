@@ -35,13 +35,13 @@ identity fallback.
 The system separates ordinary configuration from secret authority:
 
 1. non-secret static settings (`appsettings*.json`, environment variables),
-2. one explicit secret authority (`Environment` or `Infisical`),
+2. one explicit secret authority (`Environment`, `Infisical`, or Development/Testing-only `UserSecrets`),
 3. non-secret governance settings in database (`SystemSetting` + `TenantSetting`).
 
 Secrets have an additional ownership contract that applies across the platform:
 
 - Application-managed database settings are non-secret only.
-- Deployment-managed secret values remain in explicit environment injection or Infisical. UI surfaces show only value-free ownership/status metadata.
+- Deployment-managed secret values remain in explicit environment injection or Infisical; local Development/Testing may explicitly use the shared User Secrets store. UI surfaces show only value-free ownership/status metadata.
 - Purpose-bound setup credentials are request/job scoped and never become persisted runtime secret values.
 
 The selected secret authority is absolute for that deployment. Infisical failure
@@ -697,7 +697,7 @@ Local-first storage is deployment-managed. The filesystem root is bound from sta
 
 Optional S3-compatible storage composes non-secret `s3.*` governance with
 `storage.s3.access_key_id` and `storage.s3.secret_access_key` resolved exclusively
-through the selected Environment or Infisical authority. There is no database or
+through the selected Environment, Infisical, or local User Secrets authority. There is no database or
 `IConfiguration` credential fallback.
 
 `StorageReconciliation:*` controls the API-hosted drift worker and is validated at startup:
@@ -1230,7 +1230,7 @@ The per-tenant retention window still comes from the governance setting `ai_assi
 
 `Explore.Secrets` binds provider config from `SecretProvider`:
 
-- `SecretProvider:Provider` (required: `Environment` or `Infisical`)
+- `SecretProvider:Provider` (required: `Environment`, `Infisical`, or `UserSecrets`; the latter is Development/Testing only)
 - `SecretProvider:FailFast`
 - `SecretProvider:Infisical:*` (project/client credentials, paths, environment)
 

@@ -601,7 +601,7 @@ The primary file must not be `/app/data/privacy_erasure_authority.db`.
 | `MCP_ENABLED` | `true` | Enable/disable the MCP adapter at `/mcp` |
 | `WEBHOOKS_PROVIDER` | `Local` | `Local`, `Svix`, or `Composite` |
 | `REPORTING_MODE` | `LocalOnly` | Reporting mode |
-| `SECRET_PROVIDER` | required | Explicit authority: `Environment` or `Infisical`; no cross-source fallback |
+| `SECRET_PROVIDER` | required | Explicit authority: `Environment` or `Infisical`; local Development/Testing may select `UserSecrets`; no cross-source fallback |
 
 For the complete variable reference, see [CONFIGURATION.md](CONFIGURATION.md).
 

@@ -362,7 +362,11 @@ Secret and connection priority:
 - Self-hosted local Keycloak may also be configured to use Mailpit or shared SMTP for Keycloak realm email. That is Keycloak realm SMTP plumbing, not product Basic Dispatch configuration: identity lifecycle emails still come from Keycloak and do not create `EmailDispatchOutbox` rows.
 - Explicit structured `Database:*` values are authoritative. Infisical loads
   primary database configuration directly from `/database` with `DATABASE_*` keys.
-- `local-core` and `local-lite` are maintainer modes. If Infisical bootstrap credentials are present in user secrets or environment variables, Infisical `/database` values can outrank local default values. Blank the Infisical bootstrap keys for env-only local debugging.
+- `local-core` and `local-lite` are maintainer modes and honor the explicitly
+  selected authority. Infisical bootstrap credentials come only from process
+  environment variables (including `.env` values loaded by AppHost); .NET User
+  Secrets are unsupported and cannot supply or override them. Select
+  `SECRET_PROVIDER=Environment` for environment-only local debugging.
 
 Keycloak local infrastructure imports the repository realm export from `docker/keycloak/realm-export.json`. Aspire mounts that file into `/opt/keycloak/data/import/realm-export.json` and starts Keycloak with `--import-realm`; Docker Compose mounts the same file and then runs `keycloak-init` to synchronize the confidential Blazor client secret plus managed realm/client security settings. The export contains no client secret. Aspire sets `KC_HTTP_RELATIVE_PATH=/auth`, so its management readiness probe is `/auth/health/ready`. Keycloak skips startup import when the realm already exists in the persistent database; `keycloak-init` repairs the managed policy/client fields, while a disposable database reset is still required for unrelated export-only changes.
 
@@ -523,6 +527,11 @@ external-setup item remains and required approvals are present.
 Apply reacquires the configuration lock hierarchy and recomputes the preview
 inside one serializable transaction. The operation receipt is the authority for
 fidelity, named omissions, snapshot availability, and post-commit effect state.
+For managed automation, create and independently approve a target-scoped apply
+schedule, then supply its identifier on the normal apply request. The server
+enforces distinct uploader/reviewer/applier actors, the UTC apply window, and
+the fresh preview revision in that same transaction; it never stores the
+header capability in the schedule.
 Use it as follows:
 
 | Receipt/session state | Operator action |
@@ -540,6 +549,11 @@ deployment's protected records policy. Tenant packages never carry target
 authority, secrets, users, events, orders, payments, provider state, or backup
 data. Configure omitted environment and provider requirements on the target
 before apply.
+
+Quartz registers `configuration-portability-retention-cleanup` as an hourly,
+non-overlapping bounded sweep. It expires open import sessions and removes
+expired encrypted upload, snapshot, and transfer-chunk payloads; digest-only
+session and append-only receipt evidence remain available for support.
 
 Direct transfer is opt-in staging only. The destination must be a public HTTPS
 origin on port 443; distinct source and destination actors approve a
@@ -607,10 +621,16 @@ it after a migration has shipped or been applied to retained data.
 The EF CLI process must receive the same secret-backed configuration as the
 migrator role. Starting the `local-core` Aspire profile does **not** inject its
 child-process environment into a separate terminal. Launch the shell or each
-command through the repository's Infisical-backed environment first. The
-commands below deliberately override only provider-selection and non-secret
-design-time fields; they never embed usernames, passwords, hosts, or connection
-strings.
+command through the repository's Infisical-backed environment first. For the
+shared local User Secrets authority, populate the complete structured database
+contract in `src/Explore.Secrets`, then export
+`SECRET_PROVIDER=UserSecrets` and `DOTNET_ENVIRONMENT=Development` in the EF shell.
+User Secrets is rejected when that environment is absent or Production, and store
+changes require restarting the EF command. The commands below deliberately override
+only provider-selection and non-secret design-time fields; they never embed
+usernames, passwords, hosts, or connection strings. Use the Environment/Infisical
+workflow below for multi-provider regeneration when per-command provider overrides
+are required.
 
 Define the project paths once:
 

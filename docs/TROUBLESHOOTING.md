@@ -322,7 +322,7 @@ Checks:
 ## Secret Provider Unavailable
 
 Symptoms:
-- `secret-resolver` is degraded with `providerState=unavailable`.
+- `secret-resolver` is unhealthy with `providerState=unavailable`.
 - a required capability fails closed, or an optional integration reports
   `Unavailable`, `Unauthorized`, or `Invalid` instead of `Unconfigured`.
 

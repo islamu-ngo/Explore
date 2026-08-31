@@ -50,24 +50,23 @@ Build errors must be fixed before continuing. For recurring failures, use [TROUB
 
 ## Local Secrets & Infrastructure Profiles
 
-For local development, the applications share a single .NET User Secrets ID: `event-shared-secrets`.
-
-Maintainers using external infrastructure can configure Infisical bootstrap settings in the shared user secrets file:
-- **Linux/macOS:** `/home/{user}/.microsoft/usersecrets/event-shared-secrets/secrets.json`
-- **Windows:** `%APPDATA%\Microsoft\UserSecrets\event-shared-secrets\secrets.json`
+Local secrets come only from the repository-root `.env` file or the explicitly
+selected Infisical authority. Copy `.env.example` to `.env`, keep it untracked,
+and populate only the credentials required by the chosen profile. .NET User
+Secrets and appsettings are not secret origins.
 
 ### Infisical Configuration (Maintainers Only)
 `local-full` does not require Infisical because Aspire starts local infrastructure and explicitly selects Environment authority while clearing Infisical bootstrap identifiers. Populate required local credentials in `.env`; AppHost does not generate or hard-code them.
 
-If using external infrastructure with `local-core` or `local-lite`, configure your local bootstrap credentials inside the `secrets.json` file:
-```json
-{
-  "Infisical:Url": "https://example.com",
-  "Infisical:ProjectId": "",
-  "Infisical:Environment": "dev",
-  "Infisical:ClientId": "",
-  "Infisical:ClientSecret": ""
-}
+If using external infrastructure with `local-core` or `local-lite`, select
+Infisical and populate its explicit bootstrap inputs in `.env`:
+```dotenv
+SECRET_PROVIDER=Infisical
+INFISICAL_URL=https://example.com
+INFISICAL_PROJECT_ID=
+INFISICAL_ENV=dev
+INFISICAL_CLIENT_ID=
+INFISICAL_CLIENT_SECRET=
 ```
 
 ### Aspire Profiles
@@ -75,8 +74,8 @@ If using external infrastructure with `local-core` or `local-lite`, configure yo
 | Profile | Use When | Infrastructure Ownership |
 |---|---|---|
 | `local-full` | Contributor default, smoke checks, first clone | Aspire starts PostgreSQL, Redis, RabbitMQ, Mailpit, CockroachDB, Phase Two Keycloak, Cerbos, MinIO, Svix, Coop, Osprey, Prometheus, and Grafana locally. |
-| `local-core` | Maintainers debugging data/cache issues | Aspire starts PostgreSQL, Redis, Mailpit, and migrations locally; Keycloak, Cerbos, storage, webhooks, and moderation providers come from Infisical/config. |
-| `local-lite` | Maintainers on the fast daily loop | Aspire starts Mailpit, migrations, API, and Blazor; all infrastructure comes from Infisical/config. |
+| `local-core` | Maintainers debugging data/cache issues | Aspire starts PostgreSQL, Redis, Mailpit, and migrations locally; Keycloak, Cerbos, storage, webhooks, and moderation providers come from the selected external authority. |
+| `local-lite` | Maintainers on the fast daily loop | Aspire starts Mailpit, migrations, API, and Blazor; all infrastructure comes from the selected external authority. |
 
 `local-full` uses persistent containers and named volumes so repeated runs do not recreate the database, Keycloak, Mailpit messages, MinIO, RabbitMQ, or observability data from scratch. Keycloak keeps stable local ports for OIDC browser cookies and callbacks.
 
