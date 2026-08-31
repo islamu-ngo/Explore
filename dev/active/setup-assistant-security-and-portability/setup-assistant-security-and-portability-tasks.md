@@ -7,35 +7,35 @@ Last Updated: 2026-08-31 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Umbrella correction awaiting fresh revision-bound CTO
-  review and exact-revision user approval; implementation not started.
-- **Completed:** 0/41 implementation tasks; phase verification is tracked
+- **Overall status:** Successor A foundation-offline implementation active.
+- **Completed:** 10/41 implementation tasks; phase verification is tracked
   separately.
-- **Current priority:** Approve successor A foundation-offline on the corrected
-  exact revision.
-- **Next recommended slice:** `SA-110`, only after successor A approval.
+- **Current priority:** Phase 3 Release verification.
+- **Next recommended slice:** Run the Phase 3 Release build and focused Core
+  verification gates exactly as listed below.
 - **Upstream disposition:** ConfigurationManifest is active. SA-110 consumes
   only its frozen v1alpha2/schema/registry/import-preview/no-secret contract;
   upstream server work is not Setup implementation evidence.
-- **Blocker:** The first CTO review decided `Split before approval`; fresh CTO
-  review and exact-revision user approval of this corrected bundle are not yet
-  recorded.
+- **Blocker:** None for Phase 1 verification. Blocked package material retains
+  no exception or waiver path and presentation shells remain disabled.
 - **Plan:**
   [setup-assistant-security-and-portability-plan.md](setup-assistant-security-and-portability-plan.md)
 - **Context:**
   [setup-assistant-security-and-portability-context.md](setup-assistant-security-and-portability-context.md)
 - **Clean-room evidence:**
   [setup-assistant-security-and-portability-clean-room-evidence.md](setup-assistant-security-and-portability-clean-room-evidence.md)
+- **Dependency evidence:**
+  [setup-assistant-security-and-portability-dependency-evidence.md](setup-assistant-security-and-portability-dependency-evidence.md)
 - **I-VSD report:**
   [i-vsd-setup-assistant-security-and-portability.md](../../../islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md)
 - **I-VSD reviewed input revision:**
-  `sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f`
-- **I-VSD status / disposition:** `current` / `plan-aligned`; expanded
-  findings `IVSD-F037`–`IVSD-F046` preserve the named Tier 0/1/2 gates.
+  `sha256:d2bbba40455c013e20883ab6202f84411bb05f2c20f6060a9e73095f44a8e4b1`
+- **I-VSD status / disposition:** `current` / `plan-aligned`; all
+  `IVSD-F001`–`IVSD-F046` and `IVSD-M001`–`IVSD-M046` mappings are preserved.
 - **First CTO review:** [Split before approval](setup-assistant-security-and-portability-cto-review.md), bound to prior plan/tasks hashes.
-- **Correction review:** Awaiting fresh revision-bound read-only CTO review.
-- **User direction:** Full objective approved on 2026-08-31; corrected
-  exact-revision implementation approval awaits binding after final hashes.
+- **Current correction review:** [Approved the BCL-only successor-A strategy](setup-assistant-security-and-portability-cto-review.md);
+  later successors inherit no approval.
+- **User approval:** [Bound to the reviewed BCL-only successor-A revision](setup-assistant-security-and-portability-approval.md).
 
 ## Successor Ownership Ledger
 
@@ -44,8 +44,8 @@ directory exists yet. Ownership does not transfer approval.
 
 | Successor | PR slices and SA ownership | State / entry gate |
 |---|---|---|
-| A foundation-offline | A1 SA-110-SA-130; A2 SA-210-SA-230; A3 SA-310-SA-340; A4 SA-410-SA-430 | **Sole active successor**, blocked on fresh tier-appropriate intake, CTO, and exact-revision user approval |
-| B presentation-targets | B1 SA-510-SA-540; B2 SA-610-SA-640; B3 SA-710-SA-730 | Inactive; stable A contracts plus fresh target intake/I-VSD/CTO/user approvals and dependency/security/accessibility evidence |
+| A foundation-offline | A1 SA-110-SA-130 and ten package-free project shells; A2 SA-210-SA-230; A3 SA-310-SA-340; A4 SA-410-SA-430 BCL CLI/terminal wizard | **Sole approved active successor**; SA-130 complete, Phase 1 verification current |
+| B presentation-targets | B1 SA-510-SA-540 framework-neutral GUI; B2 SA-610-SA-640 browser; B3 SA-710-SA-730 desktop | Inactive; owns GUI framework/runtime selection; stable A contracts plus fresh target intake/I-VSD/CTO/user approvals and provenance-complete dependency/security/accessibility evidence |
 | C composition-scale | C1 SA-810/SA-820; C2 SA-830 | Inactive; stable A2/A3 plus fresh scale intake/I-VSD/CTO/user approvals and measured-profile evidence |
 | D live-control-plane | D1 SA-910 Red/server contracts; D2 SA-920/SA-930 server/generated contracts; D3 SA-1010 Red plus SA-1020/SA-1030 adapters/UI | Inactive; fresh Tier 1/I-VSD/CTO/user approval and green ConfigurationManifest Tier 1/tenant/replay/atomicity evidence |
 | E application-data-migration | E1 SA-1110 privacy/tenant Red; E2 SA-1120; E3 SA-1130; E4 Setup UI activation | Inactive; D contracts plus fresh Tier 2 custody/erasure, Tier 1 tenant, I-VSD/CTO/user approval, and named privacy/provider evidence |
@@ -102,7 +102,7 @@ user approval, and named evidence before any owned checkbox starts.
 
 Plan reference: Phase 1 and Sections 4, 5.1, 5.4, 5.7, and 5.9.
 
-- [ ] **SA-110 — Author failing Setup architecture and security-boundary contracts and verify `SetupAssistantArchitectureTests` fails only because the new projects and ratchets do not exist**
+- [x] **SA-110 — Author failing Setup architecture and security-boundary contracts and verify `SetupAssistantArchitectureTests` fails only because the new projects and ratchets do not exist**
   - **Files:** new
     `tests/Event.Architecture.Tests/SetupAssistantArchitectureTests.cs`;
     existing `Explore.slnx`, project files, package policy, and configuration
@@ -118,26 +118,43 @@ Plan reference: Phase 1 and Sections 4, 5.1, 5.4, 5.7, and 5.9.
   - **Focused Red selector:**
     `dotnet run --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupAssistantArchitectureTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** M
-  - **Dependencies:** Current/plan-aligned I-VSD and fresh revision-bound CTO
-    plus exact-revision user approval for successor A.
+  - **Dependencies:** Satisfied for this recorded Red by the then-current/
+    plan-aligned I-VSD and then-bound CTO/user approvals. They do not authorize
+    further implementation after the SA-120 strategy change.
   - **Guidance:** criticality-guardrail, clean-architecture-rules,
     ip-clean-room, tests rule.
 
-- [ ] **SA-120 — Approve and pin the complete Setup dependency graphs and verify locked restore, vulnerability audit, license policy, and focused architecture contracts pass with no exception added**
+- [x] **SA-120 — Enforce the approved BCL-only successor-A graph, scaffold its ten project boundaries/locks/ratchets, and verify locked restore, vulnerability audit, license policy, and focused architecture contracts pass without blocked pins or exceptions**
   - **Files:** existing `Directory.Packages.props`,
-    `Directory.Build.props`, `Explore.slnx`; new five Setup source projects,
-    focused test projects, `packages.lock.json` files, and dependency evidence
-    under this workstream.
-  - **Acceptance:** Evaluate Avalonia `12.1.1` and Terminal.Gui `2.4.17` as
-    candidates across direct, transitive, native, build, test, asset, font, and
-    packaging roles. Record exact license/obligations/outbound impact. Block or
-    replace every unknown/incompatible component. Do not include Avalonia
-    professional tooling or production diagnostics.
+    `Directory.Build.props`, `Explore.slnx`,
+    `tests/Event.Architecture.Tests/SetupAssistantArchitectureTests.cs`; new
+    five Setup source shells, five focused test shells, one
+    `packages.lock.json` per project, the two generated SA-110 fail-closed
+    ratchets, and the
+    [dependency evidence](setup-assistant-security-and-portability-dependency-evidence.md).
+  - **Acceptance:** Treat Terminal.Gui `2.4.17` and its complete 24-package
+    graph as blocked because mandatory TextMateSharp.Grammars `2.0.4` lacks
+    complete component provenance/notices. Treat Avalonia `12.1.1` Desktop and
+    Browser runtime graphs as blocked; compile-only scaffolding conditionality,
+    BuildServices telemetry opt-out, resolved ANGLE licensing, and signed
+    integrity do not approve a package or target. Add no Terminal.Gui,
+    Avalonia, replacement TUI/GUI, or exception pin/reference/lock entry in A.
+    Select BCL plus package-free `Event.Wire.Contracts` for the product graph.
+    Create all five source and five matching test projects, locks, the disabled
+    browser capability ratchet, and frozen-contract ratchet. Keep
+    `Event.SetupAssistant`, Browser, and Desktop package-free, disabled,
+    non-shipped contract shells: they are not functional UI, runtime targets,
+    or support evidence. Test projects use only repository-approved existing
+    test infrastructure. Locked restore, point-in-time vulnerability audit,
+    license policy, and `SetupAssistantArchitectureTests` must pass without an
+    exception; do not mark complete until those implementation artifacts and
+    checks exist.
   - **Effort:** XL
-  - **Dependencies:** SA-110.
+  - **Dependencies:** SA-110; planning-mode I-VSD revalidation, fresh CTO
+    review, and exact-revision user approval for this changed strategy.
   - **Guidance:** ip-clean-room, agentic-research, CI/CD governance.
 
-- [ ] **SA-130 — Wire Setup source, lock, and generated-output governance into CI and verify source is tracked while only build/publish/release output is ignored**
+- [x] **SA-130 — Wire Setup source, lock, and generated-output governance into CI and verify source is tracked while only build/publish/release output is ignored**
   - **Files:** existing `.gitignore`, `.github/workflows/test.yml`,
     `.ci/scripts/validate-dependency-license-policy.cs`,
     `docs/CI_CD_GOVERNANCE.md`; new Setup architecture checks and clean-room
@@ -153,14 +170,14 @@ Plan reference: Phase 1 and Sections 4, 5.1, 5.4, 5.7, and 5.9.
 
 ### Phase 1 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 2: Shared Wire Contracts And Headless Core
 
 Plan reference: Phase 2 and Sections 3.1, 3.2, 3.8, 5.1, and 5.2.
 
-- [ ] **SA-210 — Author failing v1alpha2 and legal-codec extraction invariants and verify `SetupContractExtractionTests` detects every byte, diagnostic, limit, schema, and collection-ownership drift**
+- [x] **SA-210 — Author failing v1alpha2 and legal-codec extraction invariants and verify `SetupContractExtractionTests` detects every byte, diagnostic, limit, schema, and collection-ownership drift**
   - **Files:** existing/new
     `tests/Event.Wire.Contracts.UnitTests/ConfigurationPortability/**`,
     existing Application/Domain/Architecture ConfigurationManifest and legal
@@ -176,7 +193,7 @@ Plan reference: Phase 2 and Sections 3.1, 3.2, 3.8, 5.1, and 5.2.
   - **Dependencies:** Phase 1.
   - **Guidance:** record contracts, criticality-guardrail, tests rule.
 
-- [ ] **SA-220 — Move v1alpha2 wire contracts and constrained legal Markdown into `Event.Wire.Contracts` and verify old owners are deleted with all schema/server callers migrated**
+- [x] **SA-220 — Move v1alpha2 wire contracts and constrained legal Markdown into `Event.Wire.Contracts` and verify old owners are deleted with all schema/server callers migrated**
   - **Files:** existing `src/Event.Wire.Contracts/**`,
     `src/Explore.Domain/LegalMarkdownContract.cs`,
     `src/Explore.Application/Features/ConfigurationManifest/Contracts/**`,
@@ -191,7 +208,7 @@ Plan reference: Phase 2 and Sections 3.1, 3.2, 3.8, 5.1, and 5.2.
   - **Guidance:** clean-architecture-rules, application/domain rules,
     ip-clean-room.
 
-- [ ] **SA-230 — Implement package-free `Event.Setup.Core` workflow contracts and verify `SetupCoreArchitectureTests` proves pure deterministic behavior with no I/O or ambient authority**
+- [x] **SA-230 — Implement package-free `Event.Setup.Core` workflow contracts and verify `SetupCoreArchitectureTests` proves pure deterministic behavior with no I/O or ambient authority**
   - **Files:** new `src/Event.Setup.Core/**`,
     `tests/Event.Setup.Core.Tests/**`; existing solution and architecture docs.
   - **Acceptance:** Core references only BCL and `Event.Wire.Contracts`; owns
@@ -208,14 +225,14 @@ Plan reference: Phase 2 and Sections 3.1, 3.2, 3.8, 5.1, and 5.2.
 
 ### Phase 2 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Wire.Contracts.UnitTests/Event.Wire.Contracts.UnitTests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Wire.Contracts.UnitTests/Event.Wire.Contracts.UnitTests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 3: Environment Catalogue And Offline Workflows
 
 Plan reference: Phase 3 and Sections 3.1–3.4, 3.8, 5.2, and 5.3.
 
-- [ ] **SA-310 — Author failing catalogue and dotenv Invariant-Breakers and verify `EnvironmentCatalogueInvariantTests` rejects cycles, drift, fake secrets, irrelevant keys, defaults, duplicates, injection syntax, and value-bearing diagnostics**
+- [x] **SA-310 — Author failing catalogue and dotenv Invariant-Breakers and verify `EnvironmentCatalogueInvariantTests` rejects cycles, drift, fake secrets, irrelevant keys, defaults, duplicates, injection syntax, and value-bearing diagnostics**
   - **Files:** new
     `tests/Event.Setup.Core.Tests/Environment/EnvironmentCatalogueInvariantTests.cs`,
     `DotenvContractTests.cs`; existing `.env.example`, Compose, secret registry
@@ -231,7 +248,7 @@ Plan reference: Phase 3 and Sections 3.1–3.4, 3.8, 5.2, and 5.3.
   - **Dependencies:** SA-230.
   - **Guidance:** criticality-guardrail, tests rule.
 
-- [ ] **SA-320 — Implement the canonical environment catalogue and generator/check tool and verify `.env.example`, Compose, startup, secret registry, and documentation anchors converge without scraping prose**
+- [x] **SA-320 — Implement the canonical environment catalogue and generator/check tool and verify `.env.example`, Compose, startup, secret registry, and documentation anchors converge without scraping prose**
   - **Files:** new `src/Event.Setup.Core/Environment/**`,
     `eng/setup-assistant/**`; existing `.env.example`, `docker-compose.yml`,
     `SecretDefinitionRegistry.cs`, configuration docs, solution/CI.
@@ -245,7 +262,7 @@ Plan reference: Phase 3 and Sections 3.1–3.4, 3.8, 5.2, and 5.3.
   - **Dependencies:** SA-310.
   - **Guidance:** clean-architecture-rules, ip-clean-room.
 
-- [ ] **SA-330 — Implement the explicit dotenv codec, readiness, and approved local secret generation and verify no-secret and secret outputs remain separate, deterministic, and value-safe**
+- [x] **SA-330 — Implement the explicit dotenv codec, readiness, and approved local secret generation and verify no-secret and secret outputs remain separate, deterministic, and value-safe**
   - **Files:** new `src/Event.Setup.Core/Dotenv/**`,
     `src/Event.Setup.Core/Secrets/**`, focused Core tests.
   - **Acceptance:** Parser/renderer handles the declared syntax or fails
@@ -260,7 +277,7 @@ Plan reference: Phase 3 and Sections 3.1–3.4, 3.8, 5.2, and 5.3.
   - **Dependencies:** SA-320.
   - **Guidance:** criticality-guardrail, secret isolation.
 
-- [ ] **SA-340 — Implement offline manifest, tenant-package, legal, diff, coverage, and readiness workflows and verify `OfflinePortabilityWorkflowTests` produces stable non-secret artifacts without live-target authority**
+- [x] **SA-340 — Implement offline manifest, tenant-package, legal, diff, coverage, and readiness workflows and verify `OfflinePortabilityWorkflowTests` produces stable non-secret artifacts without live-target authority**
   - **Files:** new `src/Event.Setup.Core/Portability/**`,
     `src/Event.Setup.Core/Legal/**`, focused Core tests.
   - **Acceptance:** Create/open/edit/validate/format/diff/coverage/export support
@@ -276,14 +293,14 @@ Plan reference: Phase 3 and Sections 3.1–3.4, 3.8, 5.2, and 5.3.
 
 ### Phase 3 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 4: Versioned CLI And Terminal.Gui TUI
+## Phase 4: Versioned CLI And BCL Interactive Terminal Wizard
 
 Plan reference: Phase 4 and Sections 3.4, 3.9, 5.2, and 5.7.
 
-- [ ] **SA-410 — Author failing command, machine-schema, and terminal-secret contracts and verify `SetupCliContractTests` fails on the missing executable while pinning help, dry-run, JSON, exits, TTY, and leakage boundaries**
+- [x] **SA-410 — Author failing command, machine-schema, and terminal-secret contracts and verify `SetupCliContractTests` fails on the missing executable while pinning help, dry-run, JSON, exits, TTY, and leakage boundaries**
   - **Files:** new `tests/Event.SetupAssistant.Cli.Tests/**`,
     `schemas/event-setup-command-v1.schema.json` generated expectation.
   - **Acceptance:** Red tests specify command families, one machine JSON object,
@@ -297,25 +314,31 @@ Plan reference: Phase 4 and Sections 3.4, 3.9, 5.2, and 5.7.
   - **Dependencies:** Phase 3.
   - **Guidance:** criticality-guardrail, tests rule.
 
-- [ ] **SA-420 — Implement deterministic `event-setup` commands and verify machine JSON, text output, exit categories, digests, help, dry-run, and no-secret writes satisfy the public command contract**
+- [x] **SA-420 — Implement deterministic `event-setup` commands and verify machine JSON, text output, exit categories, digests, help, dry-run, and no-secret writes satisfy the public command contract**
   - **Files:** new `src/Event.SetupAssistant.Cli/Commands/**`,
     serialization context, generated command schema, tests.
   - **Acceptance:** Catalogue, manifest, tenant-package, env, legal, doctor,
-    and `tui` command families use Setup Core; command parsing is repository
-    native; machine output is one versioned object; write operations require
+    and `tui` command families use Setup Core; command parsing and the bounded
+    interactive wizard are repository-native and BCL-only; machine output is
+    one versioned object; write operations require
     explicit paths/approval semantics; machine mode cannot enter secret mode;
     unknown/removed commands fail without aliases.
   - **Effort:** XL
   - **Dependencies:** SA-410.
   - **Guidance:** clean architecture, record contracts.
 
-- [ ] **SA-430 — Implement Terminal.Gui human workflows and verify `SetupTerminalSecretBoundaryTests` proves TTY-only masked entry, protected output, state clearing, and byte parity with Core**
-  - **Files:** new `src/Event.SetupAssistant.Cli/Tui/**`, focused CLI tests.
-  - **Acceptance:** TUI supports the same workspaces and Core outputs; secret
-    mode requires an interactive TTY, disables stdout/stderr artifact output,
-    retains no history/autosave/clipboard by default, and clears on cancel,
-    completion, suspension, signal, resize failure, or navigation; terminal
-    limitations are disclosed; agent automation remains machine CLI only.
+- [ ] **SA-430 — Implement repository-native BCL human terminal workflows and verify `SetupTerminalSecretBoundaryTests` proves TTY-only masked entry, protected output, state clearing, and byte parity with Core**
+  - **Files:** new `src/Event.SetupAssistant.Cli/Tui/**`, focused CLI tests; no
+    external TUI package.
+  - **Acceptance:** The bounded linear terminal wizard supports the same
+    workspaces and Core outputs; secret mode requires an interactive TTY,
+    rejects redirection/captured input, suppresses and restores echo on every
+    exit, disables stdout/stderr artifact output, retains no history/autosave/
+    clipboard by default, and clears on cancel, completion, suspension, signal,
+    resize failure, or navigation. Product-owned adversarial tests cover
+    TTY/redirection, echo restoration, signals, resize, scrollback leakage,
+    keyboard completion, non-color status, bounded output, and truthful
+    accessibility limitations. Agent automation remains machine CLI only.
   - **Focused selector:**
     `dotnet run --project tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupTerminalSecretBoundaryTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** XL
@@ -327,25 +350,32 @@ Plan reference: Phase 4 and Sections 3.4, 3.9, 5.2, and 5.7.
 - [ ] `dotnet build --configuration Release --verbosity quiet`
 - [ ] `dotnet test --project tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 5: Shared Avalonia Workspaces, Accessibility, And Localization
+## Phase 5: Shared GUI Workspaces, Accessibility, And Localization
 
 Plan reference: Phase 5 and Sections 3.1, 3.4, 3.8, 3.10, and 5.4.
 
-- [ ] **SA-510 — Author shared-workspace parity and secret-state contracts and verify `SetupAssistantWorkspaceTests` fails on missing Avalonia adapters without duplicating Core rules**
-  - **Files:** new `tests/Event.SetupAssistant.Tests/**`.
-  - **Acceptance:** Red tests specify workspace transitions, review/readiness,
-    mode boundaries, immutable Core results, cancellation/expiry clearing, and
-    byte-equivalent output while rejecting UI-owned validators, serializers,
-    relevance rules, or secret classification.
+- [ ] **SA-510 — Select a provenance-complete GUI graph, author shared-workspace parity and secret-state contracts, and verify `SetupAssistantWorkspaceTests` fails on missing selected-framework adapters without duplicating Core rules**
+  - **Files:** existing package-free disabled
+    `tests/Event.SetupAssistant.Tests/**` shell; new successor-B dependency
+    decision and selected-framework test adapters.
+  - **Acceptance:** Before activating the shell, record the exact GUI graph and
+    runtime targets and obtain fresh I-VSD, CTO, user, dependency, security,
+    and accessibility approval. Red tests specify workspace transitions,
+    review/readiness, mode boundaries, immutable Core results,
+    cancellation/expiry clearing, and byte-equivalent output while rejecting
+    UI-owned validators, serializers, relevance rules, or secret
+    classification. Avalonia is not presumed; if reconsidered it requires new
+    authoritative component/build evidence and exact target approval.
   - **Focused Red selector:**
     `dotnet run --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupAssistantWorkspaceTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** M
   - **Dependencies:** Phases 3 and 4.
   - **Guidance:** criticality-guardrail, accessibility.
 
-- [ ] **SA-520 — Implement shared Avalonia shell and product workspaces and verify manifest, environment, legal, review, and readiness flows adapt Core without server or network dependencies**
-  - **Files:** new `src/Event.SetupAssistant/**`, shared view models, resources,
-    views, styles, tests.
+- [ ] **SA-520 — Activate the approved shared GUI shell and product workspaces and verify manifest, environment, legal, review, and readiness flows adapt Core without server or network dependencies**
+  - **Files:** existing package-free disabled `src/Event.SetupAssistant/**`
+    shell; new approved framework integration, shared view models, resources,
+    views, styles, and tests.
   - **Acceptance:** Workspaces expose progressive topology/capability selection,
     typed fields, deterministic previews/diffs/coverage, explicit sensitivity,
     no-secret primary action, review, clear, and save/download intents; no
@@ -356,8 +386,8 @@ Plan reference: Phase 5 and Sections 3.1, 3.4, 3.8, 3.10, and 5.4.
   - **Guidance:** accessibility, clean architecture, ip-clean-room.
 
 - [ ] **SA-530 — Implement bundled localization, RTL, keyboard, focus, semantic automation, and error-announcement contracts and verify `SetupAccessibilityContractTests` exposes no secret value or unsupported parity claim**
-  - **Files:** new shared Avalonia resources/styles/accessibility services and
-    tests; existing `docs/ACCESSIBILITY.md`, `docs/LOCALIZATION.md`.
+  - **Files:** new selected-framework resources/styles/accessibility services
+    and tests; existing `docs/ACCESSIBILITY.md`, `docs/LOCALIZATION.md`.
   - **Acceptance:** Native controls and automation peers expose stable
     names/roles/states; tab/focus/order/reflow/contrast/non-color/reduced-motion
     behavior is explicit; errors associate and summarize once; all security
@@ -410,14 +440,15 @@ Plan reference: Phase 6 and Sections 3.4–3.6 and 5.5.
 - [ ] **SA-620 — Implement browser no-secret composition and local download and verify every new session remains useful without entering or persisting secrets**
   - **Files:** new `src/Event.SetupAssistant.Browser/**`, static entry, local
     download adapter, tests.
-  - **Acceptance:** Static WASM starts in no-secret mode, uses only bundled
-    assets, generates relevant empty placeholders and non-secret
+  - **Acceptance:** The approved static client target starts in no-secret mode,
+    uses only bundled assets, generates relevant empty placeholders and
+    non-secret
     manifests/packages, downloads locally, persists no profile by default, and
     clearly identifies incomplete secret completion and browser permission
     limitations.
   - **Effort:** L
   - **Dependencies:** SA-610.
-  - **Guidance:** Avalonia official guidance, i-vsd.
+  - **Guidance:** selected framework's official guidance, i-vsd.
 
 - [ ] **SA-630 — Implement per-session browser trust and secret state machine and verify explicit opt-in, preload, network denial, clearing, and truthful origin copy remain bound to the exact release**
   - **Files:** new Browser trust/capability adapters, shared view transitions,
@@ -436,9 +467,10 @@ Plan reference: Phase 6 and Sections 3.4–3.6 and 5.5.
   - **Files:** new Browser CSP/release manifest generation under
     `eng/setup-assistant/**`, static host config, Browser/Architecture tests.
   - **Acceptance:** Policy intent denies connections/forms/framing/objects/
-    remote media/fonts/workers/navigation while admitting only pinned WASM
-    requirements; source/publish separation is deterministic; production has
-    no remote asset, analytics, crash upload, update check, source-map values,
+    remote media/fonts/workers/navigation while admitting only pinned
+    selected-runtime requirements; source/publish separation is deterministic;
+    production has no remote asset, analytics, crash upload, update check,
+    source-map values,
     CSP reporter, PWA/service worker, or developer tooling; secret capability
     stays disabled until exact-bundle independent security/legal evidence is
     linked.
@@ -518,8 +550,9 @@ Plan reference: Phase 8 and Sections 3.13 and 5.10.
   - **Guidance:** criticality-guardrail, tests rule.
 
 - [ ] **SA-820 — Implement bounded YAML and directory composition and verify all accepted inputs compile through one normalized model to byte-identical canonical v1alpha2 JSON**
-  - **Files:** new `src/Event.Setup.Core/Composition/**`, CLI/TUI/Avalonia
-    source adapters, generated composition schema and focused tests.
+  - **Files:** new `src/Event.Setup.Core/Composition/**`, CLI/terminal/
+    selected-GUI source adapters, generated composition schema and focused
+    tests.
   - **Acceptance:** Source formats add no wire identity; conflicts fail before
     partial output; canonical serializer/validator owns final bytes; digests,
     coverage, diagnostics, and legal limits match single-file JSON.
