@@ -381,6 +381,41 @@ public sealed class SetupAssistantArchitectureTests
         }
     }
 
+    [Test]
+    public async Task SetupTerminalBoundary_MustKeepAmbientAndSecretAuthorityInExactOwners()
+    {
+        string root = ContextSystemHelpers.RepoPath("src", "Event.SetupAssistant.Cli");
+        string[] files = Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .ToArray();
+        var violations = new List<string>();
+        foreach (string file in files)
+        {
+            string relative = NormalizePath(Path.GetRelativePath(root, file));
+            string source = await File.ReadAllTextAsync(file);
+            bool consoleOwner = relative is "Program.cs" or "Tui/ConsoleSetupTerminalDriver.cs";
+            if (!consoleOwner && (source.Contains("Console.", StringComparison.Ordinal)
+                || source.Contains("PosixSignal", StringComparison.Ordinal)))
+                violations.Add($"ambient terminal API outside owner: {relative}");
+            bool fileOwner = relative is "Program.cs" or "Tui/UnixSetupTerminalProtectedWriter.cs";
+            if (!fileOwner && (source.Contains("File.", StringComparison.Ordinal)
+                || source.Contains("FileStream", StringComparison.Ordinal)
+                || source.Contains("Directory.", StringComparison.Ordinal)))
+                violations.Add($"filesystem API outside owner: {relative}");
+            if (source.Contains("new Thread", StringComparison.Ordinal)
+                && relative != "Tui/SetupTerminalReadCoordinator.cs")
+                violations.Add($"terminal reader thread outside coordinator: {relative}");
+            if (source.Contains("LocalSecretGenerator", StringComparison.Ordinal)
+                && relative != "Tui/SetupTerminalSession.cs")
+                violations.Add($"local generator outside TUI workflow: {relative}");
+            foreach (string forbidden in new[] { "ReadLine(", "KeyAvailable", "Clipboard", "Autosave", "System.Diagnostics.Process", "DllImport", "LibraryImport" })
+                if (source.Contains(forbidden, StringComparison.Ordinal)) violations.Add($"forbidden terminal API {forbidden}: {relative}");
+        }
+
+        await Assert.That(violations).IsEmpty().Because(string.Join("; ", violations));
+    }
+
     private static readonly string[] BindingProperties =
     [
         "ApplyMode", "ArtifactDigest", "ExpiresAt", "MappingDigest",

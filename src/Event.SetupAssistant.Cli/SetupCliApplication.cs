@@ -57,8 +57,14 @@ public sealed class SetupCliApplication
             SetupTerminalResult terminal = _terminalWorkflow.Run(invocation);
             return terminal.Outcome switch
             {
-                SetupTerminalOutcome.Completed => SetupCliResults.Success(readiness: new SetupCliMachineReadiness(
-                    SetupCliResults.Lower(terminal.Readiness), [], [])),
+                SetupTerminalOutcome.Completed when terminal.Readiness == SetupTerminalReadiness.Ready =>
+                    SetupCliResults.Success(),
+                SetupTerminalOutcome.Completed when terminal.Readiness == SetupTerminalReadiness.Incomplete =>
+                    SetupCliResults.Failure(SetupCliExitCode.Incomplete, "terminal-incomplete"),
+                SetupTerminalOutcome.Completed when terminal.Readiness == SetupTerminalReadiness.Blocked =>
+                    SetupCliResults.Failure(SetupCliExitCode.Blocked, "terminal-blocked"),
+                SetupTerminalOutcome.Completed =>
+                    SetupCliResults.Failure(SetupCliExitCode.Validation, "terminal-readiness-invalid"),
                 SetupTerminalOutcome.Failed => SetupCliResults.Failure(SetupCliExitCode.Validation, terminal.DiagnosticCode),
                 _ => SetupCliResults.Failure(SetupCliExitCode.Blocked, terminal.DiagnosticCode),
             };

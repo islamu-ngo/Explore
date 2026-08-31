@@ -24,7 +24,10 @@ internal static class SetupCliProgram
                 !Console.IsOutputRedirected);
             var invocation = new SetupCliInvocation(args, mode, io, terminal, new SetupCliEnvironmentPresence([]));
             using var terminalDriver = new ConsoleSetupTerminalDriver(terminal);
-            ISetupTerminalWorkflow terminalWorkflow = new SetupTerminalWorkflow(terminalDriver);
+            ISetupTerminalProtectedWriter? protectedWriter =
+                OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() || OperatingSystem.IsFreeBSD()
+                    ? new UnixSetupTerminalProtectedWriter(Directory.GetCurrentDirectory()) : null;
+            ISetupTerminalWorkflow terminalWorkflow = new SetupTerminalWorkflow(terminalDriver, protectedWriter);
             return (int)new SetupCliApplication(terminalWorkflow).Run(invocation);
         }
         catch (ArgumentException)

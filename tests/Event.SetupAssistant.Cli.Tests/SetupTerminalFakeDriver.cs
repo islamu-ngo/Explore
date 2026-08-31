@@ -65,16 +65,21 @@ internal sealed class SetupTerminalFakeDriver : ISetupTerminalDriver
     }
 }
 
-internal sealed class SetupTerminalFakeProtectedWriter : ISetupTerminalProtectedWriter
+internal sealed class SetupTerminalFakeProtectedWriter(
+    bool isAvailable = true, bool throwOnWrite = false) : ISetupTerminalProtectedWriter
 {
     private byte[] _observed = [];
-    public bool IsAvailable => true;
+    public bool IsAvailable { get; } = isAvailable;
     public bool WriteCompleted { get; private set; }
+    public bool FileNameAccepted { get; private set; }
     public bool BufferIsCleared => _observed.All(value => value == 0);
 
-    public SetupTerminalProtectedWriteResult WriteCreateNew(ReadOnlyMemory<byte> bytes, int maximumBytes)
+    public SetupTerminalProtectedWriteResult WriteCreateNew(
+        string validatedFileName, ReadOnlyMemory<byte> bytes, int maximumBytes)
     {
-        if (bytes.Length > maximumBytes) return SetupTerminalProtectedWriteResult.Blocked;
+        FileNameAccepted = SetupPublicFileNameBuffer.IsSafe(validatedFileName);
+        if (throwOnWrite) throw new IOException("synthetic-protected-write-failure");
+        if (!FileNameAccepted || bytes.Length > maximumBytes) return SetupTerminalProtectedWriteResult.Blocked;
         _observed = bytes.ToArray();
         WriteCompleted = true;
         Array.Clear(_observed);

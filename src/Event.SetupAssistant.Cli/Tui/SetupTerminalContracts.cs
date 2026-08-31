@@ -93,13 +93,16 @@ public readonly record struct SetupTerminalDriverSnapshot(
     bool InterceptionActive, bool EchoSuppressedByIntercept, bool TreatControlCAsInput,
     int WindowWidth, int WindowHeight);
 
-public sealed record SetupTerminalState(bool Active, int SecretCharacterCount, SetupTerminalOutcome? Outcome)
+public sealed record SetupTerminalState(
+    bool Active, int SecretCharacterCount, SetupTerminalOutcome? Outcome, int PublicFileNameCharacterCount = 0)
 {
-    public override string ToString() => $"{nameof(SetupTerminalState)}:Active={Active}:Count={SecretCharacterCount}:Outcome={Outcome}";
+    public override string ToString() =>
+        $"{nameof(SetupTerminalState)}:Active={Active}:SecretCount={SecretCharacterCount}:PublicCount={PublicFileNameCharacterCount}:Outcome={Outcome}";
 }
 
 public interface ISetupTerminalProtectedWriter
 {
     bool IsAvailable { get; }
-    SetupTerminalProtectedWriteResult WriteCreateNew(ReadOnlyMemory<byte> bytes, int maximumBytes);
+    SetupTerminalProtectedWriteResult WriteCreateNew(
+        string validatedFileName, ReadOnlyMemory<byte> bytes, int maximumBytes);
 }

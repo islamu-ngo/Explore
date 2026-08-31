@@ -1,5 +1,5 @@
 // ABOUTME: Owns Console key interception, advisory dimensions, cancellation, and POSIX signal subscriptions.
-// ABOUTME: Maps platform failures to explicit events and restores modified Console state idempotently.
+// ABOUTME: Races each background key read against signals and restores Console state without waiting for late readers.
 
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
@@ -10,6 +10,8 @@ public sealed class ConsoleSetupTerminalDriver : ISetupTerminalDriver
 {
     private readonly ConcurrentQueue<SetupTerminalEvent> _pending = new();
     private readonly List<PosixSignalRegistration> _signals = [];
+    private readonly object _coordination = new();
+    private SetupTerminalReadCoordinator? _activeRead;
     private SetupTerminalDriverSnapshot? _snapshot;
     private bool _disposed;
 
@@ -43,25 +45,23 @@ public sealed class ConsoleSetupTerminalDriver : ISetupTerminalDriver
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_pending.TryDequeue(out SetupTerminalEvent queued)) return queued;
-        int width;
-        int height;
-        try { width = Console.WindowWidth; height = Console.WindowHeight; }
-        catch (IOException) { return SetupTerminalEvent.ResizeFailure(); }
-        catch (InvalidOperationException) { return SetupTerminalEvent.ResizeFailure(); }
+        if (!TryDimensions(out int width, out int height)) return SetupTerminalEvent.ResizeFailure();
 
-        ConsoleKeyInfo key;
-        try { key = Console.ReadKey(intercept: true); }
-        catch (IOException) { return SetupTerminalEvent.DriverError(); }
-        catch (InvalidOperationException) { return SetupTerminalEvent.DriverError(); }
-        if (_pending.TryDequeue(out queued)) return queued;
-        try
+        SetupTerminalReadCoordinator coordinator;
+        lock (_coordination)
         {
-            if (width != Console.WindowWidth || height != Console.WindowHeight)
-                return SetupTerminalEvent.ResizeChanged();
+            if (_pending.TryDequeue(out queued)) return queued;
+            coordinator = new SetupTerminalReadCoordinator();
+            _activeRead = coordinator;
         }
-        catch (IOException) { return SetupTerminalEvent.ResizeFailure(); }
-        catch (InvalidOperationException) { return SetupTerminalEvent.ResizeFailure(); }
-        return MapKey(key);
+        coordinator.Start(() => ReadKeyEvent(width, height));
+        SetupTerminalEvent result = coordinator.Wait();
+        lock (_coordination)
+        {
+            if (ReferenceEquals(_activeRead, coordinator)) _activeRead = null;
+        }
+        coordinator.Dispose();
+        return result;
     }
 
     public void WriteBounded(string value, int maximumCharacters, int maximumBytes)
@@ -78,10 +78,15 @@ public sealed class ConsoleSetupTerminalDriver : ISetupTerminalDriver
         Console.CancelKeyPress -= OnCancelKeyPress;
         foreach (PosixSignalRegistration registration in _signals) registration.Dispose();
         _signals.Clear();
-        Console.TreatControlCAsInput = snapshot.TreatControlCAsInput;
+        lock (_coordination)
+        {
+            _activeRead?.TryComplete(SetupTerminalEvent.DriverError());
+            _activeRead = null;
+        }
         InterceptionActive = snapshot.InterceptionActive;
         _snapshot = null;
         while (_pending.TryDequeue(out _)) { }
+        Console.TreatControlCAsInput = snapshot.TreatControlCAsInput;
     }
 
     public void Dispose()
@@ -91,10 +96,21 @@ public sealed class ConsoleSetupTerminalDriver : ISetupTerminalDriver
         _disposed = true;
     }
 
+    private SetupTerminalEvent ReadKeyEvent(int initialWidth, int initialHeight)
+    {
+        ConsoleKeyInfo key;
+        try { key = Console.ReadKey(intercept: true); }
+        catch (IOException) { return SetupTerminalEvent.DriverError(); }
+        catch (InvalidOperationException) { return SetupTerminalEvent.DriverError(); }
+        if (!TryDimensions(out int width, out int height)) return SetupTerminalEvent.ResizeFailure();
+        return width != initialWidth || height != initialHeight
+            ? SetupTerminalEvent.ResizeChanged() : MapKey(key);
+    }
+
     private void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs args)
     {
         args.Cancel = true;
-        _pending.Enqueue(SetupTerminalEvent.CancelSignal());
+        Publish(SetupTerminalEvent.CancelSignal());
     }
 
     private void RegisterSignals()
@@ -114,11 +130,35 @@ public sealed class ConsoleSetupTerminalDriver : ISetupTerminalDriver
             _signals.Add(PosixSignalRegistration.Create(signal, context =>
             {
                 context.Cancel = true;
-                _pending.Enqueue(terminalEvent);
+                Publish(terminalEvent);
             }));
         }
         catch (PlatformNotSupportedException) { }
         catch (ArgumentException) { }
+    }
+
+    private void Publish(SetupTerminalEvent value)
+    {
+        lock (_coordination)
+        {
+            if (_activeRead is not null && _activeRead.TryComplete(value)) return;
+            _pending.Enqueue(value);
+        }
+    }
+
+    private static bool TryDimensions(out int width, out int height)
+    {
+        try
+        {
+            width = Console.WindowWidth;
+            height = Console.WindowHeight;
+            return true;
+        }
+        catch (IOException) { }
+        catch (InvalidOperationException) { }
+        width = 0;
+        height = 0;
+        return false;
     }
 
     private static SetupTerminalEvent MapKey(ConsoleKeyInfo key)
