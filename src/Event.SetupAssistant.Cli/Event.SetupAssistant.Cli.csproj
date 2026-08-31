@@ -1,0 +1,15 @@
+<!-- ABOUTME: Defines the minimal BCL executable boundary for the future Setup Assistant CLI. -->
+<!-- ABOUTME: References only Setup Core and intentionally exposes no command contract in SA-120. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Event.Setup.Core\Event.Setup.Core.csproj" />
+  </ItemGroup>
+</Project>

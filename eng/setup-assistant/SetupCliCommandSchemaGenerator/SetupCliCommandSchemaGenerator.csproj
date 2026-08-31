@@ -1,0 +1,14 @@
+<!-- ABOUTME: Defines the package-free deterministic event-setup command schema generator and checker. -->
+<!-- ABOUTME: References compiled CLI metadata rather than schemas, source scraping, or external packages. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Event.SetupAssistant.Cli\Event.SetupAssistant.Cli.csproj" />
+  </ItemGroup>
+</Project>
