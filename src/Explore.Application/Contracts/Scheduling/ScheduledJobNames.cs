@@ -25,6 +25,8 @@ public static class ScheduledJobNames
     public const string StorageReconciliation = "storage-reconciliation";
     public const string RegistrationRetentionCleanup = "registration-retention-cleanup";
     public const string OrganizerPaymentReadinessReconciliation = "organizer-payment-readiness-reconciliation";
+    public const string ConfigurationPortabilityRetentionCleanup =
+        "configuration-portability-retention-cleanup";
 
     // Inventory-hold expiry runs as a pair: a deadline trigger per order gives punctuality, and a low
     // frequency sweep gives the correctness guarantee. Neither replaces the other — see the reconciliation
@@ -67,6 +69,7 @@ public static class ScheduledJobNames
         StorageReconciliation,
         RegistrationRetentionCleanup,
         OrganizerPaymentReadinessReconciliation,
+        ConfigurationPortabilityRetentionCleanup,
         InventoryHoldExpiry,
         InventoryHoldExpiryReconciliation,
         RegistrationFinalizationDrain,
