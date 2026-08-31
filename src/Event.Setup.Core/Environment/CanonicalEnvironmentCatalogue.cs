@@ -1,0 +1,799 @@
+// ABOUTME: Owns the explicit canonical key and per-surface order data for environment generation.
+// ABOUTME: Duplicates only secret classification needed to keep Core package-free from runtime Domain authority.
+
+namespace ISLAMU.Event.Setup.Core.Environment;
+
+public static partial class CanonicalEnvironmentCatalogue
+{
+    private static readonly string[] DotenvKeyData = Lines(
+        """
+        API_HTTP_PORT
+        UI_HTTP_PORT
+        KEYCLOAK_HTTP_PORT
+        MAILPIT_SMTP_PORT
+        MAILPIT_UI_PORT
+        MINIO_API_PORT
+        MINIO_CONSOLE_PORT
+        CERBOS_HTTP_PORT
+        CERBOS_GRPC_PORT
+        SVIX_HTTP_PORT
+        WEBLATE_HTTP_PORT
+        COOP_HTTP_PORT
+        COOP_CLIENT_HTTP_PORT
+        OSPREY_BIDI_STREAM_PORT
+        OSPREY_SYNC_ACTION_PORT
+        MAILPIT_TAG
+        MAILPIT_MAX_MESSAGES
+        FORMBRICKS_HTTP_PORT
+        FORMBRICKS_WEBAPP_URL
+        FORMBRICKS_DATABASE_NAME
+        FORMBRICKS_DATABASE_USER
+        FORMBRICKS_DATABASE_PASSWORD
+        FORMBRICKS_NEXTAUTH_SECRET
+        FORMBRICKS_ENCRYPTION_KEY
+        FORMBRICKS_CRON_SECRET
+        FORMBRICKS_HUB_API_KEY
+        FORMBRICKS_CUBEJS_API_SECRET
+        CONFIGURATION_MANIFEST_MODE
+        CONFIGURATION_MANIFEST_PATH
+        CONFIGURATION_MANIFEST_HOST_DIRECTORY
+        SECRET_PROVIDER
+        INFISICAL_URL
+        INFISICAL_PROJECT_ID
+        INFISICAL_CLIENT_ID
+        INFISICAL_CLIENT_SECRET
+        INFISICAL_ENV
+        DATABASE_PROVIDER
+        DATABASE_HOST
+        DATABASE_PORT
+        DATABASE_NAME
+        DATABASE_SCHEMA
+        DATABASE_TLS_MODE
+        DATABASE_TRUST_SERVER_CERTIFICATE
+        DATABASE_RUNTIME_USERNAME
+        DATABASE_RUNTIME_PASSWORD
+        DATABASE_MIGRATOR_USERNAME
+        DATABASE_MIGRATOR_PASSWORD
+        KEYCLOAK_REALM
+        KEYCLOAK_ENDPOINT
+        KEYCLOAK_BLAZOR_CLIENT_ID
+        KEYCLOAK_BLAZOR_CLIENT_SECRET
+        KEYCLOAK_API_CLIENT_SECRET
+        KEYCLOAK_BLAZOR_REDIRECT_URIS
+        KEYCLOAK_BLAZOR_WEB_ORIGINS
+        KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS
+        KEYCLOAK_SMTP_HOST
+        KEYCLOAK_SMTP_PORT
+        KEYCLOAK_SMTP_FROM
+        KEYCLOAK_SMTP_FROM_DISPLAY_NAME
+        KEYCLOAK_SMTP_AUTH
+        KEYCLOAK_SMTP_SSL
+        KEYCLOAK_SMTP_STARTTLS
+        KEYCLOAK_SMTP_REPLY_TO
+        KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME
+        KEYCLOAK_SMTP_ENVELOPE_FROM
+        KEYCLOAK_SMTP_USER
+        KEYCLOAK_SMTP_PASSWORD
+        KEYCLOAK_ADMIN
+        KEYCLOAK_ADMIN_PASSWORD
+        KEYCLOAK_DB_DATABASE
+        KEYCLOAK_DB_USERNAME
+        KEYCLOAK_DB_PASSWORD
+        KEYCLOAK_REQUIRE_HTTPS_METADATA
+        SETUP_SECRET
+        SETUP_SECRET_REQUIRED
+        HOSTING_REPLICA_COUNT
+        PROMOTIONS_CODE_LOOKUP_ACTIVE_KEY_VERSION
+        PROMOTIONS_CODE_LOOKUP_HMAC_KEY
+        DEPLOYMENT_MODE
+        CONTROL_PLANE_MANAGED_MODE
+        CONTROL_PLANE_URL
+        CONTROL_PLANE_INSTANCE_ID
+        CONTROL_PLANE_REGISTRATION_TOKEN
+        CONTROL_PLANE_MAXIMUM_TENANT_COUNT
+        CONTROL_PLANE_TENANT_ADMINISTRATOR_SIGN_IN_URL
+        USE_COMMERCIAL_LUCKYPENNY
+        LUCKYPENNY_LICENSE_KEY
+        AUTOMAPPER_COMMERCIAL_VERSION
+        MEDIATR_COMMERCIAL_VERSION
+        GEOCODING_PROVIDER
+        GEOCODING_ENDPOINT
+        GEOCODING_LANGUAGE
+        GEOCODING_COUNTRY_CODES
+        GEOCODING_MAXIMUM_RESULTS
+        GEOCODING_MAXIMUM_RESPONSE_BYTES
+        GEOCODING_DATASET_VERSION
+        GEOCODING_TOTAL_TIMEOUT_MILLISECONDS
+        GEOCODING_MAXIMUM_RETRY_COUNT
+        GEOCODING_RETRY_DELAYS_MILLISECONDS
+        GEOCODING_READINESS_TIMEOUT_MILLISECONDS
+        GEOCODING_SELECTION_LIFETIME_SECONDS
+        PROVISIONING_TRUSTED
+        PROVISIONING_MODE
+        MANAGED_CLIENT_EXTERNAL_PROVIDER
+        PHYSICAL_TENANCY_MODE
+        API_ENDPOINT
+        CONTROL_PLANE_PUBLIC_ORIGIN
+        INSTANCE__OPERATORIDENTITY__OPERATORID
+        INSTANCE__OPERATORIDENTITY__PUBLICNAME
+        INSTANCE__OPERATORIDENTITY__LEGALNAME
+        INSTANCE__OPERATORIDENTITY__ISOFFICIALINSTANCE
+        INSTANCE__OPERATORIDENTITY__OFFICIALORIGIN
+        INSTANCE__OPERATORIDENTITY__OPERATORKINDCODE
+        INSTANCE__OPERATORIDENTITY__JURISDICTIONCOUNTRYCODE
+        INSTANCE__OPERATORIDENTITY__REGISTRATIONIDENTIFIER
+        INSTANCE__OPERATORIDENTITY__PUBLICCONTACTEMAIL
+        INSTANCE__OPERATORIDENTITY__WEBSITEURL
+        INSTANCE__OPERATORIDENTITY__LEGALNOTICEURL
+        INSTANCE__OPERATORIDENTITY__TERMSURL
+        INSTANCE__OPERATORIDENTITY__PRIVACYURL
+        PUBLIC_BASE_URL
+        PAYMENTS_STRIPE_MODE
+        PAYMENTS_ORGANIZER_DIRECT_PROVIDER_CODE
+        PAYMENTS_ORGANIZER_DIRECT_CONNECT_PLATFORM_ID
+        PAYMENTS__CHECKOUTGOVERNANCE__COMPLAINTOWNER
+        PAYMENTS__CHECKOUTGOVERNANCE__REFUNDOWNER
+        PAYMENTS__CHECKOUTGOVERNANCE__DISPUTEOWNER
+        PAYMENTS__CHECKOUTGOVERNANCE__RECONCILIATIONOWNER
+        PAYMENTS__CHECKOUTGOVERNANCE__ACTIVATIONSTATUS
+        PAYMENTS__CHECKOUTGOVERNANCE__REFUNDPOLICYLANGUAGETAG
+        PAYMENTS__CHECKOUTGOVERNANCE__STATEMENTDESCRIPTOR
+        PAYMENTS__CHECKOUTGOVERNANCE__CHARGETYPE
+        STRIPE_PLATFORM_SECRET_KEY
+        STRIPE_WEBHOOK_SECRET
+        ADMISSIONS_CREDENTIAL_LOOKUP_HMAC_KEY
+        ADMISSIONS__CREDENTIALLOOKUP__ACTIVEKEYVERSION
+        ADMISSIONS_SCANNER_CAPABILITY_HMAC_KEY
+        ADMISSIONS_RECOVERY_CAPABILITY_HMAC_KEY
+        ADMISSIONS__RECOVERY__ACTIVEKEYVERSION
+        ADMISSIONS__RECOVERY__CAPABILITYLIFETIMEMINUTES
+        ADMISSIONS__RECOVERY__RATELIMITBUCKETCOUNT
+        ADMISSIONS__RECOVERY__RATELIMITPERMITCOUNT
+        ADMISSIONS__RECOVERY__RATELIMITWINDOWSECONDS
+        TICKETING__RECOVERY__ENABLED
+        TICKETING__RECOVERY__EXPECTEDRELEASEREVISION
+        TICKETING__RECOVERY__EXPECTEDSCHEMAREVISION
+        TICKETING__RECOVERY__MINIMUMRETAINEDKEYVERSION
+        TICKETING__RECOVERY__MINIMUMAUTHORITYFLOOR
+        TICKETING__RECOVERY__MINIMUMPROVIDERCURSOR
+        TICKETING__RECOVERY__MINIMUMIDEMPOTENCYFLOOR
+        TICKETING__RECOVERY__MINIMUMWORKERFENCE
+        TICKETING__RECOVERY__WARNINGOLDESTDUESECONDS
+        TICKETING__RECOVERY__UNHEALTHYOLDESTDUESECONDS
+        TICKETING__RECOVERY__BACKLOGTHRESHOLD
+        TICKETING__RECOVERY__DECLAREDRPOMINUTES
+        TICKETING__RECOVERY__DECLAREDRTOMINUTES
+        TICKETING__RECOVERY__MANIFESTSIGNINGKEYREFERENCE
+        TICKETING__RECOVERY__RETAINEDKEYVERSIONS__0
+        TICKETING_RECOVERY_MANIFEST_HMAC_KEY
+        AUTHORIZATION_PROVIDER
+        CERBOS_GRPC_ENDPOINT
+        CERBOS_HTTP_ENDPOINT
+        CERBOS_USE_TLS
+        CERBOS_PLAINTEXT_MODE
+        CERBOS_ADMIN_USERNAME
+        CERBOS_ADMIN_PASSWORD_HASH
+        CERBOS_ADMIN_PASSWORD
+        CERBOS_PG_URL
+        CERBOS_POSTGRES_USER
+        CERBOS_POSTGRES_PASSWORD
+        CERBOS_POSTGRES_DB
+        STORAGE_S3_ENDPOINT
+        STORAGE_S3_PUBLIC_ENDPOINT
+        STORAGE_S3_REGION
+        STORAGE_S3_BUCKET_NAME
+        STORAGE_S3_ACCESS_KEY_ID
+        STORAGE_S3_SECRET_ACCESS_KEY
+        LOCAL_STORAGE_ROOT_PATH
+        LOCAL_STORAGE_CREATE_ROOT_IF_MISSING
+        STORAGE_RECONCILIATION_ENABLED
+        STORAGE_RECONCILIATION_DRY_RUN
+        STORAGE_RECONCILIATION_QUARANTINE_MISSING_OBJECTS
+        STORAGE_RECONCILIATION_QUARANTINE_ORPHAN_LOCAL_FILES
+        STORAGE_RECONCILIATION_DELETE_QUARANTINED_OBJECTS
+        AI_PROVIDER
+        AI_ENDPOINT
+        AI_MODEL_ID
+        AI_API_KEY
+        AI_TOOL_PROPOSALS_ENABLED
+        MCP_ENABLED
+        MCP_ENDPOINT_PATH
+        MCP_STATELESS
+        MCP_ENABLE_LEGACY_SSE
+        MAIL_SMTP_HOST
+        MAIL_SMTP_PORT
+        MAIL_SMTP_USERNAME
+        MAIL_SMTP_PASSWORD
+        MAIL_SMTP_ENCRYPTION
+        MAIL_SMTP_FROM_ADDRESS
+        MAIL_SMTP_FROM_NAME
+        WEB_PUSH_ENABLED
+        VAPID_SUBJECT
+        VAPID_PUBLIC_KEY
+        VAPID_PRIVATE_KEY
+        MESSAGING_URI
+        EMAIL_DISPATCH_RABBITMQ_ENABLED
+        EMAIL_DISPATCH_RABBITMQ_CONNECTION_STRING_NAME
+        EMAIL_DISPATCH_RABBITMQ_CONNECTION_STRING
+        EMAIL_DISPATCH_RABBITMQ_EXCHANGE_NAME
+        EMAIL_DISPATCH_RABBITMQ_DISPATCH_QUEUE_NAME
+        EMAIL_DISPATCH_RABBITMQ_DISPATCH_ROUTING_KEY
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_EXCHANGE_NAME
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_QUEUE_NAME
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_ROUTING_KEY
+        EMAIL_DISPATCH_RABBITMQ_PARKING_QUEUE_NAME
+        EMAIL_DISPATCH_RABBITMQ_PARKING_ROUTING_KEY
+        EMAIL_DISPATCH_RABBITMQ_CLIENT_PROVIDED_NAME
+        EMAIL_DISPATCH_RABBITMQ_CONSUMER_ID
+        EMAIL_DISPATCH_RABBITMQ_PREFETCH_COUNT
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_REPLAY_ENABLED
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_REPLAY_CONSUMER_ID
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_REPLAY_PREFETCH_COUNT
+        EMAIL_DISPATCH_RABBITMQ_PUBLISH_TIMEOUT_SECONDS
+        EMAIL_DISPATCH_RABBITMQ_PUBLISHER_POLLING_INTERVAL_SECONDS
+        EMAIL_DISPATCH_RABBITMQ_PUBLISHER_BATCH_SIZE
+        EMAIL_DISPATCH_RABBITMQ_PUBLISHER_RETRY_DELAY_SECONDS
+        WEBHOOKS_ENABLED
+        WEBHOOKS_PROVIDER
+        WEBHOOKS_SVIX_BASE_URL
+        WEBHOOKS_SVIX_ENVIRONMENT
+        WEBHOOKS_SVIX_PROVIDER_VERSION
+        WEBHOOKS_SVIX_CAPABILITY_POLICY_VERSION
+        WEBHOOKS_SVIX_AUTH_TOKEN_SECRET_REF
+        WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET_REF
+        WEBHOOKS_SVIX_AUTH_TOKEN
+        WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET
+        SVIX_TAG
+        SVIX_DB_DATABASE
+        SVIX_DB_USERNAME
+        SVIX_DB_PASSWORD
+        SVIX_DB_DSN
+        SVIX_REDIS_DSN
+        SVIX_QUEUE_TYPE
+        SVIX_CACHE_TYPE
+        SVIX_JWT_SECRET
+        WEBLATE_IMAGE
+        WEBLATE_SITE_DOMAIN
+        WEBLATE_ADMIN_NAME
+        WEBLATE_ADMIN_EMAIL
+        WEBLATE_ADMIN_PASSWORD
+        WEBLATE_POSTGRES_USER
+        WEBLATE_POSTGRES_PASSWORD
+        WEBLATE_POSTGRES_DB
+        REPORTING_ENABLED
+        REPORTING_MODE
+        REPORTING_SYNC_REPORTS
+        REPORTING_EVALUATE_SIGNALS
+        REPORTING_MIRROR_REVIEW_QUEUE
+        REPORTING_EXECUTE_DECISIONS
+        REPORTING_HEALTH_STUCK_PROVIDER_SYNC_MINUTES
+        REPORTING_HEALTH_FAILED_PROVIDER_SYNC_WARNING_THRESHOLD
+        REPORTING_OSPREY_ENABLED
+        REPORTING_OSPREY_ENDPOINT_URL
+        REPORTING_OSPREY_API_KEY
+        REPORTING_OSPREY_ALLOW_LOCAL_PROVIDER_ENDPOINTS
+        REPORTING_COOP_ENABLED
+        REPORTING_COOP_ENDPOINT_URL
+        REPORTING_COOP_API_KEY
+        REPORTING_COOP_ALLOW_LOCAL_PROVIDER_ENDPOINTS
+        REPORTING_COOP_WEBHOOK_SECRET
+        COOP_IMAGE
+        COOP_MIGRATIONS_IMAGE
+        COOP_CLIENT_IMAGE
+        COOP_NODE_ENV
+        COOP_OTEL_SERVICE_NAME
+        COOP_UI_URL
+        COOP_SESSION_SECRET
+        COOP_DATABASE_USER
+        COOP_DATABASE_PASSWORD
+        COOP_DATABASE_NAME
+        COOP_WAREHOUSE_ADAPTER
+        COOP_ANALYTICS_ADAPTER
+        COOP_SCYLLA_HOSTS
+        COOP_SCYLLA_USERNAME
+        COOP_SCYLLA_PASSWORD
+        COOP_SCYLLA_LOCAL_DATACENTER
+        COOP_SCYLLA_SSL
+        OSPREY_IMAGE
+        OSPREY_RUST_LOG
+        OSPREY_POD_IP
+        LISTMONK_ENABLED
+        LISTMONK_INSTANCE_URL
+        LISTMONK_DEFAULT_LIST_ID
+        LISTMONK_PRECONFIRM_SUBSCRIPTIONS
+        LISTMONK_SYNC_ON_REGISTRATION
+        LISTMONK_API_USERNAME
+        LISTMONK_API_KEY
+        ERASURE_TOPOLOGY
+        ERASURE_EMBEDDED_PATH
+        ERASURE_WRITER_REPLICA_COUNT
+        ERASURE_BUSY_TIMEOUT_SECONDS
+        DATABASE_ERASURE_HOST
+        DATABASE_ERASURE_PORT
+        DATABASE_ERASURE_NAME
+        DATABASE_ERASURE_RUNTIME_USERNAME
+        DATABASE_ERASURE_RUNTIME_PASSWORD
+        DATABASE_ERASURE_MIGRATOR_USERNAME
+        DATABASE_ERASURE_MIGRATOR_PASSWORD
+        DATABASE_ERASURE_TLS_MODE
+        DATABASE_ERASURE_TRUST_SERVER_CERTIFICATE
+        """);
+
+    private static readonly string[] ComposeKeyData = Lines(
+        """
+        KEYCLOAK_REALM
+        KEYCLOAK_ENDPOINT
+        KEYCLOAK_BLAZOR_CLIENT_ID
+        KEYCLOAK_BLAZOR_CLIENT_SECRET
+        KEYCLOAK_REQUIRE_HTTPS_METADATA
+        SECRET_PROVIDER
+        INFISICAL_URL
+        INFISICAL_PROJECT_ID
+        INFISICAL_CLIENT_ID
+        INFISICAL_CLIENT_SECRET
+        INFISICAL_ENV
+        DATABASE_MIGRATOR_USERNAME
+        DATABASE_MIGRATOR_PASSWORD
+        DATABASE_NAME
+        FORMBRICKS_WEBAPP_URL
+        FORMBRICKS_DATABASE_USER
+        FORMBRICKS_DATABASE_PASSWORD
+        FORMBRICKS_DATABASE_NAME
+        FORMBRICKS_NEXTAUTH_SECRET
+        FORMBRICKS_ENCRYPTION_KEY
+        FORMBRICKS_CRON_SECRET
+        FORMBRICKS_HUB_API_KEY
+        FORMBRICKS_CUBEJS_API_SECRET
+        DATABASE_PROVIDER
+        DATABASE_HOST
+        DATABASE_PORT
+        DATABASE_SCHEMA
+        DATABASE_TLS_MODE
+        DATABASE_TRUST_SERVER_CERTIFICATE
+        DATABASE_SERVER_VERSION
+        DATABASE_RUNTIME_USERNAME
+        DATABASE_RUNTIME_PASSWORD
+        ERASURE_TOPOLOGY
+        PRIVACY_ERASURE_AUTHORITY_TOPOLOGY
+        ERASURE_EMBEDDED_PATH
+        PRIVACY_ERASURE_AUTHORITY_EMBEDDED_PATH
+        ERASURE_WRITER_REPLICA_COUNT
+        PRIVACY_ERASURE_AUTHORITY_WRITER_REPLICA_COUNT
+        ERASURE_BUSY_TIMEOUT_SECONDS
+        PRIVACY_ERASURE_AUTHORITY_BUSY_TIMEOUT_SECONDS
+        DATABASE_ERASURE_HOST
+        PRIVACY_ERASURE_AUTHORITY_HOST
+        DATABASE_ERASURE_PORT
+        PRIVACY_ERASURE_AUTHORITY_PORT
+        DATABASE_ERASURE_NAME
+        PRIVACY_ERASURE_AUTHORITY_DATABASE
+        DATABASE_ERASURE_TLS_MODE
+        PRIVACY_ERASURE_AUTHORITY_TLS_MODE
+        DATABASE_ERASURE_TRUST_SERVER_CERTIFICATE
+        PRIVACY_ERASURE_AUTHORITY_TRUST_SERVER_CERTIFICATE
+        DATABASE_ERASURE_RUNTIME_USERNAME
+        PRIVACY_ERASURE_AUTHORITY_RUNTIME_USERNAME
+        DATABASE_ERASURE_RUNTIME_PASSWORD
+        PRIVACY_ERASURE_AUTHORITY_RUNTIME_PASSWORD
+        DATABASE_ERASURE_MIGRATOR_USERNAME
+        PRIVACY_ERASURE_AUTHORITY_MIGRATOR_USERNAME
+        DATABASE_ERASURE_MIGRATOR_PASSWORD
+        PRIVACY_ERASURE_AUTHORITY_MIGRATOR_PASSWORD
+        STORAGE_S3_ENDPOINT
+        STORAGE_S3_PUBLIC_ENDPOINT
+        STORAGE_S3_REGION
+        STORAGE_S3_BUCKET_NAME
+        STORAGE_S3_ACCESS_KEY_ID
+        STORAGE_S3_SECRET_ACCESS_KEY
+        DEPLOYMENT_MODE
+        CONTROL_PLANE_PUBLIC_ORIGIN
+        SETUP_SECRET
+        SETUP_SECRET_FILE
+        SETUP_SECRET_REQUIRED
+        HOSTING_REPLICA_COUNT
+        PROMOTIONS_CODE_LOOKUP_ACTIVE_KEY_VERSION
+        PROMOTIONS_CODE_LOOKUP_HMAC_KEY
+        USE_COMMERCIAL_LUCKYPENNY
+        LUCKYPENNY_LICENSE_KEY
+        AUTOMAPPER_COMMERCIAL_VERSION
+        MEDIATR_COMMERCIAL_VERSION
+        INSTANCE__OPERATORIDENTITY__OPERATORID
+        INSTANCE__OPERATORIDENTITY__PUBLICNAME
+        INSTANCE__OPERATORIDENTITY__LEGALNAME
+        INSTANCE__OPERATORIDENTITY__ISOFFICIALINSTANCE
+        INSTANCE__OPERATORIDENTITY__OFFICIALORIGIN
+        INSTANCE__OPERATORIDENTITY__OPERATORKINDCODE
+        INSTANCE__OPERATORIDENTITY__JURISDICTIONCOUNTRYCODE
+        INSTANCE__OPERATORIDENTITY__REGISTRATIONIDENTIFIER
+        INSTANCE__OPERATORIDENTITY__PUBLICCONTACTEMAIL
+        INSTANCE__OPERATORIDENTITY__WEBSITEURL
+        INSTANCE__OPERATORIDENTITY__LEGALNOTICEURL
+        INSTANCE__OPERATORIDENTITY__TERMSURL
+        INSTANCE__OPERATORIDENTITY__PRIVACYURL
+        PAYMENTS__CHECKOUTGOVERNANCE__COMPLAINTOWNER
+        PAYMENTS__CHECKOUTGOVERNANCE__REFUNDOWNER
+        PAYMENTS__CHECKOUTGOVERNANCE__DISPUTEOWNER
+        PAYMENTS__CHECKOUTGOVERNANCE__RECONCILIATIONOWNER
+        PAYMENTS__CHECKOUTGOVERNANCE__ACTIVATIONSTATUS
+        PAYMENTS__CHECKOUTGOVERNANCE__REFUNDPOLICYLANGUAGETAG
+        PAYMENTS__CHECKOUTGOVERNANCE__STATEMENTDESCRIPTOR
+        PAYMENTS__CHECKOUTGOVERNANCE__CHARGETYPE
+        PUBLIC_BASE_URL
+        PAYMENTS_STRIPE_MODE
+        PAYMENTS_ORGANIZER_DIRECT_PROVIDER_CODE
+        PAYMENTS_ORGANIZER_DIRECT_CONNECT_PLATFORM_ID
+        STRIPE_PLATFORM_SECRET_KEY
+        STRIPE_WEBHOOK_SECRET
+        AI_PROVIDER
+        AI_ENDPOINT
+        AI_MODEL_ID
+        AI_API_KEY
+        AI_TOOL_PROPOSALS_ENABLED
+        GEOCODING_PROVIDER
+        GEOCODING_ENDPOINT
+        GEOCODING_LANGUAGE
+        GEOCODING_COUNTRY_CODES
+        GEOCODING_DATASET_VERSION
+        GEOCODING_MAXIMUM_RESULTS
+        GEOCODING_MAXIMUM_RESPONSE_BYTES
+        GEOCODING_TOTAL_TIMEOUT_MILLISECONDS
+        GEOCODING_MAXIMUM_RETRY_COUNT
+        GEOCODING_RETRY_DELAYS_MILLISECONDS
+        GEOCODING_READINESS_TIMEOUT_MILLISECONDS
+        GEOCODING_SELECTION_LIFETIME_SECONDS
+        MCP_ENABLED
+        MCP_ENDPOINT_PATH
+        MCP_STATELESS
+        MCP_ENABLE_LEGACY_SSE
+        MAIL_SMTP_HOST
+        MAIL_SMTP_PORT
+        MAIL_SMTP_USERNAME
+        MAIL_SMTP_PASSWORD
+        MAIL_SMTP_ENCRYPTION
+        MAIL_SMTP_FROM_ADDRESS
+        MAIL_SMTP_FROM_NAME
+        MESSAGING_URI
+        EMAIL_DISPATCH_RABBITMQ_ENABLED
+        EMAIL_DISPATCH_RABBITMQ_CONNECTION_STRING_NAME
+        EMAIL_DISPATCH_RABBITMQ_CONNECTION_STRING
+        EMAIL_DISPATCH_RABBITMQ_EXCHANGE_NAME
+        EMAIL_DISPATCH_RABBITMQ_DISPATCH_QUEUE_NAME
+        EMAIL_DISPATCH_RABBITMQ_DISPATCH_ROUTING_KEY
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_EXCHANGE_NAME
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_QUEUE_NAME
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_ROUTING_KEY
+        EMAIL_DISPATCH_RABBITMQ_PARKING_QUEUE_NAME
+        EMAIL_DISPATCH_RABBITMQ_PARKING_ROUTING_KEY
+        EMAIL_DISPATCH_RABBITMQ_CLIENT_PROVIDED_NAME
+        EMAIL_DISPATCH_RABBITMQ_CONSUMER_ID
+        EMAIL_DISPATCH_RABBITMQ_PREFETCH_COUNT
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_REPLAY_ENABLED
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_REPLAY_CONSUMER_ID
+        EMAIL_DISPATCH_RABBITMQ_DEAD_LETTER_REPLAY_PREFETCH_COUNT
+        EMAIL_DISPATCH_RABBITMQ_PUBLISH_TIMEOUT_SECONDS
+        EMAIL_DISPATCH_RABBITMQ_PUBLISHER_POLLING_INTERVAL_SECONDS
+        EMAIL_DISPATCH_RABBITMQ_PUBLISHER_BATCH_SIZE
+        EMAIL_DISPATCH_RABBITMQ_PUBLISHER_RETRY_DELAY_SECONDS
+        WEB_PUSH_ENABLED
+        VAPID_SUBJECT
+        VAPID_PUBLIC_KEY
+        VAPID_PRIVATE_KEY
+        REPORTING_ENABLED
+        REPORTING_MODE
+        REPORTING_SYNC_REPORTS
+        REPORTING_EVALUATE_SIGNALS
+        REPORTING_MIRROR_REVIEW_QUEUE
+        REPORTING_EXECUTE_DECISIONS
+        REPORTING_OSPREY_ENABLED
+        REPORTING_OSPREY_ENDPOINT_URL
+        REPORTING_OSPREY_API_KEY
+        REPORTING_OSPREY_ALLOW_LOCAL_PROVIDER_ENDPOINTS
+        REPORTING_COOP_ENABLED
+        REPORTING_COOP_ENDPOINT_URL
+        REPORTING_COOP_API_KEY
+        REPORTING_COOP_ALLOW_LOCAL_PROVIDER_ENDPOINTS
+        REPORTING_COOP_WEBHOOK_SECRET
+        WEBHOOKS_ENABLED
+        WEBHOOKS_PROVIDER
+        WEBHOOKS_SVIX_BASE_URL
+        WEBHOOKS_SVIX_ENVIRONMENT
+        WEBHOOKS_SVIX_PROVIDER_VERSION
+        WEBHOOKS_SVIX_CAPABILITY_POLICY_VERSION
+        WEBHOOKS_SVIX_AUTH_TOKEN_SECRET_REF
+        WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET_REF
+        WEBHOOKS_SVIX_AUTH_TOKEN
+        WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET
+        LISTMONK_ENABLED
+        LISTMONK_INSTANCE_URL
+        LISTMONK_DEFAULT_LIST_ID
+        LISTMONK_PRECONFIRM_SUBSCRIPTIONS
+        LISTMONK_SYNC_ON_REGISTRATION
+        LISTMONK_API_USERNAME
+        LISTMONK_API_KEY
+        LOCAL_STORAGE_ROOT_PATH
+        LOCAL_STORAGE_CREATE_ROOT_IF_MISSING
+        STORAGE_RECONCILIATION_ENABLED
+        STORAGE_RECONCILIATION_DRY_RUN
+        STORAGE_RECONCILIATION_QUARANTINE_MISSING_OBJECTS
+        STORAGE_RECONCILIATION_QUARANTINE_ORPHAN_LOCAL_FILES
+        STORAGE_RECONCILIATION_DELETE_QUARANTINED_OBJECTS
+        CONFIGURATION_MANIFEST_MODE
+        CONFIGURATION_MANIFEST_PATH
+        CONFIGURATION_MANIFEST_HOST_DIRECTORY
+        MAILPIT_TAG
+        MAILPIT_MAX_MESSAGES
+        MAILPIT_SMTP_PORT
+        MAILPIT_UI_PORT
+        KEYCLOAK_DB_USERNAME
+        KEYCLOAK_DB_PASSWORD
+        KEYCLOAK_DB_DATABASE
+        KEYCLOAK_ADMIN
+        KEYCLOAK_ADMIN_PASSWORD
+        KEYCLOAK_HTTP_PORT
+        KEYCLOAK_API_CLIENT_SECRET
+        KEYCLOAK_BLAZOR_REDIRECT_URIS
+        KEYCLOAK_BLAZOR_WEB_ORIGINS
+        KEYCLOAK_BLAZOR_LOGOUT_REDIRECT_URIS
+        KEYCLOAK_SMTP_HOST
+        KEYCLOAK_SMTP_PORT
+        KEYCLOAK_SMTP_FROM
+        KEYCLOAK_SMTP_FROM_DISPLAY_NAME
+        KEYCLOAK_SMTP_AUTH
+        KEYCLOAK_SMTP_SSL
+        KEYCLOAK_SMTP_STARTTLS
+        KEYCLOAK_SMTP_REPLY_TO
+        KEYCLOAK_SMTP_REPLY_TO_DISPLAY_NAME
+        KEYCLOAK_SMTP_ENVELOPE_FROM
+        KEYCLOAK_SMTP_USER
+        KEYCLOAK_SMTP_PASSWORD
+        KEYCLOAK_INTERNAL_URL
+        REDIS_CONNECTION_STRING
+        AUTHORIZATION_PROVIDER
+        CERBOS_GRPC_ENDPOINT
+        CERBOS_HTTP_ENDPOINT
+        CERBOS_USE_TLS
+        CERBOS_PLAINTEXT_MODE
+        CERBOS_ADMIN_PASSWORD_HASH
+        CERBOS_ADMIN_USERNAME
+        CERBOS_ADMIN_PASSWORD
+        API_HTTP_PORT
+        API_ENDPOINT
+        UI_HTTP_PORT
+        MINIO_API_PORT
+        MINIO_CONSOLE_PORT
+        CERBOS_POSTGRES_USER
+        CERBOS_POSTGRES_PASSWORD
+        CERBOS_POSTGRES_DB
+        CERBOS_PG_URL
+        CERBOS_HTTP_PORT
+        CERBOS_GRPC_PORT
+        SVIX_DB_USERNAME
+        SVIX_DB_PASSWORD
+        SVIX_DB_DATABASE
+        SVIX_TAG
+        SVIX_DB_DSN
+        SVIX_REDIS_DSN
+        SVIX_QUEUE_TYPE
+        SVIX_CACHE_TYPE
+        SVIX_JWT_SECRET
+        SVIX_HTTP_PORT
+        WEBLATE_POSTGRES_USER
+        WEBLATE_POSTGRES_PASSWORD
+        WEBLATE_POSTGRES_DB
+        WEBLATE_IMAGE
+        WEBLATE_SITE_DOMAIN
+        WEBLATE_ADMIN_NAME
+        WEBLATE_ADMIN_EMAIL
+        WEBLATE_ADMIN_PASSWORD
+        WEBLATE_HTTP_PORT
+        COOP_IMAGE
+        COOP_NODE_ENV
+        COOP_OTEL_SERVICE_NAME
+        COOP_UI_URL
+        COOP_SESSION_SECRET
+        COOP_DATABASE_USER
+        COOP_DATABASE_PASSWORD
+        COOP_DATABASE_NAME
+        COOP_WAREHOUSE_ADAPTER
+        COOP_ANALYTICS_ADAPTER
+        COOP_SCYLLA_HOSTS
+        COOP_SCYLLA_USERNAME
+        COOP_SCYLLA_PASSWORD
+        COOP_SCYLLA_LOCAL_DATACENTER
+        COOP_SCYLLA_SSL
+        COOP_HTTP_PORT
+        COOP_MIGRATIONS_IMAGE
+        COOP_CLIENT_IMAGE
+        COOP_CLIENT_HTTP_PORT
+        FORMBRICKS_HTTP_PORT
+        OSPREY_IMAGE
+        OSPREY_RUST_LOG
+        OSPREY_POD_IP
+        OSPREY_BIDI_STREAM_PORT
+        OSPREY_SYNC_ACTION_PORT
+        """);
+
+    private static readonly string[] SecretKeyData = Lines(
+        """
+        SETUP_SECRET
+        STORAGE_S3_ENDPOINT
+        STORAGE_S3_PUBLIC_ENDPOINT
+        STORAGE_S3_BUCKET_NAME
+        STORAGE_S3_ACCESS_KEY_ID
+        STORAGE_S3_SECRET_ACCESS_KEY
+        STORAGE_S3_REGION
+        KEYCLOAK_REALM
+        KEYCLOAK_CLIENT_ID
+        KEYCLOAK_BLAZOR_CLIENT_SECRET
+        KEYCLOAK_API_CLIENT_SECRET
+        KEYCLOAK_ENDPOINT
+        KEYCLOAK_ADMIN_USERNAME
+        KEYCLOAK_ADMIN_PASSWORD
+        KEYCLOAK_DB_PASSWORD
+        STRIPE_PLATFORM_SECRET_KEY
+        STRIPE_WEBHOOK_SECRET
+        PROMOTIONS_CODE_LOOKUP_HMAC_KEY
+        ADMISSIONS_CREDENTIAL_LOOKUP_HMAC_KEY
+        ADMISSIONS_RECOVERY_CAPABILITY_HMAC_KEY
+        ADMISSIONS_SCANNER_CAPABILITY_HMAC_KEY
+        TICKETING_RECOVERY_MANIFEST_HMAC_KEY
+        ATPROTO_OAUTH_CLIENT_PRIVATE_JWKS
+        ATPROTO_SESSION_ENCRYPTION_KEYRING
+        ATPROTO_SESSION_JWT_PRIVATE_JWKS
+        CERBOS_GRPC_ENDPOINT
+        CERBOS_ADMIN_USERNAME
+        CERBOS_ADMIN_PASSWORD
+        WEBHOOKS_SVIX_AUTH_TOKEN
+        WEBHOOKS_SVIX_OPERATIONAL_WEBHOOK_SECRET
+        REGISTRATION_PROVIDER_API_TOKEN
+        REGISTRATION_PROVIDER_WEBHOOK_SECRET
+        POSTGRESQL_HOST
+        POSTGRESQL_PORT
+        POSTGRESQL_DATABASE
+        POSTGRESQL_USERNAME
+        POSTGRESQL_PASSWORD
+        MAIL_SMTP_HOST
+        MAIL_SMTP_PORT
+        MAIL_SMTP_USERNAME
+        MAIL_SMTP_PASSWORD
+        MAIL_SMTP_FROM_ADDRESS
+        MAIL_SMTP_FROM_NAME
+        ANALYTICS_POSTHOG_PUBLIC_KEY
+        ANALYTICS_POSTHOG_HOST
+        ANALYTICS_PERSONAL_API_KEY
+        LOCALIZATION_TMS_API_KEY
+        CONTROL_PLANE_REGISTRATION_CREDENTIALS
+        LISTMONK_API_USERNAME
+        LISTMONK_API_KEY
+        AI_OPENAI_API_KEY
+        AI_ANTHROPIC_API_KEY
+        """);
+
+    private static readonly HashSet<string> SecretKeys =
+        SecretKeyData.ToHashSet(StringComparer.Ordinal);
+
+    public static IReadOnlyList<string> DotenvEnvironmentKeys =>
+        Array.AsReadOnly((string[])DotenvKeyData.Clone());
+
+    public static IReadOnlyList<string> ComposeEnvironmentKeys =>
+        Array.AsReadOnly((string[])ComposeKeyData.Clone());
+
+    public static IReadOnlySet<string> SecretBindingEnvironmentKeys =>
+        new HashSet<string>(SecretKeys, StringComparer.Ordinal);
+
+    public static EnvironmentCatalogue Catalogue { get; } = CreateCatalogue();
+
+    private static EnvironmentCatalogue CreateCatalogue()
+    {
+        string[] allKeys = DotenvKeyData.Concat(ComposeKeyData).Concat(SecretKeyData)
+            .Distinct(StringComparer.Ordinal).ToArray();
+        if (MetadataPolicies.Count != allKeys.Length
+            || allKeys.Any(key => !MetadataPolicies.ContainsKey(key)))
+            throw new InvalidOperationException("catalogue-metadata-policy-incomplete");
+
+        var dotenvOrders = DotenvKeyData.Select((key, order) => (key, order))
+            .ToDictionary(item => item.key, item => item.order, StringComparer.Ordinal);
+        var composeOrders = ComposeKeyData.Select((key, order) => (key, order))
+            .ToDictionary(item => item.key, item => item.order, StringComparer.Ordinal);
+        var definitions = new List<EnvironmentVariableDefinition>(allKeys.Length);
+        for (int order = 0; order < allKeys.Length; order++)
+        {
+            string key = allKeys[order];
+            EnvironmentMetadataPolicy policy = MetadataPolicies[key];
+            EnvironmentGenerationSurface surfaces = policy.StartupOwned
+                ? EnvironmentGenerationSurface.Startup
+                : EnvironmentGenerationSurface.None;
+            int? dotenvOrder = null;
+            int? composeOrder = null;
+            if (dotenvOrders.TryGetValue(key, out int dotenvIndex))
+            {
+                surfaces |= EnvironmentGenerationSurface.Dotenv;
+                dotenvOrder = dotenvIndex;
+            }
+            if (composeOrders.TryGetValue(key, out int composeIndex))
+            {
+                surfaces |= EnvironmentGenerationSurface.Compose;
+                composeOrder = composeIndex;
+            }
+
+            string identifier = policy.Category.ToString().ToLowerInvariant();
+            definitions.Add(new EnvironmentVariableDefinition(
+                key,
+                policy.Category,
+                policy.Sensitivity,
+                policy.Requirement,
+                policy.SafeDefault,
+                order,
+                ActivationFor(policy.Activation),
+                policy.ValidatorId,
+                new EnvironmentGenerationPolicy(
+                    surfaces,
+                    dotenvOrder,
+                    composeOrder,
+                    string.Equals(key, "SECRET_PROVIDER", StringComparison.Ordinal)),
+                policy.RestartBehavior,
+                new EnvironmentDocumentationMetadata(
+                    $"environment.{identifier}.{key.ToLowerInvariant()}",
+                    $"environment.help.{key.ToLowerInvariant()}",
+                    $"environment-{identifier}")));
+        }
+
+        var graph = new EnvironmentActivationGraph(
+            ["combined", "split", "standalone"],
+            Enum.GetNames<EnvironmentVariableCategory>().Select(value => value.ToLowerInvariant()),
+            ["environment", "infisical", "local", "cerbos", "keycloak", "postgresql", "sqlite", "sqlserver", "mariadb", "mysql", "s3", "stripe", "svix"],
+            new Dictionary<string, EnvironmentActivationExpression>(StringComparer.Ordinal)
+            {
+                ["platform-config"] = EnvironmentActivationExpression.Capability("platform"),
+                ["database-config"] = EnvironmentActivationExpression.Capability("database"),
+                ["postgresql-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("database"),
+                    EnvironmentActivationExpression.Provider("postgresql")),
+                ["server-database-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("database"),
+                    EnvironmentActivationExpression.Any(
+                        EnvironmentActivationExpression.Provider("postgresql"),
+                        EnvironmentActivationExpression.Provider("sqlserver"),
+                        EnvironmentActivationExpression.Provider("mariadb"),
+                        EnvironmentActivationExpression.Provider("mysql"))),
+                ["identity-config"] = EnvironmentActivationExpression.Capability("identity"),
+                ["keycloak-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("identity"),
+                    EnvironmentActivationExpression.Provider("keycloak")),
+                ["security-config"] = EnvironmentActivationExpression.Capability("security"),
+                ["infisical-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("security"),
+                    EnvironmentActivationExpression.Provider("infisical")),
+                ["storage-config"] = EnvironmentActivationExpression.Capability("storage"),
+                ["s3-storage-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("storage"),
+                    EnvironmentActivationExpression.Provider("s3")),
+                ["local-storage-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("storage"),
+                    EnvironmentActivationExpression.Provider("local")),
+                ["messaging-config"] = EnvironmentActivationExpression.Capability("messaging"),
+                ["integration-config"] = EnvironmentActivationExpression.Capability("integration"),
+                ["cerbos-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("integration"),
+                    EnvironmentActivationExpression.Provider("cerbos")),
+                ["payments-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("integration"),
+                    EnvironmentActivationExpression.Provider("stripe")),
+                ["svix-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("integration"),
+                    EnvironmentActivationExpression.Provider("svix")),
+                ["observability-config"] = EnvironmentActivationExpression.Capability("observability"),
+                ["deployment-config"] = EnvironmentActivationExpression.Capability("deployment"),
+                ["external-compose-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Topology("split"),
+                    EnvironmentActivationExpression.Capability("integration")),
+            });
+        EnvironmentCatalogueResult result = EnvironmentCatalogue.Create(definitions, graph, SecretKeys);
+        return result.Catalogue ?? throw new InvalidOperationException(
+            "The compiled environment catalogue is invalid: "
+            + string.Join(',', result.Diagnostics.Select(item => item.Code)));
+    }
+
+    private static string[] Lines(string value) => value.Split(
+        '\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+}
