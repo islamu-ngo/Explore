@@ -1,13 +1,15 @@
-// ABOUTME: Regression tests for API startup configuration compatibility mapping.
-// ABOUTME: Ensures Infisical deployment keys bind to canonical .NET configuration sections.
+// ABOUTME: Regression tests for API startup authority mapping and lower-source masking.
+// ABOUTME: Ensures selected deployment keys bind to canonical .NET configuration sections.
 
 using Explore.API.Extensions;
 using Explore.Infrastructure.Services;
 using Explore.Secrets.Database;
 using Microsoft.Extensions.Configuration;
+using System.Reflection;
 
 namespace Event.Api.IntegrationTests.Features;
 
+[NotInParallel]
 public sealed class ConfigurationExtensionsTests
 {
     [Test]
@@ -126,6 +128,31 @@ public sealed class ConfigurationExtensionsTests
         await Assert.That(options.Password).IsEqualTo("sql-secret");
         await Assert.That(options.TlsMode).IsEqualTo(PrimaryDatabaseTlsMode.Required);
         await Assert.That(options.TrustServerCertificate).IsTrue();
+    }
+
+    [Test]
+    public async Task ApplyMapping_WhenSelectedAuthorityOmitsDatabaseCredentials_MasksLowerSource()
+    {
+        string canary = Guid.CreateVersion7().ToString("N");
+        var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:Host"] = "lower-authority.example.test",
+            ["Database:Database"] = "event_db",
+            ["Database:Runtime:Username"] = "lower_user",
+            ["Database:Runtime:Password"] = canary,
+        });
+        var method = typeof(Explore.API.Extensions.ConfigurationExtensions).GetMethod(
+            "ApplyMapping",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        method!.Invoke(null, [builder, new ConfigurationBuilder().Build()]);
+        IConfiguration configuration = builder.Build();
+        Action bind = () => PrimaryDatabaseConfiguration.BindRuntime(configuration);
+
+        await Assert.That(configuration["Database:Runtime:Password"]).IsNull();
+        var exception = await Assert.That(bind).Throws<InvalidOperationException>();
+        await Assert.That(exception!.Message).DoesNotContain(canary);
     }
 
     [Test]
@@ -345,13 +372,47 @@ public sealed class ConfigurationExtensionsTests
             .IsEqualTo("240");
     }
 
+    [Test]
+    public async Task AddSecretAuthorityConfiguration_WhenUserSecretsIsSelectedInProduction_FailsClosed()
+    {
+        var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["SecretProvider:Provider"] = "UserSecrets",
+        });
+
+        Action act = () => builder.AddSecretAuthorityConfiguration("Production");
+
+        var exception = await Assert.That(act).Throws<InvalidOperationException>();
+        await Assert.That(exception!.Message)
+            .IsEqualTo("secret_authority_user_secrets_environment_invalid");
+    }
+
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values)
     {
         values.TryAdd("SecretProvider:Provider", "Environment");
-        var builder = new ConfigurationBuilder()
-            .AddInMemoryCollection(values);
+        var previous = values.Keys.ToDictionary(
+            key => key,
+            Environment.GetEnvironmentVariable,
+            StringComparer.Ordinal);
 
-        builder.AddSecretAuthorityConfiguration();
-        return builder.Build();
+        try
+        {
+            foreach (var pair in values)
+            {
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            }
+
+            var builder = new ConfigurationBuilder()
+                .AddInMemoryCollection(values);
+            builder.AddSecretAuthorityConfiguration("Testing");
+            return builder.Build();
+        }
+        finally
+        {
+            foreach (var pair in previous)
+            {
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            }
+        }
     }
 }

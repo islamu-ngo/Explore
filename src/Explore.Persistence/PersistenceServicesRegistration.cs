@@ -351,6 +351,8 @@ public static class PersistenceServicesRegistration
             OutboxRepository>();
         services.AddScoped<IConfigurationDirectTransferRepository,
             ConfigurationDirectTransferRepository>();
+        services.AddScoped<IConfigurationManagedApplyScheduleRepository,
+            ConfigurationManagedApplyScheduleRepository>();
         services.AddScoped<IConfigurationDirectTransferChunkStore,
             ConfigurationDirectTransferChunkRepository>();
 

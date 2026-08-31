@@ -115,7 +115,10 @@ public static class BootstrapSecretLoader
             return;
         }
 
-        IConfiguration authority = SecretAuthorityConfiguration.Build(configuration, InfisicalPath);
+        IConfiguration authority = SecretAuthorityConfiguration.Build(
+            configuration,
+            SecretAuthorityConfiguration.GetEnvironmentName(configuration),
+            InfisicalPath);
         string source = SecretAuthorityConfiguration.GetRequiredProvider(configuration).ToString();
         var (host, _) = ResolveField(
             authority, EnvHost, ConfigHost, source);
@@ -175,7 +178,10 @@ public static class BootstrapSecretLoader
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        IConfiguration authority = SecretAuthorityConfiguration.Build(configuration, InfisicalPath);
+        IConfiguration authority = SecretAuthorityConfiguration.Build(
+            configuration,
+            SecretAuthorityConfiguration.GetEnvironmentName(configuration),
+            InfisicalPath);
         string source = SecretAuthorityConfiguration.GetRequiredProvider(configuration).ToString();
 
         var (host, hostSource) = ResolveField(

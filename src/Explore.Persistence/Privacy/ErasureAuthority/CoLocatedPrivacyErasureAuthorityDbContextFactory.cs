@@ -2,6 +2,7 @@
 // ABOUTME: Keeps generated migrations aligned with the configurable primary database schema.
 
 using Explore.Persistence.Database;
+using Explore.Secrets.Configuration;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -14,11 +15,15 @@ public sealed class CoLocatedPrivacyErasureAuthorityDbContextFactory
 {
     public CoLocatedPrivacyErasureAuthorityDbContext CreateDbContext(string[] args)
     {
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddUserSecrets<CoLocatedPrivacyErasureAuthorityDbContextFactory>(optional: true)
+        IConfiguration bootstrap = new ConfigurationBuilder()
             .AddEnvironmentVariables()
             .AddCommandLine(args)
             .Build();
+        IConfiguration configuration = SecretAuthorityConfiguration.Build(
+            bootstrap,
+            SecretAuthorityConfiguration.GetEnvironmentName(bootstrap),
+            "/database",
+            "/database/erasure");
         PrimaryDatabaseConnectionOptions database =
             PrimaryDatabaseConfiguration.BindMigrator(configuration);
         var options = new DbContextOptionsBuilder<CoLocatedPrivacyErasureAuthorityDbContext>();

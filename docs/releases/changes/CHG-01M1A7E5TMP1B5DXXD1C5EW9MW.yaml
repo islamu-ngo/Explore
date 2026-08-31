@@ -29,8 +29,8 @@ Impacts:
     Detail: >-
       Generated migrations for PostgreSQL, SQLite, SQL Server, MariaDB, and
       MySQL add import sessions, protected artifacts, append-only operations,
-      direct-transfer sessions, and chunks. Operators apply the matching
-      provider migration before enabling portability.
+      direct-transfer sessions/chunks, and managed apply schedules. Operators
+      apply the matching provider migration before enabling portability.
   Configuration:
     Reference: docs/CONFIGURATION_MANIFEST.md
     Disposition: documented
@@ -44,11 +44,13 @@ Impacts:
     Detail: >-
       OpenAPI and the generated Blazor client include instance and tenant
       export, session, preview, apply, receipt, history, rollback, cancellation,
-      and direct-transfer contracts.
+      direct-transfer, and managed schedule contracts.
   Operator:
     Reference: docs/OPERATIONS.md
     Disposition: documented
     Detail: >-
       Operators retain source artifacts and receipts, distinguish committed
       configuration from pending effects, use forward rollback while snapshots
-      remain available, and never treat portability as data migration or backup.
+      remain available, monitor bounded retention cleanup, require distinct
+      uploader/reviewer/applier identities for managed windows, and never treat
+      portability as data migration or backup.

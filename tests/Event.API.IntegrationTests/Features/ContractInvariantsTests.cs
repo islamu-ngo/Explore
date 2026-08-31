@@ -328,7 +328,7 @@ public class ContractInvariantsTests
         await AssertPresenceAwareProperties(
             document,
             "PatchTenantStorageS3Dto",
-            ["endpoint", "publicEndpoint", "bucketName", "accessKeyId", "secretAccessKey", "region", "forcePathStyle", "uploadUrlExpirationMinutes"]);
+            ["endpoint", "publicEndpoint", "bucketName", "region", "forcePathStyle", "uploadUrlExpirationMinutes"]);
     }
 
     [Test]

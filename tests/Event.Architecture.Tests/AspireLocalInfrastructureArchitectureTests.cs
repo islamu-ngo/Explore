@@ -108,6 +108,21 @@ public sealed class AspireLocalInfrastructureArchitectureTests
     }
 
     [Test]
+    public async Task AppHostProfiles_MustNotOverrideTheSelectedSecretAuthority()
+    {
+        var launchSettings = await File.ReadAllTextAsync(
+            Path.Combine(RepoRoot, "src", "Explore.AppHost", "Properties", "launchSettings.json"));
+        using var document = System.Text.Json.JsonDocument.Parse(launchSettings);
+
+        foreach (var profile in document.RootElement.GetProperty("profiles").EnumerateObject())
+        {
+            var environment = profile.Value.GetProperty("environmentVariables");
+            await Assert.That(environment.TryGetProperty("SecretProvider__Provider", out _)).IsFalse();
+            await Assert.That(environment.TryGetProperty("SecretProvider__Infisical__ClientSecret", out _)).IsFalse();
+        }
+    }
+
+    [Test]
     public async Task Formbricks_MustBeRegisteredOnlyForFullLocalMode()
     {
         string appHost = await File.ReadAllTextAsync(Path.Combine(RepoRoot, "src", "Explore.AppHost", "AppHost.cs"));

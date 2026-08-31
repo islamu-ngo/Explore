@@ -1,7 +1,8 @@
-// ABOUTME: Secret provider that reads only from process environment variables.
-// ABOUTME: Emits no key names, paths, values, or read-audit records.
+// ABOUTME: Local secret provider for one explicitly selected Environment or User Secrets authority.
+// ABOUTME: Emits no key names, paths, values, or read-audit records and never crosses authorities.
 
 using Explore.Secrets.Abstractions;
+using Explore.Secrets.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Secrets.Providers;
@@ -14,15 +15,21 @@ namespace Explore.Secrets.Providers;
 public sealed class EnvironmentSecretProvider : ISecretProvider
 {
     private readonly ILogger<EnvironmentSecretProvider> _logger;
+    private readonly UserSecretsAuthority? _userSecretsAuthority;
     private bool _initialized;
 
-    public EnvironmentSecretProvider(ILogger<EnvironmentSecretProvider> logger)
+    public EnvironmentSecretProvider(
+        ILogger<EnvironmentSecretProvider> logger,
+        UserSecretsAuthority? userSecretsAuthority = null)
     {
         _logger = logger;
+        _userSecretsAuthority = userSecretsAuthority;
     }
 
     /// <inheritdoc />
-    public SecretProviderType ProviderType => SecretProviderType.Environment;
+    public SecretProviderType ProviderType => _userSecretsAuthority is null
+        ? SecretProviderType.Environment
+        : SecretProviderType.UserSecrets;
 
     /// <inheritdoc />
     public bool SupportsRefresh => false;
@@ -30,8 +37,9 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
     /// <inheritdoc />
     public Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        _userSecretsAuthority?.EnsureAllowed();
         _initialized = true;
-        _logger.LogInformation("Environment secret provider initialized (no external secret manager)");
+        _logger.LogInformation("Local secret provider initialized authority={Authority}", ProviderType);
         return Task.CompletedTask;
     }
 
@@ -41,19 +49,9 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
         EnsureInitialized();
 
         var envVarName = ConvertKeyToEnvVar(key);
-        var value = Environment.GetEnvironmentVariable(envVarName);
-
-        if (value is null)
-        {
-            // Try alternative formats
-            value = Environment.GetEnvironmentVariable(key.Replace(":", "__"));
-            if (value is null)
-            {
-                value = Environment.GetEnvironmentVariable(key.Replace(":", "_"));
-            }
-        }
-
-        return Task.FromResult(value);
+        return Task.FromResult(_userSecretsAuthority is null
+            ? Environment.GetEnvironmentVariable(envVarName)
+            : _userSecretsAuthority.Get(envVarName));
     }
 
     /// <inheritdoc />
@@ -73,16 +71,23 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
         var envVarPrefix = ConvertKeyToEnvVar(pathPrefix);
         var results = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var envVar in Environment.GetEnvironmentVariables().Keys.Cast<string>())
+        if (_userSecretsAuthority is not null)
         {
-            if (envVar.StartsWith(envVarPrefix, StringComparison.OrdinalIgnoreCase))
+            foreach (var pair in _userSecretsAuthority.GetByPrefix(envVarPrefix))
             {
+                results[ConvertEnvVarToKey(pair.Key)] = pair.Value!;
+            }
+        }
+        else
+        {
+            foreach (var envVar in Environment.GetEnvironmentVariables().Keys.Cast<string>())
+            {
+                if (!envVar.StartsWith(envVarPrefix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 var value = Environment.GetEnvironmentVariable(envVar);
                 if (!string.IsNullOrEmpty(value))
-                {
-                    var key = ConvertEnvVarToKey(envVar);
-                    results[key] = value;
-                }
+                    results[ConvertEnvVarToKey(envVar)] = value;
             }
         }
 
@@ -94,18 +99,17 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
     /// <inheritdoc />
     public Task RefreshAsync(CancellationToken cancellationToken = default)
     {
-        // Environment variables don't support refresh
-        _logger.LogDebug("Refresh requested but environment variables don't support refresh");
+        _logger.LogDebug("Refresh requested but local secret authorities don't support refresh");
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
     public Task<ProviderHealthInfo> GetHealthAsync(CancellationToken cancellationToken = default)
     {
-        // Environment provider is always healthy if initialized
+        // Local authorities are healthy once their environment gate passes.
         return Task.FromResult(new ProviderHealthInfo(
             IsHealthy: _initialized,
-            ProviderType: SecretProviderType.Environment,
+            ProviderType,
             LastSuccessfulRefresh: null, // N/A for env provider
             ConsecutiveFailures: 0));
     }
@@ -140,7 +144,7 @@ public sealed class EnvironmentSecretProvider : ISecretProvider
         if (!_initialized)
         {
             throw new InvalidOperationException(
-                "Environment secret provider not initialized. Call InitializeAsync first.");
+                "Local secret provider not initialized. Call InitializeAsync first.");
         }
     }
 }

@@ -88,14 +88,16 @@ public static class ApiHostServiceCollectionExtensions
 
         builder.AddDistributedCacheReadinessCheck();
         builder.AddOidcDiscoveryReadinessCheck();
-        if (isOpenApiGeneration || builder.Environment.IsEnvironment("Testing"))
+        if ((isOpenApiGeneration || builder.Environment.IsEnvironment("Testing"))
+            && builder.Configuration[$"{SecretProviderOptions.SectionName}:Provider"] is null
+            && builder.Configuration["SECRET_PROVIDER"] is null)
         {
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 [$"{SecretProviderOptions.SectionName}:Provider"] = nameof(SecretProviderType.Environment)
             });
         }
-        builder.Configuration.AddSecretAuthorityConfiguration();
+        builder.Configuration.AddSecretAuthorityConfiguration(builder.Environment.EnvironmentName);
         builder.Services.AddSecretManagement(
             builder.Configuration,
             enableAuditing: true,

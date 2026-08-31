@@ -9,6 +9,7 @@ using TUnit.Core;
 
 namespace Explore.Secrets.UnitTests.Providers;
 
+[NotInParallel]
 public class EnvironmentSecretProviderTests
 {
     private readonly ILogger<EnvironmentSecretProvider> _logger;
@@ -81,6 +82,26 @@ public class EnvironmentSecretProviderTests
 
         // Assert
         await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetSecretAsync_WhenOnlyLegacyCaseAliasExists_DoesNotResolveIt()
+    {
+        string secretValue = SecretsTestValues.CreateSecret();
+        Environment.SetEnvironmentVariable("Test__Secret", secretValue);
+        Environment.SetEnvironmentVariable("TEST__SECRET", null);
+        await _provider.InitializeAsync();
+
+        try
+        {
+            var result = await _provider.GetSecretAsync("Test:Secret");
+
+            await Assert.That(result).IsNull();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("Test__Secret", null);
+        }
     }
 
     [Test]

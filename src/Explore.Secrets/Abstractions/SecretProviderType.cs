@@ -1,5 +1,5 @@
 // ABOUTME: Closed enumeration of supported secret authority types.
-// ABOUTME: Only Environment and Infisical are implemented in this greenfield contract.
+// ABOUTME: Environment and Infisical are deployment modes; User Secrets is Development/Testing only.
 
 namespace Explore.Secrets.Abstractions;
 
@@ -19,5 +19,10 @@ public enum SecretProviderType
     /// <summary>
     /// Infisical secret manager with Universal Auth.
     /// </summary>
-    Infisical = 1
+    Infisical = 1,
+
+    /// <summary>
+    /// .NET User Secrets for Development and Testing only.
+    /// </summary>
+    UserSecrets = 2
 }

@@ -298,9 +298,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
         private static readonly IReadOnlyDictionary<string, string?> BootstrapEnvironmentOverrides =
             new Dictionary<string, string?>(StringComparer.Ordinal)
             {
-                ["Infisical__ProjectId"] = string.Empty,
-                ["Infisical__ClientId"] = string.Empty,
-                ["Infisical__ClientSecret"] = string.Empty,
+                ["SecretProvider__Provider"] = "Environment",
                 ["Keycloak__Authority"] = string.Empty,
                 ["Keycloak__MetadataAddress"] = string.Empty,
                 ["Keycloak__Realm"] = string.Empty,
@@ -336,9 +334,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
             {
                 var testConfig = new Dictionary<string, string?>
                 {
-                    ["Infisical:ProjectId"] = string.Empty,
-                    ["Infisical:ClientId"] = string.Empty,
-                    ["Infisical:ClientSecret"] = string.Empty,
+                    ["SecretProvider:Provider"] = "Environment",
                     ["Keycloak:Authority"] = string.Empty,
                     ["Keycloak:MetadataAddress"] = string.Empty,
                     ["Keycloak:Realm"] = string.Empty,
@@ -348,11 +344,6 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
                     ["Deployment:Mode"] = "SingleTenant",
                     ["Deployment:DefaultTenantId"] = "018e4e5c-7f00-7000-8000-000000000001",
                     ["ExploreApi:BaseUrl"] = "http://localhost:9999/",
-                    ["S3Settings:Region"] = "us-east-1",
-                    ["S3Settings:BucketName"] = "test-bucket",
-                    ["S3Settings:AccessKeyId"] = "test-key",
-                    ["S3Settings:SecretAccessKey"] = "test-secret",
-                    ["S3Settings:Endpoint"] = "https://s3.example.com",
                 };
 
                 config.AddInMemoryCollection(testConfig);

@@ -16,7 +16,10 @@ public sealed class SecretAuthorityStatusReader(
         CancellationToken cancellationToken = default)
     {
         SecretProviderOptions configured = options.Value;
-        if (configured.Provider is not (SecretProviderType.Environment or SecretProviderType.Infisical))
+        if (configured.Provider is not (
+            SecretProviderType.Environment
+            or SecretProviderType.Infisical
+            or SecretProviderType.UserSecrets))
         {
             return new(configured.Provider.ToString(), "invalid", "select_supported_secret_authority");
         }

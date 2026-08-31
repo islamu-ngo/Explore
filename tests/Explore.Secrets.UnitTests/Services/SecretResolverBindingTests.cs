@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests exact SecretBinding-id resolution for provider credentials.
-// ABOUTME: Proves qualified tenant bindings dispatch through their declared source without fallback.
+// ABOUTME: Unit tests exact binding resolution and registry-owned instance defaults.
+// ABOUTME: Proves qualified tenant bindings dispatch through one declared source without fallback.
 
 using System.Diagnostics.Metrics;
 using Explore.Application.Contracts.Persistence;
@@ -58,6 +58,71 @@ public sealed class SecretResolverBindingTests
         await Assert.That(resolved.IsResolved).IsTrue();
         await Assert.That(resolved.Scope).IsEqualTo(SecretScope.Instance);
         await Assert.That(resolved.Value).IsEqualTo(secretValue);
+    }
+
+    [Test]
+    public async Task ResolveAsync_WithoutStoredBinding_UsesCanonicalEnvironmentReference()
+    {
+        var source = new RecordingSecretSource(SecretSourceType.EnvironmentVariable);
+        var resolver = ResolverWithDefaults(SecretProviderType.Environment, source);
+
+        SecretResolutionResult resolved = await resolver.ResolveAsync(
+            SecretDefinitionRegistry.Keys.Smtp.Password,
+            tenantId: null,
+            CancellationToken.None);
+
+        await Assert.That(resolved.IsResolved).IsTrue();
+        await Assert.That(source.LastBinding!.EnvironmentVariableName).IsEqualTo("MAIL_SMTP_PASSWORD");
+        await Assert.That(source.LastBinding.SourceType).IsEqualTo(SecretSourceType.EnvironmentVariable);
+    }
+
+    [Test]
+    public async Task ResolveAsync_WithoutStoredBinding_UsesCanonicalInfisicalReference()
+    {
+        var source = new RecordingSecretSource(SecretSourceType.Infisical);
+        var resolver = ResolverWithDefaults(SecretProviderType.Infisical, source, "staging");
+
+        SecretResolutionResult resolved = await resolver.ResolveAsync(
+            SecretDefinitionRegistry.Keys.Smtp.Password,
+            tenantId: null,
+            CancellationToken.None);
+
+        await Assert.That(resolved.IsResolved).IsTrue();
+        await Assert.That(source.LastBinding!.InfisicalEnvironment).IsEqualTo("staging");
+        await Assert.That(source.LastBinding.InfisicalPath).IsEqualTo("/smtp");
+        await Assert.That(source.LastBinding.InfisicalKey).IsEqualTo("MAIL_SMTP_PASSWORD");
+    }
+
+    [Test]
+    public async Task ResolveAsync_WhenStoredInstanceBindingUsesOldAuthority_UsesSelectedAuthorityDefault()
+    {
+        SecretBinding stale = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.Smtp.Password,
+            SecretScope.Instance,
+            scopeId: null,
+            "MAIL_SMTP_PASSWORD");
+        stale.Id = Guid.CreateVersion7();
+        var source = new RecordingSecretSource(SecretSourceType.Infisical);
+        var resolver = new SecretResolver(
+            new FakeSecretBindingRepository([stale]),
+            [source],
+            new MemoryCache(new MemoryCacheOptions()),
+            new SecretResolverMetrics(new TestMeterFactory()),
+            NullLogger<SecretResolver>.Instance,
+            Options.Create(new SecretProviderOptions
+            {
+                Provider = SecretProviderType.Infisical,
+                Infisical = new InfisicalOptions { Environment = "staging" }
+            }));
+
+        SecretResolutionResult resolved = await resolver.ResolveAsync(
+            SecretDefinitionRegistry.Keys.Smtp.Password,
+            tenantId: null,
+            CancellationToken.None);
+
+        await Assert.That(resolved.IsResolved).IsTrue();
+        await Assert.That(source.LastBinding!.SourceType).IsEqualTo(SecretSourceType.Infisical);
+        await Assert.That(source.LastBinding.InfisicalKey).IsEqualTo("MAIL_SMTP_PASSWORD");
     }
 
     [Test]
@@ -291,6 +356,22 @@ public sealed class SecretResolverBindingTests
             Options.Create(new SecretProviderOptions { Provider = SecretProviderType.Environment }));
     }
 
+    private static SecretResolver ResolverWithDefaults(
+        SecretProviderType provider,
+        ISecretSource source,
+        string infisicalEnvironment = "") =>
+        new(
+            new FakeSecretBindingRepository([]),
+            [source],
+            new MemoryCache(new MemoryCacheOptions()),
+            new SecretResolverMetrics(new TestMeterFactory()),
+            NullLogger<SecretResolver>.Instance,
+            Options.Create(new SecretProviderOptions
+            {
+                Provider = provider,
+                Infisical = new InfisicalOptions { Environment = infisicalEnvironment }
+            }));
+
     private sealed class FakeSecretBindingRepository(IReadOnlyList<SecretBinding> bindings) : ISecretBindingRepository
     {
         public Task<SecretBinding?> GetByTenantAndIdAsync(Guid tenantId, Guid bindingId, CancellationToken cancellationToken = default) =>
@@ -337,5 +418,29 @@ public sealed class SecretResolverBindingTests
                 : SecretResolutionResult.Unconfigured);
         public Task<bool> ValidateAsync(SecretBinding binding, CancellationToken cancellationToken = default) =>
             Task.FromResult(values.ContainsKey(binding.Id));
+    }
+
+    private sealed class RecordingSecretSource(SecretSourceType sourceType) : ISecretSource
+    {
+        public SecretSourceType SourceType => sourceType;
+        public SecretBinding? LastBinding { get; private set; }
+
+        public Task<SecretResolutionResult> GetSecretAsync(
+            SecretBinding binding,
+            CancellationToken cancellationToken = default)
+        {
+            LastBinding = binding;
+            return Task.FromResult(SecretResolutionResult.Resolved(new ResolvedSecret(
+                binding.SettingKey,
+                SecretsTestValues.CreateSecret(),
+                binding.SourceType,
+                binding.Scope,
+                binding.ScopeId,
+                DateTime.UtcNow)));
+        }
+
+        public Task<bool> ValidateAsync(
+            SecretBinding binding,
+            CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 }

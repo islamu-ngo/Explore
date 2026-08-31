@@ -1,6 +1,7 @@
 // ABOUTME: Creates the narrow authority context from structured migrator settings.
 // ABOUTME: Uses the same validated PostgreSQL contract as runtime and migration composition.
 
+using Explore.Secrets.Configuration;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -13,11 +14,14 @@ public sealed class PrivacyErasureAuthorityDbContextFactory
 {
     public PrivacyErasureAuthorityDbContext CreateDbContext(string[] args)
     {
-        var configurationBuilder = new ConfigurationBuilder()
-            .AddUserSecrets<PrivacyErasureAuthorityDbContextFactory>(optional: true)
+        IConfiguration bootstrap = new ConfigurationBuilder()
             .AddEnvironmentVariables()
-            .AddCommandLine(args);
-        return CreateDbContext(configurationBuilder.Build());
+            .AddCommandLine(args)
+            .Build();
+        return CreateDbContext(SecretAuthorityConfiguration.Build(
+            bootstrap,
+            SecretAuthorityConfiguration.GetEnvironmentName(bootstrap),
+            "/database/erasure"));
     }
 
     public PrivacyErasureAuthorityDbContext CreateDbContext(IConfiguration configuration)

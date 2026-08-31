@@ -1,5 +1,5 @@
 // ABOUTME: Configuration extensions for the API project.
-// ABOUTME: Adds Infisical as configuration source and maps Infisical secret names to .NET config keys.
+// ABOUTME: Projects one isolated Environment, Infisical, or local User Secrets authority onto .NET keys.
 
 namespace Explore.API.Extensions;
 
@@ -13,15 +13,19 @@ public static class ConfigurationExtensions
     /// <summary>
     /// Adds Infisical secrets and maps them to canonical .NET configuration keys.
     /// </summary>
-    public static void AddSecretAuthorityConfiguration(this IConfigurationBuilder configBuilder)
+    public static void AddSecretAuthorityConfiguration(
+        this IConfigurationBuilder configBuilder,
+        string environmentName)
     {
         var bootstrapConfig = configBuilder.Build();
         IConfiguration authority = SecretAuthorityConfiguration.Build(
             bootstrapConfig,
+            environmentName,
             "/keycloak", "/database", "/database/erasure", "/api", "/blazor",
             "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk");
-        ApplyMapping(configBuilder, authority);
-        PrivacyErasureAuthorityDatabaseConfiguration.ProjectDiscreteConfiguration(configBuilder);
+        var isolatedAuthority = new ConfigurationBuilder().AddConfiguration(authority);
+        PrivacyErasureAuthorityDatabaseConfiguration.ProjectDiscreteConfiguration(isolatedAuthority);
+        ApplyMapping(configBuilder, isolatedAuthority.Build());
     }
 
     /// <summary>
@@ -39,7 +43,6 @@ public static class ConfigurationExtensions
     ///   /smtp:     MAIL_SMTP_HOST, MAIL_SMTP_PORT, MAIL_SMTP_USERNAME, MAIL_SMTP_PASSWORD, etc.
     ///   /api:      VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
     ///   /api:      USE_COMMERCIAL_LUCKYPENNY, LUCKYPENNY_LICENSE_KEY (Lucky Penny dual-versioning)
-    ///   S3 legacy: ISLAMU_EVENT_S3_ENDPOINT, ISLAMU_EVENT_REGION, etc.
     /// </remarks>
     private static void ApplyMapping(IConfigurationBuilder configBuilder, IConfiguration config)
     {
@@ -181,11 +184,68 @@ public static class ConfigurationExtensions
                     ? "true"
                     : null);
 
-        var mappedConfig = new Dictionary<string, string?>();
+        var mappedConfig = new Dictionary<string, string?>
+        {
+            ["SETUP_SECRET"] = config["SETUP_SECRET"],
+            ["Keycloak:Realm"] = null,
+            ["Keycloak:Authority"] = null,
+            ["Keycloak:MetadataAddress"] = null,
+            ["Keycloak:ClientId"] = null,
+            ["Keycloak:ClientSecret"] = null,
+            ["Database:Provider"] = null,
+            ["Database:Host"] = null,
+            ["Database:Port"] = null,
+            ["Database:Database"] = null,
+            ["Database:Name"] = null,
+            ["Database:Schema"] = null,
+            ["Database:Runtime:Username"] = null,
+            ["Database:Runtime:Password"] = null,
+            ["Database:Migrator:Username"] = null,
+            ["Database:Migrator:Password"] = null,
+            ["Database:TlsMode"] = null,
+            ["Database:TrustServerCertificate"] = null,
+            ["Database:ServerFlavor"] = null,
+            ["Database:ServerVersion"] = null,
+            ["Database:Erasure:Provider"] = null,
+            ["Database:Erasure:Host"] = null,
+            ["Database:Erasure:Port"] = null,
+            ["Database:Erasure:Database"] = null,
+            ["Database:Erasure:Name"] = null,
+            ["Database:Erasure:Runtime:Username"] = null,
+            ["Database:Erasure:Runtime:Password"] = null,
+            ["Database:Erasure:Migrator:Username"] = null,
+            ["Database:Erasure:Migrator:Password"] = null,
+            ["Database:Erasure:TlsMode"] = null,
+            ["Database:Erasure:TrustServerCertificate"] = null,
+            ["PrivacyErasureAuthorityDatabase:Provider"] = null,
+            ["PrivacyErasureAuthorityDatabase:Host"] = null,
+            ["PrivacyErasureAuthorityDatabase:Port"] = null,
+            ["PrivacyErasureAuthorityDatabase:Database"] = null,
+            ["PrivacyErasureAuthorityDatabase:Runtime:Username"] = null,
+            ["PrivacyErasureAuthorityDatabase:Runtime:Password"] = null,
+            ["PrivacyErasureAuthorityDatabase:Migrator:Username"] = null,
+            ["PrivacyErasureAuthorityDatabase:Migrator:Password"] = null,
+            ["PrivacyErasureAuthorityDatabase:TlsMode"] = null,
+            ["PrivacyErasureAuthorityDatabase:TrustServerCertificate"] = null,
+            ["ManagedControlPlane:RegistrationToken"] = null,
+            ["AiProvider:ApiKey"] = null,
+            [SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiUsername] = null,
+            [SecretDefinitionRegistry.Keys.Integrations.Listmonk.ApiKey] = null,
+            ["WebPush:VapidPublicKey"] = null,
+            ["WebPush:VapidPrivateKey"] = null,
+            ["WebPush:VapidSubject"] = null,
+            ["Licensing:LuckyPenny:LicenseKey"] = null,
+        };
 
         static void TrySet(IDictionary<string, string?> dict, IConfiguration root, string key, string? value)
         {
-            if (string.IsNullOrWhiteSpace(value) || !string.IsNullOrEmpty(root[key]))
+            if (!string.IsNullOrWhiteSpace(root[key]))
+            {
+                dict[key] = root[key];
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(value))
                 return;
             dict[key] = value;
         }
@@ -271,6 +331,16 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Database:Erasure:Migrator:Password", ReadFirst(config, "DATABASE_ERASURE_MIGRATOR_PASSWORD", "Database:Erasure:Migrator:Password", "ERASURE_DATABASE_MIGRATOR_PASSWORD"));
         TrySet(mappedConfig, config, "Database:Erasure:TlsMode", ReadFirst(config, "DATABASE_ERASURE_TLS_MODE", "Database:Erasure:TlsMode", "ERASURE_DATABASE_TLS_MODE"));
         TrySet(mappedConfig, config, "Database:Erasure:TrustServerCertificate", NormalizeBoolean(ReadFirst(config, "DATABASE_ERASURE_TRUST_SERVER_CERTIFICATE", "Database:Erasure:TrustServerCertificate", "ERASURE_DATABASE_TRUST_SERVER_CERTIFICATE")));
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:Provider", config["PrivacyErasureAuthorityDatabase:Provider"]);
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:Host", config["PrivacyErasureAuthorityDatabase:Host"]);
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:Port", config["PrivacyErasureAuthorityDatabase:Port"]);
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:Database", config["PrivacyErasureAuthorityDatabase:Database"]);
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:Runtime:Username", config["PrivacyErasureAuthorityDatabase:Runtime:Username"]);
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:Runtime:Password", config["PrivacyErasureAuthorityDatabase:Runtime:Password"]);
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:Migrator:Username", config["PrivacyErasureAuthorityDatabase:Migrator:Username"]);
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:Migrator:Password", config["PrivacyErasureAuthorityDatabase:Migrator:Password"]);
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:TlsMode", config["PrivacyErasureAuthorityDatabase:TlsMode"]);
+        TrySet(mappedConfig, config, "PrivacyErasureAuthorityDatabase:TrustServerCertificate", config["PrivacyErasureAuthorityDatabase:TrustServerCertificate"]);
 
         // Cerbos
         if (!string.IsNullOrWhiteSpace(cerbosGrpcEndpoint))
@@ -350,10 +420,7 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Licensing:LuckyPenny:LicenseKey",
             ReadFirst(config, "LUCKYPENNY_LICENSE_KEY", "Licensing:LuckyPenny:LicenseKey"));
 
-        configBuilder.AddInMemoryCollection(
-            mappedConfig.Where(kv => !string.IsNullOrEmpty(kv.Value))
-                        .ToDictionary(kv => kv.Key, kv => kv.Value)!
-        );
+        configBuilder.AddInMemoryCollection(mappedConfig);
     }
 
     private static string? NormalizeDeploymentMode(string? rawValue)

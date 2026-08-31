@@ -22,13 +22,26 @@ var dotenvPath = Path.Combine(repositoryRoot, ".env");
 if (File.Exists(dotenvPath))
     Env.NoClobber().Load(dotenvPath);
 var builder = DistributedApplication.CreateBuilder(args);
+var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
+SecretProviderType configuredSecretProvider =
+    SecretAuthorityConfiguration.GetRequiredProvider(builder.Configuration);
+IConfiguration authorityBootstrap = runMode == AspireRunMode.FullLocal
+    && configuredSecretProvider == SecretProviderType.Infisical
+    ? new ConfigurationBuilder()
+        .AddConfiguration(builder.Configuration)
+        .AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["SecretProvider:Provider"] = nameof(SecretProviderType.Environment),
+        })
+        .Build()
+    : builder.Configuration;
 IConfiguration secretAuthority = SecretAuthorityConfiguration.Build(
-    builder.Configuration,
+    authorityBootstrap,
+    builder.Environment.EnvironmentName,
     "/keycloak", "/database", "/database/erasure", "/api", "/blazor",
     "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/stripe",
     "/integrations/listmonk");
 builder.Configuration.AddConfiguration(secretAuthority);
-var runMode = AspireRunModeExtensions.Parse(builder.Configuration["ISLAMU_ASPIRE_MODE"]);
 var hostingTopology = ParseHostingTopology(builder.Configuration["Hosting:Topology"]);
 var configurationManifestMode = ConfiguredValue(
     builder.Configuration,
@@ -1124,14 +1137,7 @@ static IResourceBuilder<ProjectResource> ConfigureLocalMailpitSmtp(
         .WithEnvironment("MAIL_SMTP_PASSWORD", configuration["MAIL_SMTP_PASSWORD"] ?? string.Empty)
         .WithEnvironment("MAIL_SMTP_ENCRYPTION", configuration["MAIL_SMTP_ENCRYPTION"] ?? "None")
         .WithEnvironment("MAIL_SMTP_FROM_ADDRESS", configuration["MAIL_SMTP_FROM_ADDRESS"] ?? "noreply@localhost")
-        .WithEnvironment("MAIL_SMTP_FROM_NAME", configuration["MAIL_SMTP_FROM_NAME"] ?? "ISLAMU Event Dev")
-        .WithEnvironment("SMTP_HOST", smtpHost)
-        .WithEnvironment("SMTP_PORT", smtpPort)
-        .WithEnvironment("SMTP_USERNAME", configuration["MAIL_SMTP_USERNAME"] ?? string.Empty)
-        .WithEnvironment("SMTP_PASSWORD", configuration["MAIL_SMTP_PASSWORD"] ?? string.Empty)
-        .WithEnvironment("SMTP_SECURITY", configuration["MAIL_SMTP_ENCRYPTION"] ?? "None")
-        .WithEnvironment("SMTP_FROM_ADDRESS", configuration["MAIL_SMTP_FROM_ADDRESS"] ?? "noreply@localhost")
-        .WithEnvironment("SMTP_FROM_NAME", configuration["MAIL_SMTP_FROM_NAME"] ?? "ISLAMU Event Dev");
+        .WithEnvironment("MAIL_SMTP_FROM_NAME", configuration["MAIL_SMTP_FROM_NAME"] ?? "ISLAMU Event Dev");
 }
 
 static IResourceBuilder<ProjectResource> ConfigureGeocoding(
@@ -1631,7 +1637,8 @@ static IResourceBuilder<ProjectResource> WithProfileSecretMode(
         .WithEnvironment("DOTNET_ENVIRONMENT", "Development")
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
 
-    return runMode == AspireRunMode.FullLocal
+    SecretProviderType provider = SecretAuthorityConfiguration.GetRequiredProvider(configuration);
+    return runMode == AspireRunMode.FullLocal && provider == SecretProviderType.Infisical
         ? project
             .WithEnvironment("SecretProvider__Provider", nameof(SecretProviderType.Environment))
             .WithEnvironment("SecretProvider__Infisical__Url", "")
@@ -1647,7 +1654,7 @@ static IResourceBuilder<ProjectResource> WithSelectedSecretAuthority(
     IConfiguration configuration)
 {
     SecretProviderType provider = SecretAuthorityConfiguration.GetRequiredProvider(configuration);
-    if (provider == SecretProviderType.Environment)
+    if (provider is SecretProviderType.Environment or SecretProviderType.UserSecrets)
     {
         return project
             .WithEnvironment("SecretProvider__Provider", provider.ToString())

@@ -101,8 +101,8 @@ public class AuthorizationProductionGuardrailTests
 
     /// <summary>
     /// Factory that mimics production as closely as possible (no Testing env overrides).
-    /// Uses a non-Development, non-Testing environment so user secrets and test-only
-    /// application branches cannot affect the production registration proof.
+    /// Uses a non-Development, non-Testing environment so development configuration
+    /// providers and test-only application branches cannot affect the production proof.
     /// </summary>
     private sealed class ProductionLikeWebApplicationFactory : WebApplicationFactory<Program>
     {

@@ -20,7 +20,8 @@ public class Program
     {
         var builder = Host.CreateApplicationBuilder(args);
 
-        var databaseOptions = builder.Configuration.AddPrimaryDatabaseBootstrap();
+        var databaseOptions = builder.Configuration.AddPrimaryDatabaseBootstrap(
+            builder.Environment.EnvironmentName);
         var runtimeDatabaseOptions = databaseOptions with { Role = PrimaryDatabaseRole.Runtime };
 
         builder.AddServiceDefaults();

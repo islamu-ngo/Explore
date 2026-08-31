@@ -1,5 +1,5 @@
 // ABOUTME: Configuration options for the explicitly selected secret authority.
-// ABOUTME: Supports Environment and Infisical; unsupported providers fail validation.
+// ABOUTME: Supports Environment, Infisical, and Development/Testing User Secrets.
 
 using Explore.Secrets.Abstractions;
 
@@ -18,7 +18,7 @@ public sealed class SecretProviderOptions
 
     /// <summary>
     /// The type of secret provider to use.
-    /// Must explicitly select Environment or Infisical.
+    /// Must explicitly select Environment, Infisical, or UserSecrets.
     /// </summary>
     public SecretProviderType Provider { get; set; } = SecretProviderType.Unspecified;
 

@@ -15,11 +15,14 @@ public static class ConfigurationExtensions
     /// <remarks>
     /// The shared resolver owns provider validation and provider-native string construction.
     /// </remarks>
-    public static PrimaryDatabaseConnectionOptions AddPrimaryDatabaseBootstrap(this IConfigurationBuilder configBuilder)
+    public static PrimaryDatabaseConnectionOptions AddPrimaryDatabaseBootstrap(
+        this IConfigurationBuilder configBuilder,
+        string environmentName)
     {
         var bootstrapConfiguration = configBuilder.Build();
         IConfiguration authority = SecretAuthorityConfiguration.Build(
             bootstrapConfiguration,
+            environmentName,
             "/database",
             "/database/erasure");
         var databaseOptions = PrimaryDatabaseConfiguration.BindMigrator(authority);

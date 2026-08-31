@@ -19,7 +19,7 @@ x-secrets-env: &secrets-env
   SecretProvider__Infisical__ProjectId: ${INFISICAL_PROJECT_ID:-}
   SecretProvider__Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
   SecretProvider__Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
-SecretProvider__Infisical__Environment: ${INFISICAL_ENV:-}
+  SecretProvider__Infisical__Environment: ${INFISICAL_ENV:-}
 
 x-postgres-env: &postgres-env
   POSTGRES_USER: ${DATABASE_MIGRATOR_USERNAME-explore}
@@ -186,13 +186,6 @@ x-smtp-env: &smtp-env
   MAIL_SMTP_ENCRYPTION: ${MAIL_SMTP_ENCRYPTION:-None}
   MAIL_SMTP_FROM_ADDRESS: ${MAIL_SMTP_FROM_ADDRESS:-noreply@localhost}
   MAIL_SMTP_FROM_NAME: ${MAIL_SMTP_FROM_NAME:-ISLAMU Event Dev}
-  SMTP_HOST: ${SMTP_HOST:-mailpit}
-  SMTP_PORT: ${SMTP_PORT:-1025}
-  SMTP_USERNAME: ${SMTP_USERNAME:-}
-  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-  SMTP_SECURITY: ${SMTP_SECURITY:-None}
-  SMTP_FROM_ADDRESS: ${SMTP_FROM_ADDRESS:-noreply@localhost}
-  SMTP_FROM_NAME: ${SMTP_FROM_NAME:-ISLAMU Event Dev}
 
 x-email-dispatch-rabbitmq-env: &email-dispatch-rabbitmq-env
   ConnectionStrings__messaging: ${MESSAGING_URI:-}

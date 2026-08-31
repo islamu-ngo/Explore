@@ -17,13 +17,16 @@ public sealed class SecretProviderFactory
 {
     private readonly IOptions<SecretProviderOptions> _options;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly UserSecretsAuthority? _userSecretsAuthority;
 
     public SecretProviderFactory(
         IOptions<SecretProviderOptions> options,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        UserSecretsAuthority? userSecretsAuthority = null)
     {
         _options = options;
         _loggerFactory = loggerFactory;
+        _userSecretsAuthority = userSecretsAuthority;
     }
 
     /// <summary>
@@ -43,6 +46,7 @@ public sealed class SecretProviderFactory
         return options.Provider switch
         {
             SecretProviderType.Environment => CreateEnvironmentProvider(),
+            SecretProviderType.UserSecrets => CreateUserSecretsProvider(),
             SecretProviderType.Infisical => CreateInfisicalProvider(),
             _ => throw new SecretProviderException(
                 $"Unsupported secret provider type: {options.Provider}",
@@ -56,6 +60,15 @@ public sealed class SecretProviderFactory
     {
         var logger = _loggerFactory.CreateLogger<EnvironmentSecretProvider>();
         return new EnvironmentSecretProvider(logger);
+    }
+
+    private ISecretProvider CreateUserSecretsProvider()
+    {
+        var logger = _loggerFactory.CreateLogger<EnvironmentSecretProvider>();
+        return new EnvironmentSecretProvider(
+            logger,
+            _userSecretsAuthority ?? throw new InvalidOperationException(
+                "User Secrets authority is unavailable."));
     }
 
     private ISecretProvider CreateInfisicalProvider()

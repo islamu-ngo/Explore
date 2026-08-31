@@ -2,6 +2,7 @@
 // ABOUTME: Reuses the same structured migrator resolution as the primary ExploreDbContext factory.
 
 using Explore.Persistence.Database;
+using Explore.Secrets.Configuration;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -13,9 +14,16 @@ public sealed class DataProtectionKeyContextFactory : IDesignTimeDbContextFactor
 {
     public DataProtectionKeyContext CreateDbContext(string[] args)
     {
-        var configurationBuilder = new ConfigurationBuilder()
-            .AddUserSecrets<DataProtectionKeyContextFactory>(optional: true)
-            .AddEnvironmentVariables();
+        IConfiguration bootstrap = new ConfigurationBuilder()
+            .AddEnvironmentVariables()
+            .AddCommandLine(args)
+            .Build();
+        var configurationBuilder = new ConfigurationBuilder().AddConfiguration(
+            SecretAuthorityConfiguration.Build(
+                bootstrap,
+                SecretAuthorityConfiguration.GetEnvironmentName(bootstrap),
+                "/database",
+                "/database/erasure"));
 
         return CreateDbContext(configurationBuilder);
     }

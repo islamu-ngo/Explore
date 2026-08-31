@@ -14,7 +14,6 @@ public sealed class EmbeddedPrivacyErasureAuthorityDbContextFactory
     public EmbeddedPrivacyErasureAuthorityDbContext CreateDbContext(string[] args)
     {
         IConfiguration configuration = new ConfigurationBuilder()
-            .AddUserSecrets<EmbeddedPrivacyErasureAuthorityDbContextFactory>(optional: true)
             .AddEnvironmentVariables()
             .AddCommandLine(args)
             .Build();

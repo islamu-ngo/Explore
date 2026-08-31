@@ -1,5 +1,5 @@
-// ABOUTME: Single-source-per-secret resolver. Walks Tenant->Instance hierarchy for binding,
-// ABOUTME: then dispatches to EXACTLY ONE ISecretSource based on binding.SourceType. No fallback.
+// ABOUTME: Single-source resolver with tenant/instance overrides and registry-owned defaults.
+// ABOUTME: Dispatches to exactly one source selected by deployment authority, with no fallback.
 
 namespace Explore.Secrets.Services;
 
@@ -24,7 +24,7 @@ using Microsoft.Extensions.Options;
 /// <para><b>Core algorithm (no-fallback):</b></para>
 /// <list type="number">
 ///   <item>Look up the winning <see cref="SecretBinding"/> in the hierarchy:
-///         Tenant (if tenantId supplied) -> Instance.</item>
+///         Tenant (if tenantId supplied) -> Instance -> registry-owned instance default.</item>
 ///   <item>Dispatch to the <see cref="ISecretSource"/> matching
 ///         <see cref="SecretBinding.SourceType"/>.</item>
 ///   <item>If the source returns <c>null</c>, return <c>null</c>. Do NOT fall back
@@ -45,6 +45,7 @@ public sealed class SecretResolver : ISecretResolver
     private readonly SecretResolverMetrics _metrics;
     private readonly ILogger<SecretResolver> _logger;
     private readonly SecretProviderType _provider;
+    private readonly string _infisicalEnvironment;
     private readonly ConcurrentDictionary<string, string> _cacheKeys = new(StringComparer.Ordinal);
 
     public SecretResolver(
@@ -67,6 +68,7 @@ public sealed class SecretResolver : ISecretResolver
         _metrics = metrics;
         _logger = logger;
         _provider = options.Value.Provider;
+        _infisicalEnvironment = options.Value.Infisical.Environment;
 
         // Index sources by SourceType. Duplicate types = bug => throw at startup.
         _sources = sources.ToFrozenDictionary(s => s.SourceType);
@@ -187,8 +189,8 @@ public sealed class SecretResolver : ISecretResolver
     }
 
     /// <summary>
-    /// Walks Tenant -> Instance to find the winning binding. A null return means
-    /// the secret is unbound (not configured) - caller treats as "feature disabled".
+    /// Walks Tenant -> Instance -> canonical registry default. A null return means
+    /// the key is unknown or unavailable for instance scope.
     /// </summary>
     private async Task<SecretBinding?> ResolveBindingAsync(
         string settingKey,
@@ -207,9 +209,47 @@ public sealed class SecretResolver : ISecretResolver
             }
         }
 
-        return await _bindings.GetByKeyAndScopeAsync(
+        var instanceBinding = await _bindings.GetByKeyAndScopeAsync(
             settingKey, SecretScope.Instance, scopeId: null, cancellationToken)
             .ConfigureAwait(false);
+        if (instanceBinding is not null && instanceBinding.SourceType == SelectedSourceType())
+        {
+            return instanceBinding;
+        }
+
+        if (instanceBinding is not null)
+        {
+            _logger.LogWarning("secret_binding_authority_mismatch");
+        }
+
+        return CreateDefaultInstanceBinding(settingKey);
+    }
+
+    private SecretBinding? CreateDefaultInstanceBinding(string settingKey)
+    {
+        SecretDefinition? definition = SecretDefinitionRegistry.TryGet(settingKey);
+        if (definition is null || !definition.AllowedScopes.Contains(SecretScope.Instance))
+        {
+            return null;
+        }
+
+        return _provider switch
+        {
+            SecretProviderType.Environment or SecretProviderType.UserSecrets => SecretBinding.CreateEnvironmentVariable(
+                settingKey,
+                SecretScope.Instance,
+                scopeId: null,
+                definition.DefaultEnvironmentVariableName),
+            SecretProviderType.Infisical when !string.IsNullOrWhiteSpace(_infisicalEnvironment) =>
+                SecretBinding.CreateInfisical(
+                    settingKey,
+                    SecretScope.Instance,
+                    scopeId: null,
+                    _infisicalEnvironment,
+                    definition.DefaultInfisicalPath,
+                    definition.DefaultInfisicalKey),
+            _ => null,
+        };
     }
 
     private async Task<SecretResolutionResult> ResolveBoundBindingAsync(
@@ -225,12 +265,7 @@ public sealed class SecretResolver : ISecretResolver
         }
 
         _metrics.RecordCacheMiss();
-        var selectedSource = _provider switch
-        {
-            SecretProviderType.Environment => SecretSourceType.EnvironmentVariable,
-            SecretProviderType.Infisical => SecretSourceType.Infisical,
-            _ => (SecretSourceType?)null
-        };
+        var selectedSource = SelectedSourceType();
         if (selectedSource != binding.SourceType)
         {
             _logger.LogError("secret_source_invalid source={SourceType}", binding.SourceType);
@@ -296,4 +331,11 @@ public sealed class SecretResolver : ISecretResolver
         scopeId.HasValue
             ? $"secret::{settingKey}::{scope}::{scopeId.Value:N}::"
             : $"secret::{settingKey}::{scope}::-::";
+
+    private SecretSourceType? SelectedSourceType() => _provider switch
+    {
+        SecretProviderType.Environment or SecretProviderType.UserSecrets => SecretSourceType.EnvironmentVariable,
+        SecretProviderType.Infisical => SecretSourceType.Infisical,
+        _ => null,
+    };
 }

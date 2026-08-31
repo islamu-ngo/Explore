@@ -34,6 +34,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Event.Api.IntegrationTests.Features;
 
+[NotInParallel]
 public class InstanceOnboardingControllerTests
 {
     private const string BaseUrl = "/api/instanceonboarding";
@@ -286,7 +287,8 @@ public class InstanceOnboardingControllerTests
         using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, completePayload, includeSetupSecret: true);
         var completeResponse = await client.SendAsync(completeRequest);
 
-        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK)
+            .Because(await completeResponse.Content.ReadAsStringAsync());
 
         var completeBody = await completeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(completeBody).IsNotNull();

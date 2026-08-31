@@ -1,19 +1,23 @@
-// ABOUTME: Resolves secrets from process environment variables via SecretBinding.EnvironmentVariableName.
-// ABOUTME: Returns bounded typed outcomes suitable for bootstrap and local-development workflows.
+// ABOUTME: Resolves local secrets from the explicitly selected Environment or User Secrets authority.
+// ABOUTME: Returns bounded typed outcomes without crossing between the two local sources.
 
 using Explore.Application.Contracts.Secrets;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
+using Explore.Secrets.Abstractions;
+using Explore.Secrets.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Secrets.Sources;
 
 /// <summary>
-/// Reads secret values straight from <see cref="Environment.GetEnvironmentVariable(string)"/> using the
-/// binding's <see cref="SecretBinding.EnvironmentVariableName"/>. Trivial, always-available source that
-/// underpins bootstrap and local-dev workflows — the registry forbids this source for secrets where the
-/// value must never hit a shell history / process environment.
+/// Reads the binding's <see cref="SecretBinding.EnvironmentVariableName"/> from the explicitly selected
+/// local authority. The persisted source type stays EnvironmentVariable because User Secrets is a
+/// development transport, not a new deployment-owned binding model.
 /// </summary>
-public sealed class EnvironmentSecretSource : ISecretSource
+public sealed class EnvironmentSecretSource(
+    IOptions<SecretProviderOptions> options,
+    UserSecretsAuthority userSecretsAuthority) : ISecretSource
 {
     /// <inheritdoc />
     public SecretSourceType SourceType => SecretSourceType.EnvironmentVariable;
@@ -30,7 +34,9 @@ public sealed class EnvironmentSecretSource : ISecretSource
             return Task.FromResult(SecretResolutionResult.Invalid);
         }
 
-        var value = Environment.GetEnvironmentVariable(binding.EnvironmentVariableName);
+        var value = options.Value.Provider == SecretProviderType.UserSecrets
+            ? userSecretsAuthority.Get(binding.EnvironmentVariableName)
+            : Environment.GetEnvironmentVariable(binding.EnvironmentVariableName);
         if (string.IsNullOrEmpty(value))
         {
             return Task.FromResult(SecretResolutionResult.Unconfigured);

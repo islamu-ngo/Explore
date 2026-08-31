@@ -754,30 +754,75 @@ public sealed class PrimaryDatabaseConfigurationTests
     }
 
     [Test]
+    [NotInParallel]
     public async Task ConfigurePersistenceServices_WithProjectedDiscretePostgres_UsesSharedStructuredBinder()
     {
         string password = $"password-{Guid.CreateVersion7():N}";
-        var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        var values = new Dictionary<string, string?>
         {
-            ["SecretProvider:Provider"] = "Environment",
-            ["Postgresql:Host"] = "pg.example.test",
-            ["Postgresql:Port"] = "5432",
-            ["Postgresql:Database"] = "event_db",
-            ["Postgresql:Username"] = "app_user",
-            ["Postgresql:Password"] = password,
-        });
-        BootstrapSecretLoader.ProjectPostgresConfiguration(
-            builder,
-            PrimaryDatabaseRole.Runtime);
-        var services = new ServiceCollection();
+            [BootstrapSecretLoader.EnvHost] = "pg.example.test",
+            [BootstrapSecretLoader.EnvPort] = "5432",
+            [BootstrapSecretLoader.EnvDatabase] = "event_db",
+            [BootstrapSecretLoader.EnvUsername] = $"user_{Guid.CreateVersion7():N}",
+            [BootstrapSecretLoader.EnvPassword] = password,
+        };
+        var previous = values.Keys.ToDictionary(
+            key => key,
+            Environment.GetEnvironmentVariable,
+            StringComparer.Ordinal);
+        try
+        {
+            foreach (var pair in values)
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
 
-        Action act = () => services.ConfigurePersistenceServices(
-            builder.Build(),
-            skipDbContextRegistration: false,
-            skipLookupCacheInitializer: true,
-            environmentName: "Production");
+            var builder = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SecretProvider:Provider"] = "Environment",
+            });
+            BootstrapSecretLoader.ProjectPostgresConfiguration(
+                builder,
+                PrimaryDatabaseRole.Runtime);
+            var services = new ServiceCollection();
 
-        await Assert.That(act).ThrowsNothing();
+            Action act = () => services.ConfigurePersistenceServices(
+                builder.Build(),
+                skipDbContextRegistration: false,
+                skipLookupCacheInitializer: true,
+                environmentName: "Production");
+
+            await Assert.That(act).ThrowsNothing();
+        }
+        finally
+        {
+            foreach (var pair in previous)
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+        }
+    }
+
+    [Test]
+    [NotInParallel]
+    public async Task DesignTimeFactory_WhenUserSecretsIsSelectedInProduction_FailsClosed()
+    {
+        const string providerKey = "SecretProvider__Provider";
+        const string environmentKey = "DOTNET_ENVIRONMENT";
+        string? previousProvider = Environment.GetEnvironmentVariable(providerKey);
+        string? previousEnvironment = Environment.GetEnvironmentVariable(environmentKey);
+        try
+        {
+            Environment.SetEnvironmentVariable(providerKey, "UserSecrets");
+            Environment.SetEnvironmentVariable(environmentKey, "Production");
+
+            Action act = () => new ExploreDbContextFactory().CreateDbContext([]);
+
+            var exception = await Assert.That(act).Throws<InvalidOperationException>();
+            await Assert.That(exception!.Message)
+                .IsEqualTo("secret_authority_user_secrets_environment_invalid");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(providerKey, previousProvider);
+            Environment.SetEnvironmentVariable(environmentKey, previousEnvironment);
+        }
     }
 
     [Test]

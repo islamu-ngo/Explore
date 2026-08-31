@@ -57,6 +57,7 @@ public static class ServiceCollectionExtensions
 
         // Register validator
         services.TryAddSingleton<IValidateOptions<SecretProviderOptions>, SecretProviderOptionsValidator>();
+        services.TryAddSingleton<UserSecretsAuthority>();
 
         // Register factory
         services.TryAddSingleton<SecretProviderFactory>();

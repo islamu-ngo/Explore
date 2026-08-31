@@ -69,7 +69,7 @@ public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisp
             }
 
             var settings = new InfisicalSdkSettingsBuilder()
-                .WithHostUri(_options.Url ?? "https://app.infisical.com")
+                .WithHostUri(_options.Url!)
                 .Build();
 
             var client = new InfisicalClient(settings);
@@ -108,7 +108,9 @@ public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisp
 
     private bool IsConfigured()
     {
-        return !string.IsNullOrWhiteSpace(_options.ClientId)
+        return !string.IsNullOrWhiteSpace(_options.Url)
+            && !string.IsNullOrWhiteSpace(_options.Environment)
+            && !string.IsNullOrWhiteSpace(_options.ClientId)
             && !string.IsNullOrWhiteSpace(_options.ClientSecret)
             && !string.IsNullOrWhiteSpace(_options.ProjectId);
     }

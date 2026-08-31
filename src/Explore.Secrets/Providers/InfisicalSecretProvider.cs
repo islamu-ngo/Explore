@@ -59,7 +59,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
             _logger.LogInformation("secret_provider_initializing");
 
             var settings = new InfisicalSdkSettingsBuilder()
-                .WithHostUri(_options.Url ?? "https://app.infisical.com")
+                .WithHostUri(_options.Url!)
                 .Build();
 
             _client = new InfisicalClient(settings);
@@ -106,14 +106,6 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
             return Task.FromResult<string?>(secret.Value);
         }
 
-        // Try alternate key formats
-        var infisicalKey = ConvertToInfisicalKey(key);
-        if (_secretCache.TryGetValue(infisicalKey, out secret))
-        {
-            _logger.LogDebug("secret_cache_hit");
-            return Task.FromResult<string?>(secret.Value);
-        }
-
         _logger.LogDebug("secret_cache_miss");
         return Task.FromResult<string?>(null);
     }
@@ -124,12 +116,6 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
         EnsureInitialized();
 
         if (_secretCache.TryGetValue(key, out var secret))
-        {
-            return Task.FromResult<SecretValue?>(secret);
-        }
-
-        var infisicalKey = ConvertToInfisicalKey(key);
-        if (_secretCache.TryGetValue(infisicalKey, out secret))
         {
             return Task.FromResult<SecretValue?>(secret);
         }
@@ -249,14 +235,12 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
 
                 foreach (var secret in secrets)
                 {
-                    // Store with both canonical and Infisical key formats
                     var canonicalKey = ConvertToCanonicalKey(secret.SecretKey, path);
                     var secretValue = new SecretValue(
                         secret.SecretValue,
                         Version: secret.Version.ToString());
 
                     newSecrets[canonicalKey] = secretValue;
-                    newSecrets[secret.SecretKey] = secretValue; // Also store original key
 
                     _logger.LogTrace("secret_provider_item_loaded");
                 }
@@ -310,17 +294,6 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
         }
 
         return pascalCaseKey;
-    }
-
-    /// <summary>
-    /// Converts a canonical key to Infisical format.
-    /// e.g., "Keycloak:Endpoint" -> "KEYCLOAK_ENDPOINT"
-    /// </summary>
-    private static string ConvertToInfisicalKey(string canonicalKey)
-    {
-        return canonicalKey
-            .Replace(":", "_")
-            .ToUpperInvariant();
     }
 
     /// <summary>

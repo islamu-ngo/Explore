@@ -79,7 +79,16 @@ public static class BlazorHostServiceCollectionExtensions
             builder.AddOidcDiscoveryReadinessCheck();
         }
 
-        builder.Configuration.AddSecretAuthorityConfiguration();
+        if (builder.Environment.IsEnvironment("Testing")
+            && builder.Configuration["SecretProvider:Provider"] is null
+            && builder.Configuration["SECRET_PROVIDER"] is null)
+        {
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SecretProvider:Provider"] = "Environment"
+            });
+        }
+        builder.Configuration.AddSecretAuthorityConfiguration(builder.Environment.EnvironmentName);
 
         builder.Services.AddMudServices(config =>
         {

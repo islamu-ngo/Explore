@@ -1,10 +1,11 @@
-ABOUTME: Deployment-owned Environment and Infisical secret authority with fail-closed resolution.
+ABOUTME: Explicit Environment, Infisical, and Development/Testing User Secrets authority.
 ABOUTME: Covers bootstrap selection, safe diagnostics, health monitoring, and rotation boundaries.
 
 # Secrets Management
 
 `Explore.Secrets` resolves values from exactly one deployment-selected authority.
-`Environment` and `Infisical` are supported; a missing, unsupported, or failed
+`Environment` and `Infisical` are supported for deployments. `UserSecrets` is a
+local Development/Testing authority. A missing, unsupported, disallowed, or failed
 authority stops required startup work and never falls back to another source.
 
 ## Provider Types
@@ -13,14 +14,17 @@ authority stops required startup work and never falls back to another source.
 |---|---|---|---|
 | Environment | `0` | Implemented | Explicit environment injection |
 | Infisical | `1` | Implemented | Universal Auth (ClientId + ClientSecret) |
+| User Secrets | `2` | Development/Testing only | Shared local .NET store |
 
 Vault, Azure Key Vault, and AWS Secrets Manager have no enum, options, factory,
 or deployment scaffolding. Any such configured string is invalid and fails closed.
 
 When `Provider = Environment`, secrets come exclusively from process environment
-variables. Appsettings and .NET User Secrets are not secret origins. When
-`Provider = Infisical`, only Infisical results are authoritative; lower environment
-values are ignored when Infisical is absent, unauthorized, invalid, or unavailable.
+variables. When `Provider = UserSecrets`, secrets come exclusively from the shared
+`event-shared-secrets` .NET store and the process must run as Development or Testing.
+When `Provider = Infisical`, only Infisical results are authoritative. Missing or
+failed values never fall through to appsettings, environment, User Secrets, or a
+different provider.
 
 Optional Photon address geocoding does not use an API key, password, token, or
 client credential. Its endpoint and bounded runtime settings are ordinary
@@ -55,13 +59,39 @@ phase; never reuse the Photon configuration surface.
 ### Local Development Environment
 
 Copy `.env.example` to the ignored repository-root `.env`. Select exactly one
-`SECRET_PROVIDER`: `Environment` or `Infisical`. Environment mode reads the
-documented process variables. Infisical mode uses only `INFISICAL_*` secret-zero
-bootstrap credentials to load provider values; it does not treat those credentials
-or any lower environment value as a fallback secret source.
+`SECRET_PROVIDER`: `Environment`, `Infisical`, or `UserSecrets`. Environment mode
+reads the documented process variables. Infisical mode uses only `INFISICAL_*`
+secret-zero bootstrap credentials. User Secrets mode reads the shared store owned
+by `src/Explore.Secrets/Explore.Secrets.csproj`; populate it with the same documented
+environment-style keys (for example `MAIL_SMTP_PASSWORD`) through your IDE or the
+`dotnet user-secrets --project src/Explore.Secrets` CLI. It is rejected unless the
+host environment is Development or Testing.
+
+AppHost loads the repository `.env`, so Aspire profiles honor
+`SECRET_PROVIDER=UserSecrets` directly. Direct project launches do not load that
+file. For direct Standalone development, export only the non-secret selector and
+host environment before launch:
+
+```bash
+export SECRET_PROVIDER=UserSecrets
+export DOTNET_ENVIRONMENT=Development
+export ASPNETCORE_ENVIRONMENT=Development
+dotnet run --project src/Event.Standalone
+```
+
+EF design-time factories follow the same boundary. After populating all structured
+database fields required by the selected provider in the shared store, run the EF
+command from a shell with `SECRET_PROVIDER=UserSecrets` and
+`DOTNET_ENVIRONMENT=Development`. A clean shell defaults to Production and rejects
+User Secrets by design.
+
+User Secrets is loaded once with `reloadOnChange=false`. Any value addition,
+replacement, or removal requires a full restart of AppHost and every affected child
+or direct host. The five-minute resolver cache bound does not reload the backing
+User Secrets file.
 
 > [!IMPORTANT]
-> The contributor default Aspire profile is `local-full`. It starts local infrastructure and sets `SecretProvider:Provider=Environment` for child projects, so contributors should not need Infisical credentials.
+> The contributor default Aspire profile is `local-full`. It starts local infrastructure and uses Environment unless `UserSecrets` is explicitly selected, so contributors should not need Infisical credentials.
 > Maintainer profiles intentionally differ:
 > - `local-core` starts local PostgreSQL/Redis and uses the authority selected in `.env` for external platform values.
 > - `local-lite` starts the migration worker, API, and Blazor and uses the same selected authority.
@@ -105,7 +135,8 @@ an explicit deployment cutover and requires a full restart of the affected repli
 
 | Secret authority | Direct Standalone | Aspire Standalone | Aspire Split | Single-replica Compose | Multi-replica Split |
 |---|---|---|---|---|---|
-| `Environment` | Supported with explicit process injection | Supported in `local-core`/`local-lite`; `local-full` explicitly forces local Environment mode | Supported in `local-core`/`local-lite`; `local-full` explicitly forces local Environment mode | Supported through the explicit Compose allow-list | Supported only when the deployment injects one consistent value set and one explicit shared setup secret into every replica |
+| `Environment` | Supported with explicit process injection | Supported in `local-core`/`local-lite`; `local-full` defaults to local Environment mode | Supported in `local-core`/`local-lite`; `local-full` defaults to local Environment mode | Supported through the explicit Compose allow-list | Supported only when the deployment injects one consistent value set and one explicit shared setup secret into every replica |
+| `UserSecrets` | Development/Testing only | Supported for local Development profiles | Supported for local Development profiles | Rejected | Rejected |
 | `Infisical` | Supported with all five `INFISICAL_*` bootstrap inputs | Supported in `local-core`/`local-lite` | Supported in `local-core`/`local-lite` | Supported with the same explicit bootstrap inputs | Supported when every replica uses the same project/environment authority and deployment-owned setup secret |
 | Vault / Azure Key Vault / AWS Secrets Manager | Fail closed | Fail closed | Fail closed | Fail closed | Fail closed |
 
@@ -141,10 +172,12 @@ deployment must allow the five-minute freshness bound or restart/drain replicas
 after an urgent authority change. Rotation activation and replica acknowledgement
 are documented separately with their owning runbook.
 
-The `secret-resolver` readiness check reports `providerState=unconfigured` when
-Infisical is not configured, `available` after successful initialization, and a
-value-free degraded `unavailable` state when a configured provider cannot
-initialize. Follow [Secret provider unavailable](TROUBLESHOOTING.md#secret-provider-unavailable)
+The `secret-resolver` readiness check reports `providerState=available` for the
+selected Environment/User Secrets authority after its environment gate passes, or
+after successful Infisical authentication. A
+selected Infisical authority that is incomplete or cannot authenticate is
+`Unhealthy` with the value-free `providerState=unavailable`; it is never load-balancer
+ready as an optional/unconfigured provider. Follow [Secret provider unavailable](TROUBLESHOOTING.md#secret-provider-unavailable)
 without printing provider responses or testing with commands that echo credentials.
 
 ### Primary database credentials
@@ -371,7 +404,12 @@ Stripe secrets are instance-scoped, server-only, and optional while paid events 
 
 Compose Keycloak bootstrap consumes `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` only inside the one-shot `keycloak-init` container. Those credentials are not application runtime secrets and must not be stored in governance settings or copied into support artifacts. The init logs redact client secret values.
 
-The checked-in Keycloak realm exports never contain the confidential Blazor BFF client secret. Compose requires `KEYCLOAK_BLAZOR_CLIENT_SECRET` and fails closed when it is absent. Local Aspire generates a secret parameter when that deployment value is absent, persists it in the AppHost user-secrets store, and injects the same value into `keycloak-init`, the API, and the BFF without rendering it as ordinary resource configuration.
+The checked-in Keycloak realm exports never contain the confidential Blazor
+BFF client secret. Compose and local Aspire read
+`KEYCLOAK_BLAZOR_CLIENT_SECRET` from the deployment environment and fail closed
+when the selected topology requires it but it is absent. AppHost forwards the
+deployment value as a secret parameter to `keycloak-init`, the API, and the BFF;
+it never generates, persists, or renders a replacement value.
 
 External-Keycloak setup bootstrap accepts a one-time Keycloak admin or service-account username/password through the setup UI. Treat that credential as operator input for a single setup request, not as a platform-managed secret. ISLAMU must not save it to appsettings, environment variables, Infisical paths, database governance settings, logs, traces, screenshots, or support bundles. After a successful bootstrap, only the runtime Keycloak OIDC values and BFF client secrets are stored according to the normal authentication secret ownership model.
 

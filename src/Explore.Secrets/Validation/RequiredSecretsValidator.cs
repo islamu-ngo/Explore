@@ -1,4 +1,4 @@
-// ABOUTME: Validates the selected Environment or Infisical secret authority.
+// ABOUTME: Validates the selected Environment, Infisical, or local User Secrets authority.
 // ABOUTME: Runs at startup so unsupported or incomplete authority modes fail closed.
 
 using Explore.Secrets.Abstractions;
@@ -21,6 +21,7 @@ public sealed class SecretProviderOptionsValidator : IValidateOptions<SecretProv
         switch (options.Provider)
         {
             case SecretProviderType.Environment:
+            case SecretProviderType.UserSecrets:
                 // No validation needed for environment-only mode
                 break;
 
@@ -29,7 +30,7 @@ public sealed class SecretProviderOptionsValidator : IValidateOptions<SecretProv
                 break;
 
             default:
-                errors.Add("Secret provider must explicitly be Environment or Infisical.");
+                errors.Add("Secret provider must explicitly be Environment, Infisical, or UserSecrets.");
                 break;
         }
 

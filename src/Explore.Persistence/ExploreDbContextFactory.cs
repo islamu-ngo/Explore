@@ -2,6 +2,7 @@
 // ABOUTME: Resolves structured migrator settings through PrimaryDatabaseConfiguration before any provider registration.
 
 using Explore.Persistence.Database;
+using Explore.Secrets.Configuration;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -20,9 +21,16 @@ public class ExploreDbContextFactory : IDesignTimeDbContextFactory<ExploreDbCont
 {
     public ExploreDbContext CreateDbContext(string[] args)
     {
-        var configurationBuilder = new ConfigurationBuilder()
-            .AddUserSecrets<ExploreDbContextFactory>(optional: true)
-            .AddEnvironmentVariables();
+        IConfiguration bootstrap = new ConfigurationBuilder()
+            .AddEnvironmentVariables()
+            .AddCommandLine(args)
+            .Build();
+        var configurationBuilder = new ConfigurationBuilder().AddConfiguration(
+            SecretAuthorityConfiguration.Build(
+                bootstrap,
+                SecretAuthorityConfiguration.GetEnvironmentName(bootstrap),
+                "/database",
+                "/database/erasure"));
 
         return CreateDbContext(configurationBuilder);
     }

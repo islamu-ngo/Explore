@@ -1,4 +1,4 @@
-// ABOUTME: Verifies explicit Environment/Infisical provider selection and fail-closed bootstrap validation.
+// ABOUTME: Verifies explicit Environment/Infisical/User Secrets selection and bootstrap validation.
 // ABOUTME: Rejects unspecified mode without retaining unused provider scaffolding.
 
 using Explore.Secrets.Abstractions;
@@ -17,7 +17,7 @@ public sealed class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(null, new SecretProviderOptions());
 
         await Assert.That(result.Succeeded).IsFalse();
-        await Assert.That(result.FailureMessage).Contains("Environment or Infisical");
+        await Assert.That(result.FailureMessage).Contains("Environment, Infisical, or UserSecrets");
     }
 
     [Test]
@@ -26,6 +26,16 @@ public sealed class SecretProviderOptionsValidatorTests
         var result = _validator.Validate(
             null,
             new SecretProviderOptions { Provider = SecretProviderType.Environment });
+
+        await Assert.That(result.Succeeded).IsTrue();
+    }
+
+    [Test]
+    public async Task UserSecretsProviderNeedsNoExternalBootstrapCredentials()
+    {
+        var result = _validator.Validate(
+            null,
+            new SecretProviderOptions { Provider = SecretProviderType.UserSecrets });
 
         await Assert.That(result.Succeeded).IsTrue();
     }

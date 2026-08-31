@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <NoWarn>$(NoWarn);CA1716</NoWarn>
-    <UserSecretsId>event-shared-secrets</UserSecretsId>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(StandaloneContainerPublish)' == 'true'">
