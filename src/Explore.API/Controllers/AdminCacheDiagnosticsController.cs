@@ -1,6 +1,7 @@
 // ABOUTME: Diagnostics-only endpoint for invalidating admin authority cache during full-process E2E tests.
 // ABOUTME: Hidden from API docs and disabled unless an explicit diagnostics flag is enabled.
 
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Explore.Application.Authentication;
 using Asp.Versioning;
@@ -42,9 +43,9 @@ public sealed class AdminCacheDiagnosticsController : ExploreControllerBase
 
         return Ok(new AdminCacheCurrentUserDiagnostics(
             User.Identity?.AuthenticationType,
-            User.FindFirst("internal_user_id")?.Value,
-            User.FindFirst("sub")?.Value,
-            User.FindFirst("sid")?.Value,
+            User.FindFirst(PlatformIdentityClaimTypes.InternalUserId)?.Value,
+            User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value,
+            User.FindFirst(JwtRegisteredClaimNames.Sid)?.Value,
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
             providerIdentity?.Provider,
             providerIdentity?.ProviderId,

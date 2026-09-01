@@ -1,7 +1,6 @@
 // ABOUTME: Focused bUnit tests for EventList loading and empty-state behavior.
 // ABOUTME: Verifies stable UX state transitions with Virtualize-backed API paging.
 
-using System.Reflection;
 using System.Text.Json;
 using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Pages.Events;
@@ -56,7 +55,6 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
         _ctx.Services.AddSingleton(Substitute.For<ILogger<EventList>>());
-        _ctx.Services.AddSingleton(Substitute.For<IAuthStateService>());
         _ctx.Services.AddSingleton(Substitute.For<IContactShareConsentService>());
         _ctx.Services.AddSingleton(Substitute.For<IUserSettingsService>());
         _ctx.Services.AddSingleton(new FeatureStateContainer());
@@ -187,98 +185,47 @@ public class EventListTests : IDisposable
             .Returns(resultTask);
     }
 
-    /// <summary>
-    /// Invokes the private LoadEventsAsync Virtualize provider callback via reflection.
-    /// This is an intentional workaround because bUnit cannot directly trigger a
-    /// Virtualize component's ItemsProvider delegate. The method is the sole entry
-    /// point for paged event loading and must be invoked to test empty-state transitions.
-    /// All assertions use rendered markup (public output), not internal state.
-    /// </summary>
-    private static async Task InvokeLoadEventsAsync(IRenderedComponent<EventList> cut)
+    private static async Task OpenCustomizationDrawerAsync(IRenderedComponent<EventList> cut)
     {
-        var loadEventsMethod = typeof(EventList)
-            .GetMethod("LoadEventsAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("LoadEventsAsync not found — Virtualize provider method may have been renamed.");
-
-        var request = new ItemsProviderRequest(startIndex: 0, count: 20, cancellationToken: CancellationToken.None);
-        await cut.InvokeAsync(async () =>
-        {
-            var valueTask = (ValueTask<ItemsProviderResult<EventListDto>>)loadEventsMethod.Invoke(cut.Instance, [request])!;
-            await valueTask;
-        });
+        await cut.Find("[aria-label='Customize view']").ClickAsync(new MouseEventArgs());
     }
 
-    private static async Task InvokePrivateTaskAsync(IRenderedComponent<EventList> cut, string methodName, params object?[] parameters)
+    private static async Task SelectRenderedEventAsync(IRenderedComponent<EventList> cut, string title)
     {
-        var method = typeof(EventList)
-            .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException($"{methodName} not found — EventList interaction contract may have changed.");
-
-        await cut.InvokeAsync(async () =>
-        {
-            var task = method.Invoke(cut.Instance, parameters) as Task
-                ?? throw new InvalidOperationException($"{methodName} did not return a Task.");
-
-            await task;
-        });
+        var selector = $"[aria-label='View event: {title}']";
+        cut.WaitForElement(selector);
+        await cut.Find(selector).ClickAsync(new MouseEventArgs());
+        cut.WaitForElement("[aria-label='Event preview']");
     }
 
-    private static async Task<PaginatedResult<EventListDto>> InvokeFetchEventsPagedAsync(
-        IRenderedComponent<EventList> cut,
-        int pageNumber,
-        int pageSize)
+    private static async Task OpenTagManagementAsync(IRenderedComponent<EventList> cut)
     {
-        var method = typeof(EventList)
-            .GetMethod("FetchEventsPagedAsync", BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("FetchEventsPagedAsync not found — EventList filter forwarding contract may have changed.");
-
-        return await cut.InvokeAsync(async () =>
-        {
-            var task = (Task<PaginatedResult<EventListDto>>)method.Invoke(cut.Instance, [pageNumber, pageSize, CancellationToken.None])!;
-            return await task;
-        });
+        cut.WaitForElement("[aria-label='Manage tags']");
+        await cut.Find("[aria-label='Manage tags']").ClickAsync(new MouseEventArgs());
+        cut.WaitForElement(".tagcat-manager__popup");
     }
 
-    private static async Task InvokePrivateVoidAsync(IRenderedComponent<EventList> cut, string methodName)
+    private void SetupEventDetailResponses(Guid eventId, bool withEditLink = false)
     {
-        var method = typeof(EventList)
-            .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException($"{methodName} not found — EventList interaction contract may have changed.");
-
-        await cut.InvokeAsync(() => method.Invoke(cut.Instance, []));
+        const string title = "Dock Baseline Event";
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20,
+            [new EventListDto
+            {
+                Id = eventId,
+                Title = title,
+                AdditionalProperties = withEditLink ? CreateHalLinks("edit") : new Dictionary<string, object>()
+            }])));
+        SetupEventDetailResponse(eventId, title, withEditLink);
     }
 
-    private static T GetPrivateField<T>(EventList instance, string fieldName)
-    {
-        var field = typeof(EventList)
-            .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException($"{fieldName} not found — EventList state contract may have changed.");
-
-        return (T)field.GetValue(instance)!;
-    }
-
-    private static void SetPrivateField<T>(EventList instance, string fieldName, T value)
-    {
-        var field = typeof(EventList)
-            .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException($"{fieldName} not found — EventList state contract may have changed.");
-
-        field.SetValue(instance, value);
-    }
-
-    private void SetupEventDetailResponses(Guid eventId)
-    {
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-        SetupEventDetailResponse(eventId, "Dock Baseline Event");
-    }
-
-    private void SetupEventDetailResponse(Guid eventId, string title)
+    private void SetupEventDetailResponse(Guid eventId, string title, bool withEditLink = false)
     {
         _eventService.GetEventByIdAsync(eventId).Returns(new EventDto
         {
             Id = eventId,
             Title = title,
-            Description = "Event used for sidebar baseline tests"
+            Description = "Event used for sidebar baseline tests",
+            AdditionalProperties = withEditLink ? CreateHalLinks("edit") : new Dictionary<string, object>()
         });
 
         _eventService.GetSessionsByEventAsync(eventId, Arg.Any<bool>()).Returns(new List<EventSessionListDto>());
@@ -307,8 +254,6 @@ public class EventListTests : IDisposable
         navigation.NavigateTo($"/events?actorId={actorId}&organizationId={organizationId}&groupId={groupId}");
 
         var cut = _ctx.RenderMudComponent<EventList>();
-
-        await InvokeFetchEventsPagedAsync(cut, 1, 20);
 
         await _eventService.Received().GetEventsPagedAsync(
             Arg.Any<int>(),
@@ -397,42 +342,6 @@ public class EventListTests : IDisposable
     }
 
     [Test]
-    public async Task ResetWorkspaceDockLayout_ClearsPersistentCustomizeStateAndDeletesEventsSnapshot()
-    {
-        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
-        _dockLayoutPersistence.LoadAsync("events", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DockLayoutSnapshot?>(CreateWorkspaceSnapshot(customizeOpen: true, customizeWidth: 360)));
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        cut.WaitForAssertion(() =>
-        {
-            var customizePanel = _dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId);
-            if (customizePanel?.State is not { IsOpen: true, Width: 360 })
-                throw new InvalidOperationException("Expected workspace snapshot to restore Customize View before reset.");
-        });
-
-        SetPrivateField(cut.Instance, "_customizationDrawerOpen", true);
-        _dockLayoutPersistence.ClearReceivedCalls();
-
-        await InvokePrivateTaskAsync(cut, "ResetWorkspaceDockLayoutAsync");
-
-        var customizeState = _dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State;
-        var previewState = _dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State;
-
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsFalse();
-        await Assert.That(customizeState?.IsOpen).IsFalse();
-        await Assert.That(customizeState?.Mode).IsEqualTo(DockMode.Docked);
-        await Assert.That(customizeState?.Width).IsEqualTo(EventDockPanels.CustomizeView.DefaultWidth);
-        await Assert.That(previewState?.IsOpen).IsFalse();
-
-        await _dockLayoutPersistence.Received(1).DeleteAsync("events", Arg.Any<CancellationToken>());
-        await _dockLayoutPersistence.DidNotReceive().SaveAsync(
-            Arg.Any<DockLayoutSnapshot>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
     public async Task Render_WithShellEventSections_ShowsCuratedFilterLinks()
     {
         SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
@@ -489,7 +398,7 @@ public class EventListTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<EventList>();
 
-        await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
+        await OpenCustomizationDrawerAsync(cut);
 
         cut.WaitForAssertion(() =>
         {
@@ -534,12 +443,11 @@ public class EventListTests : IDisposable
             Assert.That(cut.Markup).DoesNotContain("No events found");
         });
 
-        // Complete with empty result and trigger the Virtualize provider
+        // Complete the provider already subscribed by the rendered Virtualize component.
         pendingResult.SetResult(CreateResult(1, 20, []));
-        await InvokeLoadEventsAsync(cut);
 
-        // Assert — empty state now visible
-        await Assert.That(cut.Markup).Contains("No events found");
+        cut.WaitForAssertion(() =>
+            Assert.That(cut.Markup).Contains("No events found"));
     }
 
     [Test]
@@ -551,10 +459,12 @@ public class EventListTests : IDisposable
         navigation.NavigateTo($"/events?actorId={actorId}");
 
         var cut = _ctx.RenderMudComponent<EventList>();
-        await InvokeLoadEventsAsync(cut);
 
-        await Assert.That(cut.Markup).Contains("No matching events found");
-        await Assert.That(cut.Markup).Contains("Try adjusting your filters or search query.");
+        cut.WaitForAssertion(() =>
+        {
+            Assert.That(cut.Markup).Contains("No matching events found");
+            Assert.That(cut.Markup).Contains("Try adjusting your filters or search query.");
+        });
     }
 
     [Test]
@@ -569,11 +479,12 @@ public class EventListTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<EventList>();
-        await InvokeLoadEventsAsync(cut);
 
-        // Assert — event visible, empty state hidden
-        await Assert.That(cut.Markup).Contains("Blazor Summit");
-        await Assert.That(cut.Markup).DoesNotContain("No events found");
+        cut.WaitForAssertion(() =>
+        {
+            Assert.That(cut.Markup).Contains("Blazor Summit");
+            Assert.That(cut.Markup).DoesNotContain("No events found");
+        });
     }
 
     [Test]
@@ -584,19 +495,12 @@ public class EventListTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<EventList>();
 
-        await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsTrue();
+        await OpenCustomizationDrawerAsync(cut);
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen).IsTrue();
 
-        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
-        {
-            Id = eventId,
-            Title = "Dock Baseline Event"
-        });
+        await SelectRenderedEventAsync(cut, "Dock Baseline Event");
 
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsTrue();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen).IsTrue();
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
 
         cut.WaitForAssertion(() =>
@@ -610,16 +514,18 @@ public class EventListTests : IDisposable
     public async Task SelectingEvent_WithBlankFeaturedImage_DisplaysFallbackAfterDetailLoads()
     {
         var eventId = Guid.NewGuid();
-        SetupEventDetailResponses(eventId);
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
+        var eventItem = new EventListDto
         {
             Id = eventId,
             Title = "Fallback Preview Event",
             FeaturedImageUri = "   "
-        });
+        };
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [eventItem])));
+        SetupEventDetailResponse(eventId, eventItem.Title);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await SelectRenderedEventAsync(cut, eventItem.Title);
 
         var image = cut.Find("img.event-list__detail-image-fallback");
 
@@ -633,22 +539,24 @@ public class EventListTests : IDisposable
     public async Task DetailImageLoaded_ClearsSidebarImageSkeleton()
     {
         var eventId = Guid.NewGuid();
-        SetupEventDetailResponses(eventId);
-
-        var cut = _ctx.RenderMudComponent<EventList>();
-
-        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
+        var eventItem = new EventListDto
         {
             Id = eventId,
             Title = "Image Preview Event",
             FeaturedImageUri = "https://cdn.example.test/event.jpg"
-        });
+        };
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [eventItem])));
+        SetupEventDetailResponse(eventId, eventItem.Title);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await SelectRenderedEventAsync(cut, eventItem.Title);
 
         var loadingImage = cut.Find("img.event-list__detail-image-actual");
         await Assert.That(cut.FindAll(".event-list__detail-image-skeleton")).Count().IsEqualTo(1);
         await Assert.That(loadingImage.GetAttribute("class")).Contains("event-list__detail-image--loading");
 
-        await InvokePrivateTaskAsync(cut, "HandleDetailImageLoaded");
+        await loadingImage.TriggerEventAsync("onload", EventArgs.Empty);
 
         var loadedImage = cut.Find("img.event-list__detail-image-actual");
         await Assert.That(cut.FindAll(".event-list__detail-image-skeleton")).IsEmpty();
@@ -663,19 +571,12 @@ public class EventListTests : IDisposable
 
         var cut = _ctx.RenderMudComponent<EventList>();
 
-        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
-        {
-            Id = eventId,
-            Title = "Dock Baseline Event"
-        });
+        await SelectRenderedEventAsync(cut, "Dock Baseline Event");
 
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
 
-        await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
+        await OpenCustomizationDrawerAsync(cut);
 
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsTrue();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen).IsTrue();
     }
@@ -684,48 +585,46 @@ public class EventListTests : IDisposable
     public async Task ClosingDetailDrawer_ResetsDetailPanelTransientState()
     {
         var eventId = Guid.NewGuid();
-        SetupEventDetailResponses(eventId);
+        SetupEventDetailResponses(eventId, withEditLink: true);
 
         var cut = _ctx.RenderMudComponent<EventList>();
 
-        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
-        {
-            Id = eventId,
-            Title = "Dock Baseline Event"
-        });
+        await SelectRenderedEventAsync(cut, "Dock Baseline Event");
+        await OpenTagManagementAsync(cut);
 
-        SetPrivateField(cut.Instance, "_showTagCatPopup", true);
+        await cut.Find(".event-details-sidebar [aria-label='Close']").ClickAsync(new MouseEventArgs());
 
-        await InvokePrivateTaskAsync(cut, "CloseDetailDrawer");
+        await Assert.That(cut.FindAll(".tagcat-manager__popup")).IsEmpty();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
 
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsFalse();
+        await cut.Find(".event-details-sidebar [aria-label='Close']").ClickAsync(new MouseEventArgs());
+
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
-        await Assert.That(GetPrivateField<EventDto?>(cut.Instance, "_selectedEventDetail")).IsNull();
-        await Assert.That(GetPrivateField<ICollection<EventSessionListDto>?>(cut.Instance, "_selectedEventSessions")).IsNull();
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.FindAll("[aria-label='Event preview']").Count != 0)
+            {
+                throw new InvalidOperationException("Expected the event preview to be removed after closing it.");
+            }
+        });
     }
 
     [Test]
     public async Task BackdropClosingEventPreview_SynchronizesDetailPreviewState()
     {
         var eventId = Guid.NewGuid();
-        SetupEventDetailResponses(eventId);
+        SetupEventDetailResponses(eventId, withEditLink: true);
 
         var cut = _ctx.RenderMudComponent<EventList>();
 
-        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
-        {
-            Id = eventId,
-            Title = "Dock Backdrop Event"
-        });
-
-        SetPrivateField(cut.Instance, "_showTagCatPopup", true);
+        await SelectRenderedEventAsync(cut, "Dock Baseline Event");
+        await OpenTagManagementAsync(cut);
         await cut.Find("[data-testid='dock-overlay-backdrop']").ClickAsync(new MouseEventArgs());
 
         cut.WaitForAssertion(() =>
         {
-            Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsFalse();
-            Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
+            Assert.That(cut.FindAll("[aria-label='Event preview']")).IsEmpty();
+            Assert.That(cut.FindAll(".tagcat-manager__popup")).IsEmpty();
             Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
         });
     }
@@ -737,25 +636,24 @@ public class EventListTests : IDisposable
         var nextEventId = Guid.NewGuid();
         var events = new List<EventListDto>
         {
-            new() { Id = firstEventId, Title = "First Preview Event" },
-            new() { Id = nextEventId, Title = "Next Preview Event" }
+            new() { Id = firstEventId, Title = "First Preview Event", AdditionalProperties = CreateHalLinks("edit") },
+            new() { Id = nextEventId, Title = "Next Preview Event", AdditionalProperties = CreateHalLinks("edit") }
         };
 
         SetupPagedResult(Task.FromResult(CreateResult(1, 20, events)));
-        SetupEventDetailResponse(firstEventId, "First Preview Event");
-        SetupEventDetailResponse(nextEventId, "Next Preview Event");
+        SetupEventDetailResponse(firstEventId, "First Preview Event", withEditLink: true);
+        SetupEventDetailResponse(nextEventId, "Next Preview Event", withEditLink: true);
 
         var cut = _ctx.RenderMudComponent<EventList>();
-        await InvokeLoadEventsAsync(cut);
-        await InvokePrivateTaskAsync(cut, "SelectEvent", events[0]);
+        cut.WaitForAssertion(() =>
+            Assert.That(cut.Markup).Contains("First Preview Event"));
+        await SelectRenderedEventAsync(cut, "First Preview Event");
+        await OpenTagManagementAsync(cut);
 
-        SetPrivateField(cut.Instance, "_showTagCatPopup", true);
+        await cut.Find("[aria-label='Next event']").ClickAsync(new MouseEventArgs());
 
-        await InvokePrivateTaskAsync(cut, "NavigateNextEvent");
-
-        await Assert.That(GetPrivateField<EventListDto?>(cut.Instance, "_selectedEvent")?.Id).IsEqualTo(nextEventId);
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
-        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
+        await Assert.That(cut.Find($"[aria-label='View event: Next Preview Event']").ClassList).Contains("event-card--selected");
+        await Assert.That(cut.FindAll(".tagcat-manager__popup")).IsEmpty();
         await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
     }
 

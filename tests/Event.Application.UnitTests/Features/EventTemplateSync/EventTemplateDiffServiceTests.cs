@@ -240,26 +240,16 @@ public class EventTemplateDiffServiceTests
         };
 
     private static void SetTemplateDefinitions(EventTemplate template, IEnumerable<EventTemplateCustomPropertyDefinition> definitions)
-    {
-        var field = typeof(EventTemplate).GetField("_definitions", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var list = (List<EventTemplateCustomPropertyDefinition>)field.GetValue(template)!;
-        list.Clear();
-        list.AddRange(definitions);
-    }
+        => template.ReplaceDefinitions(definitions);
 
     private static void SetTemplateOptions(EventTemplateCustomPropertyDefinition definition, IEnumerable<EventTemplateCustomPropertyOption> options)
-    {
-        var field = typeof(EventTemplateCustomPropertyDefinition).GetField("_options", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var list = (List<EventTemplateCustomPropertyOption>)field.GetValue(definition)!;
-        list.Clear();
-        list.AddRange(options);
-    }
+        => definition.ReplaceOptions(options);
 
     private static void SetRuntimeOptions(EventCustomPropertyDefinition definition, IEnumerable<EventCustomPropertyOption> options)
     {
-        var field = typeof(EventCustomPropertyDefinition).GetField("_options", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var list = (List<EventCustomPropertyOption>)field.GetValue(definition)!;
-        list.Clear();
-        list.AddRange(options);
+        foreach (EventCustomPropertyOption option in options)
+        {
+            definition.AddOption(option);
+        }
     }
 }

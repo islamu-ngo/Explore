@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Net.Http.Headers;
 
 namespace Explore.ServiceDefaults.HealthChecks;
 
@@ -12,6 +13,7 @@ public static class HealthCheckResponseWriter
 {
     public const string RedactedValue = "redacted";
     public const string RedactedErrorMessage = "Health check failed. See service logs for details.";
+    private const string HealthStatusHeaderName = "X-Health-Status";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -76,11 +78,11 @@ public static class HealthCheckResponseWriter
     public static async Task WriteAsync(HttpContext context, HealthReport report)
     {
         context.Response.ContentType = "application/json; charset=utf-8";
-        context.Response.Headers["Connection"] = "close";
-        context.Response.Headers["Access-Control-Allow-Origin"] = "*";
-        context.Response.Headers["X-Health-Status"] = report.Status.ToString();
-        context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-        context.Response.Headers["Pragma"] = "no-cache";
+        context.Response.Headers[HeaderNames.Connection] = "close";
+        context.Response.Headers[HeaderNames.AccessControlAllowOrigin] = "*";
+        context.Response.Headers[HealthStatusHeaderName] = report.Status.ToString();
+        context.Response.Headers[HeaderNames.CacheControl] = "no-cache, no-store, must-revalidate";
+        context.Response.Headers[HeaderNames.Pragma] = "no-cache";
 
         var response = new
         {

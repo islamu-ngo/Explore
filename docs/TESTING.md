@@ -407,6 +407,27 @@ machine-readable artifact, validate it through the consuming parser or an
 explicit tool under `eng/`. Documentation generators are invoked directly and
 must not masquerade as TUnit tests.
 
+Blazor component tests use generic bUnit rendering and typed parameter builders
+for every compile-time-known public component. `DynamicComponent` is reserved
+for product behavior that genuinely chooses a component descriptor at runtime;
+those tests provide the descriptor with `typeof` and typed parameter names, or
+exercise the owning parent behavior. Tests invoke non-public load, toggle, and
+save actions through rendered controls instead of reflection.
+
+The repository-owned Roslyn assurance audit is the recurrence guard for changed
+test code. It reports category and bounded syntax location only—never source
+excerpts or values—and carries no historical file allowlist:
+
+```bash
+dotnet run --project eng/tools/Explore.AssuranceAudit/Explore.AssuranceAudit.csproj \
+  --configuration Release -- . --changed-from HEAD
+```
+
+The audit rejects runtime-selected reflective behavior, reflective construction
+that bypasses a compile-time contract, and token assurance over product source
+or documentation. Compiled endpoint/type/EF metadata and parsed JSON, YAML,
+schema, and project artifacts remain valid assurance seams.
+
 
 `Event.Architecture.Tests` enforces project-wide conventions through reflection-based tests. These are not optional — they are CI gates.
 
@@ -704,16 +725,6 @@ public class MyComponentTests : IDisposable
 | Ambient service registration in constructor | Hides dependencies; tests pass for wrong reasons | Use opt-in helpers (`AddShellStateMocks()`) |
 | `if (condition) throw` assertions | Not TUnit-native; no structured failure reporting | Use `await Assert.That(x).Contains(y)` |
 | Snapshot-style markup equality | Brittle; breaks on any MudBlazor version update | Assert specific elements, classes, or text content |
-
-### Exceptions (Documented Workarounds)
-
-These reflection uses are accepted with justification:
-
-| Pattern | Justification | Location |
-|---------|---------------|----------|
-| `SimulateTagToggle(cut, tagId)` | MudPopover content not rendered with mock services; only used for setup, not verification | `TriStateTagFilterDropdownTests.cs` |
-| `InvokeLoadEventsAsync(cut)` | bUnit cannot trigger `Virtualize<T>.ItemsProvider` delegate directly; documented workaround | `EventListTests.cs` |
-| Type-name assembly lookup | `AnalyticsInitializer` Razor component not referenceable from `.cs` files; Razor tooling limitation | `AnalyticsInitializerTests.cs` |
 
 ## BFF Integration Tests (Explore.Blazor.IntegrationTests)
 

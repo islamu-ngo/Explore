@@ -2,6 +2,7 @@
 // ABOUTME: Validates lease, retry, message-size, and optional bounded DID filter entries at startup.
 
 using CarpaNet;
+using Explore.Domain.ValueObjects;
 using Microsoft.Extensions.Options;
 
 namespace Explore.Infrastructure.Services.Federation;
@@ -86,15 +87,7 @@ public sealed class AtprotoJetstreamOptionsValidator : IValidateOptions<AtprotoJ
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 
-    private static bool IsValidDid(string did)
-    {
-        try
-        {
-            return did.Length <= 255 && ATDid.IsValid(did);
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-    }
+    private static bool IsValidDid(string did) =>
+        AtprotoDid.TryParse(did, out AtprotoDid parsedDid)
+        && parsedDid.Value.Length <= 255;
 }

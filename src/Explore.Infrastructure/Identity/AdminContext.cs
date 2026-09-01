@@ -2,6 +2,8 @@
 // ABOUTME: Caches per-user authority profiles in IMemoryCache with 5-minute sliding expiration.
 
 using System.Security.Claims;
+using Explore.Application.Authentication;
+using Explore.Application.Constants;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain.Constants;
@@ -19,7 +21,6 @@ namespace Explore.Infrastructure.Identity;
 /// </summary>
 public class AdminContext : IAdminContext, IAdminCacheInvalidator
 {
-    private const string InternalUserIdClaimType = "internal_user_id";
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IPlatformUserRoleRepository _platformUserRoleRepository;
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
@@ -63,13 +64,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         get
         {
             var user = _httpContextAccessor.HttpContext?.User;
-            if (user?.Identity?.IsAuthenticated != true)
-                return null;
-
-            if (Guid.TryParse(user.FindFirst(InternalUserIdClaimType)?.Value, out var internalUserId))
-                return internalUserId;
-
-            return null;
+            return user?.GetPlatformUserId();
         }
     }
 
@@ -82,43 +77,32 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
     public async Task<Guid?> ResolveUserIdAsync(CancellationToken cancellationToken = default)
     {
         var user = _httpContextAccessor.HttpContext?.User;
-        if (user?.Identity?.IsAuthenticated != true)
+        if (user is null)
             return null;
 
-        var internalUserIdClaim = user.FindFirst(InternalUserIdClaimType)?.Value;
-        if (Guid.TryParse(internalUserIdClaim, out var internalUserId))
-            return internalUserId;
+        if (user.GetPlatformUserId() is { } platformUserId)
+            return platformUserId;
 
-        var subject = user.FindFirst("sub")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user.FindFirst("sid")?.Value;
-
-        if (string.IsNullOrWhiteSpace(subject))
+        var providerIdentity = ProviderLinkedPrincipalReader.GetProviderIdentity(user);
+        if (providerIdentity is null)
             return null;
 
-        var provider = ResolveAuthProvider(user, subject);
-        if (string.IsNullOrWhiteSpace(provider))
-            return Guid.TryParse(subject, out var fallbackUserId) ? fallbackUserId : null;
-
-        var providerId = ResolveProviderId(user, subject, provider);
-        if (string.IsNullOrWhiteSpace(providerId))
-            return null;
-
-        var cacheKey = $"{CacheKeyPrefix}ResolvedId_{provider}_{providerId}";
+        var cacheKey = $"{CacheKeyPrefix}ResolvedId_{providerIdentity.Provider}_{providerIdentity.ProviderId}";
         if (_cache.TryGetValue<Guid>(cacheKey, out var cachedUserId))
             return cachedUserId;
 
-        var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerId);
+        var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(
+            providerIdentity.Provider,
+            providerIdentity.ProviderId);
         Guid? resolvedUserId = externalLogin?.UserId;
 
-        if (!resolvedUserId.HasValue && SupportsEmailAutoMatch(provider) && ResolveEmailVerified(user))
+        if (!resolvedUserId.HasValue
+            && SupportsEmailAutoMatch(providerIdentity.Provider)
+            && ResolveEmailVerified(user)
+            && !string.IsNullOrWhiteSpace(providerIdentity.Email))
         {
-            var email = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value;
-            if (!string.IsNullOrWhiteSpace(email))
-            {
-                var dbUser = await _userRepository.GetUserByEmail(email.Trim().ToLowerInvariant());
-                resolvedUserId = dbUser?.Id;
-            }
+            var dbUser = await _userRepository.GetUserByEmail(providerIdentity.Email.Trim().ToLowerInvariant());
+            resolvedUserId = dbUser?.Id;
         }
 
         if (resolvedUserId.HasValue)
@@ -143,12 +127,12 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             {
                 // Legacy deployments may not have PlatformUserRoles fully provisioned yet.
                 // Fall back to bootstrap ownership checks below.
-                _logger.LogWarning(ex, "AdminContext: failed role-based instance admin check for user {UserId}", userId);
+                _logger.LogWarning(ex, "AdminContext: failed role-based instance admin check");
             }
 
             if (isRoleAdmin)
             {
-                _logger.LogInformation("AdminContext: User {UserId} IsInstanceAdmin=true (platform.admin role detected in database)", userId);
+                _logger.LogInformation("AdminContext: IsInstanceAdmin=true (platform.admin role detected in database)");
                 return true;
             }
 
@@ -157,11 +141,11 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
             if (isBootstrapAdmin)
             {
-                _logger.LogInformation("AdminContext: User {UserId} IsInstanceAdmin=true (bootstrap owner)", userId);
+                _logger.LogInformation("AdminContext: IsInstanceAdmin=true (bootstrap owner)");
             }
             else
             {
-                _logger.LogWarning("AdminContext: User {UserId} IsInstanceAdmin=false (no platform role or bootstrap ownership found)", userId);
+                _logger.LogWarning("AdminContext: IsInstanceAdmin=false (no platform role or bootstrap ownership found)");
             }
 
             return isBootstrapAdmin;
@@ -182,11 +166,11 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
             if (isAdmin)
             {
-                _logger.LogInformation("AdminContext: User {UserId} IsTenantAdmin=true for Tenant {TenantId}", uid, tenantId);
+                _logger.LogInformation("AdminContext: IsTenantAdmin=true");
             }
             else
             {
-                _logger.LogDebug("AdminContext: User {UserId} IsTenantAdmin=false for Tenant {TenantId}", uid, tenantId);
+                _logger.LogDebug("AdminContext: IsTenantAdmin=false");
             }
 
             return isAdmin;
@@ -338,47 +322,6 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         return roleId == (int)RoleEnum.GroupAdmin;
     }
 
-    private static string ResolveAuthProvider(ClaimsPrincipal principal, string subject)
-    {
-        var idp = principal.FindFirst("idp")?.Value;
-        if (!string.IsNullOrWhiteSpace(idp))
-        {
-            var normalizedIdp = idp.Trim().ToLowerInvariant();
-            if (normalizedIdp.Contains("google"))
-                return AuthSchemeNames.Google.ToLowerInvariant();
-
-            if (normalizedIdp.Contains("atproto"))
-                return AuthSchemeNames.Atproto.ToLowerInvariant();
-
-            if (normalizedIdp.Contains("keycloak"))
-                return AuthSchemeNames.Keycloak.ToLowerInvariant();
-        }
-
-        var issuer = principal.FindFirst("iss")?.Value;
-        if (!string.IsNullOrWhiteSpace(issuer))
-        {
-            var normalizedIssuer = issuer.Trim().ToLowerInvariant();
-            if (normalizedIssuer.Contains("accounts.google.com"))
-                return AuthSchemeNames.Google.ToLowerInvariant();
-
-            if (normalizedIssuer.Contains("keycloak") || normalizedIssuer.Contains("/realms/"))
-                return AuthSchemeNames.Keycloak.ToLowerInvariant();
-        }
-
-        return subject.StartsWith("did:", StringComparison.OrdinalIgnoreCase)
-            ? AuthSchemeNames.Atproto.ToLowerInvariant()
-            : AuthSchemeNames.Keycloak.ToLowerInvariant();
-    }
-
-    private static string ResolveProviderId(ClaimsPrincipal principal, string subject, string provider)
-    {
-        return provider == AuthSchemeNames.Atproto.ToLowerInvariant()
-            ? principal.FindFirst("did")?.Value
-                ?? principal.FindFirst("atproto_did")?.Value
-                ?? subject
-            : subject;
-    }
-
     private static bool ResolveEmailVerified(ClaimsPrincipal principal)
     {
         var raw = principal.FindFirst("email_verified")?.Value;
@@ -387,11 +330,9 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             : string.Equals(raw, "1", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool SupportsEmailAutoMatch(string provider)
-    {
-        return provider == AuthSchemeNames.Keycloak.ToLowerInvariant()
-            || provider == AuthSchemeNames.Google.ToLowerInvariant();
-    }
+    private static bool SupportsEmailAutoMatch(string provider) =>
+        provider == AuthSchemeNames.Keycloak.ToLowerInvariant()
+        || provider == AuthSchemeNames.Google.ToLowerInvariant();
 
     /// <inheritdoc />
     public void InvalidateUser(Guid userId)
@@ -404,7 +345,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         // For single-tenant mode, we can proactively clear the default tenant admin cache
         _cache.Remove($"{CacheKeyPrefix}Tenant_{userId}_{PlatformDefaults.DefaultTenantId}");
 
-        _logger.LogInformation("AdminContext: Invalidated authority cache for user {UserId}", userId);
+        _logger.LogInformation("AdminContext: Invalidated authority cache for one user");
     }
 
     /// <inheritdoc />
@@ -418,4 +359,35 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         _logger.LogInformation("AdminContext: Full cache invalidation requested. " +
             "User-specific entries will expire via 5-minute sliding window");
     }
+}
+
+/// <summary>
+/// Purpose-specific adapter for resolving a linked local account when a valid ambient provider principal
+/// has no GUID platform claim. This is intentionally not a platform-ID fallback.
+/// </summary>
+internal static class ProviderLinkedPrincipalReader
+{
+    public static ProviderIdentity? GetProviderIdentity(ClaimsPrincipal principal)
+    {
+        ClaimsIdentity[] authenticatedIdentities = principal.Identities
+            .Where(identity => identity.IsAuthenticated)
+            .ToArray();
+
+        if (authenticatedIdentities is not [{ AuthenticationType: { } authenticationType } identity]
+            || IsPurposeBound(authenticationType))
+        {
+            return null;
+        }
+
+        return new ClaimsPrincipal(identity).GetProviderIdentity();
+    }
+
+    private static bool IsPurposeBound(string authenticationType) => authenticationType is
+        ApiAuthenticationSchemeNames.ApiKey
+        or ApiAuthenticationSchemeNames.SetupSecret
+        or ApiAuthenticationSchemeNames.AdmissionScanner
+        or ApiAuthenticationSchemeNames.ManagedControlPlane
+        or ApiAuthenticationSchemeNames.AtprotoBootstrap
+        or ApiAuthenticationSchemeNames.AtprotoSession
+        or ApiAuthenticationSchemeNames.PrivacyErasureReceipt;
 }

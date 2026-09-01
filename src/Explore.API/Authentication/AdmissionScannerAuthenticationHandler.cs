@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Explore.Application.Contracts.Admissions;
+using Explore.Application.Constants;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -12,7 +13,6 @@ namespace Explore.API.Authentication;
 
 public static class AdmissionScannerAuthenticationDefaults
 {
-    public const string Scheme = "AdmissionScanner";
     public const string HeaderName = "X-Admission-Scanner-Capability";
     public const string CapabilityIdClaim = "admission_scanner_capability_id";
     public const string TenantIdClaim = "admission_scanner_tenant_id";
@@ -82,10 +82,10 @@ public sealed class AdmissionScannerAuthenticationHandler(
                 AdmissionScannerAuthenticationDefaults.ActionClaim,
                 action.ToString()))
         ];
-        var identity = new ClaimsIdentity(claims, AdmissionScannerAuthenticationDefaults.Scheme);
+        var identity = new ClaimsIdentity(claims, ApiAuthenticationSchemeNames.AdmissionScanner);
         return AuthenticateResult.Success(new AuthenticationTicket(
             new ClaimsPrincipal(identity),
-            AdmissionScannerAuthenticationDefaults.Scheme));
+            ApiAuthenticationSchemeNames.AdmissionScanner));
     }
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
@@ -126,7 +126,7 @@ internal static class AdmissionScannerPrincipalExtensions
     {
         scope = default;
         if (principal.Identities.Count(identity => identity.IsAuthenticated) != 1
-            || principal.Identity?.AuthenticationType != AdmissionScannerAuthenticationDefaults.Scheme
+            || principal.Identity?.AuthenticationType != ApiAuthenticationSchemeNames.AdmissionScanner
             || !Guid.TryParse(principal.FindFirstValue(AdmissionScannerAuthenticationDefaults.CapabilityIdClaim), out Guid capabilityId)
             || !Guid.TryParse(principal.FindFirstValue(AdmissionScannerAuthenticationDefaults.TenantIdClaim), out Guid tenantId)
             || !Guid.TryParse(principal.FindFirstValue(AdmissionScannerAuthenticationDefaults.EventIdClaim), out Guid eventId)

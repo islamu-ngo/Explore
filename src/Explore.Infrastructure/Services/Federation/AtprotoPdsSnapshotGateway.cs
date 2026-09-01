@@ -15,6 +15,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Atproto.Transport;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Infrastructure.Services.Federation;
 
@@ -50,7 +51,9 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         long snapshotVersion,
         CancellationToken cancellationToken)
     {
-        if (!IsSupportedDid(did) || !TryFromUnixMicroseconds(snapshotVersion, out DateTime observedAt))
+        if (!AtprotoDid.TryParse(did, out AtprotoDid parsedDid)
+            || !IsSupportedDid(parsedDid)
+            || !TryFromUnixMicroseconds(snapshotVersion, out DateTime observedAt))
         {
             return AtprotoPdsSnapshotFetchResult.Failed("snapshot_request_invalid");
         }
@@ -59,33 +62,33 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         try
         {
             ResolvedIdentity identity = await ResolveIdentityAsync(
-                did,
+                parsedDid,
                 policy,
                 cancellationToken).ConfigureAwait(false);
             byte[] car = await FetchRepositoryAsync(
                 identity.PdsOrigin,
-                did,
+                parsedDid.Value,
                 policy,
                 cancellationToken).ConfigureAwait(false);
             AtprotoVerifiedRepositorySnapshot snapshot = ReadAndValidateSnapshot(
-                did,
+                parsedDid.Value,
                 car,
                 cancellationToken);
 
             if (!AtprotoRepositorySnapshotVerifier.VerifySignature(snapshot, identity.SigningKey))
             {
                 ResolvedIdentity refreshedIdentity = await ResolveIdentityAsync(
-                    did,
+                    parsedDid,
                     policy,
                     cancellationToken).ConfigureAwait(false);
                 if (refreshedIdentity.PdsOrigin != identity.PdsOrigin)
                 {
                     car = await FetchRepositoryAsync(
                         refreshedIdentity.PdsOrigin,
-                        did,
+                        parsedDid.Value,
                         policy,
                         cancellationToken).ConfigureAwait(false);
-                    snapshot = ReadAndValidateSnapshot(did, car, cancellationToken);
+                    snapshot = ReadAndValidateSnapshot(parsedDid.Value, car, cancellationToken);
                 }
 
                 if (!AtprotoRepositorySnapshotVerifier.VerifySignature(
@@ -97,7 +100,7 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
             }
 
             return MaterializeSnapshot(
-                did,
+                parsedDid.Value,
                 snapshotVersion,
                 observedAt,
                 snapshot,
@@ -131,29 +134,29 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
     }
 
     private async Task<ResolvedIdentity> ResolveIdentityAsync(
-        string did,
+        AtprotoDid did,
         AtprotoOutboundPolicy policy,
         CancellationToken cancellationToken)
     {
         using var client = CreateClient(policy, MaximumIdentityResponseBytes);
         using var resolver = new IdentityResolver(client);
         DidDocument document = await resolver.ResolveDidAsync(
-            did,
+            did.Value,
             skipCache: true,
             cancellationToken).ConfigureAwait(false);
-        if (!string.Equals(document.Id, did, StringComparison.Ordinal))
+        if (!AtprotoDid.TryParse(document.Id, out AtprotoDid providerDid) || providerDid != did)
         {
             throw new SnapshotValidationException("identity_binding_mismatch");
         }
 
         AtprotoRepositorySigningKey signingKey = AtprotoRepositorySnapshotVerifier.ReadSigningKey(
             document,
-            did);
+            did.Value);
 
         DidService[] services = document.Service
             .Where(service => string.Equals(service.Type, "AtprotoPersonalDataServer", StringComparison.Ordinal)
                 && (string.Equals(service.Id, "#atproto_pds", StringComparison.Ordinal)
-                    || string.Equals(service.Id, $"{did}#atproto_pds", StringComparison.Ordinal)))
+                    || string.Equals(service.Id, $"{did.Value}#atproto_pds", StringComparison.Ordinal)))
             .ToArray();
         if (services.Length != 1
             || !Uri.TryCreate(services[0].ServiceEndpoint, UriKind.Absolute, out Uri? endpoint)
@@ -687,20 +690,9 @@ public sealed class AtprotoPdsSnapshotGateway : IAtprotoPdsSnapshotGateway
         return true;
     }
 
-    private static bool IsSupportedDid(string did)
-    {
-        try
-        {
-            return did.Length <= 255
-                && ATDid.IsValid(did)
-                && (did.StartsWith("did:plc:", StringComparison.Ordinal)
-                    || did.StartsWith("did:web:", StringComparison.Ordinal));
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-    }
+    private static bool IsSupportedDid(AtprotoDid did) =>
+        did.Value.Length <= 255
+        && did.Method is "plc" or "web";
 
     private static bool TryFromUnixMicroseconds(long value, out DateTime result)
     {

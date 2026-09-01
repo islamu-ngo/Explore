@@ -65,4 +65,10 @@ public class EventTemplateCustomPropertyDefinition : ITenantEntity, IAuditableEn
 
     private readonly List<EventTemplateCustomPropertyOption> _options = [];
     public IReadOnlyCollection<EventTemplateCustomPropertyOption> Options => _options.AsReadOnly();
+
+    internal void ReplaceOptions(IEnumerable<EventTemplateCustomPropertyOption> options)
+    {
+        _options.Clear();
+        _options.AddRange(options);
+    }
 }

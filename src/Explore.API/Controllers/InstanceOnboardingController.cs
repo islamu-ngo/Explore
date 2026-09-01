@@ -1,7 +1,6 @@
 // ABOUTME: API controller for first-run instance onboarding wizard (one-time setup flow).
 // ABOUTME: Provides status check, onboarding completion, secret validation, and setup-time auth provider config.
 
-using System.Security.Claims;
 using Explore.Application.Authentication;
 using Asp.Versioning;
 using Explore.API.Attributes;
@@ -143,12 +142,12 @@ public class InstanceOnboardingController : ExploreControllerBase
         if (!currentUserId.HasValue)
         {
             _logger.LogWarning(
-                "Instance onboarding complete rejected because CurrentUserId was null | Authenticated={IsAuthenticated} InternalUserId={InternalUserId} Sub={Sub} NameIdentifier={NameIdentifier} Sid={Sid}",
+                "Instance onboarding complete rejected | Reason={Reason} Route={Route} Authenticated={IsAuthenticated} PlatformIdentityPresent={PlatformIdentityPresent} ProviderIdentityPresent={ProviderIdentityPresent}",
+                "current_user_unresolved",
+                RouteNames.CompleteInstanceOnboarding,
                 User.Identity?.IsAuthenticated ?? false,
-                User.FindFirst("internal_user_id")?.Value,
-                User.FindFirst("sub")?.Value,
-                User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-                User.FindFirst("sid")?.Value);
+                User.GetPlatformUserId().HasValue,
+                User.GetProviderIdentity() is not null);
             return this.ToAuthenticationRequiredProblem(detail: "Session expired. Please sign in again.");
         }
 
@@ -181,8 +180,9 @@ public class InstanceOnboardingController : ExploreControllerBase
         }
 
         _logger.LogWarning(
-            "Instance claimed by admin (userId: {UserId}) from IP: {IpAddress}. Bootstrap mode disabled.",
-            currentUserId, HttpContext.Connection.RemoteIpAddress);
+            "Instance onboarding completed | Route={Route} Outcome={Outcome}",
+            RouteNames.CompleteInstanceOnboarding,
+            "bootstrap_disabled");
 
         return Ok(response);
     }

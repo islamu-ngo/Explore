@@ -4,6 +4,7 @@
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
 using Explore.Application.Features.Authentication.Atproto.Validators;
+using Explore.Domain.ValueObjects;
 
 namespace Event.Application.UnitTests.Features.Authentication.Atproto;
 
@@ -42,10 +43,26 @@ public sealed class BootstrapAtprotoSessionCommandValidatorTests
         await Assert.That(result.IsValid).IsFalse();
     }
 
+    [Test]
+    public async Task ValidateRejectsDefaultTypedDid()
+    {
+        BootstrapAtprotoSessionCommand command = CreateCommand();
+        var invalid = new BootstrapAtprotoSessionCommand(
+            default,
+            command.ExpectedPdsUri,
+            command.OAuthClientKeyId,
+            command.Classification,
+            command.OAuthSessionPayload);
+
+        var result = await new BootstrapAtprotoSessionCommandValidator().ValidateAsync(invalid);
+
+        await Assert.That(result.IsValid).IsFalse();
+    }
+
     private static BootstrapAtprotoSessionCommand CreateCommand(
         Guid? canonicalActorId = null,
         Guid? expectedCanonicalActorConcurrencyStamp = null) => new(
-        "did:plc:alice",
+        AtprotoDid.Parse("did:plc:alice"),
         "https://pds.example/",
         "oauth-active",
         AtprotoSubjectClassification.Person,

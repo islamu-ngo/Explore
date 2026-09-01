@@ -4,6 +4,7 @@
 using System.ComponentModel.DataAnnotations;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Authentication;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
@@ -217,7 +218,7 @@ public class CustomPropertyDefinitionController : ControllerBase
     /// <summary>
     /// Permanently purge a dependency-free shared custom-property definition.
     /// </summary>
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Admin)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpDelete("{id:guid}/purge", Name = RouteNames.PurgeCustomPropertyDefinition)]
     [Consumes("application/json")]

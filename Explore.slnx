@@ -63,6 +63,9 @@
     <Project Path="tests/Event.SetupAssistant.Desktop.Tests/Event.SetupAssistant.Desktop.Tests.csproj" />
     <Project Path="tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj" />
   </Folder>
+  <Folder Name="/Tooling/Assurance/">
+    <Project Path="eng/tools/Explore.AssuranceAudit/Explore.AssuranceAudit.csproj" />
+  </Folder>
   <Folder Name="/Test/">
     <Project Path="tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj" />
     <Project Path="tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" />

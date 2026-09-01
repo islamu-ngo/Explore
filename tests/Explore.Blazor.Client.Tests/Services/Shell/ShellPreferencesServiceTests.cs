@@ -8,7 +8,8 @@ namespace Explore.Blazor.Client.Tests.Services.Shell;
 public sealed class ShellPreferencesServiceTests
 {
     private readonly IUserSettingsService _settings = Substitute.For<IUserSettingsService>();
-    private readonly IAuthStateService _auth = Substitute.For<IAuthStateService>();
+    private readonly AuthenticationStateProvider _auth =
+        Substitute.For<AuthenticationStateProvider>();
 
     [Test]
     public async Task LoadAsync_ValidPersistedSelection_ReturnsAuthorizedWorkspaceActorAndScope()
@@ -18,7 +19,7 @@ public sealed class ShellPreferencesServiceTests
             studioAvailable: true,
             actors: [new ManagedActorDto { ActorId = actorId, ActorType = "Organization" }],
             scopes: [new SettingsScopeDto { Scope = "Tenant" }]);
-        _auth.IsAuthenticatedAsync().Returns(true);
+        SetAuthenticated();
         _settings.GetSettingsAsync(ShellPreferencesService.PreferencesCategory, Arg.Any<CancellationToken>())
             .Returns(Settings(
                 (ShellPreferencesService.LastWorkspaceKey, "\"studio\""),
@@ -35,7 +36,7 @@ public sealed class ShellPreferencesServiceTests
     [Test]
     public async Task LoadAsync_RevokedSelection_DropsValuesAndFallsBackToEventsAndPersonal()
     {
-        _auth.IsAuthenticatedAsync().Returns(true);
+        SetAuthenticated();
         _settings.GetSettingsAsync(ShellPreferencesService.PreferencesCategory, Arg.Any<CancellationToken>())
             .Returns(Settings(
                 (ShellPreferencesService.LastWorkspaceKey, "\"studio\""),
@@ -57,7 +58,7 @@ public sealed class ShellPreferencesServiceTests
     public async Task SaveSelectionAsync_RepeatedSelection_WritesOneBatchAndNeverPersistsPersonalRoute()
     {
         var actorId = Guid.CreateVersion7();
-        _auth.IsAuthenticatedAsync().Returns(true);
+        SetAuthenticated();
         _settings.UpdateSettingsBatchAsync(
                 ShellPreferencesService.PreferencesCategory,
                 Arg.Any<IDictionary<string, string>>(),
@@ -81,6 +82,13 @@ public sealed class ShellPreferencesServiceTests
         _settings,
         _auth,
         Substitute.For<ILogger<ShellPreferencesService>>());
+
+    private void SetAuthenticated()
+    {
+        var identity = new ClaimsIdentity(authenticationType: "TestAuth");
+        _auth.GetAuthenticationStateAsync().Returns(
+            new AuthenticationState(new ClaimsPrincipal(identity)));
+    }
 
     private static UiShellContextDto Context(
         bool studioAvailable,

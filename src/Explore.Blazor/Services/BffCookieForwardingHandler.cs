@@ -2,8 +2,8 @@
 // ABOUTME: Required because BffSelfClient uses UseCookies=false for handler pooling hygiene.
 
 using Explore.Blazor.Services.Auth;
-using Microsoft.AspNetCore.Http;
 
+using Microsoft.Net.Http.Headers;
 namespace Explore.Blazor.Services;
 
 public class BffCookieForwardingHandler : DelegatingHandler
@@ -46,10 +46,11 @@ public class BffCookieForwardingHandler : DelegatingHandler
         var cookie = BuildForwardedCookieHeader(_bffAuthCookieStore.CookieHeader, currentRequestCookie);
         var antiforgeryHeader = TryGetCookieValue(cookie, AntiforgeryCookieName);
 
-        if (!string.IsNullOrEmpty(cookie) && !request.Headers.Contains("Cookie"))
+        if (!string.IsNullOrEmpty(cookie) && !request.Headers.Contains(HeaderNames.Cookie))
         {
-            request.Headers.TryAddWithoutValidation("Cookie", cookie);
-            _logger.LogDebug("[BffCookieForwardingHandler] Forwarded auth cookie to {Path}", request.RequestUri?.PathAndQuery);
+            request.Headers.TryAddWithoutValidation(HeaderNames.Cookie, cookie);
+            _logger.LogDebug("[BffCookieForwardingHandler] Cookie forwarding completed | Outcome={Outcome} RouteClass={RouteClass} CookiePresent={CookiePresent}",
+                "forwarded", BffLogRouteClassifier.Classify(request.RequestUri), true);
         }
 
         if (!string.IsNullOrWhiteSpace(antiforgeryHeader) && !request.Headers.Contains(AntiforgeryHeaderName))

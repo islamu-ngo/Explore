@@ -218,12 +218,12 @@ public sealed class ExternalBindingRepositoryTests(PostgreSqlContainerFixture fi
             Pii = new ActorPii { DisplayName = handle },
             CreatedAt = DateTime.UtcNow,
         };
-        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        actor.AtprotoIdentities.Add(new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse($"did:plc:{Guid.NewGuid():N}"))
         {
             Id = Guid.NewGuid(),
             ActorId = actor.Id,
             Actor = actor,
-            Did = $"did:plc:{Guid.NewGuid():N}",
+
             Handle = handle,
             PdsHost = "https://pds.example.invalid",
             IsActive = true,

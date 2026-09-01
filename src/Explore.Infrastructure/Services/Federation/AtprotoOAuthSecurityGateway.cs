@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Infrastructure.Services.Federation;
@@ -29,6 +30,8 @@ public sealed class AtprotoOAuthSecurityGateway(
         AtprotoOAuthVerificationInput request,
         CancellationToken cancellationToken)
     {
+        AtprotoDid expectedDid = request.ExpectedDid;
+        string exactDid = expectedDid.Value;
         OAuthSessionData session;
         try
         {
@@ -42,7 +45,7 @@ public sealed class AtprotoOAuthSecurityGateway(
 
         var expectedPds = AtprotoOAuthSessionStoreContext.NormalizePdsUri(request.ExpectedPdsUri.AbsoluteUri);
         if (expectedPds is null
-            || !string.Equals(session.TokenSet?.Sub, request.ExpectedDid, StringComparison.Ordinal)
+            || !MatchesProviderSubject(session.TokenSet?.Sub, expectedDid)
             || !string.Equals(
                 AtprotoOAuthSessionStoreContext.NormalizePdsUri(session.TokenSet?.Audience),
                 expectedPds,
@@ -51,11 +54,11 @@ public sealed class AtprotoOAuthSecurityGateway(
             return AtprotoOAuthVerificationResult.Failed("session_binding_mismatch");
         }
 
-        var transientStore = new SingleSessionStore(request.ExpectedDid, session);
+        var transientStore = new SingleSessionStore(expectedDid, session);
         try
         {
             using var lease = await coreClientFactory.CreateAsync(
-                request.ExpectedDid,
+                exactDid,
                 request.OAuthClientKeyId,
                 transientStore,
                 cancellationToken).ConfigureAwait(false);
@@ -64,8 +67,8 @@ public sealed class AtprotoOAuthSecurityGateway(
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             var actualPds = AtprotoOAuthSessionStoreContext.NormalizePdsUri(lease.Client.BaseUrl.AbsoluteUri);
-            if (!string.Equals(lease.Client.AuthenticatedDid, request.ExpectedDid, StringComparison.Ordinal)
-                || !string.Equals(pdsSession.Did, request.ExpectedDid, StringComparison.Ordinal)
+            if (!MatchesProviderSubject(lease.Client.AuthenticatedDid, expectedDid)
+                || !MatchesProviderSubject(pdsSession.Did, expectedDid)
                 || !string.Equals(actualPds, expectedPds, StringComparison.Ordinal)
                 || pdsSession.Active == false
                 || string.IsNullOrWhiteSpace(pdsSession.Handle))
@@ -75,7 +78,7 @@ public sealed class AtprotoOAuthSecurityGateway(
 
             var persistedPayload = JsonSerializer.SerializeToUtf8Bytes(transientStore.Session, JsonOptions);
             return AtprotoOAuthVerificationResult.Verified(new AtprotoVerifiedOAuthSession(
-                request.ExpectedDid,
+                expectedDid,
                 pdsSession.Handle,
                 new Uri(expectedPds, UriKind.Absolute),
                 request.OAuthClientKeyId,
@@ -97,7 +100,7 @@ public sealed class AtprotoOAuthSecurityGateway(
         Guid userId,
         CancellationToken cancellationToken)
     {
-        var session = JsonSerializer.Deserialize<OAuthSessionData>(verifiedSession.OAuthSessionPayload.Span, JsonOptions)
+                var session = JsonSerializer.Deserialize<OAuthSessionData>(verifiedSession.OAuthSessionPayload.Span, JsonOptions)
             ?? throw new AtprotoOAuthSessionUnavailableException("invalid_session");
         var context = new AtprotoOAuthSessionStoreContext(
             tenantId,
@@ -114,7 +117,7 @@ public sealed class AtprotoOAuthSecurityGateway(
             AtprotoSessionEnvelopeProtector.CurrentEnvelopeVersion,
             context.TenantId,
             context.UserId,
-            context.ExpectedSubjectDid,
+            context.ExpectedDid,
             context.ExpectedPdsUri,
             context.OAuthClientKeyId,
             session.TokenSet.ExpiresAt?.UtcDateTime);
@@ -124,11 +127,11 @@ public sealed class AtprotoOAuthSecurityGateway(
         AtprotoPreparedOAuthSession preparedSession,
         CancellationToken cancellationToken)
     {
-        var existing = await tokenRepository.GetAtprotoSessionForUpdateAsync(
+                var existing = await tokenRepository.GetAtprotoSessionForUpdateAsync(
             preparedSession.TenantId,
             preparedSession.UserId,
             RepositoryBackedAtprotoSession.Provider,
-            preparedSession.SubjectDid,
+            preparedSession.SubjectDid.Value,
             cancellationToken).ConfigureAwait(false);
         if (existing is null)
         {
@@ -140,7 +143,7 @@ public sealed class AtprotoOAuthSecurityGateway(
                 UserId = preparedSession.UserId,
                 User = null!,
                 Provider = RepositoryBackedAtprotoSession.Provider,
-                SubjectDid = preparedSession.SubjectDid,
+                SubjectDid = preparedSession.SubjectDid.Value,
                 SessionCiphertext = preparedSession.SessionCiphertext.ToArray(),
                 EncryptionKeyId = preparedSession.EncryptionKeyId,
                 OAuthClientKeyId = preparedSession.OAuthClientKeyId,
@@ -168,7 +171,7 @@ public sealed class AtprotoOAuthSecurityGateway(
             identity.TenantId,
             identity.UserId,
             RepositoryBackedAtprotoSession.Provider,
-            identity.Did,
+            identity.Did.Value,
             cancellationToken).ConfigureAwait(false);
         if (persisted is null
             || !Uri.TryCreate(persisted.PdsHost, UriKind.Absolute, out var pdsUri)
@@ -186,7 +189,7 @@ public sealed class AtprotoOAuthSecurityGateway(
                 pdsUri,
                 persisted.OAuthClientKeyId);
             var store = new RepositoryBackedOAuthSessionStore(tokenRepository, protector, context);
-            var session = await store.GetAsync(identity.Did, cancellationToken).ConfigureAwait(false);
+            var session = await store.GetAsync(identity.Did.Value, cancellationToken).ConfigureAwait(false);
             return session is null
                 ? null
                 : new AtprotoCurrentOAuthSession(
@@ -213,7 +216,7 @@ public sealed class AtprotoOAuthSecurityGateway(
             identity.TenantId,
             identity.UserId,
             RepositoryBackedAtprotoSession.Provider,
-            identity.Did,
+            identity.Did.Value,
             cancellationToken).ConfigureAwait(false);
 
         try
@@ -222,7 +225,7 @@ public sealed class AtprotoOAuthSecurityGateway(
                 identity.TenantId,
                 identity.UserId,
                 RepositoryBackedAtprotoSession.Provider,
-                identity.Did,
+                identity.Did.Value,
                 cancellationToken).ConfigureAwait(false);
             if (persisted is null
                 || !Uri.TryCreate(persisted.PdsHost, UriKind.Absolute, out var pdsUri)
@@ -239,7 +242,7 @@ public sealed class AtprotoOAuthSecurityGateway(
                 persisted.OAuthClientKeyId);
             var store = new RepositoryBackedOAuthSessionStore(tokenRepository, protector, context);
             using var coreLease = await coreClientFactory.CreateAsync(
-                identity.Did,
+                identity.Did.Value,
                 persisted.OAuthClientKeyId,
                 store,
                 cancellationToken).ConfigureAwait(false);
@@ -249,8 +252,8 @@ public sealed class AtprotoOAuthSecurityGateway(
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             var actualPds = AtprotoOAuthSessionStoreContext.NormalizePdsUri(
                 coreLease.Client.BaseUrl.AbsoluteUri);
-            return string.Equals(coreLease.Client.AuthenticatedDid, identity.Did, StringComparison.Ordinal)
-                   && string.Equals(pdsSession.Did, identity.Did, StringComparison.Ordinal)
+            return MatchesProviderSubject(coreLease.Client.AuthenticatedDid, identity.Did)
+                   && MatchesProviderSubject(pdsSession.Did, identity.Did)
                    && string.Equals(actualPds, context.ExpectedPdsUri, StringComparison.Ordinal)
                    && pdsSession.Active != false
                 ? AtprotoOAuthRefreshResult.Refreshed()
@@ -279,13 +282,13 @@ public sealed class AtprotoOAuthSecurityGateway(
                 identity.TenantId,
                 identity.UserId,
                 RepositoryBackedAtprotoSession.Provider,
-                identity.Did,
+                identity.Did.Value,
                 localCleanup.Token).ConfigureAwait(false);
             var persisted = await tokenRepository.GetAtprotoSessionForReadAsync(
                 identity.TenantId,
                 identity.UserId,
                 RepositoryBackedAtprotoSession.Provider,
-                identity.Did,
+                identity.Did.Value,
                 localCleanup.Token).ConfigureAwait(false);
             if (persisted is null)
             {
@@ -311,7 +314,7 @@ public sealed class AtprotoOAuthSecurityGateway(
                     observer,
                     cancellationToken).ConfigureAwait(false);
                 using var client = await oauthLease.Session
-                    .RestoreSessionAsync(identity.Did, cancellationToken).ConfigureAwait(false);
+                    .RestoreSessionAsync(identity.Did.Value, cancellationToken).ConfigureAwait(false);
                 if (client is not null)
                 {
                     await client.SignOutAsync(cancellationToken).ConfigureAwait(false);
@@ -335,7 +338,7 @@ public sealed class AtprotoOAuthSecurityGateway(
                     identity.TenantId,
                     identity.UserId,
                     RepositoryBackedAtprotoSession.Provider,
-                    identity.Did,
+                    identity.Did.Value,
                     cleanup.Token).ConfigureAwait(false);
             }
             finally
@@ -357,7 +360,10 @@ public sealed class AtprotoOAuthSecurityGateway(
         return new(outcome);
     }
 
-    private sealed class SingleSessionStore(string expectedDid, OAuthSessionData session) : IOAuthSessionStore
+    private static bool MatchesProviderSubject(string? subject, AtprotoDid expectedDid) =>
+        AtprotoDid.TryParse(subject, out AtprotoDid parsedDid) && parsedDid == expectedDid;
+
+    private sealed class SingleSessionStore(AtprotoDid expectedDid, OAuthSessionData session) : IOAuthSessionStore
     {
         public OAuthSessionData Session { get; private set; } = session;
 
@@ -382,7 +388,7 @@ public sealed class AtprotoOAuthSecurityGateway(
 
         private void RequireSubject(string sub)
         {
-            if (!string.Equals(sub, expectedDid, StringComparison.Ordinal))
+            if (!AtprotoDid.TryParse(sub, out AtprotoDid parsedDid) || parsedDid != expectedDid)
             {
                 throw new AtprotoOAuthSessionUnavailableException("subject_mismatch");
             }

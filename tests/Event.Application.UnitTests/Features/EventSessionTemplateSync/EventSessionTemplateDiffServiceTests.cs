@@ -100,11 +100,7 @@ public class EventSessionTemplateDiffServiceTests
     }
 
     private static void SetSessionTemplateDefinitions(EventSessionTemplate template, IEnumerable<EventSessionTemplateCustomPropertyDefinition> definitions)
-    {
-        var field = typeof(EventSessionTemplate).GetField("_definitions", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var list = (List<EventSessionTemplateCustomPropertyDefinition>)field.GetValue(template)!;
-        list.AddRange(definitions);
-    }
+        => template.ReplaceDefinitions(definitions);
 
     private static EventSessionTemplateCustomPropertyOption CreateTemplateOption(Guid definitionId, string ns, string key, Guid id, string displayName)
         => new()
@@ -134,16 +130,13 @@ public class EventSessionTemplateDiffServiceTests
         };
 
     private static void SetTemplateOptions(EventSessionTemplateCustomPropertyDefinition definition, IEnumerable<EventSessionTemplateCustomPropertyOption> options)
-    {
-        var field = typeof(EventSessionTemplateCustomPropertyDefinition).GetField("_options", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var list = (List<EventSessionTemplateCustomPropertyOption>)field.GetValue(definition)!;
-        list.AddRange(options);
-    }
+        => definition.ReplaceOptions(options);
 
     private static void SetRuntimeOptions(EventSessionCustomPropertyDefinition definition, IEnumerable<EventSessionCustomPropertyOption> options)
     {
-        var field = typeof(EventSessionCustomPropertyDefinition).GetField("_options", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var list = (List<EventSessionCustomPropertyOption>)field.GetValue(definition)!;
-        list.AddRange(options);
+        foreach (EventSessionCustomPropertyOption option in options)
+        {
+            definition.AddOption(option);
+        }
     }
 }

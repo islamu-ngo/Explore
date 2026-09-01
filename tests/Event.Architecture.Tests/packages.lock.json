@@ -1145,6 +1145,9 @@
           "OpenFeature": "[2.14.0, )"
         }
       },
+      "explore.assuranceaudit": {
+        "type": "Project"
+      },
       "explore.atproto.transport": {
         "type": "Project"
       },

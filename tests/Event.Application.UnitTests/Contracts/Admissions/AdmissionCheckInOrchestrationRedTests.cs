@@ -2,10 +2,12 @@
 // ABOUTME: Uses strict reflection ports so absent production contracts compile as intentional RED failures.
 
 using ApplicationUnitTests.Contracts.Admissions.Support;
+using Explore.Application.Contracts.Admissions;
+using Explore.Application.Exceptions;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Services.Registration;
 using Explore.Domain;
 using Explore.Domain.Enums;
-using System.Collections;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -26,19 +28,19 @@ public sealed class AdmissionCheckInOrchestrationRedTests
         Guid? staffActorId = scenario.StaffActorId;
         if (authorityKind == "ScannerCapability")
         {
-            object issued = await IssueScannerCapabilityAsync(scenario);
-            scannerCapabilityId = AdmissionContractRuntime.Value<Guid>(issued, "ScannerCapabilityId");
+            AdmissionScannerCapabilityIssuedResult issued = await IssueScannerCapabilityAsync(scenario);
+            scannerCapabilityId = issued.ScannerCapabilityId;
             staffActorId = null;
         }
 
-        object result = await CheckInAsync(
+        AdmissionCheckInResult result = await CheckInAsync(
             scenario,
             scenario.Credential,
             "CheckIn",
             staffActorId,
             scannerCapabilityId);
 
-        await Assert.That(AdmissionContractRuntime.Outcome(result)).IsEqualTo("CheckedIn");
+        await Assert.That(result.Outcome).IsEqualTo(AdmissionCheckInOutcome.CheckedIn);
         await Assert.That(scenario.CredentialDigestCalls).IsEqualTo(1);
         await Assert.That(scenario.TenantDigestLookupCalls).IsEqualTo(1);
         await Assert.That(scenario.ObservedLookupTenantId).IsEqualTo(scenario.TenantId);
@@ -69,9 +71,7 @@ public sealed class AdmissionCheckInOrchestrationRedTests
         if (rejection == "RevokedCredential") scenario.CredentialState = "Revoked";
         if (rejection == "ExpiredCredential") scenario.CredentialState = "Expired";
 
-        object result = await AdmissionContractRuntime.InvokeAsync(
-            CheckInPorts.Service(scenario),
-            "ProcessAsync",
+        AdmissionCheckInResult result = await CheckInPorts.TypedService(scenario).ProcessAsync(
             CheckInPorts.Request(
                 scenario,
                 scenario.Credential,
@@ -83,8 +83,8 @@ public sealed class AdmissionCheckInOrchestrationRedTests
                 null),
             CancellationToken.None);
 
-        await Assert.That(AdmissionContractRuntime.Outcome(result)).IsEqualTo("Rejected");
-        await Assert.That(AdmissionContractRuntime.PublicScalarSnapshot(result).Keys)
+        await Assert.That(result.Outcome).IsEqualTo(AdmissionCheckInOutcome.Rejected);
+        await Assert.That(typeof(AdmissionCheckInResult).GetProperties().Select(property => property.Name))
             .DoesNotContain("AdmissionTicketId");
         await Assert.That(scenario.AppendCount).IsEqualTo(0);
     }
@@ -93,47 +93,41 @@ public sealed class AdmissionCheckInOrchestrationRedTests
     public async Task ScannerCapabilityIssueAndRevokeRequireExactEventTargetLineage()
     {
         CheckInScenario scenario = new(UtcNow);
-        object mismatchedIssue = await AdmissionContractRuntime.InvokeAsync(
-            ScannerCapabilityPorts.Service(scenario),
-            "IssueAsync",
+        AdmissionScannerCapabilityService service = ScannerCapabilityPorts.TypedService(scenario);
+        AdmissionScannerCapabilityIssuedResult mismatchedIssue = await service.IssueAsync(
             ScannerCapabilityPorts.IssueRequest(
                 scenario,
                 eventId: Guid.CreateVersion7()),
             CancellationToken.None);
-        await Assert.That(AdmissionContractRuntime.Outcome(mismatchedIssue)).IsEqualTo("Rejected");
+        await Assert.That(mismatchedIssue.Outcome).IsEqualTo(AdmissionScannerCapabilityIssueOutcome.Rejected);
         await Assert.That(scenario.ScannerMaterialIssueCalls).IsEqualTo(0);
         await Assert.That(scenario.ScannerCapabilities).IsEmpty();
 
         scenario.TargetStopped = true;
-        object stoppedIssue = await IssueScannerCapabilityAsync(scenario);
-        await Assert.That(AdmissionContractRuntime.Outcome(stoppedIssue)).IsEqualTo("Rejected");
+        AdmissionScannerCapabilityIssuedResult stoppedIssue = await IssueScannerCapabilityAsync(scenario);
+        await Assert.That(stoppedIssue.Outcome).IsEqualTo(AdmissionScannerCapabilityIssueOutcome.Rejected);
         await Assert.That(scenario.ScannerMaterialIssueCalls).IsEqualTo(0);
         scenario.TargetStopped = false;
 
         scenario.ScannerCapabilityStoreRejected = true;
-        object fenceRejectedIssue = await IssueScannerCapabilityAsync(scenario);
-        await Assert.That(AdmissionContractRuntime.Outcome(fenceRejectedIssue)).IsEqualTo("Rejected");
-        await Assert.That(AdmissionContractRuntime.Value<Guid>(
-            fenceRejectedIssue, "ScannerCapabilityId")).IsEqualTo(Guid.Empty);
-        await Assert.That(fenceRejectedIssue.GetType().GetProperty(
-            "PlaintextCapability")!.GetValue(fenceRejectedIssue)).IsNull();
-        await Assert.That(fenceRejectedIssue.GetType().GetProperty(
-            "Descriptor")!.GetValue(fenceRejectedIssue)).IsNull();
+        AdmissionScannerCapabilityIssuedResult fenceRejectedIssue = await IssueScannerCapabilityAsync(scenario);
+        await Assert.That(fenceRejectedIssue.Outcome).IsEqualTo(AdmissionScannerCapabilityIssueOutcome.Rejected);
+        await Assert.That(fenceRejectedIssue.ScannerCapabilityId).IsEqualTo(Guid.Empty);
+        await Assert.That(fenceRejectedIssue.PlaintextCapability).IsNull();
+        await Assert.That(fenceRejectedIssue.Descriptor).IsNull();
         await Assert.That(scenario.ScannerMaterialIssueCalls).IsEqualTo(1);
         await Assert.That(scenario.ScannerCapabilities).IsEmpty();
         scenario.ScannerCapabilityStoreRejected = false;
 
-        object issued = await IssueScannerCapabilityAsync(scenario);
-        Guid capabilityId = AdmissionContractRuntime.Value<Guid>(issued, "ScannerCapabilityId");
-        object mismatchedRevoke = await AdmissionContractRuntime.InvokeAsync(
-            ScannerCapabilityPorts.Service(scenario),
-            "RevokeAsync",
+        AdmissionScannerCapabilityIssuedResult issued = await IssueScannerCapabilityAsync(scenario);
+        Guid capabilityId = issued.ScannerCapabilityId;
+        AdmissionScannerCapabilityRevocationResult mismatchedRevoke = await service.RevokeAsync(
             ScannerCapabilityPorts.RevokeRequest(
                 scenario,
                 capabilityId,
                 eventId: Guid.CreateVersion7()),
             CancellationToken.None);
-        await Assert.That(AdmissionContractRuntime.Outcome(mismatchedRevoke)).IsEqualTo("Rejected");
+        await Assert.That(mismatchedRevoke.Outcome).IsEqualTo(AdmissionScannerCapabilityRevocationOutcome.Rejected);
         await Assert.That(scenario.ScannerCapabilities[capabilityId].RevokedAt).IsNull();
     }
 
@@ -141,16 +135,14 @@ public sealed class AdmissionCheckInOrchestrationRedTests
     public async Task BatchRejectsMoreThanOneHundredAndReturnsIndependentOrderedPartialResults()
     {
         CheckInScenario overLimit = new(UtcNow);
-        object tooLarge = await AdmissionContractRuntime.InvokeAsync(
-            CheckInPorts.Service(overLimit),
-            "ProcessBatchAsync",
+        AdmissionCheckInBatchResult tooLarge = await CheckInPorts.TypedService(overLimit).ProcessBatchAsync(
             CheckInPorts.BatchRequest(
                 overLimit,
                 Enumerable.Range(0, 101).Select(_ => RuntimeCapability.New()).ToArray()),
             CancellationToken.None);
 
-        await Assert.That(AdmissionContractRuntime.Outcome(tooLarge)).IsEqualTo("BatchLimitExceeded");
-        await Assert.That(AdmissionContractRuntime.Items(tooLarge, "Items")).IsEmpty();
+        await Assert.That(tooLarge.Outcome).IsEqualTo(AdmissionCheckInBatchOutcome.BatchLimitExceeded);
+        await Assert.That(tooLarge.Items).IsEmpty();
         await Assert.That(overLimit.TenantDigestLookupCalls).IsEqualTo(0);
         await Assert.That(overLimit.AppendCount).IsEqualTo(0);
         await Assert.That(overLimit.TelemetryCalls).Contains("RecordSaturation");
@@ -161,18 +153,16 @@ public sealed class AdmissionCheckInOrchestrationRedTests
         partial.CredentialStates[partial.Digest(revoked)] = "Revoked";
         partial.CredentialStates[partial.Digest(validSecond)] = "Active";
         string[] credentials = [partial.Credential, revoked, validSecond];
-        object batch = await AdmissionContractRuntime.InvokeAsync(
-            CheckInPorts.Service(partial),
-            "ProcessBatchAsync",
+        AdmissionCheckInBatchResult batch = await CheckInPorts.TypedService(partial).ProcessBatchAsync(
             CheckInPorts.BatchRequest(partial, credentials),
             CancellationToken.None);
-        object[] items = AdmissionContractRuntime.Items(batch, "Items");
+        IReadOnlyList<AdmissionCheckInBatchItemResult> items = batch.Items;
 
-        await Assert.That(AdmissionContractRuntime.Outcome(batch)).IsEqualTo("Completed");
-        await Assert.That(items.Length).IsEqualTo(3);
-        await Assert.That(string.Join(',', items.Select(AdmissionContractRuntime.Outcome)))
+        await Assert.That(batch.Outcome).IsEqualTo(AdmissionCheckInBatchOutcome.Completed);
+        await Assert.That(items.Count).IsEqualTo(3);
+        await Assert.That(string.Join(',', items.Select(item => item.Outcome)))
             .IsEqualTo("CheckedIn,Rejected,CheckedIn");
-        await Assert.That(string.Join(',', items.Select(item => AdmissionContractRuntime.Value<int>(item, "Index"))))
+        await Assert.That(string.Join(',', items.Select(item => item.Index)))
             .IsEqualTo("0,1,2");
         await Assert.That(partial.AppendCount).IsEqualTo(2);
         await Assert.That(partial.TenantDigestLookupCalls).IsEqualTo(3);
@@ -191,17 +181,12 @@ public sealed class AdmissionCheckInOrchestrationRedTests
         scenario.CredentialStates[scenario.Digest(validLast)] = "Active";
         scenario.UnavailableCredentialDigests.Add(scenario.Digest(unavailable));
 
-        Exception exception = await Assert.ThrowsAsync<Exception>(async () =>
-            await AdmissionContractRuntime.InvokeAsync(
-                CheckInPorts.Service(scenario),
-                "ProcessBatchAsync",
-                CheckInPorts.BatchRequest(
-                    scenario,
-                    [scenario.Credential, unavailable, validLast]),
+        AdmissionCheckInUnavailableException exception = await Assert.ThrowsAsync<AdmissionCheckInUnavailableException>(async () =>
+            await CheckInPorts.TypedService(scenario).ProcessBatchAsync(
+                CheckInPorts.BatchRequest(scenario, [scenario.Credential, unavailable, validLast]),
                 CancellationToken.None));
 
-        await Assert.That(exception.GetBaseException().GetType().Name)
-            .IsEqualTo("AdmissionCheckInUnavailableException");
+        await Assert.That(exception).IsNotNull();
         await Assert.That(scenario.UnitOfWork.TransactionCount).IsEqualTo(2);
         await Assert.That(scenario.AppendCount).IsEqualTo(1);
         await Assert.That(scenario.TelemetryCalls.Last()).IsEqualTo("RecordBacklog");
@@ -212,19 +197,19 @@ public sealed class AdmissionCheckInOrchestrationRedTests
     {
         CheckInScenario scenario = new(UtcNow) { MaximumEntries = 2 };
 
-        object first = await CheckInAsync(scenario, scenario.Credential, "CheckIn", scenario.StaffActorId, null);
-        object duplicate = await CheckInAsync(scenario, scenario.Credential, "CheckIn", scenario.StaffActorId, null);
-        object undo = await CheckInAsync(scenario, scenario.Credential, "Undo", scenario.StaffActorId, null);
-        object duplicateUndo = await CheckInAsync(scenario, scenario.Credential, "Undo", scenario.StaffActorId, null);
-        object reentry = await CheckInAsync(scenario, scenario.Credential, "CheckIn", scenario.StaffActorId, null);
+        AdmissionCheckInResult first = await CheckInAsync(scenario, scenario.Credential, "CheckIn", scenario.StaffActorId, null);
+        AdmissionCheckInResult duplicate = await CheckInAsync(scenario, scenario.Credential, "CheckIn", scenario.StaffActorId, null);
+        AdmissionCheckInResult undo = await CheckInAsync(scenario, scenario.Credential, "Undo", scenario.StaffActorId, null);
+        AdmissionCheckInResult duplicateUndo = await CheckInAsync(scenario, scenario.Credential, "Undo", scenario.StaffActorId, null);
+        AdmissionCheckInResult reentry = await CheckInAsync(scenario, scenario.Credential, "CheckIn", scenario.StaffActorId, null);
 
         await Assert.That(string.Join(',', new[]
         {
-            AdmissionContractRuntime.Outcome(first),
-            AdmissionContractRuntime.Outcome(duplicate),
-            AdmissionContractRuntime.Outcome(undo),
-            AdmissionContractRuntime.Outcome(duplicateUndo),
-            AdmissionContractRuntime.Outcome(reentry)
+            first.Outcome,
+            duplicate.Outcome,
+            undo.Outcome,
+            duplicateUndo.Outcome,
+            reentry.Outcome
         })).IsEqualTo("CheckedIn,AlreadyCheckedIn,Undone,NotCheckedIn,CheckedIn");
         await Assert.That(string.Join(',', scenario.History.Select(value => value.Action)))
             .IsEqualTo("CheckIn,Undo,CheckIn");
@@ -234,10 +219,10 @@ public sealed class AdmissionCheckInOrchestrationRedTests
         CheckInScenario singleEntry = new(UtcNow);
         _ = await CheckInAsync(singleEntry, singleEntry.Credential, "CheckIn", singleEntry.StaffActorId, null);
         _ = await CheckInAsync(singleEntry, singleEntry.Credential, "Undo", singleEntry.StaffActorId, null);
-        object prohibitedReentry = await CheckInAsync(
+        AdmissionCheckInResult prohibitedReentry = await CheckInAsync(
             singleEntry, singleEntry.Credential, "CheckIn", singleEntry.StaffActorId, null);
 
-        await Assert.That(AdmissionContractRuntime.Outcome(prohibitedReentry)).IsEqualTo("Rejected");
+        await Assert.That(prohibitedReentry.Outcome).IsEqualTo(AdmissionCheckInOutcome.Rejected);
         await Assert.That(singleEntry.History.Count).IsEqualTo(2);
     }
 
@@ -245,13 +230,12 @@ public sealed class AdmissionCheckInOrchestrationRedTests
     public async Task UndoRequiresTheExactActiveCheckInFactIdentity()
     {
         CheckInScenario scenario = new(UtcNow);
-        object checkedIn = await CheckInAsync(
+        AdmissionCheckInResult checkedIn = await CheckInAsync(
             scenario, scenario.Credential, "CheckIn", scenario.StaffActorId, null);
-        Guid activeCheckInId = AdmissionContractRuntime.Value<Guid>(checkedIn, "CheckInId");
+        Guid activeCheckInId = checkedIn.CheckInId!.Value;
 
-        object mismatched = await AdmissionContractRuntime.InvokeAsync(
-            CheckInPorts.Service(scenario),
-            "ProcessAsync",
+        AdmissionCheckInService service = CheckInPorts.TypedService(scenario);
+        AdmissionCheckInResult mismatched = await service.ProcessAsync(
             CheckInPorts.Request(
                 scenario,
                 scenario.Credential,
@@ -259,12 +243,10 @@ public sealed class AdmissionCheckInOrchestrationRedTests
                 staffActorId: scenario.StaffActorId,
                 checkInId: Guid.CreateVersion7()),
             CancellationToken.None);
-        await Assert.That(AdmissionContractRuntime.Outcome(mismatched)).IsEqualTo("Rejected");
+        await Assert.That(mismatched.Outcome).IsEqualTo(AdmissionCheckInOutcome.Rejected);
         await Assert.That(scenario.History).HasSingleItem();
 
-        object exact = await AdmissionContractRuntime.InvokeAsync(
-            CheckInPorts.Service(scenario),
-            "ProcessAsync",
+        AdmissionCheckInResult exact = await service.ProcessAsync(
             CheckInPorts.Request(
                 scenario,
                 scenario.Credential,
@@ -272,27 +254,21 @@ public sealed class AdmissionCheckInOrchestrationRedTests
                 staffActorId: scenario.StaffActorId,
                 checkInId: activeCheckInId),
             CancellationToken.None);
-        await Assert.That(AdmissionContractRuntime.Outcome(exact)).IsEqualTo("Undone");
-        await Assert.That(scenario.History).HasCount(2);
+        await Assert.That(exact.Outcome).IsEqualTo(AdmissionCheckInOutcome.Undone);
+        await Assert.That(scenario.History.Count).IsEqualTo(2);
     }
 
     [Test]
     public async Task ScannerCapabilityIsDisclosedOnceNeverReturnedByReadAndRevocationIsImmediate()
     {
         CheckInScenario scenario = new(UtcNow);
-        object service = ScannerCapabilityPorts.Service(scenario);
-        object issued = await AdmissionContractRuntime.InvokeAsync(
-            service,
-            "IssueAsync",
-            ScannerCapabilityPorts.IssueRequest(scenario),
-            CancellationToken.None);
-        string plaintext = AdmissionContractRuntime.Value<string>(issued, "PlaintextCapability");
-        Guid capabilityId = AdmissionContractRuntime.Value<Guid>(issued, "ScannerCapabilityId");
-        object read = await AdmissionContractRuntime.InvokeAsync(
-            service,
-            "ReadAsync",
-            ScannerCapabilityPorts.ReadRequest(scenario, capabilityId),
-            CancellationToken.None);
+        AdmissionScannerCapabilityService service = ScannerCapabilityPorts.TypedService(scenario);
+        AdmissionScannerCapabilityIssuedResult issued = await service.IssueAsync(
+            ScannerCapabilityPorts.IssueRequest(scenario), CancellationToken.None);
+        string plaintext = issued.PlaintextCapability!;
+        Guid capabilityId = issued.ScannerCapabilityId;
+        AdmissionScannerCapabilityDescriptor read = await service.ReadAsync(
+            ScannerCapabilityPorts.ReadRequest(scenario, capabilityId), CancellationToken.None);
 
         await Assert.That(string.IsNullOrWhiteSpace(plaintext)).IsFalse();
         await Assert.That(issued.ToString()).DoesNotContain(plaintext);
@@ -302,26 +278,19 @@ public sealed class AdmissionCheckInOrchestrationRedTests
         await Assert.That(scenario.StoredScannerPlaintextCount).IsEqualTo(0);
         await Assert.That(scenario.ScannerMaterialIssueCalls).IsEqualTo(1);
 
-        object duplicateIssue = await AdmissionContractRuntime.InvokeAsync(
-            service,
-            "IssueAsync",
-            ScannerCapabilityPorts.IssueRequest(scenario),
-            CancellationToken.None);
-        await Assert.That(AdmissionContractRuntime.Outcome(duplicateIssue)).IsEqualTo("AlreadyIssued");
-        await Assert.That(AdmissionContractRuntime.Value<Guid>(duplicateIssue, "ScannerCapabilityId"))
-            .IsEqualTo(capabilityId);
-        await Assert.That(duplicateIssue.GetType().GetProperty("PlaintextCapability")!.GetValue(duplicateIssue)).IsNull();
+        AdmissionScannerCapabilityIssuedResult duplicateIssue = await service.IssueAsync(
+            ScannerCapabilityPorts.IssueRequest(scenario), CancellationToken.None);
+        await Assert.That(duplicateIssue.Outcome).IsEqualTo(AdmissionScannerCapabilityIssueOutcome.AlreadyIssued);
+        await Assert.That(duplicateIssue.ScannerCapabilityId).IsEqualTo(capabilityId);
+        await Assert.That(duplicateIssue.PlaintextCapability).IsNull();
         await Assert.That(scenario.ScannerCapabilities.Count).IsEqualTo(1);
 
-        object revoked = await AdmissionContractRuntime.InvokeAsync(
-            service,
-            "RevokeAsync",
-            ScannerCapabilityPorts.RevokeRequest(scenario, capabilityId),
-            CancellationToken.None);
-        object denied = await CheckInAsync(scenario, scenario.Credential, "CheckIn", null, capabilityId);
+        AdmissionScannerCapabilityRevocationResult revoked = await service.RevokeAsync(
+            ScannerCapabilityPorts.RevokeRequest(scenario, capabilityId), CancellationToken.None);
+        AdmissionCheckInResult denied = await CheckInAsync(scenario, scenario.Credential, "CheckIn", null, capabilityId);
 
-        await Assert.That(AdmissionContractRuntime.Outcome(revoked)).IsEqualTo("Revoked");
-        await Assert.That(AdmissionContractRuntime.Outcome(denied)).IsEqualTo("Rejected");
+        await Assert.That(revoked.Outcome).IsEqualTo(AdmissionScannerCapabilityRevocationOutcome.Revoked);
+        await Assert.That(denied.Outcome).IsEqualTo(AdmissionCheckInOutcome.Rejected);
         await Assert.That(scenario.AppendCount).IsEqualTo(0);
     }
 
@@ -333,8 +302,8 @@ public sealed class AdmissionCheckInOrchestrationRedTests
     public async Task ScannerCapabilityWrongScopeExpiryAndTheftFailWithOneGenericOutcome(string rejection)
     {
         CheckInScenario scenario = new(UtcNow);
-        object issued = await IssueScannerCapabilityAsync(scenario);
-        Guid capabilityId = AdmissionContractRuntime.Value<Guid>(issued, "ScannerCapabilityId");
+        AdmissionScannerCapabilityIssuedResult issued = await IssueScannerCapabilityAsync(scenario);
+        Guid capabilityId = issued.ScannerCapabilityId;
         Guid tenantId = scenario.TenantId;
         Guid eventId = scenario.EventId;
         Guid targetId = scenario.TargetId;
@@ -343,9 +312,7 @@ public sealed class AdmissionCheckInOrchestrationRedTests
         if (rejection == "Expired") scenario.Clock.Advance(TimeSpan.FromHours(2));
         if (rejection == "StolenFromOtherTenant") tenantId = Guid.CreateVersion7();
 
-        object result = await AdmissionContractRuntime.InvokeAsync(
-            CheckInPorts.Service(scenario),
-            "ProcessAsync",
+        AdmissionCheckInResult result = await CheckInPorts.TypedService(scenario).ProcessAsync(
             CheckInPorts.Request(
                 scenario,
                 scenario.Credential,
@@ -357,7 +324,7 @@ public sealed class AdmissionCheckInOrchestrationRedTests
                 capabilityId),
             CancellationToken.None);
 
-        await Assert.That(AdmissionContractRuntime.Outcome(result)).IsEqualTo("Rejected");
+        await Assert.That(result.Outcome).IsEqualTo(AdmissionCheckInOutcome.Rejected);
         await Assert.That(scenario.AppendCount).IsEqualTo(0);
     }
 
@@ -365,7 +332,8 @@ public sealed class AdmissionCheckInOrchestrationRedTests
     public async Task DoorResultIsBoundedAndExcludesCredentialRosterOrderPaymentAndParticipantData()
     {
         CheckInScenario scenario = new(UtcNow);
-        object result = await CheckInAsync(scenario, scenario.Credential, "CheckIn", scenario.StaffActorId, null);
+        AdmissionCheckInResult result = await CheckInAsync(
+            scenario, scenario.Credential, "CheckIn", scenario.StaffActorId, null);
         string[] forbiddenFragments =
         [
             "Credential", "Capability", "Digest", "Attendee", "Participant", "Email", "Order",
@@ -388,15 +356,13 @@ public sealed class AdmissionCheckInOrchestrationRedTests
     public async Task RepositoryAndConnectivityErrorsFailClosedWithoutAdmissionSuccess()
     {
         CheckInScenario scenario = new(UtcNow) { FailRepository = true };
-        object service = CheckInPorts.Service(scenario);
-        object request = CheckInPorts.Request(scenario, scenario.Credential, "CheckIn");
+        AdmissionCheckInService service = CheckInPorts.TypedService(scenario);
+        AdmissionCheckInRequest request = CheckInPorts.Request(scenario, scenario.Credential, "CheckIn");
 
-        Exception exception = await Assert.ThrowsAsync<Exception>(async () =>
-            await AdmissionContractRuntime.InvokeAsync(
-                service, "ProcessAsync", request, CancellationToken.None));
+        AdmissionCheckInUnavailableException exception = await Assert.ThrowsAsync<AdmissionCheckInUnavailableException>(async () =>
+            await service.ProcessAsync(request, CancellationToken.None));
 
-        await Assert.That(exception.GetBaseException().GetType().Name)
-            .IsEqualTo("AdmissionCheckInUnavailableException");
+        await Assert.That(exception).IsNotNull();
         await Assert.That(scenario.AppendCount).IsEqualTo(0);
     }
 
@@ -404,30 +370,24 @@ public sealed class AdmissionCheckInOrchestrationRedTests
     public async Task CancellationTokenPropagatesToAuthorityDigestAndRepositoryWithoutWriting()
     {
         CheckInScenario scenario = new(UtcNow);
-        object service = CheckInPorts.Service(scenario);
-        object request = CheckInPorts.Request(scenario, scenario.Credential, "CheckIn");
+        AdmissionCheckInService service = CheckInPorts.TypedService(scenario);
+        AdmissionCheckInRequest request = CheckInPorts.Request(scenario, scenario.Credential, "CheckIn");
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
         _ = await Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await AdmissionContractRuntime.InvokeAsync(
-                service,
-                "ProcessAsync",
-                request,
-                cancellation.Token));
+            await service.ProcessAsync(request, cancellation.Token));
 
         await Assert.That(scenario.ObservedCancellationToken).IsEqualTo(cancellation.Token);
         await Assert.That(scenario.AppendCount).IsEqualTo(0);
     }
 
-    private static Task<object> CheckInAsync(
+    private static Task<AdmissionCheckInResult> CheckInAsync(
         CheckInScenario scenario,
         string credential,
         string action,
         Guid? staffActorId,
-        Guid? scannerCapabilityId) => AdmissionContractRuntime.InvokeAsync(
-            CheckInPorts.Service(scenario),
-            "ProcessAsync",
+        Guid? scannerCapabilityId) => CheckInPorts.TypedService(scenario).ProcessAsync(
             CheckInPorts.Request(
                 scenario,
                 credential,
@@ -439,31 +399,32 @@ public sealed class AdmissionCheckInOrchestrationRedTests
                 scannerCapabilityId),
             CancellationToken.None);
 
-    private static async Task<object> IssueScannerCapabilityAsync(CheckInScenario scenario) =>
-        await AdmissionContractRuntime.InvokeAsync(
-            ScannerCapabilityPorts.Service(scenario),
-            "IssueAsync",
-            ScannerCapabilityPorts.IssueRequest(scenario),
-            CancellationToken.None);
+    private static Task<AdmissionScannerCapabilityIssuedResult> IssueScannerCapabilityAsync(CheckInScenario scenario) =>
+        ScannerCapabilityPorts.TypedService(scenario).IssueAsync(
+            ScannerCapabilityPorts.IssueRequest(scenario), CancellationToken.None);
 }
 
 internal static class CheckInPorts
 {
-    internal const string TransactionPort = "IAdmissionCheckInTransaction";
-    internal const string DigestPort = "IAdmissionCheckInCredentialDigestService";
-    internal const string AuthorityPort = "IAdmissionCheckInAuthority";
-    internal const string TelemetryPort = "IAdmissionCheckInTelemetry";
-
-    internal static object Service(CheckInScenario scenario) => AdmissionContractRuntime.Service(
-        "AdmissionCheckInService",
-        scenario.Clock,
+    internal static AdmissionCheckInService TypedService(CheckInScenario scenario) => new(
+        new CheckInPortFake(scenario),
+        new CheckInPortFake(scenario),
+        new CheckInPortFake(scenario),
+        new CheckInPortFake(scenario),
         scenario.UnitOfWork,
-        (TransactionPort, CheckInPortFake.Create(TransactionPort, scenario)),
-        (DigestPort, CheckInPortFake.Create(DigestPort, scenario)),
-        (AuthorityPort, CheckInPortFake.Create(AuthorityPort, scenario)),
-        (TelemetryPort, CheckInPortFake.Create(TelemetryPort, scenario)));
+        scenario.Clock);
 
-    internal static object Request(
+    internal static AdmissionCheckInRequest TypedRequest(CheckInScenario scenario) => new(
+        scenario.TenantId,
+        scenario.EventId,
+        scenario.TargetId,
+        scenario.Credential,
+        AdmissionCheckInAction.CheckIn,
+        null,
+        scenario.StaffActorId,
+        null);
+
+    internal static AdmissionCheckInRequest Request(
         CheckInScenario scenario,
         string credential,
         string action,
@@ -472,83 +433,68 @@ internal static class CheckInPorts
         Guid? targetId = null,
         Guid? staffActorId = null,
         Guid? scannerCapabilityId = null,
-        Guid? checkInId = null) => AdmissionContractRuntime.ApplicationObject(
-            "AdmissionCheckInRequest",
-            ("TenantId", tenantId ?? scenario.TenantId),
-            ("EventId", eventId ?? scenario.EventId),
-            ("TargetId", targetId ?? scenario.TargetId),
-            ("Credential", credential),
-            ("Action", action),
-            ("ReasonCode", action == "Undo" ? "OperatorCorrection" : null),
-            ("StaffActorId", staffActorId ?? (scannerCapabilityId is null ? scenario.StaffActorId : null)),
-            ("ScannerCapabilityId", scannerCapabilityId),
-            ("CheckInId", checkInId ?? (action == "Undo"
+        Guid? checkInId = null) => new(
+            tenantId ?? scenario.TenantId,
+            eventId ?? scenario.EventId,
+            targetId ?? scenario.TargetId,
+            credential,
+            action == "Undo" ? AdmissionCheckInAction.Undo : AdmissionCheckInAction.CheckIn,
+            action == "Undo" ? AdmissionCheckInUndoReasonCodeEnum.OperatorCorrection : null,
+            staffActorId ?? (scannerCapabilityId is null ? scenario.StaffActorId : null),
+            scannerCapabilityId,
+            checkInId ?? (action == "Undo"
                 ? scenario.History.LastOrDefault(fact => fact.Action == "CheckIn")?.Id
-                : null)));
+                : null));
 
-    internal static object BatchRequest(CheckInScenario scenario, IReadOnlyList<string> credentials)
-    {
-        Type itemType = AdmissionContractRuntime.ApplicationType("AdmissionCheckInBatchItem");
-        object[] items = credentials.Select((credential, index) => AdmissionContractRuntime.Create(
-            itemType,
-            ("Index", index),
-            ("Credential", credential),
-            ("Action", "CheckIn"),
-            ("ReasonCode", null))).ToArray();
-        return AdmissionContractRuntime.ApplicationObject(
-            "AdmissionCheckInBatchRequest",
-            ("TenantId", scenario.TenantId),
-            ("EventId", scenario.EventId),
-            ("TargetId", scenario.TargetId),
-            ("StaffActorId", scenario.StaffActorId),
-            ("ScannerCapabilityId", null),
-            ("Items", items));
-    }
+    internal static AdmissionCheckInBatchRequest BatchRequest(
+        CheckInScenario scenario,
+        IReadOnlyList<string> credentials) => new(
+            scenario.TenantId,
+            scenario.EventId,
+            scenario.TargetId,
+            scenario.StaffActorId,
+            null,
+            credentials.Select((credential, index) => new AdmissionCheckInBatchItem(
+                index,
+                credential,
+                AdmissionCheckInAction.CheckIn,
+                null)).ToArray());
 }
 
 internal static class ScannerCapabilityPorts
 {
-    internal const string RepositoryPort = "IAdmissionScannerCapabilityRepository";
-    internal const string MaterialPort = "IAdmissionScannerCapabilityMaterialService";
-
-    internal static object Service(CheckInScenario scenario) => AdmissionContractRuntime.Service(
-        "AdmissionScannerCapabilityService",
-        scenario.Clock,
+    internal static AdmissionScannerCapabilityService TypedService(CheckInScenario scenario) => new(
+        new CheckInPortFake(scenario),
+        new CheckInPortFake(scenario),
         scenario.UnitOfWork,
-        (RepositoryPort, CheckInPortFake.Create(RepositoryPort, scenario)),
-        (MaterialPort, CheckInPortFake.Create(MaterialPort, scenario)));
+        scenario.Clock);
 
-    internal static object IssueRequest(
+    internal static AdmissionScannerCapabilityIssueRequest IssueRequest(
         CheckInScenario scenario,
         Guid? eventId = null,
-        Guid? targetId = null) => AdmissionContractRuntime.ApplicationObject(
-        "AdmissionScannerCapabilityIssueRequest",
-        ("IssueRequestId", scenario.ScannerCapabilityIssueRequestId),
-        ("TenantId", scenario.TenantId),
-        ("EventId", eventId ?? scenario.EventId),
-        ("TargetId", targetId ?? scenario.TargetId),
-        ("Actions", new[] { "CheckIn", "Undo" }),
-        ("DeviceLabel", "North entrance scanner"),
-        ("ExpiresAtUtc", scenario.Clock.GetUtcNow().AddHours(1)),
-        ("IssuedByActorId", scenario.StaffActorId));
+        Guid? targetId = null) => new(
+            scenario.ScannerCapabilityIssueRequestId,
+            scenario.TenantId,
+            eventId ?? scenario.EventId,
+            targetId ?? scenario.TargetId,
+            [AdmissionCheckInAction.CheckIn, AdmissionCheckInAction.Undo],
+            "North entrance scanner",
+            scenario.Clock.GetUtcNow().AddHours(1),
+            scenario.StaffActorId);
 
-    internal static object ReadRequest(CheckInScenario scenario, Guid capabilityId) =>
-        AdmissionContractRuntime.ApplicationObject(
-            "AdmissionScannerCapabilityReadRequest",
-            ("TenantId", scenario.TenantId),
-            ("ScannerCapabilityId", capabilityId));
+    internal static AdmissionScannerCapabilityReadRequest ReadRequest(
+        CheckInScenario scenario,
+        Guid capabilityId) => new(scenario.TenantId, capabilityId);
 
-    internal static object RevokeRequest(
+    internal static AdmissionScannerCapabilityRevokeRequest RevokeRequest(
         CheckInScenario scenario,
         Guid capabilityId,
-        Guid? eventId = null) =>
-        AdmissionContractRuntime.ApplicationObject(
-            "AdmissionScannerCapabilityRevokeRequest",
-            ("TenantId", scenario.TenantId),
-            ("EventId", eventId ?? scenario.EventId),
-            ("ScannerCapabilityId", capabilityId),
-            ("RevokedByActorId", scenario.StaffActorId),
-            ("Reason", "DeviceLost"));
+        Guid? eventId = null) => new(
+            scenario.TenantId,
+            eventId ?? scenario.EventId,
+            capabilityId,
+            scenario.StaffActorId,
+            "DeviceLost");
 }
 
 internal sealed class CheckInScenario
@@ -630,142 +576,92 @@ internal sealed class CheckInUnitOfWork : IUnitOfWork
         operation(ct);
 }
 
-internal class CheckInPortFake : DispatchProxy
+internal sealed class CheckInPortFake(CheckInScenario scenario) :
+    IAdmissionCheckInTransaction,
+    IAdmissionCheckInCredentialDigestService,
+    IAdmissionCheckInAuthority,
+    IAdmissionCheckInTelemetry,
+    IAdmissionScannerCapabilityMaterialService,
+    IAdmissionScannerCapabilityRepository
 {
-    private string portName = null!;
-    private CheckInScenario scenario = null!;
-
-    internal static object Create(string portName, CheckInScenario scenario)
+    public Task<AdmissionCheckInCredentialDigest> DigestAsync(
+        AdmissionCheckInCredentialDigestRequest request,
+        CancellationToken cancellationToken)
     {
-        Type port = AdmissionContractRuntime.ApplicationType(portName);
-        object proxy = Create(port, typeof(CheckInPortFake));
-        CheckInPortFake fake = (CheckInPortFake)proxy;
-        fake.portName = portName;
-        fake.scenario = scenario;
-        return proxy;
-    }
-
-    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
-    {
-        MethodInfo method = targetMethod ?? throw AdmissionContractRuntime.Missing($"{portName} method");
-        object?[] arguments = args ?? [];
-        CancellationToken token = arguments.OfType<CancellationToken>().SingleOrDefault();
-        scenario.ObservedCancellationToken = token;
-        token.ThrowIfCancellationRequested();
-        object request = arguments.First(value => value is not CancellationToken)!;
-        return (portName, method.Name) switch
-        {
-            (CheckInPorts.DigestPort, "DigestAsync") => Digest(method.ReturnType, request),
-            (CheckInPorts.AuthorityPort, "AuthorizeAsync") => Authorize(method.ReturnType, request),
-            (CheckInPorts.TransactionPort, "ExecuteAsync") => Execute(method.ReturnType, request),
-            (CheckInPorts.TelemetryPort, _) => RecordTelemetry(method.Name),
-            (ScannerCapabilityPorts.MaterialPort, "IssueAsync") => IssueMaterial(method.ReturnType, request),
-            (ScannerCapabilityPorts.RepositoryPort, "StoreAsync") => StoreCapability(method.ReturnType, request),
-            (ScannerCapabilityPorts.RepositoryPort, "GetAsync") => GetCapability(method.ReturnType, arguments),
-            (ScannerCapabilityPorts.RepositoryPort, "FindPlatformManagedTargetAsync") =>
-                FindTarget(method.ReturnType, arguments),
-            (ScannerCapabilityPorts.RepositoryPort, "UpdateAsync") => UpdateCapability(method.ReturnType, request),
-            _ => throw AdmissionContractRuntime.Missing($"planned {portName}.{method.Name}")
-        };
-    }
-
-    private object? RecordTelemetry(string methodName)
-    {
-        scenario.TelemetryCalls.Add(methodName);
-        return null;
-    }
-
-    private object? Digest(Type returnType, object request)
-    {
-        _ = AdmissionContractRuntime.ExactObject(request, "AdmissionCheckInCredentialDigestRequest");
+        Observe(cancellationToken);
         scenario.CredentialDigestCalls++;
-        string plaintext = AdmissionContractRuntime.Value<string>(request, "Credential");
-        object current = AdmissionContractRuntime.ApplicationObject(
-            "AdmissionCheckInCredentialDigestCandidate",
-            ("LookupDigest", scenario.Digest(plaintext)),
-            ("KeyVersion", 7));
-        object retained = AdmissionContractRuntime.ApplicationObject(
-            "AdmissionCheckInCredentialDigestCandidate",
-            ("LookupDigest", scenario.Digest($"{plaintext}:retained")),
-            ("KeyVersion", 6));
-        object payload = Payload(returnType, "AdmissionCheckInCredentialDigest",
-            ("Candidates", new[] { current, retained }));
-        return AdmissionContractRuntime.WrapAsync(returnType, payload);
+        return Task.FromResult(new AdmissionCheckInCredentialDigest(
+        [
+            new AdmissionCheckInCredentialDigestCandidate(scenario.Digest(request.Credential), 7),
+            new AdmissionCheckInCredentialDigestCandidate(scenario.Digest($"{request.Credential}:retained"), 6)
+        ]));
     }
 
-    private object? Authorize(Type returnType, object request)
+    public Task<AdmissionCheckInAuthorizationDecision> AuthorizeAsync(
+        AdmissionCheckInAuthorizationRequest request,
+        CancellationToken cancellationToken)
     {
-        _ = AdmissionContractRuntime.ExactObject(request, "AdmissionCheckInAuthorizationRequest");
+        Observe(cancellationToken);
         scenario.AuthorityChecks++;
-        Guid tenantId = AdmissionContractRuntime.Value<Guid>(request, "TenantId");
-        Guid eventId = AdmissionContractRuntime.Value<Guid>(request, "EventId");
-        Guid targetId = AdmissionContractRuntime.Value<Guid>(request, "TargetId");
-        string action = AdmissionContractRuntime.Value<object>(request, "Action").ToString()!;
-        Guid? actorId = OptionalValue<Guid>(request, "StaffActorId");
-        Guid? scannerCapabilityId = OptionalValue<Guid>(request, "ScannerCapabilityId");
         bool authorized;
-        if (actorId is not null)
+        if (request.StaffActorId is not null)
         {
             scenario.LastAuthorityKind = "Staff";
-            authorized = actorId == scenario.StaffActorId && tenantId == scenario.TenantId;
+            authorized = request.StaffActorId == scenario.StaffActorId && request.TenantId == scenario.TenantId;
         }
         else
         {
             scenario.LastAuthorityKind = "ScannerCapability";
-            AdmissionScannerCapability? row = scannerCapabilityId.HasValue &&
-                scenario.ScannerCapabilities.TryGetValue(scannerCapabilityId.Value, out AdmissionScannerCapability? found)
+            AdmissionScannerCapability? row = request.ScannerCapabilityId.HasValue &&
+                scenario.ScannerCapabilities.TryGetValue(request.ScannerCapabilityId.Value, out AdmissionScannerCapability? found)
                     ? found
                     : null;
-            AdmissionScannerCapabilityAction domainAction = action == "CheckIn"
+            AdmissionScannerCapabilityAction domainAction = request.Action == AdmissionCheckInAction.CheckIn
                 ? AdmissionScannerCapabilityAction.CheckIn
                 : AdmissionScannerCapabilityAction.Undo;
-            authorized = row is not null && row.TenantId == tenantId && row.EventId == eventId &&
-                         row.Permits(targetId, domainAction, scenario.Clock.GetUtcNow().UtcDateTime);
+            authorized = row is not null && row.TenantId == request.TenantId && row.EventId == request.EventId &&
+                         row.Permits(request.TargetId, domainAction, scenario.Clock.GetUtcNow().UtcDateTime);
         }
-        object payload = Payload(returnType, "AdmissionCheckInAuthorizationDecision",
-            ("Outcome", authorized ? "Authorized" : "Denied"));
-        return AdmissionContractRuntime.WrapAsync(returnType, payload);
+        return Task.FromResult(new AdmissionCheckInAuthorizationDecision(
+            authorized ? AdmissionCheckInAuthorizationOutcome.Authorized : AdmissionCheckInAuthorizationOutcome.Denied));
     }
 
-    private object? Execute(Type returnType, object request)
+    public Task<AdmissionCheckInDecision?> ExecuteAsync(
+        AdmissionCheckInTransactionRequest request,
+        CancellationToken cancellationToken)
     {
-        _ = AdmissionContractRuntime.ExactObject(request, "AdmissionCheckInTransactionRequest");
+        Observe(cancellationToken);
         scenario.TenantDigestLookupCalls++;
-        Guid tenantId = AdmissionContractRuntime.Value<Guid>(request, "TenantId");
-        Guid eventId = AdmissionContractRuntime.Value<Guid>(request, "EventId");
-        Guid targetId = AdmissionContractRuntime.Value<Guid>(request, "TargetId");
-        string[] digests = AdmissionContractRuntime.Items(request, "CredentialDigestCandidates")
-            .Select(candidate => AdmissionContractRuntime.Value<string>(candidate, "LookupDigest"))
-            .ToArray();
-        string action = AdmissionContractRuntime.Value<object>(request, "Action").ToString()!;
-        Guid? requestedCheckInId = OptionalValue<Guid>(request, "CheckInId");
-        scenario.ObservedLookupTenantId = tenantId;
-        scenario.ObservedLookupEventId = eventId;
-        scenario.ObservedLookupTargetId = targetId;
+        string[] digests = request.CredentialDigestCandidates.Select(candidate => candidate.LookupDigest).ToArray();
+        string action = request.Action.ToString();
+        scenario.ObservedLookupTenantId = request.TenantId;
+        scenario.ObservedLookupEventId = request.EventId;
+        scenario.ObservedLookupTargetId = request.TargetId;
         scenario.ObservedLookupDigests = digests;
         if (digests.Any(scenario.UnavailableCredentialDigests.Contains))
             throw new TimeoutException("simulated per-item admission repository outage");
         if (scenario.FailRepository) throw new TimeoutException("simulated admission repository outage");
-        bool validLineage = tenantId == scenario.TenantId && eventId == scenario.EventId && targetId == scenario.TargetId;
+        bool validLineage = request.TenantId == scenario.TenantId && request.EventId == scenario.EventId &&
+                            request.TargetId == scenario.TargetId;
         string? matchedDigest = digests.SingleOrDefault(digest =>
             scenario.CredentialStates.TryGetValue(digest, out string? state) && state == "Active");
-        bool activeCredential = matchedDigest is not null;
         CheckInFact? latest = scenario.History.LastOrDefault(fact => fact.CredentialDigest == matchedDigest);
         bool currentlyCheckedIn = latest?.Action == "CheckIn";
         int priorEntries = scenario.History.Count(fact =>
             fact.CredentialDigest == matchedDigest && fact.Action == "CheckIn");
         AdmissionCheckInResultCodeEnum? resultCode;
-        if (!validLineage || !activeCredential) resultCode = null;
-        else if (action == "CheckIn" && currentlyCheckedIn)
+        if (!validLineage || matchedDigest is null) resultCode = null;
+        else if (request.Action == AdmissionCheckInAction.CheckIn && currentlyCheckedIn)
             resultCode = AdmissionCheckInResultCodeEnum.AlreadyCheckedIn;
-        else if (action == "Undo" && !currentlyCheckedIn)
+        else if (request.Action == AdmissionCheckInAction.Undo && !currentlyCheckedIn)
             resultCode = AdmissionCheckInResultCodeEnum.NotCheckedIn;
-        else if (action == "Undo" && requestedCheckInId != latest!.Id)
+        else if (request.Action == AdmissionCheckInAction.Undo && request.CheckInId != latest!.Id)
             resultCode = null;
-        else if (action == "CheckIn" && priorEntries >= scenario.MaximumEntries) resultCode = null;
+        else if (request.Action == AdmissionCheckInAction.CheckIn && priorEntries >= scenario.MaximumEntries)
+            resultCode = null;
         else
         {
-            resultCode = action == "Undo"
+            resultCode = request.Action == AdmissionCheckInAction.Undo
                 ? AdmissionCheckInResultCodeEnum.Undone
                 : priorEntries == 0
                     ? AdmissionCheckInResultCodeEnum.CheckedIn
@@ -774,11 +670,11 @@ internal class CheckInPortFake : DispatchProxy
                 Guid.CreateVersion7(),
                 scenario.History.Count + 1,
                 action,
-                matchedDigest!));
+                matchedDigest));
         }
         if (!resultCode.HasValue)
         {
-            return AdmissionContractRuntime.WrapAsync(returnType, null);
+            return Task.FromResult<AdmissionCheckInDecision?>(null);
         }
 
         int entryCount = scenario.History.Count(fact =>
@@ -789,34 +685,29 @@ internal class CheckInPortFake : DispatchProxy
             Guid.CreateVersion7(),
             scenario.TenantId,
             scenario.AdmissionTicketId,
-            targetId,
+            request.TargetId,
             active ? scenario.History[^1].Id : null,
             entryCount,
             active ? (entryCount * 2L) - 1L : entryCount * 2L,
             Guid.CreateVersion7());
-        ConstructorInfo constructor = typeof(AdmissionCheckInDecision).GetConstructors(
-                BindingFlags.Instance | BindingFlags.NonPublic)
-            .Single(value => value.GetParameters().Length == 3);
-        object decision = constructor.Invoke([resultCode.Value, null, state]);
-        return AdmissionContractRuntime.WrapAsync(returnType, decision);
+        return Task.FromResult<AdmissionCheckInDecision?>(new AdmissionCheckInDecision(resultCode.Value, null, state));
     }
 
-    private object? IssueMaterial(Type returnType, object request)
+    public Task<AdmissionScannerCapabilityMaterial> IssueAsync(
+        AdmissionScannerCapabilityMaterialRequest request,
+        CancellationToken cancellationToken)
     {
-        _ = AdmissionContractRuntime.ExactObject(request, "AdmissionScannerCapabilityMaterialRequest");
+        Observe(cancellationToken);
         scenario.ScannerMaterialIssueCalls++;
         string plaintext = RuntimeCapability.New();
-        object payload = Payload(returnType, "AdmissionScannerCapabilityMaterial",
-            ("PlaintextCapability", plaintext),
-            ("LookupDigest", scenario.Digest(plaintext)),
-            ("KeyVersion", 7));
-        return AdmissionContractRuntime.WrapAsync(returnType, payload);
+        return Task.FromResult(new AdmissionScannerCapabilityMaterial(plaintext, scenario.Digest(plaintext), 7));
     }
 
-    private object? StoreCapability(Type returnType, object request)
+    public Task<AdmissionScannerCapabilityStoreResult> StoreAsync(
+        AdmissionScannerCapability capability,
+        CancellationToken cancellationToken)
     {
-        AdmissionScannerCapability capability = request as AdmissionScannerCapability
-            ?? throw AdmissionContractRuntime.Missing("AdmissionScannerCapability entity persistence");
+        Observe(cancellationToken);
         EnsureNoPlaintextProperty(capability);
         AdmissionScannerCapability? existing = scenario.ScannerCapabilities.Values.SingleOrDefault(
             row => row.IssueRequestId == capability.IssueRequestId);
@@ -827,92 +718,98 @@ internal class CheckInPortFake : DispatchProxy
         {
             scenario.ScannerCapabilities.Add(stored.Id, stored);
         }
-
-        object payload = Payload(returnType, "AdmissionScannerCapabilityStoreResult",
-            ("Created", created),
-            ("Capability", stored),
-            ("Rejected", rejected));
-        return AdmissionContractRuntime.WrapAsync(returnType, payload);
+        return Task.FromResult(new AdmissionScannerCapabilityStoreResult(created, stored) { Rejected = rejected });
     }
 
-    private object? GetCapability(Type returnType, object?[] arguments)
+    public Task<AdmissionScannerCapability?> GetAsync(
+        Guid tenantId,
+        Guid scannerCapabilityId,
+        CancellationToken cancellationToken)
     {
-        Guid[] ids = arguments.OfType<Guid>().ToArray();
-        Guid tenantId = ids[0];
-        Guid capabilityId = ids[1];
-        scenario.ScannerCapabilities.TryGetValue(capabilityId, out AdmissionScannerCapability? capability);
-        if (capability?.TenantId != tenantId)
-        {
-            capability = null;
-        }
-        return AdmissionContractRuntime.WrapAsync(returnType, capability);
+        Observe(cancellationToken);
+        scenario.ScannerCapabilities.TryGetValue(scannerCapabilityId, out AdmissionScannerCapability? capability);
+        return Task.FromResult(capability?.TenantId == tenantId ? capability : null);
     }
 
-    private object? FindTarget(Type returnType, object?[] arguments)
+    public Task<AdmissionTarget?> FindPlatformManagedTargetAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid targetId,
+        CancellationToken cancellationToken)
     {
-        Guid tenantId = (Guid)arguments[0]!;
-        Guid eventId = (Guid)arguments[1]!;
-        Guid targetId = (Guid)arguments[2]!;
-        AdmissionTarget? target =
-            tenantId == scenario.TenantId &&
-            eventId == scenario.EventId &&
-            targetId == scenario.TargetId
-                ? AdmissionTarget.Create(
-                    scenario.TargetId,
-                    scenario.TenantId,
-                    scenario.EventId,
-                    AdmissionTargetTypeEnum.Event,
-                    null,
-                    null)
-                : null;
+        Observe(cancellationToken);
+        AdmissionTarget? target = tenantId == scenario.TenantId && eventId == scenario.EventId && targetId == scenario.TargetId
+            ? AdmissionTarget.Create(
+                scenario.TargetId,
+                scenario.TenantId,
+                scenario.EventId,
+                AdmissionTargetTypeEnum.Event,
+                null,
+                null)
+            : null;
         if (scenario.TargetStopped)
         {
             target?.Stop();
         }
-        return AdmissionContractRuntime.WrapAsync(returnType, target);
+        return Task.FromResult(target);
     }
 
-    private object? UpdateCapability(Type returnType, object request)
+    public Task<AdmissionScannerCapability> UpdateAsync(
+        AdmissionScannerCapability capability,
+        CancellationToken cancellationToken)
     {
-        AdmissionScannerCapability capability = request as AdmissionScannerCapability
-            ?? throw AdmissionContractRuntime.Missing("AdmissionScannerCapability entity update");
+        Observe(cancellationToken);
         scenario.ScannerCapabilities[capability.Id] = capability;
-        return AdmissionContractRuntime.WrapAsync(returnType, capability);
+        return Task.FromResult(capability);
     }
 
-    private static object Payload(Type returnType, string expectedName, params (string Name, object? Value)[] values)
+    public Task<IReadOnlyList<AdmissionScannerCapability>> ListAsync(
+        Guid tenantId,
+        Guid eventId,
+        CancellationToken cancellationToken) => throw new NotSupportedException();
+
+    public Task<AdmissionScannerCapability?> FindByDigestCandidatesAsync(
+        IReadOnlyList<AdmissionScannerCapabilityDigestCandidate> candidates,
+        CancellationToken cancellationToken) => throw new NotSupportedException();
+
+    public Task<AdmissionScannerCapabilityDigestCandidates> DigestCandidatesAsync(
+        AdmissionScannerCapabilityDigestCandidatesRequest request,
+        CancellationToken cancellationToken) => throw new NotSupportedException();
+
+    public void RecordOperation(
+        AdmissionCheckInAction action,
+        AdmissionCheckInAuthorityKind authorityKind,
+        AdmissionTargetTypeEnum? targetType,
+        AdmissionCheckInTelemetryOutcome outcome,
+        double durationMilliseconds) => scenario.TelemetryCalls.Add(nameof(RecordOperation));
+
+    public void RecordBatch(
+        AdmissionCheckInAuthorityKind authorityKind,
+        AdmissionTargetTypeEnum? targetType,
+        int batchSize) => scenario.TelemetryCalls.Add(nameof(RecordBatch));
+
+    public void RecordSaturation(
+        AdmissionCheckInSaturationKind kind,
+        AdmissionCheckInTelemetryOutcome outcome) => scenario.TelemetryCalls.Add(nameof(RecordSaturation));
+
+    public void RecordBacklog(
+        AdmissionCheckInBacklogKind kind,
+        AdmissionTargetTypeEnum? targetType,
+        long depth) => scenario.TelemetryCalls.Add(nameof(RecordBacklog));
+
+    private void Observe(CancellationToken cancellationToken)
     {
-        Type payload = AdmissionContractRuntime.AsyncPayload(returnType)
-            ?? throw AdmissionContractRuntime.Missing($"{expectedName} return");
-        if (payload.Name != expectedName)
-            throw AdmissionContractRuntime.Missing($"exact {expectedName} return");
-        return AdmissionContractRuntime.Create(payload, values);
+        scenario.ObservedCancellationToken = cancellationToken;
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
-    private static T? OptionalValue<T>(object owner, string propertyName)
-        where T : struct
+    private static void EnsureNoPlaintextProperty(AdmissionScannerCapability capability)
     {
-        PropertyInfo property = owner.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)
-            ?? throw AdmissionContractRuntime.Missing($"exact property {owner.GetType().Name}.{propertyName}");
-        object? value = property.GetValue(owner);
-        return value is null ? null : (T)value;
-    }
-
-    private static T? OptionalReference<T>(object owner, string propertyName)
-        where T : class
-    {
-        PropertyInfo property = owner.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)
-            ?? throw AdmissionContractRuntime.Missing($"exact property {owner.GetType().Name}.{propertyName}");
-        return (T?)property.GetValue(owner);
-    }
-
-    private static void EnsureNoPlaintextProperty(object request)
-    {
-        if (request.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public).Any(property =>
+        if (capability.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public).Any(property =>
                 property.Name.Contains("Plaintext", StringComparison.OrdinalIgnoreCase) ||
                 property.Name.Equals("Capability", StringComparison.OrdinalIgnoreCase)))
         {
-            throw AdmissionContractRuntime.Missing("digest-only scanner capability persistence");
+            throw new InvalidOperationException("Scanner capability persistence must remain digest-only.");
         }
     }
 }

@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Models;
+using Explore.Blazor.Client.Pages.Admin.CustomProperties.Components;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -29,14 +30,8 @@ public class CustomPropertyGovernanceTests : IDisposable
 
     public void Dispose() => _ctx.Dispose();
 
-    private IRenderedComponent<DynamicComponent> Render(string typeName)
-    {
-        var type = typeof(Explore.Blazor.Client.Services.CustomPropertyAdminService).Assembly
-            .GetType($"Explore.Blazor.Client.Pages.Admin.CustomProperties.Components.{typeName}")
-            ?? throw new InvalidOperationException($"Component {typeName} not found");
-
-        return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, type));
-    }
+    private IRenderedComponent<TComponent> Render<TComponent>() where TComponent : IComponent =>
+        _ctx.RenderMudComponent<TComponent>();
 
     private static CustomPropertyDefinitionListDto SampleDefinition(string key = "venue_capacity") => new()
     {
@@ -69,7 +64,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetDefinitionsAsync(Arg.Any<EntityTypeName>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(pending.Task);
 
-        var cut = Render("ExposureGovernanceSection");
+        var cut = Render<ExposureGovernanceSection>();
 
         await Assert.That(cut.Markup).Contains("Loading definitions");
 
@@ -89,7 +84,7 @@ public class CustomPropertyGovernanceTests : IDisposable
                 TotalCount = 1
             });
 
-        var cut = Render("ExposureGovernanceSection");
+        var cut = Render<ExposureGovernanceSection>();
         cut.WaitForState(() => cut.Markup.Contains("Venue Capacity"), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).Contains("Venue Capacity");
@@ -102,7 +97,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetDefinitionsAsync(Arg.Any<EntityTypeName>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("network down"));
 
-        var cut = Render("ExposureGovernanceSection");
+        var cut = Render<ExposureGovernanceSection>();
         cut.WaitForState(() => cut.Markup.Contains("Failed to load definitions", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).Contains("Failed to load definitions: network down");
@@ -117,7 +112,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetGovernanceReportAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<PromotionRecommendation?>(),
             Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(pending.Task);
 
-        var cut = Render("GovernanceReportSection");
+        var cut = Render<GovernanceReportSection>();
 
         await Assert.That(cut.Markup).Contains("Generating governance report");
 
@@ -130,7 +125,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetGovernanceReportAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<PromotionRecommendation?>(),
             Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("boom"));
 
-        var cut = Render("GovernanceReportSection");
+        var cut = Render<GovernanceReportSection>();
         cut.WaitForState(() => cut.Markup.Contains("Failed to load", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).Contains("boom");
@@ -169,7 +164,7 @@ public class CustomPropertyGovernanceTests : IDisposable
                 TotalCount = 1
             });
 
-        var cut = Render("GovernanceReportSection");
+        var cut = Render<GovernanceReportSection>();
         cut.WaitForState(() => cut.Markup.Contains("Venue Capacity"), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).Contains("venue_capacity");
@@ -206,7 +201,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
-        var cut = Render("ProjectionStatusSection");
+        var cut = Render<ProjectionStatusSection>();
         cut.WaitForState(() => cut.Markup.Contains("Event Projection") && cut.Markup.Contains("Session Projection"),
             TimeSpan.FromSeconds(3));
 
@@ -235,7 +230,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
-        var cut = Render("ProjectionStatusSection");
+        var cut = Render<ProjectionStatusSection>();
         cut.WaitForState(() => cut.Markup.Contains("Last error:", StringComparison.OrdinalIgnoreCase),
             TimeSpan.FromSeconds(3));
 
@@ -272,7 +267,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
-        var cut = Render("ProjectionStatusSection");
+        var cut = Render<ProjectionStatusSection>();
         cut.WaitForState(() => cut.Markup.Contains("Event Projection") && cut.Markup.Contains("Session Projection"),
             TimeSpan.FromSeconds(3));
 
@@ -308,7 +303,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
-        var cut = Render("ProjectionStatusSection");
+        var cut = Render<ProjectionStatusSection>();
         cut.WaitForState(() => cut.Markup.Contains("Drain dirty scopes"), TimeSpan.FromSeconds(3));
 
         await Assert.That(cut.Markup).Contains("Drain dirty scopes");
@@ -335,7 +330,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
-        var cut = Render("ProjectionStatusSection");
+        var cut = Render<ProjectionStatusSection>();
         cut.WaitForState(() => cut.Markup.Contains("Event Projection"), TimeSpan.FromSeconds(3));
 
         await _adminService.Received().GetDirtyScopesAsync(_tenantId, projectionName, 1, 100, Arg.Any<CancellationToken>());
@@ -366,7 +361,7 @@ public class CustomPropertyGovernanceTests : IDisposable
                 Id = new DrainDirtyScopesResponseDto { DrainedCount = 3 }
             });
 
-        var cut = Render("ProjectionStatusSection");
+        var cut = Render<ProjectionStatusSection>();
         cut.WaitForState(() => cut.Markup.Contains("Drain dirty scopes"), TimeSpan.FromSeconds(3));
 
         cut.FindAll("button").First(button => button.TextContent.Contains("Drain dirty scopes", StringComparison.OrdinalIgnoreCase)).Click();
@@ -384,7 +379,7 @@ public class CustomPropertyGovernanceTests : IDisposable
         _adminService.GetDirtyScopesAsync(Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(PaginatedResult<HalResourceOfProjectionDirtyScopeDto>.Empty());
 
-        var cut = Render("ProjectionStatusSection");
+        var cut = Render<ProjectionStatusSection>();
         cut.WaitForState(() => cut.Markup.Contains("status unavailable", StringComparison.OrdinalIgnoreCase),
             TimeSpan.FromSeconds(3));
 

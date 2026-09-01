@@ -14,6 +14,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
 using Explore.Application.Features.Authentication.Atproto.Requests.Queries;
+using Explore.Domain.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -84,10 +85,14 @@ public sealed class AtprotoSessionController(
         {
             return ProblemResponse(StatusCodes.Status401Unauthorized, "ATProto bootstrap binding mismatch");
         }
+        if (!AtprotoDid.TryParse(request.ExpectedDid, out AtprotoDid expectedDid))
+        {
+            return ProblemResponse(StatusCodes.Status400BadRequest, "Invalid ATProto session request");
+        }
 
         var sessionPayload = JsonSerializer.SerializeToUtf8Bytes(request.OAuthSession);
         var result = await mediator.Send(new BootstrapAtprotoSessionCommand(
-            request.ExpectedDid,
+            expectedDid,
             request.ExpectedPdsUri,
             request.OAuthClientKeyId,
             classification,
@@ -156,7 +161,7 @@ public sealed class AtprotoSessionController(
 
         using var document = JsonDocument.Parse(session.OAuthSessionPayload);
         return Ok(new AtprotoCurrentSessionBridgeResponse(
-            session.Did,
+            session.Did.Value,
             session.ExpectedPdsUri.AbsoluteUri,
             session.OAuthClientKeyId,
             document.RootElement.Clone()));
@@ -182,7 +187,7 @@ public sealed class AtprotoSessionController(
             new RefreshAtprotoSessionCommand(identity),
             cancellationToken).ConfigureAwait(false);
         return result.Success && result.Token is { } token && result.ExpiresAt is { } expiresAt
-            ? Ok(new BffAtprotoSessionRefreshResponse(identity.UserId, identity.Did, token, expiresAt))
+            ? Ok(new BffAtprotoSessionRefreshResponse(identity.UserId, identity.Did.Value, token, expiresAt))
             : ProblemResponse(StatusCodes.Status401Unauthorized, "ATProto reauthentication required");
     }
 
@@ -210,7 +215,7 @@ public sealed class AtprotoSessionController(
     private AtprotoCurrentSessionIdentity? GetCurrentIdentity()
     {
         return Guid.TryParse(User.FindFirstValue(JwtRegisteredClaimNames.Sub), out var userId)
-               && User.FindFirstValue(AtprotoJwtOptions.DidClaim) is { } did
+               && AtprotoDid.TryParse(User.FindFirstValue(AtprotoJwtOptions.DidClaim), out AtprotoDid did)
             ? new AtprotoCurrentSessionIdentity(tenantContext.TenantId, userId, did)
             : null;
     }

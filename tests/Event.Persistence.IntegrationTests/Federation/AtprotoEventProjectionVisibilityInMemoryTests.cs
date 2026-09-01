@@ -326,10 +326,10 @@ public sealed class AtprotoEventProjectionVisibilityInMemoryTests
             UpdatedAt = DateTime.UtcNow
         };
         Actor identityOwner = identityActor ?? eventActor;
-        var identity = new AtprotoIdentity
+        var identity = new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse(identityDid ?? recordDid))
         {
             Id = Guid.CreateVersion7(),
-            Did = identityDid ?? recordDid,
+
             ActorId = identityOwner.Id,
             Actor = identityOwner,
             PdsHost = "https://pds.example.test",
@@ -461,10 +461,10 @@ public sealed class AtprotoEventProjectionVisibilityInMemoryTests
         if (hasInboundEvidence)
         {
             context.AddRange(
-                new AtprotoIdentity
+                new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse(record.Did))
                 {
                     Id = Guid.CreateVersion7(),
-                    Did = record.Did,
+
                     ActorId = actor.Id,
                     Actor = actor,
                     PdsHost = "https://pds.example.test",

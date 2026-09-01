@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Contracts.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.Federation;
+using Explore.Blazor.Client.Pages.Admin.Instance.Components;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -494,7 +495,7 @@ public class InstanceGovernanceSectionTests : IDisposable
         await Assert.That(alert.TextContent).DoesNotContain("AT Protocol authentication", StringComparison.OrdinalIgnoreCase);
     }
 
-    private IRenderedComponent<DynamicComponent> RenderGovernanceSection(
+    private IRenderedComponent<InstanceGovernanceSection> RenderGovernanceSection(
         TenantDelegationSettingsDto? delegation = null,
         EventPolicyDto? eventPolicy = null,
         OrganizationPolicyDto? orgPolicy = null,
@@ -504,25 +505,18 @@ public class InstanceGovernanceSectionTests : IDisposable
         Func<EventPolicyDto, Task<BaseCommandResponseOfGuid>>? saveEventPolicyAsync = null,
         Func<RenderPolicySettingsDto, Task<BaseCommandResponseOfGuid>>? saveRenderPolicyAsync = null)
     {
-        var componentType = typeof(IInstanceOnboardingService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Instance.Components.InstanceGovernanceSection")
-                            ?? throw new InvalidOperationException("InstanceGovernanceSection component type not found");
-
-        return _ctx.RenderMudComponent<DynamicComponent>(p =>
-             p.Add(x => x.Type, componentType)
-             .Add(x => x.Parameters, new Dictionary<string, object>
-             {
-                 ["Delegation"] = delegation ?? new TenantDelegationSettingsDto(),
-                 ["EventPolicy"] = eventPolicy ?? new EventPolicyDto(),
-                 ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyDto(),
-                 ["RenderPolicy"] = renderPolicy ?? new RenderPolicySettingsDto(),
-                 ["DeploymentMode"] = deploymentMode,
-                 ["DisplayMode"] = displayMode,
-                 ["SaveDelegationAsync"] = SuccessfulSave<TenantDelegationSettingsDto>(),
-                 ["SaveEventPolicyAsync"] = saveEventPolicyAsync ?? SuccessfulSave<EventPolicyDto>(),
-                 ["SaveOrganizationPolicyAsync"] = SuccessfulSave<OrganizationPolicyDto>(),
-                 ["SaveRenderPolicyAsync"] = saveRenderPolicyAsync ?? SuccessfulSave<RenderPolicySettingsDto>(),
-                 ["SaveMcpAsync"] = SuccessfulSave<McpGovernanceSettingsDto>()
-             }));
+        return _ctx.RenderMudComponent<InstanceGovernanceSection>(p => p
+            .Add(x => x.Delegation, delegation ?? new TenantDelegationSettingsDto())
+            .Add(x => x.EventPolicy, eventPolicy ?? new EventPolicyDto())
+            .Add(x => x.OrganizationPolicy, orgPolicy ?? new OrganizationPolicyDto())
+            .Add(x => x.RenderPolicy, renderPolicy ?? new RenderPolicySettingsDto())
+            .Add(x => x.DeploymentMode, deploymentMode)
+            .Add(x => x.DisplayMode, displayMode)
+            .Add(x => x.SaveDelegationAsync, SuccessfulSave<TenantDelegationSettingsDto>())
+            .Add(x => x.SaveEventPolicyAsync, saveEventPolicyAsync ?? SuccessfulSave<EventPolicyDto>())
+            .Add(x => x.SaveOrganizationPolicyAsync, SuccessfulSave<OrganizationPolicyDto>())
+            .Add(x => x.SaveRenderPolicyAsync, saveRenderPolicyAsync ?? SuccessfulSave<RenderPolicySettingsDto>())
+            .Add(x => x.SaveMcpAsync, SuccessfulSave<McpGovernanceSettingsDto>()));
     }
 
     private static Func<T, Task<BaseCommandResponseOfGuid>> SuccessfulSave<T>() =>

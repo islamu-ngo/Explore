@@ -162,10 +162,10 @@ public sealed class AtprotoEventProjectionDiscoveryDeduplicationTests(PostgreSql
                 SourceVersion = 1,
                 EvaluatedAt = now
             },
-            new AtprotoIdentity
+            new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse(record.Did))
             {
                 Id = Guid.CreateVersion7(),
-                Did = record.Did,
+
                 ActorId = actorId,
                 Actor = actor,
                 PdsHost = "https://pds.example.test",

@@ -91,12 +91,12 @@ internal static class BenchmarkApiSeedData
             CreatedAt = SeedTimestamp,
             Pii = new ActorPii { DisplayName = "Benchmark API Organizer" }
         };
-        var identity = new AtprotoIdentity
+        var identity = new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:benchmark-api-organizer"))
         {
             Id = Guid.CreateVersion7(),
             ActorId = actor.Id,
             Actor = actor,
-            Did = "did:plc:benchmark-api-organizer",
+
             Handle = "benchmark-api-organizer",
             PdsHost = "https://pds.benchmark.example.test",
             IsActive = true,

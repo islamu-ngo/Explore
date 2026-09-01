@@ -13,6 +13,7 @@ using Explore.Application.Features.Actors.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,6 +37,11 @@ public class ActorController : ControllerBase
     private static readonly ApiNotFoundProblemDescriptor ActorNotFoundProblem = new(
         "Actor not found",
         "Actor not found.");
+
+    private static readonly ApiValidationProblemDescriptor ActorDidValidationProblem = new(
+        "route",
+        "Invalid route parameter",
+        "The route parameter is invalid.");
 
     private static readonly ApiValidationProblemDescriptor GlobalModerationValidationProblem = new(
         "globalActorModeration",
@@ -120,7 +126,13 @@ public class ActorController : ControllerBase
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<ActorDto>>> GetByDid(string did, CancellationToken cancellationToken = default)
     {
-        var actor = await _mediator.Send(new GetActorByDidRequest { Did = did }, cancellationToken);
+        if (!AtprotoDid.TryParse(did, out var actorDid))
+        {
+            return this.ToIngressValidationProblem(ActorDidValidationProblem);
+        }
+
+        // GetActorByDidRequest remains scalar until its Application-owned Task 5.5 boundary migration.
+        var actor = await _mediator.Send(new GetActorByDidRequest { Did = actorDid.Value }, cancellationToken);
         if (actor == null)
         {
             return this.ToNotFoundProblem(ActorNotFoundProblem);

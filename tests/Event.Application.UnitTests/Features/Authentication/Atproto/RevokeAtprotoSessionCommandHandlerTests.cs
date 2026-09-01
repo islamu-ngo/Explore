@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
+using Explore.Domain.ValueObjects;
 using FluentValidation;
 using NSubstitute;
 
@@ -15,7 +16,7 @@ public sealed class RevokeAtprotoSessionCommandHandlerTests
     private static readonly AtprotoCurrentSessionIdentity Identity = new(
         Guid.Parse("018e4e5c-7f00-7000-8000-000000000001"),
         Guid.Parse("018e4e5c-7f00-7000-8000-000000000002"),
-        "did:plc:revoke-session");
+        AtprotoDid.Parse("did:plc:revoke-session"));
 
     [Test]
     [Arguments(AtprotoSessionRevocationOutcome.Revoked)]

@@ -1,6 +1,7 @@
 // ABOUTME: bUnit tests for provider-neutral instance and tenant storage settings sections.
 // ABOUTME: Verifies HAL-gated actions and locked tenant storage states in admin UI components.
 
+using Explore.Blazor.Client.Pages.Admin.Instance.Components;
 using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 using MudBlazor;
 using InstanceStorageRouteDto = Explore.Blazor.Client.Clients.Routes;
@@ -47,12 +48,7 @@ public sealed class StorageSettingsSectionTests : IDisposable
         };
 
         // Act
-        var cut = RenderComponent("InstanceStorageSection", new Dictionary<string, object>
-        {
-            ["Model"] = model,
-            ["OnboardingService"] = onboardingService,
-            ["IsSingleTenant"] = true
-        });
+        var cut = RenderInstanceStorage(model, onboardingService);
 
         // Assert
         await Assert.That(cut.Markup).Contains("Test Provider", StringComparison.OrdinalIgnoreCase);
@@ -79,11 +75,7 @@ public sealed class StorageSettingsSectionTests : IDisposable
         };
 
         // Act
-        var cut = RenderComponent("InstanceStorageSection", new Dictionary<string, object>
-        {
-            ["Model"] = model,
-            ["IsSingleTenant"] = true
-        });
+        var cut = RenderInstanceStorage(model);
 
         // Assert
         await Assert.That(cut.Markup).Contains("Hybrid storage routes", StringComparison.OrdinalIgnoreCase);
@@ -102,11 +94,7 @@ public sealed class StorageSettingsSectionTests : IDisposable
         };
 
         // Act
-        var cut = RenderComponent("InstanceStorageSection", new Dictionary<string, object>
-        {
-            ["Model"] = model,
-            ["IsSingleTenant"] = true
-        });
+        var cut = RenderInstanceStorage(model);
 
         // Assert
         await Assert.That(cut.Markup).Contains("read-only", StringComparison.OrdinalIgnoreCase);
@@ -127,10 +115,7 @@ public sealed class StorageSettingsSectionTests : IDisposable
         };
 
         // Act
-        var cut = RenderComponent("TenantStorageSection", new Dictionary<string, object>
-        {
-            ["Model"] = model
-        });
+        var cut = RenderTenantStorage(model);
 
         // Assert
         await Assert.That(cut.Markup).Contains("read-only", StringComparison.OrdinalIgnoreCase);
@@ -161,10 +146,7 @@ public sealed class StorageSettingsSectionTests : IDisposable
         };
 
         // Act
-        var cut = RenderComponent("TenantStorageSection", new Dictionary<string, object>
-        {
-            ["Model"] = model
-        });
+        var cut = RenderTenantStorage(model);
 
         // Assert
         await Assert.That(cut.Markup).Contains("Tenant Storage Provider", StringComparison.OrdinalIgnoreCase);
@@ -264,10 +246,7 @@ public sealed class StorageSettingsSectionTests : IDisposable
         };
 
         // Act
-        var cut = RenderComponent("TenantStorageSection", new Dictionary<string, object>
-        {
-            ["Model"] = model
-        });
+        var cut = RenderTenantStorage(model);
 
         // Assert
         await Assert.That(cut.Markup).Contains("Hybrid storage routes", StringComparison.OrdinalIgnoreCase);
@@ -300,29 +279,30 @@ public sealed class StorageSettingsSectionTests : IDisposable
             .IsEqualTo(64L * 1024 * 1024);
     }
 
-    private IRenderedComponent<DynamicComponent> RenderComponent(string componentName, IDictionary<string, object> parameters)
-    {
-        return _ctx.RenderMudComponent<DynamicComponent>(builder =>
-            builder.Add(component => component.Type, GetComponentType(componentName))
-                   .Add(component => component.Parameters, parameters));
-    }
+    private IRenderedComponent<InstanceStorageSection> RenderInstanceStorage(
+        HalResourceOfInstanceStorageSettingsDto model,
+        IInstanceOnboardingService? onboardingService = null) =>
+        _ctx.RenderMudComponent<InstanceStorageSection>(builder => builder
+            .Add(component => component.Model, model)
+            .Add(component => component.OnboardingService, onboardingService)
+            .Add(component => component.IsSingleTenant, true));
 
-    private IRenderedComponent<DynamicComponent> RenderTenantStorage(HalResourceOfTenantStorageSettingsDto model) =>
-        RenderComponent("TenantStorageSection", new Dictionary<string, object> { ["Model"] = model });
+    private IRenderedComponent<TenantStorageSection> RenderTenantStorage(HalResourceOfTenantStorageSettingsDto model) =>
+        _ctx.RenderMudComponent<TenantStorageSection>(builder => builder.Add(component => component.Model, model));
 
     private static IRenderedComponent<MudSelect<string>> Select(
-        IRenderedComponent<DynamicComponent> cut,
+        IRenderedComponent<TenantStorageSection> cut,
         string label) => cut.FindComponents<MudSelect<string>>().Single(item => item.Instance.Label == label);
 
     private static IRenderedComponent<MudNumericField<long>> NumericLong(
-        IRenderedComponent<DynamicComponent> cut,
+        IRenderedComponent<TenantStorageSection> cut,
         string label) => cut.FindComponents<MudNumericField<long>>().Single(item => item.Instance.Label == label);
 
     private static IRenderedComponent<MudTextField<string>> TextField(
-        IRenderedComponent<DynamicComponent> cut,
+        IRenderedComponent<TenantStorageSection> cut,
         string label) => cut.FindComponents<MudTextField<string>>().Single(item => item.Instance.Label == label);
 
-    private static IRenderedComponent<MudSwitch<bool>> ForcePathSwitch(IRenderedComponent<DynamicComponent> cut) =>
+    private static IRenderedComponent<MudSwitch<bool>> ForcePathSwitch(IRenderedComponent<TenantStorageSection> cut) =>
         cut.FindComponents<MudSwitch<bool>>().Single(item =>
             item.Markup.Contains("Force path-style URLs", StringComparison.Ordinal));
 
@@ -350,12 +330,4 @@ public sealed class StorageSettingsSectionTests : IDisposable
             }
         };
 
-    private static Type GetComponentType(string componentName)
-    {
-        var componentType = typeof(IInstanceOnboardingService).Assembly
-            .GetTypes()
-            .FirstOrDefault(type => type.Name == componentName && typeof(IComponent).IsAssignableFrom(type));
-
-        return componentType ?? throw new InvalidOperationException($"Could not find component type '{componentName}'.");
-    }
 }

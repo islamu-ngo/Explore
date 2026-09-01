@@ -1,6 +1,11 @@
+@* ABOUTME: Provides authenticated tenant context from framework auth state and the server-confirmed shell context. *@
+@* ABOUTME: Avoids treating browser-visible claims as authoritative tenant identity. *@
+
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Models
-@inject IAuthStateService AuthStateService
+@using Explore.Blazor.Client.Contracts.Services.Shell
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IUiShellContextService ShellContextService
 @inject IUserService UserService
 @inject ILogger<TenantContextProvider> Logger
 
@@ -18,18 +23,17 @@
     {
         try
         {
-            // Check if user is authenticated before loading tenant context
-            var isAuthenticated = await AuthStateService.IsAuthenticatedAsync();
+            AuthenticationState authenticationState =
+                await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            bool isAuthenticated =
+                authenticationState.User.Identity?.IsAuthenticated == true;
 
             if (isAuthenticated)
             {
-                // Load tenant ID and user ID from auth context
-                _tenantContext.TenantId = await AuthStateService.GetCurrentTenantIdAsync();
-                _tenantContext.UserId = await AuthStateService.GetCurrentUserIdAsync();
-                _tenantContext.IsAuthenticated = true;
-
-                Logger.LogInformation("Tenant context initialized: TenantId={TenantId}, UserId={UserId}",
-                    _tenantContext.TenantId, _tenantContext.UserId);
+                UiShellContextDto? shellContext =
+                    await ShellContextService.GetCachedContextAsync();
+                _tenantContext.TenantId = shellContext?.TenantId;
+                _tenantContext.IsAuthenticated = shellContext is not null;
 
                 if (_tenantContext.TenantId.HasValue && _tenantContext.TenantId.Value != Guid.Empty)
                 {
@@ -42,12 +46,6 @@
                 _tenantContext.IsAuthenticated = false;
                 Logger.LogDebug("User is not authenticated - tenant context not loaded");
             }
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            // Expected for non-authenticated users
-            Logger.LogDebug(ex, "User is not authenticated");
-            _tenantContext.IsAuthenticated = false;
         }
         catch (Exception ex)
         {

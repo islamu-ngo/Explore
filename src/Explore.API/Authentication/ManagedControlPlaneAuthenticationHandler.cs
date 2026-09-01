@@ -3,6 +3,7 @@
 
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Explore.Application.Constants;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Management;
 using Explore.Application.Services;
@@ -58,19 +59,19 @@ public sealed class ManagedControlPlaneAuthenticationHandler(
         };
         var identity = new ClaimsIdentity(
             claims,
-            ManagedControlPlaneAuthenticationDefaults.Scheme,
+            ApiAuthenticationSchemeNames.ManagedControlPlane,
             ClaimTypes.Name,
             ClaimTypes.Role);
         var principal = new ClaimsPrincipal(identity);
         return AuthenticateResult.Success(new AuthenticationTicket(
             principal,
-            ManagedControlPlaneAuthenticationDefaults.Scheme));
+            ApiAuthenticationSchemeNames.ManagedControlPlane));
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
         Response.StatusCode = StatusCodes.Status401Unauthorized;
-        Response.Headers.WWWAuthenticate = ManagedControlPlaneAuthenticationDefaults.Scheme;
+        Response.Headers.WWWAuthenticate = ApiAuthenticationSchemeNames.ManagedControlPlane;
         return Task.CompletedTask;
     }
 }

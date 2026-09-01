@@ -9,6 +9,7 @@ using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
+using Event.Web.BffHosting.Security;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -520,7 +521,7 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
     {
         var session = new StorageUploadSession(
             uploadSessionId,
-            _userId.ToString(),
+            OwnerKey(_userId),
             _apiHandler.ApiUploadSessionId,
             "image/png",
             4,
@@ -574,7 +575,13 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
             new Claim("sub", actorUserId.ToString("D")),
             new Claim(ClaimTypes.NameIdentifier, actorUserId.ToString("D"))
         ],
-        "Test"));
+        "Cookies"));
+
+    private static string OwnerKey(Guid actorUserId)
+    {
+        CreatePrincipal(actorUserId).TryGetCircuitSubject(out var identity);
+        return identity.PartitionKey;
+    }
 
     private static IEventApiClient CreateApiClient(StorageApiHandler apiHandler)
     {

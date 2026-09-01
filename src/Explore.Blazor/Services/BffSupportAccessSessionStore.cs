@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Caching.Distributed;
 
@@ -207,13 +208,11 @@ public sealed class BffSupportAccessSessionStore(
 
     private static string? ResolveUserId(ClaimsPrincipal? user)
     {
-        return user?.FindFirstValue("sub")
-            ?? user?.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user?.FindFirstValue("sid");
+        return user.TryGetCircuitSubject(out var subject) ? subject.PartitionKey : null;
     }
 
     private static string? ResolveSessionId(ClaimsPrincipal? user) =>
-        user?.FindFirstValue("sid");
+        user.TryGetSessionId(out var sessionId) ? sessionId.PartitionKey : null;
 
     private static string BuildCacheKey(SupportAccessOwner owner)
     {

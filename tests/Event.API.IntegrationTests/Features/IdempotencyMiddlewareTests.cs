@@ -6,8 +6,11 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Authentication;
 using Explore.API.Attributes;
 using Explore.API.Middleware;
+using Explore.Application.Authentication;
+using Explore.Application.Constants;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
@@ -339,6 +342,84 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
     }
 
     [Test]
+    public async Task Identity_UsesCanonicalGuidPriorityAndSkipsMalformedClaims()
+    {
+        Guid subject = Guid.CreateVersion7();
+        Guid nameIdentifier = Guid.CreateVersion7();
+        Guid session = Guid.CreateVersion7();
+        Guid internalUser = Guid.CreateVersion7();
+        var principal = Principal("interactive",
+            new Claim("sub", subject.ToString("D")),
+            new Claim(ClaimTypes.NameIdentifier, nameIdentifier.ToString("D")),
+            new Claim("sid", session.ToString("D")),
+            new Claim(PlatformIdentityClaimTypes.InternalUserId, internalUser.ToString("D")));
+
+        IdempotencyRequestIdentity conflict = await IdentityAsync(principal);
+        IdempotencyRequestIdentity malformed = await IdentityAsync(Principal("interactive",
+            new Claim("sub", "not-a-guid"),
+            new Claim(ClaimTypes.NameIdentifier, nameIdentifier.ToString("D")),
+            new Claim("sid", session.ToString("D"))));
+
+        await Assert.That(conflict.UserId).IsEqualTo(subject.ToString("D"));
+        await Assert.That(malformed.UserId).IsEqualTo(nameIdentifier.ToString("D"));
+    }
+
+    [Test]
+    public async Task Identity_KeepsAuthenticationSchemesAndOpaqueSubjectsInDistinctPartitions()
+    {
+        Guid sharedId = Guid.CreateVersion7();
+        IdempotencyRequestIdentity firstScheme = await IdentityAsync(Principal("interactive-a",
+            new Claim("sub", sharedId.ToString("D"))));
+        IdempotencyRequestIdentity secondScheme = await IdentityAsync(Principal("interactive-b",
+            new Claim("sub", sharedId.ToString("D"))));
+        IdempotencyRequestIdentity firstProvider = await IdentityAsync(Principal("provider",
+            new Claim("sub", "opaque-provider-one")));
+        IdempotencyRequestIdentity secondProvider = await IdentityAsync(Principal("provider",
+            new Claim("sub", "opaque-provider-two")));
+
+        await Assert.That(firstScheme.PrincipalFingerprint).IsNotEqualTo(secondScheme.PrincipalFingerprint);
+        await Assert.That(firstProvider.UserId).IsNull();
+        await Assert.That(secondProvider.UserId).IsNull();
+        await Assert.That(firstProvider.PrincipalFingerprint).IsNotEqualTo(secondProvider.PrincipalFingerprint);
+    }
+
+    [Test]
+    public async Task Identity_DoesNotPromotePurposeBoundOrMixedPrincipalsToPlatformIdentity()
+    {
+        Guid smuggledUser = Guid.CreateVersion7();
+        IdempotencyRequestIdentity apiKey = await IdentityAsync(Principal(
+            ApiAuthenticationSchemeNames.ApiKey,
+            new Claim("sub", smuggledUser.ToString("D")),
+            new Claim(ApiAuthenticationClaimTypes.ApiKeyId, "key-one")));
+        var mixed = new ClaimsPrincipal([
+            new ClaimsIdentity([new Claim("sub", smuggledUser.ToString("D"))], "interactive"),
+            new ClaimsIdentity([new Claim("sub", Guid.CreateVersion7().ToString("D"))], "other")
+        ]);
+        IdempotencyRequestIdentity mixedIdentity = await IdentityAsync(mixed);
+
+        await Assert.That(apiKey.UserId).IsNull();
+        await Assert.That(mixedIdentity.UserId).IsNull();
+        await Assert.That(apiKey.PrincipalFingerprint).IsNotEqualTo(mixedIdentity.PrincipalFingerprint);
+    }
+
+    [Test]
+    public async Task Identity_IgnoresSubjectFromUnauthenticatedIdentity()
+    {
+        var smuggled = new ClaimsPrincipal([
+            new ClaimsIdentity(authenticationType: "provider"),
+            new ClaimsIdentity([new Claim("sub", "smuggled-private-provider-subject")])
+        ]);
+        var clean = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "provider"));
+
+        IdempotencyRequestIdentity smuggledIdentity = await IdentityAsync(smuggled);
+        IdempotencyRequestIdentity cleanIdentity = await IdentityAsync(clean);
+
+        await Assert.That(smuggledIdentity.UserId).IsNull();
+        await Assert.That(smuggledIdentity.PrincipalFingerprint)
+            .IsEqualTo(cleanIdentity.PrincipalFingerprint);
+    }
+
+    [Test]
     public async Task Middleware_WhenSameKeyHasDifferentPrincipal_ReturnsConflict()
     {
         var repository = new InMemoryIdempotencyRepository();
@@ -599,6 +680,21 @@ public class IdempotencyMiddlewareRealRuntimeTests(RealRuntimeApiFixture fixture
             : new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim("sub", userId)],
                 authenticationType: "Test"));
+    }
+
+    private static ClaimsPrincipal Principal(string scheme, params Claim[] claims) =>
+        new(new ClaimsIdentity(claims, scheme));
+
+    private static async Task<IdempotencyRequestIdentity> IdentityAsync(ClaimsPrincipal principal)
+    {
+        var context = new DefaultHttpContext { User = principal };
+        context.Request.Method = HttpMethods.Post;
+        context.Request.ContentType = "application/json";
+        context.Request.Body = new MemoryStream("{}"u8.ToArray());
+        return await IdempotencyRequestIdentityFactory.CreateAsync(
+            context,
+            new RecyclableMemoryStreamManager(),
+            CancellationToken.None);
     }
 
     private sealed record MiddlewareResult(

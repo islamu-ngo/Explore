@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using Bunit.TestDoubles;
-using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Pages.Auth;
 using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.Client.Tests.Common;
 using Microsoft.AspNetCore.Components;
@@ -39,15 +39,6 @@ public class AuthRedirectPagesTests : IDisposable
         _ctx.Dispose();
     }
 
-    private static Type GetPageComponentType(string componentName)
-    {
-        var componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .FirstOrDefault(t => t.Name == componentName && typeof(IComponent).IsAssignableFrom(t));
-
-        return componentType ?? throw new InvalidOperationException($"Could not find component type '{componentName}'.");
-    }
-
     [Test]
     public async Task LoginRedirect_NavigatesToAuthChallenge_WhenNoQueryString()
     {
@@ -56,8 +47,7 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/login");
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         // Assert
         await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "keycloak", "/"));
@@ -73,8 +63,7 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/login?returnUrl=%2Fsettings%2Fadmin");
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         // Assert
         await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "keycloak", "/settings/admin"));
@@ -91,8 +80,7 @@ public class AuthRedirectPagesTests : IDisposable
         var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo($"/login?returnUrl={unsafeReturnUrl}");
 
-        _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        _ctx.Render<LoginRedirect>();
 
         await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "keycloak", "/"));
         await AssertChallengeNavigationAsync(nav.Uri, "keycloak", "/");
@@ -117,8 +105,7 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/login?returnUrl=%2Fevents");
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         // Assert
         await Assert.That(nav.Uri).EndsWith("/login?returnUrl=%2Fevents");
@@ -148,8 +135,7 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/login?provider=google&returnUrl=%2Fsetup");
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         // Assert
         await WaitForNavigationAsync(nav, uri => IsChallengeNavigation(uri, "google", "/setup"));
@@ -167,8 +153,7 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/login?returnUrl=%2Fsetup&challengeError=1&provider=keycloak");
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         // Assert — page stays on /login, shows error message, does NOT redirect
         await Assert.That(nav.Uri).EndsWith("/login?returnUrl=%2Fsetup&challengeError=1&provider=keycloak");
@@ -182,8 +167,7 @@ public class AuthRedirectPagesTests : IDisposable
         var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?returnUrl=%2Fsetup&challengeError=1&provider=keycloak&errorDetail=secretLen%3D24%7CclientId%3Dislamu-event-blazor");
 
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         await Assert.That(cut.Markup).Contains("The last login attempt failed");
         await Assert.That(cut.Markup).Contains("Continue with Keycloak");
@@ -198,8 +182,7 @@ public class AuthRedirectPagesTests : IDisposable
         var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?challengeError=1&provider=atproto&errorCode=atproto_callback_failed&correlationId=opaque");
 
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         var alert = cut.Find("[role=alert]");
         await Assert.That(alert.TextContent).Contains("ATProto sign-in could not be completed");
@@ -224,8 +207,7 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo($"/login?returnUrl=%2Fdashboard&login_hint={handleCanary}");
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         // Assert
         await Assert.That(cut.Markup).Contains("Continue with ATProto");
@@ -249,8 +231,7 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/login?returnUrl=%2Fdashboard");
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         // Assert
         await Assert.That(nav.Uri).EndsWith("/login?returnUrl=%2Fdashboard");
@@ -275,8 +256,7 @@ public class AuthRedirectPagesTests : IDisposable
         var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?returnUrl=%2Fdashboard");
 
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         // Act
         var atprotoButton = cut.FindAll("button")
@@ -296,8 +276,7 @@ public class AuthRedirectPagesTests : IDisposable
         _ctx.Services.AddSingleton(bffClient);
         var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login");
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         cut.FindAll("button")
             .Single(button => button.TextContent.Contains("Continue with ATProto", StringComparison.Ordinal))
@@ -329,8 +308,7 @@ public class AuthRedirectPagesTests : IDisposable
         });
         var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?returnUrl=%2Fdashboard");
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         cut.FindAll("button")
             .First(button => button.TextContent.Contains("Continue with ATProto", StringComparison.Ordinal))
@@ -364,8 +342,7 @@ public class AuthRedirectPagesTests : IDisposable
         });
         var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login");
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+        var cut = _ctx.Render<LoginRedirect>();
 
         cut.FindAll("button")
             .First(button => button.TextContent.Contains("Continue with ATProto", StringComparison.Ordinal))
@@ -393,8 +370,7 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/logout");
 
         // Act
-        _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LogoutRedirect")));
+        _ctx.Render<LogoutRedirect>();
 
         // Assert
         await Assert.That(nav.Uri).EndsWith("/auth/signout");
@@ -408,8 +384,7 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/logout?returnUrl=%2F");
 
         // Act
-        _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("LogoutRedirect")));
+        _ctx.Render<LogoutRedirect>();
 
         // Assert
         await Assert.That(nav.Uri).EndsWith("/auth/signout?returnUrl=%2F");

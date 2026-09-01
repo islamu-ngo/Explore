@@ -1,6 +1,7 @@
 // ABOUTME: Global exact-DID credential identity associated with one represented Actor.
 // ABOUTME: Owns mutable handle, PDS, signing-key, cache, and credential moderation state.
 
+using System.Diagnostics.CodeAnalysis;
 using Explore.Domain.Enums;
 using Explore.Domain.Interfaces;
 using Explore.Domain.ValueObjects;
@@ -10,7 +11,7 @@ namespace Explore.Domain;
 public class AtprotoIdentity : IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
-    public required string Did { get; set; }
+    public string Did { get; private set; } = null!;
     public Guid ActorId { get; set; }
     public required Actor Actor { get; set; }
     public int? DidCustodyTypeId { get; set; }
@@ -35,6 +36,18 @@ public class AtprotoIdentity : IAuditableEntity, ISoftDeletable, IConcurrencyAwa
     public Guid? DeletedBy { get; set; }
     public Guid ConcurrencyStamp { get; set; }
 
+    private AtprotoIdentity()
+    {
+    }
+
+    [SetsRequiredMembers]
+    public AtprotoIdentity(AtprotoDid did)
+    {
+        Did = did.Value;
+        Actor = null!;
+        PdsHost = string.Empty;
+    }
+
     public void RefreshVerifiedMetadata(AtprotoDid did, string? handle, string pdsHost, string? signingKey, DateTime resolvedAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pdsHost);
@@ -49,6 +62,25 @@ public class AtprotoIdentity : IAuditableEntity, ISoftDeletable, IConcurrencyAwa
         LastResolvedAt = resolvedAt;
         LastSeenAt = resolvedAt;
         IsActive = true;
+    }
+
+    public void EraseForPrivacy(DateTime erasedAt)
+    {
+        if (erasedAt.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("A UTC erasure timestamp is required.", nameof(erasedAt));
+        }
+
+        Did = $"did:deleted:{Id:N}";
+        Handle = null;
+        PdsHost = string.Empty;
+        SigningKey = null;
+        IsActive = false;
+        IsDeleted = true;
+        CreatedBy = null;
+        UpdatedBy = null;
+        DeletedAt = erasedAt;
+        DeletedBy = null;
     }
 
     public void Suspend(string reasonCode, DateTime when, Guid by)

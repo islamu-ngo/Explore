@@ -39,4 +39,10 @@ public class EventSessionTemplate : ITenantEntity, IAuditableEntity, ISoftDeleta
 
     private readonly List<EventSessionTemplateCustomPropertyDefinition> _definitions = [];
     public IReadOnlyCollection<EventSessionTemplateCustomPropertyDefinition> Definitions => _definitions.AsReadOnly();
+
+    internal void ReplaceDefinitions(IEnumerable<EventSessionTemplateCustomPropertyDefinition> definitions)
+    {
+        _definitions.Clear();
+        _definitions.AddRange(definitions);
+    }
 }

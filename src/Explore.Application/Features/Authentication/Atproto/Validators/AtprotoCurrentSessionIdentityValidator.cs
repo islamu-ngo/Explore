@@ -14,8 +14,6 @@ public sealed class AtprotoCurrentSessionIdentityValidator : AbstractValidator<A
         RuleFor(identity => identity.TenantId).NotEmpty();
         RuleFor(identity => identity.UserId).NotEmpty();
         RuleFor(identity => identity.Did)
-            .NotEmpty()
-            .MaximumLength(2048)
-            .Must(did => AtprotoDid.TryParse(did, out _));
+            .NotEqual(default(AtprotoDid));
     }
 }

@@ -383,10 +383,10 @@ public sealed class ActorLifecycleTests
         };
         actor.ExternalActorSubjectId = externalSubject.Id;
         actor.ExternalActorSubject = externalSubject;
-        var identity = new AtprotoIdentity
+        var identity = new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:external-organizer"))
         {
             Id = Guid.CreateVersion7(),
-            Did = "did:plc:external-organizer",
+
             ActorId = actor.Id,
             Actor = actor,
             PdsHost = "https://pds.example",

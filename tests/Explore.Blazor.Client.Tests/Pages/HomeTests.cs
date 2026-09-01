@@ -366,11 +366,6 @@ public class HomeTests : IDisposable
         var userService = Substitute.For<IUserService>();
         _ctx.Services.AddSingleton(userService);
 
-        var authStateService = Substitute.For<IAuthStateService>();
-        authStateService.GetCurrentUserIdAsync().Returns(Guid.NewGuid().ToString());
-        authStateService.IsAuthenticatedAsync().Returns(true);
-        _ctx.Services.AddSingleton(authStateService);
-
         var publicExperienceService = Substitute.For<IPublicExperienceService>();
         publicExperienceService.GetCachedShellAsync().Returns(Task.FromResult(shell));
         _ctx.Services.AddSingleton(publicExperienceService);

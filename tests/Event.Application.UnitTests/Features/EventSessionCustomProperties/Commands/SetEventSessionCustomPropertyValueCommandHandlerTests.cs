@@ -159,15 +159,17 @@ public class SetEventSessionCustomPropertyValueCommandHandlerTests
 
     private static void SetValues(EventSessionCustomPropertyDefinition definition, IEnumerable<EventSessionCustomPropertyValue> values)
     {
-        var field = typeof(EventSessionCustomPropertyDefinition).GetField("_values", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var list = (List<EventSessionCustomPropertyValue>)field.GetValue(definition)!;
-        list.AddRange(values);
+        foreach (EventSessionCustomPropertyValue value in values)
+        {
+            definition.AddValue(value);
+        }
     }
 
     private static void SetOptions(EventSessionCustomPropertyDefinition definition, IEnumerable<EventSessionCustomPropertyOption> options)
     {
-        var field = typeof(EventSessionCustomPropertyDefinition).GetField("_options", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        var list = (List<EventSessionCustomPropertyOption>)field.GetValue(definition)!;
-        list.AddRange(options);
+        foreach (EventSessionCustomPropertyOption option in options)
+        {
+            definition.AddOption(option);
+        }
     }
 }

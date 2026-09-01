@@ -1,17 +1,19 @@
 // ABOUTME: Carries the authenticated tenant/user/DID binding and opaque current OAuth session payload.
 // ABOUTME: Keeps CarpaNet storage types outside Application while supporting the private BFF adapter.
 
+using Explore.Domain.ValueObjects;
+
 namespace Explore.Application.Features.Authentication.Atproto.Models;
 
 public sealed record AtprotoCurrentSessionIdentity(
     Guid TenantId,
     Guid UserId,
-    string Did);
+    AtprotoDid Did);
 
 public sealed record AtprotoCurrentOAuthSession
 {
     public AtprotoCurrentOAuthSession(
-        string Did,
+        AtprotoDid Did,
         Uri ExpectedPdsUri,
         string OAuthClientKeyId,
         ReadOnlyMemory<byte> OAuthSessionPayload)
@@ -22,7 +24,7 @@ public sealed record AtprotoCurrentOAuthSession
         this.OAuthSessionPayload = OAuthSessionPayload.ToArray();
     }
 
-    public string Did { get; }
+    public AtprotoDid Did { get; }
     public Uri ExpectedPdsUri { get; }
     public string OAuthClientKeyId { get; }
     public ReadOnlyMemory<byte> OAuthSessionPayload { get; }

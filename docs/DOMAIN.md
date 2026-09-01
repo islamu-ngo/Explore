@@ -7,6 +7,20 @@ This project stores most entities directly under `Explore.Domain/` (not in an `E
 
 For Domain value semantics, entity-versus-record selection, and the scalar EF persistence boundary, see [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md).
 
+## Live AT Protocol Identity
+
+Live AT Protocol identifiers enter Domain behavior as `AtprotoDid`. The value
+validates generic DID syntax and the protocol length bound once, preserves exact
+ordinal case, and emits its scalar only through `.Value` at persistence, provider,
+or wire boundaries. Method support such as `plc` or `web` belongs to the adapter,
+not the generic value. Diagnostics are redacted and never contain the raw DID.
+
+`AtprotoIdentity` owns its scalar `Did` property through typed construction and
+refresh. Privacy erasure invokes the aggregate transition, which writes the
+internal `did:deleted:*` tombstone, clears handle/PDS/signing metadata, and marks
+the identity inactive and deleted. Tombstones are persisted anti-resurrection
+state and are never parsed or accepted as live DIDs.
+
 ## Legal-Identity Authority
 
 Legal identity is split by responsibility:

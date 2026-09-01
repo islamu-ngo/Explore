@@ -135,6 +135,17 @@ public sealed class EventLocation : ITenantEntity, IAuditableEntity, ISoftDeleta
         return Create(tenantId, eventId, null, true, actorUserId, createdAtUtc);
     }
 
+    internal void AttachLocation(Location location)
+    {
+        ArgumentNullException.ThrowIfNull(location);
+        if (IsToBeAnnounced || LocationId != location.Id || TenantId != location.TenantId)
+        {
+            throw new InvalidOperationException("The physical location must match this EventLocation identity and tenant.");
+        }
+
+        Location = location;
+    }
+
     public EventLocationDisclosureAudit CreateInitialDisclosureAudit()
     {
         if (PolicyVersion != 1 || LastPolicyActorUserId is null || LastPolicyChangedAtUtc is null)

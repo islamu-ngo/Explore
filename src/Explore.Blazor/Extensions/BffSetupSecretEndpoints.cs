@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Text.Json;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -208,9 +209,7 @@ public static class BffSetupSecretEndpoints
 
     private static string? ResolveUserId(HttpContext ctx)
     {
-        return ctx.User.FindFirst("sub")?.Value
-            ?? ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? ctx.User.FindFirst("sid")?.Value;
+        return ctx.User.TryGetSetupSessionIdentity(out var identity) ? identity.PartitionKey : null;
     }
 
     private static bool IsTrustedPersistedSource(SetupSecretSource source) =>

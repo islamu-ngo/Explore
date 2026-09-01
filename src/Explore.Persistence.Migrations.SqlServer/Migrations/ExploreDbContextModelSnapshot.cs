@@ -2961,7 +2961,9 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)")
-                        .HasColumnName("did");
+                        .HasColumnName("did")
+                        .UseCollation("Latin1_General_100_BIN2")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
 
                     b.Property<int?>("DidCustodyTypeId")
                         .HasColumnType("int")

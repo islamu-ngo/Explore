@@ -291,7 +291,7 @@ public sealed class BffSupportAccessEndpointsTests
             new Claim("sub", actorUserId.ToString("D")),
             new Claim(ClaimTypes.NameIdentifier, actorUserId.ToString("D"))
         ],
-        "Test"));
+        "Cookies"));
 
     private static HttpResponseMessage JsonResponse<T>(T payload) => new(HttpStatusCode.OK)
     {

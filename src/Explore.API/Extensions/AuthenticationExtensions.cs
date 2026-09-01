@@ -202,7 +202,7 @@ public static class AuthenticationExtensions
                     }
                 })
             .AddScheme<AuthenticationSchemeOptions, ManagedControlPlaneAuthenticationHandler>(
-                ManagedControlPlaneAuthenticationDefaults.Scheme,
+                ApiAuthenticationSchemeNames.ManagedControlPlane,
                 _ => { })
             .AddScheme<AuthenticationSchemeOptions, SetupSecretAuthenticationHandler>(
                 ApiAuthenticationSchemeNames.SetupSecret,
@@ -217,10 +217,12 @@ public static class AuthenticationExtensions
                 ApiAuthenticationSchemeNames.PrivacyErasureReceipt,
                 _ => { })
             .AddScheme<AuthenticationSchemeOptions, AdmissionScannerAuthenticationHandler>(
-                AdmissionScannerAuthenticationDefaults.Scheme,
+                ApiAuthenticationSchemeNames.AdmissionScanner,
                 _ => { });
 
         services.AddAuthorizationBuilder()
+            .AddPolicy(ApiAuthorizationPolicies.Admin, policy => policy
+                .RequireRole("Admin"))
             .AddPolicy(McpAuthorizationPolicies.Read, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireAssertion(context => ApiKeyCallerHasAnyScopeOrIsUser(
@@ -259,14 +261,14 @@ public static class AuthenticationExtensions
                 .RequireAuthenticatedUser()
                 .RequireClaim(AdminClaimTypes.InstanceAdmin, "true"))
             .AddPolicy(ManagedControlPlaneAuthorizationPolicies.Read, policy => policy
-                .AddAuthenticationSchemes(ManagedControlPlaneAuthenticationDefaults.Scheme)
+                .AddAuthenticationSchemes(ApiAuthenticationSchemeNames.ManagedControlPlane)
                 .RequireAuthenticatedUser()
                 .RequireAssertion(context => context.User
                     .FindAll(ManagedControlPlaneAuthenticationDefaults.ScopeClaim)
                     .Any(claim => claim.Value is ManagedControlPlaneContract.ControlPlaneReadScope
                         or ManagedControlPlaneContract.ControlPlaneWriteScope)))
             .AddPolicy(ManagedControlPlaneAuthorizationPolicies.Write, policy => policy
-                .AddAuthenticationSchemes(ManagedControlPlaneAuthenticationDefaults.Scheme)
+                .AddAuthenticationSchemes(ApiAuthenticationSchemeNames.ManagedControlPlane)
                 .RequireAuthenticatedUser()
                 .RequireClaim(
                     ManagedControlPlaneAuthenticationDefaults.ScopeClaim,
@@ -300,14 +302,14 @@ public static class AuthenticationExtensions
                 context.Request,
                 ManagedControlPlaneAuthenticationDefaults.HeaderName))
         {
-            return ManagedControlPlaneAuthenticationDefaults.Scheme;
+            return ApiAuthenticationSchemeNames.ManagedControlPlane;
         }
 
         if (context.Request.Path.StartsWithSegments(
                 "/api/admission/scanner/check-ins",
                 StringComparison.OrdinalIgnoreCase))
         {
-            return AdmissionScannerAuthenticationDefaults.Scheme;
+            return ApiAuthenticationSchemeNames.AdmissionScanner;
         }
 
         if (ApiKeyHeaderReader.HasNonEmptyApiKey(context.Request))

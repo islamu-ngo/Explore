@@ -222,9 +222,10 @@ public sealed class BffSetupSecretEndpointsTests
         using var handler = new ValidateSecretHandler(HttpStatusCode.OK, """{"valid":true}""");
         await using var app = await CreateAppAsync(handler, useRealSetupRateLimit: true);
 
-        using var firstRequest = CreateSetupSecretRequest("first-secret", "stable-xsrf-partition");
+        using var firstRequest = CreateSetupSecretRequest("first-secret", "rotated-xsrf-one");
         using var firstResponse = await app.Client.SendAsync(firstRequest);
-        using var secondRequest = CreateSetupSecretRequest("second-secret", "stable-xsrf-partition");
+        using var secondRequest = CreateSetupSecretRequest(
+            "second-secret", "rotated-xsrf-two", "rotated-setup-cookie");
         using var secondResponse = await app.Client.SendAsync(secondRequest);
 
         await Assert.That(firstResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
@@ -291,7 +292,7 @@ public sealed class BffSetupSecretEndpointsTests
                 context.User = new ClaimsPrincipal(
                     new ClaimsIdentity(
                     [new Claim("sub", authenticatedUserId)],
-                    authenticationType: "Test"));
+                    authenticationType: "Cookies"));
                 await next(context);
             });
         }
@@ -301,13 +302,18 @@ public sealed class BffSetupSecretEndpointsTests
         return new TestBffApp(app, app.GetTestClient());
     }
 
-    private static HttpRequestMessage CreateSetupSecretRequest(string secret, string partitionCookie)
+    private static HttpRequestMessage CreateSetupSecretRequest(
+        string secret,
+        string antiforgeryCookie,
+        string? setupSecretCookie = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/bff/setup-secret")
         {
             Content = JsonContent.Create(new { secret })
         };
-        request.Headers.Add("Cookie", $"XSRF-TOKEN={partitionCookie}");
+        request.Headers.Add("Cookie", setupSecretCookie is null
+            ? $"XSRF-TOKEN={antiforgeryCookie}"
+            : $"XSRF-TOKEN={antiforgeryCookie}; setup-secret={setupSecretCookie}");
         return request;
     }
 

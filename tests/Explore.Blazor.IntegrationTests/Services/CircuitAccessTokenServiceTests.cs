@@ -4,6 +4,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using Explore.Blazor.Services;
+using Event.Web.BffHosting.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -155,7 +156,7 @@ public class CircuitAccessTokenServiceTests
 
         var accessor = new HttpContextAccessor { HttpContext = null };
         var circuitUserContext = Substitute.For<ICircuitUserContext>();
-        circuitUserContext.UserId.Returns(userId);
+        circuitUserContext.UserId.Returns(CircuitKey(storeContext));
 
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
@@ -246,8 +247,8 @@ public class CircuitAccessTokenServiceTests
             NullLogger<CircuitAccessTokenService>.Instance);
         service.SetToken(tokenA);
 
-        var forA = _tokenStore.Resolve(userA, null);
-        var forB = _tokenStore.Resolve(userB, null);
+        var forA = _tokenStore.Resolve(CircuitKey(context), null);
+        var forB = _tokenStore.Resolve(CircuitKey(CreateHttpContext(userB)), null);
 
         await Assert.That(forA.Token).IsEqualTo(tokenA);
         await Assert.That(forB.Found).IsFalse();
@@ -290,9 +291,10 @@ public class CircuitAccessTokenServiceTests
 
         service.SetToken(sidToken);
 
-        // When a JWT has only a `sid` claim, TryResolveUserId falls back to sid as userId,
-        // and TryResolveSessionId also extracts sid as sessionId. The store key includes both.
-        var resolution = _tokenStore.Resolve(userId, userId);
+        // A trusted sid-only principal remains independently partitioned as subject fallback and session.
+        var partitionedUserId = CircuitKey(context);
+        var partitionedSessionId = SessionKey(context);
+        var resolution = _tokenStore.Resolve(partitionedUserId, partitionedSessionId);
         await Assert.That(resolution.Token).IsEqualTo(sidToken);
     }
 
@@ -312,7 +314,7 @@ public class CircuitAccessTokenServiceTests
         service.SetToken(null);
 
         await Assert.That(service.AccessToken).IsNull();
-        var resolution = _tokenStore.Resolve(userId, sessionId);
+        var resolution = _tokenStore.Resolve(CircuitKey(context), SessionKey(context));
         await Assert.That(resolution.Found).IsFalse();
     }
 
@@ -324,22 +326,24 @@ public class CircuitAccessTokenServiceTests
         var sessionB = Guid.NewGuid().ToString();
         var tokenA = CreateJwt(userId, sessionId: sessionA);
         var tokenB = CreateJwt(userId, sessionId: sessionB);
+        var contextA = CreateHttpContextWithSession(userId, sessionA);
+        var contextB = CreateHttpContextWithSession(userId, sessionB);
 
         var serviceA = new CircuitAccessTokenService(
             _tokenStore,
-            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionA) },
+            new HttpContextAccessor { HttpContext = contextA },
             NullLogger<CircuitAccessTokenService>.Instance);
+        serviceA.SetToken(tokenA);
+
         var serviceB = new CircuitAccessTokenService(
             _tokenStore,
-            new HttpContextAccessor { HttpContext = CreateHttpContextWithSession(userId, sessionB) },
+            new HttpContextAccessor { HttpContext = contextB },
             NullLogger<CircuitAccessTokenService>.Instance);
-
-        serviceA.SetToken(tokenA);
         serviceB.SetToken(tokenB);
         serviceA.ClearToken();
 
-        var resA = _tokenStore.Resolve(userId, sessionA);
-        var resB = _tokenStore.Resolve(userId, sessionB);
+        var resA = _tokenStore.Resolve(CircuitKey(contextA), SessionKey(contextA));
+        var resB = _tokenStore.Resolve(CircuitKey(contextB), SessionKey(contextB));
         await Assert.That(resA.Found).IsFalse();
         await Assert.That(resB.Token).IsEqualTo(tokenB);
     }
@@ -473,7 +477,7 @@ public class CircuitAccessTokenServiceTests
     private static DefaultHttpContext CreateHttpContext(Claim userIdClaim, string? authToken = null)
     {
         var claims = new[] { userIdClaim };
-        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var identity = new ClaimsIdentity(claims, "Cookies");
         var principal = new ClaimsPrincipal(identity);
 
         var context = new DefaultHttpContext { User = principal };
@@ -510,6 +514,15 @@ public class CircuitAccessTokenServiceTests
         var jwt = new JwtSecurityToken(claims: claims, expires: expires);
         return new JwtSecurityTokenHandler().WriteToken(jwt);
     }
+    private static string CircuitKey(DefaultHttpContext context)
+    {
+        context.User.TryGetCircuitSubject(out var identity);
+        return identity.PartitionKey;
+    }
+
+    private static string? SessionKey(DefaultHttpContext context) =>
+        context.User.TryGetSessionId(out var identity) ? identity.PartitionKey : null;
+
 
     private static DefaultHttpContext CreateHttpContextWithSession(string userId, string sessionId, string? authToken = null)
     {

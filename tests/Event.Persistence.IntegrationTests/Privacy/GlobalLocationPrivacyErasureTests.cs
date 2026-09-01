@@ -19,6 +19,7 @@ using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -66,9 +67,11 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             try
             {
                 await tenantAContext.Database.ExecuteSqlRawAsync(
-                    "ALTER TABLE locations DROP CONSTRAINT ck_locations_owner_private_home");
-                await tenantAContext.Database.ExecuteSqlInterpolatedAsync(
-                    $"UPDATE locations SET owner_user_id = {owner.Id} WHERE id = {nonHome.Id}");
+                    $"ALTER TABLE {RelationalModelNamespace.Name}.locations DROP CONSTRAINT ck_locations_owner_private_home");
+                await tenantAContext.Database.ExecuteSqlRawAsync(
+                    $"UPDATE {RelationalModelNamespace.Name}.locations SET owner_user_id = @p0 WHERE id = @p1",
+                    owner.Id,
+                    nonHome.Id);
 
                 Guid[] ownerRowsWithoutKindBoundary = await tenantAContext.Locations
                     .IgnoreTenantFilter(TenantFilterBypassReasons.UserPrivacyErasure)
@@ -260,11 +263,14 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             await using var failingContext = fixture.CreateDbContext();
             await using ErasureRuntime failingRuntime = CreateRuntime(failingContext, authority);
 
-            await Assert.ThrowsAsync<DbUpdateException>(() =>
+            DbUpdateException? failure = await Assert.ThrowsAsync<DbUpdateException>(() =>
                 failingRuntime.Service.EraseUserAsync(
                     graph.OwnerUserId,
                     Guid.CreateVersion7(),
                     CancellationToken.None));
+
+            PostgresException providerFailure = (PostgresException)failure!.InnerException!;
+            await Assert.That(providerFailure.SqlState).IsEqualTo("P0001");
         }
         finally
         {
@@ -672,12 +678,12 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             },
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
-        var ownerIdentity = new AtprotoIdentity
+        var ownerIdentity = new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse($"did:plc:actor-canary{identitySuffix}"))
         {
             Id = Guid.CreateVersion7(),
             ActorId = ownerActor.Id,
             Actor = ownerActor,
-            Did = $"did:plc:actor-canary{identitySuffix}",
+
             Handle = $"actor-canary{identitySuffix}.example",
             PdsHost = "https://pds.example.invalid",
             IsActive = true,
@@ -709,12 +715,12 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
             Pii = new ActorPii { DisplayName = "Unrelated user" },
             ConcurrencyStamp = Guid.CreateVersion7(),
         };
-        var unrelatedIdentity = new AtprotoIdentity
+        var unrelatedIdentity = new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse($"did:plc:unrelated{identitySuffix}"))
         {
             Id = Guid.CreateVersion7(),
             ActorId = unrelatedActor.Id,
             Actor = unrelatedActor,
-            Did = $"did:plc:unrelated{identitySuffix}",
+
             Handle = $"unrelated{identitySuffix}.example",
             PdsHost = "https://pds.example.invalid",
             IsActive = true,
@@ -889,16 +895,16 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
                 RETURN NEW;
             END;
             $function$;
-            DROP TRIGGER IF EXISTS tr_reject_location_privacy_outbox ON outbox_messages;
+            DROP TRIGGER IF EXISTS tr_reject_location_privacy_outbox ON islamu_event.outbox_messages;
             CREATE TRIGGER tr_reject_location_privacy_outbox
-                BEFORE INSERT ON outbox_messages
+                BEFORE INSERT ON islamu_event.outbox_messages
                 FOR EACH ROW EXECUTE FUNCTION reject_location_privacy_outbox();
             """);
 
     internal static Task RemoveOutboxFailureTriggerAsync(ExploreDbContext context) =>
         context.Database.ExecuteSqlRawAsync(
             """
-            DROP TRIGGER IF EXISTS tr_reject_location_privacy_outbox ON outbox_messages;
+            DROP TRIGGER IF EXISTS tr_reject_location_privacy_outbox ON islamu_event.outbox_messages;
             DROP FUNCTION IF EXISTS reject_location_privacy_outbox();
             """);
 
@@ -1632,13 +1638,13 @@ public sealed class ExternalDatabasePrivacyErasurePostgreSqlFixture : IAsyncInit
         await Task.WhenAll(_applicationContainer.StartAsync(), _authorityContainer.StartAsync());
         await using (PrivacyErasureAuthorityDbContext authorityContext = CreateAuthorityAdminDbContext())
         {
-            await authorityContext.Database.MigrateAsync();
             await authorityContext.Database.ExecuteSqlRawAsync(
                 PrivacyErasureAuthorityDatabaseContract.RoleProvisioningSql);
             await authorityContext.Database.ExecuteSqlRawAsync(
-                PrivacyErasureAuthorityDatabaseContract.RetentionLifecycleMigrationSql);
-            await authorityContext.Database.ExecuteSqlRawAsync(
                 PrivacyErasureAuthorityDatabaseContract.RoleIsolationSql);
+            await authorityContext.Database.MigrateAsync();
+            await ExploreDatabaseMigrator.ApplyExternalPrivacyErasureAuthorityContractAsync(
+                authorityContext);
         }
         await using (var connection = new NpgsqlConnection(_authorityContainer.GetConnectionString()))
         {
@@ -1700,6 +1706,7 @@ public sealed class ExternalDatabasePrivacyErasurePostgreSqlFixture : IAsyncInit
         });
         await context.SaveChangesAsync();
         await LookupTableSeeder.SeedLocationPrivacyLookupsAsync(context, CancellationToken.None);
+        await LookupTableSeeder.SeedLocationAddressGovernanceLookupsAsync(context, CancellationToken.None);
         await LookupTableSeeder.SeedEventAuthorityLookupsAsync(context, CancellationToken.None);
     }
 

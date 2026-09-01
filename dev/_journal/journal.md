@@ -139,6 +139,34 @@
 
 ---
 
+[2026-09-01 Europe/Brussels] — Assurance audits must bind framework symbols, not receiver text
+
+**Context**: The strong-typing recurrence guard initially recognized reflection and raw source reads from syntax shapes such as `File.ReadAllText`, `Activator.CreateInstance`, and variables initialized from `GetMethod`.
+
+**Symptom / Observation**: Equivalent aliases and data flow—`using ProductFile = System.IO.File`, an aliased `Activator`, or a `MethodInfo` assigned after declaration—could perform the same prohibited behavior while producing no diagnostic.
+
+**Root Cause**: Receiver spelling and initializer-only tracking describe one source form, not the invoked API. C# aliases, qualified names, and later assignments preserve runtime behavior while changing that syntax.
+
+**Resolution**: Build a Roslyn `CSharpCompilation` and classify invocations by resolved `IMethodSymbol`: every `System.Activator.CreateInstance` and `System.Reflection.DispatchProxy.Create`, reflection `Invoke`/`GetValue`/`SetValue`, and `System.IO.File` raw-text read is governed regardless of alias or assignment shape. Synthetic alias, string-overload, constructor, top-level, and post-declaration fixtures lock the boundary.
+
+**Why This Matters for Future Work**: A repository assurance tool should enforce semantic ownership, not a list of spellings. When the prohibited capability is a framework API, bind its symbol and keep source text out of diagnostics; use syntax/data flow only for the bounded argument/path classification that symbols cannot provide.
+
+**References**:
+- `eng/tools/Explore.AssuranceAudit/AssuranceAudit.cs`
+- `tests/Event.Architecture.Tests/AssuranceAuditTests.cs`
+- `docs/TESTING.md`
+- `.agents/skills/finding/SKILL.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `debug-issue`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
 [2026-07-05 Europe/Brussels] — Dynamic BFF manifests must not have static same-path files
 
 **Context**:
@@ -1226,5 +1254,124 @@ closed phase manifests manufactures evidence that pass never produced.
 - [x] Candidate for skill update: `ip-clean-room` (per-source recording pass; trunk-commit substitute for a PR link)
 - [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
 - [ ] Stays in journal only (one-off audit lesson)
+
+---
+
+[2026-09-01 Europe/Brussels] — Privacy fixtures must replay canonical schema contracts
+
+**Context**: While verifying Tier 2 authority-first privacy erasure for the `strong-typing-refactor` intent, the real PostgreSQL rollback/replay scenario failed repeatedly during fixture initialization before reaching the DID tombstone assertions.
+
+**Symptom / Observation**: Seeding first failed with `23503: insert or update on table "locations" violates foreign key constraint "fk_locations_location_address_sources_address_source_id"`. After that was fixed, the trigger setup failed with `42P01: relation "outbox_messages" does not exist`, and the external authority role then lacked its schema/function contract.
+
+**Root Cause**: `ExternalDatabasePrivacyErasurePostgreSqlFixture` had drifted from three canonical owners: it called the privacy lookup seeder without the address-governance seeder, used an unqualified outbox table despite the `islamu_event` schema, and reconstructed only part of `ExploreDatabaseMigrator`'s authority role/object/function/ACL sequence.
+
+**Resolution**: The fixture now calls `SeedLocationAddressGovernanceLookupsAsync`, schema-qualifies `islamu_event.outbox_messages`, and reuses the production `ExploreDatabaseMigrator.ApplyExternalPrivacyErasureAuthorityContractAsync` sequence. The rollback test asserts the trigger's exact EF/PostgreSQL contract: `DbUpdateException` wrapping `PostgresException` with SQLSTATE `P0001`. `GlobalLocationPrivacyErasureTests/AuthorityFirstRollback*` passes 1/1 against PostgreSQL.
+
+**Why This Matters for Future Work**: Provider-backed fixtures that manually migrate or seed cannot choose a partial subset of evolving schema contracts. Reuse the owning seeder and migrator contract sequence, and schema-qualify physical SQL targets; otherwise a high-value invariant test can stay silently unrunnable while compiling cleanly.
+
+**References**:
+- `tests/Event.Persistence.IntegrationTests/Privacy/GlobalLocationPrivacyErasureTests.cs:263`
+- `tests/Event.Persistence.IntegrationTests/Privacy/GlobalLocationPrivacyErasureTests.cs:892`
+- `tests/Event.Persistence.IntegrationTests/Privacy/GlobalLocationPrivacyErasureTests.cs:1636`
+- `tests/Event.Persistence.IntegrationTests/Privacy/GlobalLocationPrivacyErasureTests.cs:1709`
+- `src/Explore.Persistence/Schema/ProviderPrimitives/ExploreDatabaseMigrator.cs:106`
+- `src/Explore.Persistence/Seed/LookupTableSeeder.cs:1398`
+- `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `dotnet-efcore-guidelines`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-09-01 Europe/Brussels] — Exact ASCII identities need the portable collation marker
+
+**Context**: While hardening typed AT Protocol DID persistence under the Tier 1 `strong-typing-refactor` intent, the five-provider compiled-model invariant disagreed even though `AtprotoIdentity.Did` configured PostgreSQL collation `C`.
+
+**Symptom / Observation**: PostgreSQL, MariaDB, and MySQL exposed ordinal DID collation, but SQL Server inherited its database default and SQLite lacked an explicit `BINARY` contract. Case-distinct DIDs could therefore compare equal on a commonly case-insensitive SQL Server catalog.
+
+**Root Cause**: `PortableRelationalModelPolicy` intentionally removes an ordinary PostgreSQL `C` collation for non-PostgreSQL/non-MySQL providers. Only properties marked by `UsePortableOrdinalAscii()` reach the provider switch that emits `BINARY`, `Latin1_General_100_BIN2`, or `ascii_bin`; using `UseCollation("C")` alone is not a portable ordinal contract.
+
+**Resolution**: Mark exact live DID persistence with the existing `UsePortableOrdinalAscii()` extension and generate the five application-provider migrations/snapshots through `dotnet ef`. The owning invariant asserts each provider's native binary collation while retaining the scalar string, maximum length, unique index, and soft-delete filter.
+
+**Why This Matters for Future Work**: Any ASCII-derived identifier whose equality is security- or identity-relevant must use the repository's portable marker instead of a provider-specific collation literal. Otherwise the portability policy may correctly discard the literal yet silently expose ambient case-insensitive semantics.
+
+**References**:
+- `src/Explore.Persistence/Configurations/Entities/ActorIdentityConfiguration.cs:17`
+- `src/Explore.Persistence/Schema/PortableOrdinalAsciiPropertyExtensions.cs:13`
+- `src/Explore.Persistence/Schema/PortableRelationalModelPolicy.cs:170`
+- `src/Explore.Persistence/Schema/PortableRelationalModelPolicy.cs:241`
+- `tests/Event.Persistence.IntegrationTests/ConfigurationManifest/ConfigurationManifestAuditProviderMigrationTests.cs:41`
+- `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `dotnet-efcore-guidelines`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-09-01 Europe/Brussels] — Roslyn insertion text must account for token-leading trivia
+
+**Context**: While running the Phase 7 API-first generation chain for `strong-typing-refactor`, the OpenAPI and inventory hashes remained stable but the generated client gained 701 blank lines—one before every repository-added record `PrintMembers` method.
+
+**Symptom / Observation**: `GeneratedContractTransformer` reported 701 records and a changed output even though the generated client had been restored to its canonical baseline. The diff contained only one additional empty line before each `Generated record values are intentionally omitted` marker.
+
+**Root Cause**: NSwag already emits a blank line and the closing-brace indentation as leading trivia. Inserting the shared replacement text at `CloseBraceToken.SpanStart` also inserted that text's leading newline and full member indentation, duplicating the blank line; removing only the newline then double-counted the closing-brace indentation on the first inserted line.
+
+**Resolution**: The absent-method insertion reuses the replacement block after trimming its leading newline and one four-space indentation level. An existing marked method is left byte-unchanged, avoiding a second-pass `FullSpan` trivia rewrite. The regression fixture rejects triple-newline drift and proves transform idempotence, and a raw NSwag regeneration followed by the canonical transform restored the generated client to its exact baseline SHA-256 `f1ade666edad6e1f001f92e2c821b08cbe9678f6ed3ffc8be9e1da46f19e40cd`.
+
+**Why This Matters for Future Work**: Roslyn token `SpanStart` and node `FullSpan` own different trivia. A text block suitable for replacing a node's full span is not automatically suitable for zero-width insertion before a token; normalize insertion-leading newline and indentation explicitly, then verify against a fresh upstream generator output rather than only against already-transformed input.
+
+**References**:
+- `eng/tools/Explore.GeneratedContracts/GeneratedContractTransformer.cs:122`
+- `tests/Explore.GeneratedContracts.Tests/GeneratedContractTransformerTests.cs:64`
+- `src/Explore.Blazor.Client/Explore.Blazor.Client.csproj:100`
+- `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs`
+- `.agents/skills/debug-issue/SKILL.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `debug-issue`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-09-01 Europe/Brussels] — Browser authentication state is presence, not identity authority
+
+**Context**: The Blazor strong-typing remediation found a client `AuthStateService` that copied framework authentication state and exposed user and tenant GUIDs parsed directly from browser-visible claims.
+
+**Symptom / Observation**: Dock and preference services depended on a custom wrapper only to answer whether the user was authenticated, while tenant context separately treated serialized claims as authoritative IDs. The wrapper added no invariant and made browser display state look like a security boundary.
+
+**Root Cause**: Framework `AuthenticationStateProvider` and the server-confirmed UI shell context already owned the two actual facts: authenticated presence and the current tenant selected by the server. The wrapper conflated those facts and duplicated claim parsing without adding validation or authority.
+
+**Resolution**: Delete `IAuthStateService`/`AuthStateService`; inject `AuthenticationStateProvider` directly where only authenticated presence is needed, and obtain tenant identity from `IUiShellContextService`. Organization-member action visibility now uses exact HAL relations and never local roles or current-user IDs.
+
+**Why This Matters for Future Work**: A browser claim can support display state but must not become a second authorization or tenancy authority. If a client service merely forwards framework state, delete it; use server-authored HAL and shell resources for actionable authority.
+
+**References**:
+- `src/Explore.Blazor.Client/Extensions/ServiceCollectionExtensions.cs`
+- `src/Explore.Blazor.Client/Providers/TenantContextProvider.razor`
+- `src/Explore.Blazor.Client/Services/Interop/ServerBackedDockLayoutPersistence.cs`
+- `src/Explore.Blazor.Client/Pages/Organizations/OrganizationMembers.razor.cs`
+- `.agents/skills/auth-patterns/SKILL.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `auth-patterns`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
 
 ---

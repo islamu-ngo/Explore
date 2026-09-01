@@ -190,7 +190,7 @@ public class RuntimeAuthorizationProviderTests
     [Test]
     public async Task AuthorizeBatchAsync_EmitsOneBoundedMeasurementPerDecision()
     {
-        using var capture = new AuthorizationMetricsCapture();
+        using var capture = new AuthorizationMetricsCapture(expectedCount: 2);
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter(BusinessMetrics.MeterName));
         using var metrics = new BusinessMetrics(meterFactory);
@@ -212,7 +212,7 @@ public class RuntimeAuthorizationProviderTests
             TestAuthorizationRequest.Create(ResourceKinds.Event, ResourceId, AuthorizationActions.Update)
         ]);
 
-        var counts = await capture.CountsAsync(expectedCount: 2);
+        var counts = await capture.CountsAsync();
 
         await Assert.That(counts).Count().IsEqualTo(2);
         await Assert.That(counts.Select(count => count["action"]?.ToString()))
@@ -230,9 +230,13 @@ public class RuntimeAuthorizationProviderTests
         private readonly MeterListener _listener;
         private readonly Lock _sync = new();
         private readonly List<IReadOnlyDictionary<string, object?>> _counts = [];
+        private readonly int _expectedCount;
+        private readonly TaskCompletionSource _expectedCountReached =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public AuthorizationMetricsCapture()
+        public AuthorizationMetricsCapture(int expectedCount)
         {
+            _expectedCount = expectedCount;
             _listener = new MeterListener
             {
                 InstrumentPublished = (instrument, listener) =>
@@ -251,23 +255,19 @@ public class RuntimeAuthorizationProviderTests
                 lock (_sync)
                 {
                     _counts.Add(captured);
+                    if (_counts.Count >= _expectedCount)
+                    {
+                        _expectedCountReached.TrySetResult();
+                    }
                 }
             });
 
             _listener.Start();
         }
 
-        public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> CountsAsync(int expectedCount)
+        public async Task<IReadOnlyList<IReadOnlyDictionary<string, object?>>> CountsAsync()
         {
-            for (var attempt = 0; attempt < 20; attempt++)
-            {
-                var snapshot = Snapshot();
-                if (snapshot.Count >= expectedCount)
-                    return snapshot;
-
-                await Task.Delay(10);
-            }
-
+            await _expectedCountReached.Task.WaitAsync(TimeSpan.FromSeconds(1));
             return Snapshot();
         }
 

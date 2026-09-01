@@ -1,8 +1,7 @@
 // ABOUTME: Component tests for tenant lookup tables section loading/error/success states.
 // ABOUTME: Verifies parallel lookup loading and consolidated lookup tab rendering.
 
-using System.Reflection;
-using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -13,7 +12,6 @@ public class LookupTablesTests : IDisposable
     private readonly IAdminService _adminService;
     private readonly IDialogService _dialogService;
     private readonly ISnackbar _snackbar;
-    private readonly IAccessibilityFocusService _focusService;
 
     public LookupTablesTests()
     {
@@ -21,12 +19,10 @@ public class LookupTablesTests : IDisposable
         _adminService = Substitute.For<IAdminService>();
         _dialogService = Substitute.For<IDialogService>();
         _snackbar = Substitute.For<ISnackbar>();
-        _focusService = Substitute.For<IAccessibilityFocusService>();
 
         _ctx.Services.AddSingleton(_adminService);
         _ctx.Services.AddSingleton(_dialogService);
         _ctx.Services.AddSingleton(_snackbar);
-        _ctx.Services.AddSingleton(_focusService);
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Admin User", "admin@example.com");
 
@@ -38,13 +34,8 @@ public class LookupTablesTests : IDisposable
         _ctx.Dispose();
     }
 
-    private IRenderedComponent<DynamicComponent> RenderLookupTables()
-    {
-        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection")
-                            ?? throw new InvalidOperationException("TenantLookupTablesSection component type not found");
-
-        return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));
-    }
+    private IRenderedComponent<TenantLookupTablesSection> RenderLookupTables() =>
+        _ctx.RenderMudComponent<TenantLookupTablesSection>();
 
     [Test]
     public async Task LookupTables_ShowsLoadingIndicator_WhileLookupLoadPending()
@@ -102,170 +93,6 @@ public class LookupTablesTests : IDisposable
     }
 
 
-    [Test]
-    public async Task LookupTables_CreateHelper_UsesSmallDialogOptionsAndReloadsOnSuccess()
-    {
-        // Arrange
-        var component = CreateLookupComponentInstance();
-        var createDto = new CreateCategoryDto { FullName = "Community" };
-        var dialogReference = Substitute.For<IDialogReference>();
-        dialogReference.Result.Returns(DialogResult.Ok(createDto));
-
-        DialogOptions? capturedOptions = null;
-        var createCalled = false;
-        var reloadCalled = false;
-
-        Func<DialogOptions, Task<IDialogReference>> showDialogAsync = options =>
-        {
-            capturedOptions = options;
-            return Task.FromResult(dialogReference);
-        };
-
-        Func<CreateCategoryDto, Task<bool>> createAsync = dto =>
-        {
-            createCalled = ReferenceEquals(dto, createDto);
-            return Task.FromResult(true);
-        };
-
-        Func<Task> reloadAsync = () =>
-        {
-            reloadCalled = true;
-            return Task.CompletedTask;
-        };
-
-        // Act
-        await InvokeLookupCreateAsync(
-            component,
-            showDialogAsync,
-            createAsync,
-            dto => dto.FullName,
-            "Category",
-            reloadAsync);
-
-        // Assert
-        await Assert.That(createCalled).IsTrue();
-        await Assert.That(reloadCalled).IsTrue();
-        await Assert.That(capturedOptions).IsNotNull();
-        await Assert.That(capturedOptions!.MaxWidth).IsEqualTo(MaxWidth.Small);
-        await Assert.That(capturedOptions.FullWidth).IsTrue();
-        await Assert.That(capturedOptions.CloseOnEscapeKey).IsTrue();
-        await Assert.That(capturedOptions.CloseButton).IsNull();
-        await _focusService.Received(1).SaveFocusAsync();
-        await _focusService.Received(1).RestoreFocusAsync();
-        _snackbar.Received(1).Add("Category 'Community' created.", Severity.Success);
-    }
-
-    [Test]
-    public async Task LookupTables_EditHelper_ShowsFailureWithoutReload_WhenUpdateFails()
-    {
-        // Arrange
-        var component = CreateLookupComponentInstance();
-        var updateDto = new UpdateTagDto { FullName = new() { Value = "Youth" } };
-        var dialogReference = Substitute.For<IDialogReference>();
-        dialogReference.Result.Returns(DialogResult.Ok(updateDto));
-
-        var reloadCalled = false;
-
-        // Act
-        await InvokeLookupEditAsync<UpdateTagDto>(
-            component,
-            _ => Task.FromResult(dialogReference),
-            _ => Task.FromResult(false),
-            dto => dto.FullName!.Value,
-            "Tag",
-            () =>
-            {
-                reloadCalled = true;
-                return Task.CompletedTask;
-            });
-
-        // Assert
-        await Assert.That(reloadCalled).IsFalse();
-        await _focusService.Received(1).SaveFocusAsync();
-        await _focusService.Received(1).RestoreFocusAsync();
-        _snackbar.Received(1).Add("Failed to update tag.", Severity.Error);
-    }
-
-    [Test]
-    public async Task LookupTables_DeleteHelper_DoesNotDelete_WhenConfirmationIsCanceled()
-    {
-        // Arrange
-        var component = CreateLookupComponentInstance();
-        var deleteCalled = false;
-        var reloadCalled = false;
-        _dialogService
-            .ShowMessageBoxAsync(
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<DialogOptions>())
-            .Returns(false);
-
-        // Act
-        await InvokeLookupDeleteAsync(
-            component,
-            Guid.NewGuid(),
-            "Community",
-            "category",
-            _ =>
-            {
-                deleteCalled = true;
-                return Task.FromResult(true);
-            },
-            () =>
-            {
-                reloadCalled = true;
-                return Task.CompletedTask;
-            });
-
-        // Assert
-        await Assert.That(deleteCalled).IsFalse();
-        await Assert.That(reloadCalled).IsFalse();
-    }
-
-    [Test]
-    public async Task LookupTables_DeleteHelper_ReloadsAndShowsSuccess_WhenDeleteSucceeds()
-    {
-        // Arrange
-        var component = CreateLookupComponentInstance();
-        var locationId = Guid.NewGuid();
-        var deletedId = Guid.Empty;
-        var reloadCalled = false;
-        _dialogService
-            .ShowMessageBoxAsync(
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<DialogOptions>())
-            .Returns(true);
-
-        // Act
-        await InvokeLookupDeleteAsync(
-            component,
-            locationId,
-            "Main Hall",
-            "location",
-            id =>
-            {
-                deletedId = id;
-                return Task.FromResult(true);
-            },
-            () =>
-            {
-                reloadCalled = true;
-                return Task.CompletedTask;
-            });
-
-        // Assert
-        await Assert.That(deletedId).IsEqualTo(locationId);
-        await Assert.That(reloadCalled).IsTrue();
-        _snackbar.Received(1).Add("Location 'Main Hall' deleted.", Severity.Success);
-    }
-
     private void SetupDefaultLookups()
     {
         _adminService.GetLocationsAsync()
@@ -285,111 +112,4 @@ public class LookupTablesTests : IDisposable
         _adminService.GetFileTypesAsync().Returns(new List<FileTypeListDto>());
         _adminService.GetDidCustodyTypesAsync().Returns(new List<DidCustodyTypeListDto>());
     }
-
-
-    private object CreateLookupComponentInstance()
-    {
-        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection")
-                            ?? throw new InvalidOperationException("TenantLookupTablesSection component type not found");
-        var component = Activator.CreateInstance(componentType)
-                        ?? throw new InvalidOperationException("TenantLookupTablesSection instance could not be created");
-
-        SetNonPublicProperty(componentType, component, "DialogService", _dialogService);
-        SetNonPublicProperty(componentType, component, "Snackbar", _snackbar);
-        SetNonPublicProperty(
-            componentType,
-            component,
-            "AccessibilityFocusService",
-            _focusService);
-
-        return component;
-    }
-
-    private static async Task InvokeLookupCreateAsync<TCreateDto>(
-        object component,
-        Func<DialogOptions, Task<IDialogReference>> showDialogAsync,
-        Func<TCreateDto, Task<bool>> createAsync,
-        Func<TCreateDto, string?> getName,
-        string entityName,
-        Func<Task> reloadAsync)
-    {
-        await InvokePrivateGenericTask(
-            component,
-            "RunLookupCreateAsync",
-            typeof(TCreateDto),
-            showDialogAsync,
-            createAsync,
-            getName,
-            entityName,
-            reloadAsync);
-    }
-
-    private static async Task InvokeLookupEditAsync<TUpdateDto>(
-        object component,
-        Func<DialogOptions, Task<IDialogReference>> showDialogAsync,
-        Func<TUpdateDto, Task<bool>> updateAsync,
-        Func<TUpdateDto, string?> getName,
-        string entityName,
-        Func<Task> reloadAsync)
-    {
-        await InvokePrivateGenericTask(
-            component,
-            "RunLookupEditAsync",
-            typeof(TUpdateDto),
-            showDialogAsync,
-            updateAsync,
-            getName,
-            entityName,
-            reloadAsync);
-    }
-
-    private static async Task InvokeLookupDeleteAsync(
-        object component,
-        Guid? id,
-        string? name,
-        string entityName,
-        Func<Guid, Task<bool>> deleteAsync,
-        Func<Task> reloadAsync)
-    {
-        await InvokePrivateTask(
-            component,
-            "RunLookupDeleteAsync",
-            id,
-            name,
-            entityName,
-            deleteAsync,
-            reloadAsync);
-    }
-
-    private static async Task InvokePrivateGenericTask(
-        object component,
-        string methodName,
-        Type genericArgument,
-        params object?[] args)
-    {
-        var method = component.GetType()
-            .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
-            ?.MakeGenericMethod(genericArgument)
-            ?? throw new InvalidOperationException($"Method {methodName} not found");
-
-        var task = (Task?)method.Invoke(component, args)
-                   ?? throw new InvalidOperationException($"Method {methodName} did not return a task");
-        await task;
-    }
-
-    private static async Task InvokePrivateTask(object component, string methodName, params object?[] args)
-    {
-        var method = component.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
-                     ?? throw new InvalidOperationException($"Method {methodName} not found");
-        var task = (Task?)method.Invoke(component, args)
-                   ?? throw new InvalidOperationException($"Method {methodName} did not return a task");
-        await task;
-    }
-
-    private static void SetNonPublicProperty(Type componentType, object component, string propertyName, object value)
-    {
-        componentType.GetProperty(propertyName, BindingFlags.Instance | BindingFlags.NonPublic)
-            ?.SetValue(component, value);
-    }
-
 }

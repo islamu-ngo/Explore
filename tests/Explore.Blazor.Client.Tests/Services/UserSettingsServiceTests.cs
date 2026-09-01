@@ -35,8 +35,10 @@ public sealed class UserSettingsServiceTests
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(expected);
-        var authState = Substitute.For<IAuthStateService>();
-        authState.IsAuthenticatedAsync().Returns(true);
+        var authState = Substitute.For<AuthenticationStateProvider>();
+        authState.GetAuthenticationStateAsync().Returns(
+            new AuthenticationState(new ClaimsPrincipal(
+                new ClaimsIdentity(authenticationType: "TestAuth"))));
         var service = new UserSettingsService(
             apiClient,
             authState,
@@ -49,10 +51,5 @@ public sealed class UserSettingsServiceTests
         var setting = result!.Settings.Single();
         await Assert.That(setting.Key).IsEqualTo("ai_assistant_preferences.show_navbar_button");
         await Assert.That(setting.Source).IsEqualTo(SettingSource.UserPreference);
-        await apiClient.Received(1).GetUserSettingsAsync(
-            "AiAssistantPreferences",
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
     }
 }

@@ -4,6 +4,7 @@
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
+using Event.Web.BffHosting.Security;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -107,7 +108,7 @@ public class SetupSecretForwardingHandlerTests
                 new Claim("sub", userId),
                 new Claim(ClaimTypes.NameIdentifier, userId)
             ],
-            authenticationType: "Test"));
+            authenticationType: "Cookies"));
 
         var sessionService = new SetupSecretSessionService();
         var innerHandler = new CapturingHandler();
@@ -151,10 +152,10 @@ public class SetupSecretForwardingHandlerTests
                 new Claim("sub", userId),
                 new Claim(ClaimTypes.NameIdentifier, userId)
             ],
-            authenticationType: "Test"));
+            authenticationType: "Cookies"));
 
         var sessionService = new SetupSecretSessionService();
-        sessionService.SetForUser(userId, "trusted-session-secret");
+        sessionService.SetForUser(SetupKey(userId), "trusted-session-secret");
 
         var innerHandler = new CapturingHandler();
         using var handler = CreateHandler(httpContext, sessionService, innerHandler);
@@ -165,7 +166,7 @@ public class SetupSecretForwardingHandlerTests
 
         _ = await invoker.SendAsync(request, CancellationToken.None);
 
-        sessionService.ClearForUser(userId);
+        sessionService.ClearForUser(SetupKey(userId));
 
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
         await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
@@ -183,10 +184,10 @@ public class SetupSecretForwardingHandlerTests
                 new Claim("sub", userId),
                 new Claim(ClaimTypes.NameIdentifier, userId)
             ],
-            authenticationType: "Test"));
+            authenticationType: "Cookies"));
 
         var sessionService = new SetupSecretSessionService();
-        sessionService.SetForUser(userId, "trusted-status-secret");
+        sessionService.SetForUser(SetupKey(userId), "trusted-status-secret");
 
         var innerHandler = new CapturingHandler();
         using var handler = CreateHandler(httpContext, sessionService, innerHandler);
@@ -197,7 +198,7 @@ public class SetupSecretForwardingHandlerTests
 
         _ = await invoker.SendAsync(request, CancellationToken.None);
 
-        sessionService.ClearForUser(userId);
+        sessionService.ClearForUser(SetupKey(userId));
 
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
         await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
@@ -215,10 +216,10 @@ public class SetupSecretForwardingHandlerTests
                 new Claim("sub", userId),
                 new Claim(ClaimTypes.NameIdentifier, userId)
             ],
-            authenticationType: "Test"));
+            authenticationType: "Cookies"));
 
         var sessionService = new SetupSecretSessionService();
-        sessionService.SetForUser(userId, "trusted-keycloak-bootstrap-secret");
+        sessionService.SetForUser(SetupKey(userId), "trusted-keycloak-bootstrap-secret");
 
         var innerHandler = new CapturingHandler();
         using var handler = CreateHandler(httpContext, sessionService, innerHandler);
@@ -229,7 +230,7 @@ public class SetupSecretForwardingHandlerTests
 
         _ = await invoker.SendAsync(request, CancellationToken.None);
 
-        sessionService.ClearForUser(userId);
+        sessionService.ClearForUser(SetupKey(userId));
 
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
         await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
@@ -247,10 +248,10 @@ public class SetupSecretForwardingHandlerTests
                 new Claim("sub", userId),
                 new Claim(ClaimTypes.NameIdentifier, userId)
             ],
-            authenticationType: "Test"));
+            authenticationType: "Cookies"));
 
         var sessionService = new SetupSecretSessionService();
-        sessionService.SetForUser(userId, "session-secret-456");
+        sessionService.SetForUser(SetupKey(userId), "session-secret-456");
 
         var innerHandler = new CapturingHandler();
         using var handler = CreateHandler(httpContext, sessionService, innerHandler);
@@ -259,7 +260,7 @@ public class SetupSecretForwardingHandlerTests
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.com/api/InstanceOnboarding/auth-provider-configuration");
         _ = await invoker.SendAsync(request, CancellationToken.None);
 
-        sessionService.ClearForUser(userId);
+        sessionService.ClearForUser(SetupKey(userId));
 
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
         await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
@@ -297,10 +298,10 @@ public class SetupSecretForwardingHandlerTests
                 new Claim("sub", userId),
                 new Claim(ClaimTypes.NameIdentifier, userId)
             ],
-            authenticationType: "Test"));
+            authenticationType: "Cookies"));
 
         var sessionService = new SetupSecretSessionService();
-        sessionService.SetForUser(userId, "session-secret-999");
+        sessionService.SetForUser(SetupKey(userId), "session-secret-999");
 
         var innerHandler = new CapturingHandler();
         using var handler = CreateHandler(httpContext, sessionService, innerHandler);
@@ -309,7 +310,7 @@ public class SetupSecretForwardingHandlerTests
         using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/api/InstanceOnboarding/authz-provider-configuration/internal");
         _ = await invoker.SendAsync(request, CancellationToken.None);
 
-        sessionService.ClearForUser(userId);
+        sessionService.ClearForUser(SetupKey(userId));
 
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
         await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
@@ -328,11 +329,11 @@ public class SetupSecretForwardingHandlerTests
             User = new ClaimsPrincipal(
                 new ClaimsIdentity(
                 [new Claim("sub", userId)],
-                authenticationType: "Test"))
+                authenticationType: "Cookies"))
         };
 
         var sessionService = new SetupSecretSessionService();
-        sessionService.SetForUser(userId, "trusted-instance-settings-secret");
+        sessionService.SetForUser(SetupKey(userId), "trusted-instance-settings-secret");
 
         var innerHandler = new CapturingHandler();
         using var handler = CreateHandler(httpContext, sessionService, innerHandler);
@@ -362,11 +363,11 @@ public class SetupSecretForwardingHandlerTests
                     new Claim("sub", userId),
                     new Claim(ClaimTypes.NameIdentifier, userId)
                 ],
-                authenticationType: "Test"))
+                authenticationType: "Cookies"))
         };
 
         var sessionService = new SetupSecretSessionService();
-        sessionService.SetForUser(userId, "trusted-instance-settings-secret");
+        sessionService.SetForUser(SetupKey(userId), "trusted-instance-settings-secret");
 
         var innerHandler = new CapturingHandler();
         using var handler = CreateHandler(httpContext, sessionService, innerHandler);
@@ -410,11 +411,11 @@ public class SetupSecretForwardingHandlerTests
             User = new ClaimsPrincipal(
                 new ClaimsIdentity(
                 [new Claim("sub", userId)],
-                authenticationType: "Test"))
+                authenticationType: "Cookies"))
         };
 
         var sessionService = new SetupSecretSessionService();
-        sessionService.SetForUser(userId, "trusted-instance-settings-secret");
+        sessionService.SetForUser(SetupKey(userId), "trusted-instance-settings-secret");
 
         var innerHandler = new CapturingHandler();
         using var handler = CreateHandler(httpContext, sessionService, innerHandler);
@@ -452,6 +453,13 @@ public class SetupSecretForwardingHandlerTests
 
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
         await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsFalse();
+    }
+
+    private static string SetupKey(string userId)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", userId)], "Cookies"));
+        principal.TryGetSetupSessionIdentity(out var identity);
+        return identity.PartitionKey;
     }
 
     private static SetupSecretForwardingHandler CreateHandler(

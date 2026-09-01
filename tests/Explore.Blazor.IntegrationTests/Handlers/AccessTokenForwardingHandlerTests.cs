@@ -4,6 +4,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -264,7 +265,7 @@ public class AccessTokenForwardingHandlerTests
         httpContext.Request.Headers.Cookie = ".AspNetCore.Cookies=test-cookie";
         var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
 
-        var refreshHandler = new BffSelfRefreshHandler(() => _tokenStore.Store(userId, sessionId: null, freshRefreshedToken));
+        var refreshHandler = new BffSelfRefreshHandler(() => _tokenStore.Store(CircuitKey(httpContext), sessionId: null, freshRefreshedToken));
         var selfClientFactory = new TestHttpClientFactory(refreshHandler);
         var innerHandler = new CapturingHandler();
         var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
@@ -303,7 +304,8 @@ public class AccessTokenForwardingHandlerTests
         httpContext.Request.Headers.Cookie = ".AspNetCore.Cookies=test-cookie";
         var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
 
-        var refreshHandler = new BffSelfRefreshHandler(() => _tokenStore.Store(userId, sessionId: "new-session", freshRefreshedToken));
+        var refreshedContext = CreateHttpContextWithSession(userId, "new-session", token: null);
+        var refreshHandler = new BffSelfRefreshHandler(() => _tokenStore.Store(CircuitKey(refreshedContext), SessionKey(refreshedContext), freshRefreshedToken));
         var selfClientFactory = new TestHttpClientFactory(refreshHandler);
         var innerHandler = new CapturingHandler();
         var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
@@ -376,7 +378,8 @@ public class AccessTokenForwardingHandlerTests
     {
         var userId = Guid.NewGuid().ToString();
         var token = CreateUnsignedJwt(userId);
-        var httpContextAccessor = new HttpContextAccessor();
+        var trustedContext = CreateHttpContext(userId, token: null);
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = trustedContext };
 
         var tokenStoreService = new CircuitAccessTokenService(
             _tokenStore,
@@ -385,7 +388,8 @@ public class AccessTokenForwardingHandlerTests
         tokenStoreService.SetToken(token);
 
         var circuitUserContext = new CircuitUserContext();
-        circuitUserContext.SetUserId(userId);
+        circuitUserContext.SetUserId(CircuitKey(trustedContext));
+        httpContextAccessor.HttpContext = null;
 
         var innerHandler = new CapturingHandler();
 
@@ -411,6 +415,15 @@ public class AccessTokenForwardingHandlerTests
         await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Scheme).IsEqualTo("Bearer");
         await Assert.That(innerHandler.CapturedRequest.Headers.Authorization.Parameter).IsEqualTo(token);
     }
+
+    private static string CircuitKey(HttpContext context)
+    {
+        context.User.TryGetCircuitSubject(out var identity);
+        return identity.PartitionKey;
+    }
+
+    private static string? SessionKey(HttpContext context) =>
+        context.User.TryGetSessionId(out var identity) ? identity.PartitionKey : null;
 
     private static string CreateUnsignedJwt(string userId, DateTime? expires = null)
     {
@@ -449,7 +462,7 @@ public class AccessTokenForwardingHandlerTests
             claims.Add(new Claim("sid", sessionId));
         }
 
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType: "Test"));
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType: "Cookies"));
 
         var tokens = new[] { token }.Concat(additionalTokens ?? Array.Empty<string?>());
         var results = tokens.Select(t =>

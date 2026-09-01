@@ -173,35 +173,12 @@ public sealed class SettingsLayoutTests : IDisposable
         await Assert.That(cut.Markup).DoesNotContain("settings-section-security");
     }
 
-    private IRenderedComponent<DynamicComponent> RenderLayout(string? section = null)
-    {
-        Type componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .Single(type => type.Name == "SettingsLayout" && typeof(IComponent).IsAssignableFrom(type));
-        var componentParameters = new Dictionary<string, object>();
-        if (section is not null)
-        {
-            componentParameters["Section"] = section;
-        }
+    private IRenderedComponent<SettingsLayout> RenderLayout(string? section = null) =>
+        _ctx.RenderMudComponent<SettingsLayout>(parameters =>
+            parameters.Add(component => component.Section, section));
 
-        return _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-        {
-            parameters.Add(component => component.Type, componentType);
-            parameters.Add(component => component.Parameters, componentParameters);
-        });
-    }
-
-    private IRenderedComponent<DynamicComponent> RenderSettingsPage()
-    {
-        Type componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .Single(type => type.Name == "Settings" && typeof(IComponent).IsAssignableFrom(type));
-
-        return _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-        {
-            parameters.Add(component => component.Type, componentType);
-        });
-    }
+    private IRenderedComponent<Explore.Blazor.Client.Pages.User.Settings> RenderSettingsPage() =>
+        _ctx.RenderMudComponent<Explore.Blazor.Client.Pages.User.Settings>();
 
     private static RouteMatch CreateSettingsRoute(string section) => new()
     {

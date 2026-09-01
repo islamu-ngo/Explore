@@ -824,15 +824,6 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
     }
 
-    private async Task ResetWorkspaceDockLayoutAsync()
-    {
-        if (await RequireDockingController().ResetWorkspaceDockLayoutAsync())
-        {
-            _customizationDrawerOpen = false;
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
     private RenderFragment RenderCustomizeViewPanel => builder =>
     {
         builder.OpenComponent<EventListCustomizationDrawer>(0);
@@ -1429,18 +1420,20 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
     }
 
-    private void OpenTagManagement()
+    private async Task OpenTagManagement()
     {
         _tagCatMode = TagCategoryMode.Tags;
         _tagCatInitialIds = GetDetailTagItems().Select(x => x.Id).ToList().AsReadOnly();
         _showTagCatPopup = true;
+        await RefreshDetailPreviewAsync();
     }
 
-    private void OpenCategoryManagement()
+    private async Task OpenCategoryManagement()
     {
         _tagCatMode = TagCategoryMode.Categories;
         _tagCatInitialIds = GetDetailCategoryItems().Select(x => x.Id).ToList().AsReadOnly();
         _showTagCatPopup = true;
+        await RefreshDetailPreviewAsync();
     }
 
     private async Task HandleTagCatSaved(IReadOnlyCollection<Guid> newIds)

@@ -2,6 +2,7 @@
 // ABOUTME: Guards the documented user-id fallback chain used by authenticated API requests.
 
 using System.Security.Claims;
+using Explore.Application.Constants;
 using Explore.Infrastructure.Identity;
 using Microsoft.AspNetCore.Http;
 using NSubstitute;
@@ -49,12 +50,27 @@ public sealed class UserContextTests
             .Throws<UnauthorizedAccessException>();
     }
 
+    [Test]
+    public async Task UserId_PurposeBoundPrincipalFailsClosed()
+    {
+        var userId = Guid.NewGuid();
+        var context = CreateUserContext(
+            ApiAuthenticationSchemeNames.ApiKey,
+            new Claim("sub", userId.ToString("D")));
+
+        await Assert.That(context.UserId).IsNull();
+        await Assert.That(() => context.GetRequiredUserId()).Throws<UnauthorizedAccessException>();
+    }
+
     private static UserContext CreateUserContext(params Claim[] claims)
+        => CreateUserContext("TestAuth", claims);
+
+    private static UserContext CreateUserContext(string authenticationType, params Claim[] claims)
     {
         var accessor = Substitute.For<IHttpContextAccessor>();
         accessor.HttpContext.Returns(new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
+            User = new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType))
         });
 
         return new UserContext(accessor);

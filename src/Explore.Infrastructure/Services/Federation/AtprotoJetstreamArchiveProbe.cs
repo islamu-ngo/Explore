@@ -4,6 +4,7 @@
 using System.Diagnostics.Metrics;
 using CarpaNet.Jetstream;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -43,6 +44,17 @@ internal sealed class AtprotoJetstreamArchiveProbe(
             return Report("no_baseline", AtprotoArchiveChangeScope.Inconclusive);
         }
 
+        var parsedDids = new AtprotoDid[dids.Count];
+        for (int index = 0; index < dids.Count; index++)
+        {
+            if (!AtprotoDid.TryParse(dids[index], out AtprotoDid parsedDid))
+            {
+                return Report("invalid_scope", AtprotoArchiveChangeScope.Inconclusive);
+            }
+
+            parsedDids[index] = parsedDid;
+        }
+
         int maximumBlocks = options.Value.ArchiveProbeMaximumBlocks;
         try
         {
@@ -51,7 +63,7 @@ internal sealed class AtprotoJetstreamArchiveProbe(
                 {
                     Collections = [.. AtprotoJetstreamConstants.Collections],
                     Kinds = [JetstreamV2EventKind.Commit],
-                    Dids = [.. dids],
+                    Dids = [.. parsedDids.Select(did => did.Value)],
                     AfterSeq = afterSeq
                 },
                 cancellationToken);
@@ -90,7 +102,7 @@ internal sealed class AtprotoJetstreamArchiveProbe(
                 return Report("no_changes", AtprotoArchiveChangeScope.NoChanges);
             }
 
-            var requested = new HashSet<string>(dids, StringComparer.Ordinal);
+            var requested = new HashSet<string>(parsedDids.Select(did => did.Value), StringComparer.Ordinal);
             var changed = new HashSet<string>(StringComparer.Ordinal);
             foreach ((string segment, int block) in planned)
             {

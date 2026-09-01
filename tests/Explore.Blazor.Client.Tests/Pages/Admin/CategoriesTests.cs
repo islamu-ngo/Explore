@@ -2,6 +2,7 @@
 // ABOUTME: Verifies category data appears in consolidated tenant lookup management UI.
 
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -31,13 +32,8 @@ public class CategoriesTests : IDisposable
         _ctx.Dispose();
     }
 
-    private IRenderedComponent<DynamicComponent> RenderCategories()
-    {
-        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection")
-                            ?? throw new InvalidOperationException("TenantLookupTablesSection component type not found");
-
-        return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));
-    }
+    private IRenderedComponent<TenantLookupTablesSection> RenderCategories() =>
+        _ctx.RenderMudComponent<TenantLookupTablesSection>();
 
     [Test]
     public async Task Categories_ShowsLoadingState_WhileFetchIsPending()

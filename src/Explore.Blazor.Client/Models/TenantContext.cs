@@ -1,7 +1,10 @@
+// ABOUTME: Carries the authenticated state and server-confirmed tenant identifier through the Blazor component tree.
+// ABOUTME: Keeps browser-side context display-only and free of raw user-claim authority inference.
+
 namespace Explore.Blazor.Client.Models;
 
 /// <summary>
-/// Represents the current tenant and user context for the application.
+/// Represents the current tenant context for the application.
 /// This is provided via cascading parameter throughout the component tree.
 /// </summary>
 public class TenantContext
@@ -12,17 +15,8 @@ public class TenantContext
     public Guid? TenantId { get; set; }
 
     /// <summary>
-    /// The current authenticated user's ID. Null if user is not authenticated.
-    /// </summary>
-    public string? UserId { get; set; }
-
-    /// <summary>
     /// Indicates whether the user is currently authenticated.
     /// </summary>
     public bool IsAuthenticated { get; set; }
 
-    /// <summary>
-    /// Checks if the tenant context is fully initialized with valid values.
-    /// </summary>
-    public bool IsValid => IsAuthenticated && TenantId.HasValue && !string.IsNullOrEmpty(UserId);
 }

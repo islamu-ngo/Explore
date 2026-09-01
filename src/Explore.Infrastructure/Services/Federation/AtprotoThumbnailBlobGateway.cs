@@ -10,6 +10,7 @@ using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Models.Storage;
 using Explore.Application.Services;
 using Explore.Atproto.Transport;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Infrastructure.Services.Federation;
 
@@ -52,7 +53,7 @@ public sealed class AtprotoThumbnailBlobGateway : IAtprotoThumbnailBlobGateway
         Guid tenantId,
         CancellationToken cancellationToken)
     {
-        if (!TryValidateCandidate(candidate, tenantId, out ATCid cid, out string? mimeType))
+        if (!TryValidateCandidate(candidate, tenantId, out AtprotoDid did, out ATCid cid, out string? mimeType))
         {
             return null;
         }
@@ -64,12 +65,13 @@ public sealed class AtprotoThumbnailBlobGateway : IAtprotoThumbnailBlobGateway
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(_requestTimeout);
             Uri pdsOrigin = await ResolvePdsOriginAsync(
-                candidate!.Did,
+                did,
                 policy,
                 timeout.Token).ConfigureAwait(false);
             byte[] bytes = await FetchBlobAsync(
                 pdsOrigin,
-                candidate,
+                candidate!,
+                did,
                 cid,
                 mimeType!,
                 policy,
@@ -124,20 +126,25 @@ public sealed class AtprotoThumbnailBlobGateway : IAtprotoThumbnailBlobGateway
     private bool TryValidateCandidate(
         AtprotoThumbnailBlobCandidate? candidate,
         Guid tenantId,
+        out AtprotoDid did,
         out ATCid cid,
         [NotNullWhen(true)] out string? mimeType)
     {
+        did = default;
         cid = default;
         mimeType = null;
         if (candidate is null
             || tenantId == Guid.Empty
             || candidate.Size <= 0
             || candidate.Size > _maximumBytes
-            || string.IsNullOrWhiteSpace(candidate.Did)
             || string.IsNullOrWhiteSpace(candidate.Cid)
             || string.IsNullOrWhiteSpace(candidate.MimeType)
-            || !IsSupportedDid(candidate.Did)
             || !SafeRasterContentPolicy.TryNormalizeMimeType(candidate.MimeType, out mimeType))
+        {
+            return false;
+        }
+
+        if (!AtprotoDid.TryParse(candidate.Did, out did) || !IsSupportedDid(did))
         {
             return false;
         }
@@ -154,17 +161,17 @@ public sealed class AtprotoThumbnailBlobGateway : IAtprotoThumbnailBlobGateway
     }
 
     private async Task<Uri> ResolvePdsOriginAsync(
-        string did,
+        AtprotoDid did,
         AtprotoOutboundPolicy policy,
         CancellationToken cancellationToken)
     {
         using var client = CreateBoundedIdentityClient(policy);
         using var resolver = new IdentityResolver(client);
         DidDocument document = await resolver.ResolveDidAsync(
-            did,
+            did.Value,
             skipCache: true,
             cancellationToken).ConfigureAwait(false);
-        if (!string.Equals(document.Id, did, StringComparison.Ordinal))
+        if (!AtprotoDid.TryParse(document.Id, out AtprotoDid providerDid) || providerDid != did)
         {
             throw new InvalidDataException("ATProto identity binding mismatch.");
         }
@@ -172,7 +179,7 @@ public sealed class AtprotoThumbnailBlobGateway : IAtprotoThumbnailBlobGateway
         DidService[] services = document.Service
             .Where(service => string.Equals(service.Type, "AtprotoPersonalDataServer", StringComparison.Ordinal)
                 && (string.Equals(service.Id, "#atproto_pds", StringComparison.Ordinal)
-                    || string.Equals(service.Id, $"{did}#atproto_pds", StringComparison.Ordinal)))
+                    || string.Equals(service.Id, $"{did.Value}#atproto_pds", StringComparison.Ordinal)))
             .ToArray();
         if (services.Length != 1
             || !Uri.TryCreate(services[0].ServiceEndpoint, UriKind.Absolute, out Uri? endpoint)
@@ -192,6 +199,7 @@ public sealed class AtprotoThumbnailBlobGateway : IAtprotoThumbnailBlobGateway
     private async Task<byte[]> FetchBlobAsync(
         Uri pdsOrigin,
         AtprotoThumbnailBlobCandidate candidate,
+        AtprotoDid did,
         ATCid cid,
         string expectedMimeType,
         AtprotoOutboundPolicy policy,
@@ -202,7 +210,7 @@ public sealed class AtprotoThumbnailBlobGateway : IAtprotoThumbnailBlobGateway
             HttpMethod.Get,
             new Uri(
                 pdsOrigin,
-                $"xrpc/com.atproto.sync.getBlob?did={Uri.EscapeDataString(candidate.Did)}&cid={Uri.EscapeDataString(candidate.Cid)}"));
+                $"xrpc/com.atproto.sync.getBlob?did={Uri.EscapeDataString(did.Value)}&cid={Uri.EscapeDataString(candidate.Cid)}"));
         using HttpResponseMessage response = await client.SendAsync(
             request,
             HttpCompletionOption.ResponseHeadersRead,
@@ -237,31 +245,9 @@ public sealed class AtprotoThumbnailBlobGateway : IAtprotoThumbnailBlobGateway
         return bytes;
     }
 
-    private static bool IsSupportedDid(string did)
-    {
-        int suffixStart = did.StartsWith("did:plc:", StringComparison.Ordinal)
-            ? "did:plc:".Length
-            : did.StartsWith("did:web:", StringComparison.Ordinal)
-                ? "did:web:".Length
-                : -1;
-        if (suffixStart < 0 || did.Length <= suffixStart || did.Length > 255)
-        {
-            return false;
-        }
-
-        foreach (char value in did.AsSpan(suffixStart))
-        {
-            if (value > 0x7f
-                || char.IsControl(value)
-                || char.IsWhiteSpace(value)
-                || value is '/' or '?' or '#' or '\\')
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    private static bool IsSupportedDid(AtprotoDid did) =>
+        did.Value.Length <= 255
+        && did.Method is "plc" or "web";
 
     [SuppressMessage(
         "Reliability",

@@ -1,8 +1,11 @@
 // ABOUTME: Verifies that secret-provider audits cover mutations but never secret reads.
 // ABOUTME: Guards bounded failure codes so provider diagnostics cannot enter audit storage.
 
+using System.Security.Claims;
+using Explore.Application.Constants;
 using Explore.Secrets.Abstractions;
 using Explore.Secrets.Providers;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -85,5 +88,51 @@ public sealed class AuditingSecretProviderDecoratorTests
 
         await Assert.That(actual).IsEquivalentTo(expected);
         await Assert.That(_entries).IsEmpty();
+    }
+
+    [Test]
+    public async Task MutationAuditUsesCanonicalConflictingClaimPriority()
+    {
+        var subUserId = Guid.NewGuid();
+        var internalUserId = Guid.NewGuid();
+        var decorator = CreateDecorator(new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim("sub", subUserId.ToString("D")),
+            new Claim("internal_user_id", internalUserId.ToString("D"))
+        ], "Bearer")));
+
+        await decorator.InitializeAsync();
+
+        await Assert.That(_entries.Single().UserId).IsEqualTo(subUserId.ToString("D"));
+    }
+
+    [Test]
+    public async Task MutationAuditPurposeBoundPrincipalHasNoAmbientUser()
+    {
+        var decorator = CreateDecorator(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", Guid.NewGuid().ToString("D"))],
+            ApiAuthenticationSchemeNames.ApiKey)));
+
+        await decorator.InitializeAsync();
+
+        await Assert.That(_entries.Single().UserId).IsNull();
+    }
+
+    private AuditingSecretProviderDecorator CreateDecorator(ClaimsPrincipal principal)
+    {
+        var audit = Substitute.For<ISecretAuditLogger>();
+        audit.LogAsync(Arg.Any<SecretAuditEntry>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask)
+            .AndDoes(call => _entries.Add(call.Arg<SecretAuditEntry>()));
+        var accessor = new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+        return new AuditingSecretProviderDecorator(
+            _inner,
+            audit,
+            Substitute.For<ILogger<AuditingSecretProviderDecorator>>(),
+            accessor,
+            new SecretsFixedTimeProvider());
     }
 }

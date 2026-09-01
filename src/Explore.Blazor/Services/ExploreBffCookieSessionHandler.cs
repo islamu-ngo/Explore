@@ -3,6 +3,7 @@
 
 using System.Security.Claims;
 using Event.Web.BffHosting.Authentication;
+using Event.Web.BffHosting.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
@@ -93,7 +94,7 @@ public sealed class ExploreBffCookieSessionHandler(
         }
 
         var tokenStore = context.HttpContext.RequestServices.GetService<ICircuitTokenStore>();
-        var sessionId = context.Principal?.FindFirst("sid")?.Value;
+        var sessionId = context.Principal.TryGetSessionId(out var resolvedSessionId) ? resolvedSessionId.PartitionKey : null;
         if (string.IsNullOrWhiteSpace(sessionId))
         {
             tokenStore?.ClearUser(userId);
@@ -106,8 +107,6 @@ public sealed class ExploreBffCookieSessionHandler(
 
     private static string? ResolveUserId(ClaimsPrincipal? principal)
     {
-        return principal?.FindFirst("sub")?.Value
-            ?? principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? principal?.FindFirst("sid")?.Value;
+        return principal.TryGetCircuitSubject(out var subject) ? subject.PartitionKey : null;
     }
 }

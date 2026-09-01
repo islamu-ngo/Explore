@@ -2,6 +2,7 @@
 // ABOUTME: Requires every result to partition exact issued ticket identities into revoked and preserved sets.
 
 using ApplicationUnitTests.Contracts.Admissions.Support;
+using Explore.Application.Contracts.Admissions;
 
 namespace ApplicationUnitTests.Contracts.Admissions;
 
@@ -23,36 +24,30 @@ public sealed class AdmissionRevocationOrchestrationRedTests
     public async Task RefundAndCancellationReturnExactRevokedAndPreservedTicketIdentities(string matrixCase)
     {
         AdmissionTestScenario scenario = AdmissionTestScenario.Free(UtcNow, AdmissionRevocationRow.Assignments());
-        object issued = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(scenario),
-            "IssueConfirmedAsync",
-            AdmissionIssuancePorts.Request(scenario),
-            CancellationToken.None);
-        await Assert.That(AdmissionContractRuntime.Ids(issued, "IssuedTicketIds").Length).IsEqualTo(3);
+        AdmissionIssuanceResult issued = await AdmissionIssuancePorts.TypedService(scenario)
+            .IssueConfirmedAsync(AdmissionIssuancePorts.TypedRequest(scenario), CancellationToken.None);
+        await Assert.That(issued.IssuedTicketIds.Count).IsEqualTo(3);
 
         AdmissionRevocationRow row = AdmissionRevocationRow.For(matrixCase, scenario);
-        object result = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionRevocationPorts.Service(scenario),
-            "ReconcileAsync",
-            AdmissionRevocationPorts.Request(scenario, row),
-            CancellationToken.None);
-        Guid[] revoked = AdmissionContractRuntime.Ids(result, "RevokedTicketIds");
-        Guid[] preserved = AdmissionContractRuntime.Ids(result, "PreservedTicketIds");
+        AdmissionRevocationResult result = await AdmissionRevocationPorts.TypedService(scenario)
+            .ReconcileAsync(AdmissionRevocationPorts.TypedRequest(scenario, row), CancellationToken.None);
+        Guid[] revoked = result.RevokedTicketIds.ToArray();
+        Guid[] preserved = result.PreservedTicketIds.ToArray();
 
         await Assert.That(revoked.Order()).IsEquivalentTo(row.ExpectedRevoked.Order());
         await Assert.That(preserved.Order()).IsEquivalentTo(row.ExpectedPreserved.Order());
         await Assert.That(revoked.Intersect(preserved)).IsEmpty();
         await Assert.That(revoked.Concat(preserved).Order()).IsEquivalentTo(
-            scenario.TicketsByAssignment.Values.Select(AdmissionContractRuntime.EntityId).Order());
+            scenario.TicketsByAssignment.Values.Select(ticket => ticket.Id).Order());
 
         if (row.Invalid)
         {
-            await Assert.That(AdmissionContractRuntime.Outcome(result)).IsEqualTo("InvalidAllocation");
+            await Assert.That(result.Outcome).IsEqualTo(AdmissionRevocationOutcome.InvalidAllocation);
             await Assert.That(scenario.RevocationWriteCalls).IsEqualTo(0);
         }
         else
         {
-            await Assert.That(AdmissionContractRuntime.Outcome(result)).IsEqualTo("Applied");
+            await Assert.That(result.Outcome).IsEqualTo(AdmissionRevocationOutcome.Applied);
             await Assert.That(scenario.RevocationWriteCalls).IsEqualTo(1);
         }
     }

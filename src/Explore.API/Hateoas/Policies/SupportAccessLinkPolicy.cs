@@ -2,6 +2,7 @@
 // ABOUTME: Emits start, stop, force-stop, and audit affordances through authorization-backed links.
 
 using System.Security.Claims;
+using Explore.Application.Authentication;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.SupportAccess;
@@ -58,12 +59,9 @@ public sealed class SupportAccessSessionDetailLinkPolicy : ILinkPolicy<SupportAc
 
     private static bool IsActor(ClaimsPrincipal? user, Guid? actorUserId)
     {
-        var value = user?.FindFirst("internal_user_id")?.Value
-            ?? user?.FindFirst("sub")?.Value
-            ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user?.FindFirst("sid")?.Value;
-
-        return actorUserId.HasValue && Guid.TryParse(value, out var userId) && userId == actorUserId;
+        return actorUserId.HasValue
+            && user?.GetPlatformUserId() is { } userId
+            && userId == actorUserId;
     }
 }
 

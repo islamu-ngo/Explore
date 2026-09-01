@@ -1,6 +1,7 @@
 // ABOUTME: Focused middleware tests for endpoints that require an Idempotency-Key request header.
 // ABOUTME: Verifies required-key RFC 7807 failures without Docker-backed API fixture dependencies.
 
+using Explore.Application.Constants;
 namespace Event.Api.IntegrationTests.Features;
 
 using System.Text;
@@ -219,7 +220,7 @@ public class IdempotencyMiddlewareTests
                 new Claim(
                     AdmissionScannerAuthenticationDefaults.CapabilityIdClaim,
                     capabilityId.ToString("D"))
-            ], AdmissionScannerAuthenticationDefaults.Scheme));
+            ], ApiAuthenticationSchemeNames.AdmissionScanner));
             return await IdempotencyRequestIdentityFactory.CreateAsync(
                 context,
                 streams,

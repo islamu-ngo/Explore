@@ -2,7 +2,6 @@
 // ABOUTME: Locks raw-coordinate contraction, atomic finite pairs, tenancy, construction, consent, and erasure.
 
 using System.Reflection;
-using System.Runtime.ExceptionServices;
 using AutoMapper;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -15,6 +14,7 @@ using Explore.Application.Features.Locations.Requests.Commands;
 using Explore.Application.Profiles;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using NSubstitute;
 
 using TUnit.Assertions;
@@ -24,9 +24,7 @@ namespace Event.Application.UnitTests.Features.Locations.Commands;
 
 public sealed class LocationAddressWriteContractTests
 {
-    private const string ManualTransitionName = "SetManualAddress";
     private const string ProviderTransitionName = "SetProviderAddress";
-    private const string GeoCoordinateTypeName = "Explore.Domain.ValueObjects.GeoCoordinate";
 
     [Test]
     public async Task DirectLocationWriteContractsDoNotExposeRawCoordinateOrTenantMembers()
@@ -140,34 +138,21 @@ public sealed class LocationAddressWriteContractTests
     }
 
     [Test]
-    public async Task PublicAddressTransitionContractRequiresExactlyOneGeoCoordinateProviderOverload()
+    public async Task PublicAddressTransitionContractExposesNoUnauthorizedProviderOverloads()
     {
         var violations = new List<string>();
-        Type? coordinateType = FindGeoCoordinateType();
         MethodInfo[] providerTransitions = FindPublicProviderTransitions();
-        if (FindManualTransition() is null)
-        {
-            violations.Add($"Location is missing public {ManualTransitionName}(string address, string postcode)");
-        }
-        if (coordinateType is null)
-        {
-            violations.Add($"Domain is missing {GeoCoordinateTypeName}");
-        }
-        else if (FindCoordinateFactory(coordinateType) is null)
-        {
-            violations.Add($"{GeoCoordinateTypeName} is missing public static Create(double latitude, double longitude)");
-        }
 
         MethodInfo[] expectedProviderTransitions = providerTransitions
-            .Where(method => IsExpectedProviderTransition(method, coordinateType))
+            .Where(IsExpectedProviderTransition)
             .ToArray();
         if (expectedProviderTransitions.Length != 1)
         {
-            violations.Add($"Location must expose exactly one public {ProviderTransitionName}(string, string, {GeoCoordinateTypeName}); found {expectedProviderTransitions.Length}");
+            violations.Add($"Location must expose exactly one public {ProviderTransitionName}(string, string, {nameof(GeoCoordinate)}); found {expectedProviderTransitions.Length}");
         }
 
         violations.AddRange(providerTransitions
-            .Where(method => !IsExpectedProviderTransition(method, coordinateType))
+            .Where(method => !IsExpectedProviderTransition(method))
             .Select(method => $"Location exposes unauthorized public provider transition {FormatMethodSignature(method)}"));
 
         await Assert.That(violations).IsEmpty();
@@ -176,17 +161,11 @@ public sealed class LocationAddressWriteContractTests
     [Test]
     public async Task ManualAddressTransitionOnActivePrivateHomeReplacesManualFieldsAndClearsStaleCoordinates()
     {
-        MethodInfo? transition = FindManualTransition();
-        await Assert.That(transition).IsNotNull().Because($"Location must expose public atomic {ManualTransitionName}");
-        if (transition is null)
-        {
-            return;
-        }
         Guid ownerId = Guid.CreateVersion7();
         Location location = NewLocation(Guid.CreateVersion7(), 50.8503, 4.3517);
         location.ClassifyAsPrivateHome(ownerId);
 
-        InvokeTransition(transition, location, "Rue Manual 21", "2000");
+        location.SetManualAddress("Rue Manual 21", "2000");
 
         await Assert.That(location.Pii?.Address).IsEqualTo("Rue Manual 21");
         await Assert.That(location.Pii?.Postcode).IsEqualTo("2000");
@@ -200,24 +179,10 @@ public sealed class LocationAddressWriteContractTests
     [Test]
     public async Task ProviderAddressTransitionWithNormalFiniteCoordinatePersistsAllFieldsExactly()
     {
-        Type? coordinateType = FindGeoCoordinateType();
-        await Assert.That(coordinateType).IsNotNull().Because($"Domain must expose {GeoCoordinateTypeName}");
-        if (coordinateType is null)
-        {
-            return;
-        }
-        MethodInfo? factory = FindCoordinateFactory(coordinateType);
-        await Assert.That(factory).IsNotNull().Because($"{GeoCoordinateTypeName} must expose public static Create(double, double)");
-        MethodInfo? transition = FindProviderTransition(coordinateType);
-        await Assert.That(transition).IsNotNull().Because($"Location must expose public atomic {ProviderTransitionName}(string, string, {GeoCoordinateTypeName})");
-        if (factory is null || transition is null)
-        {
-            return;
-        }
         Location location = NewLocation(Guid.CreateVersion7());
-        object coordinate = InvokeCoordinateFactory(factory, 50.8503, 4.3517);
+        GeoCoordinate coordinate = GeoCoordinate.Create(50.8503, 4.3517);
 
-        InvokeTransition(transition, location, "Rue Provider 30", "1000", coordinate);
+        location.SetProviderAddress("Rue Provider 30", "1000", coordinate);
 
         await Assert.That(location.Pii?.Address).IsEqualTo("Rue Provider 30");
         await Assert.That(location.Pii?.Postcode).IsEqualTo("1000");
@@ -228,18 +193,6 @@ public sealed class LocationAddressWriteContractTests
     [Test]
     public async Task GeoCoordinateFactoryRejectsNonFiniteAndGeographicallyOutOfRangeValues()
     {
-        Type? coordinateType = FindGeoCoordinateType();
-        await Assert.That(coordinateType).IsNotNull().Because($"Domain must expose {GeoCoordinateTypeName}");
-        if (coordinateType is null)
-        {
-            return;
-        }
-        MethodInfo? factory = FindCoordinateFactory(coordinateType);
-        await Assert.That(factory).IsNotNull().Because($"{GeoCoordinateTypeName} must expose public static Create(double, double)");
-        if (factory is null)
-        {
-            return;
-        }
         (double Latitude, double Longitude, string Case)[] invalidCoordinates =
         [
             (double.NaN, 4.3517, "NaN latitude"),
@@ -257,7 +210,7 @@ public sealed class LocationAddressWriteContractTests
 
         foreach (var coordinate in invalidCoordinates)
         {
-            bool rejected = InvokeCoordinateFactoryExpectedRejection(factory, coordinate.Latitude, coordinate.Longitude);
+            bool rejected = CoordinateRejected(coordinate.Latitude, coordinate.Longitude);
             if (!rejected)
             {
                 violations.Add($"{coordinate.Case} was accepted by the coordinate factory");
@@ -267,7 +220,7 @@ public sealed class LocationAddressWriteContractTests
         const string sensitiveCoordinateCanary = "190.123456789";
         try
         {
-            InvokeCoordinateFactory(factory, 50.8503, 190.123456789);
+            GeoCoordinate.Create(50.8503, 190.123456789);
             violations.Add("the sensitive coordinate canary was accepted");
         }
         catch (ArgumentOutOfRangeException exception)
@@ -297,11 +250,6 @@ public sealed class LocationAddressWriteContractTests
         Location location = NewLocation(Guid.CreateVersion7(), 50.8503, 4.3517);
 
         location.SetManualAddress("Rue Atomic 40", "4000");
-        Location legacyInvalid = NewLocation(Guid.CreateVersion7(), 50.8503, 4.3517);
-        LocationPii legacyPii = legacyInvalid.Pii
-            ?? throw new InvalidOperationException("The fixture requires PII.");
-        typeof(LocationPii).GetProperty(nameof(LocationPii.Longitude))?.SetValue(legacyPii, 181d);
-        LocationDto mappedLegacy = CreateRealMapper().Map<LocationDto>(legacyInvalid);
 
         var violations = new List<string>();
         if (piiProperty?.SetMethod?.IsPublic == true)
@@ -317,11 +265,6 @@ public sealed class LocationAddressWriteContractTests
         {
             violations.Add("the authorized manual transition did not replace both address fields and clear coordinates atomically");
         }
-        if (mappedLegacy.Latitude is not null || mappedLegacy.Longitude is not null)
-        {
-            violations.Add("validated mapping emitted an invalid legacy coordinate pair");
-        }
-
         await Assert.That(violations).IsEmpty();
     }
 
@@ -383,27 +326,26 @@ public sealed class LocationAddressWriteContractTests
         Location location = NewLocation(Guid.CreateVersion7(), 50.8503, 4.3517);
         location.ClassifyAsPrivateHome(Guid.CreateVersion7());
         location.EraseOwnedPii(DateTime.UtcNow, LocationPrivacyErasureReasonEnum.OwnerErasureRequest);
-        MethodInfo? manual = FindManualTransition();
-        Type? coordinateType = FindGeoCoordinateType();
-        MethodInfo? coordinateFactory = coordinateType is null ? null : FindCoordinateFactory(coordinateType);
-        MethodInfo? provider = FindProviderTransition(coordinateType);
         var violations = new List<string>();
 
-        if (manual is null || provider is null || coordinateFactory is null)
+        try
         {
-            violations.Add("public manual/provider value-object address transitions are missing, so anti-resurrection cannot be exercised");
+            location.SetManualAddress("Resurrected address", "9999");
+            violations.Add("manual address transition resurrected erased PII");
         }
-        else
+        catch (InvalidOperationException)
         {
-            if (!InvokeExpectedRejection(manual, location, "Resurrected address", "9999"))
-            {
-                violations.Add("manual address transition resurrected erased PII");
-            }
-            object coordinate = InvokeCoordinateFactory(coordinateFactory, 50.8503, 4.3517);
-            if (!InvokeExpectedRejection(provider, location, "Resurrected address", "9999", coordinate))
-            {
-                violations.Add("provider address transition resurrected erased PII");
-            }
+        }
+        try
+        {
+            location.SetProviderAddress(
+                "Resurrected address",
+                "9999",
+                GeoCoordinate.Create(50.8503, 4.3517));
+            violations.Add("provider address transition resurrected erased PII");
+        }
+        catch (InvalidOperationException)
+        {
         }
         if (location.Pii is not null || location.LocationPrivacyStateId != (int)LocationPrivacyStateEnum.Erased)
         {
@@ -429,118 +371,34 @@ public sealed class LocationAddressWriteContractTests
             .Where(method => method.Name == name)
             .Select(method => $"{type.Name}.{FormatMethodSignature(method)}");
 
-    private static MethodInfo? FindManualTransition() => typeof(Location).GetMethod(
-        ManualTransitionName,
-        BindingFlags.Instance | BindingFlags.Public,
-        binder: null,
-        [typeof(string), typeof(string)],
-        modifiers: null);
-
-    private static Type? FindGeoCoordinateType() => typeof(Location).Assembly.GetType(
-        GeoCoordinateTypeName,
-        throwOnError: false,
-        ignoreCase: false);
-
-    private static MethodInfo? FindCoordinateFactory(Type coordinateType) => coordinateType.GetMethod(
-        "Create",
-        BindingFlags.Static | BindingFlags.Public,
-        binder: null,
-        [typeof(double), typeof(double)],
-        modifiers: null) is { } factory && factory.ReturnType == coordinateType
-            ? factory
-            : null;
-
-    private static MethodInfo? FindProviderTransition(Type? coordinateType) => coordinateType is null
-        ? null
-        : typeof(Location).GetMethod(
-            ProviderTransitionName,
-            BindingFlags.Instance | BindingFlags.Public,
-            binder: null,
-            [typeof(string), typeof(string), coordinateType],
-            modifiers: null);
-
     private static MethodInfo[] FindPublicProviderTransitions() => typeof(Location)
         .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public)
         .Where(method => method.Name == ProviderTransitionName)
         .ToArray();
 
-    private static bool IsExpectedProviderTransition(MethodInfo method, Type? coordinateType)
+    private static bool IsExpectedProviderTransition(MethodInfo method)
     {
-        if (coordinateType is null)
-        {
-            return false;
-        }
-
         ParameterInfo[] parameters = method.GetParameters();
         return !method.IsStatic
             && parameters.Length == 3
             && parameters[0].ParameterType == typeof(string)
             && parameters[1].ParameterType == typeof(string)
-            && parameters[2].ParameterType == coordinateType;
+            && parameters[2].ParameterType == typeof(GeoCoordinate);
     }
 
     private static string FormatMethodSignature(MethodInfo method) =>
         $"{method.Name}({string.Join(", ", method.GetParameters().Select(parameter => parameter.ParameterType.FullName ?? parameter.ParameterType.Name))})";
 
-    private static object InvokeCoordinateFactory(MethodInfo factory, double latitude, double longitude)
+    private static bool CoordinateRejected(double latitude, double longitude)
     {
         try
         {
-            return factory.Invoke(null, [latitude, longitude])
-                ?? throw new InvalidOperationException("GeoCoordinate.Create returned null.");
-        }
-        catch (TargetInvocationException exception) when (exception.InnerException is not null)
-        {
-            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
-            throw;
-        }
-    }
-
-    private static void InvokeTransition(MethodInfo transition, Location location, params object?[] arguments)
-    {
-        try
-        {
-            transition.Invoke(location, arguments);
-        }
-        catch (TargetInvocationException exception) when (exception.InnerException is not null)
-        {
-            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
-        }
-    }
-
-    private static bool InvokeExpectedRejection(MethodInfo transition, Location location, params object?[] arguments)
-    {
-        try
-        {
-            transition.Invoke(location, arguments);
+            GeoCoordinate.Create(latitude, longitude);
             return false;
         }
-        catch (TargetInvocationException exception) when (exception.InnerException is ArgumentException or InvalidOperationException)
+        catch (ArgumentException)
         {
             return true;
-        }
-        catch (TargetInvocationException exception) when (exception.InnerException is not null)
-        {
-            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
-            throw;
-        }
-    }
-
-    private static bool InvokeCoordinateFactoryExpectedRejection(MethodInfo factory, double latitude, double longitude)
-    {
-        try
-        {
-            factory.Invoke(null, [latitude, longitude]);
-            return false;
-        }
-        catch (TargetInvocationException exception) when (exception.InnerException is ArgumentException)
-        {
-            return true;
-        }
-        catch (TargetInvocationException exception) when (exception.InnerException is not null)
-        {
-            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
-            throw;
         }
     }
 

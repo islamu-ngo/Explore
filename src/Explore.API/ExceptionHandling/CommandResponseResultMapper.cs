@@ -133,6 +133,27 @@ internal static class CommandResponseResultMapper
         return ApiProblemFactory.ToProblemResult(problemDetails);
     }
 
+    public static ActionResult ToIngressValidationProblem(
+        this ControllerBase controller,
+        ApiValidationProblemDescriptor descriptor,
+        string code = ApiProblemCodes.ValidationFailed)
+    {
+        var problemDetails = ApiProblemFactory.CreateValidationProblem(
+            controller.HttpContext,
+            descriptor,
+            [descriptor.FallbackDetail],
+            descriptor.FallbackDetail,
+            code);
+
+        // Request paths can contain rejected scalar identities and must not be reflected to the caller.
+        problemDetails.Instance = null;
+        return new JsonResult(problemDetails)
+        {
+            StatusCode = problemDetails.Status,
+            ContentType = "application/problem+json"
+        };
+    }
+
 
     public static ActionResult ToAuthenticationRequiredProblem(
         this ControllerBase controller,

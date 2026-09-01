@@ -2969,7 +2969,8 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("varchar(2048)")
                         .HasColumnName("did")
-                        .UseCollation("ascii_bin");
+                        .UseCollation("ascii_bin")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
 
                     MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("Did"), "ascii");
 

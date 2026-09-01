@@ -2,17 +2,17 @@
 // ABOUTME: Promotes one anonymous shell snapshot after login and omits governed navigation overrides when disabled.
 
 using Explore.Blazor.Client.Components.Shell;
-using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Services.Docking;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Explore.Blazor.Client.Services.Interop;
 
 public sealed class ServerBackedDockLayoutPersistence(
     IDockLayoutPersistence localPersistence,
     IUserSettingsService settingsService,
-    IAuthStateService authStateService,
+    AuthenticationStateProvider authenticationStateProvider,
     IUiShellContextService shellContextService,
     ILogger<ServerBackedDockLayoutPersistence> logger) : IDockLayoutPersistence
 {
@@ -113,7 +113,9 @@ public sealed class ServerBackedDockLayoutPersistence(
     {
         try
         {
-            return await authStateService.IsAuthenticatedAsync();
+            AuthenticationState state =
+                await authenticationStateProvider.GetAuthenticationStateAsync();
+            return state.User.Identity?.IsAuthenticated == true;
         }
         catch (Exception ex)
         {

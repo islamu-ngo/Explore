@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Services;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
@@ -111,7 +112,7 @@ public sealed class StorageUploadSessionStoreTests
         const string sessionId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         var expiredSession = new StorageUploadSession(
             sessionId,
-            "user-1",
+            OwnerKey("user-1"),
             ApiUploadSessionId,
             "image/png",
             4,
@@ -148,10 +149,16 @@ public sealed class StorageUploadSessionStoreTests
             },
             contentType);
 
+    private static string OwnerKey(string userId)
+    {
+        CreateUser(userId).TryGetCircuitSubject(out var identity);
+        return identity.PartitionKey;
+    }
+
     private static ClaimsPrincipal CreateUser(string userId) =>
         new(new ClaimsIdentity(
         [
             new Claim("sub", userId),
             new Claim(ClaimTypes.Name, "Storage Tester")
-        ], "Test"));
+        ], "Cookies"));
 }

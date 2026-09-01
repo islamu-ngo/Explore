@@ -48,7 +48,7 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
             }
 
             var claims = claimDtos.Select(c => new Claim(c.Type, c.Value)).ToList();
-            var identity = new ClaimsIdentity(claims, "Test");
+            var identity = new ClaimsIdentity(claims, "Cookies");
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, SchemeName);
 

@@ -36,7 +36,7 @@ all callers, regenerate governed artifacts, and document the change.
 
 ### Domain Values
 
-`Money`, `GeoCoordinate`, `LocalDateRange`, and `UtcInstantRange` are immutable
+`Money`, `GeoCoordinate`, `LocalDateRange`, `UtcInstantRange`, and `AtprotoDid` are immutable
 Domain values under `src/Explore.Domain/ValueObjects/`.
 
 - Factories normalize and reject invalid state before construction.
@@ -48,6 +48,15 @@ Domain values under `src/Explore.Domain/ValueObjects/`.
 
 Entities remain classes. They accept semantic values at business boundaries
 and retain identity and lifecycle ownership.
+
+`AtprotoDid` represents only a live AT Protocol DID. Parsing is explicit,
+preserves ordinal case-sensitive identity, accepts syntactically valid future
+methods, and exposes the exact scalar only through `.Value`. Its exceptions and
+`ToString()` are value-free. `AtprotoIdentity` accepts the typed value for live
+construction and verified refresh while retaining its scalar `Did` owner
+property for EF. Privacy erasure is aggregate-owned: it replaces the live value
+with an internal `did:deleted:*` tombstone and clears provider metadata without
+passing that tombstone through the live parser.
 
 ### Application Requests And Results
 

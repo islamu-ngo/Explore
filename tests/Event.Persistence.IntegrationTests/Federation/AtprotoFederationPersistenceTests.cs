@@ -11,6 +11,7 @@ using Explore.Application.Features.Federation.Atproto.Services;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Federation;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -135,6 +136,38 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
     }
 
     [Test]
+    public async Task IdentityRepositoryUsesTypedDidAndOrdinalScalarLookup()
+    {
+        await fixture.ResetAsync();
+        FederationScope scope = await SeedScopeAsync("typed-did-lookup");
+        AtprotoDid did = AtprotoDid.Parse("did:plc:ExactIdentity");
+        Actor actor = CreateActor(scope.UserId, "Typed DID owner", Utc(10));
+        var identity = new AtprotoIdentity(did)
+        {
+            Id = Guid.CreateVersion7(),
+            ActorId = actor.Id,
+            Actor = actor,
+            PdsHost = "https://pds.example.test",
+            IsActive = true,
+            LastResolvedAt = Utc(10),
+            LastSeenAt = Utc(10),
+            CreatedAt = Utc(10),
+        };
+        await using ExploreDbContext context = fixture.CreateDbContext();
+        context.AtprotoIdentities.Add(identity);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        var repository = new AtprotoIdentityRepository(context);
+
+        AtprotoIdentity? exact = await repository.GetByDid(did);
+        AtprotoIdentity? differentCase = await repository.GetByDid(
+            AtprotoDid.Parse("did:plc:exactidentity"));
+
+        await Assert.That(exact?.Id).IsEqualTo(identity.Id);
+        await Assert.That(differentCase).IsNull();
+    }
+
+    [Test]
     public async Task JetstreamApply_InvalidOutOfRangeCursorStoresQuarantineWithoutPoisoningCheckpoint()
     {
         await fixture.ResetAsync();
@@ -237,10 +270,10 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
                 SourceVersion = 1,
                 EvaluatedAt = Utc(10)
             });
-            seedContext.AtprotoIdentities.Add(new AtprotoIdentity
+            seedContext.AtprotoIdentities.Add(new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse(record.Did))
             {
                 Id = Guid.CreateVersion7(),
-                Did = record.Did,
+
                 ActorId = actor.Id,
                 Actor = actor,
                 PdsHost = "https://pds.example.test",
@@ -1617,14 +1650,16 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
 
     private static Actor CreateActor(Guid userId, string displayName, DateTime createdAt)
     {
-        Actor actor = Activator.CreateInstance<Actor>();
-        actor.Id = Guid.CreateVersion7();
-        actor.ActorTypeId = (int)ActorTypeEnum.User;
-        actor.ActorType = null!;
-        actor.UserId = userId;
-        actor.Pii = new ActorPii { DisplayName = displayName };
-        actor.CreatedAt = createdAt;
-        actor.ConcurrencyStamp = Guid.CreateVersion7();
+        var actor = new Actor
+        {
+            Id = Guid.CreateVersion7(),
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            UserId = userId,
+            Pii = new ActorPii { DisplayName = displayName },
+            CreatedAt = createdAt,
+            ConcurrencyStamp = Guid.CreateVersion7()
+        };
         return actor;
     }
 

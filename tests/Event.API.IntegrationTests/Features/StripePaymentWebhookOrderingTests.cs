@@ -17,9 +17,10 @@ using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Payments.Stripe;
 using Explore.Infrastructure.Webhooks;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
+using Explore.Secrets.Database;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -145,7 +146,7 @@ public sealed class StripePaymentWebhookOrderingTests
 
     private sealed class TestHarness : IAsyncDisposable
     {
-        private readonly SqliteConnection connection;
+        private readonly string databasePath;
         private readonly IncomingWebhookIntakeService intake;
         private readonly IncomingWebhookMessageRepository incomingRepository;
         private readonly StripePaymentIncomingWebhookHandler handler;
@@ -153,7 +154,7 @@ public sealed class StripePaymentWebhookOrderingTests
         private readonly FixedTimeProvider timeProvider;
 
         private TestHarness(
-            SqliteConnection connection,
+            string databasePath,
             ExploreDbContext context,
             IncomingWebhookIntakeService intake,
             IncomingWebhookMessageRepository incomingRepository,
@@ -163,7 +164,7 @@ public sealed class StripePaymentWebhookOrderingTests
             IPaymentIntentRetriever payment,
             FixedTimeProvider timeProvider)
         {
-            this.connection = connection;
+            this.databasePath = databasePath;
             Context = context;
             this.intake = intake;
             this.incomingRepository = incomingRepository;
@@ -180,20 +181,23 @@ public sealed class StripePaymentWebhookOrderingTests
 
         public static async Task<TestHarness> CreateAsync()
         {
-            var connection = new SqliteConnection("Data Source=:memory:");
-            await connection.OpenAsync();
-            await using (SqliteCommand command = connection.CreateCommand())
-            {
-                command.CommandText = "PRAGMA foreign_keys = OFF;";
-                await command.ExecuteNonQueryAsync();
-            }
-
-            var options = new DbContextOptionsBuilder<ExploreDbContext>()
-                .UseSqlite(connection)
-                .UseSnakeCaseNamingConvention()
-                .Options;
-            var context = new ExploreDbContext(options);
+            string databasePath = Path.Combine(
+                Path.GetTempPath(),
+                $"event-stripe-payment-{Guid.CreateVersion7():N}.db");
+            var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>();
+            PrimaryDatabaseProviderComposition.ConfigureApplication(
+                optionsBuilder,
+                new PrimaryDatabaseConnectionOptions
+                {
+                    Role = PrimaryDatabaseRole.Runtime,
+                    Provider = PrimaryDatabaseProvider.Sqlite,
+                    Database = databasePath
+                });
+            optionsBuilder.UseSnakeCaseNamingConvention();
+            var context = new ExploreDbContext(optionsBuilder.Options);
             context.EnableTenantFilterBypass("Signed payment webhook ordering fixtures.");
+            await context.Database.OpenConnectionAsync();
+            await context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF;");
             await context.Database.EnsureCreatedAsync();
             var paymentRepository = new RegistrationPaymentAttemptRepository(context);
             var incomingRepository = new IncomingWebhookMessageRepository(context);
@@ -227,7 +231,7 @@ public sealed class StripePaymentWebhookOrderingTests
             var checkout = Substitute.For<IHostedCheckoutSessionRetriever>();
             var payment = Substitute.For<IPaymentIntentRetriever>();
             return new(
-                connection,
+                databasePath,
                 context,
                 intake,
                 incomingRepository,
@@ -310,7 +314,7 @@ public sealed class StripePaymentWebhookOrderingTests
         public async ValueTask DisposeAsync()
         {
             await Context.DisposeAsync();
-            await connection.DisposeAsync();
+            File.Delete(databasePath);
         }
     }
 

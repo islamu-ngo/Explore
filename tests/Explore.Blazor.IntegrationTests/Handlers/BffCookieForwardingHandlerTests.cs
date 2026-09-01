@@ -241,5 +241,5 @@ public class BffCookieForwardingHandlerTests
             new Claim("sub", userId),
             new Claim(ClaimTypes.NameIdentifier, userId)
         ],
-        "Test"));
+        "Cookies"));
 }

@@ -39,7 +39,28 @@ internal static class ProviderNeutralTypeGraph
             .Select(parameter => parameter.ParameterType)
             .ToArray();
         if (Closure(constructorTypes).Any(IsProviderSpecific))
-            throw AdmissionContractRuntime.Missing($"provider-neutral public constructors for {serviceType.Name}");
+            throw new InvalidOperationException($"Provider-specific public constructor found on {serviceType.Name}.");
+    }
+
+    internal static IEnumerable<Type> PublicSignatureTypes(Type contract)
+    {
+        yield return contract;
+        foreach (System.Reflection.ConstructorInfo constructor in contract.GetConstructors())
+        foreach (System.Reflection.ParameterInfo parameter in constructor.GetParameters())
+        {
+            yield return parameter.ParameterType;
+        }
+        foreach (System.Reflection.MethodInfo method in contract.GetMethods(
+                     System.Reflection.BindingFlags.Instance |
+                     System.Reflection.BindingFlags.Public |
+                     System.Reflection.BindingFlags.DeclaredOnly))
+        {
+            yield return method.ReturnType;
+            foreach (System.Reflection.ParameterInfo parameter in method.GetParameters())
+            {
+                yield return parameter.ParameterType;
+            }
+        }
     }
 
     internal static bool IsProviderSpecific(Type type)

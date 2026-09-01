@@ -1,3 +1,6 @@
+// ABOUTME: Loads organization members and renders mutations solely from server HAL affordances.
+// ABOUTME: Preserves accessible dialog focus while leaving self and creator policy to the API.
+
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
@@ -5,7 +8,6 @@ using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Organizations.Dialogs;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Organizations;
@@ -16,14 +18,12 @@ public partial class OrganizationMembers
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
-    [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = null!;
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
 
     private Guid Id { get; set; }
     private List<OrganizationMemberDto> Members = new();
     private bool _loading = true;
-    private string? currentUserId;
     private bool _canCreateMembers;
     private string? _errorMessage;
 
@@ -47,33 +47,14 @@ public partial class OrganizationMembers
             Id = id;
         }
 
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        currentUserId = user.FindFirst("sub")?.Value
-            ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? user.FindFirst("oid")?.Value;
-
         await LoadMembers();
     }
 
-    private static bool CanEditMember(OrganizationMemberDto member)
-    {
-        return member.RoleId != RoleHelper.OrgCreator
-            && member.HasHalLink("edit");
-    }
+    private static bool CanEditMember(OrganizationMemberDto member) =>
+        member.HasHalLink("edit");
 
-    private bool CanDeleteMember(OrganizationMemberDto member)
-    {
-        return member.RoleId != RoleHelper.OrgCreator
-            && !IsCurrentUser(member)
-            && member.HasHalLink("delete");
-    }
-
-    private bool IsCurrentUser(OrganizationMemberDto member)
-    {
-        return currentUserId != null
-            && member.UserId?.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase) == true;
-    }
+    private static bool CanDeleteMember(OrganizationMemberDto member) =>
+        member.HasHalLink("delete");
 
     private async Task LoadMembers()
     {

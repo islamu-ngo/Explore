@@ -78,4 +78,26 @@ public class EventCustomPropertyDefinition : ITenantEntity, IAuditableEntity, IS
 
     private readonly List<EventCustomPropertyValue> _values = [];
     public IReadOnlyCollection<EventCustomPropertyValue> Values => _values.AsReadOnly();
+
+    internal void AddOption(EventCustomPropertyOption option)
+    {
+        ArgumentNullException.ThrowIfNull(option);
+        if (option.EventCustomPropertyDefinitionId != Id)
+        {
+            throw new InvalidOperationException("The option must belong to this event custom-property definition.");
+        }
+
+        _options.Add(option);
+    }
+
+    internal void AddValue(EventCustomPropertyValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        if (value.EventCustomPropertyDefinitionId != Id)
+        {
+            throw new InvalidOperationException("The value must belong to this event custom-property definition.");
+        }
+
+        _values.Add(value);
+    }
 }

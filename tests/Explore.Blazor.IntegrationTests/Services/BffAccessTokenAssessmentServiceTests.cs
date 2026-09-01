@@ -1,4 +1,4 @@
-// ABOUTME: Focused tests for BFF access-token assessment and safe token summaries.
+// ABOUTME: Focused tests for stable BFF access-token outcomes and purpose-bound refresh identity.
 // ABOUTME: Keeps refresh-session token decisions covered after extraction from auth endpoints.
 
 using System.IdentityModel.Tokens.Jwt;
@@ -29,7 +29,7 @@ public sealed class BffAccessTokenAssessmentServiceTests
         var result = service.Assess(token);
 
         await Assert.That(result.IsUsable).IsTrue();
-        await Assert.That(result.Reason).StartsWith("valid_until:");
+        await Assert.That(result.Reason).IsEqualTo("valid_access_token");
     }
 
     [Test]
@@ -41,37 +41,22 @@ public sealed class BffAccessTokenAssessmentServiceTests
         var result = service.Assess(token);
 
         await Assert.That(result.IsUsable).IsFalse();
-        await Assert.That(result.Reason).StartsWith("expired_access_token:");
+        await Assert.That(result.Reason).IsEqualTo("expired_access_token");
     }
 
     [Test]
-    public async Task Describe_WithValidToken_ReturnsSafeSummaryWithoutTokenMaterial()
-    {
-        var service = new BffAccessTokenAssessmentService();
-        var token = CreateJwt("user-1", DateTime.UtcNow.AddMinutes(30), issuer: "https://issuer.example", audience: "api");
-
-        var summary = service.Describe(token);
-
-        await Assert.That(summary).Contains("user=user-1");
-        await Assert.That(summary).Contains("iss=https://issuer.example");
-        await Assert.That(summary).Contains("aud=api");
-        await Assert.That(summary).DoesNotContain(token);
-        await Assert.That(summary).Contains("validTo=");
-    }
-
-    [Test]
-    public async Task ResolveUserId_PrefersSubThenNameIdentifierThenSid()
+    public async Task ResolveUserId_RejectsConflictingProviderSubjectSpellings()
     {
         var service = new BffAccessTokenAssessmentService();
         var principal = new ClaimsPrincipal(new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, "name-id"),
             new Claim("sid", "session-id"),
             new Claim("sub", "subject-id")
-        ], "test"));
+        ], "Cookies"));
 
         var userId = service.ResolveUserId(principal);
 
-        await Assert.That(userId).IsEqualTo("subject-id");
+        await Assert.That(userId).IsNull();
     }
 
     private static string CreateJwt(

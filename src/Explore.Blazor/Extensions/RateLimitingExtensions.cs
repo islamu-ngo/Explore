@@ -4,6 +4,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using Event.Web.BffHosting.Security;
 using System.Threading.RateLimiting;
 
 using Explore.Blazor.Services;
@@ -225,24 +226,9 @@ public static class RateLimitingExtensions
 
     private static string ResolveSetupSecretPartitionKey(HttpContext context)
     {
-        var userId = context.User.FindFirst("sub")?.Value
-            ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? context.User.FindFirst("sid")?.Value;
-        if (!string.IsNullOrWhiteSpace(userId))
+        if (context.User.TryGetRatePartitionIdentity(out var userId))
         {
-            return $"setup:user:{userId}";
-        }
-
-        var antiforgeryCookie = context.Request.Cookies["XSRF-TOKEN"];
-        if (!string.IsNullOrWhiteSpace(antiforgeryCookie))
-        {
-            return $"setup:xsrf:{antiforgeryCookie}";
-        }
-
-        var setupSecretCookie = context.Request.Cookies["setup-secret"];
-        if (!string.IsNullOrWhiteSpace(setupSecretCookie))
-        {
-            return $"setup:secret:{setupSecretCookie}";
+            return $"setup:user:{userId.PartitionKey}";
         }
 
         return $"setup:ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
@@ -250,14 +236,9 @@ public static class RateLimitingExtensions
 
     private static string ResolveCheckoutPartitionKey(HttpContext context)
     {
-        string? userId = context.User.Identity?.IsAuthenticated == true
-            ? context.User.FindFirst("sub")?.Value
-                ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                ?? context.User.FindFirst("sid")?.Value
-            : null;
-        if (!string.IsNullOrWhiteSpace(userId))
+        if (context.User.TryGetRatePartitionIdentity(out var userId))
         {
-            return $"checkout:user:{Digest(userId)}";
+            return $"checkout:user:{Digest(userId.PartitionKey)}";
         }
 
         string tenant = context.Items[TenantRouteContextAccessor.TenantSlugItemKey]?.ToString() ?? string.Empty;

@@ -24,12 +24,12 @@ public sealed class PublishedContractSnapshotTests
         var manifest = new PolicyPackageManifest("package", "v1", "hash", DateTimeOffset.UnixEpoch, []);
         var archive = new PolicyPackageArchive("package.zip", "application/zip", source, manifest);
         var webhook = new WebhookPayloadBuildResult(true, null, source, "hash", DateTimeOffset.UnixEpoch, null, null);
-        var current = new AtprotoCurrentOAuthSession("did:plc:test", new Uri("https://pds.test"), "key", source);
-        var verification = new AtprotoOAuthVerificationInput("did:plc:test", new Uri("https://pds.test"), "key", source);
-        var verified = new AtprotoVerifiedOAuthSession("did:plc:test", "test.test", new Uri("https://pds.test"), "key", source);
-        var prepared = new AtprotoPreparedOAuthSession(source, "key", 1, Guid.NewGuid(), Guid.NewGuid(), "did:plc:test", "pds.test", "key", null);
+        var current = new AtprotoCurrentOAuthSession(Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:test"), new Uri("https://pds.test"), "key", source);
+        var verification = new AtprotoOAuthVerificationInput(Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:test"), new Uri("https://pds.test"), "key", source);
+        var verified = new AtprotoVerifiedOAuthSession(Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:test"), "test.test", new Uri("https://pds.test"), "key", source);
+        var prepared = new AtprotoPreparedOAuthSession(source, "key", 1, Guid.NewGuid(), Guid.NewGuid(), Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:test"), "pds.test", "key", null);
         var command = new BootstrapAtprotoSessionCommand(
-            "did:plc:test",
+            Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:test"),
             "https://pds.test/",
             "key",
             AtprotoSubjectClassification.Person,

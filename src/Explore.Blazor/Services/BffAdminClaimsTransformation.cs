@@ -3,6 +3,7 @@
 
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;
@@ -63,11 +64,7 @@ public sealed class BffAdminClaimsTransformation
             return false;
         }
 
-        var sub = principal.FindFirst("sub")?.Value
-                  ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                  ?? principal.FindFirst("sid")?.Value;
-
-        if (string.IsNullOrWhiteSpace(sub))
+        if (!principal.TryGetAdminSubject(out var sub))
         {
             return false;
         }
@@ -87,15 +84,17 @@ public sealed class BffAdminClaimsTransformation
         var accessToken = properties?.GetTokenValue("access_token");
         if (string.IsNullOrWhiteSpace(accessToken))
         {
-            _logger.LogDebug("BffAdminClaimsTransformation: No access token available for user {UserId}", sub);
+            _logger.LogDebug(
+                "BFF admin enrichment skipped | Outcome={Outcome} Reason={Reason} Purpose={Purpose}",
+                "skipped", "access_token_missing", "admin");
             return HasAnyAdminClaims(principal);
         }
 
-        var cacheKey = $"{CacheKeyPrefix}{sub}";
+        var cacheKey = $"{CacheKeyPrefix}{sub.PartitionKey}";
 
         if (synchronizeUser)
         {
-            var internalUserId = await SynchronizeUserAsync(sub, accessToken, cancellationToken);
+            var internalUserId = await SynchronizeUserAsync(accessToken, cancellationToken);
             if (internalUserId is not null)
             {
                 ReplaceInternalUserIdClaim(principal, internalUserId.Value);
@@ -120,7 +119,7 @@ public sealed class BffAdminClaimsTransformation
             return HasAnyAdminClaims(principal);
         }
 
-        var authority = await FetchAdminAuthorityAsync(sub, accessToken, cancellationToken);
+        var authority = await FetchAdminAuthorityAsync(accessToken, cancellationToken);
         if (authority is not null)
         {
             var ttl = authority.HasAnyAuthority == true ? PositiveCacheDuration : NegativeCacheDuration;
@@ -134,7 +133,6 @@ public sealed class BffAdminClaimsTransformation
     }
 
     private async Task<Guid?> SynchronizeUserAsync(
-        string userId,
         string accessToken,
         CancellationToken cancellationToken)
     {
@@ -151,30 +149,27 @@ public sealed class BffAdminClaimsTransformation
         catch (ApiException ex)
         {
             _logger.LogWarning(
-                "BffAdminClaimsTransformation: User synchronization returned HTTP {StatusCode} for user {UserId}. Continuing authority resolution.",
-                ex.StatusCode,
-                userId);
+                "BFF admin synchronization completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} StatusCode={StatusCode}",
+                "rejected", "downstream_status", "admin", ex.StatusCode);
             return null;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning(
-                "BffAdminClaimsTransformation: Timed out while synchronizing user {UserId}. Continuing authority resolution.",
-                userId);
+                "BFF admin synchronization completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose}",
+                "rejected", "timeout", "admin");
             return null;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(
-                "BffAdminClaimsTransformation: User synchronization failed with {FailureType} for user {UserId}. Continuing authority resolution.",
-                ex.GetType().Name,
-                userId);
+                "BFF admin synchronization completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} FailureType={FailureType}",
+                "rejected", "exception", "admin", ex.GetType().Name);
             return null;
         }
     }
 
     private async Task<AdminAuthorityDto?> FetchAdminAuthorityAsync(
-        string userId,
         string accessToken,
         CancellationToken cancellationToken)
     {
@@ -188,15 +183,15 @@ public sealed class BffAdminClaimsTransformation
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning(
-                "BffAdminClaimsTransformation: Timed out while fetching admin authority for user {UserId}",
-                userId);
+                "BFF admin authority fetch completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose}",
+                "rejected", "timeout", "admin");
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex,
-                "BffAdminClaimsTransformation: Failed to fetch admin authority for user {UserId}. " +
-                "Keeping existing session claims. Server-side authorization remains enforced.", userId);
+            _logger.LogWarning(
+                "BFF admin authority fetch completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} FailureType={FailureType}",
+                "rejected", "exception", "admin", ex.GetType().Name);
             return null;
         }
     }

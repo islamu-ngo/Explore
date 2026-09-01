@@ -2,6 +2,7 @@
 // ABOUTME: Preserves circuit-aware token, tenant route, setup-secret, and support-access forwarding behavior.
 
 using System.Security.Claims;
+using Event.Web.BffHosting.Security;
 using Event.Web.BffHosting.Abstractions;
 using Microsoft.AspNetCore.Authentication;
 
@@ -25,15 +26,14 @@ internal sealed class ExploreBffAccessTokenProvider : IEventBffAccessTokenProvid
     private static string? TryResolveFromCircuitStore(HttpContext httpContext)
     {
         var user = httpContext.User;
-        var userId = user?.FindFirst("sub")?.Value
-            ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = user.TryGetCircuitSubject(out var subject) ? subject.PartitionKey : null;
 
         if (string.IsNullOrEmpty(userId))
         {
             return null;
         }
 
-        var sessionId = user?.FindFirst("sid")?.Value;
+        var sessionId = user.TryGetSessionId(out var resolvedSessionId) ? resolvedSessionId.PartitionKey : null;
         var tokenStore = httpContext.RequestServices.GetService<ICircuitTokenStore>();
         if (tokenStore is null)
         {

@@ -9,6 +9,7 @@ using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.Application.Authorization;
+using Explore.Application.Constants;
 using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Admissions;
@@ -274,7 +275,7 @@ public sealed class AdmissionCheckInController(
         title: "Admission request invalid",
         detail: detail);
 
-    private HalResource<AdmissionCheckInResultDto> CheckInResource(
+    internal HalResource<AdmissionCheckInResultDto> CheckInResource(
         Guid eventId,
         AdmissionCheckInResult result,
         bool canCheckIn,
@@ -398,7 +399,7 @@ public sealed class AdmissionCheckInController(
 public sealed class AdmissionScannerCheckInController(AdmissionCheckInService service) : ControllerBase
 {
     [HttpPost("", Name = RouteNames.ScannerCheckInAdmission)]
-    [Authorize(AuthenticationSchemes = AdmissionScannerAuthenticationDefaults.Scheme)]
+    [Authorize(AuthenticationSchemes = ApiAuthenticationSchemeNames.AdmissionScanner)]
     [PrivateNoStore]
     [RequireIdempotencyKey]
     [EnableRateLimiting(RateLimitingExtensions.AdmissionScannerCheckInPolicy)]
@@ -422,7 +423,7 @@ public sealed class AdmissionScannerCheckInController(AdmissionCheckInService se
     }
 
     [HttpPost("batch", Name = RouteNames.ScannerBatchCheckInAdmissions)]
-    [Authorize(AuthenticationSchemes = AdmissionScannerAuthenticationDefaults.Scheme)]
+    [Authorize(AuthenticationSchemes = ApiAuthenticationSchemeNames.AdmissionScanner)]
     [PrivateNoStore]
     [RequireIdempotencyKey]
     [EnableRateLimiting(RateLimitingExtensions.AdmissionScannerCheckInPolicy)]
@@ -472,7 +473,7 @@ public sealed class AdmissionScannerCheckInController(AdmissionCheckInService se
     }
 
     [HttpPost("{checkInId:guid}/undo", Name = RouteNames.ScannerUndoAdmissionCheckIn)]
-    [Authorize(AuthenticationSchemes = AdmissionScannerAuthenticationDefaults.Scheme)]
+    [Authorize(AuthenticationSchemes = ApiAuthenticationSchemeNames.AdmissionScanner)]
     [PrivateNoStore]
     [RequireIdempotencyKey]
     [EnableRateLimiting(RateLimitingExtensions.AdmissionScannerCheckInPolicy)]
@@ -516,7 +517,7 @@ public sealed class AdmissionScannerCheckInController(AdmissionCheckInService se
             scope.CapabilityId,
             checkInId), cancellationToken);
 
-    private HalResource<AdmissionCheckInResultDto> Resource(AdmissionCheckInResult result)
+    internal HalResource<AdmissionCheckInResultDto> Resource(AdmissionCheckInResult result)
     {
         var resource = new HalResource<AdmissionCheckInResultDto>(new AdmissionCheckInResultDto(
                 result.Outcome.ToString(), result.TargetId,

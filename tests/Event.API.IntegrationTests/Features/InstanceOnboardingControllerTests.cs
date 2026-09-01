@@ -13,6 +13,7 @@ using Explore.API.Extensions;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Models.Common;
 using Explore.Application.Onboarding;
 using Explore.Application.Responses;
@@ -357,12 +358,12 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
-    public async Task Complete_WithUnlinkedGuidProviderSubject_ShouldAllocateDistinctLocalUserId()
+    public async Task Complete_WithUnlinkedNonGuidProviderSubject_ShouldResolveThroughProviderLinkage()
     {
         using var factory = CreateFactoryWithSetupSecretWithoutClaimsTransformation();
         using var client = factory.CreateClient();
 
-        var providerId = Guid.NewGuid().ToString("D");
+        const string providerId = "opaque-keycloak-provider-subject";
         var email = $"{Guid.NewGuid():N}@integration.test";
         using var request = CreateCustomAuthRequest(
             HttpMethod.Post,
@@ -385,7 +386,7 @@ public class InstanceOnboardingControllerTests
             .SingleAsync(candidate => candidate.Provider == "keycloak" && candidate.ProviderKey == providerId);
         var user = await dbContext.Users.SingleAsync(candidate => candidate.Id == externalLogin.UserId);
 
-        await Assert.That(user.Id).IsNotEqualTo(Guid.Parse(providerId));
+        await Assert.That(user.Id).IsNotEqualTo(Guid.Empty);
         await Assert.That(user.Pii.Email).IsEqualTo(email);
     }
 
@@ -507,11 +508,8 @@ public class InstanceOnboardingControllerTests
         var userId = Guid.NewGuid();
         await EnsureUserExistsAsync(factory, userId);
 
-        var clientPayload = new CompleteInstanceOnboardingRequest
-        {
-            DeploymentMode = DeploymentMode.MultiTenant,
-            SiteProfile = new SelfHostOnboardingProfileDto { SiteName = "Integration Test Instance" }
-        };
+        var clientPayload = CreateValidOnboardingRequest();
+        clientPayload.DeploymentMode = DeploymentMode.MultiTenant;
 
         using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, clientPayload, includeSetupSecret: true);
         var completeResponse = await client.SendAsync(completeRequest);
@@ -1258,6 +1256,16 @@ public class InstanceOnboardingControllerTests
         {
             DeploymentMode = DeploymentMode.SingleTenant,
             SiteProfile = new SelfHostOnboardingProfileDto { SiteName = "Integration Test Instance" },
+            DirectoryOperatorIdentity = new TenantDirectoryOperatorIdentityInputDto
+            {
+                PublicName = "Integration Test Operator",
+                LegalName = "Integration Test Operator",
+                OperatorKindCode = "registered_organization",
+                JurisdictionCountryCode = "BE",
+                PublicContactEmail = "operator@integration.test",
+                LegalNoticeUrl = "https://integration.test/legal",
+                PrivacyUrl = "https://integration.test/privacy"
+            },
             InstanceName = "Integration Test Instance"
         };
     }

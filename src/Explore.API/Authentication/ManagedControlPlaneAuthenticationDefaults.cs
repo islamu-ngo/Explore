@@ -5,7 +5,6 @@ namespace Explore.API.Authentication;
 
 public static class ManagedControlPlaneAuthenticationDefaults
 {
-    public const string Scheme = "ManagedControlPlane";
     public const string HeaderName = "X-Control-Plane-Key";
     public const string ScopeClaim = "managed_control_plane_scope";
     public const string ManagedInstanceIdClaim = "managed_instance_id";

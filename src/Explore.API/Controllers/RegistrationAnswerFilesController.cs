@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Authentication;
 using Explore.API.ExceptionHandling;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
@@ -22,7 +23,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [ApiController]
 [Route("api/registration-answer-files")]
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = ApiAuthorizationPolicies.Admin)]
 [EndpointClassification(EndpointClass.Admin)]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public sealed class RegistrationAnswerFilesController(

@@ -4,6 +4,7 @@
 using System.Net;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Constants;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 
@@ -20,7 +21,6 @@ public sealed class OpenApiParityTests
     private const string NativeOpenApiEndpoint = "/openapi/islamu-event.json";
     private const string SwashbuckleOpenApiEndpoint = "/swagger/v0.1/swagger.json";
     private const string KeycloakAuthorizationUrl = "https://auth.example.com/realms/ISLAMU/protocol/openid-connect/auth";
-    private const string ManagedControlPlaneScheme = "ManagedControlPlane";
     private const string ManagedControlPlaneHeader = "X-Control-Plane-Key";
     private const string PrivacyErasureReceiptScheme = "PrivacyErasureReceipt";
     private const string PrivacyErasureReceiptHeader = "Authorization";
@@ -36,10 +36,10 @@ public sealed class OpenApiParityTests
     private static readonly OperationSecurityExpectation[] ManagementOperationSecurityExpectations =
     [
         new(new("/api/management/capabilities", "get"), []),
-        new(new("/api/management/tenants/preflight", "post"), [ManagedControlPlaneScheme]),
-        new(new("/api/management/tenants/provision", "post"), [ManagedControlPlaneScheme]),
-        new(new("/api/management/tenant-provisioning/{operationId}", "get"), [ManagedControlPlaneScheme]),
-        new(new("/api/management/tenant-provisioning/{operationId}/cancel", "post"), [ManagedControlPlaneScheme]),
+        new(new("/api/management/tenants/preflight", "post"), [ApiAuthenticationSchemeNames.ManagedControlPlane]),
+        new(new("/api/management/tenants/provision", "post"), [ApiAuthenticationSchemeNames.ManagedControlPlane]),
+        new(new("/api/management/tenant-provisioning/{operationId}", "get"), [ApiAuthenticationSchemeNames.ManagedControlPlane]),
+        new(new("/api/management/tenant-provisioning/{operationId}/cancel", "post"), [ApiAuthenticationSchemeNames.ManagedControlPlane]),
         new(new("/api/management/registration", "post"), ["Keycloak"]),
         new(new("/api/event", "post"), ["Keycloak"])
     ];
@@ -373,15 +373,15 @@ public sealed class OpenApiParityTests
         JsonDocument swashbuckleDocument,
         List<string> differences)
     {
-        if (!TryGetSecurityScheme(nativeDocument, ManagedControlPlaneScheme, out var nativeScheme))
+        if (!TryGetSecurityScheme(nativeDocument, ApiAuthenticationSchemeNames.ManagedControlPlane, out var nativeScheme))
         {
-            differences.Add($"native document is missing components.securitySchemes.{ManagedControlPlaneScheme}");
+            differences.Add($"native document is missing components.securitySchemes.{ApiAuthenticationSchemeNames.ManagedControlPlane}");
             return;
         }
 
-        if (!TryGetSecurityScheme(swashbuckleDocument, ManagedControlPlaneScheme, out var swashbuckleScheme))
+        if (!TryGetSecurityScheme(swashbuckleDocument, ApiAuthenticationSchemeNames.ManagedControlPlane, out var swashbuckleScheme))
         {
-            differences.Add($"Swashbuckle document is missing components.securitySchemes.{ManagedControlPlaneScheme}");
+            differences.Add($"Swashbuckle document is missing components.securitySchemes.{ApiAuthenticationSchemeNames.ManagedControlPlane}");
             return;
         }
 
@@ -465,10 +465,10 @@ public sealed class OpenApiParityTests
             differences.Add($"{UnrelatedAnonymousOperation}: effective security differs (native={string.Join(',', nativeSchemes)}, swashbuckle={string.Join(',', swashbuckleSchemes)})");
         }
 
-        if (nativeSchemes.Contains(ManagedControlPlaneScheme)
-            || swashbuckleSchemes.Contains(ManagedControlPlaneScheme))
+        if (nativeSchemes.Contains(ApiAuthenticationSchemeNames.ManagedControlPlane)
+            || swashbuckleSchemes.Contains(ApiAuthenticationSchemeNames.ManagedControlPlane))
         {
-            differences.Add($"{UnrelatedAnonymousOperation}: unrelated anonymous operation must not use {ManagedControlPlaneScheme}");
+            differences.Add($"{UnrelatedAnonymousOperation}: unrelated anonymous operation must not use {ApiAuthenticationSchemeNames.ManagedControlPlane}");
         }
     }
 

@@ -92,6 +92,68 @@ public sealed class BffAdminClaimsTransformationTests
         await Assert.That(handler.Requests[1].Path).IsEqualTo("/api/user/admin-authority");
     }
 
+    [Test]
+    public async Task EnrichPrincipalAsyncUsesProviderSubjectAcrossSessionChanges()
+    {
+        using var handler = new IdentityReadinessHandler();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var client = new HttpClient(handler) { BaseAddress = new("https://api.example/") };
+        var service = CreateService(client, cache);
+        var first = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", "provider-subject"),
+            new Claim("sid", "session-one")
+        ], "Cookies"));
+        var second = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", "provider-subject"),
+            new Claim("sid", "session-two")
+        ], "Cookies"));
+
+        var firstResult = await service.EnrichPrincipalAsync(first, CreateProperties());
+        handler.Authority = new AdminAuthorityDto { HasAnyAuthority = false };
+        var secondResult = await service.EnrichPrincipalAsync(second, CreateProperties());
+
+        await Assert.That(firstResult).IsTrue();
+        await Assert.That(secondResult).IsTrue();
+        await Assert.That(second.HasClaim("explore:admin:instance", "true")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task EnrichPrincipalAsyncWithOnlyPlatformIdentityClaimFailsClosed()
+    {
+        using var handler = new IdentityReadinessHandler();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var client = new HttpClient(handler) { BaseAddress = new("https://api.example/") };
+        var service = CreateService(client, cache);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("internal_user_id", InternalUserId.ToString("D"))
+        ], "Cookies"));
+
+        var result = await service.EnrichPrincipalAsync(principal, CreateProperties());
+
+        await Assert.That(result).IsFalse();
+        await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsFalse();
+        await Assert.That(handler.Requests).IsEmpty();
+    }
+
+
+    [Test]
+    public async Task EnrichPrincipalAsyncSupportsSidOnlyProviderSessionFallback()
+    {
+        using var handler = new IdentityReadinessHandler();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var client = new HttpClient(handler) { BaseAddress = new("https://api.example/") };
+        var service = CreateService(client, cache);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sid", "session-only-subject")
+        ], "Cookies"));
+
+        var result = await service.EnrichPrincipalAsync(principal, CreateProperties());
+
+        await Assert.That(result).IsTrue();
+        await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsTrue();
+        await Assert.That(handler.Requests.Count).IsEqualTo(1);
+    }
     private static BffAdminClaimsTransformation CreateService(HttpClient client, IMemoryCache cache)
     {
         var onboardingStatusProvider = Substitute.For<IBffOnboardingStatusProvider>();
@@ -105,7 +167,7 @@ public sealed class BffAdminClaimsTransformationTests
     }
 
     private static ClaimsPrincipal CreatePrincipal() => new(
-        new ClaimsIdentity([new Claim("sub", "provider-user")], "Test"));
+        new ClaimsIdentity([new Claim("sub", "provider-user")], "Cookies"));
 
     private static AuthenticationProperties CreateProperties()
     {

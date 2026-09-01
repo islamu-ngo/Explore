@@ -9,6 +9,7 @@ using CarpaNet.Jetstream;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Federation;
+using Explore.Domain.ValueObjects;
 using CalendarEvent = CommunityLexicon.Calendar.Event;
 using CalendarRsvp = CommunityLexicon.Calendar.Rsvp;
 
@@ -68,6 +69,8 @@ internal static class AtprotoJetstreamEnvelopeParser
             throw new ArgumentException("The observation timestamp must be UTC.", nameof(observedAt));
         }
 
+        bool didIsValid = AtprotoDid.TryParse(envelope.Did, out AtprotoDid parsedDid)
+            && parsedDid.Value.Length <= 255;
         string recordJson = envelope.Commit?.Record?.GetRawText() ?? string.Empty;
         string envelopeHash = Hash(BuildEnvelopeFingerprint(envelope, recordJson));
         string? identityHash = BuildIdentityHash(envelope);
@@ -117,7 +120,7 @@ internal static class AtprotoJetstreamEnvelopeParser
                 || envelope.Account is not { Active: false }
                 || envelope.TimeUs <= 0
                 || !sourceVersionIsInRange
-                || !IsValidDid(envelope.Did))
+                || !didIsValid)
             {
                 return ignored;
             }
@@ -132,7 +135,7 @@ internal static class AtprotoJetstreamEnvelopeParser
             return new(envelope.Seq, envelope.TimeUs, null, null)
             {
                 AccountPurge = new AtprotoAccountPurge(
-                    envelope.Did,
+                    parsedDid.Value,
                     envelope.TimeUs,
                     envelope.Account.Status)
             };
@@ -145,7 +148,7 @@ internal static class AtprotoJetstreamEnvelopeParser
             return Reject("invalid_source_timestamp");
         }
 
-        if (!IsValidDid(envelope.Did))
+        if (!didIsValid)
         {
             return Reject("invalid_did");
         }
@@ -173,7 +176,7 @@ internal static class AtprotoJetstreamEnvelopeParser
             return Reject("invalid_record_key");
         }
 
-        string uri = $"at://{envelope.Did}/{commit.Collection}/{commit.Rkey}";
+        string uri = $"at://{parsedDid.Value}/{commit.Collection}/{commit.Rkey}";
         if (uri.Length > 500)
         {
             return Reject("record_identity_too_large");
@@ -191,7 +194,7 @@ internal static class AtprotoJetstreamEnvelopeParser
             return new(
                 envelope.Seq,
                 envelope.TimeUs,
-                CreateRecord(envelope, commit, uri, null, null, null, observedAt, eventAt),
+                CreateRecord(envelope, parsedDid, commit, uri, null, null, null, observedAt, eventAt),
                 null);
         }
 
@@ -240,6 +243,7 @@ internal static class AtprotoJetstreamEnvelopeParser
 
         AtprotoRecord canonicalRecord = CreateRecord(
             envelope,
+            parsedDid,
             commit,
             uri,
             recordJson,
@@ -306,6 +310,7 @@ internal static class AtprotoJetstreamEnvelopeParser
 
     private static AtprotoRecord CreateRecord(
         JetstreamV2Event envelope,
+        AtprotoDid did,
         JetstreamV2Commit commit,
         string uri,
         string? recordJson,
@@ -315,7 +320,7 @@ internal static class AtprotoJetstreamEnvelopeParser
         DateTime eventAt) => new()
         {
             Id = Guid.CreateVersion7(),
-            Did = envelope.Did,
+            Did = did.Value,
             Collection = commit.Collection!,
             RecordKey = commit.Rkey!,
             Cid = commit.Cid,
@@ -334,18 +339,6 @@ internal static class AtprotoJetstreamEnvelopeParser
             UpdatedAt = observedAt,
             TombstonedAt = commit.Operation == JetstreamV2CommitOperation.Delete ? observedAt : null
         };
-
-    private static bool IsValidDid(string did)
-    {
-        try
-        {
-            return did.Length <= 255 && ATDid.IsValid(did);
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-    }
 
     private static bool IsValidRecordKey(string? recordKey) =>
         recordKey is { Length: > 0 and <= 255 }

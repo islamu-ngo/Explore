@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
+using Explore.Domain.ValueObjects;
 using FluentValidation;
 using NSubstitute;
 using TUnit.Assertions;
@@ -21,7 +22,7 @@ public sealed class RefreshAtprotoSessionCommandHandlerTests
     private static readonly AtprotoCurrentSessionIdentity Identity = new(
         Guid.Parse("018e4e5c-7f00-7000-8000-000000000001"),
         Guid.Parse("018e4e5c-7f00-7000-8000-000000000002"),
-        "did:plc:refresh-user");
+        AtprotoDid.Parse("did:plc:refresh-user"));
 
     [Test]
     public async Task SuccessfulRefreshPersistsProviderRotationBeforeIssuingPlatformToken()

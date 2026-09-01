@@ -2,8 +2,8 @@
 // ABOUTME: anonymous users fall back to browser localStorage. SSR-safe (returns null during prerender).
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
@@ -12,7 +12,7 @@ namespace Explore.Blazor.Client.Services;
 public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
 {
     private readonly IEventApiClient _apiClient;
-    private readonly IAuthStateService _authState;
+    private readonly AuthenticationStateProvider _authenticationStateProvider;
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<UserSettingsService> _logger;
 
@@ -22,12 +22,12 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
 
     public UserSettingsService(
         IEventApiClient apiClient,
-        IAuthStateService authState,
+        AuthenticationStateProvider authenticationStateProvider,
         IJSRuntime jsRuntime,
         ILogger<UserSettingsService> logger)
     {
         _apiClient = apiClient;
-        _authState = authState;
+        _authenticationStateProvider = authenticationStateProvider;
         _jsRuntime = jsRuntime;
         _logger = logger;
     }
@@ -39,7 +39,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
 
         try
         {
-            if (await _authState.IsAuthenticatedAsync())
+            if (await IsAuthenticatedAsync())
             {
                 var result = await GetAuthenticatedSettingsAsync(category, ct);
                 if (result is null)
@@ -95,7 +95,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
         {
             InvalidateCache(category);
 
-            if (await _authState.IsAuthenticatedAsync())
+            if (await IsAuthenticatedAsync())
             {
                 var batchDto = new UpdateSettingBatchDto
                 {
@@ -138,7 +138,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
         {
             _cache.Clear(); // Key could belong to any cached category
 
-            if (await _authState.IsAuthenticatedAsync())
+            if (await IsAuthenticatedAsync())
             {
                 var dto = new UpdateSettingValueDto { Value = value };
                 await _apiClient.UpdateUserSettingAsync(key, dto, cancellationToken: ct);
@@ -165,7 +165,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
         {
             _cache.Clear();
 
-            if (await _authState.IsAuthenticatedAsync())
+            if (await IsAuthenticatedAsync())
             {
                 await _apiClient.ResetUserSettingAsync(key, cancellationToken: ct);
                 return true;
@@ -191,7 +191,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
         {
             InvalidateCache(category);
 
-            if (await _authState.IsAuthenticatedAsync())
+            if (await IsAuthenticatedAsync())
             {
                 // Fetch current settings to identify all keys, then reset each in parallel
                 var current = await GetAuthenticatedSettingsAsync(category, ct);
@@ -229,6 +229,13 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
     private async Task<SettingGroupResponseDto?> GetAuthenticatedSettingsAsync(string category, CancellationToken ct)
     {
         return await _apiClient.GetUserSettingsAsync(category, cancellationToken: ct);
+    }
+
+    private async Task<bool> IsAuthenticatedAsync()
+    {
+        AuthenticationState state =
+            await _authenticationStateProvider.GetAuthenticationStateAsync();
+        return state.User.Identity?.IsAuthenticated == true;
     }
 
     private async ValueTask<IJSObjectReference> GetJsModuleAsync()

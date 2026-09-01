@@ -143,7 +143,7 @@ public class SupportAccessForwardingHandlerTests
                 new Claim(ClaimTypes.NameIdentifier, userId),
                 new Claim("sid", sessionId)
             ],
-            "Test"));
+            "Cookies"));
     }
 
     private static SupportAccessSessionDto CreateActiveSession() => new()

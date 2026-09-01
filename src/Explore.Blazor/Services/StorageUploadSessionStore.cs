@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Caching.Distributed;
 
@@ -197,9 +198,7 @@ public sealed class StorageUploadSessionStore(IDistributedCache cache) : IStorag
     }
 
     private static string? GetRequiredUserId(ClaimsPrincipal user) =>
-        user.FindFirstValue("sub")
-        ?? user.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? user.FindFirstValue("sid");
+        user.TryGetCircuitSubject(out var subject) ? subject.PartitionKey : null;
 
     private static string BuildCacheKey(string sessionId) => CacheKeyPrefix + sessionId;
 }

@@ -2,40 +2,42 @@
 // ABOUTME: Later revocation and recovery service contracts remain owned by Tasks 20.4 and 20.6.
 
 using ApplicationUnitTests.Contracts.Admissions.Support;
+using Explore.Application.Contracts.Admissions;
+using Explore.Application.Services.Registration;
 
 namespace ApplicationUnitTests.Contracts.Admissions;
 
 public sealed class AdmissionProviderNeutralContractRedTests
 {
-    private static readonly string[] ExplicitContractTypes =
+    private static readonly Type[] ExplicitContractTypes =
     [
-        "AdmissionIssuanceService",
-        "AdmissionIssuanceRequest",
-        "AdmissionIssuanceContext",
-        "AdmissionAssignmentFact",
-        "AdmissionIssuancePersistenceRequest",
-        "AdmissionIssuanceResult",
-        "AdmissionIssuanceOutcome",
-        "AdmissionDeliveryOutcome",
-        "AdmissionDeliveryFailure",
-        "AdmissionCredentialDeliveryEnvelope",
-        "AdmissionCredentialDirectDeliveryRequest",
-        "AdmissionCredentialDirectDeliveryOutcome",
-        "AdmissionCredentialDirectDeliveryResult",
-        "AdmissionCredentialCreateRequest",
-        "AdmissionCredentialVerificationRequest",
-        "AdmissionCredentialVerificationOutcome",
-        "AdmissionCredentialMaterial",
-        "AdmissionProtectedDeliveryMaterial",
-        "AdmissionDeliveryIntent",
-        "AdmissionDeliveryDispatchRequest",
-        "AdmissionDeliveryDispatchResult",
-        "IAdmissionIssuanceRepository",
-        "IAdmissionCredentialDigestService",
-        "IAdmissionDeliveryEnvelopeProtector",
-        "IAdmissionDeliveryDispatcher",
-        "IAdmissionCredentialDirectDeliveryChannel",
-        "IAdmissionCredentialDeliveryOutboxHandler"
+        typeof(AdmissionIssuanceService),
+        typeof(AdmissionIssuanceRequest),
+        typeof(AdmissionIssuanceContext),
+        typeof(AdmissionAssignmentFact),
+        typeof(AdmissionIssuancePersistenceRequest),
+        typeof(AdmissionIssuanceResult),
+        typeof(AdmissionIssuanceOutcome),
+        typeof(AdmissionDeliveryOutcome),
+        typeof(AdmissionDeliveryFailure),
+        typeof(AdmissionCredentialDeliveryEnvelope),
+        typeof(AdmissionCredentialDirectDeliveryRequest),
+        typeof(AdmissionCredentialDirectDeliveryOutcome),
+        typeof(AdmissionCredentialDirectDeliveryResult),
+        typeof(AdmissionCredentialCreateRequest),
+        typeof(AdmissionCredentialVerificationRequest),
+        typeof(AdmissionCredentialVerificationOutcome),
+        typeof(AdmissionCredentialMaterial),
+        typeof(AdmissionProtectedDeliveryMaterial),
+        typeof(AdmissionDeliveryIntent),
+        typeof(AdmissionDeliveryDispatchRequest),
+        typeof(AdmissionDeliveryDispatchResult),
+        typeof(IAdmissionIssuanceRepository),
+        typeof(IAdmissionCredentialDigestService),
+        typeof(IAdmissionDeliveryEnvelopeProtector),
+        typeof(IAdmissionDeliveryDispatcher),
+        typeof(IAdmissionCredentialDirectDeliveryChannel),
+        typeof(IAdmissionCredentialDeliveryOutboxHandler)
     ];
 
     [Test]
@@ -49,16 +51,14 @@ public sealed class AdmissionProviderNeutralContractRedTests
         await Assert.That(sentinelGraph.Contains(typeof(IStripeProviderSentinel))).IsTrue();
 
         IReadOnlyCollection<Type> constructorGraph = ProviderNeutralTypeGraph.Closure(
-            AdmissionContractRuntime.PublicSignatureTypes(typeof(AdditionalPublicConstructorSentinel)));
+            ProviderNeutralTypeGraph.PublicSignatureTypes(typeof(AdditionalPublicConstructorSentinel)));
         await Assert.That(constructorGraph.Contains(typeof(PaymentIntentSdkSentinel))).IsTrue();
         await Assert.That(constructorGraph.Contains(typeof(StripeSdkSentinel))).IsTrue();
-        await Assert.That(() => AdmissionContractRuntime.ResolveServiceConstructor(
-            typeof(AdditionalPublicConstructorSentinel),
-            new HashSet<string>(StringComparer.Ordinal))).Throws<InvalidOperationException>();
+        await Assert.That(() => ProviderNeutralTypeGraph.EnsureProviderNeutralPublicConstructors(
+            typeof(AdditionalPublicConstructorSentinel))).Throws<InvalidOperationException>();
 
-        Type[] contracts = ExplicitContractTypes.Select(AdmissionContractRuntime.ApplicationType).ToArray();
         IReadOnlyCollection<Type> publicGraph = ProviderNeutralTypeGraph.Closure(
-            contracts.SelectMany(AdmissionContractRuntime.PublicSignatureTypes));
+            ExplicitContractTypes.SelectMany(ProviderNeutralTypeGraph.PublicSignatureTypes));
         Type[] leaked = publicGraph
             .Where(ProviderNeutralTypeGraph.IsProviderSpecific)
             .Distinct()

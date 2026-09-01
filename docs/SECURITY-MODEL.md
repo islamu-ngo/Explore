@@ -149,6 +149,13 @@ do not run in that transaction. Account deletion returns a short-lived receipt
 only after local commit; status access uses the dedicated receipt auth scheme,
 is not cacheable, and stays free of subject or intent existence leaks.
 
+Actor tombstoning precedes provider-identity erasure. Each owned
+`AtprotoIdentity` runs its aggregate-owned `EraseForPrivacy` transition, which
+replaces the live DID with a non-parseable deletion tombstone and clears
+provider metadata without letting Application code mutate identity fields
+individually. This prevents later verified-metadata refresh from resurrecting
+erased authority.
+
 Startup replay reads the retained authority before host start, refuses sequence
 gaps or checkpoint mismatch, reapplies uncaptured policy versions, and leaves a
 fresh application database at sequence zero. A repeated replay is a no-op once
@@ -210,6 +217,7 @@ The `MultiAuth` policy selector preserves the Keycloak and API-key branches and 
 - The API atomically consumes the bootstrap `jti` in the durable idempotency table before dispatch. PostgreSQL `INSERT ... ON CONFLICT DO NOTHING` makes concurrent replay have exactly one winner across API instances.
 - The private bridge is excluded from API discovery and generated browser clients, rate-limited as a write, request-size bounded, and returned with `no-store`. It accepts opaque CarpaNet session material only over the server-to-server BFF boundary.
 - Infrastructure restores the OAuth session through CarpaNet, permits token refresh through the constrained ATProto transport, calls the user's PDS `com.atproto.server.getSession`, and requires the authenticated DID, returned DID, expected canonical HTTPS PDS, and linked tenant identity to agree before any write.
+- API claim/body boundaries parse live identifiers into `AtprotoDid` before Application dispatch. Verification, current-session, prepared-session, and token-issuer contracts keep that typed value through Domain behavior; only JWT, provider, repository, and response egress unwrap the exact scalar value.
 - Exact DID verification proves only the external source Actor. Promotion to a new Organization or Group preserves that Actor in place. Consolidation into an existing canonical Actor additionally requires a signed target ID and concurrency stamp plus active current-tenant OrgAdmin or GroupAdmin authority over an approved participation; missing, stale, cross-kind, suspended, deleted, or unauthorized targets fail before reference movement.
 - OAuth-session encryption is prepared once before retryable work. One serializable transaction applies onboarding or consolidation and persists the prepared session on every database retry; cache invalidation and first-party JWT issuance occur only after commit. Merge evidence stores the identity ID and a bounded SHA-256 DID digest rather than the raw DID.
 - `AtprotoSession` accepts only ES256 first-party tokens from the separate session-JWT key ring, with exact issuer/audience, known `kid`, valid lifetime, tenant claim, `auth_provider=atproto`, DID claim, and a platform user `Guid` in `sub`. Configured lifetime is constrained to one through sixty minutes.

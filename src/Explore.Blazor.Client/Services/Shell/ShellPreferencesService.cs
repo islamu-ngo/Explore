@@ -3,15 +3,15 @@
 
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Shell;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Explore.Blazor.Client.Services.Shell;
 
 public sealed class ShellPreferencesService(
     IUserSettingsService settingsService,
-    IAuthStateService authStateService,
+    AuthenticationStateProvider authenticationStateProvider,
     ILogger<ShellPreferencesService> logger) : IShellPreferencesService
 {
     public const string PreferencesCategory = "UiShellPreferences";
@@ -218,7 +218,9 @@ public sealed class ShellPreferencesService(
     {
         try
         {
-            return await authStateService.IsAuthenticatedAsync();
+            AuthenticationState state =
+                await authenticationStateProvider.GetAuthenticationStateAsync();
+            return state.User.Identity?.IsAuthenticated == true;
         }
         catch (Exception ex)
         {

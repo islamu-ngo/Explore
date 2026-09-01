@@ -1,4 +1,7 @@
-using System.Security.Claims;
+// ABOUTME: Adapts the ambient HTTP principal to the Application current-user contract.
+// ABOUTME: Delegates platform user resolution to the canonical Application identity authority.
+
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.AspNetCore.Http;
 
@@ -10,7 +13,6 @@ namespace Explore.Infrastructure.Services;
 /// </summary>
 public class CurrentUserService : ICurrentUserService
 {
-    private const string InternalUserIdClaimType = "internal_user_id";
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public CurrentUserService(IHttpContextAccessor httpContextAccessor)
@@ -19,33 +21,11 @@ public class CurrentUserService : ICurrentUserService
     }
 
     /// <summary>
-    /// Gets the current user's ID from authentication claims.
-    /// Tries multiple claim types for compatibility with different auth providers.
-    /// Priority: sub → nameidentifier → sid
+    /// Gets the current user's ID from the canonical platform identity authority.
     /// </summary>
     public Guid? UserId
     {
-        get
-        {
-            var user = _httpContextAccessor.HttpContext?.User;
-            if (user == null || !user.Identity?.IsAuthenticated == true)
-            {
-                return null;
-            }
-
-            // Try standard OIDC "sub" claim first, then fallback to other claim types
-            var userIdClaim = user.FindFirst(InternalUserIdClaimType)?.Value
-                ?? user.FindFirst("sub")?.Value
-                ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? user.FindFirst("sid")?.Value;
-
-            if (string.IsNullOrEmpty(userIdClaim))
-            {
-                return null;
-            }
-
-            return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
-        }
+        get => _httpContextAccessor.HttpContext?.User.GetPlatformUserId();
     }
 
     /// <summary>

@@ -4,9 +4,13 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Seeds;
+using Explore.API.Hateoas.Policies;
+using Explore.Application.Constants;
 using Explore.Application.DTOs.SupportAccess;
 using Explore.Application.Features.SupportAccess;
 using Explore.Domain;
@@ -25,6 +29,55 @@ public sealed class SupportAccessApiTests
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly MediaTypeHeaderValue HalJsonMediaType = new("application/hal+json");
     private static readonly MediaTypeWithQualityHeaderValue HalJsonAcceptHeader = new("application/hal+json");
+
+    [Test]
+    public async Task StopLink_UsesCanonicalPriorityAndFailsClosedForPurposeBoundPrincipal()
+    {
+        Guid subject = Guid.CreateVersion7();
+        Guid internalUser = Guid.CreateVersion7();
+        var dto = new SupportAccessSessionDto
+        {
+            Id = Guid.CreateVersion7(),
+            ActorUserId = subject,
+            TargetTenantId = Guid.CreateVersion7(),
+            IsActive = true
+        };
+        var policy = new SupportAccessSessionDetailLinkPolicy();
+        var conflicting = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", subject.ToString("D")),
+            new Claim("internal_user_id", internalUser.ToString("D"))
+        ], "interactive"));
+        var purposeBound = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim("sub", subject.ToString("D"))
+        ], ApiAuthenticationSchemeNames.ApiKey));
+
+        await Assert.That(policy.GetLinks(dto, conflicting).Any(link => link.Rel == "stop")).IsTrue();
+        await Assert.That(policy.GetLinks(dto, purposeBound).Any(link => link.Rel == "stop")).IsFalse();
+    }
+
+    [Test]
+    public async Task SessionList_WithConflictingGuidClaims_UsesCanonicalSubjectForStopLink()
+    {
+        await using var host = await SupportAccessApiHost.CreateAsync(enableSupportAccess: true);
+        Guid actorUserId = await host.SeedActorUserAsync();
+        Guid sessionId = await StartReadOnlySessionAsync(host, actorUserId);
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/support-access/tenants/{PlatformDefaults.DefaultTenantId:D}/sessions");
+        request.Headers.Accept.Add(HalJsonAcceptHeader);
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, EncodeClaims(
+            new Claim("sub", actorUserId.ToString("D")),
+            new Claim("internal_user_id", Guid.CreateVersion7().ToString("D"))));
+
+        using var response = await host.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        using var json = await ReadJsonDocumentAsync(response);
+        JsonElement session = json.RootElement.GetProperty("_embedded").GetProperty("items")
+            .EnumerateArray()
+            .Single(item => item.GetProperty("id").GetGuid() == sessionId);
+        await Assert.That(session.GetProperty("_links").TryGetProperty("stop", out _)).IsTrue();
+    }
 
     [Test]
     public async Task Start_WhenSupportAccessDisabled_ReturnsProblemCode()
@@ -246,6 +299,12 @@ public sealed class SupportAccessApiTests
             "Support Operator",
             ("internal_user_id", actorUserId.ToString("D")),
             ("explore:admin:instance", "true"));
+    }
+
+    private static string EncodeClaims(params Claim[] claims)
+    {
+        var values = claims.Select(claim => new TestAuthHandler.TestClaimDto(claim.Type, claim.Value));
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(values)));
     }
 
     private static async Task<Guid> StartReadOnlySessionAsync(SupportAccessApiHost host, Guid actorUserId)

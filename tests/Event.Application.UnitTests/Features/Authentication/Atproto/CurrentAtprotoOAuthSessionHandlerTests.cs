@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.Authentication.Atproto.Handlers.Queries;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Queries;
+using Explore.Domain.ValueObjects;
 using FluentValidation;
 using NSubstitute;
 
@@ -15,7 +16,7 @@ public sealed class CurrentAtprotoOAuthSessionHandlerTests
     private static readonly AtprotoCurrentSessionIdentity Identity = new(
         Guid.Parse("018e4e5c-7f00-7000-8000-000000000001"),
         Guid.Parse("018e4e5c-7f00-7000-8000-000000000002"),
-        "did:plc:current-session");
+        AtprotoDid.Parse("did:plc:current-session"));
 
     [Test]
     public async Task GetReturnsOnlyTheExactlyScopedGatewaySession()
@@ -40,6 +41,19 @@ public sealed class CurrentAtprotoOAuthSessionHandlerTests
     {
         var gateway = Substitute.For<IAtprotoOAuthSecurityGateway>();
         var invalid = Identity with { TenantId = Guid.Empty };
+
+        await Assert.ThrowsAsync<ValidationException>(() =>
+            new GetCurrentAtprotoOAuthSessionQueryHandler(gateway)
+                .Handle(new GetCurrentAtprotoOAuthSessionQuery(invalid), CancellationToken.None));
+
+        await gateway.DidNotReceiveWithAnyArgs().GetCurrentAsync(default!, default);
+    }
+
+    [Test]
+    public async Task DefaultTypedDidIsRejectedBeforeGatewayAccess()
+    {
+        var gateway = Substitute.For<IAtprotoOAuthSecurityGateway>();
+        var invalid = Identity with { Did = default };
 
         await Assert.ThrowsAsync<ValidationException>(() =>
             new GetCurrentAtprotoOAuthSessionQueryHandler(gateway)

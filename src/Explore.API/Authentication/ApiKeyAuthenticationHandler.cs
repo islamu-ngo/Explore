@@ -3,11 +3,12 @@
 
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Explore.Application.Authentication;
 using Explore.Application.Constants;
+using Explore.API.Middleware;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
-using Explore.Domain;
 using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
@@ -53,7 +54,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
         if (configuredClient is null)
         {
             _metrics.RecordExternalApiKeyAuthentication("invalid", tenantId: "unknown", ownerType: "unknown");
-            Logger.LogWarning("[ApiKey] Authentication failed for path {Path}: no matching active client.", Request.Path);
+            LogAuthentication("failed", "no_match", "unknown", tenantPresent: false);
             return AuthenticateResult.Fail("Invalid API key.");
         }
 
@@ -63,7 +64,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
                 "expired",
                 configuredClient.TenantId.ToString(),
                 configuredClient.OwnerType);
-            Logger.LogWarning("[ApiKey] Authentication failed for key {KeyId}: key expired at {ExpiresAtUtc}.", configuredClient.KeyId, expiresAtUtc);
+            LogAuthentication("failed", "expired", "configured", tenantPresent: true);
             return AuthenticateResult.Fail("API key expired.");
         }
 
@@ -73,7 +74,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
             configuredClient.OwnerType,
             configuredClient.OwnerId,
             configuredClient.Scopes,
-            "configured fallback");
+            "configured");
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
@@ -102,7 +103,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
                 "inactive",
                 persistedClient.TenantId?.ToString() ?? "platform",
                 persistedClient.OwnerType.ToString());
-            Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: status {StatusId} is not usable.", persistedClient.KeyId, persistedClient.ExternalApiKeyStatusId);
+            LogAuthentication("failed", "inactive", "persisted", persistedClient.TenantId.HasValue);
             return AuthenticateResult.Fail("API key is not active.");
         }
 
@@ -112,7 +113,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
                 "invalid",
                 persistedClient.TenantId?.ToString() ?? "platform",
                 persistedClient.OwnerType.ToString());
-            Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: secret hash mismatch.", persistedClient.KeyId);
+            LogAuthentication("failed", "invalid_secret", "persisted", persistedClient.TenantId.HasValue);
             return AuthenticateResult.Fail("Invalid API key.");
         }
 
@@ -122,7 +123,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
                 "expired",
                 persistedClient.TenantId?.ToString() ?? "platform",
                 persistedClient.OwnerType.ToString());
-            Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: key expired at {ExpiresAtUtc}.", persistedClient.KeyId, expiresAtUtc);
+            LogAuthentication("failed", "expired", "persisted", persistedClient.TenantId.HasValue);
             return AuthenticateResult.Fail("API key expired.");
         }
 
@@ -139,7 +140,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
             persistedClient.OwnerType.ToString(),
             persistedClient.OwnerId.ToString(),
             SplitScopes(persistedClient.Scopes),
-            "persisted credential");
+            "persisted");
     }
 
     private AuthenticateResult BuildSuccessResult(
@@ -168,7 +169,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
             parsedOwnerType == ExternalApiKeyOwnerType.User &&
             Guid.TryParse(ownerId, out var ownerUserId))
         {
-            claims.Add(new Claim("internal_user_id", ownerUserId.ToString()));
+            claims.Add(new Claim(PlatformIdentityClaimTypes.InternalUserId, ownerUserId.ToString()));
         }
 
         claims.AddRange(scopes
@@ -180,8 +181,24 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
         var ticket = new AuthenticationTicket(principal, ApiAuthenticationSchemeNames.ApiKey);
 
         _metrics.RecordExternalApiKeyAuthentication("success", tenantId?.ToString() ?? "platform", ownerType);
-        Logger.LogInformation("[ApiKey] Authenticated key {KeyId} for tenant {TenantId} on {Path} via {Source}.", keyId, tenantId?.ToString() ?? "platform", Request.Path, source);
+        LogAuthentication("success", "accepted", source, tenantId.HasValue);
         return AuthenticateResult.Success(ticket);
+    }
+
+    private void LogAuthentication(string outcome, string reason, string credentialSource, bool tenantPresent)
+    {
+        string routeIdentity = SafeRouteMetadata.GetRouteIdentityOrClassification(Context);
+        if (string.Equals(outcome, "success", StringComparison.Ordinal))
+        {
+            Logger.LogInformation(
+                "[ApiKey] Authentication outcome={Outcome} reason={Reason} source={CredentialSource} tenantPresent={TenantPresent} route={Route}.",
+                outcome, reason, credentialSource, tenantPresent, routeIdentity);
+            return;
+        }
+
+        Logger.LogWarning(
+            "[ApiKey] Authentication outcome={Outcome} reason={Reason} source={CredentialSource} tenantPresent={TenantPresent} route={Route}.",
+            outcome, reason, credentialSource, tenantPresent, routeIdentity);
     }
 
     private static bool IsUsableStatus(int statusId)

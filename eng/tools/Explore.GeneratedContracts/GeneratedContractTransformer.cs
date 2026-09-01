@@ -125,13 +125,7 @@ public static class GeneratedContractTransformer
                     new TextSpan(
                         declaration.CloseBraceToken.SpanStart,
                         0),
-                    RedactedPrintMembers));
-            }
-            else if (eligible)
-            {
-                edits.Add(new TextEdit(
-                    redactedPrintMembers!.FullSpan,
-                    RedactedPrintMembers));
+                    RedactedPrintMembers.TrimStart('\r', '\n')[4..]));
             }
             else if (!eligible && redactedPrintMembers is not null)
             {

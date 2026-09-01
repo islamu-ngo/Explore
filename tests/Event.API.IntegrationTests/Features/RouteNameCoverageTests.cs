@@ -69,12 +69,32 @@ public sealed class RouteNameCoverageTests(ContractApiFixture fixture)
         await Assert.That(constants).IsNotEmpty().Because("RouteNames must define at least one constant.");
     }
 
+    [Test]
+    public async Task RouteNames_ValuesMatchFieldNamesExceptForTheIntentionalEventSessionListDivergence()
+    {
+        var divergences = GetRouteNameFields()
+            .Where(field => !string.Equals(field.Name, field.Value, StringComparison.Ordinal))
+            .Select(field => $"{field.Name}={field.Value}")
+            .ToArray();
+
+        await Assert.That(divergences)
+            .IsEquivalentTo(["GetEventSessions_List=GetEventSessionsList"])
+            .Because("Self-valued routes and the one intentional field/value divergence are public operation identifiers.");
+    }
+
     private static IReadOnlyList<string> GetRouteNameConstants()
+    {
+        return GetRouteNameFields()
+            .Select(field => field.Value)
+            .ToList();
+    }
+
+    private static IReadOnlyList<(string Name, string Value)> GetRouteNameFields()
     {
         return typeof(RouteNames)
             .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
             .Where(field => field.IsLiteral && !field.IsInitOnly && field.FieldType == typeof(string))
-            .Select(field => (string)field.GetRawConstantValue()!)
+            .Select(field => (field.Name, (string)field.GetRawConstantValue()!))
             .ToList();
     }
 

@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
+using Explore.Application.Constants;
 using Explore.API.Hateoas;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -177,6 +178,52 @@ public class ContractInvariantsTests
         await Assert.That(duplicates)
             .IsEmpty()
             .Because($"operationId values must be globally unique. Duplicates: {string.Join("; ", duplicates.Take(5))}");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_OperationIdsMatchTheCompleteRouteNameCatalog()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+
+        var operationIds = EnumerateOperations(document)
+            .Select(operation => operation.OperationId)
+            .Where(operationId => operationId is not null)
+            .Cast<string>()
+            .OrderBy(operationId => operationId, System.StringComparer.Ordinal)
+            .ToArray();
+        var intentionallyExcludedAtprotoSessionOperations = new HashSet<string>(System.StringComparer.Ordinal)
+        {
+            RouteNames.BootstrapAtprotoSession,
+            RouteNames.GetCurrentAtprotoSession,
+            RouteNames.RefreshCurrentAtprotoSession,
+            RouteNames.DeleteCurrentAtprotoSession
+        };
+        var routeNames = typeof(RouteNames)
+            .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
+            .Select(field => (string)field.GetRawConstantValue()!)
+            .Where(routeName => !intentionallyExcludedAtprotoSessionOperations.Contains(routeName))
+            .OrderBy(routeName => routeName, System.StringComparer.Ordinal)
+            .ToArray();
+
+        await Assert.That(operationIds).IsEquivalentTo(routeNames)
+            .Because("Route names are the generator input for stable OpenAPI operationIds.");
+    }
+
+    [Test]
+    public async Task OpenApiDocument_ActorDidIngressRemainsAScalarRouteParameter()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var operation = document.RootElement.GetProperty("paths")
+            .GetProperty("/api/actor/by-did/{did}")
+            .GetProperty("get");
+        var parameter = operation.GetProperty("parameters").EnumerateArray()
+            .Single(value => value.GetProperty("name").GetString() == "did");
+
+        await Assert.That(operation.GetProperty("operationId").GetString()).IsEqualTo(RouteNames.GetActorByDid);
+        await Assert.That(parameter.GetProperty("in").GetString()).IsEqualTo("path");
+        await Assert.That(parameter.GetProperty("required").GetBoolean()).IsTrue();
+        await Assert.That(parameter.GetProperty("schema").GetProperty("type").GetString()).IsEqualTo("string");
     }
 
     [Test]
@@ -749,7 +796,7 @@ public class ContractInvariantsTests
         JsonElement root = document.RootElement;
         JsonElement scheme = root.GetProperty("components")
             .GetProperty("securitySchemes")
-            .GetProperty("ManagedControlPlane");
+            .GetProperty(ApiAuthenticationSchemeNames.ManagedControlPlane);
 
         await Assert.That(scheme.GetProperty("type").GetString()).IsEqualTo("apiKey");
         await Assert.That(scheme.GetProperty("in").GetString()).IsEqualTo("header");
@@ -782,7 +829,7 @@ public class ContractInvariantsTests
                 .GetProperty(method)
                 .GetProperty("security");
             bool hasManagedRequirement = security.EnumerateArray()
-                .Any(requirement => requirement.TryGetProperty("ManagedControlPlane", out _));
+                .Any(requirement => requirement.TryGetProperty(ApiAuthenticationSchemeNames.ManagedControlPlane, out _));
             await Assert.That(hasManagedRequirement)
                 .IsTrue()
                 .Because($"{method.ToUpperInvariant()} {path} must require X-Control-Plane-Key.");

@@ -8,6 +8,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Secrets;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Domain.Secrets;
+using Explore.Domain.ValueObjects;
 using Explore.Infrastructure.Services.Federation;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -80,10 +81,10 @@ public sealed class AtprotoJwtService(
     public async Task<AtprotoIssuedSessionToken> IssueAsync(
         Guid userId,
         Guid tenantId,
-        string did,
+        AtprotoDid did,
         CancellationToken cancellationToken)
     {
-        if (userId == Guid.Empty || tenantId == Guid.Empty || string.IsNullOrWhiteSpace(did))
+        if (userId == Guid.Empty || tenantId == Guid.Empty || string.IsNullOrEmpty(did.Value))
         {
             throw new ArgumentException("ATProto session identity is invalid.");
         }
@@ -110,7 +111,7 @@ public sealed class AtprotoJwtService(
             Subject = new ClaimsIdentity([
                 new Claim(JwtRegisteredClaimNames.Sub, userId.ToString("D")),
                 new Claim(AtprotoJwtOptions.TenantClaim, tenantId.ToString("D")),
-                new Claim(AtprotoJwtOptions.DidClaim, did),
+                new Claim(AtprotoJwtOptions.DidClaim, did.Value),
                 new Claim("auth_provider", "atproto")
             ]),
             NotBefore = now.UtcDateTime,

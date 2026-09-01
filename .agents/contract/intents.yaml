@@ -309,9 +309,6 @@ intents:
       - docs/GOVERNANCE.md
       - docs/TESTING.md
       - docs/OPERATIONS.md
-      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-plan.md
-      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-context.md
-      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-tasks.md
     load_skills:
       - refactor-safely
       - criticality-guardrail
@@ -362,9 +359,6 @@ intents:
       - docs/GOVERNANCE.md
       - docs/AGENTIC_CONTEXT_ENGINEERING.md
       - docs/QUICK_REFERENCE.md
-      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-plan.md
-      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-context.md
-      - dev/zarchive/test-suite-rationalization/test-suite-rationalization-tasks.md
     unique_acceptance:
       - "Every test cohort is retained, semantically replaced, or deleted with an explicit invariant disposition"
       - "Critical money, state-machine, concurrency, tenant, security, privacy, HAL, BFF, provider, migration, and protocol coverage fails closed until stronger replacement evidence passes"
@@ -1278,8 +1272,6 @@ intents:
     must_read_docs:
       - docs/AI_CONTEXT_SECURITY.md
       - docs/adr/ADR-012-ai-context-disclosure-policy.md
-      - dev/zarchive/ai-context-disclosure-policy/field-classification-matrix.md
-      - dev/zarchive/ai-context-disclosure-policy/ai-context-disclosure-policy-plan.md
       - AGENTS.md
       - docs/SECURITY-MODEL.md
       - docs/AUTHORIZATION.md
@@ -1315,8 +1307,6 @@ intents:
       - Event.Architecture.Tests
     docs_to_update:
       - docs/AI_CONTEXT_SECURITY.md
-      - dev/zarchive/ai-context-disclosure-policy/field-classification-matrix.md
-      - dev/zarchive/ai-context-disclosure-policy/mcp-tool-audit.md
     unique_acceptance:
       - "AiContextDisclosureRegistry.CreateDefault() covers every public persisted property on every *Pii entity (reflection test passes)"
       - "IAiContextGateway is the only path to disclose entity fields to the AI prompt (bypass test passes)"
@@ -1378,9 +1368,6 @@ intents:
       - docs/TESTING.md
       - docs/legal/IP_GOVERNANCE.md
       - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
-      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-plan.md
-      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-context.md
-      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-tasks.md
     load_skills:
       - clean-architecture-rules
       - cqrs-mediatr-guidelines
@@ -1482,9 +1469,6 @@ intents:
       - docs/TROUBLESHOOTING.md
       - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
       - schemas/islamu-event.md
-      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-plan.md
-      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-context.md
-      - dev/zarchive/branding-legal-identity-authority/branding-legal-identity-authority-tasks.md
     unique_acceptance:
       - "Cosmetic branding, tenant directory operator, instance operator, and organizer merchant remain independent authoritative roles"
       - "Every tenant creation path atomically creates both canonical typed documents and cannot bypass identity readiness when requesting Active"
@@ -1945,9 +1929,6 @@ intents:
       - docs/legal/IP_GOVERNANCE.md
       - docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md
       - islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md
-      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
-      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-context.md
-      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
     load_skills:
       - clean-architecture-rules
       - cqrs-mediatr-guidelines
@@ -2064,9 +2045,6 @@ intents:
       - docs/OPERATIONS.md
       - docs/TROUBLESHOOTING.md
       - schemas/islamu-event.md
-      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-context.md
-      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-plan.md
-      - dev/zarchive/webhook-delivery-redesign/webhook-delivery-redesign-tasks.md
     unique_acceptance:
       - "PostgreSQL exact bytes, SHA-256, and provenance are the sole payload, signing, idempotency, and transmission authority; parsed JSON is never authoritative"
       - "Inbound acceptance, effect receipt or durable external outbox, attempt evidence, and settlement preserve one transaction boundary with verified tenant ownership"
@@ -2159,9 +2137,6 @@ intents:
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
       - docs/TESTING.md
-      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-plan.md
-      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md
-      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md
     load_skills:
       - criticality-guardrail
       - grill-me
@@ -2286,9 +2261,6 @@ intents:
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
       - schemas/islamu-event.md
-      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-plan.md
-      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md
-      - dev/zarchive/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md
     unique_acceptance:
       - "Environment and Infisical are explicit deployment-owned authority modes; UserSecrets is an explicit Development/Testing-only local authority; the selected authority never falls back to a lower source and application databases never hold secret values or reversible ciphertext"
       - "Required consumers fail closed while optional consumers isolate an explicit unconfigured or degraded capability; provider failures never collapse into a successful absence"
@@ -2439,9 +2411,6 @@ intents:
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
       - docs/TESTING.md
-      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-plan.md
-      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-context.md
-      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md
     load_skills:
       - clean-architecture-rules
       - dotnet-efcore-guidelines
@@ -2485,9 +2454,6 @@ intents:
       - docs/BACKUP_RESTORE_UPGRADE.md
       - docs/TROUBLESHOOTING.md
       - docs/TESTING.md
-      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-plan.md
-      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-context.md
-      - dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md
     unique_acceptance:
       - "Primary application and Data Protection persistence retain PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL provider composition without collapsing provider migration owners or history tables"
       - "PrivacyErasure:Authority:Topology keeps EmbeddedSqlite with any primary provider, CoLocated only for PostgreSQL or SQLite, and ExternalDatabase only for separate PostgreSQL"
@@ -2673,5 +2639,6 @@ intents:
         - security-privacy-agent
         - quality-verifier-agent
     verification_commands:
+      - "dotnet run --project eng/tools/Explore.AssuranceAudit/Explore.AssuranceAudit.csproj --configuration Release -- . --changed-from HEAD"
       - "dotnet build --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"

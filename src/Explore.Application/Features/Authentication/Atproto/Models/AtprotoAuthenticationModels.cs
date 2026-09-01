@@ -1,12 +1,14 @@
 // ABOUTME: Carries server-private ATProto verification inputs, verified identity state, and session results.
 // ABOUTME: Uses opaque bytes so CarpaNet credentials never leak into public DTOs or outer clients.
 
+using Explore.Domain.ValueObjects;
+
 namespace Explore.Application.Features.Authentication.Atproto.Models;
 
 public sealed record AtprotoOAuthVerificationInput
 {
     public AtprotoOAuthVerificationInput(
-        string ExpectedDid,
+        AtprotoDid ExpectedDid,
         Uri ExpectedPdsUri,
         string OAuthClientKeyId,
         ReadOnlyMemory<byte> OAuthSessionPayload)
@@ -17,7 +19,7 @@ public sealed record AtprotoOAuthVerificationInput
         this.OAuthSessionPayload = OAuthSessionPayload.ToArray();
     }
 
-    public string ExpectedDid { get; }
+    public AtprotoDid ExpectedDid { get; }
     public Uri ExpectedPdsUri { get; }
     public string OAuthClientKeyId { get; }
     public ReadOnlyMemory<byte> OAuthSessionPayload { get; }
@@ -26,7 +28,7 @@ public sealed record AtprotoOAuthVerificationInput
 public sealed record AtprotoVerifiedOAuthSession
 {
     public AtprotoVerifiedOAuthSession(
-        string Did,
+        AtprotoDid Did,
         string Handle,
         Uri PdsUri,
         string OAuthClientKeyId,
@@ -39,7 +41,7 @@ public sealed record AtprotoVerifiedOAuthSession
         this.OAuthSessionPayload = OAuthSessionPayload.ToArray();
     }
 
-    public string Did { get; }
+    public AtprotoDid Did { get; }
     public string Handle { get; }
     public Uri PdsUri { get; }
     public string OAuthClientKeyId { get; }
@@ -54,7 +56,7 @@ public sealed record AtprotoPreparedOAuthSession
         int EnvelopeVersion,
         Guid TenantId,
         Guid UserId,
-        string SubjectDid,
+        AtprotoDid SubjectDid,
         string PdsHost,
         string OAuthClientKeyId,
         DateTime? ExpiresAt)
@@ -75,7 +77,7 @@ public sealed record AtprotoPreparedOAuthSession
     public int EnvelopeVersion { get; }
     public Guid TenantId { get; }
     public Guid UserId { get; }
-    public string SubjectDid { get; }
+    public AtprotoDid SubjectDid { get; }
     public string PdsHost { get; }
     public string OAuthClientKeyId { get; }
     public DateTime? ExpiresAt { get; }
