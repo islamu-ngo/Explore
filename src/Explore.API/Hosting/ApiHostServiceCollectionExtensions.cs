@@ -284,6 +284,7 @@ public static class ApiHostServiceCollectionExtensions
             options.AddDocumentTransformer<HalDtoSchemaTransformer>();
             options.AddDocumentTransformer<QuotaExceededDetailsOpenApiTransformer>();
             options.AddDocumentTransformer<OpenApiStringEnumDocumentTransformer>();
+            options.AddDocumentTransformer<SetupLiveRequestBodyTransformer>();
             options.AddDocumentTransformer<OperationIdInvariantTransformer>();
             options.AddOperationTransformer<EndpointClassificationTransformer>();
             options.AddOperationTransformer<KeycloakOpenApiSecurityTransformer>();
@@ -291,6 +292,7 @@ public static class ApiHostServiceCollectionExtensions
             options.AddOperationTransformer<PrivacyErasureReceiptOpenApiSecurityTransformer>();
             options.AddOperationTransformer<AdmissionScannerOpenApiSecurityTransformer>();
             options.AddOperationTransformer<StorageUploadRequestBodyTransformer>();
+            options.AddOperationTransformer<SetupLiveRequestBodyTransformer>();
             options.AddOperationTransformer<ConfigurationImportRequestBodyTransformer>();
             options.AddOperationTransformer<EventOpenGraphImageResponseTransformer>();
             options.AddOperationTransformer<ConfigurationManifestExportResponseTransformer>();

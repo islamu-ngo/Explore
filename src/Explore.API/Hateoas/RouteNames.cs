@@ -9,6 +9,16 @@ namespace Explore.API.Hateoas;
 /// </summary>
 public static class RouteNames
 {
+    public const string CreateSetupTargetEnrollment = nameof(CreateSetupTargetEnrollment);
+    public const string GetSetupTargetEnrollment = nameof(GetSetupTargetEnrollment);
+    public const string RevokeSetupTargetEnrollment = nameof(RevokeSetupTargetEnrollment);
+    public const string RotateSetupTargetEnrollmentCapability =
+        nameof(RotateSetupTargetEnrollmentCapability);
+    public const string GetSetupSecretBindingReadiness =
+        nameof(GetSetupSecretBindingReadiness);
+    public const string WriteSetupSecretBinding = nameof(WriteSetupSecretBinding);
+    public const string GetSetupSecretBindingOperation =
+        nameof(GetSetupSecretBindingOperation);
     public const string GetTicketingDeploymentCapabilities =
         nameof(GetTicketingDeploymentCapabilities);
     public const string GetEventAddOnCatalog = nameof(GetEventAddOnCatalog);

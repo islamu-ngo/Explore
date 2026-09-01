@@ -3,6 +3,39 @@ ABOUTME: Keeps release notes short and focused on externally observable API beha
 
 # API Changelog
 
+## 2026-09-01
+
+- **Additive: instance bootstrap status reports typed onboarding state.** The
+  status response gains value-free `state`, `mode`, `provider`, and
+  `generation` fields describing where a headless instance stands in its
+  onboarding lifecycle. No configured identity value is ever returned. Existing
+  operation identifiers and routes are unchanged and no new write endpoint is
+  added, but generated clients must be regenerated from
+  `schemas/openapi_islamu-event.json` to see the new fields.
+
+- **Breaking (pre-v1): provider accounts are identified by an
+  authority-qualified key.** An account is matched only by a normalized OIDC
+  issuer with its exact subject, or by a canonical verified ATProto DID. Email,
+  username, role, handle, and session-id matching are removed and there is no
+  raw-key fallback. Clients that sent a mutable attribute as the account key
+  must send the qualified key instead; regenerate clients from
+  `schemas/openapi_islamu-event.json`.
+
+- **Additive: authenticated Setup live enrollment and write-only secret-binding
+  contracts are available but not release-activated.** Seven private,
+  non-cacheable tenant routes create, inspect, revoke, and rotate short-lived
+  Setup target enrollments; inspect value-free binding readiness; write one
+  approved secret binding; and inspect its value-free operation receipt.
+  Enrollment capabilities are returned only in the
+  `X-Setup-Enrollment-Capability` response header, mutations require fresh
+  UUIDv7 `Idempotency-Key` values, and every action remains scoped to the exact
+  tenant, actor, enrollment, capability generation, expiry, and server-authored
+  HAL affordance. Raw secret values are accepted only by the bounded binary
+  write route and are never returned. Regenerate clients from
+  `schemas/openapi_islamu-event.json`. The generated Setup live release
+  manifest keeps target enrollment, readiness, writes, and saved profiles
+  disabled until a later workflow-activation phase closes.
+
 ## 2026-08-30
 
 - **Breaking (pre-v1): admission write bodies now use canonical DTO schema names.** Check-in, undo, batch-item, batch, scanner check-in/undo/batch, and scanner-capability issue/revoke request schemas now end in `RequestDto`. The former unsuffixed schema names and generated client types are removed without aliases; payload shapes and routes are unchanged. Regenerate clients from `schemas/openapi_islamu-event.json`.

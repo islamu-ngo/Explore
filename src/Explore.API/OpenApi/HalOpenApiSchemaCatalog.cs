@@ -253,6 +253,12 @@ internal static class HalOpenApiSchemaCatalog
         typeof(Explore.Application.DTOs.Settings.EffectiveSettingDto),
         typeof(Explore.Application.DTOs.Settings.SettingGroupResponseDto),
 
+        // Setup live wire DTOs
+        typeof(ISLAMU.Wire.Contracts.SetupLive.SetupTargetEnrollmentData),
+        typeof(ISLAMU.Wire.Contracts.SetupLive.SetupSecretBindingOperationData),
+        typeof(ISLAMU.Wire.Contracts.SetupLive.SetupSecretBindingReadinessItem),
+        typeof(Explore.API.Controllers.SetupSecretBindingReadinessDocument),
+
         // Scheduler administration DTOs
         typeof(Explore.Application.DTOs.Scheduling.SchedulerAdminOverviewDto),
         typeof(Explore.Application.DTOs.Scheduling.SchedulerAdminJobDto),
@@ -262,6 +268,14 @@ internal static class HalOpenApiSchemaCatalog
 
     public static IReadOnlyDictionary<string, Type> DetailResourceMappings { get; } = new Dictionary<string, Type>
     {
+        ["HalResourceOfSetupTargetEnrollmentData"] =
+            typeof(ISLAMU.Wire.Contracts.SetupLive.SetupTargetEnrollmentData),
+        ["HalResourceOfSetupSecretBindingOperationData"] =
+            typeof(ISLAMU.Wire.Contracts.SetupLive.SetupSecretBindingOperationData),
+        ["HalResourceOfSetupSecretBindingReadinessItem"] =
+            typeof(ISLAMU.Wire.Contracts.SetupLive.SetupSecretBindingReadinessItem),
+        ["HalResourceOfSetupSecretBindingReadinessDocument"] =
+            typeof(Explore.API.Controllers.SetupSecretBindingReadinessDocument),
         ["HalResourceOfTicketPurchaseGovernanceResource"] =
             typeof(Explore.API.Models.TicketPurchaseGovernanceResource),
         ["HalResourceOfParticipantReadinessDto"] =
@@ -435,6 +449,8 @@ internal static class HalOpenApiSchemaCatalog
 
     public static IReadOnlyDictionary<string, string> CollectionEmbeddedItemResourceMappings { get; } = new Dictionary<string, string>
     {
+        ["HalCollectionEmbeddedOfSetupSecretBindingReadinessItem"] =
+            "HalResourceOfSetupSecretBindingReadinessItem",
         ["HalCollectionEmbeddedOfActorListDto"] = "HalResourceOfActorListDto",
         ["HalCollectionEmbeddedOfActorSubscriptionListDto"] = "HalResourceOfActorSubscriptionListDto",
         ["HalCollectionEmbeddedOfCategoryListDto"] = "HalResourceOfCategoryListDto",
@@ -504,6 +520,8 @@ internal static class HalOpenApiSchemaCatalog
     public static IReadOnlyDictionary<string, string> DetailResourceEmbeddedMappings { get; } =
         new Dictionary<string, string>
         {
+            ["HalResourceOfSetupSecretBindingReadinessDocument"] =
+                "HalCollectionEmbeddedOfSetupSecretBindingReadinessItem",
             ["HalResourceOfAddressSuggestionsResponseDto"] =
                 "HalCollectionEmbeddedOfAddressSuggestionDto"
         };

@@ -11,15 +11,15 @@
 
 ## Summary
 
-- Total paths: **707**
-- Total operations: **887**
+- Total paths: **713**
+- Total operations: **894**
 - Operations missing `operationId`: **0**
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **0**
 - Operations missing `x-endpoint-class` extension: **0**
-- Classification breakdown: `Admin`=117, `Authenticated`=592, `Public`=160, `PublicTransactional`=18
+- Classification breakdown: `Admin`=117, `Authenticated`=599, `Public`=160, `PublicTransactional`=18
 - Tenant-mode extension breakdown: `multi-tenant-required`=21
-- Rate-limit policy extension breakdown: `AddressSuggestions`=1, `AiAssistant`=5, `AnalyticsRelay`=1, `Authenticated`=55, `ConfigurationImportUpload`=2, `ControlPlane`=34, `EventOpenGraphImage`=1, `Global`=2, `PublicIngestion`=3, `SetupSecret`=9, `Write`=230, `admission_check_in`=6, `admission_scanner_capability`=2, `admission_scanner_check_in`=3, `admission_ticket_recovery`=1, `public_transactional`=18
+- Rate-limit policy extension breakdown: `AddressSuggestions`=1, `AiAssistant`=5, `AnalyticsRelay`=1, `Authenticated`=55, `ConfigurationImportUpload`=2, `ControlPlane`=34, `EventOpenGraphImage`=1, `Global`=2, `PublicIngestion`=3, `SetupEnrollmentWrite`=3, `SetupSecret`=9, `SetupSecretBindingWrite`=1, `Write`=230, `admission_check_in`=6, `admission_scanner_capability`=2, `admission_scanner_check_in`=3, `admission_ticket_recovery`=1, `public_transactional`=18
 - Output-cache policy extension breakdown: `DetailData`=40, `EventDiscovery`=1, `ListData`=21, `LookupData`=26, `PublicExperienceShell`=1, `PublicHomeDiscovery`=1, `PublicLegalDocuments`=1, `SitemapData`=1, `SystemConfig`=1, `TenantNav`=1
 
 ## Operations
@@ -845,74 +845,81 @@
 | 817 | `/api/tenants/{tenantId}/paid-checkout-governance/sale-control/stop` | `POST` | `StopPaidCheckoutSales` | _(none)_ | PaidCheckoutGovernance | `StopPaidCheckoutSales` | `Admin` | no | _(none)_ | `Write` | _(none)_ |
 | 818 | `/api/tenants/{tenantId}/settings/paid-event-policy` | `GET` | `GetTenantPaidEventPolicySettings` | _(none)_ | TenantPaidEventPolicySettings | `GetTenantPaidEventPolicySettings` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
 | 819 | `/api/tenants/{tenantId}/settings/paid-event-policy` | `PUT` | `UpdateTenantPaidEventPolicySettings` | _(none)_ | TenantPaidEventPolicySettings | `UpdateTenantPaidEventPolicySettings` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 820 | `/api/tickets` | `GET` | `GetCurrentAdmissionTickets` | List current account admission tickets | AdmissionTicket | `GetCurrentAdmissionTickets` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 821 | `/api/tickets/recovery` | `POST` | `RequestAdmissionTicketRecovery` | Request admission ticket recovery | AdmissionTicketRecovery | `RequestAdmissionTicketRecovery` | `PublicTransactional` | no | _(none)_ | `public_transactional` | _(none)_ |
-| 822 | `/api/tickets/recovery/consume` | `POST` | `ConsumeAdmissionTicketRecovery` | Consume admission ticket recovery capability | AdmissionTicketRecovery | `ConsumeAdmissionTicketRecovery` | `Public` | no | _(none)_ | `admission_ticket_recovery` | _(none)_ |
-| 823 | `/api/tickets/{ticketId}` | `GET` | `GetCurrentAdmissionTicket` | Get an account admission ticket | AdmissionTicket | `GetCurrentAdmissionTicket` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 824 | `/api/tickets/{ticketId}/print` | `POST` | `ReissueCurrentAdmissionTicketPrint` | Explicitly reissue an account admission ticket for print delivery | AdmissionTicket | `ReissueCurrentAdmissionTicketPrint` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 825 | `/api/tickets/{ticketId}/qr` | `POST` | `ReissueCurrentAdmissionTicketQr` | Explicitly reissue an account admission ticket for QR delivery | AdmissionTicket | `ReissueCurrentAdmissionTicketQr` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 826 | `/api/translation/languages` | `GET` | `GetAvailableTranslationLanguages` | Get Available Languages | Translation | `GetAvailableTranslationLanguages` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 827 | `/api/translation/{languageCode}` | `GET` | `GetTranslationByLanguage` | Get Translations | Translation | `GetTranslationByLanguage` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
-| 828 | `/api/ui-shell/context` | `GET` | `GetUiShellContext` | Get UI shell context | UiShell | `GetUiShellContext` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 829 | `/api/user` | `GET` | `GetCurrentUser` | _(none)_ | User | `GetCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 830 | `/api/user` | `DELETE` | `DeleteCurrentUser` | _(none)_ | User | `DeleteCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 831 | `/api/user/active-tenant/{tenantId}` | `POST` | `UpdateUserLastActiveTenant` | Update user's last active tenant | User | `UpdateUserLastActiveTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 832 | `/api/user/admin-authority` | `GET` | `GetCurrentUserAdminAuthority` | Get current user's admin authority | User | `GetCurrentUserAdminAuthority` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 833 | `/api/user/appearance` | `GET` | `GetCurrentUserAppearancePreferences` | Get Resolved Appearance | UserAppearance | `GetCurrentUserAppearancePreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 834 | `/api/user/appearance` | `PATCH` | `UpdateCurrentUserAppearancePreferences` | Update Appearance Preferences | UserAppearance | `UpdateCurrentUserAppearancePreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 835 | `/api/user/appearance/active-profile` | `PUT` | `SetActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | `SetActiveAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 836 | `/api/user/appearance/generate-palette` | `GET` | `GenerateAppearancePalette` | Generate Palette From Colors | UserAppearance | `GenerateAppearancePalette` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 837 | `/api/user/appearance/mode` | `PUT` | `SetAppearanceThemeMode` | Set Theme Mode | UserAppearance | `SetAppearanceThemeMode` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 838 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | `GetAvailableThemes` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 839 | `/api/user/appearance/profiles` | `GET` | `GetUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | `GetUserAppearanceProfiles` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 840 | `/api/user/appearance/profiles` | `POST` | `CreateCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | `CreateCustomAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 841 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `ClonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | `ClonePresetToProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 842 | `/api/user/appearance/profiles/{profileId}` | `PATCH` | `UpdateAppearanceProfile` | Update User Appearance Profile | UserAppearance | `UpdateAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 843 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `ArchiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | `ArchiveAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 844 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `DuplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | `DuplicateAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 845 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | `SyncUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 846 | `/api/user/tenants/redirection` | `GET` | `ResolveUserTenantRedirection` | Resolve user tenant redirection | User | `ResolveUserTenantRedirection` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 847 | `/api/user/{id}` | `PATCH` | `UpdateCurrentUser` | _(none)_ | User | `UpdateCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 848 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | `GetUserOrganizations` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 849 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | `GetUserAuthenticationTokens` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 850 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | `GetUserAuthenticationTokenById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 851 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | `DeleteUserAuthenticationToken` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
-| 852 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | `GetVisibilityTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 853 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | `GetVisibilityTypeById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
-| 854 | `/api/webhooks/bulk-replays` | `GET` | `GetWebhookBulkReplays` | Get webhook bulk replays | WebhookBulkReplays | `GetWebhookBulkReplays` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 855 | `/api/webhooks/bulk-replays` | `POST` | `ScheduleWebhookBulkReplay` | Schedule webhook bulk replay | WebhookBulkReplays | `ScheduleWebhookBulkReplay` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 856 | `/api/webhooks/bulk-replays/preview` | `GET` | `PreviewWebhookBulkReplay` | Preview webhook bulk replay | WebhookBulkReplays | `PreviewWebhookBulkReplay` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 857 | `/api/webhooks/bulk-replays/{operationId}` | `GET` | `GetWebhookBulkReplayById` | Get webhook bulk replay | WebhookBulkReplays | `GetWebhookBulkReplayById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 858 | `/api/webhooks/bulk-replays/{operationId}/cancel` | `POST` | `CancelWebhookBulkReplay` | Cancel webhook bulk replay | WebhookBulkReplays | `CancelWebhookBulkReplay` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 859 | `/api/webhooks/consumers` | `GET` | `GetWebhookConsumers` | Get webhook consumers | Webhooks | `GetWebhookConsumers` | `Public` | no | _(none)_ | `Authenticated` | `ListData` |
-| 860 | `/api/webhooks/consumers` | `POST` | `CreateWebhookConsumer` | Create webhook consumer | Webhooks | `CreateWebhookConsumer` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 861 | `/api/webhooks/consumers/{consumerId}` | `GET` | `GetWebhookConsumerById` | Get webhook consumer | Webhooks | `GetWebhookConsumerById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 862 | `/api/webhooks/consumers/{consumerId}/provider-binding/repair` | `POST` | `RepairWebhookProviderBinding` | Repair webhook provider binding | Webhooks | `RepairWebhookProviderBinding` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 863 | `/api/webhooks/consumers/{consumerId}/provider-mode` | `PATCH` | `UpdateWebhookConsumerProviderMode` | Change webhook consumer provider mode | Webhooks | `UpdateWebhookConsumerProviderMode` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 864 | `/api/webhooks/delivery-attempts` | `GET` | `GetWebhookDeliveryAttempts` | Get webhook delivery attempts | WebhookMessages | `GetWebhookDeliveryAttempts` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 865 | `/api/webhooks/delivery-attempts/{attemptId}` | `GET` | `GetWebhookDeliveryAttemptById` | Get webhook delivery attempt | WebhookMessages | `GetWebhookDeliveryAttemptById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 866 | `/api/webhooks/delivery-attempts/{attemptId}/retry` | `POST` | `RetryWebhookDeliveryAttempt` | Retry webhook delivery attempt | WebhookMessages | `RetryWebhookDeliveryAttempt` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 867 | `/api/webhooks/endpoints` | `GET` | `GetWebhookEndpoints` | Get webhook endpoints | WebhookEndpoints | `GetWebhookEndpoints` | `Public` | no | _(none)_ | `Authenticated` | `ListData` |
-| 868 | `/api/webhooks/endpoints` | `POST` | `CreateWebhookEndpoint` | Create webhook endpoint | WebhookEndpoints | `CreateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 869 | `/api/webhooks/endpoints/{endpointId}` | `GET` | `GetWebhookEndpointById` | Get webhook endpoint | WebhookEndpoints | `GetWebhookEndpointById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 870 | `/api/webhooks/endpoints/{endpointId}` | `PATCH` | `UpdateWebhookEndpoint` | Update webhook endpoint | WebhookEndpoints | `UpdateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 871 | `/api/webhooks/endpoints/{endpointId}` | `DELETE` | `DeleteWebhookEndpoint` | Delete webhook endpoint | WebhookEndpoints | `DeleteWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 872 | `/api/webhooks/endpoints/{endpointId}/pause` | `POST` | `PauseWebhookEndpoint` | Pause webhook endpoint | WebhookEndpointOperations | `PauseWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 873 | `/api/webhooks/endpoints/{endpointId}/resume` | `POST` | `ResumeWebhookEndpoint` | Resume webhook endpoint | WebhookEndpointOperations | `ResumeWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 874 | `/api/webhooks/endpoints/{endpointId}/rotate-secret` | `POST` | `RotateWebhookEndpointSecret` | Rotate webhook endpoint secret | WebhookEndpoints | `RotateWebhookEndpointSecret` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 875 | `/api/webhooks/endpoints/{endpointId}/test` | `POST` | `TestWebhookEndpoint` | Test webhook endpoint | WebhookEndpoints | `TestWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 876 | `/api/webhooks/event-types` | `GET` | `GetWebhookEventTypes` | Get webhook event types | Webhooks | `GetWebhookEventTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
-| 877 | `/api/webhooks/incoming/{incomingWebhookMessageId}/redrive` | `POST` | `RedriveIncomingWebhook` | Redrive incoming webhook | WebhookMessages | `RedriveIncomingWebhook` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 878 | `/api/webhooks/messages` | `GET` | `GetWebhookMessages` | Get webhook messages | WebhookMessages | `GetWebhookMessages` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 879 | `/api/webhooks/messages/{messageId}` | `GET` | `GetWebhookMessageById` | Get webhook message | WebhookMessages | `GetWebhookMessageById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 880 | `/api/webhooks/messages/{messageId}/payload` | `GET` | `GetWebhookMessagePayload` | Get webhook message payload | WebhookMessages | `GetWebhookMessagePayload` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 881 | `/api/webhooks/provider-publications` | `GET` | `GetWebhookProviderPublications` | Get provider publications | WebhookProviderPublications | `GetWebhookProviderPublications` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 882 | `/api/webhooks/provider-publications/{publicationId}` | `GET` | `GetWebhookProviderPublicationById` | Get provider publication | WebhookProviderPublications | `GetWebhookProviderPublicationById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
-| 883 | `/api/webhooks/provider-publications/{publicationId}/abandon` | `POST` | `AbandonWebhookProviderPublication` | Abandon provider publication | WebhookProviderPublications | `AbandonWebhookProviderPublication` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 884 | `/api/webhooks/provider-publications/{publicationId}/reconcile` | `POST` | `ReconcileWebhookProviderPublication` | Reconcile provider publication | WebhookProviderPublications | `ReconcileWebhookProviderPublication` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 885 | `/api/webhooks/svix/app-portal` | `POST` | `OpenSvixAppPortal` | Open Svix App Portal | Webhooks | `OpenSvixAppPortal` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
-| 886 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | `GetSitemap` | `Public` | no | _(none)_ | _(none)_ | `SitemapData` |
-| 887 | `/vapid-public-key` | `GET` | `GetVapidPublicKey` | Get VAPID public key | Notification | `GetVapidPublicKey` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 820 | `/api/tenants/{tenantId}/setup/enrollments` | `POST` | `CreateSetupTargetEnrollment` | _(none)_ | Setup Live | `CreateSetupTargetEnrollment` | `Authenticated` | no | _(none)_ | `SetupEnrollmentWrite` | _(none)_ |
+| 821 | `/api/tenants/{tenantId}/setup/enrollments/{enrollmentId}` | `GET` | `GetSetupTargetEnrollment` | _(none)_ | Setup Live | `GetSetupTargetEnrollment` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 822 | `/api/tenants/{tenantId}/setup/enrollments/{enrollmentId}` | `DELETE` | `RevokeSetupTargetEnrollment` | _(none)_ | Setup Live | `RevokeSetupTargetEnrollment` | `Authenticated` | no | _(none)_ | `SetupEnrollmentWrite` | _(none)_ |
+| 823 | `/api/tenants/{tenantId}/setup/enrollments/{enrollmentId}/capability-rotations` | `POST` | `RotateSetupTargetEnrollmentCapability` | _(none)_ | Setup Live | `RotateSetupTargetEnrollmentCapability` | `Authenticated` | no | _(none)_ | `SetupEnrollmentWrite` | _(none)_ |
+| 824 | `/api/tenants/{tenantId}/setup/enrollments/{enrollmentId}/secret-binding-operations/{operationId}` | `GET` | `GetSetupSecretBindingOperation` | _(none)_ | Setup Live | `GetSetupSecretBindingOperation` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 825 | `/api/tenants/{tenantId}/setup/enrollments/{enrollmentId}/secret-bindings/readiness` | `GET` | `GetSetupSecretBindingReadiness` | _(none)_ | Setup Live | `GetSetupSecretBindingReadiness` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 826 | `/api/tenants/{tenantId}/setup/enrollments/{enrollmentId}/secret-bindings/{bindingKey}` | `PUT` | `WriteSetupSecretBinding` | _(none)_ | Setup Live | `WriteSetupSecretBinding` | `Authenticated` | no | _(none)_ | `SetupSecretBindingWrite` | _(none)_ |
+| 827 | `/api/tickets` | `GET` | `GetCurrentAdmissionTickets` | List current account admission tickets | AdmissionTicket | `GetCurrentAdmissionTickets` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 828 | `/api/tickets/recovery` | `POST` | `RequestAdmissionTicketRecovery` | Request admission ticket recovery | AdmissionTicketRecovery | `RequestAdmissionTicketRecovery` | `PublicTransactional` | no | _(none)_ | `public_transactional` | _(none)_ |
+| 829 | `/api/tickets/recovery/consume` | `POST` | `ConsumeAdmissionTicketRecovery` | Consume admission ticket recovery capability | AdmissionTicketRecovery | `ConsumeAdmissionTicketRecovery` | `Public` | no | _(none)_ | `admission_ticket_recovery` | _(none)_ |
+| 830 | `/api/tickets/{ticketId}` | `GET` | `GetCurrentAdmissionTicket` | Get an account admission ticket | AdmissionTicket | `GetCurrentAdmissionTicket` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 831 | `/api/tickets/{ticketId}/print` | `POST` | `ReissueCurrentAdmissionTicketPrint` | Explicitly reissue an account admission ticket for print delivery | AdmissionTicket | `ReissueCurrentAdmissionTicketPrint` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 832 | `/api/tickets/{ticketId}/qr` | `POST` | `ReissueCurrentAdmissionTicketQr` | Explicitly reissue an account admission ticket for QR delivery | AdmissionTicket | `ReissueCurrentAdmissionTicketQr` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 833 | `/api/translation/languages` | `GET` | `GetAvailableTranslationLanguages` | Get Available Languages | Translation | `GetAvailableTranslationLanguages` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 834 | `/api/translation/{languageCode}` | `GET` | `GetTranslationByLanguage` | Get Translations | Translation | `GetTranslationByLanguage` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
+| 835 | `/api/ui-shell/context` | `GET` | `GetUiShellContext` | Get UI shell context | UiShell | `GetUiShellContext` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 836 | `/api/user` | `GET` | `GetCurrentUser` | _(none)_ | User | `GetCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 837 | `/api/user` | `DELETE` | `DeleteCurrentUser` | _(none)_ | User | `DeleteCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 838 | `/api/user/active-tenant/{tenantId}` | `POST` | `UpdateUserLastActiveTenant` | Update user's last active tenant | User | `UpdateUserLastActiveTenant` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 839 | `/api/user/admin-authority` | `GET` | `GetCurrentUserAdminAuthority` | Get current user's admin authority | User | `GetCurrentUserAdminAuthority` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 840 | `/api/user/appearance` | `GET` | `GetCurrentUserAppearancePreferences` | Get Resolved Appearance | UserAppearance | `GetCurrentUserAppearancePreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 841 | `/api/user/appearance` | `PATCH` | `UpdateCurrentUserAppearancePreferences` | Update Appearance Preferences | UserAppearance | `UpdateCurrentUserAppearancePreferences` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 842 | `/api/user/appearance/active-profile` | `PUT` | `SetActiveAppearanceProfile` | Set Active Appearance Profile | UserAppearance | `SetActiveAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 843 | `/api/user/appearance/generate-palette` | `GET` | `GenerateAppearancePalette` | Generate Palette From Colors | UserAppearance | `GenerateAppearancePalette` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 844 | `/api/user/appearance/mode` | `PUT` | `SetAppearanceThemeMode` | Set Theme Mode | UserAppearance | `SetAppearanceThemeMode` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 845 | `/api/user/appearance/presets` | `GET` | `GetAvailableThemes` | Get Available Presets | UserAppearance | `GetAvailableThemes` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 846 | `/api/user/appearance/profiles` | `GET` | `GetUserAppearanceProfiles` | Get User Appearance Profiles | UserAppearance | `GetUserAppearanceProfiles` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 847 | `/api/user/appearance/profiles` | `POST` | `CreateCustomAppearanceProfile` | Create Custom Appearance Profile | UserAppearance | `CreateCustomAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 848 | `/api/user/appearance/profiles/from-preset/{presetId}` | `POST` | `ClonePresetToProfile` | Clone Preset Into User Profile | UserAppearance | `ClonePresetToProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 849 | `/api/user/appearance/profiles/{profileId}` | `PATCH` | `UpdateAppearanceProfile` | Update User Appearance Profile | UserAppearance | `UpdateAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 850 | `/api/user/appearance/profiles/{profileId}/archive` | `PUT` | `ArchiveAppearanceProfile` | Archive User Appearance Profile | UserAppearance | `ArchiveAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 851 | `/api/user/appearance/profiles/{profileId}/duplicate` | `POST` | `DuplicateAppearanceProfile` | Duplicate User Appearance Profile | UserAppearance | `DuplicateAppearanceProfile` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 852 | `/api/user/sync` | `POST` | `SyncUser` | Sync user from identity provider | User | `SyncUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 853 | `/api/user/tenants/redirection` | `GET` | `ResolveUserTenantRedirection` | Resolve user tenant redirection | User | `ResolveUserTenantRedirection` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 854 | `/api/user/{id}` | `PATCH` | `UpdateCurrentUser` | _(none)_ | User | `UpdateCurrentUser` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 855 | `/api/user/{userId}/organizations` | `GET` | `GetUserOrganizations` | Get user's organizations | User | `GetUserOrganizations` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 856 | `/api/userauthenticationtoken` | `GET` | `GetUserAuthenticationTokens` | Get all User Authentication Tokens | UserAuthenticationToken | `GetUserAuthenticationTokens` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 857 | `/api/userauthenticationtoken/{id}` | `GET` | `GetUserAuthenticationTokenById` | Get User Authentication Token by ID | UserAuthenticationToken | `GetUserAuthenticationTokenById` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 858 | `/api/userauthenticationtoken/{id}` | `DELETE` | `DeleteUserAuthenticationToken` | Delete User Authentication Token | UserAuthenticationToken | `DeleteUserAuthenticationToken` | `Authenticated` | no | _(none)_ | _(none)_ | _(none)_ |
+| 859 | `/api/visibilitytype` | `GET` | `GetVisibilityTypes` | Get all Visibility Types | VisibilityType | `GetVisibilityTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 860 | `/api/visibilitytype/{id}` | `GET` | `GetVisibilityTypeById` | Get Visibility Type by ID | VisibilityType | `GetVisibilityTypeById` | `Public` | no | _(none)_ | _(none)_ | `DetailData` |
+| 861 | `/api/webhooks/bulk-replays` | `GET` | `GetWebhookBulkReplays` | Get webhook bulk replays | WebhookBulkReplays | `GetWebhookBulkReplays` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 862 | `/api/webhooks/bulk-replays` | `POST` | `ScheduleWebhookBulkReplay` | Schedule webhook bulk replay | WebhookBulkReplays | `ScheduleWebhookBulkReplay` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 863 | `/api/webhooks/bulk-replays/preview` | `GET` | `PreviewWebhookBulkReplay` | Preview webhook bulk replay | WebhookBulkReplays | `PreviewWebhookBulkReplay` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 864 | `/api/webhooks/bulk-replays/{operationId}` | `GET` | `GetWebhookBulkReplayById` | Get webhook bulk replay | WebhookBulkReplays | `GetWebhookBulkReplayById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 865 | `/api/webhooks/bulk-replays/{operationId}/cancel` | `POST` | `CancelWebhookBulkReplay` | Cancel webhook bulk replay | WebhookBulkReplays | `CancelWebhookBulkReplay` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 866 | `/api/webhooks/consumers` | `GET` | `GetWebhookConsumers` | Get webhook consumers | Webhooks | `GetWebhookConsumers` | `Public` | no | _(none)_ | `Authenticated` | `ListData` |
+| 867 | `/api/webhooks/consumers` | `POST` | `CreateWebhookConsumer` | Create webhook consumer | Webhooks | `CreateWebhookConsumer` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 868 | `/api/webhooks/consumers/{consumerId}` | `GET` | `GetWebhookConsumerById` | Get webhook consumer | Webhooks | `GetWebhookConsumerById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 869 | `/api/webhooks/consumers/{consumerId}/provider-binding/repair` | `POST` | `RepairWebhookProviderBinding` | Repair webhook provider binding | Webhooks | `RepairWebhookProviderBinding` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 870 | `/api/webhooks/consumers/{consumerId}/provider-mode` | `PATCH` | `UpdateWebhookConsumerProviderMode` | Change webhook consumer provider mode | Webhooks | `UpdateWebhookConsumerProviderMode` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 871 | `/api/webhooks/delivery-attempts` | `GET` | `GetWebhookDeliveryAttempts` | Get webhook delivery attempts | WebhookMessages | `GetWebhookDeliveryAttempts` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 872 | `/api/webhooks/delivery-attempts/{attemptId}` | `GET` | `GetWebhookDeliveryAttemptById` | Get webhook delivery attempt | WebhookMessages | `GetWebhookDeliveryAttemptById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 873 | `/api/webhooks/delivery-attempts/{attemptId}/retry` | `POST` | `RetryWebhookDeliveryAttempt` | Retry webhook delivery attempt | WebhookMessages | `RetryWebhookDeliveryAttempt` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 874 | `/api/webhooks/endpoints` | `GET` | `GetWebhookEndpoints` | Get webhook endpoints | WebhookEndpoints | `GetWebhookEndpoints` | `Public` | no | _(none)_ | `Authenticated` | `ListData` |
+| 875 | `/api/webhooks/endpoints` | `POST` | `CreateWebhookEndpoint` | Create webhook endpoint | WebhookEndpoints | `CreateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 876 | `/api/webhooks/endpoints/{endpointId}` | `GET` | `GetWebhookEndpointById` | Get webhook endpoint | WebhookEndpoints | `GetWebhookEndpointById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 877 | `/api/webhooks/endpoints/{endpointId}` | `PATCH` | `UpdateWebhookEndpoint` | Update webhook endpoint | WebhookEndpoints | `UpdateWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 878 | `/api/webhooks/endpoints/{endpointId}` | `DELETE` | `DeleteWebhookEndpoint` | Delete webhook endpoint | WebhookEndpoints | `DeleteWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 879 | `/api/webhooks/endpoints/{endpointId}/pause` | `POST` | `PauseWebhookEndpoint` | Pause webhook endpoint | WebhookEndpointOperations | `PauseWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 880 | `/api/webhooks/endpoints/{endpointId}/resume` | `POST` | `ResumeWebhookEndpoint` | Resume webhook endpoint | WebhookEndpointOperations | `ResumeWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 881 | `/api/webhooks/endpoints/{endpointId}/rotate-secret` | `POST` | `RotateWebhookEndpointSecret` | Rotate webhook endpoint secret | WebhookEndpoints | `RotateWebhookEndpointSecret` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 882 | `/api/webhooks/endpoints/{endpointId}/test` | `POST` | `TestWebhookEndpoint` | Test webhook endpoint | WebhookEndpoints | `TestWebhookEndpoint` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 883 | `/api/webhooks/event-types` | `GET` | `GetWebhookEventTypes` | Get webhook event types | Webhooks | `GetWebhookEventTypes` | `Public` | no | _(none)_ | _(none)_ | `LookupData` |
+| 884 | `/api/webhooks/incoming/{incomingWebhookMessageId}/redrive` | `POST` | `RedriveIncomingWebhook` | Redrive incoming webhook | WebhookMessages | `RedriveIncomingWebhook` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 885 | `/api/webhooks/messages` | `GET` | `GetWebhookMessages` | Get webhook messages | WebhookMessages | `GetWebhookMessages` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 886 | `/api/webhooks/messages/{messageId}` | `GET` | `GetWebhookMessageById` | Get webhook message | WebhookMessages | `GetWebhookMessageById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 887 | `/api/webhooks/messages/{messageId}/payload` | `GET` | `GetWebhookMessagePayload` | Get webhook message payload | WebhookMessages | `GetWebhookMessagePayload` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 888 | `/api/webhooks/provider-publications` | `GET` | `GetWebhookProviderPublications` | Get provider publications | WebhookProviderPublications | `GetWebhookProviderPublications` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 889 | `/api/webhooks/provider-publications/{publicationId}` | `GET` | `GetWebhookProviderPublicationById` | Get provider publication | WebhookProviderPublications | `GetWebhookProviderPublicationById` | `Public` | no | _(none)_ | `Authenticated` | _(none)_ |
+| 890 | `/api/webhooks/provider-publications/{publicationId}/abandon` | `POST` | `AbandonWebhookProviderPublication` | Abandon provider publication | WebhookProviderPublications | `AbandonWebhookProviderPublication` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 891 | `/api/webhooks/provider-publications/{publicationId}/reconcile` | `POST` | `ReconcileWebhookProviderPublication` | Reconcile provider publication | WebhookProviderPublications | `ReconcileWebhookProviderPublication` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 892 | `/api/webhooks/svix/app-portal` | `POST` | `OpenSvixAppPortal` | Open Svix App Portal | Webhooks | `OpenSvixAppPortal` | `Authenticated` | no | _(none)_ | `Write` | _(none)_ |
+| 893 | `/sitemap.xml` | `GET` | `GetSitemap` | Get XML sitemap | Sitemap | `GetSitemap` | `Public` | no | _(none)_ | _(none)_ | `SitemapData` |
+| 894 | `/vapid-public-key` | `GET` | `GetVapidPublicKey` | Get VAPID public key | Notification | `GetVapidPublicKey` | `Public` | no | _(none)_ | _(none)_ | _(none)_ |
 
 ## Columns
 

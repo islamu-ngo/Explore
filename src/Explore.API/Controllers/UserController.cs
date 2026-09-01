@@ -91,7 +91,11 @@ public class UserController : ExploreControllerBase
             EmailVerified = emailVerified
         };
 
-        var command = new SyncUserCommand { UserDto = userDto };
+        var command = new SyncUserCommand
+        {
+            AccountKey = providerIdentity.AccountKey,
+            UserDto = userDto
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.IsSuccess)

@@ -68,6 +68,11 @@ await using (var scope = app.Services.CreateAsyncScope())
         shutdownCts.Token);
 }
 
+if (!app.Environment.IsEnvironment("Testing") && !apiHost.IsOpenApiGeneration)
+{
+    await app.PrepareConfiguredAdministratorBootstrapAsync(shutdownCts.Token);
+}
+
 await app.RunApiHostStartupAsync(
     apiHost,
     shutdownCts,

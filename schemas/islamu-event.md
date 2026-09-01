@@ -1696,15 +1696,25 @@ Table "module_definitions" {
 
 Table "instance_bootstrap_states" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
-  "is_completed" boolean [not null]
+  "status" int [not null, note: '1 Pending, 2 Superseded, 3 Completed']
+  "mode" int [not null, note: '1 Interactive, 2 ConfiguredAdministrator']
+  "provider_kind" int [note: '1 Keycloak, 2 Atproto; null for Interactive']
+  "deployment_mode" int [not null, note: '1 SingleTenant, 2 MultiTenant']
+  "generation" bigint [not null, note: 'positive, monotonic per bootstrap attempt']
+  "configuration_fingerprint" char(64)
+  "selector_fingerprint" char(64)
+  "completed_identity_fingerprint" char(64)
   "created_at" timestamptz [not null]
+  "superseded_at" timestamptz
   "completed_at" timestamptz
   "completed_by_user_id" uuid
-  "selected_deployment_mode" varchar(32)
 
   indexes {
-    is_completed [unique, name: 'ix_instance_bootstrap_state_completed_unique', note: 'filter: is_completed = true']
+    generation [unique, name: 'ix_instance_bootstrap_state_generation_unique']
+    (status, generation) [name: 'ix_instance_bootstrap_state_status_generation']
   }
+
+  Note: 'A state row starts Pending, becomes Superseded when a newer generation replaces it, and ends Completed once bootstrap succeeds. Only deterministic SHA-256 fingerprints are stored; no raw external identity values are persisted.'
 }
 
 Table "instance_policy_sets" {
@@ -7436,6 +7446,7 @@ Table "event_role_assignments" {
 // ============================================================
 
 // Tenants & Setup
+Ref: "instance_bootstrap_states"."completed_by_user_id" > "users"."id" [delete: restrict]
 Ref: "tenants"."tenant_status_id" > "tenant_statuses"."id" [delete: restrict]
 Ref: "tenant_settings_documents"."tenant_id" - "tenants"."id" [delete: cascade]
 Ref: "tenant_setting_overrides"."tenant_id" > "tenants"."id" [delete: restrict]

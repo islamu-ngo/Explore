@@ -5,6 +5,7 @@ using Explore.API.ExceptionHandling;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Onboarding;
+using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -40,7 +41,8 @@ public class SetupSecretRequiredAttribute : TypeFilterAttribute
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             var isCompleted = _requireIncomplete
-                && (await _instanceBootstrapStateRepository.GetCurrent(context.HttpContext.RequestAborted))?.IsCompleted == true;
+                && (await _instanceBootstrapStateRepository.GetCurrent(context.HttpContext.RequestAborted))?.Status
+                    == InstanceBootstrapStatus.Completed;
             if (isCompleted || !_setupSecretProvider.IsSetupModeActive)
             {
                 LogAudit(

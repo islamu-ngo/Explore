@@ -87866,6 +87866,7 @@
           {
             "name": "Idempotency-Key",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -87887,12 +87888,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSetupTargetEnrollmentRequest"
-              }
-            },
-            "application/*+json; v=0.1": {
+            "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateSetupTargetEnrollmentRequest"
               }
@@ -87904,17 +87900,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -87924,17 +87910,7 @@
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -87944,17 +87920,7 @@
           "403": {
             "description": "Forbidden",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -87964,17 +87930,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -87984,17 +87940,7 @@
           "409": {
             "description": "Conflict",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88004,17 +87950,7 @@
           "429": {
             "description": "Too Many Requests",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88024,17 +87960,7 @@
           "504": {
             "description": "Gateway Timeout",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88043,18 +87969,16 @@
           },
           "201": {
             "description": "Created",
+            "headers": {
+              "X-Setup-Enrollment-Capability": {
+                "description": "One-time enrollment authority returned only on issuance.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
                 }
@@ -88064,17 +87988,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
                 }
@@ -88114,6 +88028,7 @@
           {
             "name": "X-Setup-Enrollment-Capability",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -88137,17 +88052,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88157,17 +88062,7 @@
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88177,17 +88072,7 @@
           "403": {
             "description": "Forbidden",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88197,17 +88082,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88217,17 +88092,7 @@
           "409": {
             "description": "Conflict",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88237,17 +88102,7 @@
           "429": {
             "description": "Too Many Requests",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88257,17 +88112,7 @@
           "504": {
             "description": "Gateway Timeout",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88277,17 +88122,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
                 }
@@ -88324,6 +88159,7 @@
           {
             "name": "X-Setup-Enrollment-Capability",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -88331,6 +88167,7 @@
           {
             "name": "Idempotency-Key",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -88354,17 +88191,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88374,17 +88201,7 @@
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88394,17 +88211,7 @@
           "403": {
             "description": "Forbidden",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88414,17 +88221,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88434,17 +88231,7 @@
           "409": {
             "description": "Conflict",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88454,17 +88241,7 @@
           "429": {
             "description": "Too Many Requests",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88474,17 +88251,7 @@
           "504": {
             "description": "Gateway Timeout",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88494,17 +88261,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
                 }
@@ -88544,6 +88301,7 @@
           {
             "name": "X-Setup-Enrollment-Capability",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -88551,6 +88309,7 @@
           {
             "name": "Idempotency-Key",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -88574,17 +88333,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88594,17 +88343,7 @@
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88614,17 +88353,7 @@
           "403": {
             "description": "Forbidden",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88634,17 +88363,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88654,17 +88373,7 @@
           "409": {
             "description": "Conflict",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88674,17 +88383,7 @@
           "429": {
             "description": "Too Many Requests",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88694,17 +88393,7 @@
           "504": {
             "description": "Gateway Timeout",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88713,18 +88402,16 @@
           },
           "200": {
             "description": "OK",
+            "headers": {
+              "X-Setup-Enrollment-Capability": {
+                "description": "One-time enrollment authority returned only on issuance.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HalResourceOfSetupTargetEnrollmentData"
                 }
@@ -88764,6 +88451,7 @@
           {
             "name": "X-Setup-Enrollment-Capability",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -88787,17 +88475,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88807,17 +88485,7 @@
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88827,17 +88495,7 @@
           "403": {
             "description": "Forbidden",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88847,17 +88505,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88867,17 +88515,7 @@
           "409": {
             "description": "Conflict",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88887,17 +88525,7 @@
           "429": {
             "description": "Too Many Requests",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88907,17 +88535,7 @@
           "504": {
             "description": "Gateway Timeout",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -88927,17 +88545,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingReadinessDocument"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingReadinessDocument"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingReadinessDocument"
                 }
@@ -88984,6 +88592,7 @@
           {
             "name": "X-Setup-Enrollment-Capability",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -88991,6 +88600,7 @@
           {
             "name": "Idempotency-Key",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -89010,21 +88620,22 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89034,17 +88645,7 @@
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89054,17 +88655,7 @@
           "403": {
             "description": "Forbidden",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89074,17 +88665,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89094,17 +88675,7 @@
           "409": {
             "description": "Conflict",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89114,17 +88685,7 @@
           "429": {
             "description": "Too Many Requests",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89134,17 +88695,7 @@
           "504": {
             "description": "Gateway Timeout",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89154,17 +88705,7 @@
           "202": {
             "description": "Accepted",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingOperationData"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingOperationData"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingOperationData"
                 }
@@ -89213,6 +88754,7 @@
           {
             "name": "X-Setup-Enrollment-Capability",
             "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -89236,17 +88778,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89256,17 +88788,7 @@
           "401": {
             "description": "Unauthorized",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89276,17 +88798,7 @@
           "403": {
             "description": "Forbidden",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89296,17 +88808,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89316,17 +88818,7 @@
           "409": {
             "description": "Conflict",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89336,17 +88828,7 @@
           "429": {
             "description": "Too Many Requests",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89356,17 +88838,7 @@
           "504": {
             "description": "Gateway Timeout",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -89376,17 +88848,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingOperationData"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingOperationData"
-                }
-              },
-              "text/json; v=0.1": {
+              "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingOperationData"
                 }
@@ -112956,7 +112418,13 @@
             "$ref": "#/components/schemas/SetupClientChallenge"
           },
           "requestedScopes": {
-            "type": "array"
+            "maxItems": 3,
+            "minItems": 1,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetupEnrollmentScope"
+            }
           }
         },
         "additionalProperties": false
@@ -123638,6 +123106,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HalResourceOfSchedulerAdminJobDto"
+            }
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfSetupSecretBindingReadinessItem": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HalResourceOfSetupSecretBindingReadinessItem"
             }
           }
         }
@@ -136687,6 +136166,26 @@
           "isCompleted": {
             "type": "boolean"
           },
+          "state": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "generation": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
           "isAuthenticated": {
             "type": "boolean"
           },
@@ -143419,9 +142918,164 @@
           }
         }
       },
-      "HalResourceOfSetupSecretBindingOperationData": { },
-      "HalResourceOfSetupSecretBindingReadinessDocument": { },
-      "HalResourceOfSetupTargetEnrollmentData": { },
+      "HalResourceOfSetupSecretBindingOperationData": {
+        "required": [
+          "operationId",
+          "state",
+          "outcome",
+          "enrollmentGeneration",
+          "createdAt",
+          "settledAt"
+        ],
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SetupSecretBindingOperationState"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/SetupSecretBindingOperationOutcome"
+          },
+          "enrollmentGeneration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "settledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfSetupSecretBindingReadinessDocument": {
+        "type": "object",
+        "properties": {
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfSetupSecretBindingReadinessItem"
+          }
+        }
+      },
+      "HalResourceOfSetupSecretBindingReadinessItem": {
+        "required": [
+          "bindingKey",
+          "state"
+        ],
+        "type": "object",
+        "properties": {
+          "bindingKey": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SetupSecretBindingReadinessState"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
+      "HalResourceOfSetupTargetEnrollmentData": {
+        "required": [
+          "enrollmentId",
+          "state",
+          "generation",
+          "expiresAt",
+          "scopes",
+          "issuance"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SetupEnrollmentState"
+          },
+          "generation": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scopes": {
+            "maxItems": 3,
+            "minItems": 1,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetupEnrollmentScope"
+            }
+          },
+          "issuance": {
+            "$ref": "#/components/schemas/SetupEnrollmentIssuance"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            },
+            "description": "HAL hypermedia links"
+          },
+          "_embedded": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "Embedded related resources"
+          }
+        }
+      },
       "HalResourceOfStorageObjectDto": {
         "required": [
           "uri",
@@ -146747,6 +146401,26 @@
         "properties": {
           "isCompleted": {
             "type": "boolean"
+          },
+          "state": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "generation": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           },
           "isAuthenticated": {
             "type": "boolean"
@@ -164141,7 +163815,128 @@
           }
         }
       },
-      "SetupClientChallenge": { },
+      "SetupClientChallenge": {
+        "maxLength": 43,
+        "minLength": 43,
+        "pattern": "^[A-Za-z0-9_-]{43}$",
+        "type": "string"
+      },
+      "SetupEnrollmentIssuance": {
+        "enum": [
+          "issued",
+          "already_issued"
+        ],
+        "type": "string"
+      },
+      "SetupEnrollmentScope": {
+        "enum": [
+          "target.read",
+          "secret_binding.readiness",
+          "secret_binding.write"
+        ],
+        "type": "string"
+      },
+      "SetupEnrollmentState": {
+        "enum": [
+          "active",
+          "revoked",
+          "expired"
+        ],
+        "type": "string"
+      },
+      "SetupSecretBindingOperationData": {
+        "required": [
+          "operationId",
+          "state",
+          "outcome",
+          "enrollmentGeneration",
+          "createdAt",
+          "settledAt"
+        ],
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SetupSecretBindingOperationState"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/SetupSecretBindingOperationOutcome"
+          },
+          "enrollmentGeneration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "settledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetupSecretBindingOperationOutcome": {
+        "enum": [
+          "accepted",
+          "ready",
+          "unavailable",
+          "unauthorized",
+          "invalid",
+          "cancelled",
+          "unavailable_enrollment"
+        ],
+        "type": "string"
+      },
+      "SetupSecretBindingOperationState": {
+        "enum": [
+          "accepted",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "SetupSecretBindingReadinessDocument": {
+        "type": "object"
+      },
+      "SetupSecretBindingReadinessItem": {
+        "required": [
+          "bindingKey",
+          "state"
+        ],
+        "type": "object",
+        "properties": {
+          "bindingKey": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SetupSecretBindingReadinessState"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetupSecretBindingReadinessState": {
+        "enum": [
+          "unconfigured",
+          "ready",
+          "unavailable",
+          "unauthorized",
+          "invalid"
+        ],
+        "type": "string"
+      },
       "SetupSecretValidationResultDto": {
         "required": [
           "valid"
@@ -164152,6 +163947,51 @@
             "type": "boolean"
           }
         }
+      },
+      "SetupTargetEnrollmentData": {
+        "required": [
+          "enrollmentId",
+          "state",
+          "generation",
+          "expiresAt",
+          "scopes",
+          "issuance"
+        ],
+        "type": "object",
+        "properties": {
+          "enrollmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SetupEnrollmentState"
+          },
+          "generation": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scopes": {
+            "maxItems": 3,
+            "minItems": 1,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetupEnrollmentScope"
+            }
+          },
+          "issuance": {
+            "$ref": "#/components/schemas/SetupEnrollmentIssuance"
+          }
+        },
+        "additionalProperties": false
       },
       "SharedContactDto": {
         "type": "object",

@@ -8,6 +8,7 @@ using Explore.Persistence;
 using Explore.Persistence.Schema;
 using Explore.Persistence.Seed;
 using Explore.Infrastructure.ConfigurationManifest;
+using Explore.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.API.Hosting;
@@ -119,6 +120,13 @@ public static class ApiHostStartupExtensions
             }
         }
 
+        if (!app.Environment.IsEnvironment("Testing") &&
+            !state.IsOpenApiGeneration &&
+            state.OwnsDevelopmentMigrations)
+        {
+            await app.PrepareConfiguredAdministratorBootstrapAsync(shutdownCts.Token);
+        }
+
         if ((!app.Environment.IsEnvironment("Testing") ||
              app.Configuration.GetValue<bool>("Testing:EnablePrivacyErasureStartupGate")) &&
             !state.IsOpenApiGeneration)
@@ -164,5 +172,21 @@ public static class ApiHostStartupExtensions
                     "[SetupSecret] Instance onboarding already completed. Setup mode inactive.");
             }
         }
+    }
+
+    public static async Task PrepareConfiguredAdministratorBootstrapAsync(
+        this WebApplication app,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        await using var scope = app.Services.CreateAsyncScope();
+        var provider = ActivatorUtilities.CreateInstance<
+            ConfiguredAdministratorBootstrapProvider>(scope.ServiceProvider);
+        var runner = ActivatorUtilities.CreateInstance<
+            ConfiguredAdministratorBootstrapStartupRunner>(
+                scope.ServiceProvider,
+                provider);
+        await runner.PrepareAsync(cancellationToken);
     }
 }
