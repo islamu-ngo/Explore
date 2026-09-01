@@ -10,7 +10,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Original request:** Write a high-stakes, multi-phase implementation plan for the highest-leverage agentic/context-engineering improvements.
 - **Task directory:** `dev/active/agentic-workflow-control-plane/`
 - **Canonical strategy source:** [`docs/AGENTIC_CONTEXT_ENGINEERING.md`](../../../docs/AGENTIC_CONTEXT_ENGINEERING.md) Section 10.
-- **Planning status:** Five-phase planning revalidation complete — pending clean revision-bound CTO approval.
+- **Planning status:** Phase 1 is receipt-verified and committed; the packet-binding correction is complete, pending fresh revision-bound Tier 1 approval before Phase 2.
 - **Change classification:** Behavioral Delta — contributor-visible CLI behavior, approval/state transitions, shared-workspace failure behavior, packet outputs, goal status, and hook decisions change.
 - **Current governing intents:**
   - Primary: `create-agent-context-skill`.
@@ -28,8 +28,8 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **I-VSD stable evidence digest:** `sha256:67b4bd5297641ba402a20994186235f1907b9d6d76b5d428833f0f9785857cd7` — this is the digest of the *evidence packet* (`E001`–`E008`), **not** a hash of any plan/context/tasks file. Do not attempt to verify a triad file against it.
 - **Authoritative artifact bindings:** the current `sha256` digests of this plan, the context, and the tasks live in the I-VSD report's `Review Metadata`. The I-VSD report is authored last, after the triad settles, and is the single source of truth for currency. Verify against that block, not against a copy here.
 - **I-VSD status / disposition:** Current / plan-aligned, revalidated after the CTO rewrite. Findings `IVSD-F001`, `F002`, `F004`, `F006`, and `F007` were re-evaluated against the rewritten revision, and `IVSD-F008` / `IVSD-M008` were added to govern the new break-glass authority surface.
-- **CTO review:** Reviewed — [`agentic-workflow-control-plane-cto-review.md`](agentic-workflow-control-plane-cto-review.md). All recorded findings are applied, but every pass made edits; implementation remains blocked pending a clean revision-bound CTO pass that makes no edits and approves these exact bytes.
-- **User approval:** Implementation approval received for this workstream; it does not override the pending clean revision-bound CTO gate or phase-specific commit authority.
+- **CTO review:** Historical review retained unchanged — [`agentic-workflow-control-plane-cto-review.md`](agentic-workflow-control-plane-cto-review.md). All recorded findings remain applied; this corrected revision requires fresh revision-bound Tier 1 approval before Phase 2.
+- **User approval:** Implementation and Phase 1 authority were exercised. The user separately authorized whole-file capture of the two fixed mixed paths under decision `PH1_WHOLE_FILE_CAPTURE_AUTHORIZED`; that bounded disposition does not grant Phase 2 revision approval.
 - **Grill-Me intake:** Resolved from repository evidence. Fixed decisions are repository-owned C#, shared `develop`, no worktrees, machine enforcement of facts/state, human/agent semantic judgment, fixed privacy-safe machine state, and opt-in migration of active workstreams.
 - **Provenance:** Not externally informed; no dependency change planned. Reuse the existing .NET SDK, TUnit, and centrally pinned YamlDotNet.
 
@@ -408,6 +408,14 @@ break, and is retained as a positive safety assertion.
 - **Consequences:** Adapter-specific capabilities remain visible; unsupported required safety events fail closed.
 - **Files/layers affected:** `.agents/hooks`, `.claude`, `.codex`, `.cursorrules`, `.github`.
 
+### Decision 6 — Revision-binding packets close over their mutable review state
+
+- **Decision:** Every future commit packet that includes this workstream's tasks artifact, context artifact, or execution state also includes the I-VSD report. The I-VSD report is authored last against the exact settled plan/context/tasks bytes before that packet closes.
+- **Why:** Omitting the last-authored review artifact lets a packet commit mutable workflow state while leaving its authoritative review bindings stale.
+- **Alternatives considered:** Rebinding I-VSD in a later packet was rejected because the intervening revision would claim approval currency it cannot prove.
+- **Consequences:** Future mutable-state packets remain revision-complete; Phase 5 increments 5A and 5B stay excluded because 5C performs their final mutable-state reconciliation.
+- **Files/layers affected:** Workstream plan/context/tasks/execution packets and the I-VSD report.
+
 ### Decision 7 — Incremental migration with hard deletion after parity
 
 - **Decision:** Bootstrap the new project beside `eng/agent-context`, migrate callers only after parity, then delete obsolete validator/hook surfaces in Phase 5.
@@ -479,6 +487,7 @@ CTO/user readiness decision for the next phase state.
   - `docs/AGENTIC_CONTEXT_ENGINEERING.md` (existing)
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml` (existing)
   - workstream tasks/context artifacts (existing)
+  - `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md` (existing)
 - **Related skills/rules:** `conventional-commit` for planned packet authorship only; shared-`develop` constraints.
 - **Acceptance criteria:**
   - Disjoint claims can coexist; overlapping normalized paths fail before mutation.
@@ -515,6 +524,7 @@ CTO/user readiness decision for the next phase state.
   - `docs/AGENTIC_CONTEXT_ENGINEERING.md` (existing)
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml` (existing)
   - workstream tasks/context artifacts (existing)
+  - `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md` (existing)
 - **Related skills/rules:** context engineering, implementation-plan, senior-cto-feedback.
 - **Acceptance criteria:**
   - Packet contains current task, exact selected headings, matched rules/skills, scope, tests, approvals, paths, and source hashes only.
@@ -544,6 +554,7 @@ CTO/user readiness decision for the next phase state.
   - `docs/AGENTIC_CONTEXT_ENGINEERING.md` (existing)
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml` (existing)
   - workstream tasks/context artifacts (existing)
+  - `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md` (existing)
 - **Related skills/rules:** `skill-authoring`, `implementation-plan`, `senior-cto-feedback`.
 - **Acceptance criteria:**
   - States cover validated, CTO-approved, user-approved, claimed, implementing, verifying, commit-ready, committed, complete, blocked, interrupted, and needs-replan.
@@ -563,10 +574,10 @@ CTO/user readiness decision for the next phase state.
 
 - **Goal:** Route every supported harness and CI through one tested provider-neutral policy surface, remove obsolete hook/validator code, then reconcile the final artifacts and obtain independent review.
 - **Depends on:** Phases 1–4 command and receipt surfaces.
-- **Mandatory delivery split (CTO finding B3):** Phase 5 MUST close as three separate commits, not one. A single 26-path commit is not independently reviewable, and — more seriously — committing the deletions together with the replacement adapter leaves no revision in history containing both, which makes this phase's own documented rollback ("restore the last known-good hook entrypoints from the previous commit") impossible to execute.
+- **Mandatory delivery split (CTO finding B3):** Phase 5 MUST close as three separate commits, not one. A single 27-path commit is not independently reviewable, and — more seriously — committing the deletions together with the replacement adapter leaves no revision in history containing both, which makes this phase's own documented rollback ("restore the last known-good hook entrypoints from the previous commit") impossible to execute.
   - **5A — Adapter unification.** `.agents/hooks/AgentWorkflowHook.cs`, `.agents/hooks/README.md`, `.claude/settings.json`, `.codex/hooks.json`, `.cursorrules`, `.github/copilot-instructions.md`, `tests/Event.Architecture.Tests/AgentWorkflowHarnessArchitectureTests.cs`. Old surfaces remain present but inactive. This commit remains independently reviewable.
   - **5B — Dedicated CI lane.** `.github/workflows/agent-context.yml`, `.github/workflows/test.yml`, `docs/CI_CD_GOVERNANCE.md`. Its pending contents are verified together with 5A before either commit executes.
-  - **5C — Obsolete surface deletion.** Deletes the five hook scripts, `eng/agent-context/validate-contract.cs`, and its lock file, and migrates references in `AGENTS.md`, `.agents/contract/*`, and remaining docs. This commit runs only after Gate 5-I finalizes a parity receipt bound to the byte-equivalent post-5B revision.
+  - **5C — Obsolete surface deletion and mutable-state reconciliation.** Deletes the five hook scripts, `eng/agent-context/validate-contract.cs`, and its lock file; migrates references in `AGENTS.md`, `.agents/contract/*`, and remaining docs; and commits the final tasks/context/execution/I-VSD state. This commit runs only after Gate 5-I finalizes a parity receipt bound to the byte-equivalent post-5B revision.
 - **Relevant / phase-owned files:**
   - `.agents/hooks/AgentWorkflowHook.cs` (new)
   - `.agents/hooks/README.md` (existing)
@@ -593,6 +604,7 @@ CTO/user readiness decision for the next phase state.
   - `docs/TESTING.md` (existing)
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml` (existing)
   - workstream tasks/context artifacts (existing)
+  - `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md` (existing; included in increment 5C only)
 - **Related skills/rules:** `ci-cd-change`, `ip-clean-room`, `skill-authoring`.
 - **Acceptance criteria:**
   - All adapter commands are repository-relative and invoke one normalized CLI surface.
@@ -694,6 +706,10 @@ Update:
 - Document interruption, uncertain commit, stale claim, HEAD movement, and replan recovery.
 - Safety gates fail closed; advisory integrations degrade visibly.
 
+### Release, Changelog, And Phase Commit Strategy
+
+All seven commits are internal architecture/CI changes using explicit `Changelog: skip` trailers. Exact path lists and commands remain solely in the task ledger; packet composition follows Decision 6.
+
 ## 9. Islamic Value-Sensitive Design Mapping
 
 | I-VSD ID | Finding / mitigation status | Scenario and task mapping | Disposition |
@@ -707,11 +723,11 @@ Update:
 | `IVSD-F007` / `IVSD-M007` | Accepted | Requirement 4; Tasks 4.1–4.3 | Implement |
 | `IVSD-F008` / `IVSD-M008` | Open — new in the post-CTO revision | Requirement 2; Task 2.4 | Implement |
 
-No scholarly/legal escalation blocks planning. User implementation approval has
-been received for this exact plan, but implementation remains blocked pending a
-clean revision-bound CTO pass. Fresh user approval remains required for any
-future expansion of executor authority, persisted machine-state fields, vendor-specific
-canonical state, or dirty-state takeover.
+No scholarly/legal escalation blocks planning. Phase 1 is complete. Phase 2 is
+blocked pending fresh revision-bound Tier 1 approval of the corrected planning
+packet. Fresh user approval also remains required for any future expansion of
+executor authority, persisted machine-state fields, vendor-specific canonical
+state, or dirty-state takeover.
 
 ## 10. Security, Authorization, Privacy, And Abuse Considerations
 

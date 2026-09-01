@@ -7,17 +7,17 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Tasks 1.1, 1.2, and 1.3 are verified complete. Phase 1 implementation is complete; phase verification and commit closure remain open.
-- **Completed:** 3/17 implementation tasks across five phases and seven planned commits; phase verification and commit closure tracked separately.
-- **Current priority:** Execute the Phase 1 verification gate against the rebound real manifest, then prove packet ownership and close the exact planned commit.
-- **Next recommended slice:** Run the current intent validator, dependency-license audit, one Release solution build, and one full `ISLAMU.AgentWorkflow.Tests` project test in the manifest order; then inspect ownership, preserve unrelated state, and execute only the approved Phase 1 commit packet.
+- **Overall status:** Phase 1 is verified complete and committed as `eadeeabb4bd9745fef25bcb77dfdfab6c31844c1`; no Phase 2 task has started.
+- **Completed:** 3/17 implementation tasks and 1/7 planned commits across five phases.
+- **Current priority:** Obtain fresh revision-bound Tier 1 approval for the corrected plan/context/tasks/I-VSD packet.
+- **Next recommended slice:** After that approval, author the Phase 2 execution manifest binding and begin Task 2.1; do not mutate the existing manifest before approval.
 - **Review state:**
   - I-VSD report: `../../../islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
   - I-VSD stable evidence digest: `sha256:67b4bd5297641ba402a20994186235f1907b9d6d76b5d428833f0f9785857cd7` — digest of the evidence packet `E001`–`E008`, **not** a hash of any triad file
   - Authoritative artifact bindings: see the I-VSD report's `Review Metadata`, authored last and the single source of truth for currency
   - I-VSD status / disposition: current / plan-aligned, revalidated after the CTO rewrite; `IVSD-F008` / `IVSD-M008` added and mapped to Task 2.4
-  - CTO review: Historical review retained unchanged; all recorded findings are applied. Independent current-bytes technical review is CLEAR with no blockers at `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-code-review.md`.
-  - User approval: Implementation and Phase 1 commit authority are approved and bound in the current execution manifest; later-phase readiness remains separate.
+  - CTO review: Historical review retained unchanged; all recorded findings are applied. Independent Phase 1 current-bytes technical review is CLEAR at `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-code-review.md`; the corrected planning packet needs fresh revision-bound Tier 1 approval before Phase 2.
+  - User approval: Phase 1 implementation/commit authority and bounded whole-file capture authorization were exercised. Decision `PH1_WHOLE_FILE_CAPTURE_AUTHORIZED` applies only to `.agents/contract/intents.yaml` and `docs/AGENTIC_CONTEXT_ENGINEERING.md`; later-phase readiness remains separate.
 
 ## Implementation Maintenance Rules
 
@@ -40,6 +40,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - Update context after a phase, blocker, decision, failed validation, material discovery, interruption, or handoff.
 - Update the plan only for scope, architecture, phase order, acceptance, risk, or validation changes.
 - Revalidate I-VSD after provider authority, stakeholder, persisted machine-state fields, recovery, or mapped-task changes.
+- Any future packet that commits this tasks ledger, workstream context, or execution state MUST also commit `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`, authored last against the exact settled plan/context/tasks bytes. Increments 5A/5B intentionally defer mutable-state reconciliation to 5C.
 
 ## Program Approval Boundary
 
@@ -48,7 +49,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - Senior CTO review MUST bind to exact plan, tasks, and I-VSD revisions.
 - Phase 1 MUST establish the dedicated intent before any path outside the current composite allow-lists is edited.
 
-## Phase 1: Typed Workstream Contract And Tool Foundation — IN PROGRESS
+## Phase 1: Typed Workstream Contract And Tool Foundation — COMPLETE
 
 **Phase-owned paths:** exactly the paths in the planned commit contract below.
 
@@ -78,9 +79,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 1 Verification — RUN ONCE AFTER TASKS 1.1–1.3
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` and record exit code 0 or exact unrelated failure evidence.
-- [ ] Run `dotnet test --project eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ISLAMU.AgentWorkflow.Tests.csproj --configuration Release --verbosity quiet` and record passing nonzero tests.
-- [ ] Confirm no phase-attributable failure remains and the Phase 1 packet still matches wholly owned paths.
+- [x] Run `dotnet build --configuration Release --verbosity quiet` and record exit code 0 or exact unrelated failure evidence. **Receipt:** exit 0, 8,185 solution warnings and 0 errors; only one warning record was retained, so no unsupported per-path attribution or wholly-green repository claim is made.
+- [x] Run `dotnet test --project eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ISLAMU.AgentWorkflow.Tests.csproj --configuration Release --verbosity quiet` and record passing nonzero tests. **Receipt:** 8/8 passed.
+- [x] Confirm no phase-attributable failure remains and the Phase 1 packet still matches the authorized path disposition. **Receipt:** exact 20/20 committed paths; whole-file capture of the two fixed mixed paths was explicitly authorized under `PH1_WHOLE_FILE_CAPTURE_AUTHORIZED`.
 
 ### Phase 1 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -128,8 +129,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
 
-- [ ] Execute the packet without loading `conventional-commit` if truthful; otherwise record complete actual packets before commit.
-- [ ] Verify committed paths equal `Commit paths`, record the hash/receipt, and obtain Phase 2 readiness approval.
+- [x] Execute the packet without loading `conventional-commit` if truthful; otherwise record complete actual packets before commit. **Receipt:** default packet committed as `eadeeabb4bd9745fef25bcb77dfdfab6c31844c1` from parent `1e2a4d20fae97857e10bacdb24802b66e287cf80`.
+- [x] Verify committed paths equal `Commit paths` and record the hash/receipt. **Receipt:** exact 20/20 parity and empty post-commit index. Bounded authorization evidence: `.omo/evidence/20260901-agentic-workflow-control-plane/phase-1-whole-file-authorization.md` (`sha256:ae9bf05db592a9c2b13511898ae485a3315578dd32532f3e98383dc12723a961`).
+- **Phase 2 entry gate:** Fresh revision-bound Tier 1 approval for the corrected packet is still required before authoring the Phase 2 execution manifest.
 
 ## Phase 2: Shared-Develop Claims And Fenced Phase Closure — NOT STARTED
 
@@ -148,7 +150,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Dependencies:** 2.1.
 
 - [ ] **2.3 Implement verify-and-close Git coordination and recovery receipts and verify exact commit-tree behavior**
-  - **Files:** `eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/PhaseClosure.cs`; `eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClosePhaseCommand.cs`; `eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/GitWorkspaceCoordinator.cs`; `docs/AGENTIC_CONTEXT_ENGINEERING.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`
+  - **Files:** `eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/PhaseClosure.cs`; `eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClosePhaseCommand.cs`; `eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/GitWorkspaceCoordinator.cs`; `docs/AGENTIC_CONTEXT_ENGINEERING.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`; `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
   - **Acceptance:** `ProcessStartInfo.ArgumentList`, expected-HEAD/hash checks, packet parity, exact commit tree, uncertain-result inspection, no worktree/stash/reset/cleanup. **Lock structure (CTO finding B2):** verification executes outside the exclusive lock; the lock spans only expected-HEAD re-validation, staged-set parity, commit, and post-commit inspection — never a build or test run. Lock acquisition defaults to **30 seconds** and never force-breaks a live lock. HEAD movement permits at most **3 re-verification attempts**, then blocks with a fixed diagnostic requesting human coordination. Both values are machine-owned schema/manifest facts configurable only by a revision-bound approved manifest; tests inject shorter deterministic values without sleeps. **Path safety (CTO finding B1):** literal file lists, normalized ownership resolution, and pre-commit staged-set parity are preventive blockers. Post-commit tree comparison is detection/containment only and stops further automation; it does not prevent initial capture. The tool never runs `revert`, `reset`, `checkout`, `stash`, or `clean`; human recovery commands limit secondary harm only.
   - **Effort:** L
   - **Dependencies:** 2.2.
@@ -186,17 +188,18 @@ Last Updated: 2026-09-01 Europe/Brussels
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`
+  - `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
 - **Pre-commit inspection commands:**
   - `git status --short`
   - `git diff --name-only`
   - `git diff --cached --name-only`
 - **Staging command:**
   ```bash
-  git add -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/WorkspaceClaim.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/PhaseClosure.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClaimCommands.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClosePhaseCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/GitWorkspaceCoordinator.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/FileClaimStore.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/SharedDevelopCoordinatorTests.cs docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
+  git add -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/WorkspaceClaim.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/PhaseClosure.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClaimCommands.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClosePhaseCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/GitWorkspaceCoordinator.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/FileClaimStore.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/SharedDevelopCoordinatorTests.cs docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
   ```
 - **Commit command:**
   ```bash
-  git commit --only -m "build(architecture): fence shared develop phase closure" -m "Add generation-fenced path claims, expected-HEAD verification receipts, and exact path-limited phase closure while preserving unrelated dirty state." -m "Changelog: skip" -m "Changelog-Reason: internal shared-workspace safety control" -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/WorkspaceClaim.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/PhaseClosure.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClaimCommands.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClosePhaseCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/GitWorkspaceCoordinator.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/FileClaimStore.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/SharedDevelopCoordinatorTests.cs docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
+  git commit --only -m "build(architecture): fence shared develop phase closure" -m "Add generation-fenced path claims, expected-HEAD verification receipts, and exact path-limited phase closure while preserving unrelated dirty state." -m "Changelog: skip" -m "Changelog-Reason: internal shared-workspace safety control" -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/WorkspaceClaim.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/PhaseClosure.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClaimCommands.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClosePhaseCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/GitWorkspaceCoordinator.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/FileClaimStore.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/SharedDevelopCoordinatorTests.cs docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
   ```
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
@@ -221,7 +224,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Dependencies:** 3.1.
 
 - [ ] **3.3 Bind packet budgets and planning/review/execution consumption and verify cold-resume packet**
-  - **Files:** `.agents/CONTEXT_ENGINEERING.md`; `.agents/benchmarks/cold-start-tasks.yaml`; `docs/AGENTIC_CONTEXT_ENGINEERING.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`
+  - **Files:** `.agents/CONTEXT_ENGINEERING.md`; `.agents/benchmarks/cold-start-tasks.yaml`; `docs/AGENTIC_CONTEXT_ENGINEERING.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`; `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
   - **Acceptance:** Existing byte, duplicate, scout, and registry limits are enforced; implementation receives current task/decisions/rules/paths/tests/hashes only; provider token fields remain optional metadata.
   - **Effort:** M
   - **Dependencies:** 3.2.
@@ -252,17 +255,18 @@ Last Updated: 2026-09-01 Europe/Brussels
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`
+  - `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
 - **Pre-commit inspection commands:**
   - `git status --short`
   - `git diff --name-only`
   - `git diff --cached --name-only`
 - **Staging command:**
   ```bash
-  git add -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/ContextPacket.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/BuildContextPacketCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/ContentAddressedPacketStore.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/MarkdownSectionReader.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ContextPacketCompilerTests.cs .agents/CONTEXT_ENGINEERING.md .agents/benchmarks/cold-start-tasks.yaml docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
+  git add -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/ContextPacket.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/BuildContextPacketCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/ContentAddressedPacketStore.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/MarkdownSectionReader.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ContextPacketCompilerTests.cs .agents/CONTEXT_ENGINEERING.md .agents/benchmarks/cold-start-tasks.yaml docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
   ```
 - **Commit command:**
   ```bash
-  git commit --only -m "build(architecture): compile bounded agent execution packets" -m "Compile revision-valid task packets from exact headings and content hashes while enforcing repository context budgets and zero duplicate unchanged bytes." -m "Changelog: skip" -m "Changelog-Reason: internal agent context packet optimization" -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/ContextPacket.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/BuildContextPacketCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/ContentAddressedPacketStore.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/MarkdownSectionReader.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ContextPacketCompilerTests.cs .agents/CONTEXT_ENGINEERING.md .agents/benchmarks/cold-start-tasks.yaml docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
+  git commit --only -m "build(architecture): compile bounded agent execution packets" -m "Compile revision-valid task packets from exact headings and content hashes while enforcing repository context budgets and zero duplicate unchanged bytes." -m "Changelog: skip" -m "Changelog-Reason: internal agent context packet optimization" -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/ContextPacket.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/BuildContextPacketCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/ContentAddressedPacketStore.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/MarkdownSectionReader.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ContextPacketCompilerTests.cs .agents/CONTEXT_ENGINEERING.md .agents/benchmarks/cold-start-tasks.yaml docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
   ```
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
@@ -287,7 +291,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Dependencies:** 4.1.
 
 - [ ] **4.3 Add persistent-goal skill and intent integration and verify bounded status/resume experience**
-  - **Files:** `.agents/skills/persistent-goal-execution/SKILL.md`; `.agents/contract/intents.yaml`; `.agents/CONTEXT_ENGINEERING.md`; `docs/AGENTIC_CONTEXT_ENGINEERING.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`
+  - **Files:** `.agents/skills/persistent-goal-execution/SKILL.md`; `.agents/contract/intents.yaml`; `.agents/CONTEXT_ENGINEERING.md`; `docs/AGENTIC_CONTEXT_ENGINEERING.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`; `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
   - **Acceptance:** Skill description routes only approved execution/resume. `goal status` shows current owner/state/next-action code/blocker code/expected HEAD/last good commit from fixed machine fields only. Phase 2 break-glass state remains visible through `status`; Phase 5 hook `doctor` remains owned by Phase 5. Existing harness `/goal` is not canonical state.
   - **Effort:** M
   - **Dependencies:** 4.2.
@@ -319,17 +323,18 @@ Last Updated: 2026-09-01 Europe/Brussels
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`
+  - `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
 - **Pre-commit inspection commands:**
   - `git status --short`
   - `git diff --name-only`
   - `git diff --cached --name-only`
 - **Staging command:**
   ```bash
-  git add -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/GoalExecution.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/GoalCommands.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/GoalStatusCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/WorkflowRunStore.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/PersistentGoalExecutionTests.cs .agents/skills/persistent-goal-execution/SKILL.md .agents/contract/intents.yaml .agents/CONTEXT_ENGINEERING.md docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
+  git add -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/GoalExecution.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/GoalCommands.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/GoalStatusCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/WorkflowRunStore.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/PersistentGoalExecutionTests.cs .agents/skills/persistent-goal-execution/SKILL.md .agents/contract/intents.yaml .agents/CONTEXT_ENGINEERING.md docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
   ```
 - **Commit command:**
   ```bash
-  git commit --only -m "build(architecture): resume approved agent goals deterministically" -m "Persist revision-bound goal transitions and recovery receipts so approved work resumes at one safe next action without model-owned authority." -m "Changelog: skip" -m "Changelog-Reason: internal persistent agent execution control" -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/GoalExecution.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/GoalCommands.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/GoalStatusCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/WorkflowRunStore.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/PersistentGoalExecutionTests.cs .agents/skills/persistent-goal-execution/SKILL.md .agents/contract/intents.yaml .agents/CONTEXT_ENGINEERING.md docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
+  git commit --only -m "build(architecture): resume approved agent goals deterministically" -m "Persist revision-bound goal transitions and recovery receipts so approved work resumes at one safe next action without model-owned authority." -m "Changelog: skip" -m "Changelog-Reason: internal persistent agent execution control" -- eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/GoalExecution.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/GoalCommands.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/GoalStatusCommand.cs eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/WorkflowRunStore.cs eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/PersistentGoalExecutionTests.cs .agents/skills/persistent-goal-execution/SKILL.md .agents/contract/intents.yaml .agents/CONTEXT_ENGINEERING.md docs/AGENTIC_CONTEXT_ENGINEERING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
   ```
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
@@ -361,7 +366,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Guidance:** Closes as commit increment 5B. Does not delete any obsolete surface.
 
 - [ ] **5.4 Migrate remaining command references and delete obsolete hook/bootstrap code after proven parity**
-  - **Files:** `AGENTS.md`; `.agents/contract/intents.yaml`; `.agents/contract/README.md`; `.agents/hooks/SecurityCheck.cs`; `.agents/hooks/SkillTrigger.cs`; `.agents/hooks/ContextTracker.cs`; `.agents/hooks/FormatCode.cs`; `.agents/hooks/BuildCheck.cs`; `eng/agent-context/validate-contract.cs`; `eng/agent-context/packages.lock.json`; `docs/AGENTIC_CONTEXT_ENGINEERING.md`; `docs/OPERATIONS.md`; `docs/TESTING.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`
+  - **Files:** `AGENTS.md`; `.agents/contract/intents.yaml`; `.agents/contract/README.md`; `.agents/hooks/SecurityCheck.cs`; `.agents/hooks/SkillTrigger.cs`; `.agents/hooks/ContextTracker.cs`; `.agents/hooks/FormatCode.cs`; `.agents/hooks/BuildCheck.cs`; `eng/agent-context/validate-contract.cs`; `eng/agent-context/packages.lock.json`; `docs/AGENTIC_CONTEXT_ENGINEERING.md`; `docs/OPERATIONS.md`; `docs/TESTING.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`; `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`; `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
   - **Acceptance:** Deletion runs only after Gate 5-I has a green pre-commit verification disposition and a finalized receipt bound to the exact post-5B revision whose path/tree hashes equal the verified combined pending 5A+5B snapshot. All old command references are migrated, exactly one active safety authority remains, and that byte-equivalent post-5B revision remains available as the 5C rollback anchor containing commits 5A and 5B plus the old surfaces.
   - **Effort:** L
   - **Dependencies:** 5.3, **plus a green Gate 5-I verification disposition, successful commits 5A and 5B, exact post-5B snapshot equivalence, and a finalized revision-bound parity receipt.**
@@ -394,7 +399,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 5 Commits — THREE SEPARATE COMMITS; 5A/5B AFTER GATE 5-I GREEN, 5C AFTER GATE 5-II
 
-> **CTO finding B3 — mandatory split.** Phase 5 MUST NOT close as one 26-path
+> **CTO finding B3 — mandatory split.** Phase 5 MUST NOT close as one 27-path
 > commit. Two defects forced this split: a single commit mixing adapter, CI, and
 > deletion is not independently reviewable, and committing the deletions
 > alongside the replacement adapter leaves no revision in history containing
@@ -486,17 +491,18 @@ Last Updated: 2026-09-01 Europe/Brussels
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml`
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md`
   - `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md`
+  - `islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
 - **Pre-commit inspection commands:**
   - `git status --short`
   - `git diff --name-only`
   - `git diff --cached --name-only`
 - **Staging command:**
   ```bash
-  git add -- .agents/hooks/SecurityCheck.cs .agents/hooks/SkillTrigger.cs .agents/hooks/ContextTracker.cs .agents/hooks/FormatCode.cs .agents/hooks/BuildCheck.cs eng/agent-context/validate-contract.cs eng/agent-context/packages.lock.json AGENTS.md .agents/contract/intents.yaml .agents/contract/README.md docs/AGENTIC_CONTEXT_ENGINEERING.md docs/OPERATIONS.md docs/TESTING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
+  git add -- .agents/hooks/SecurityCheck.cs .agents/hooks/SkillTrigger.cs .agents/hooks/ContextTracker.cs .agents/hooks/FormatCode.cs .agents/hooks/BuildCheck.cs eng/agent-context/validate-contract.cs eng/agent-context/packages.lock.json AGENTS.md .agents/contract/intents.yaml .agents/contract/README.md docs/AGENTIC_CONTEXT_ENGINEERING.md docs/OPERATIONS.md docs/TESTING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
   ```
 - **Commit command:**
   ```bash
-  git commit --only -m "ci(ci): delete obsolete agent hook and validator surfaces" -m "Remove the superseded hook scripts and bootstrap contract validator after adapter parity is proven, and migrate every remaining command reference so exactly one active safety authority remains." -m "Changelog: skip" -m "Changelog-Reason: internal obsolete agent surface removal after parity" -- .agents/hooks/SecurityCheck.cs .agents/hooks/SkillTrigger.cs .agents/hooks/ContextTracker.cs .agents/hooks/FormatCode.cs .agents/hooks/BuildCheck.cs eng/agent-context/validate-contract.cs eng/agent-context/packages.lock.json AGENTS.md .agents/contract/intents.yaml .agents/contract/README.md docs/AGENTIC_CONTEXT_ENGINEERING.md docs/OPERATIONS.md docs/TESTING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
+  git commit --only -m "ci(ci): delete obsolete agent hook and validator surfaces" -m "Remove the superseded hook scripts and bootstrap contract validator after adapter parity is proven, and migrate every remaining command reference so exactly one active safety authority remains." -m "Changelog: skip" -m "Changelog-Reason: internal obsolete agent surface removal after parity" -- .agents/hooks/SecurityCheck.cs .agents/hooks/SkillTrigger.cs .agents/hooks/ContextTracker.cs .agents/hooks/FormatCode.cs .agents/hooks/BuildCheck.cs eng/agent-context/validate-contract.cs eng/agent-context/packages.lock.json AGENTS.md .agents/contract/intents.yaml .agents/contract/README.md docs/AGENTIC_CONTEXT_ENGINEERING.md docs/OPERATIONS.md docs/TESTING.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
   ```
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
