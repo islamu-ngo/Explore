@@ -13,6 +13,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.PrivacyErasure;
 using Explore.Application.Contracts.Recovery;
 using Explore.Application.Contracts.Services;
+using Explore.Application.Contracts.SetupLive;
 using Explore.Application.Contracts.Waitlist;
 using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Application.Features.ConfigurationManifest.Managed;
@@ -120,6 +121,9 @@ public static class PersistenceServicesRegistration
         services.AddScoped<ISettingMutationLock, RelationalSettingMutationLock>();
         services.AddScoped<ICoordinatedSettingMutationStore, CoordinatedSettingMutationRepository>();
         services.AddScoped<IAtprotoSessionRefreshLock, RelationalAtprotoSessionRefreshLock>();
+        services.AddScoped<ISetupLiveRepository, SetupLiveRepository>();
+        services.AddScoped<ISetupSecretBindingOperationCoordinator,
+            RelationalSetupSecretBindingOperationCoordinator>();
 
         services.AddScoped<IGenericRepository<EventReportDecision, Guid>, GenericRepository<EventReportDecision, Guid>>();
         services.AddScoped<IGenericRepository<EventReportTarget, Guid>, GenericRepository<EventReportTarget, Guid>>();

@@ -28,6 +28,7 @@ public sealed class PrivateNoStoreMiddleware(RequestDelegate next)
     {
         context.Response.Headers[HeaderNames.CacheControl] =
             "private, no-store";
+        context.Response.Headers[HeaderNames.Pragma] = "no-cache";
         context.Response.Headers["Referrer-Policy"] =
             "no-referrer";
     }

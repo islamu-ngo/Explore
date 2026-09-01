@@ -28963,6 +28963,266 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupEnrollmentIssuanceClaim", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("ClaimedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("claimed_at");
+
+                    b.Property<long>("EnrollmentGeneration")
+                        .HasColumnType("bigint")
+                        .HasColumnName("enrollment_generation");
+
+                    b.Property<Guid>("EnrollmentId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("enrollment_id");
+
+                    b.Property<Guid>("OperationKey")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("operation_key");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("request_fingerprint")
+                        .IsFixedLength()
+                        .UseCollation("Latin1_General_100_BIN2")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_setup_enrollment_issuance_claims");
+
+                    b.HasIndex("TenantId", "OperationKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_setup_enrollment_issuance_claims_tenant_id_operation_key");
+
+                    b.HasIndex("TenantId", "EnrollmentId", "ActorId")
+                        .HasDatabaseName("ix_setup_enrollment_issuance_claims_tenant_id_enrollment_id_actor_id");
+
+                    b.ToTable("setup_enrollment_issuance_claims", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_setup_enrollment_claims_generation", "enrollment_generation > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupSecretBindingOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("BindingKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasColumnName("binding_key")
+                        .UseCollation("Latin1_General_100_BIN2")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<int>("CommitmentKeyVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("commitment_key_version");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("EnrollmentGeneration")
+                        .HasColumnType("bigint")
+                        .HasColumnName("enrollment_generation");
+
+                    b.Property<Guid>("EnrollmentId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("enrollment_id");
+
+                    b.Property<Guid>("OperationKey")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("operation_key");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("int")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("request_fingerprint")
+                        .IsFixedLength()
+                        .UseCollation("Latin1_General_100_BIN2")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<string>("SecretValueCommitment")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("secret_value_commitment")
+                        .IsFixedLength()
+                        .UseCollation("Latin1_General_100_BIN2")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("settled_at");
+
+                    b.Property<int>("State")
+                        .HasColumnType("int")
+                        .HasColumnName("state");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_setup_secret_binding_operations");
+
+                    b.HasIndex("TenantId", "OperationKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_setup_secret_binding_operations_tenant_id_operation_key");
+
+                    b.HasIndex("TenantId", "EnrollmentId", "ActorId")
+                        .HasDatabaseName("ix_setup_secret_binding_operations_tenant_id_enrollment_id_actor_id");
+
+                    b.ToTable("setup_secret_binding_operations", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_setup_secret_operations_binding", "binding_key IN ('setup.signing', 'setup.encryption')");
+
+                            t.HasCheckConstraint("ck_setup_secret_operations_lifecycle", "(state = 1 AND outcome = 1 AND settled_at IS NULL) OR (state = 2 AND outcome = 2 AND settled_at IS NOT NULL) OR (state = 3 AND outcome IN (3, 4, 5, 7) AND settled_at IS NOT NULL) OR (state = 4 AND outcome = 6 AND settled_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_setup_secret_operations_versions", "enrollment_generation > 0 AND commitment_key_version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupTargetEnrollment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("CapabilityDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("capability_digest")
+                        .IsFixedLength()
+                        .UseCollation("Latin1_General_100_BIN2")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<string>("ChallengeDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("challenge_digest")
+                        .IsFixedLength()
+                        .UseCollation("Latin1_General_100_BIN2")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("ExpiredAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("expired_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("expires_at");
+
+                    b.Property<long>("Generation")
+                        .HasColumnType("bigint")
+                        .HasColumnName("generation");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("ScopeDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .HasColumnName("scope_digest")
+                        .IsFixedLength()
+                        .UseCollation("Latin1_General_100_BIN2")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<int>("State")
+                        .HasColumnType("int")
+                        .HasColumnName("state");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_setup_target_enrollments");
+
+                    b.HasAlternateKey("TenantId", "Id", "ActorId")
+                        .HasName("ak_setup_target_enrollments_tenant_id_id_actor_id");
+
+                    b.ToTable("setup_target_enrollments", "islamu_event", t =>
+                        {
+                            t.HasCheckConstraint("ck_setup_target_enrollments_generation", "generation > 0");
+
+                            t.HasCheckConstraint("ck_setup_target_enrollments_lifecycle", "expires_at > created_at AND ((state = 1 AND revoked_at IS NULL AND expired_at IS NULL) OR (state = 2 AND revoked_at IS NOT NULL AND expired_at IS NULL) OR (state = 3 AND revoked_at IS NULL AND expired_at IS NOT NULL))");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
                 {
                     b.Property<Guid>("Id")
@@ -45488,6 +45748,38 @@ namespace Explore.Persistence.Migrations.SqlServer.Migrations
                         .HasConstraintName("fk_tenant_settings_documents_tenants_tenant_id");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupEnrollmentIssuanceClaim", b =>
+                {
+                    b.HasOne("Explore.Domain.SetupLive.SetupTargetEnrollment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EnrollmentId", "ActorId")
+                        .HasPrincipalKey("TenantId", "Id", "ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_setup_enrollment_issuance_claims_setup_target_enrollments_tenant_id_enrollment_id_actor_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupSecretBindingOperation", b =>
+                {
+                    b.HasOne("Explore.Domain.SetupLive.SetupTargetEnrollment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EnrollmentId", "ActorId")
+                        .HasPrincipalKey("TenantId", "Id", "ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_setup_secret_binding_operations_setup_target_enrollments_tenant_id_enrollment_id_actor_id");
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupTargetEnrollment", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_setup_target_enrollments_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>

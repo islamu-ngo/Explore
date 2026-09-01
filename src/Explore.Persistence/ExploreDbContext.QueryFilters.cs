@@ -6,6 +6,7 @@ using Explore.Domain.Ai;
 using Explore.Domain.Federation;
 using Explore.Domain.Modules;
 using Explore.Domain.Settings.Documents;
+using Explore.Domain.SetupLive;
 using Explore.Domain.Views;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,16 @@ public partial class ExploreDbContext
 {
     private void ApplyGlobalQueryFilters(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<SetupTargetEnrollment>()
+            .HasQueryFilter(QueryFilterNames.Tenant, value =>
+                IsTenantFilterBypassed || value.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<SetupEnrollmentIssuanceClaim>()
+            .HasQueryFilter(QueryFilterNames.Tenant, value =>
+                IsTenantFilterBypassed || value.TenantId == TenantFilterTenantId);
+        modelBuilder.Entity<SetupSecretBindingOperation>()
+            .HasQueryFilter(QueryFilterNames.Tenant, value =>
+                IsTenantFilterBypassed || value.TenantId == TenantFilterTenantId);
+
         // ===== Event Entities =====
         // Entities with both Tenant and Soft Delete filters (separate named filters for selective disabling)
         modelBuilder.Entity<Event>()

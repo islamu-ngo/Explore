@@ -43,11 +43,12 @@ public static class TenantScenarioSeed
             context.Tenants.Add(tenant);
         }
 
-        var user = new UserBuilder().Build();
+        var user = new UserBuilder().WithId(Guid.CreateVersion7()).Build();
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
         var actor = new ActorBuilder()
+            .WithId(Guid.CreateVersion7())
             .WithUserId(user.Id)
             .Build();
         context.Actors.Add(actor);
@@ -184,11 +185,12 @@ public static class TenantScenarioSeed
             .Build();
         context.Tenants.Add(tenant);
 
-        var user = new UserBuilder().Build();
+        var user = new UserBuilder().WithId(Guid.CreateVersion7()).Build();
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
         var actor = new ActorBuilder()
+            .WithId(Guid.CreateVersion7())
             .WithUserId(user.Id)
             .WithDisplayName($"{name} User")
             .Build();

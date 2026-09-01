@@ -1,0 +1,38 @@
+// ABOUTME: Defines the entity-first persistence port for Setup live enrollment and secret-write state.
+// ABOUTME: Keeps tenant-qualified replay reads and atomic SaveChanges ownership inside Application contracts.
+
+namespace Explore.Application.Contracts.Persistence;
+
+using Explore.Domain.SetupLive;
+
+public interface ISetupLiveRepository
+{
+    Task AddAsync(
+        SetupTargetEnrollment enrollment,
+        CancellationToken cancellationToken);
+
+    Task AddAsync(
+        SetupEnrollmentIssuanceClaim claim,
+        CancellationToken cancellationToken);
+
+    Task AddAsync(
+        SetupSecretBindingOperation operation,
+        CancellationToken cancellationToken);
+
+    Task<SetupTargetEnrollment?> FindEnrollmentAsync(
+        Guid tenantId,
+        Guid enrollmentId,
+        CancellationToken cancellationToken);
+
+    Task<SetupEnrollmentIssuanceClaim?> FindIssuanceClaimAsync(
+        Guid tenantId,
+        Guid operationKey,
+        CancellationToken cancellationToken);
+
+    Task<SetupSecretBindingOperation?> FindOperationAsync(
+        Guid tenantId,
+        Guid operationKey,
+        CancellationToken cancellationToken);
+
+    Task SaveChangesAsync(CancellationToken cancellationToken);
+}

@@ -33,4 +33,11 @@ public interface IInfisicalClient
         string folderPath,
         string secretName,
         CancellationToken cancellationToken = default);
+
+    Task<bool> WriteSecretAsync(
+        string environment,
+        string folderPath,
+        string secretName,
+        ReadOnlyMemory<byte> secretValue,
+        CancellationToken cancellationToken = default);
 }

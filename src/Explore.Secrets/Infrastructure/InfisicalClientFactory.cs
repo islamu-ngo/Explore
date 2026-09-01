@@ -194,5 +194,13 @@ public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisp
 
             return null;
         }
+
+        public Task<bool> WriteSecretAsync(
+            string environment,
+            string folderPath,
+            string secretName,
+            ReadOnlyMemory<byte> secretValue,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

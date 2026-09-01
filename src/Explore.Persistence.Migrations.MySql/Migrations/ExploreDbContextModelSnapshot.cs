@@ -28982,6 +28982,280 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupEnrollmentIssuanceClaim", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("ClaimedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("claimed_at");
+
+                    b.Property<long>("EnrollmentGeneration")
+                        .HasColumnType("bigint")
+                        .HasColumnName("enrollment_generation");
+
+                    b.Property<Guid>("EnrollmentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("enrollment_id");
+
+                    b.Property<Guid>("OperationKey")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("operation_key");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("request_fingerprint")
+                        .IsFixedLength()
+                        .UseCollation("ascii_bin")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("RequestFingerprint"), "ascii");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_setup_enrollment_issuance_claims");
+
+                    b.HasIndex("TenantId", "OperationKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_setup_enrollment_issuance_claims_tenant_id_operation_key");
+
+                    b.HasIndex("TenantId", "EnrollmentId", "ActorId")
+                        .HasDatabaseName("ix_ie_setup_enrollment_issuance_claims_tenant_id_enroll_be964297");
+
+                    b.ToTable("ie_setup_enrollment_issuance_claims", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_setup_enrollment_claims_generation", "enrollment_generation > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupSecretBindingOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("BindingKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("binding_key")
+                        .UseCollation("ascii_bin")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("BindingKey"), "ascii");
+
+                    b.Property<int>("CommitmentKeyVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("commitment_key_version");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("EnrollmentGeneration")
+                        .HasColumnType("bigint")
+                        .HasColumnName("enrollment_generation");
+
+                    b.Property<Guid>("EnrollmentId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("enrollment_id");
+
+                    b.Property<Guid>("OperationKey")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("operation_key");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("int")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("request_fingerprint")
+                        .IsFixedLength()
+                        .UseCollation("ascii_bin")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("RequestFingerprint"), "ascii");
+
+                    b.Property<string>("SecretValueCommitment")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("secret_value_commitment")
+                        .IsFixedLength()
+                        .UseCollation("ascii_bin")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("SecretValueCommitment"), "ascii");
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("settled_at");
+
+                    b.Property<int>("State")
+                        .HasColumnType("int")
+                        .HasColumnName("state");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_setup_secret_binding_operations");
+
+                    b.HasIndex("TenantId", "OperationKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_setup_secret_binding_operations_tenant_id_operation_key");
+
+                    b.HasIndex("TenantId", "EnrollmentId", "ActorId")
+                        .HasDatabaseName("ix_ie_setup_secret_binding_operations_tenant_id_enrollm_2f6dbbae");
+
+                    b.ToTable("ie_setup_secret_binding_operations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_setup_secret_operations_binding", "binding_key IN ('setup.signing', 'setup.encryption')");
+
+                            t.HasCheckConstraint("ck_setup_secret_operations_lifecycle", "(state = 1 AND outcome = 1 AND settled_at IS NULL) OR (state = 2 AND outcome = 2 AND settled_at IS NOT NULL) OR (state = 3 AND outcome IN (3, 4, 5, 7) AND settled_at IS NOT NULL) OR (state = 4 AND outcome = 6 AND settled_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_setup_secret_operations_versions", "enrollment_generation > 0 AND commitment_key_version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupTargetEnrollment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("CapabilityDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("capability_digest")
+                        .IsFixedLength()
+                        .UseCollation("ascii_bin")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("CapabilityDigest"), "ascii");
+
+                    b.Property<string>("ChallengeDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("challenge_digest")
+                        .IsFixedLength()
+                        .UseCollation("ascii_bin")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("ChallengeDigest"), "ascii");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("ExpiredAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expired_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expires_at");
+
+                    b.Property<long>("Generation")
+                        .HasColumnType("bigint")
+                        .HasColumnName("generation");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("ScopeDigest")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("scope_digest")
+                        .IsFixedLength()
+                        .UseCollation("ascii_bin")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("ScopeDigest"), "ascii");
+
+                    b.Property<int>("State")
+                        .HasColumnType("int")
+                        .HasColumnName("state");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_setup_target_enrollments");
+
+                    b.HasAlternateKey("TenantId", "Id", "ActorId")
+                        .HasName("ak_setup_target_enrollments_tenant_id_id_actor_id");
+
+                    b.ToTable("ie_setup_target_enrollments", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_setup_target_enrollments_generation", "generation > 0");
+
+                            t.HasCheckConstraint("ck_setup_target_enrollments_lifecycle", "expires_at > created_at AND ((state = 1 AND revoked_at IS NULL AND expired_at IS NULL) OR (state = 2 AND revoked_at IS NOT NULL AND expired_at IS NULL) OR (state = 3 AND revoked_at IS NULL AND expired_at IS NOT NULL))");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
                 {
                     b.Property<Guid>("Id")
@@ -45542,6 +45816,38 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasConstraintName("fk_tenant_settings_documents_tenants_tenant_id");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupEnrollmentIssuanceClaim", b =>
+                {
+                    b.HasOne("Explore.Domain.SetupLive.SetupTargetEnrollment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EnrollmentId", "ActorId")
+                        .HasPrincipalKey("TenantId", "Id", "ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_setup_enrollment_issuance_claims_ie_setup_target__90f3a697");
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupSecretBindingOperation", b =>
+                {
+                    b.HasOne("Explore.Domain.SetupLive.SetupTargetEnrollment", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EnrollmentId", "ActorId")
+                        .HasPrincipalKey("TenantId", "Id", "ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ie_setup_secret_binding_operations_ie_setup_target_e_b2a7e667");
+                });
+
+            modelBuilder.Entity("Explore.Domain.SetupLive.SetupTargetEnrollment", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_setup_target_enrollments_tenants_tenant_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>

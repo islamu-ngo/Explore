@@ -14,6 +14,7 @@ using Explore.Application.Constants;
 using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Telemetry;
+using ISLAMU.Wire.Contracts.SetupLive;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -137,6 +138,12 @@ public static class RateLimitingExtensions
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(WritePolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(
+                    SetupLiveContractMetadata.EnrollmentWriteRatePolicy,
+                    _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(
+                    SetupLiveContractMetadata.SecretWriteRatePolicy,
+                    _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(PublicIngestionPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(PublicTransactionalPolicy, _ =>
@@ -296,6 +303,19 @@ public static class RateLimitingExtensions
                         AutoReplenishment = true
                     });
             });
+
+            options.AddPolicy(
+                SetupLiveContractMetadata.EnrollmentWriteRatePolicy,
+                httpContext => FixedWindow(
+                    $"setup-enrollment:{GetAuthenticatedPartitionKey(httpContext)}",
+                    section.GetValue("SetupEnrollmentWrite:PermitLimit", 10),
+                    section.GetValue("SetupEnrollmentWrite:WindowSeconds", 60)));
+            options.AddPolicy(
+                SetupLiveContractMetadata.SecretWriteRatePolicy,
+                httpContext => FixedWindow(
+                    $"setup-secret-binding:{GetAuthenticatedPartitionKey(httpContext)}",
+                    section.GetValue("SetupSecretBindingWrite:PermitLimit", 5),
+                    section.GetValue("SetupSecretBindingWrite:WindowSeconds", 60)));
 
             options.AddPolicy(PublicIngestionPolicy, httpContext =>
             {
@@ -594,6 +614,10 @@ public static class RateLimitingExtensions
         {
             AuthenticatedPolicy => authPermitLimit,
             WritePolicy => writePermitLimit,
+            SetupLiveContractMetadata.EnrollmentWriteRatePolicy =>
+                section.GetValue("SetupEnrollmentWrite:PermitLimit", 10),
+            SetupLiveContractMetadata.SecretWriteRatePolicy =>
+                section.GetValue("SetupSecretBindingWrite:PermitLimit", 5),
             PublicIngestionPolicy => publicIngestionPermitLimit,
             PublicTransactionalPolicy => publicTransactionalPermitLimit,
             AdmissionTicketRecoveryPolicy => admissionRecoveryPermitLimit,
@@ -671,6 +695,11 @@ public static class RateLimitingExtensions
             ConfigurationImportApiBoundary.UploadRateLimitPolicy)
         {
             return ConfigurationImportApiBoundary.UploadRateLimitPolicy;
+        }
+        if (endpointPolicy is SetupLiveContractMetadata.EnrollmentWriteRatePolicy
+            or SetupLiveContractMetadata.SecretWriteRatePolicy)
+        {
+            return endpointPolicy;
         }
         if (endpointPolicy is AdmissionTicketRecoveryPolicy
             or AdmissionCheckInPolicy

@@ -2,6 +2,7 @@
 // ABOUTME: Provides default, lookup, complex, and control-plane timeout tiers.
 
 using Explore.API.ConfigurationImport;
+using ISLAMU.Wire.Contracts.SetupLive;
 using Microsoft.AspNetCore.Http.Timeouts;
 
 namespace Explore.API.Extensions;
@@ -66,6 +67,24 @@ public static class RequestTimeoutExtensions
                 Timeout = TimeSpan.FromSeconds(controlPlaneSeconds),
                 TimeoutStatusCode = StatusCodes.Status504GatewayTimeout
             });
+
+            options.AddPolicy(
+                SetupLiveContractMetadata.EnrollmentTimeoutPolicy,
+                new RequestTimeoutPolicy
+                {
+                    Timeout = TimeSpan.FromSeconds(
+                        section.GetValue("SetupEnrollmentSeconds", 20)),
+                    TimeoutStatusCode = StatusCodes.Status504GatewayTimeout
+                });
+
+            options.AddPolicy(
+                SetupLiveContractMetadata.SecretWriteTimeoutPolicy,
+                new RequestTimeoutPolicy
+                {
+                    Timeout = TimeSpan.FromSeconds(
+                        section.GetValue("SetupSecretBindingSeconds", 30)),
+                    TimeoutStatusCode = StatusCodes.Status504GatewayTimeout
+                });
 
             options.AddPolicy(
                 ConfigurationImportUploadPolicy,

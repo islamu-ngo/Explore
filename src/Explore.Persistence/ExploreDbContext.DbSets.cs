@@ -6,6 +6,7 @@ using Explore.Domain.Ai;
 using Explore.Domain.Federation;
 using Explore.Domain.Modules;
 using Explore.Domain.Secrets;
+using Explore.Domain.SetupLive;
 using Explore.Domain.Settings.Documents;
 using Explore.Domain.Views;
 using Explore.Application.Features.ConfigurationManifest.Importing;
@@ -17,6 +18,10 @@ namespace Explore.Persistence;
 
 public partial class ExploreDbContext
 {
+    public DbSet<SetupTargetEnrollment> SetupTargetEnrollments { get; set; }
+    public DbSet<SetupEnrollmentIssuanceClaim> SetupEnrollmentIssuanceClaims { get; set; }
+    public DbSet<SetupSecretBindingOperation> SetupSecretBindingOperations { get; set; }
+
     public DbSet<ConfigurationImportSession> ConfigurationImportSessions { get; set; }
     public DbSet<ConfigurationImportStoredArtifact> ConfigurationImportArtifacts { get; set; }
     public DbSet<ConfigurationImportOperation> ConfigurationImportOperations { get; set; }
