@@ -61,7 +61,7 @@ jobs:
 
           is_global_dependency() {
             case "$1" in
-              Directory.Build.props|Directory.Packages.props|global.json|.ci/*|Explore.slnx|packages.lock.json|.github/workflows/*) return 0 ;;
+              Directory.Build.props|Directory.Packages.props|NuGet.Config|global.json|.ci/*|Explore.slnx|packages.lock.json|.github/workflows/*) return 0 ;;
               *) return 1 ;;
             esac
           }
@@ -184,7 +184,7 @@ jobs:
                   run_blazor="true"
                   run_arch="true"
                   ;;
-                .env.example|docker-compose.yml|docs/CONFIGURATION.md|src/Event.Setup.Core/*|src/Event.SetupAssistant/*|src/Event.SetupAssistant.Browser/*|src/Event.SetupAssistant.Desktop/*|src/Event.SetupAssistant.Cli/*|tests/Event.Setup*.Tests/*|eng/setup-assistant/generated/browser-release-capabilities.json|eng/setup-assistant/generated/frozen-contract-baseline.json|eng/setup-assistant/generated/environment-catalogue.json|eng/setup-assistant/*)
+                NuGet.Config|.env.example|docker-compose.yml|docs/CONFIGURATION.md|src/Event.Setup.Core/*|src/Event.SetupAssistant/*|src/Event.SetupAssistant.Browser/*|src/Event.SetupAssistant.Desktop/*|src/Event.SetupAssistant.Terminal/*|src/Event.SetupAssistant.Cli/*|tests/Event.Setup*.Tests/*|eng/setup-assistant/generated/browser-release-capabilities.json|eng/setup-assistant/generated/setup-live-release-capabilities.json|eng/setup-assistant/generated/frozen-contract-baseline.json|eng/setup-assistant/generated/environment-catalogue.json|eng/setup-assistant/*|eng/release/dependencies/terminal-gui/*)
                   run_arch="true"
                   run_setup="true"
                   ;;
@@ -213,6 +213,12 @@ jobs:
                   run_infra="true"
                   run_blazor="true"
                   run_secrets="true"
+                  ;;
+              esac
+              case "$file" in
+                src/Event.Wire.Contracts/SetupLive/*|src/Explore.Domain/SetupLive/*|src/Explore.Application/Contracts/Persistence/ISetupLiveRepository.cs|src/Explore.Application/Contracts/Infrastructure/ISetupSecretBindingReadinessReader.cs|src/Explore.Application/Features/SetupLive/*|src/Explore.Persistence/Repositories/SetupLiveRepository.cs|src/Explore.Secrets/Services/SetupSecretBindingAuthority.cs|src/Explore.API/Controllers/SetupTargetEnrollmentsController.cs|src/Explore.API/OpenApi/SetupLiveRequestBodyTransformer.cs|src/Explore.Blazor.Client/Clients/EventApiClient.cs|src/Explore.Blazor.Client/Clients/EventApiClient.g.cs|tests/Event.Wire.Contracts.UnitTests/SetupLive/*|tests/Event.Domain.UnitTests/SetupLive/*|tests/Event.Application.UnitTests/Features/SetupLive/*|tests/Event.Persistence.IntegrationTests/SetupLive/*|tests/Explore.Secrets.UnitTests/SetupLive/*|tests/Event.API.IntegrationTests/Features/SetupLive*|tests/Explore.GeneratedContracts.Tests/SetupLive*)
+                  run_arch="true"
+                  run_setup="true"
                   ;;
               esac
             done <<< "$relevant_files"

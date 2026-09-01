@@ -116,6 +116,12 @@ jobs:
           rm -f .ci/scripts/packages.lock.json
           dotnet run .ci/scripts/validate-dependency-license-policy.cs -- .
 
+      - name: Audited Terminal.Gui Package Gate
+        if: ${{ inputs.run-fast-tests && inputs.run-setup-tests }}
+        env:
+          RestorePackagesWithLockFile: "false"
+        run: bash eng/release/dependencies/terminal-gui/BuildTerminalGuiPackage.sh --check
+
       - name: Linting Check
         if: ${{ inputs.run-fast-tests }}
         run: dotnet format whitespace --verify-no-changes --verbosity minimal
@@ -137,9 +143,11 @@ jobs:
             tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj \
             tests/Event.SetupAssistant.Browser.Tests/Event.SetupAssistant.Browser.Tests.csproj \
             tests/Event.SetupAssistant.Desktop.Tests/Event.SetupAssistant.Desktop.Tests.csproj \
-            tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj
+            tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj \
+            tests/Event.SetupAssistant.Terminal.Tests/Event.SetupAssistant.Terminal.Tests.csproj
           do
             dotnet build "$project" --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
+            dotnet test --project "$project" --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --minimum-expected-tests 1 --no-progress
           done
 
       - name: Unit Tests — Application
