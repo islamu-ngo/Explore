@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://islamu.event/.agents/contract/workstream.schema.json",
+  "$comment": "ABOUTME: Defines closed machine facts for revision-bound agent workstream execution. ABOUTME: Rejects incomplete approvals, packets, transitions, and unsafe repository paths.",
+  "title": "Agent Workstream Execution",
+  "type": "object",
+  "required": ["schemaVersion", "workstreamId", "artifacts", "revisionDigest", "approvals", "expectedHead", "currentPhase"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": "workstream.v1" },
+    "workstreamId": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "artifacts": {
+      "type": "object",
+      "required": ["plan", "tasks", "ivsd", "ctoReview"],
+      "additionalProperties": false,
+      "properties": {
+        "plan": { "$ref": "#/$defs/artifact" },
+        "tasks": { "$ref": "#/$defs/artifact" },
+        "ivsd": { "$ref": "#/$defs/artifact" },
+        "ctoReview": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "revisionDigest": { "$ref": "#/$defs/sha256" },
+    "approvals": {
+      "type": "object",
+      "required": ["cto", "userImplementation", "phaseCommit"],
+      "additionalProperties": false,
+      "properties": {
+        "cto": { "$ref": "#/$defs/approval" },
+        "userImplementation": { "$ref": "#/$defs/approval" },
+        "phaseCommit": {
+          "type": "object",
+          "required": ["decision", "phaseId", "revisionDigest", "expectedHead"],
+          "additionalProperties": false,
+          "properties": {
+            "decision": { "const": "approved" },
+            "phaseId": { "$ref": "#/$defs/phaseId" },
+            "revisionDigest": { "$ref": "#/$defs/sha256" },
+            "expectedHead": { "$ref": "#/$defs/gitObjectId" }
+          }
+        }
+      }
+    },
+    "expectedHead": { "$ref": "#/$defs/gitObjectId" },
+    "currentPhase": {
+      "type": "object",
+      "required": ["id", "state", "requestedTransition", "packet"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/phaseId" },
+        "state": { "enum": ["approved", "implementing", "verifying", "commit-ready", "committed", "complete", "blocked", "interrupted", "needs-replan"] },
+        "requestedTransition": { "enum": ["implementing", "verifying", "commit-ready", "committed", "complete", "blocked", "interrupted", "needs-replan"] },
+        "packet": { "$ref": "#/$defs/packet" }
+      }
+    }
+  },
+  "$defs": {
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[\\\\*?\\[\\]])[^\\u0000]+$"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "gitObjectId": { "type": "string", "pattern": "^[a-f0-9]{40,64}$" },
+    "phaseId": { "type": "string", "pattern": "^phase-[1-9][0-9]*$" },
+    "artifact": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/safePath" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "required": ["decision", "revisionDigest"],
+      "additionalProperties": false,
+      "properties": {
+        "decision": { "const": "approved" },
+        "revisionDigest": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "packet": {
+      "type": "object",
+      "required": ["paths", "verificationCommands", "commit"],
+      "additionalProperties": false,
+      "properties": {
+        "paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/safePath" } },
+        "verificationCommands": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "commit": {
+          "type": "object",
+          "required": ["type", "scope", "changelog", "trailers"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "minLength": 1 },
+            "scope": { "type": "string", "minLength": 1 },
+            "changelog": { "enum": ["skip", "required"] },
+            "trailers": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    }
+  }
+}

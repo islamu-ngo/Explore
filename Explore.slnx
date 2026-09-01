@@ -42,6 +42,10 @@
   <Folder Name="/src/">
     <Project Path="src/Event.Wire.Contracts/Event.Wire.Contracts.csproj" />
   </Folder>
+  <Folder Name="/Tooling/Agent Workflow/">
+    <Project Path="eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj" />
+    <Project Path="eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ISLAMU.AgentWorkflow.Tests.csproj" />
+  </Folder>
   <Folder Name="/Tooling/Configuration Manifest/">
     <Project Path="eng/configuration-manifest-schema/src/ISLAMU.ConfigurationManifest.SchemaGenerator/ISLAMU.ConfigurationManifest.SchemaGenerator.csproj" />
   </Folder>

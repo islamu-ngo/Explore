@@ -34,6 +34,10 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 
 The default bootstrap packet is the resolved intent, matching rules, selected skill routers, and exact evidence locations. Keep it under the repository budget; expand one named uncertainty at a time.
 
+### Agent workflow control-plane bootstrap boundary
+
+`agent-workflow-control-plane` is the dedicated Tier 1 (Security) contract for the approved five-phase, 17-task, 7-commit control-plane workstream. Its deterministic path routing adds every matching `create-agent-context-skill` and `ci-cd-change` obligation; the primary Tier 1 controls remain authoritative, and no secondary gate is overridden. Task 1.1 authorizes only this registry and README bootstrap edit until `dotnet run eng/agent-context/validate-contract.cs -- . --intent agent-workflow-control-plane` passes. Before that green result, the intent's broader tool, test, harness, CI, operator-documentation, workstream-manifest, and I-VSD paths are illegal to edit; validation establishes routing scope, not phase readiness, ownership, approval, or commit authority.
+
 ## Adding a new intent
 
 1. Add a new entry to `intents.yaml`.
