@@ -3,6 +3,41 @@ ABOUTME: Focuses on non-inferable key names, mapping behavior, and settings casc
 
 # Configuration
 
+## Headless Instance Onboarding (Configured Administrator)
+
+Instance onboarding reads exactly seven keys from the deployment environment or
+the selected secret authority. Nothing is hardcoded in source, and there is no
+fallback source: if the selected authority doesn't supply a key, the key is
+absent.
+
+| Key | Interactive | ConfiguredAdministrator |
+|---|---|---|
+| `INSTANCE_BOOTSTRAP_MODE` | `Interactive` | `ConfiguredAdministrator` |
+| `INSTANCE_BOOTSTRAP_ADMIN_PROVIDER` | must be absent/empty | required, `keycloak` or `atproto` |
+| `INSTANCE_BOOTSTRAP_ADMIN_SUBJECT` | must be absent/empty | required, exact subject |
+| `INSTANCE_BOOTSTRAP_BINDING_GENERATION` | must be absent/empty | required, positive integer |
+| `INSTANCE_BOOTSTRAP_ADMIN_EMAIL` | must be absent/empty | required |
+| `INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME` | must be absent/empty | optional, only with last name |
+| `INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME` | must be absent/empty | optional, only with first name |
+
+Both matrices are closed. A missing mode, an unknown mode string, any configured
+key present under `Interactive`, any required key missing under
+`ConfiguredAdministrator`, or one profile name without the other is a startup
+failure, not a warning.
+
+Subject meaning depends on the provider key:
+
+- `keycloak`: the subject is paired with the existing `Keycloak:Authority`
+  issuer. That issuer stays where it already lives; onboarding never introduces
+  a second issuer setting.
+- `atproto`: the subject must be the canonical ATProto DID for the account.
+
+Deployment mode authority is unchanged too. `Deployment:Mode` remains ordinary
+existing configuration; onboarding reads it and never redefines it.
+
+The binding generation is a positive integer you own. Raise it when you
+intentionally change the configured administrator; never reuse or lower it.
+
 ## Legal-Identity Configuration Boundaries
 
 General instance accountability is startup-bound at
@@ -471,6 +506,39 @@ The ingestion option contract recognizes `CONFIGURATION_MANIFEST_MODE=Off`,
 `CONFIGURATION_MANIFEST_PATH`. Startup application of those options is activated in the
 post-migration bootstrap phase; the schema and reader contract alone do not perform
 database writes.
+
+## Setup Live Control-Plane Boundary
+
+Setup live control is an authenticated, tenant-scoped outer adapter over the
+generated API client. It does not add an appsetting, connection string, saved
+profile, credential file, process environment variable, command-line token, or
+portable-artifact field. The adapter accepts only an HTTPS target, obtains a
+fresh bearer from its caller-owned ephemeral provider for each request, and
+keeps the one-time enrollment capability in memory until expiry, revocation,
+rotation failure, transport/authentication failure, cancellation after
+dispatch, explicit clear, or disposal.
+
+The server returns enrollment authority only through
+`X-Setup-Enrollment-Capability`. Every mutation uses a fresh UUIDv7
+`Idempotency-Key`; every follow-up request must match the exact tenant, actor,
+enrollment, scope, capability generation, and expiry. Clients must follow the
+server-authored HAL relation and method before invoking the generated client
+operation. Absence, stale authority, and provider failures fail closed without
+falling back to portable source identity or provider coordinates.
+
+Secret-binding readiness and operation receipts are value-free. A secret write
+is allowed only for the exact server-reported `Ready` binding key and sends raw
+bytes once to the target's selected-authority writer; Setup cannot read the
+value back. Environment and .NET User Secrets are not live-write providers.
+Infisical writes require the already-selected stored authority and target-local
+coordinates, which never enter Setup contracts, logs, metrics, or responses.
+Recovery is to revoke the enrollment and clear the adapter's in-memory state;
+there is no credential-persistence recovery path.
+
+`eng/setup-assistant/generated/setup-live-release-capabilities.json` is the
+canonical release gate. D2 closes with `targetEnabled` and every live-control
+capability set to `false`; the backend and outer adapter therefore do not imply
+an activated CLI, browser, desktop, or shared-presentation workflow.
 
 ## Aspire Hosting Topology
 

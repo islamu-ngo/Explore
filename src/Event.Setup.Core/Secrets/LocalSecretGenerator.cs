@@ -29,6 +29,21 @@ public sealed class GeneratedDotenvValue : IDisposable
         return new string(characters);
     }
 
+    public byte[] CopyUtf8Bytes()
+    {
+        char[] characters = _characters
+            ?? throw new ObjectDisposedException(nameof(GeneratedDotenvValue));
+        byte[] bytes = new byte[characters.Length];
+        for (int index = 0; index < characters.Length; index++)
+        {
+            char character = characters[index];
+            if (character > 0x7f)
+                throw new InvalidOperationException("generated-secret-not-url-safe-ascii");
+            bytes[index] = (byte)character;
+        }
+        return bytes;
+    }
+
     public void Dispose()
     {
         char[]? characters = Interlocked.Exchange(ref _characters, null);

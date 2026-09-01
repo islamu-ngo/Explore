@@ -3,6 +3,33 @@ ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration ser
 
 # Operations
 
+## Instance Bootstrap Lifecycle
+
+Startup runs in one order, in Split and Standalone alike: migrations and
+seeding, then the configuration manifest, then serializable preparation, then
+HTTP readiness. Nothing serves traffic before the earlier stages settle.
+
+State rules operators need:
+
+- Pending is healthy. A configured instance waits for the administrator sign-in
+  and reports ready while it waits.
+- The same generation with identical values converges silently. Restarts are
+  safe and produce no new binding.
+- A strictly higher generation corrects a pending binding before completion.
+- The same or lower generation with changed selectors is drift, and startup
+  fails closed rather than guessing which side is right.
+- Completion is final. No environment change replays or transfers a completed
+  onboarding.
+
+Privilege comes only from a real sign-in carrying the exact provider claim.
+Configuration selects; it never authenticates. The BFF follows configured
+routing for the current state, so a setup-facing route means the instance is
+not complete yet.
+
+Status and reason codes are value-free by design. Logs, health endpoints, and
+support evidence never carry the configured subject, DID, email, names, or any
+fingerprint.
+
 ## Legal-Identity Readiness And Repair
 
 - Runtime API/Standalone startup validates `Instance:OperatorIdentity` and
@@ -1883,6 +1910,24 @@ Setup-secret-gated API onboarding endpoints use the dedicated `SetupSecret` rate
 
 The convention-first launch path is Setup Secret → Admin Auth → Site Profile → Preflight → Launch. Preflight readiness data is non-sensitive and separates launch blockers from operational warnings.
 
+### Terminal Setup Target
+
+`Event.SetupAssistant.Terminal` is the only human terminal interface. It uses
+the audited `ISLAMU.Terminal.Gui` `2.4.17-islamu.1` package and the shared
+CommunityToolkit presentation workspace; `Event.SetupAssistant.Cli` remains
+noninteractive and has no `tui` command or console fallback. Launch the target
+from an interactive terminal with no arguments. Redirected input, output, or
+error fails with `interactive-terminal-required` before secret state is created.
+Below 40 columns by 17 rows the target hides every input/action and shows only
+a resize instruction; it never leaves clipped controls active.
+
+The target creates a new `.env.setup` by default and never overwrites an
+existing file. Secret entry is masked, clipboard paste is refused, and the
+buffer is cleared on completion, cancellation, signal, disposal, or failure.
+Protected output currently requires Linux, macOS, or FreeBSD owner-only `0600`
+file semantics; other operating systems fail closed with
+`protected-output-unavailable`. There is no alternate renderer.
+
 ## External API Key Operations
 
 External API keys are long-lived credentials for non-interactive callers. Operational guarantees differ from interactive JWT flows in three places: rate-limit partitioning, quota enforcement, and usage-metadata freshness.
@@ -2191,6 +2236,11 @@ The only repository workflow utility is the read-only `eng/agent-workflow`
 guard. Use `validate-intents .agents/contract/intents.yaml` for YAML syntax and
 `validate-commit -- git commit ... -- <literal-files>` to reject broad commit
 pathspecs. It owns no state and never executes Git.
+
+```bash
+dotnet run --project eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj -- validate-intents .agents/contract/intents.yaml
+dotnet run --project eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj -- validate-commit -- git commit --only -m "message" -- src/ExactFile.cs docs/ExactFile.md
+```
 
 
 ## Planned Capacity Work

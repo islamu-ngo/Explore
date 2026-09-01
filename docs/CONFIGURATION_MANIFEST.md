@@ -14,6 +14,22 @@ bootstrap and reviewed Day 2 configuration portability. Tenant administrators
 use the separate `TenantConfigurationPackage`; neither artifact grants target
 authority from source identities.
 
+## Relationship To Headless Onboarding
+
+The manifest and the Setup Assistant stay identity-free and offline-only. They
+never own privilege, and they never own runtime connectivity. Headless
+onboarding is separate: the seven `INSTANCE_BOOTSTRAP_*` keys, read from the
+environment or the selected secret authority, name the first administrator, and
+only a real provider sign-in grants that authority.
+
+Order matters at startup. Migrations and seeding run first, the configuration
+manifest applies second, serializable preparation third, and HTTP readiness
+last, in both Split and Standalone. A manifest never completes onboarding, and
+onboarding never rewrites the manifest.
+
+See [CONFIGURATION.md](CONFIGURATION.md) for the key matrix and
+[OPERATIONS.md](OPERATIONS.md) for lifecycle behavior.
+
 ## Start Here
 
 Choose the path that matches your task:

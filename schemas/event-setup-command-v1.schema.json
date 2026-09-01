@@ -123,8 +123,7 @@
             "tenant-package",
             "env",
             "legal",
-            "doctor",
-            "tui"
+            "doctor"
           ]
         },
         "operation": {
@@ -141,8 +140,7 @@
             "export",
             "render",
             "preview",
-            "doctor",
-            "tui"
+            "doctor"
           ]
         },
         "mode": {

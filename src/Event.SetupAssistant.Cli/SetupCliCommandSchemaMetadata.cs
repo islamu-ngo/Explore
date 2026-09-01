@@ -11,9 +11,9 @@ public static class SetupCliCommandSchemaMetadata
 {
     public const string RelativePath = "schemas/event-setup-command-v1.schema.json";
     public static IReadOnlyList<string> Families { get; } = System.Array.AsReadOnly(new[]
-        { "catalogue", "manifest", "tenant-package", "env", "legal", "doctor", "tui" });
+        { "catalogue", "manifest", "tenant-package", "env", "legal", "doctor" });
     public static IReadOnlyList<string> Operations { get; } = System.Array.AsReadOnly(new[]
-        { "list", "show", "describe", "create", "open", "validate", "format", "diff", "coverage", "export", "render", "preview", "doctor", "tui" });
+        { "list", "show", "describe", "create", "open", "validate", "format", "diff", "coverage", "export", "render", "preview", "doctor" });
     public static IReadOnlyList<string> Options { get; } = System.Array.AsReadOnly(new[]
         { "--help", "--machine", "--text", "--dry-run", "--input", "--baseline", "--output", "--key", "--topology", "--capability", "--provider" });
 

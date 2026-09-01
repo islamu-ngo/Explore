@@ -3,7 +3,7 @@
 
 # Setup Assistant Security And Portability — Implementation Plan
 
-Last Updated: 2026-08-31 Europe/Brussels
+Last Updated: 2026-09-01 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -12,17 +12,16 @@ Last Updated: 2026-08-31 Europe/Brussels
   as the next workstream after ConfigurationManifest.
 - **Task directory:**
   `dev/active/setup-assistant-security-and-portability/` (strictly scoped to the Dev-Doc Triad: `setup-assistant-security-and-portability-plan.md`, `setup-assistant-security-and-portability-tasks.md`, `setup-assistant-security-and-portability-context.md`, plus `setup-assistant-security-and-portability-cto-review.md`. All 114 historical micro-iteration files, intermediate test evidence, review bindings, sub-phase approvals, and iterative CTO reviews are archived under `dev/zarchive/setup-assistant-security-and-portability/`).
-- **Planning status:** Re-baselined at the successor-B boundary. Successor A
-  and Phases 1-4 are Green; SA-510 remains an accepted but unchecked
-  framework-neutral Red while the exact CommunityToolkit/Avalonia/Terminal.Gui
-  graphs and fresh successor-B approvals remain blocked.
+- **Planning status:** Re-baselined by Project Steward decision at Phase 5R.
+  Historical phases remain evidence, but successor B is reopened until the
+  Terminal.Gui-only target replaces every custom/BCL terminal fallback.
 - **Change classification:** Behavioral Delta. This work adds a shipped
   cross-platform product, command contract, secret-handling workflows,
   generated deployment artifacts, legal-content authoring, packaging, and
   release behavior.
 - **Complexity:** XL. The work crosses a package-free shared contract and
-  headless core, a repository-native BCL terminal wizard, a framework-neutral
-  human-presentation model, independently gated Avalonia and Terminal.Gui
+  headless core, a deterministic machine CLI, a framework-neutral human-
+  presentation model, the sole Terminal.Gui terminal target,
   adapters, desktop/browser outcomes, deterministic CLI, security boundaries,
   accessibility/localization, six release RIDs, Linux packaging,
   signing/provenance, dependency governance, and agent context.
@@ -38,11 +37,11 @@ Last Updated: 2026-08-31 Europe/Brussels
   consumes the frozen v1alpha2 wire/schema/registry/import-preview baseline
   rather than redefining those boundaries. Open ConfigurationManifest phase
   gates are upstream verification state, not Setup implementation evidence.
-- **Fallback scope contract:** No current intent grants a GUI/TUI framework or
-  shipped presentation target. Successor A may create the new `src/Event.Setup*`
-  and corresponding `tests/Event.Setup*` boundaries as package-free shells to
-  satisfy the project graph; only Core and CLI/BCL-terminal behavior is
-  functional or shippable in A. Successor B owns the shared human-presentation
+- **Terminal scope contract:** The Project Steward explicitly authorizes a
+  minimally patched, separately named Terminal.Gui `2.4.17` package and rejects
+  every custom/BCL terminal fallback. Successor A's prior console workflow is
+  removal-only historical implementation. Successor B owns the sole human
+  terminal target and the shared human-presentation
   model, GUI/TUI framework selection, and actual Avalonia, Terminal.Gui,
   browser, and desktop presentation targets. Later scope includes package/solution/
   CI/release integration, generated environment assets, setup documentation,
@@ -58,30 +57,28 @@ Last Updated: 2026-08-31 Europe/Brussels
   `.agents/rules/ip-clean-room.md`. Existing path rules do not cover a future
   GUI framework; successor B must add executable presentation boundaries rather
   than informally borrowing Blazor-specific rules.
-- **Primary layers:** `Event.Wire.Contracts`, `Event.Setup.Core`, package-free
-  disabled presentation target shells in A, a repository-native machine CLI
-  and BCL terminal adapter, a successor-B CommunityToolkit presentation-state
+- **Primary layers:** `Event.Wire.Contracts`, `Event.Setup.Core`, a repository-
+  native noninteractive machine CLI, a successor-B CommunityToolkit presentation-state
   seam, isolated Avalonia/Terminal.Gui/browser/desktop adapters, release
   engineering, and agent context.
 - **I-VSD document:**
   [i-vsd-setup-assistant-security-and-portability.md](../../../islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md)
-- **I-VSD reviewed input revision:**
-  `sha256:f087c810ef74c31685c5472e33bfbd865ee21f3519192e3a57deb301c791bdc6`
+- **I-VSD review:** Current Terminal.Gui-only Steward revalidation; the report
+  records the exact post-rebaseline plan/tasks/context/approval revisions.
 - **I-VSD status / disposition:** `current` / `plan-aligned`; findings
   `IVSD-F001`–`IVSD-F046` and mitigations `IVSD-M001`–`IVSD-M046` preserve the
-  BCL-only successor-A graph and framework-neutral successor-B boundary. This
-  re-baseline changes presentation architecture, not provider-controlled
-  behavior, defaults, data, authority, or release gates. Planning-mode
-  revalidation mapped Scenario 3.16 and SA-515/SA-520/SA-525 while preserving
-  `current` / `plan-aligned` disposition.
+  Terminal.Gui-only successor-B boundary. Planning-mode revalidation maps
+  the downstream package to F013/M013, sole terminal access to F029/M029,
+  secret custody to F031/M031, and target accessibility to F035/M035.
 - **Clean-room evidence:**
   [setup-assistant-security-and-portability-clean-room-evidence.md](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md)
 - **Dependency evidence:**
   [setup-assistant-security-and-portability-dependency-evidence.md](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md)
 - **First CTO review:** [Split before approval](setup-assistant-security-and-portability-cto-review.md), bound to the prior plan/tasks revisions.
-- **Current correction review:** [Approved the BCL-only successor-A strategy](setup-assistant-security-and-portability-cto-review.md);
-  successors B-G inherit no approval.
-- **User approval:** [Bound to the reviewed BCL-only successor-A revision](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-approval.md).
+- **Current correction review:** Stale after the Terminal.Gui-only re-baseline;
+  Phase 5R requires a fresh exact-revision dependency/IP, security,
+  accessibility, quality, and CTO review.
+- **User approval:** [Terminal.Gui downstream-package and no-fallback approval](setup-assistant-terminal-gui-steward-approval.md).
 - **Grill-Me intake:** The existing I-VSD consultation records the user’s
   material choices: web plus desktop, protective no-secret browser default,
   optional trust-based web secret mode, open/auditable browser source,
@@ -94,16 +91,17 @@ Last Updated: 2026-08-31 Europe/Brussels
   payment-operation work into explicit later phases, and ship hosted
   secret mode disabled until independent evidence approves the exact release.
   The 2026-08-31 expansion is user-directed; the same date's WPF-reference
-  direction adds a CommunityToolkit-style human-presentation seam shared by
-  independently gated Avalonia and Terminal.Gui adapters, while explicitly
-  excluding the machine CLI and all secret values from MVVM/message state.
+  direction adds a CommunityToolkit-style human-presentation seam. On
+  2026-09-01 the Project Steward selected Terminal.Gui as the sole terminal
+  framework, authorized the exact temporary downstream-package route, and
+  rejected all console fallbacks while preserving the independent machine CLI.
   I-VSD and CTO revalidation remain mandatory before those new
   high-criticality phases start.
 
 ### 0.1 Umbrella Program And Successor Approval Boundaries
 
 This directory is the canonical umbrella for the complete Setup Assistant
-program. It preserves all requirements, Scenarios 3.1-3.16, 47 SA IDs, and 12
+program. It preserves all requirements, Scenarios 3.1-3.16, 52 SA IDs, and 12
 phase gates, but it grants package or target activation authority to no
 successor. The historical `dev/active/setup-assistant-presentation-targets/`
 B0 Razor/browser candidate and its separate I-VSD/CTO/binding artifacts are
@@ -112,8 +110,8 @@ CommunityToolkit/Avalonia/Terminal.Gui architecture defined here.
 
 | Successor boundary | Independently reviewable PR slices | Entry and owned outcome |
 |---|---|---|
-| **A. `setup-assistant-foundation-offline`** | A1 SA-110-SA-130 architecture/dependency/CI and ten package-free shells; A2 SA-210-SA-230 wire/core; A3 SA-310-SA-340 catalogue/offline; A4 SA-410-SA-430 CLI/BCL terminal wizard | Green and historically approved for its exact BCL-only revision. It ships the non-secret offline CLI/terminal product with no live authority. Presentation/Browser/Desktop shells remain disabled and non-shipped. |
-| **B. `setup-assistant-presentation-targets`** | B1 SA-510/SA-515/SA-518 shared CommunityToolkit presentation model; B2 SA-520 shared Avalonia views; B3 SA-525 Terminal.Gui adapter; B4 SA-530 accessibility/localization; B5 SA-540 legal; B6 SA-610-SA-640 browser; B7 SA-710-SA-730 desktop | B0 is historical and non-executable. B1 uses independently reviewed slices. Every adapter resolves to `Active` or `ApprovedDisabled`; an unapproved candidate is absent. The shared model can become Green while blocked targets remain disabled. |
+| **A. `setup-assistant-foundation-offline`** | A1 SA-110-SA-130 architecture/dependency/CI and package-free shells; A2 SA-210-SA-230 wire/core; A3 SA-310-SA-340 catalogue/offline; A4 SA-410-SA-430 historical CLI/BCL terminal wizard | Core and deterministic machine commands remain Green. The historical console wizard is superseded and must be removed by Phase 5R; it cannot ship or remain as fallback. |
+| **B. `setup-assistant-presentation-targets`** | B1 SA-510/SA-515/SA-518 shared CommunityToolkit presentation model; B2 SA-520 Avalonia disposition; B3 SA-525R-SA-527 downstream Terminal.Gui and sole target; B4 SA-530R accessibility/localization/security; B5 SA-540R file-based legal UX; B6 SA-610-SA-640 browser; B7 SA-710-SA-730 desktop | B0 and the prior Terminal `ApprovedDisabled` outcome are historical. Terminal.Gui is the required human terminal target through the exact Project Steward-authorized internal package. Avalonia remains independently disabled. |
 | **C. `setup-assistant-composition-scale`** | C1 SA-810 and SA-820 canonical composition; C2 SA-830 measured profiles | Requires stable A2/A3 contracts; canonical JSON remains unchanged and every larger profile is separately evidenced. |
 | **D. `setup-assistant-live-control-plane`** | D1 SA-910 Red plus server enrollment/authorization contracts; D2 SA-920 and SA-930 server behavior/generated contract; D3 SA-1010 Red plus SA-1020 and SA-1030 Setup adapters/UI | Requires fresh Tier 1 intake, current I-VSD, fresh CTO/user approval, and green ConfigurationManifest Tier 1/tenant/atomicity evidence. Backend precedes activation; Setup owns no local authority. |
 | **E. `setup-application-data-migration`** | E1 SA-1110 privacy/tenant Red; E2 SA-1120 Domain/Persistence/outbox; E3 SA-1130 API/HAL/generated client; E4 SA-1132 Setup UI activation | Requires D contracts plus fresh Tier 2 custody/erasure and Tier 1 tenant intake, current I-VSD, fresh CTO/user approval, and named privacy/provider evidence. |
@@ -150,8 +148,8 @@ The product will provide:
 - a canonical environment catalogue and relevant-only dotenv renderer;
 - a safe no-secret browser workflow and a separately gated secret workflow;
 - native desktop file protection on Windows, Linux, and macOS;
-- a versioned machine CLI plus a human repository-native BCL interactive
-  terminal wizard;
+- a versioned noninteractive machine CLI plus one human Terminal.Gui
+  executable;
 - a framework-neutral CommunityToolkit presentation model for human
   workspaces, with independently gated Avalonia and Terminal.Gui adapters;
 - shared Avalonia views hosted by desktop and browser lifetime roots in
@@ -168,13 +166,13 @@ The product will provide:
   migration with receipts, restartability, and rollback boundaries.
 
 The architectural center is a package-free, deterministic contract and
-workflow core. The successor-A terminal wizard is repository-native and BCL
-only, and the machine CLI remains a command adapter rather than being forced
-through MVVM. A's presentation target projects are disabled non-shipped
-contract shells. Successor B adds a framework-neutral human-presentation model,
-then maps it through compiled Avalonia bindings or an explicit Terminal.Gui
-event/command adapter. Desktop and browser host the same Avalonia `UserControl`
-tree behind their distinct application lifetimes. Server runtime authority for authentication,
+workflow core. The machine CLI remains a noninteractive command adapter rather
+than being forced through MVVM. The former successor-A console wizard is
+superseded and must be deleted. Successor B adds a framework-neutral
+human-presentation model, then maps it through compiled Avalonia bindings or
+the sole Terminal.Gui event/command target. Desktop and browser host the same
+Avalonia `UserControl` tree behind their distinct application lifetimes.
+Server runtime authority for authentication,
 tenancy, policy ceilings, import sessions, transactional apply, legal
 publication, and acceptance remains in ISLAMU Event.
 
@@ -210,7 +208,7 @@ Callers (Upstream):
   - future Avalonia and Terminal.Gui target composition roots
 Callees (Downstream):
   - Event.Setup.Core immutable workflows and diagnostics
-  - SetupTerminalWorkflow/SetupTerminalSession BCL human fallback
+  - historical SetupTerminalWorkflow/SetupTerminalSession removal surface
   - future framework-neutral presentation state and target adapters
 Impacted Flows:
   - deterministic machine CLI parsing/dispatch/output
@@ -241,7 +239,7 @@ Test Coverage:
 | Release scope lacks Setup Assistant | `eng/release/policy/scope-registry.yaml` | High | Final release integration must add public `setup`. |
 | Avalonia candidate browser output is static client-side WASM | Official Avalonia WebAssembly deployment documentation | High | Static output does not eliminate origin trust; the runtime graph is blocked and not selected for A. |
 | Avalonia candidate browser accessibility is partial | Official Avalonia accessibility documentation | High | Browser accessibility claims must be target-evidenced; the candidate is not approved. |
-| SA-120 dependency outcome is decision-complete | [Dependency evidence](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md) | High | Terminal.Gui 2.4.17 and both Avalonia runtime graphs are blocked; A selects a BCL-only product graph. |
+| Historical SA-120 dependency outcome is decision-complete | [Dependency evidence](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md) | High | Official Terminal.Gui 2.4.17 as-published and both Avalonia runtime graphs were blocked; the later Steward approval authorizes only the exact internal patched Terminal.Gui package. |
 | CSP can deny script connections but is not proof of safety | Microsoft .NET 10 CSP guidance | High | Hosted secret mode remains independently gated. |
 | CommunityToolkit.Mvvm is UI-framework agnostic | Microsoft Learn MVVM Toolkit documentation | High | Generated observable properties/commands and injected messenger instances can live in a shared presentation assembly; no package/version is approved by this fact. |
 | Avalonia 12 uses compiled bindings by default when `x:DataType` is present | Official Avalonia compiled-binding documentation | High | Successor B requires typed bindings and treats reflection binding as an explicit exception. |
@@ -279,8 +277,9 @@ Test Coverage:
   reusable offline UI.
 - `.env.example`, Compose, configuration documentation, and self-hosting
   documentation are maintained independently.
-- `Event.SetupAssistant.Cli` now provides the deterministic machine command
-  pipeline and a BCL-only protected human terminal wizard over Setup Core.
+- `Event.SetupAssistant.Cli` currently contains both the deterministic machine
+  command pipeline and the superseded BCL human wizard. Phase 5R removes the
+  latter and leaves the CLI noninteractive.
 - `Event.SetupAssistant`, Browser, and Desktop exist only as package-free,
   disabled, non-shipped contract shells. No CommunityToolkit.Mvvm, Avalonia,
   Terminal.Gui, desktop packaging, browser static release, shared ViewModel,
@@ -353,7 +352,7 @@ structure or trust-boundary architecture:
 | Unknown | Search/evidence | Resolution owner |
 |---|---|---|
 | Exact CommunityToolkit.Mvvm and DI graph | B1 binds CommunityToolkit.Mvvm 8.4.2 and Microsoft DI 10.0.10 as probe candidates; no product reference or approved closure exists | SA-510 records locks, licenses, analyzers/source-generator roles, vulnerability evidence, and fresh approval |
-| Exact Avalonia and Terminal.Gui target graphs | The desired adapter geometry is resolved, but Avalonia 12.1.1 runtime targets and Terminal.Gui 2.4.17 remain blocked by the existing dependency evidence | SA-510 independently approves, replaces, or leaves each target disabled; neither target blocks the other or the BCL fallback |
+| Exact patched Terminal.Gui final graph | The source/tag/package identity and allowed patch scope are resolved, but the patched artifact closure and SBOM do not exist yet | SA-526 builds the exact internal package and fails closed on any grammar-corpus reentry; Avalonia remains independently disabled |
 | Successor-B B0 disposition | Resolved: B0 is superseded and non-executable | B1 review bindings and fresh I-VSD/CTO/user approval replace all B0 authority |
 | Final OS/version support floor | Official Avalonia tiers are known; release-runner and packaging evidence is absent | SA-1210 publishes only evidenced combinations |
 | Which legal templates receive counsel approval | No approved template pack exists | SA-530 may ship blank/project-authored approved templates only |
@@ -547,8 +546,9 @@ acceptance, or claim legal approval.
 ### Requirement 3.9: Stable CLI And Human TUI
 
 The CLI **SHALL** expose deterministic, versioned, noninteractive commands and
-one JSON object for machine mode. Secret completion **MUST** remain human-only
-in an interactive TTY workflow.
+one JSON object for machine mode. The separate Terminal.Gui executable
+**SHALL** be the only human TUI and **MUST** own all interactive TTY secret
+completion. No console renderer or fallback command may remain.
 
 #### Scenario 3.9A: Machine automation
 
@@ -565,6 +565,15 @@ in an interactive TTY workflow.
 - **WHEN** the command runs
 - **THEN** it rejects the operation with a stable exit category and emits no
   supplied value.
+
+#### Scenario 3.9C: Human terminal completion
+
+- **GIVEN** a real interactive TTY and an approved secret-capable workflow
+- **WHEN** the operator enters and saves a value through the Terminal.Gui
+  executable
+- **THEN** target-owned masked input passes directly to the protected writer,
+  emits no value to process surfaces or shared presentation state, and is
+  cleared on completion, cancellation, or failure.
 
 ### Requirement 3.10: Accessible And Localized Parity
 
@@ -894,16 +903,16 @@ lifetime, event bus, rendering framework, or presentation package.
   owns the Desktop classic lifetime. File selection is an intent only;
   protected writing stays in the approved target adapter. AXAML never two-way
   binds a secret value.
-- **Terminal.Gui adapter:** Terminal.Gui is event/command driven rather than a
+- **Terminal.Gui target:** Terminal.Gui is event/command driven rather than a
   WPF binding engine. A small disposable adapter maps control events to
   `ICommand.Execute`, `CanExecuteChanged` to enabled state,
   `INotifyPropertyChanged`/`INotifyCollectionChanged` to rendered state, and
   terminal lifecycle/focus/key events to ViewModel activation/cancellation.
   It shares ViewModels and Core outcomes, not AXAML, styles, file services, or
-  accessibility claims. Terminal.Gui is permanently no-secret: it has no
-  secret control, buffer, command, message, generator, clipboard/history path,
-  or protected writer. The Green BCL wizard remains the sole terminal secret
-  ingress.
+  accessibility claims. The target owns its disposable secret session outside
+  shared ViewModels/messages and uses the existing protected-write invariants.
+  It is the sole human terminal UI; no console renderer, alternate driver, or
+  fallback command survives.
 - **Composition and lifetime:** `Event.SetupAssistant` contains no DI package,
   registration API, container type, or service-locator reference. Each
   executable target root builds and disposes its own `ServiceProvider` from
@@ -923,7 +932,8 @@ lifetime, event bus, rendering framework, or presentation package.
   bindings, messages, commands, validation, automation metadata, and shared DI
   services. A target session passes its transient owned buffer directly to the
   exact Core workflow, clears owned mutable memory on every path, and publishes
-  only a value-free completion fact. This is best-effort lifetime reduction,
+  only a value-free completion fact. Terminal.Gui follows the same target-owned
+  rule. This is best-effort lifetime reduction,
   not a claim that native or managed copies can be proven erased.
 - **Why:** This preserves the valuable WPF/MVVM conventions while admitting
   the real framework differences. It prevents Avalonia dependencies from
@@ -935,9 +945,8 @@ lifetime, event bus, rendering framework, or presentation package.
   was rejected because it contaminates the terminal target. Forcing MVVM into
   the machine CLI was rejected because command parsing has no View lifetime.
   ReactiveUI or a custom cross-framework binding framework was rejected as an
-  unnecessary second dependency/abstraction. A BCL-only observable base remains
-  the fallback only if the explicitly requested Toolkit graph is rejected and
-  the user approves a new plan revision.
+  unnecessary second dependency/abstraction. A custom/BCL TUI and any fallback
+  driver are explicitly rejected by the Project Steward.
 - **Consequences:** The shared Toolkit seam and every target graph receive
   independent decisions. An approved adapter is either `Active` or
   `ApprovedDisabled`; an unapproved candidate is absent from the
@@ -955,7 +964,7 @@ Candidate identities at this planning cutoff are:
 | Shared Avalonia views | `Avalonia` `12.1.1` | `ApprovedDisabled` pending telemetry, remote-protocol, native, publish, and accessibility closure |
 | Avalonia Browser | `Avalonia.Browser` `12.1.1` | `ApprovedDisabled` pending exact browser publish closure |
 | Avalonia Desktop | `Avalonia.Desktop` `12.1.1` per proposed RID | `ApprovedDisabled` pending exact native/RID closure |
-| Terminal adapter | `Terminal.Gui` `2.4.17` | `ApprovedDisabled`; mandatory grammar graph remains blocked |
+| Terminal adapter | `ISLAMU.Terminal.Gui` `2.4.17-islamu.1`, based on official `Terminal.Gui` `v2.4.17` commit `d0a0ed9b150d3fc8aacf4ab07b7f7d91264fe6d6` | Required Phase 5R target; inactive until the patch, final closure, SBOM, and target evidence pass |
 
 These identities are research candidates, not central pins or product
 references. SA-510 evaluates each decision unit through six stages:
@@ -1016,26 +1025,23 @@ packaging, signing, deployment, support, or shipping.
 ### 5.7 CLI and terminal wizard boundary
 
 - **Decision:** Handwritten deterministic command parsing follows existing
-  repository CLIs. The human workflow is a bounded repository-native BCL
-  interactive terminal wizard with no new TUI package. Machine mode remains a
-  separate non-secret surface using stable JSON schemas. A future approved
-  Terminal.Gui product is a distinct successor-B human adapter over the shared
-  presentation model; it does not replace the Core command contract or become
-  a dependency of machine mode.
-- **Why:** Terminal.Gui 2.4.17 is blocked by its mandatory 24-package graph, and
-  no command or TUI framework is needed to preserve the observable workflow.
-  Product-owned code and adversarial tests must own TTY detection, redirection,
-  echo suppression/restoration, signals, resize, scrollback, and accessibility
-  limitations.
-- **Alternatives:** Terminal.Gui pinning before graph approval, embedding a
-  Terminal.Gui runtime in the machine CLI, another external TUI dependency,
-  agent-driven terminal UI, secret options, captured stdin, or localized prose
-  parsing are rejected.
-- **Consequences:** `event-setup` owns stable command/exit categories; secret
-  completion is available only through the interactive TTY wizard. Its bounded
-  linear prompts remain the dependency-free fallback. An approved richer TUI
-  shares human ViewModels through explicit event bindings, is packaged and
-  supported separately, and is never an automation contract.
+  repository CLIs. Machine mode remains a separate non-secret surface using
+  stable JSON schemas. Human terminal operation exists only in the
+  `Event.SetupAssistant.Terminal` executable backed by
+  `ISLAMU.Terminal.Gui`; it shares presentation state and Core outcomes but
+  does not become an automation dependency.
+- **Why:** Terminal rendering, input, resize, focus, Unicode width, mouse,
+  layout, modal lifetime, and restoration belong to the established framework,
+  not project-owned infrastructure. The internal package removes only the
+  provenance-blocked grammar/editor integration while preserving the upstream
+  framework.
+- **Alternatives:** The repository-native BCL wizard, a console fallback
+  driver, Terminal.Gui in the machine CLI, Terminal.Gui v1, a floating develop
+  package, another TUI dependency, or a divergent fork are rejected.
+- **Consequences:** `event-setup` is machine/noninteractive only and no longer
+  advertises `tui`. The sole Terminal.Gui application owns interactive secret
+  entry, TTY checks, masking, protected output, lifecycle, and truthful
+  accessibility limitations. Agents never automate its terminal screen.
 
 ### 5.8 Legal workspace
 
@@ -1078,15 +1084,20 @@ packaging, signing, deployment, support, or shipping.
 
 - **Decision:** Add a networked outer adapter around the pure Core using
   short-lived target enrollment, generated wire contracts, HAL affordances,
-  and server-authoritative import/transfer/provider operations.
+  and server-authoritative import/transfer/provider operations. The adapter is
+  the independently compiled nested
+  `Event.SetupAssistant.SetupLive` assembly; the parent presentation project
+  excludes its sources and retains its exact HTTP-free closure.
 - **Why:** Setup may guide and orchestrate live work but cannot own tenant,
   target, credential, provider, or transaction authority.
 - **Alternatives:** long-lived bearer storage, direct database access, direct
   provider SDK use from Core/UI, and trusting source instance identity are
   rejected.
-- **Consequences:** encrypted saved profiles are optional and contain only
-  target identity plus revocable credential handles; secret values are write-
-  only and provider coordinates remain server-side.
+- **Consequences:** saved profiles are available only to a separately evidenced
+  `Active` target and contain only target identity plus revocable credential
+  handles. The selected Unix CLI target is `ApprovedDisabled`, so its authority
+  remains bounded to memory. Secret values are write-only and provider
+  coordinates remain server-side.
 
 ### 5.12 Application-data and sovereign migration engine
 
@@ -1204,10 +1215,10 @@ packaging, signing, deployment, support, or shipping.
   rewriting. Unknown keys or cyclic predicates block generation; they never
   fall through as optional.
 
-### Phase 4: Versioned CLI And BCL Interactive Terminal Wizard
+### Phase 4: Versioned CLI And Historical Console Wizard
 
-- **Goal:** Ship deterministic machine commands and a functionally equivalent
-  repository-native human terminal workflow without a TUI package.
+- **Goal:** Preserve the completed deterministic machine-command contract. The
+  historical console wizard is superseded and removed in Phase 5R.
 - **Depends on:** Phase 3.
 - **Relevant files:**
   - New: `src/Event.SetupAssistant.Cli/**`,
@@ -1218,25 +1229,17 @@ packaging, signing, deployment, support, or shipping.
   ip-clean-room, tests rule.
 - **Acceptance criteria:**
   - Command families cover catalogue, manifest, tenant package, env, legal,
-    doctor, and TUI workflows with help, dry-run, explicit paths, stable exit
+    and doctor workflows with help, dry-run, explicit paths, stable exit
     categories, and one JSON machine object.
   - Machine mode has no secret-input path and emits no localized prose,
     terminal escape, raw exception, or value.
-  - Interactive wizard secret entry requires a real TTY, is masked/non-echoing,
-    disables redirected/output artifact surfaces, restores echo on every exit,
-    and clears state on cancellation, completion, signal, suspension, resize
-    failure, or navigation.
-  - Product-owned adversarial tests cover TTY/redirection, echo restoration,
-    signals, resize, scrollback leakage, keyboard completion, non-color output,
-    bounded text, and truthful terminal accessibility limitations.
   - Core parity tests prove equivalent artifact bytes and diagnostics.
 - **Phase-end verification:**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj --configuration Release --verbosity quiet`
 - **Rollback / failure handling:** An unstable command remains unshipped rather
-  than receiving aliases. Secret terminal-wizard mode remains disabled if TTY,
-  echo, signal, resize, scrollback, or accessibility invariants cannot be
-  proven.
+  than receiving aliases. The removed console wizard cannot be restored as a
+  rollback; Phase 5R failure leaves the human terminal product unshipped.
 
 ### Phase 5: Shared MVVM Workspaces And Human Presentation Adapters
 
@@ -1280,7 +1283,7 @@ packaging, signing, deployment, support, or shipping.
     `UserControl` roots, selector/class/pseudo-class styling, minimal
     code-behind, and target-service intents. Browser/Desktop lifetimes remain
     owned by SA-620/SA-730.
-  - Terminal.Gui is no-secret-only and uses one disposable event/command
+  - Terminal.Gui uses one disposable event/command
     projection seam that proves `CanExecute`, property/collection change,
     focus, key, cancellation, and teardown parity without pretending AXAML/
     data-binding or accessibility parity.
@@ -1292,8 +1295,8 @@ packaging, signing, deployment, support, or shipping.
     status, reflow/scaling, reduced motion, bundled localization, and RTL.
   - Secret values never enter automation names, help text, announcements,
     clipboard, validation messages, or persistent edit history.
-  - Legal editor uses constrained source/outline/sanitized preview and cannot
-    load remote content or publish.
+  - Legal authoring is file-based validate/render/diff and cannot load remote
+    content, add an editor/highlighter dependency, or publish.
   - Browser, desktop, TUI, and CLI support metadata state their evidenced
     accessibility differences.
 - **Phase-end verification:**
@@ -1306,8 +1309,52 @@ packaging, signing, deployment, support, or shipping.
 - **Rollback / failure handling:** A custom control without correct automation
   semantics is replaced by a native control. A target whose graph, lifecycle,
   binder teardown, locale, or accessibility evidence fails remains disabled
-  without affecting Core, machine CLI, the BCL terminal fallback, or another
-  approved target.
+  without affecting Core or machine CLI. No console fallback is permitted.
+
+### Phase 5R: Audited Terminal.Gui-Only Replacement
+
+- **Goal:** Build the Project Steward-authorized internal Terminal.Gui package
+  and make it the sole human terminal runtime while deleting the custom console
+  implementation.
+- **Depends on:** Phase 5 shared presentation state and the exact approval in
+  `setup-assistant-terminal-gui-steward-approval.md`.
+- **Relevant files:** New governed package tooling/patches/evidence under
+  `eng/setup-assistant/terminal-gui/**`; new
+  `src/Event.SetupAssistant.Terminal/**` and
+  `tests/Event.SetupAssistant.Terminal.Tests/**`; existing CLI terminal files
+  removed; central package, solution, CI, architecture, documentation, I-VSD,
+  and release-governance owners updated.
+- **Related skills/rules:** ip-clean-room, agentic-research, accessibility,
+  criticality-guardrail, clean-architecture-rules, ci-cd.
+- **Acceptance criteria:**
+  - The internal package is derived only from official `v2.4.17` commit
+    `d0a0ed9b150d3fc8aacf4ab07b7f7d91264fe6d6`, uses identity
+    `ISLAMU.Terminal.Gui`/`2.4.17-islamu.1`, retains MIT attribution, and
+    carries one minimal recorded patch series.
+  - `TextMateSharp.Grammars`, unused `TextMateSharp`, and dependent editor or
+    syntax-highlighting code/assets are absent from the package, lock, publish,
+    and CycloneDX SBOM graphs; CI rejects their return.
+  - The final package digest is reproducible and its exact remaining closure
+    passes license, provenance, vulnerability, and notice review.
+  - Terminal.Gui owns the only human terminal executable. The machine CLI has
+    no interactive `tui` command, renderer, Terminal.Gui reference, or fallback
+    driver.
+  - The target reuses shared state/Core authority, owns disposable masked
+    secret input and protected output, emits only value-free diagnostics, and
+    proves deterministic teardown, cancellation, focus, resize, keyboard,
+    Unicode, localization, RTL, and truthful accessibility limitations.
+  - Legal authoring stays file-based; no grammar corpus or replacement editor
+    is implemented.
+  - Upstream return is explicit: replace the internal package with an official
+    dependency-clean modular release after the same exact-closure and target
+    tests pass; retain no compatibility shim.
+- **Phase-end verification:**
+  - Rebuild and compare the internal package/SBOM/digest.
+  - `dotnet build --configuration Release --verbosity quiet`
+  - `dotnet test --project tests/Event.SetupAssistant.Terminal.Tests/Event.SetupAssistant.Terminal.Tests.csproj --configuration Release --verbosity quiet`
+- **Rollback / failure handling:** Never restore the console fallback or widen
+  the patch. A failed package/target gate leaves the human terminal target
+  unshipped while Core and machine CLI remain available.
 
 ### Phase 6: Browser Locality And Secret Boundary
 
@@ -1410,8 +1457,11 @@ packaging, signing, deployment, support, or shipping.
   - Target enrollment uses a bounded device/interactive authorization flow,
     explicit tenant selection, short-lived scopes, revocation, and no token in
     logs, arguments, machine JSON, or portable artifacts.
-  - Optional saved profiles are platform-protected and contain only target
-    identity plus revocable credential handles.
+  - Optional saved profiles exist only for a separately evidenced `Active`
+    target and are platform-protected with only target identity plus revocable
+    credential handles. The selected Unix CLI target is `ApprovedDisabled` for
+    saved profiles, so D2-10 authority is ephemeral in memory and no profile
+    store, protected handle, or credential persistence is implemented.
   - Secret bindings/provider identifiers are target-local, allowlisted,
     value-free, and never treated as authority.
   - Infisical/provider operations are server-authorized write/readiness flows;
@@ -1438,15 +1488,30 @@ packaging, signing, deployment, support, or shipping.
   8. D2-8 canonically regenerates OpenAPI/client and checks generated closure.
   9. D2-9 records one protected-profile target `Active` with evidence or
      `ApprovedDisabled` without fallback.
-  10. D2-10 freezes the public/generated contract, captures adapter Red and
-      review, then implements adapter behavior.
+  10. D2-10 freezes the public/generated contract, introduces the separately
+      compiled nested outer-adapter contract, captures an ephemeral-only Red
+      against the concrete generated client, and reviews it before behavior.
+      HAL relation presence plus exact method gates each affordance; generated
+      public-client methods remain the sole canonical route owner, avoiding a
+      second handwritten HAL-href transport implementation. The Red covers an
+      adapter-owned nonredirecting TLS transport, fresh ephemeral bearer
+      authentication with bounded provider failures and local-denial ordering,
+      exact scope and capability-header states, disposal/
+      lifecycle clearing, repeated enroll/rotate/write UUIDv7 freshness, exact
+      Ready-binding write fencing, bounded failure/telemetry, and BCL
+      persistence-free assembly closure.
+      The parent presentation assembly remains HTTP-free; no saved profile or
+      credential persistence is implemented. Any future saved-profile work
+      requires a fresh target disposition.
   11. D2-11 closes capability manifests, docs/change evidence, full relevant
       tests, Release build, weighted MAD, and final capability state.
 - **Phase-end verification:**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Revoke enrollment and delete the local
-  protected handle. Offline/no-secret authoring remains fully usable.
+- **Rollback / failure handling:** Revoke enrollment and clear bounded in-memory
+  authority. Offline/no-secret authoring remains fully usable. Protected-handle
+  deletion applies only to a future target with a separately `Active`
+  disposition.
 
 ### Phase 10: Live Apply And Direct-Transfer Orchestration
 
@@ -1746,13 +1811,13 @@ therefore an architecture-only update under the I-VSD refresh contract.
 | `IVSD-F026` / `IVSD-M026` | 3.8; SA-210, SA-220, SA-540 | One constrained Markdown codec |
 | `IVSD-F027` / `IVSD-M027` | 3.2, 3.8; SA-210, SA-340, SA-540 | Portable legal source and metadata |
 | `IVSD-F028` / `IVSD-M028` | 3.2, 3.8; SA-210, SA-340, SA-540 | Bounded localized content and usable diff |
-| `IVSD-F029` / `IVSD-M029` | 3.9, 3.10, 3.16; SA-410, SA-420, SA-430, SA-515, SA-525 | First-class machine CLI, BCL fallback, and independently gated rich TUI |
+| `IVSD-F029` / `IVSD-M029` | 3.9, 3.10, 3.16; SA-410, SA-420, SA-430, SA-525R, SA-526, SA-527 | First-class noninteractive machine CLI and sole independently gated Terminal.Gui human target |
 | `IVSD-F030` / `IVSD-M030` | 3.9; SA-410, SA-420 | Versioned JSON, exits, help, dry-run, digests |
-| `IVSD-F031` / `IVSD-M031` | 3.4, 3.9; SA-410, SA-420, SA-430 | Terminal secret boundary |
+| `IVSD-F031` / `IVSD-M031` | 3.4, 3.9; SA-410, SA-420, SA-525R, SA-527, SA-530R | Terminal secret boundary |
 | `IVSD-F032` / `IVSD-M032` | 3.12; SA-1240 | Skill rejects secret access |
 | `IVSD-F033` / `IVSD-M033` | 3.12; SA-110, SA-1240 | No embedded AI/provider dependency |
 | `IVSD-F034` / `IVSD-M034` | 3.8, 3.12; SA-420, SA-530, SA-540, SA-1240 | Human approval gates |
-| `IVSD-F035` / `IVSD-M035` | 3.10, 3.16; SA-430, SA-520, SA-525, SA-530, SA-1220 | Truthful per-target TUI/browser accessibility evidence |
+| `IVSD-F035` / `IVSD-M035` | 3.10, 3.16; SA-520, SA-527, SA-530R, SA-1220 | Truthful per-target TUI/browser accessibility evidence |
 | `IVSD-F036` / `IVSD-M036` | 3.12; SA-410, SA-420, SA-1240 | Skill only after verified CLI contract |
 | `IVSD-F037` / `IVSD-M037` | Scenario 3.13; SA-810, SA-820, SA-830, SA-1220, SA-1250 | Canonical composition and evidence-bound scale |
 | `IVSD-F038` / `IVSD-M038` | Scenarios 3.14 and 3.15; SA-910, SA-920, SA-1010, SA-1030, SA-1110, SA-1120, SA-1130, SA-1250 | Tenant authority across live and migrated records |
@@ -1883,13 +1948,13 @@ CTO review, exact-revision user approval, and named evidence.
 | Environment catalogue drifts from runtime/Compose | Medium | High | One generator/check graph and closed convergence tests | Generated artifact diff or unknown key | SA-310, SA-320 |
 | Cross-platform claim exceeds evidence | Medium | High | Release support manifest per exact OS/RID/format | Missing package/sign/accessibility evidence | SA-1210, SA-1220 |
 | Browser accessibility is materially incomplete | High | High | Honest limitation, semantic controls, desktop/CLI alternative | Missing platform accessibility evidence | SA-520, SA-1220 |
-| TUI leaks through terminal/process surfaces | Medium | Critical | TTY-only secret state; no args/env/stdin/stdout/history | Captured output/process contract failure | SA-410–SA-430 |
+| TUI leaks through terminal/process surfaces | Medium | Critical | Terminal.Gui-owned TTY secret state; no args/env/stdin/stdout/history | Captured output/process contract failure | SA-525R–SA-530R |
 | Shared MVVM becomes a second business-rule owner | Medium | Critical | Core-result projection only; cross-adapter parity and architecture ratchets | Divergent diagnostic/readiness/artifact result | SA-510, SA-520 |
 | Messenger lifetime causes duplicate or stale actions | Medium | High | Per-session injection, explicit recipient activation/deactivation, stale completion rejection | Duplicate command/event or inactive recipient observation | SA-510, SA-520 |
 | Terminal.Gui adapter is mistaken for native data binding | Medium | High | One disposable event/command seam with teardown and parity tests | Stale control, enabled-state drift, leaked subscription | SA-525, SA-530 |
 | Legal template or role claim misleads | Medium | Critical | Blank/approved templates only, provenance and legal gate | Missing approval or wrong-scope validation | SA-530, SA-1220 |
 | Composition ambiguity changes canonical meaning | Medium | High | One normalized merge model, closed conflicts, canonical byte convergence | Cross-format digest or diagnostic mismatch | SA-810–SA-830 |
-| Live credential or tenant authority is replayed | Medium | Critical | Short-lived scoped enrollment, HAL reauthorization, protected handles, revocation | Replay/cross-target invariant failure | SA-910–SA-1030 |
+| Live credential or tenant authority is replayed | Medium | Critical | Short-lived scoped enrollment, HAL reauthorization, in-memory authority clearing, revocation | Replay/cross-target invariant failure | SA-910–SA-1030 |
 | Application migration duplicates or crosses tenants | Medium | Critical | Durable mappings/checkpoints/idempotency and real-provider races | Duplicate aggregate or tenant-isolation failure | SA-1110–SA-1130 |
 | Payment handoff mutates money without reconciliation | Medium | Critical | Separate sovereign state machine, provider reconciliation, explicit approval | Ledger/provider/receipt mismatch | SA-1110, SA-1140 |
 | Skill invents commands or handles secrets | Medium | High | Create after CLI; version gate; machine-only no-secret workflow | Schema/version mismatch or secret input | SA-1240 |
@@ -1897,9 +1962,10 @@ CTO review, exact-revision user approval, and named evidence.
 
 ## 15. Success Metrics And Definition Of Done
 
-- All five Setup source and five focused test projects exist with committed
-  locks and clean architecture; A's product graph is BCL-only, and its three
-  presentation target shells remain disabled, package-free, and non-shipped.
+- The Setup source and focused test projects have committed locks and clean
+  architecture; Core and machine CLI remain headless, the console wizard is
+  absent, and the sole human terminal executable consumes only the exact
+  approved internal Terminal.Gui package.
 - Same core input yields byte-identical artifacts and equivalent closed
   diagnostics across server static validation, schema tool, CLI, TUI, desktop,
   and browser.
@@ -1925,9 +1991,11 @@ CTO review, exact-revision user approval, and named evidence.
 - Agent skill matches the implemented CLI and cannot ingest secrets.
 - YAML and directory inputs converge to the canonical JSON artifact, and
   larger profiles exist only with measured evidence.
-- Live target enrollment, secret bindings, import/transfer, and saved profiles
-  are scoped, revocable, tenant-safe, and value-free outside human/provider
-  write boundaries.
+- Live target enrollment, secret bindings, and import/transfer are scoped,
+  revocable, tenant-safe, and value-free outside human/provider write
+  boundaries. Each saved-profile target is either separately evidenced
+  `Active` or explicitly `ApprovedDisabled`; the selected Unix CLI target is
+  `ApprovedDisabled` with no fallback.
 - Application-data migration is resumable and idempotent; sovereign payment
   handoff cannot mutate money without reconciliation and explicit approval.
 - Every phase’s single build/test gate is green, the Tier 2 change fragment is

@@ -1,4 +1,4 @@
-// ABOUTME: Defines immutable value-safe CLI invocation, explicit I/O, terminal, and machine response contracts.
+// ABOUTME: Defines immutable value-safe CLI invocation, explicit I/O, and machine response contracts.
 // ABOUTME: Snapshots caller collections and provides source-generated JSON metadata without reflection fallback.
 
 using System.Collections.ObjectModel;
@@ -40,13 +40,6 @@ public sealed record SetupCliIo
     public override string ToString() => $"{nameof(SetupCliIo)}:Characters={MaximumCharacters}:Bytes={MaximumBytes}";
 }
 
-public sealed record SetupCliTerminalCapabilities(
-    bool StdinIsTty, bool StdoutIsTty, bool StderrIsTty,
-    bool InputRedirected, bool OutputRedirected, bool ErrorRedirected, bool SupportsColor)
-{
-    public override string ToString() => $"{nameof(SetupCliTerminalCapabilities)}:Interactive={StdinIsTty && StdoutIsTty && StderrIsTty && !InputRedirected && !OutputRedirected && !ErrorRedirected}";
-}
-
 public sealed record SetupCliEnvironmentPresence
 {
     private readonly string[] _names;
@@ -65,7 +58,7 @@ public sealed record SetupCliInvocation
 {
     private readonly string[] _arguments;
     public SetupCliInvocation(IEnumerable<string> arguments, SetupCliMode mode, SetupCliIo io,
-        SetupCliTerminalCapabilities terminal, SetupCliEnvironmentPresence environment)
+        SetupCliEnvironmentPresence environment)
     {
         ArgumentNullException.ThrowIfNull(arguments);
         _arguments = arguments.ToArray();
@@ -73,13 +66,11 @@ public sealed record SetupCliInvocation
             throw new ArgumentException("argument-bound-exceeded", nameof(arguments));
         Mode = mode;
         Io = io ?? throw new ArgumentNullException(nameof(io));
-        Terminal = terminal ?? throw new ArgumentNullException(nameof(terminal));
         Environment = environment ?? throw new ArgumentNullException(nameof(environment));
     }
     public IReadOnlyList<string> Arguments => Array.AsReadOnly((string[])_arguments.Clone());
     public SetupCliMode Mode { get; }
     public SetupCliIo Io { get; }
-    public SetupCliTerminalCapabilities Terminal { get; }
     public SetupCliEnvironmentPresence Environment { get; }
     public override string ToString() => $"{nameof(SetupCliInvocation)}:Mode={Mode}:Count={_arguments.Length}";
 }

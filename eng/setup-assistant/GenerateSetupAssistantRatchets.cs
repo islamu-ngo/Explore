@@ -1,4 +1,4 @@
-// ABOUTME: Generates the two deterministic SA-120 Setup Assistant architecture ratchets.
+// ABOUTME: Generates the deterministic Setup Assistant architecture and release-capability ratchets.
 // ABOUTME: Supports write and non-mutating check modes from repository-owned contract facts.
 #:property RestorePackagesWithLockFile=false
 
@@ -58,6 +58,8 @@ var outputs = new Dictionary<string, byte[]>(StringComparer.Ordinal)
     [Path.Combine(repositoryRoot, "eng", "setup-assistant", "generated",
         "browser-release-capabilities.json")] = GenerateBrowserCapability(),
     [Path.Combine(repositoryRoot, "eng", "setup-assistant", "generated",
+        "setup-live-release-capabilities.json")] = GenerateSetupLiveCapability(),
+    [Path.Combine(repositoryRoot, "eng", "setup-assistant", "generated",
         "frozen-contract-baseline.json")] = GenerateFrozenBaseline(
             ApiVersion,
             registryKeys,
@@ -80,7 +82,7 @@ if (args[0] == "--check")
         return 1;
     }
 
-    Console.WriteLine("Setup Assistant ratchets are current (2/2).");
+    Console.WriteLine("Setup Assistant ratchets are current (3/3).");
     return 0;
 }
 
@@ -90,10 +92,18 @@ foreach ((string path, byte[] content) in outputs)
     File.WriteAllBytes(path, content);
 }
 
-Console.WriteLine("Generated Setup Assistant ratchets (2/2).");
+Console.WriteLine("Generated Setup Assistant ratchets (3/3).");
 return 0;
 
-static byte[] GenerateBrowserCapability()
+static byte[] GenerateBrowserCapability() =>
+    GenerateDisabledCapability("browser", ["secretEntry"]);
+
+static byte[] GenerateSetupLiveCapability() =>
+    GenerateDisabledCapability(
+        "setup-live",
+        ["targetEnrollment", "secretBindingReadiness", "secretBindingWrite", "savedProfiles"]);
+
+static byte[] GenerateDisabledCapability(string target, IEnumerable<string> capabilities)
 {
     using var stream = new MemoryStream();
     using (var writer = CreateWriter(stream))
@@ -101,10 +111,11 @@ static byte[] GenerateBrowserCapability()
         writer.WriteStartObject();
         WriteMetadata(writer);
         writer.WriteNumber("schemaVersion", 1);
-        writer.WriteString("target", "browser");
+        writer.WriteString("target", target);
         writer.WriteBoolean("targetEnabled", false);
         writer.WriteStartObject("capabilities");
-        writer.WriteBoolean("secretEntry", false);
+        foreach (string capability in capabilities)
+            writer.WriteBoolean(capability, false);
         writer.WriteEndObject();
         writer.WriteEndObject();
     }

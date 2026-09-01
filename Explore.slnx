@@ -16,7 +16,9 @@
   </Folder>
   <Folder Name="/Product/Setup Assistant/">
     <Project Path="src/Event.SetupAssistant/Event.SetupAssistant.csproj" />
+    <Project Path="src/Event.SetupAssistant/SetupLive/Event.SetupAssistant.SetupLive.csproj" />
     <Project Path="src/Event.SetupAssistant.Cli/Event.SetupAssistant.Cli.csproj" />
+    <Project Path="src/Event.SetupAssistant.Terminal/Event.SetupAssistant.Terminal.csproj" />
   </Folder>
   <Folder Name="/Infrastructure/">
     <Project Path="src/Explore.Atproto.Transport/Explore.Atproto.Transport.csproj" />
@@ -62,6 +64,7 @@
     <Project Path="tests/Event.SetupAssistant.Browser.Tests/Event.SetupAssistant.Browser.Tests.csproj" />
     <Project Path="tests/Event.SetupAssistant.Desktop.Tests/Event.SetupAssistant.Desktop.Tests.csproj" />
     <Project Path="tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj" />
+    <Project Path="tests/Event.SetupAssistant.Terminal.Tests/Event.SetupAssistant.Terminal.Tests.csproj" />
   </Folder>
   <Folder Name="/Tooling/Assurance/">
     <Project Path="eng/tools/Explore.AssuranceAudit/Explore.AssuranceAudit.csproj" />

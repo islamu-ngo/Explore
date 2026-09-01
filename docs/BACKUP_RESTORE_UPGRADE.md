@@ -11,6 +11,25 @@ ABOUTME: Grounds release operations in provider-native database tools, authority
 
 This runbook covers self-hosted deployments using the repository Docker Compose topology. Treat every upgrade as a data operation first and an image rollout second.
 
+## Instance Onboarding State Across Restore
+
+The database is the authority for completed onboarding. Restore a completed
+instance and it stays completed; the restored state can't be replayed or
+transferred to another identity by editing `INSTANCE_BOOTSTRAP_*` values in the
+environment. Raising the generation after completion changes nothing.
+
+Restore a backup taken while onboarding was still pending and the instance
+resumes pending, so the configured administrator can sign in and finish.
+
+For post-completion recovery, for example the administrator account is gone,
+use normal admin governance inside the product, or restore a backup that
+predates the loss. Anything beyond that is a separately approved operator
+workstream, not an environment edit.
+
+This is a pre-release breaking change. There is no compatibility reader for
+older bootstrap configuration shapes; bring the seven keys to the current
+contract before upgrading.
+
 ## Payment Restore Inventory And Order
 
 Before restore, enable global stop-sale. Restore as one consistent recovery point: application database tables for payment attempts, paid acceptance snapshots, Checkout dispatch effects, incoming webhook messages/effects, payment reconciliation effects, succeeded observations, secret-binding metadata, and Quartz state; then restore Data Protection keys before exposing BFF sessions or one-time Checkout tickets. Rebind provider and webhook secrets without copying secret values into evidence. Start signed webhook intake and reconciliation first, verify stable due claims and no duplicate provider idempotency identities, then restore support/reads. Clear stop-sale only after reconciliation health is bounded and current acceptance disclosure can be regenerated. Never synthesize acceptance for a historical attempt after restore.

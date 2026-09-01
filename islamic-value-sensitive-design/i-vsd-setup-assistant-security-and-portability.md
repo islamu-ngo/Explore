@@ -14,20 +14,20 @@ Last Updated: 2026-09-01
 - Report status: current
 - Disposition: plan-aligned
 - Evidence cutoff: 2026-09-01
-- Reviewed input revision: `sha256:edb31317a5c48168e35e97bdd60e61df1e1625f463efa93cd76101768baa9eb8`
-- Supersedes: plan-aligned report revision
-  `sha256:ede7b1a58b10962a74fd00f6577c6c825ae4adba10bedb4a44eb573a0ddc679a`
+- Reviewed input revision: `sha256:752972e2b5e85e2bbb792a92618fabb6cffccdb6bccb278d222c4ed8ee6681d9`
+- Supersedes: D2-3 plan-aligned report revision
+  `sha256:edb31317a5c48168e35e97bdd60e61df1e1625f463efa93cd76101768baa9eb8`
 
 ## Scope
 
 This report evaluates a new, small, cross-platform ISLAMU Event Setup
-Assistant delivered through independently approved successors. Successor A is
-a Green package-free, BCL-only offline CLI and bounded interactive terminal
-wizard; its presentation, Browser, and Desktop projects remain disabled,
-non-shipped contract shells. Successor B retains the user-approved human
-presentation/browser/desktop outcomes and now targets a framework-neutral
-CommunityToolkit state model with independently gated Avalonia and Terminal.Gui
-adapters, but selects and proves every exact graph independently. The product
+Assistant delivered through independently approved successors. Successor A
+retains a Green headless Core and deterministic noninteractive CLI; its former
+repository-native console wizard is superseded and must be removed. Successor
+B retains the user-approved human-presentation/browser/desktop outcomes and
+now owns a framework-neutral CommunityToolkit state model plus the sole human
+terminal target backed by the separately named, minimally patched
+`ISLAMU.Terminal.Gui` package. The product
 is a shipped user-facing application under `src/`, not an internal contributor
 tool.
 
@@ -45,13 +45,13 @@ It covers:
   target-root-only DI, one injected messenger per operator session, explicit
   recipient activation/deactivation, strictly monotonic operation-generation
   fencing, single settlement, and value-free immutable messages;
-- shared Avalonia views for Browser/Desktop and a separate no-secret-only
-  Terminal.Gui adapter, each independently `Active` or `ApprovedDisabled`,
-  while an unapproved candidate is absent;
+- disabled Avalonia Browser/Desktop candidates and one required Terminal.Gui
+  target whose dependency, secret, accessibility, and release evidence remain
+  independently gated;
 - Browser/Desktop target-owned disposable secret sessions outside shared
   ViewModels, messages, commands, bindings, validation, automation metadata,
-  and shared DI, with the Green BCL wizard remaining the sole terminal secret
-  path;
+  and shared DI, with the required Terminal.Gui target owning the sole human
+  terminal secret path;
 - six-stage isolated non-shipping graph probes that preserve false product,
   generated-capability, secret-entry, support, release, and shipping flags and
   grant no authority merely by succeeding;
@@ -83,9 +83,9 @@ It covers:
 - an offline legal-template library and safe Markdown editor;
 - localized legal-document variants, lifecycle, preview, comparison,
   portability, target review, and publication handoff;
-- one `Event.SetupAssistant.Cli` executable with deterministic commands and a
-  repository-native BCL interactive terminal wizard using the same core
-  workflows;
+- one noninteractive `Event.SetupAssistant.Cli` executable with deterministic
+  machine commands and one separate `Event.SetupAssistant.Terminal`
+  executable using the same Core workflows;
 - a future project skill that teaches external AI agents to use versioned CLI
   commands without embedding an AI model, provider, prompt runtime, or agent
   loop in the product;
@@ -177,10 +177,13 @@ boundary.
 14. Current public footer contracts already distinguish tenant directory
     operator links from instance platform-operator links; legal text must
     preserve that role separation.
-15. The sanitized SA-120 dependency handoff blocks Terminal.Gui 2.4.17 and its
-    indivisible 24-package graph because mandatory TextMateSharp.Grammars 2.0.4
-    lacks complete bundled grammar component provenance/notices. Successor A
-    instead selects a repository-native bounded BCL terminal wizard.
+15. Official Terminal.Gui `2.4.17` remains unusable as-published because its
+    dependency graph contains the provenance-blocked
+    `TextMateSharp.Grammars` corpus. On 2026-09-01 the Project Steward
+    authorized a temporary, separately named `ISLAMU.Terminal.Gui`
+    `2.4.17-islamu.1` package based exactly on official commit
+    `d0a0ed9b150d3fc8aacf4ab07b7f7d91264fe6d6`, with only that grammar/editor
+    integration removed and full MIT attribution retained.
 16. Existing repository CLIs use deterministic commands, bounded text output,
     stable usage failures, and nonzero exit codes.
 17. The user revised the dependency policy from literal MIT-only to
@@ -202,10 +205,10 @@ boundary.
     unproved. Successor A pins/restores no Avalonia package and may create only
     package-free disabled presentation contract shells.
 22. Successor B retains every user-approved human-presentation/browser/desktop
-    and accessibility outcome. Its desired decomposition is a
-    CommunityToolkit-only ViewModel/message owner, a separate shared Avalonia
-    view project, and a separate Terminal.Gui event/command adapter; machine
-    CLI/Core remain outside MVVM. Every exact graph still requires
+    and accessibility outcome. Its decomposition is a CommunityToolkit-only
+    ViewModel/message owner and one Terminal.Gui event/command target; machine
+    CLI/Core remain outside MVVM and all custom/BCL terminal fallbacks are
+    forbidden. Every exact graph still requires
     provenance-complete evidence plus fresh I-VSD, CTO, user, dependency,
     security, and accessibility approval before activation.
 23. The expanded plan keeps YAML/directory inputs as bounded source adapters
@@ -239,10 +242,11 @@ boundary.
     for executable roots. The final SA-518 Red retains 18/18 owner-local
     presentation failures and 14 architecture tests with only
     `SA518-GRAPH-RATCHET` failing.
-31. Avalonia shared, Browser, and Desktop `12.1.1` and Terminal.Gui `2.4.17`
-    remain `ApprovedDisabled`, absent, unresolvable, and unsupported. Product
-    pins, references, locks, implementation, capabilities, support, release,
-    and shipping remain unchanged in the bound preimage.
+31. Avalonia shared, Browser, and Desktop `12.1.1` remain
+    `ApprovedDisabled`, absent, unresolvable, and unsupported. The prior
+    official Terminal.Gui graph remains blocked, but Phase 5R may replace it
+    only with the exact Steward-authorized internal patched package after its
+    final closure, SBOM, notices, security, and anti-reentry gates pass.
 32. The Phase 8 binding
     `setup-assistant-security-and-portability-phase8-20260831` matches its
     expected SHA-256 and every named planning, Core, test, lock, and central-pin
@@ -935,13 +939,13 @@ F040/M040 remain sufficient.
 | IVSD-F026 | accepted | Critical | Markdown-content boundary | Non-Harm, Amanah; Technical/Design | Unrestricted Markdown/HTML can introduce scripts, tracking, deceptive links, inaccessible output, or remote resource loads | E012-E014, E022; standards and implementation traceability | IVSD-M026 | Security + Accessibility |
 | IVSD-F027 | accepted | High | Portability-completeness requirement | Promise-Keeping, Ihsan; Strategic/Technical | Legal links without portable source text leave migrations incomplete and dependent on old origins | E007, E024-E026; implementation traceability | IVSD-M027 | Product + Architecture |
 | IVSD-F028 | accepted | High | Content-scale requirement | Amanah, Ihsan; Technical/Operational | Legal Markdown and localized variants can exceed current manifest string/file limits or make diffs unusable | E007; implementation traceability | IVSD-M028 | Architecture + UX |
-| IVSD-F029 | accepted | High | Access/parity requirement | Justice, Ihsan; Design/Technical | Desktop/web-only operation excludes terminal-first, remote-shell, and automation users; a no-secret Terminal.Gui adapter must preserve the Green BCL secret path and deterministic machine outcomes | E031-E037, E041, E048-E055; repository patterns and exact B1 planning/Red evidence | IVSD-M029 | Product + CLI |
+| IVSD-F029 | accepted | High | Access/parity requirement | Justice, Ihsan; Design/Technical | Desktop/web-only operation excludes terminal-first, remote-shell, and automation users; the sole Terminal.Gui target must preserve both deterministic machine outcomes and local human TTY secret completion without a fallback renderer | E031-E037, E041, E048-E055; repository patterns, exact B1 planning/Red evidence, and 2026-09-01 Steward decision | IVSD-M029 | Product + CLI |
 | IVSD-F030 | accepted | Critical | Automation-contract requirement | Truthfulness, Amanah; Technical | Agents and scripts cannot safely automate an interactive TUI or unstable prose output | E031-E033; repository implementation traceability | IVSD-M030 | CLI + Tooling |
 | IVSD-F031 | accepted | Blocker | Terminal secret boundary | Amanah, Avoiding Spying; Technical/Operational | Arguments, shell history, scrollback, process listings, pipes, logs, and stdout can expose secrets | Design validation | IVSD-M031 | CLI + Security |
 | IVSD-F032 | accepted | Critical | Agent-safety requirement | Amanah, Non-Harm; Governance/Technical | An agentic skill can encourage agents to read, transmit, infer, or persist secrets unless explicitly prohibited | E032-E033; skill-contract evidence | IVSD-M032 | Agent Governance + Security |
 | IVSD-F033 | accepted | High | AI-boundary requirement | Truthfulness, Avoiding Gharar; Strategic/Technical | Embedded AI would add providers, data flows, cost, nondeterminism, and privacy duties unrelated to deterministic setup | User decision; design validation | IVSD-M033 | Product |
 | IVSD-F034 | accepted | High | Human-approval requirement | Autonomy, Justice; Design/Governance | Agent-generated configuration can silently broaden policy or publish legal text without informed review | E007, E032-E033; design validation | IVSD-M034 | Agent Governance + Product |
-| IVSD-F035 | accepted | High | Terminal accessibility limitation | Justice, Truthfulness; Design/Evaluation | Neither the repository-native BCL wizard nor a shared ViewModel/no-secret Terminal.Gui plan proves screen-reader, RTL, keyboard, color, Unicode, resize, signal, scrollback, or small-terminal parity | E022, E031-E037, E041, E048-E055; requirements, exact B1 planning, and architecture evidence only | IVSD-M035 | Accessibility + CLI |
+| IVSD-F035 | accepted | High | Terminal accessibility limitation | Justice, Truthfulness; Design/Evaluation | Selecting Terminal.Gui as the sole human terminal target does not prove screen-reader, RTL, keyboard, color, Unicode, resize, signal, scrollback, or small-terminal behavior | E022, E031-E037, E041, E048-E055; requirements, exact B1 planning, and architecture evidence only | IVSD-M035 | Accessibility + CLI |
 | IVSD-F036 | accepted | Critical | Skill-lifecycle requirement | Promise-Keeping, Truthfulness; Governance | Publishing a skill before versioned commands exist teaches fictional or stale behavior | E032-E033; skill-contract evidence | IVSD-M036 | Skill owner + CLI owner |
 | IVSD-F037 | accepted | High | Composition-integrity requirement | Amanah, Truthfulness; Technical | YAML/directory ambiguity, path metadata, unsafe parser authority, platform overclaim, mixed ownership, or unmeasured scale can change canonical meaning or conceal prohibited content | E034-E037, E067-E074; final Phase 8 governance, unchanged technical contract/product preimages, independent reviews, and plan/task traceability | IVSD-M037 | Setup Core; C1 Red/Green and C2 |
 | IVSD-F038 | accepted | Blocker | Tenant-isolation boundary | Justice, Rights of People; Technical/Governance | Source identifiers, mappings, profiles, or capabilities can cross target or tenant authority during live and data migration | E034-E036, E038, E075-E147; current repository, predecessor, intake, binding, debate, Red, correction, approval, strict D2-1, D2-2 Domain Green, and final approvable D2-3 Application Red traceability | IVSD-M038 | Server authorization; SA-910, SA-1110–SA-1130 |
@@ -1214,27 +1218,24 @@ No target may include:
 - a package whose source, notice, installation-information, relinking, or
   network-source obligations cannot be satisfied.
 
-The exact SA-120 evidence now supplies the fail-closed result. Terminal.Gui
-2.4.17 is blocked as an indivisible 24-package graph because mandatory
-TextMateSharp.Grammars 2.0.4 has incomplete component-level grammar provenance
-and notices. Avalonia 12.1.1 Desktop and Browser graphs are blocked because
+The exact SA-120 evidence still blocks official Terminal.Gui 2.4.17
+as-published because mandatory TextMateSharp.Grammars 2.0.4 has incomplete
+component-level grammar provenance and notices. The 2026-09-01 Steward
+exception does not approve that graph: it authorizes only a temporary,
+separately named package built from the pinned official source after removing
+the grammar/editor integration and proving the resulting artifact. Avalonia
+12.1.1 Desktop and Browser graphs remain blocked because
 native binary/component/license mapping remains unresolved and exact publish
 absence of `Avalonia.Remote.Protocol` is unproved. Signed-package integrity,
 ANGLE's resolved license, build-only conditionality, or a permissive top-level
 license does not cure those gaps.
 
-Successor A therefore pins/restores neither graph and uses BCL plus the existing
-package-free `Event.Wire.Contracts`. Disabled package-free presentation shells
-are not package, target, support, or release approval. B1 binds
-CommunityToolkit.Mvvm `8.4.2`, target-root Microsoft DI `10.0.10` plus
-Abstractions `10.0.10`, Avalonia `12.1.1`, and Terminal.Gui `2.4.17` as
-independent probe candidates only. Avalonia and Terminal.Gui begin
-`ApprovedDisabled`. Each six-stage restricted probe remains isolated and
-non-shipping, keeps every product/capability/support/release flag false, and
-produces evidence rather than approval. Exact graph admission still requires
-complete provenance, notices, native/publish mapping, vulnerability and
-outbound review, plus the named revision-bound authorities. No prior approval,
-probe result, or isolated graph fact is inherited.
+Successor A originally pinned/restored neither graph. Phase 5R now permits B1
+to admit only `ISLAMU.Terminal.Gui` `2.4.17-islamu.1` after its exact patch,
+source identity, MIT attribution, closure, SBOM, provenance, notices,
+vulnerability, outbound-license, and anti-grammar-reentry gates pass. Avalonia
+remains `ApprovedDisabled`. No prior approval, probe result, or isolated graph
+fact is inherited.
 
 ### IVSD-F014 — Release Identity Protects Secret-Handling Users
 
@@ -1525,13 +1526,14 @@ The clean next contract must define:
 Limits should be justified by realistic legal content and denial-of-service
 protection, not inherited unchanged from the compact v1alpha1 contract.
 
-### IVSD-F029 — CLI And Terminal Wizard Are First-Class Product Targets
+### IVSD-F029 — Machine CLI And Terminal.Gui Are First-Class Product Targets
 
-Add `Event.SetupAssistant.Cli` as a shipped executable with two surfaces:
+Ship two deliberately separate executables:
 
-- deterministic subcommands for humans, scripts, CI, and external agents;
-- a bounded repository-native BCL interactive terminal wizard for terminal-
-  first human use, with no external TUI package.
+- `Event.SetupAssistant.Cli` with deterministic noninteractive commands for
+  humans, scripts, CI, and external agents;
+- `Event.SetupAssistant.Terminal` as the sole Terminal.Gui experience for
+  terminal-first human use, including protected interactive secret completion.
 
 “Same experience” means the same use cases, core rules, diagnostics, previews,
 and generated bytes. It does not mean identical visual composition or an
@@ -1550,8 +1552,8 @@ versioned noninteractive commands with:
 - artifact digests and coverage/readiness summaries;
 - no ANSI control sequences in machine mode.
 
-The BCL terminal wizard can teach and assist humans. The future skill may
-explain how to open it, but must direct agents to the command surface.
+The Terminal.Gui executable can teach and assist humans. The future skill may
+explain how to open it, but must direct agents to the machine command surface.
 
 ### IVSD-F031 — Terminal Secret Entry Has Distinct Leakage Paths
 
@@ -1567,11 +1569,11 @@ Secret values must never be accepted through:
 - terminal scrollback;
 - command history.
 
-CLI secret entry remains interactive TTY-only through masked, non-echoing
-fields, and secret-bearing output goes directly to a protected file.
-Terminal.Gui is no-secret-only and cannot reach Browser/Desktop secret
-sessions; the Green BCL wizard remains the sole terminal secret path.
-Noninteractive/agent mode defaults to placeholders and rejects secret values.
+Terminal.Gui secret entry remains interactive TTY-only through target-owned
+masked, non-echoing fields, and secret-bearing output goes directly to a
+protected file. The noninteractive CLI defaults to placeholders and rejects
+secret values. No console fallback or shared presentation state may receive a
+secret.
 
 ### IVSD-F032 — The Skill Must Protect Secrets From The Agent
 
@@ -1582,7 +1584,8 @@ The skill should teach an agent to:
 - never read an existing `.env`;
 - never ask the user to paste a secret into chat;
 - never pass secrets through tool arguments, captured stdin, logs, or reports;
-- hand secret completion to the user’s local desktop/BCL terminal session;
+- hand secret completion to the user’s local approved Terminal.Gui or desktop
+  session;
 - obtain approval for semantic diffs before writing;
 - treat legal templates as drafts requiring counsel/operator review.
 
@@ -1629,8 +1632,8 @@ An agent must not autonomously:
 
 ### IVSD-F035 — Terminal Parity Has Real Accessibility Limits
 
-A repository-native BCL wizard avoids the blocked package graph but does not
-itself establish accessible behavior. Actual operation depends on terminal
+Terminal.Gui does not by itself establish accessible behavior. Actual
+operation depends on terminal
 emulator, shell, font, color, width, locale, input/echo APIs, signals, resize,
 scrollback/recording, and assistive technology.
 
@@ -1676,6 +1679,18 @@ digest, section coverage, legal limits, and diagnostics. JSON remains the only
 wire identity. Composition stays self-hostable and offline: no network,
 telemetry, provider, remote-reference, resolver, or application-service role is
 introduced.
+
+Phase 5R implementation evidence now binds the upstream tag object and commit,
+one frozen patch/assembly/closure approval ratchet, a 21-component final SBOM,
+and a CI source rebuild with semantic package comparison. The Terminal control
+stores bullets rather than the secret, disables clipboard/context/undo paths,
+and retains the real input only in a locked mutable target buffer until the
+canonical Core handoff. Protected Unix output is flushed in an owner-only
+temporary and atomically installed without overwrite; cancellation before that
+commit removes the temporary. English/Arabic resources cover visible outcomes,
+while the UI and operator docs continue to disclose unverified screen-reader,
+braille, RTL shaping, scrollback, and post-Core managed-heap erasure rather than
+claiming parity.
 
 The isolated YamlDotNet `18.1.0` result and independent dependency/IP verdict
 support only bounded parser-event and representation/syntax-tree parsing.
@@ -1859,7 +1874,7 @@ by current server HAL policy.
 
 ### Decisive Product Direction
 
-Create one product named **ISLAMU Event Setup Assistant** with five project
+Create one product named **ISLAMU Event Setup Assistant** with six project
 boundaries:
 
 ```text
@@ -1868,6 +1883,7 @@ src/Event.SetupAssistant/
 src/Event.SetupAssistant.Desktop/
 src/Event.SetupAssistant.Browser/
 src/Event.SetupAssistant.Cli/
+src/Event.SetupAssistant.Terminal/
 ```
 
 - Existing `src/Event.Wire.Contracts/` is the package-free inner contract
@@ -1875,21 +1891,23 @@ src/Event.SetupAssistant.Cli/
   is not a sixth Setup product executable.
 - `Event.Setup.Core` is pure, deterministic, headless, trim/AOT-friendly, and
   contains no network, persistence, provider SDK, UI, or secret storage.
-- Successor A has made `Event.SetupAssistant.Cli` functional with stable commands,
-  versioned machine output, terminal capability detection, and a bounded
-  repository-native BCL human wizard. It uses no Terminal.Gui or replacement
-  TUI package.
+- Successor A made `Event.SetupAssistant.Cli` functional with stable commands,
+  versioned machine output, and a historical BCL human wizard. Phase 5R must
+  delete that wizard and retain the CLI as machine/noninteractive only.
 - Successor A created `Event.SetupAssistant`, Desktop, and Browser only as
   package-free, disabled, non-shipped contract shells. They are not UI,
   runtime-target, accessibility, support, or release evidence.
-- B1 binds CommunityToolkit.Mvvm `8.4.2`, Microsoft DI `10.0.10` plus
-  Abstractions `10.0.10`, Avalonia `12.1.1`, and Terminal.Gui `2.4.17` as probe
-  candidates only. `Event.SetupAssistant` may become a CommunityToolkit-only
-  human ViewModel/message owner after exact shared-graph approval; DI remains
-  target-root-only. Shared typed Avalonia views and the no-secret Terminal.Gui
-  adapter remain independent `ApprovedDisabled` candidates. Browser/Desktop
-  own any secret session outside shared state and DI; machine CLI/Core remain
-  presentation-free. This report permits the B1 plan to progress to its next
+- B1 binds CommunityToolkit.Mvvm `8.4.2` and Microsoft DI `10.0.10` plus
+  Abstractions `10.0.10` to their already approved roles. Avalonia `12.1.1`
+  remains disabled. Phase 5R may build only the separately named
+  `ISLAMU.Terminal.Gui` `2.4.17-islamu.1` package from official commit
+  `d0a0ed9b150d3fc8aacf4ab07b7f7d91264fe6d6`, with the grammar/editor
+  integration removed, MIT attribution preserved, and the final patched
+  closure independently gated. `Event.SetupAssistant` remains the
+  CommunityToolkit-only human ViewModel/message owner; DI remains
+  target-root-only. Browser/Desktop and Terminal own secret sessions outside
+  shared state and DI; machine CLI/Core remain presentation-free. This report
+  permits the B1 plan to progress to its next
   review gates only and does not approve a probe, package, implementation,
   target, support claim, release, or shipping.
 
@@ -1943,10 +1961,10 @@ The two workspaces may share a non-secret setup profile, but no secret value.
 - never publish, obtain acceptance, or provide legal approval from the offline
   editor.
 
-#### CLI And Terminal Wizard Workspace
+#### Machine CLI And Terminal.Gui Workspace
 
-- `event-setup tui` opens the bounded repository-native BCL experience for
-  humans;
+- `Event.SetupAssistant.Terminal` opens the sole human Terminal.Gui
+  experience;
 - direct commands expose every static validation, render, diff, catalogue,
   legal-template, and readiness workflow;
 - terminal navigation, validation, and generated bytes use the same Core as
@@ -1966,11 +1984,11 @@ The two workspaces may share a non-secret setup profile, but no secret value.
 | Successor-B Linux desktop | Framework-neutral outcome; graph pending | Available after approval | Native picker, owner-only mode, atomic write | None by default |
 | Successor-B macOS desktop | Framework-neutral outcome; graph pending | Available after approval | Native picker, owner-only mode, sandbox-aware access | None by default |
 | CLI machine mode | Core only | No-secret only initially | Explicit path or stdout for non-secret artifacts | None |
-| BCL terminal wizard | Core plus terminal adapter | Interactive TTY only | Protected file output | None |
+| Terminal.Gui target | Core plus terminal adapter | Interactive TTY only | Protected file output | None |
 
 ### Functional Parity Contract
 
-| Capability | Successor-B GUI/browser/desktop | BCL terminal wizard | CLI machine mode |
+| Capability | Successor-B GUI/browser/desktop | Terminal.Gui target | CLI machine mode |
 |---|---:|---:|---:|
 | Browse/explain catalogue | Yes | Yes | Yes |
 | Manifest/package create and validate | Yes | Yes | Yes |
@@ -1991,7 +2009,6 @@ artifacts and equivalent closed diagnostics.
 Recommended command families:
 
 ```text
-event-setup tui
 event-setup catalog list|explain
 event-setup manifest new|validate|format|diff|coverage|export
 event-setup tenant-package new|validate|format|diff|coverage|export
@@ -2029,13 +2046,13 @@ readiness
 It must not contain localized prose as authority, raw exceptions, terminal
 escapes, stack traces, or entered values.
 
-### BCL Terminal Secret-Safety Contract
+### Terminal.Gui Secret-Safety Contract
 
 The CLI rejects secret values supplied through arguments, option values,
 process environment, or captured standard input. Initial supported paths are:
 
 - no-secret machine commands;
-- interactive repository-native BCL/TTY secret entry;
+- interactive Terminal.Gui/TTY secret entry;
 - direct protected file output.
 
 Secret terminal-wizard requirements:
@@ -2695,7 +2712,7 @@ source migration remain outside this revision.
 | IVSD-M010 | Use native picker, link refusal, restrictive permissions, atomic write, verification, and no plaintext backup | F010 |
 | IVSD-M011 | Minimize secret copies and lifetime; never promise deterministic memory erasure | F011 |
 | IVSD-M012 | Remove telemetry, remote logs, crash upload, CSP reports, update calls, and production developer tools | F012 |
-| IVSD-M013 | Fail closed on incomplete provenance/notices or unproved exclusions; isolate non-shipping B1 probes, enforce A's package-free graph, and require each later target to obtain exact-graph outbound approval without inheritance | F013 |
+| IVSD-M013 | Fail closed on incomplete provenance/notices or unproved exclusions; build the exact Steward-approved `ISLAMU.Terminal.Gui` package from pinned official source, preserve MIT attribution, verify the patched artifact's final closure/SBOM, fail CI if the grammar corpus returns, and migrate back to an approved modular upstream release | F013 |
 | IVSD-M014 | Sign, attest, checksum, SBOM, archive, and identify every desktop/web release | F014 |
 | IVSD-M015 | Treat package-free shells, shared models, probes, and ApprovedDisabled adapters as non-support evidence; publish a matrix only for independently activated and evidenced targets | F015 |
 | IVSD-M016 | Track browser source and ignore generated output; reject source withholding as hosting protection | F016 |
@@ -2711,13 +2728,13 @@ source migration remain outside this revision.
 | IVSD-M026 | Use one constrained Markdown parser/sanitizer across editor, server, public rendering, and packages | F026 |
 | IVSD-M027 | Export owned legal source/metadata and import it as target-reviewed drafts or new versions | F027 |
 | IVSD-M028 | Re-baseline bounded contract limits and legal-content diff UX | F028 |
-| IVSD-M029 | Preserve the BCL-only terminal secret path and deterministic CLI; admit a richer Terminal.Gui adapter only as an independently evidenced no-secret target | F029 |
+| IVSD-M029 | Keep the deterministic machine CLI noninteractive and make the independently evidenced Terminal.Gui executable the sole human terminal and secret-completion target; retain no custom/BCL fallback | F029 |
 | IVSD-M030 | Provide versioned JSON, exit categories, help, dry-run, digests, and bounded diagnostics | F030 |
-| IVSD-M031 | Forbid terminal/argument secret transport; keep Terminal.Gui no-secret-only and allow terminal secret completion only in the protected BCL interactive TTY flow | F031 |
+| IVSD-M031 | Forbid argument, environment, captured-stdin, stdout, and machine-mode secret transport; allow secret completion only in the Terminal.Gui target's owned masked TTY session with protected direct file output | F031 |
 | IVSD-M032 | Make the skill default to no-secret machine commands and prohibit agent access to secret-bearing files/values | F032 |
 | IVSD-M033 | Keep model SDKs, providers, prompts, chat, inference, and agent loops outside the product | F033 |
 | IVSD-M034 | Require human approval for writes, legal publication, live apply, and authority broadening | F034 |
-| IVSD-M035 | Publish separate BCL and any Active Terminal.Gui accessibility/behavior evidence and preserve independently approved GUI alternatives | F035 |
+| IVSD-M035 | Publish Terminal.Gui-specific keyboard, screen-reader, RTL, Unicode, resize, signal, scrollback, and small-terminal evidence and state unsupported environments truthfully | F035 |
 | IVSD-M036 | Publish the operational skill only after the implemented CLI/version contract is verified | F036 |
 | IVSD-M037 | Compile bounded JSON/YAML/directory sources offline through one normalized model and the existing canonical serializer; reject ambiguity, path/sensitivity smuggling, parser authority, partial output, and evidence-free scale | F037 |
 | IVSD-M038 | Reauthorize exact target, tenant, category, and actor server-side; keep mappings tenant-qualified and fail closed on lineage conflict | F038 |
@@ -2975,7 +2992,7 @@ secret-bearing dotenv generation.
 | ISLAMU steward | Truthful official trust and legal accountability | official origin, identity, transparent claim boundary |
 | Instance operator/legal counsel | Accurate platform texts and responsibilities | typed instance documents, templates, review lifecycle |
 | Tenant operator/legal counsel | Local autonomy without false platform claims | tenant-owned documents, additive composition, target review |
-| Terminal-first operator | Full functionality over SSH/console | BCL-only bounded terminal wizard, stable commands, no GUI requirement |
+| Terminal-first operator | Full functionality over SSH/console | Terminal.Gui human target, stable machine commands, no graphical desktop requirement |
 | External AI-agent user | Deterministic automation without bundled AI | machine JSON, no-secret defaults, approval gates |
 | Skill maintainer | Commands and guidance remain aligned | version range, executable examples, schema/link tests |
 | Third-party self-hoster | Freedom to audit and host compliant code | tracked source, AGPL obligations, brand distinction |
@@ -3025,10 +3042,12 @@ Domain review:
 - The archived ConfigurationManifest baseline must be pinned before
   extraction; closure does not prove its retired atomic-apply, managed
   ownership, migration UI, or direct-transfer phases.
-- Successor A's BCL-only graph, ten package-free project boundaries/locks, and
-  generated ratchets are verified; this evidence does not approve B.
-- Terminal.Gui 2.4.17 and its complete 24-package graph remain blocked for
-  incomplete bundled grammar provenance/notices; no blocked node may enter A.
+- Successor A's historical BCL-only graph, ten package-free project
+  boundaries/locks, and generated ratchets are verified; the console wizard is
+  nevertheless superseded and must be deleted rather than retained as fallback.
+- Official Terminal.Gui 2.4.17 as-published remains blocked for incomplete
+  bundled grammar provenance/notices. The authorized internal package has not
+  yet been built or proven, so no Terminal.Gui target is currently active.
 - Avalonia 12.1.1 Desktop/Browser runtime graphs remain blocked for unresolved
   native component/license mapping and unproved `Avalonia.Remote.Protocol`
   publish exclusion; A pins/restores no Avalonia package.
@@ -3684,8 +3703,9 @@ User decisions on 2026-08-29 additionally establish:
 - legal templates and Markdown editing;
 - FOSS-only dependencies with no commercial/proprietary components and
   target-specific GPL/AGPL compatibility review;
-- an interactive terminal workflow plus versioned CLI commands (now satisfied
-  in A by a repository-native BCL wizard, not Terminal.Gui);
+- an interactive terminal workflow plus versioned CLI commands (historically
+  satisfied in A by a BCL wizard and now re-baselined to the sole Terminal.Gui
+  target plus a separate noninteractive CLI);
 - an external agentic skill instead of embedded AI.
 
 Historical planning revalidation on 2026-08-30 reviewed:
@@ -3798,10 +3818,8 @@ Not reviewed:
 - Avalonia, Terminal.Gui, or other third-party source code/prose;
 - rendered UI, browser, desktop, terminal, assistive-technology, support,
   release, or shipping behavior;
-- SA-518 production implementation, because it remains absent in the prior B1
-  bound preimage;
-- Phase 9 D2 live product behavior, because the future SA-920 adapter Red and
-  all enrollment/provider-write/protected-profile owners remain absent;
+- Phase 10 live configuration-operation behavior or any Phase 11 application-
+  data/payment migration behavior;
 - SA-120 restore/build output or generated locks for the proposed A graph;
 - raw external commercial tooling terms or package payloads;
 - external competitor implementation or UI;
@@ -3833,7 +3851,7 @@ mitigation into:
 18. project-owned or approved-FOSS legal-template provenance;
 19. legal import/publication/acceptance invariant-breaker tests;
 20. localized legal-content accessibility and size evidence;
-21. repository-native BCL terminal wizard and noninteractive CLI adapters;
+21. sole Terminal.Gui human target and separate noninteractive CLI adapter;
 22. versioned machine JSON and stable exit categories;
 23. terminal secret invariant-breaker tests;
 24. FOSS/reciprocal license target map and SBOMs;
@@ -3861,14 +3879,68 @@ mitigation into:
 Planning owns architecture sequencing and task status. This report owns
 provider-responsibility constraints and refresh triggers.
 
+## D2-11 I-VSD Revalidation
+
+This revision revalidates `IVSD-F038/M038`, `IVSD-F039/M039`, and
+`IVSD-F040/M040` against the implemented D2-4 through D2-11 boundary: durable
+tenant/actor-bound enrollment authority, generation and expiry fencing,
+UUIDv7 idempotency, server-authored HAL affordances, protected-handle-only
+profile state, value-free readiness/receipts, and a write-only target-local
+secret seam. The separately owned SetupLive outer adapter obtains a fresh
+caller-supplied bearer, keeps the enrollment capability only in memory, and
+clears it on every terminal or ambiguous failure.
+
+The findings and mitigations remain unchanged. The implementation does not
+transfer source authority, expose provider coordinates, add a secret readback
+path, persist a bearer/capability/raw value, create a saved profile, or fall
+back from the target's selected authority. Infisical is the only current live-
+write provider; Environment and User Secrets remain non-writable through this
+boundary.
+
+This revalidation grants no release activation. The generated SetupLive
+capability manifest must retain the exact closed root and keep `targetEnabled`,
+`targetEnrollment`, `secretBindingReadiness`, `secretBindingWrite`, and
+`savedProfiles` false. Phase 10/11 behavior, GUI exposure, shipping, support,
+and payment authority remain outside this review.
+
+## Terminal.Gui-only Steward Revalidation
+
+The 2026-09-01 Steward decision revalidates `IVSD-F013/M013`,
+`IVSD-F029/M029`, `IVSD-F031/M031`, and `IVSD-F035/M035` without adding or
+renumbering a finding. Official Terminal.Gui 2.4.17 as-published remains
+blocked. Phase 5R may instead build the distinctly named
+`ISLAMU.Terminal.Gui` `2.4.17-islamu.1` package only from official tag
+`v2.4.17`, commit `d0a0ed9b150d3fc8aacf4ab07b7f7d91264fe6d6`, with the
+grammar/editor integration removed and upstream MIT license, copyrights, and
+attribution preserved.
+
+The patched artifact receives no inherited approval. Its actual final
+dependency closure, SBOM, notices, vulnerabilities, and outbound-license paths
+must pass independently, and CI must fail if `TextMateSharp.Grammars` returns.
+The package is a temporary downstream packaging patch with a recorded series
+and migration path back to a suitable official modular release, not an
+ISLAMU-owned divergent framework.
+
+Once those gates pass, `Event.SetupAssistant.Terminal` is the sole human
+terminal and secret-completion target. `Event.SetupAssistant.Cli` remains
+machine/noninteractive, the former BCL wizard is deleted, and no console or
+custom fallback survives. The Terminal.Gui target owns masked secret memory
+outside shared ViewModels/messages and writes directly through the protected
+file boundary. Legal authoring remains file-based; no replacement editor,
+syntax highlighter, grammar corpus, or speculative terminal framework is
+introduced.
+
 ## Planning Handoff
 
 - **Workstream:** `setup-assistant-security-and-portability`
 - **Status:** current
 - **Reviewed input revision:**
-  `sha256:edb31317a5c48168e35e97bdd60e61df1e1625f463efa93cd76101768baa9eb8`
+  plan `sha256:752972e2b5e85e2bbb792a92618fabb6cffccdb6bccb278d222c4ed8ee6681d9`;
+  tasks `sha256:470fa034846bebb517933b4a49ea18a24be53adc39e3fc85165859b81e511951`;
+  context `sha256:e31e5ef74fbffb99ca1442f0e0bf300dac2e79031868589fb98beb8e9de4c0f0`;
+  Steward approval `sha256:b88937468eb334d55622cd92a3fd892352d616007bdbeb4071855d3392fd9a14`
   (binding ID
-  `setup-assistant-security-and-portability-phase9-d2-3-final-approvable-red-20260901`).
+  `setup-assistant-terminal-gui-only-rebaseline-20260901`).
 - **Findings and mitigations:** `IVSD-F001` through `IVSD-F046` remain accepted
   and map one-to-one, without renumbering, to `IVSD-M001` through
   `IVSD-M046`. No new stable finding or mitigation is required: IVSD-F037/M037
@@ -3879,8 +3951,9 @@ provider-responsibility constraints and refresh triggers.
   secret separation, no provider extraction, and evidence limits.
 - **Required plan mappings for preserved scope:** Plan Section 9 maps
   `IVSD-F001/M001` through `IVSD-F036/M036` to Scenarios 3.1–3.12 and 3.16 and
-  SA-110–SA-1240, including SA-515/SA-520/SA-525/SA-530 for the re-baselined
-  human presentation. SA-1250 performs final I-VSD/criticality reconciliation
+  SA-110–SA-1240, including SA-515/SA-520/SA-525R/SA-526/SA-527/SA-530R/
+  SA-540R for the re-baselined human presentation. SA-1250 performs final
+  I-VSD/criticality reconciliation
   and disables any unevidenced shipped capability.
 - **Required plan mappings for expanded scope:**
   - `IVSD-F037/M037` -> Scenario 3.13; SA-810, SA-820, SA-830, SA-1220,
@@ -3903,44 +3976,20 @@ provider-responsibility constraints and refresh triggers.
     SA-1030, SA-1110, SA-1120, SA-1130, SA-1140, SA-1220, SA-1250.
   - `IVSD-F046/M046` -> Scenarios 3.12, 3.14, and 3.15; SA-1020, SA-1030,
     SA-1110, SA-1130, SA-1140, SA-1240, SA-1250.
-- **Disposition:** `plan-aligned` for the observed D1 SA-910 API Red and
-  verified D2-1 package-free Wire Green under IVSD-F038/M038, F039/M039, and
-  F040/M040, plus D2-2 Domain Green and final approvable D2-3 Application Red.
-  D2-3
-  behavior onward remains conditional. This disposition grants no
-  Domain/Application/Persistence/API schema, migration, OpenAPI/client,
-  provider-write, protected-profile, adapter, staging, commit, support,
+- **Disposition:** `plan-aligned` through the observed D2-11 fail-closed release
+  boundary under IVSD-F038/M038, F039/M039, and F040/M040. This disposition
+  grants no Phase 10/11 operation, GUI activation, staging, commit, support,
   release, shipping, legal-certification, or scholarly authority.
-- **Satisfied D1 gate:** E082-E084/current-report technical approval and exact
-  user approval were present; only the sole API test was created; the future
-  adapter path remains absent; safe CLI/isolated cache remained active; and
-  product/project/lock preimages did not change.
-- **Observed valid D1 Red:** the API test project compiles; ten deterministic
-  exploit tests fail only for the absent exact enrollment/capability/provider-
-  write API owner and route family; adapter-owner absence is not a D1 failure.
-  Tests cover
-  expiry, terminal revocation, cross-target/tenant reuse, idempotency replay,
-  source authority, HAL synthesis, protected-profile downgrade, provider
-  fallback/coordinate disclosure, secret readback, RFC 7807, logs/support
-  evidence, cancellation, and zero partial state. No hard-coded credential,
-  sleep, polling, random race, raw source scrape, or mock-mirroring is valid.
-- **Mandatory before D2-3 Green:** a fresh weighted D2-3 Red review binds
-  E145-E147/current report, exact final approvable contract/test hashes,
-  complete CLR table and structural manifest/module identity, exact SDK
-  witness metadata, borrowed backing proof, transformed diagnostic negatives,
-  attributable failures, and D2-7 race ownership;
-  production uses normal bearer identity plus one purpose-bound digest-only
-  capability, route-derived tenant scope, terminal revocation, monotonic
-  generation, UUIDv7 idempotency fingerprinting, HAL-only actions, a
-  purpose-specific write-only provider seam, explicit-binding mismatch
-  rejection, and protected-handle-only profile storage or `ApprovedDisabled`.
-  After the public/generated live contract exists and before adapter behavior,
-  SA-920 captures the separate Setup adapter behavioral Red.
+- **Satisfied D2 chain:** D2-1 through D2-10 provide the closed Wire, Domain,
+  Application, Persistence, provider-write, API/OpenAPI/generated-client, and
+  outer-adapter boundaries with focused invariant evidence. D2-11 adds only the
+  exact generated disabled release manifest, CI execution/routing ratchets, and
+  operator documentation. The full API project remains a separate phase-exit
+  gate and no capability may activate while that gate is incomplete.
 - **Approval boundary:** successors A, the selected/disabled B slices, and C
   are Green under their own historical exact approvals. The user explicitly
-  approved the reviewed staged D sequence. D2-1 implements transport contracts
-  only; no live authority exists. This revalidation supplies I-VSD alignment
-  for review before D2-2.
+  approved the reviewed staged D sequence. This revalidation covers only the
+  implemented D2 fail-closed boundary and supplies no Phase 10/11 authority.
 - **Satisfied predecessor gates:** SA-518 and Phase 8 completed their exact
   focused, architecture, graph, evidence, and Release gates. Every later
   restore/build/test/publish evidence run still sets
@@ -3953,22 +4002,23 @@ provider-responsibility constraints and refresh triggers.
   triad, intake, binding, CTO review, and separate I-VSD report. B0 cannot be
   revived or re-baselined as a fallback, and no conditional disposition,
   digest, finding, or mitigation transfers to B1.
-- **Successor-A dependency boundary:** A uses BCL plus package-free
-  `Event.Wire.Contracts`; Terminal.Gui 2.4.17 and its full 24-package graph are
-  blocked; Avalonia 12.1.1 is neither pinned nor restored; presentation,
-  Browser, and Desktop shells remain package-free, disabled, and non-shipped.
+- **Successor-A dependency boundary:** A's headless Core, machine CLI,
+  `Event.Wire.Contracts`, and approved exact YamlDotNet graph remain. Its BCL
+  wizard is superseded and removal-only. Official Terminal.Gui 2.4.17
+  as-published remains blocked; Avalonia 12.1.1 is neither pinned nor restored.
 - **Successor-B boundary:** B retains all user-directed human-presentation,
   browser, desktop, accessibility, self-hosting, protective-default, and
   portability outcomes. CommunityToolkit.Mvvm `8.4.2` is approved only for the
   shared model; Microsoft DI `10.0.10` plus Abstractions `10.0.10` is approved
-  only at executable roots. Avalonia shared/Browser/Desktop `12.1.1` and
-  Terminal.Gui `2.4.17` remain `ApprovedDisabled`, absent, unresolvable, and
-  unsupported; Terminal.Gui is no-secret-only, Browser/Desktop own any future
-  secret sessions, and machine CLI/Core remain presentation-free.
-- **SA-910 boundary:** the authorized one-file API Red remains intentionally
-  Red. D2-1 Wire contracts are Green without turning that HTTP Red Green. No
-  Domain, API, provider, profile, or adapter authority is inherited. The
-  adapter test remains SA-920-owned.
+  only at executable roots. Avalonia shared/Browser/Desktop `12.1.1` remain
+  `ApprovedDisabled`. Terminal.Gui is now the required sole human terminal
+  target, but stays inactive until Phase 5R proves the exact internal patched
+  package and target. Browser/Desktop and Terminal.Gui own target-local secret
+  sessions; machine CLI/Core remain presentation-free.
+- **SA-910/SA-920 boundary:** the live backend and outer adapter are implemented
+  and focused Green, but the generated release manifest keeps every capability
+  disabled. Their presence grants no UI, distribution, or migration-operation
+  authority.
 - **Mandatory before SA-1110:** Tier 2 category custody/PII/retention/staging,
   authority-first erasure, anti-resurrection, and value-free receipt decisions;
   and Tier 0 decisions binding hold-expiration/finalization precedence,
@@ -4062,6 +4112,7 @@ provider-responsibility constraints and refresh triggers.
 | 2026-09-01 | current / changes-required | current / plan-aligned | Approval-ready D2-3 compares complete witness member metadata, semantic constructor return MethodDef state, and structural custom-attribute identities/payloads | Approval-ready binding `setup-assistant-security-and-portability-phase9-d2-3-approved-ready-red-20260901`, `sha256:3883929342439280a627915abbd7adbadeb819376cc8e9c5b6262e51c4d3b5de`; Green requires fresh review |
 | 2026-09-01 | current / plan-aligned | current / changes-required | Seventh D2-3 review found assembly/module identities remained full-name based and only the manifest module was inventoried | Review `sha256:eb968040e608dce3408aeb379829894a2f0e377531f64f47ef16532fec4efb92`; no Green authority |
 | 2026-09-01 | current / changes-required | current / plan-aligned | Final approvable D2-3 binds exact BCL manifest attributes/payloads, exactly one named/scoped manifest module, structural module metadata, and every owner to that module | Final approvable binding `setup-assistant-security-and-portability-phase9-d2-3-final-approvable-red-20260901`, `sha256:edb31317a5c48168e35e97bdd60e61df1e1625f463efa93cd76101768baa9eb8`; Green requires fresh review |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | Project Steward selected Terminal.Gui as the sole human terminal target, rejected every console fallback, and authorized only an exact minimal downstream package that removes the provenance-blocked grammar/editor integration | Binding `setup-assistant-terminal-gui-only-rebaseline-20260901`; plan `sha256:752972e2b5e85e2bbb792a92618fabb6cffccdb6bccb278d222c4ed8ee6681d9`; exact patched artifact remains inactive until Phase 5R evidence and fresh review pass |
 
 Refresh this report when:
 
@@ -4073,7 +4124,7 @@ Refresh this report when:
 - desktop secret persistence or live provider integration enters scope;
 - legal kinds, templates, Markdown, publication, acceptance, or operator-role
   composition changes;
-- CLI commands, JSON schema, BCL terminal/TTY behavior, skill instructions,
+- CLI commands, JSON schema, Terminal.Gui/TTY behavior, skill instructions,
   agent approval, or embedded-AI boundary changes;
 - a package-free presentation shell is activated, shipped, or used as support
   evidence;

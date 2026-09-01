@@ -11,7 +11,7 @@ internal static class SetupCliParser
         ["manifest"] = ["create", "open", "validate", "format", "diff", "coverage", "export"],
         ["tenant-package"] = ["create", "open", "validate", "format", "diff", "coverage", "export"],
         ["env"] = ["render", "validate"], ["legal"] = ["validate", "preview"],
-        ["doctor"] = ["doctor"], ["tui"] = ["tui"]
+        ["doctor"] = ["doctor"]
     };
     private static readonly HashSet<string> InputOperations = new(["open", "validate", "format", "diff", "coverage", "export", "preview"], StringComparer.Ordinal);
     private static readonly HashSet<string> OutputOperations = new(["create", "format", "export", "render", "list", "show", "describe"], StringComparer.Ordinal);
@@ -25,7 +25,7 @@ internal static class SetupCliParser
         if (args.Length == 0) return Empty("doctor", "doctor", machine) with { Error = "command-missing" };
         string family = args[0];
         if (!Operations.TryGetValue(family, out string[]? allowed)) return Empty(family, string.Empty, machine) with { Error = "command-unknown" };
-        bool self = family is "doctor" or "tui";
+        bool self = family == "doctor";
         string operation = self ? family : args.Length > 1 ? args[1] : string.Empty;
         if (!allowed.Contains(operation, StringComparer.Ordinal)) return Empty(family, operation, machine) with { Error = "operation-unknown" };
 

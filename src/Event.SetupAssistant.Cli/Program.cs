@@ -1,8 +1,7 @@
-// ABOUTME: Composes event-setup ambient console, filesystem, terminal, and argument facts at the executable edge.
-// ABOUTME: Keeps command handlers free of Console, Environment, and File access and performs no environment-value reads.
+// ABOUTME: Composes event-setup machine/text streams, filesystem access, and arguments at the executable edge.
+// ABOUTME: Keeps deterministic command handlers free of ambient access and contains no interactive terminal path.
 
 using ISLAMU.Event.SetupAssistant.Cli;
-using ISLAMU.Event.SetupAssistant.Cli.Tui;
 
 return SetupCliProgram.Run(args);
 
@@ -18,17 +17,8 @@ internal static class SetupCliProgram
             var writer = new SystemWriter(standardOutput);
             var error = new SystemWriter(standardError);
             var io = new SetupCliIo(new SystemInput(), writer, error, 65_536, 4 * 1024 * 1024);
-            var terminal = new SetupCliTerminalCapabilities(
-                !Console.IsInputRedirected, !Console.IsOutputRedirected, !Console.IsErrorRedirected,
-                Console.IsInputRedirected, Console.IsOutputRedirected, Console.IsErrorRedirected,
-                !Console.IsOutputRedirected);
-            var invocation = new SetupCliInvocation(args, mode, io, terminal, new SetupCliEnvironmentPresence([]));
-            using var terminalDriver = new ConsoleSetupTerminalDriver(terminal);
-            ISetupTerminalProtectedWriter? protectedWriter =
-                OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() || OperatingSystem.IsFreeBSD()
-                    ? new UnixSetupTerminalProtectedWriter(Directory.GetCurrentDirectory()) : null;
-            ISetupTerminalWorkflow terminalWorkflow = new SetupTerminalWorkflow(terminalDriver, protectedWriter);
-            return (int)new SetupCliApplication(terminalWorkflow).Run(invocation);
+            var invocation = new SetupCliInvocation(args, mode, io, new SetupCliEnvironmentPresence([]));
+            return (int)new SetupCliApplication().Run(invocation);
         }
         catch (ArgumentException)
         {

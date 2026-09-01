@@ -319,35 +319,42 @@ Dockerfiles must copy the root restore inputs (`global.json`, `Directory.Build.p
 
 ### Setup Assistant Foundation CI Boundary
 
-The `Build & Test` change detector treats all five Setup source trees, all five
-focused test trees, `eng/setup-assistant/**`, every nested Setup
-`packages.lock.json`, and both generated ratchet JSON files as Setup-relevant.
-Those paths route both `Event.Architecture.Tests` and the reusable workflow's
-`Setup Project Gates`; root dependency, solution, CI-script, or workflow changes
-continue to route every lane. The top-level check remains always present and
-reports an intentional no-op for unrelated documentation or dedicated-workflow
-changes.
+The `Build & Test` change detector treats the six Setup source trees (including
+the nested `Event.SetupAssistant.SetupLive` project), all six focused test
+trees, the exact cross-layer SetupLive owners, `eng/setup-assistant/**`, the
+audited Terminal.Gui package inputs, every
+nested Setup `packages.lock.json`, and all three generated ratchet JSON files as
+Setup-relevant. Those paths route both `Event.Architecture.Tests` and the
+reusable workflow's `Setup Project Gates`; root dependency, solution, CI-script,
+or workflow changes continue to route every lane. The top-level check remains
+always present and reports an intentional no-op for unrelated documentation or
+dedicated-workflow changes.
 
-Successor A is package-free: `Event.Setup.Core` points inward to
-`Event.Wire.Contracts`; the shared Assistant and disabled Browser/Desktop shells
-point inward through Core/Assistant; the CLI points only to Core; and each test
-project points only to its owning source project. The Setup lane restores in
-locked mode and builds all five focused test projects in Release. These projects
-are currently empty TUnit scaffolds, so architecture contracts are the behavior
-gate; a nonzero test-count safeguard must be added to a focused project command
-when that project gains test classes. Integration services, live targets, and
-browser-runtime services remain disabled.
+`Event.Setup.Core` points inward to `Event.Wire.Contracts` and uses the approved
+YamlDotNet graph. The shared Assistant points inward through Core and uses the
+approved CommunityToolkit graph; the disabled Browser/Desktop shells point
+through Assistant; the CLI points only to Core. The separate SetupLive outer
+adapter points to Core and the generated Blazor client while keeping network and
+ephemeral capability custody outside the shared presentation assembly. The Setup
+lane restores in locked mode, builds all five focused test projects in Release,
+then executes every project with a nonzero TUnit test-count safeguard. The main
+Assistant suite currently executes 52 tests. The Terminal suite independently
+guards canonical Core output, localization, and the secret boundary. Live release capabilities and
+browser runtime remain disabled.
 
-All ten Setup lock files are tracked and are discovered automatically by the
-recursive NuGet license-policy scan. Terminal.Gui, Avalonia, Sharprompt, and any
-replacement GUI/TUI package remain blocked from project references, lock files,
-and policy exceptions. The five product projects contain no product package
-graph. Actual GUI framework selection and Browser/Desktop activation belong to
-successor B and require independent dependency, I-VSD, CTO, user, and target
-approval; successor A does not provide runtime GUI support.
+All fourteen Setup lock files are tracked and discovered automatically by the
+recursive NuGet license-policy scan. Official `Terminal.Gui`, `TextMateSharp`,
+Avalonia, Sharprompt, and unapproved replacement GUI/TUI packages remain
+blocked. `ISLAMU.Terminal.Gui` `2.4.17-islamu.1` is the separately approved,
+MIT-preserving package built from the pinned official revision. CI verifies its
+recorded patch, package identity, final closure, SBOM, notices, and absence of
+the grammar/editor graph. The exact
+YamlDotNet and CommunityToolkit graphs are pinned by architecture and lock-file
+ratchets; Browser/Desktop activation still requires independent dependency,
+I-VSD, CTO, user, and target approval.
 
 `eng/setup-assistant/GenerateSetupAssistantRatchets.cs` owns the tracked browser
-capability and frozen-contract JSON ratchets. CI runs only its non-mutating
+capability, SetupLive capability, and frozen-contract JSON ratchets. CI runs only its non-mutating
 `--check` mode immediately after locked restore and fails on missing or stale
 bytes; CI must never run `--write`. Source project files, C# source, tests,
 locks, generator source, generated ratchets, and future browser source

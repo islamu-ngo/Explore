@@ -8,6 +8,22 @@ ABOUTME: Covers bootstrap selection, safe diagnostics, health monitoring, and ro
 local Development/Testing authority. A missing, unsupported, disallowed, or failed
 authority stops required startup work and never falls back to another source.
 
+## Instance Onboarding Keys
+
+The seven `INSTANCE_BOOTSTRAP_*` keys follow the same single-authority rule as
+every other value here. They come from the deployment environment or from the
+one selected secret authority, never from source defaults, appsettings
+fallbacks, or a second provider. A missing or unreadable key fails startup
+closed.
+
+They select an administrator; they don't authenticate one. The subject, DID,
+issuer pairing, and generation are selectors only. Actual privilege is granted
+only after a real sign-in presents the exact provider claim.
+
+Diagnostics stay value-free. Logs, health output, and support evidence carry
+status and reason codes, never the configured subject, DID, email, profile
+names, or any fingerprint value.
+
 ## Provider Types
 
 | Provider | Enum | Status | Auth Method |
@@ -438,6 +454,30 @@ Rerunning verification or completion does not grant permission to read a stored 
 
 See [SELF_HOSTING.md](SELF_HOSTING.md#first-run-setup-secret) for the operator flow and [TROUBLESHOOTING.md](TROUBLESHOOTING.md#onboarding-recovery-matrix) for recovery without disclosing credentials.
 
+### Terminal Assistant Secret Boundary
+
+The sole human terminal target is `Event.SetupAssistant.Terminal`; the machine
+CLI has no interactive or secret-entry mode. The Terminal.Gui target accepts no
+secret arguments, environment transport, redirected standard streams, clipboard
+paste, history, or alternate console renderer. It owns one bounded mutable
+buffer, masks the visible field, clears state across every terminal path, and
+returns only diagnostic code, readiness counts, and artifact digest.
+
+The Terminal.Gui field stores bullet count only; the real input never enters
+its `Text` or undo history. Terminal composition sends a nonsecret placeholder
+through the canonical string-based Core workflow, then replaces it with
+clearable URL-safe UTF-8 bytes. Mutable secret buffers are zeroed after the
+write attempt. .NET, the operating system, and storage hardware still cannot
+guarantee physical erasure of every runtime, kernel, or device-level copy; do
+not treat this process as resistant to a compromised local account, debugger,
+memory dumper, or crash-dump collector.
+
+On Linux, macOS, and FreeBSD it writes a new owner-only `0600` file with
+create-new/no-overwrite semantics. Unsupported protected-write platforms fail
+closed. The generated file is deployment input: move its values into the
+selected deployment secret authority, then remove the local file when it is no
+longer required.
+
 
 ## Ownership Model
 
@@ -544,6 +584,20 @@ references, PII, and payment operational state. Keep those values in Infisical
 or the documented `.env` bindings. Unknown, sensitive, or non-catalog keys fail
 closed before any instance or tenant state is written. Export remains a
 secret-free configuration artifact, never a database or secret backup.
+
+## Setup Live Secret-Binding Boundary
+
+Setup Live can submit a value only after the target reports the exact binding
+as `Ready`. The target writes through its already-selected authority; the
+current live-write authority is Infisical. Environment and User Secrets are not
+live-write providers, and absence or provider failure never falls back to
+appsettings, another provider, or stored coordinates.
+
+The enrollment capability, raw value, and target-local Infisical coordinates
+are never saved in a profile, database row, portable artifact, log, trace,
+metric, response, or support bundle. The API exposes value-free readiness and
+receipts only and has no readback route. Release activation remains disabled by
+`eng/setup-assistant/generated/setup-live-release-capabilities.json`.
 
 ## Related
 

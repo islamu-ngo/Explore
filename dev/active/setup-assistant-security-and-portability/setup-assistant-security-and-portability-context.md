@@ -7,6 +7,31 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ## Review State
 
+### 2026-09-01 Terminal.Gui-only re-baseline
+
+The Project Steward has superseded the prior `ApprovedDisabled` Terminal.Gui
+decision and rejected every BCL/custom terminal fallback. Terminal.Gui v2 is
+now the sole intended human terminal framework; the noninteractive machine CLI
+remains independent. The approved supply-chain route is a temporary internal
+`ISLAMU.Terminal.Gui` `2.4.17-islamu.1` package based exactly on official tag
+`v2.4.17` commit `d0a0ed9b150d3fc8aacf4ab07b7f7d91264fe6d6`, with only the grammar/editor
+integration removed. The bound authorization is
+[setup-assistant-terminal-gui-steward-approval.md](setup-assistant-terminal-gui-steward-approval.md).
+
+Official NuGet metadata rechecked on 2026-09-01 shows stable `2.4.17`,
+`2.4.17-develop.14`, and latest observed `2.4.18-develop.53` all still declare
+`TextMateSharp.Grammars` `>= 2.0.4`; no official v2 artifact currently meets
+the exact provenance gate. Phase 9 D2-11 is paused without changing its fail-
+closed capability manifest. Phase 5R is now Green: the exact internal package,
+sole Terminal.Gui target, CLI fallback removal, security/accessibility tests,
+operator docs, and CI rebuild gate are complete. D2-11 resumes next.
+
+The final Phase 5R evidence is a 21-component TextMate-free closure, frozen
+package/patch/assembly/closure approval hashes, a semantic rebuild from the
+pinned upstream source, 13/13 focused Terminal tests, 19/19 machine CLI tests,
+18/18 Setup architecture tests, a Green 63-project Release build, and weighted
+security 100/100, architecture 94/100, and quality/accessibility 94/100 votes.
+
 - **Planning status:** Successor A foundation-offline through Phase 4,
   successor B through Phase 7, and successor C through Phase 8 are Green;
   30/47 tasks are complete. B1 owns a
@@ -35,9 +60,8 @@ Last Updated: 2026-09-01 Europe/Brussels
   profile, provider write, support, or release authority exists yet.
 - **I-VSD report:**
   [i-vsd-setup-assistant-security-and-portability.md](../../../islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md)
-- **I-VSD reviewed input revision:**
-  `sha256:cb2292e484bf137c5b6f4d963733fa282cc54100dc50ec06f226ca2b7261c3e9`
-  for the initial D2-1 binding; corrected D2-1 revalidation is current.
+- **I-VSD review:** Current Terminal.Gui-only Steward revalidation; the report
+  binds this re-baselined context and preserves the D2-11 fail-closed boundary.
 - **I-VSD status / disposition:** current and plan-aligned for the isolated
   one-file Phase 9 absence Red; no product authority. `IVSD-F038`–`IVSD-F040`
   and matching mitigations bind tenant, replay/HAL, protected profile,
@@ -53,10 +77,14 @@ Last Updated: 2026-09-01 Europe/Brussels
   approved Green. D2-5 closes with 16/16 owned scenarios, a deterministic real
   PostgreSQL issuance race, and a 100/100 weighted Tier 1 vote. D2-6 closes
   with a 3/3 cold mismatch matrix, a warm-cache authority breaker, 16/16 full
-  binding scenarios, and a 100/100 weighted Tier 1 vote. D2-7 through D2-11
-  remain pending in order: provider writer,
-  generated OpenAPI/client, protected profile disposition, adapter TDD, and
-  closure. Capability flags remain false.
+  binding scenarios, and a 100/100 weighted Tier 1 vote. D2-7 selected-authority
+  writes and D2-8 generated/public contract closure are approved Green at
+  weighted 100/100 votes. D2-9 records `unix-cli = ApprovedDisabled` because no
+  platform credential-store/protected-handle owner or tests exist; its exact
+  no-fallback revision is approved at a weighted 100/100 vote with complete
+  target/build-input ratchets. D2-10 is approved Green with 34/34 focused
+  outer-adapter tests and a weighted 100/100 vote. D2-11 closure is in progress.
+  Capability flags remain false.
 - **First CTO review:** [Split before approval](setup-assistant-security-and-portability-cto-review.md), bound to the prior exact plan/tasks revisions.
 - **Current correction review:**
   [Corrected D2-1 strict Wire Green approved](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase9-d2-1-corrected-cto-review.md),
@@ -87,6 +115,22 @@ Last Updated: 2026-09-01 Europe/Brussels
   [SecretResolver Green summary](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/summary.md).
 - **Current D2-6 review:**
   [weighted SecretResolver Green approval](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-6-green-mad-review.yaml).
+- **Current D2-8 review:**
+  [weighted public/generated contract Green approval](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-8-green-mad-review.yaml).
+- **Current D2-9 disposition:**
+  [Unix CLI protected profiles ApprovedDisabled without fallback](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-9-protected-profile-disposition.yaml),
+  approved after the executable SA-920/D2-10 contract was corrected to
+  ephemeral-only authority with no persistence.
+- **Current D2-9 review:**
+  [weighted protected-profile disposition approval](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-9-protected-profile-mad-review.yaml).
+- **Current D2-10 Red:**
+  [outer adapter contract and behavioral Red](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-10-adapter-red.yaml).
+- **Current D2-10 Red review:**
+  [weighted adapter Red approval](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-10-red-mad-review.yaml).
+- **Current D2-10 Green:**
+  [ephemeral authenticated outer adapter](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-10-green.yaml).
+- **Current D2-10 Green review:**
+  [weighted corrected adapter Green approval](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-10-green-mad-review.yaml).
 - **Current verification exception:** full architecture has 524 pass, 1
   unrelated SetupAssistant lock-ratchet failure, and 1 pre-existing skip. The
   D2-2-relevant Domain/naming architecture slices pass 17/17.
@@ -114,8 +158,12 @@ composition and measured scale evidence. D
 Red/staging packet plus corrected D2-1 package-free strict Wire approved Green.
 D2-2 Domain behavior, corrected D2-3 Application contracts, and D2-4
 Persistence, D2-5 API, and D2-6 SecretResolver authority mismatch are approved
-Green; D2-7 provider write/barrier behavior is current and no live-control
-capability is active. E
+Green; D2-7 provider write/barrier behavior and D2-8 generated/public contract
+closure are approved Green. D2-9 records the Unix CLI protected-profile target
+as `ApprovedDisabled` without fallback at a weighted 100/100 vote. D2-10 now
+has a separately compiled ephemeral authenticated outer adapter approved at
+34/34 Green and weighted 100/100; no live-control capability is active while
+D2-11 closure runs. E
 `setup-application-data-migration`, F `setup-sovereign-payment-migration`, and
 G `setup-release-and-agent-contract` are inactive.
 
@@ -140,17 +188,15 @@ exact-revision user approval, and named evidence before implementation.
 
 ## Resume From Here
 
-1. Implement the staged D2-7 selected-authority writer, commitment,
-   idempotency, cancellation, and revocation/dispatch barrier behavior.
-2. Run the focused `SetupLiveAuthoritySecurityTests` selector and obtain
-   exact-revision Tier 1 Green review before D2-8.
-3. D2-7 continues to own executable pre-dispatch ordering, revocation race,
-   selected writer/HMAC, idempotency, call-count, cancellation, and
-   lease-disposal proof.
-4. Do not start provider writer, OpenAPI/client generation,
-   protected profile, or adapter work before its preceding stage is reviewed
-   Green.
-5. Keep every live-control capability flag false until D2-11 closure.
+1. D2-9 is approved at a weighted 100/100 vote with
+   `unix-cli = ApprovedDisabled`, no fallback, and complete target/build-input
+   ratchets.
+2. D2-10 is approved at weighted 100/100 with 34/34 focused adapter tests.
+   HAL relation presence and method gate each action; the generated public
+   client remains the sole canonical route owner.
+3. Close D2-11's capability generation, documentation, full relevant tests,
+   Release build, and weighted review.
+4. Keep every live-control capability flag false until D2-11 closure.
 
 ## Historical Session Progress (Superseded; Non-Executable)
 
@@ -427,7 +473,7 @@ only; `Resume From Here` is the sole current instruction.
 | `src/Event.SetupAssistant.Browser/` | Existing A shell; B activation | Browser lifetime boundary | Thin single-view host over shared Avalonia views plus local download, CSP/capability, and secret-state adapter |
 | `src/Event.SetupAssistant.Desktop/` | Existing A shell; B activation | Desktop lifetime boundary | Thin classic-desktop host over shared Avalonia views plus platform startup, native picker intent, and protected writes |
 | `src/Event.SetupAssistant.Cli/` | New | CLI/terminal adapter | Stable commands, JSON schema, exit categories, repository-native BCL interactive wizard |
-| `src/Event.Setup.Live/` | New | Outer live adapter | Target enrollment, HAL-gated operations, protected credential handles |
+| `src/Event.SetupAssistant/SetupLive/` | New separately compiled assembly | Outer live adapter | Concrete generated-client transport, target enrollment, HAL-gated operations, and bounded in-memory authority; excluded from the HTTP-free parent presentation assembly and no protected-handle persistence for the selected Unix CLI target |
 | `src/Explore.*/Features/ApplicationMigration/` | New | Server Clean Architecture | Application-data/payment migration plans, checkpoints, mappings, receipts, outbox |
 | `eng/setup-assistant/` | New | Engineering/release | Environment generation, packaging, manifests, checksums/SBOM/provenance |
 | `.agents/skills/setup-assistant-cli/` | New, final phase | Agent context | Version-gated no-secret machine workflows after CLI exists |

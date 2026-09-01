@@ -30,6 +30,26 @@ Use this page when you have a symptom. For planned work, installation, backup, r
 4. A `payment_acceptance_stale` response means reload and re-acknowledge exact facts. `payment_acceptance_required` on an old attempt is intentional; do not backfill it.
 5. Keep webhook intake and reconciliation running while sales are stopped. If restore introduced due work, follow `BACKUP_RESTORE_UPGRADE.md` rather than creating another Checkout.
 
+## Headless Onboarding Won't Complete
+
+| Symptom | Likely cause | Repair |
+|---|---|---|
+| Startup stops with a bootstrap matrix reason code | Mode missing/unknown, a configured key set under `Interactive`, a required key missing under `ConfiguredAdministrator`, or only one of the two profile names | Fix the environment or secret authority to satisfy one closed matrix exactly, then restart |
+| Provider rejected at startup | `INSTANCE_BOOTSTRAP_ADMIN_PROVIDER` is anything other than `keycloak` or `atproto` | Set the exact lowercase key value |
+| Generation rejected at startup | Value isn't a positive integer | Set a positive integer |
+| Sign-in succeeds but no privilege is granted | The presented claim isn't the exact configured selector: wrong issuer for `keycloak`, wrong subject, or a non-canonical DID for `atproto` | Compare the configured subject with the provider's issued subject/DID and correct the configuration, not the database |
+| Onboarding sits pending with a healthy instance | Expected. Pending is a healthy state until the configured administrator signs in | Sign in as that administrator |
+| Bootstrap reports drift and refuses to proceed | Stored generation is same or lower than a changed selector, meaning the configuration moved without a new generation | Restore the previous configuration or raise `INSTANCE_BOOTSTRAP_BINDING_GENERATION` above the stored one |
+| Configuration changed but nothing happened | Same generation with identical values converges silently | Nothing to repair |
+| Corrected configuration before completion | A strictly higher generation replaces the pending binding | Restart and sign in with the corrected identity |
+| Change refused after completion | Completion is final. Environment changes can't replay or transfer a completed instance | Use normal admin governance, or a separately approved operator workstream |
+| HTTP never becomes ready | Startup order blocks: migrations and seeding, then the configuration manifest, then serializable preparation, then HTTP | Read the failing stage's reason code; earlier stages must pass first |
+| BFF routes to setup instead of the app | The BFF follows configured routing for the current bootstrap state | Confirm the instance state rather than editing routes by hand |
+
+Reason codes carry no identity values. If you need to prove which account is
+configured, read your own environment or secret authority; the platform won't
+echo it.
+
 ## Related Runbooks
 
 | Need | Go To |
@@ -319,6 +339,21 @@ Checks:
 7. use `GET /api/System/onboarding-preflight` to inspect non-sensitive launch blockers and operational warnings before retrying completion.
 8. for first-run Compose setup, confirm the operator used the service names and ports from [SELF_HOSTING.md](SELF_HOSTING.md), not older `api`/`blazor` examples.
 
+### Terminal Assistant Does Not Start Or Write
+
+- `interactive-terminal-required`: run `Event.SetupAssistant.Terminal` directly
+  in a TTY. Pipes, redirects, captured standard streams, and secret arguments are
+  rejected deliberately.
+- `protected-output-unavailable`: use Linux, macOS, or FreeBSD and a writable
+  current directory. The target requires owner-only `0600` create-new semantics
+  and has no plaintext fallback.
+- Existing output file: choose a new safe filename or remove the old file only
+  after preserving it deliberately; the assistant never overwrites.
+- Resize-only screen: enlarge the terminal to at least 40 columns by 17 rows.
+- Arabic text displays but shaping/order is poor: select a terminal/font with
+  Unicode and RTL support. Terminal.Gui screen-reader, braille, RTL shaping, and
+  scrollback erasure remain unverified and are stated in the UI.
+
 ## Secret Provider Unavailable
 
 Symptoms:
@@ -341,6 +376,26 @@ Checks:
    freshness bound before declaring recovery.
 6. Recheck `/health`. Recovery evidence is `providerState=available` and the
    capability-specific healthy state, never a raw secret read.
+
+## Setup Live Enrollment Or Secret Write Failed
+
+Symptoms:
+- an enrollment is expired, revoked, or rejected as stale;
+- readiness is not `Ready`, or a write returns a bounded authorization/provider
+  failure;
+- the client cleared its enrollment after cancellation or transport failure.
+
+Checks:
+1. Keep the release capability manifest disabled; backend availability is not
+   release authorization and there are no saved profiles to recover.
+2. Revoke the affected enrollment and clear the client's in-memory capability.
+   Do not reuse a capability, bearer, operation key, or source identity.
+3. Repair the deployment-selected Infisical authority and the target-local
+   binding. Never add Environment, User Secrets, appsettings, or database
+   fallback and never copy provider coordinates into a ticket.
+4. Create a fresh enrollment, follow only the returned HAL affordance, confirm
+   value-free readiness, and submit the value once. Confirmation is the bounded
+   receipt/provider audit evidence; secret readback is intentionally impossible.
 
 ## Secret Rotation Partial Activation
 

@@ -7,7 +7,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Successors A through C/Phase 8 are Green. Successor D
+- **Overall status:** Successors A through C/Phase 8 were Green under the prior
+  presentation disposition. The Project Steward has re-opened successor B for
+  a Terminal.Gui-only replacement with no console fallback. Successor D
   D2-0b has a clean isolated 10/10 attributable API Red; corrected D2-1
   package-free strict Wire contracts and D2-2 Domain behavior are approved
   Green. Corrected D2-3 Application contracts are approved Green at 7/7, and
@@ -16,28 +18,33 @@ Last Updated: 2026-09-01 Europe/Brussels
   a deterministic real-PostgreSQL issuance race, and a 100/100 weighted Tier 1
   vote. D2-6 SecretResolver authority mismatch is approved Green at 16/16
   focused class scenarios and a 100/100 weighted Tier 1 vote; no live-control
-  capability is active. Browser/desktop secret
+  capability is active. D2-7 selected-authority writes and D2-8 public/generated
+  contract closure are approved Green at weighted 100/100 votes. Browser/desktop secret
   surfaces remain `ApprovedDisabled`; the package-free Unix protected writer
   is active.
-- **Completed:** 30/47 implementation tasks; phase verification is tracked
+- **Completed:** 35/52 implementation tasks; phase verification is tracked
   separately.
-- **Current priority:** Turn the staged D2-7 selected-authority write and revocation barrier Reds Green.
-- **Next recommended slice:** Implement the existing writer, commitment,
-  operation, repository, and barrier contracts without raw-value persistence or
-  dispatch-before-commit. Do not start generated-client, profile, or adapter work early.
+- **Current priority:** Resume Phase 9 D2-11 with every SetupLive capability
+  still false until its own closure gates pass.
+- **Next recommended slice:** Re-run the D2-11 closure checklist against the
+  current Green Terminal.Gui boundary and unchanged fail-closed capability
+  manifest.
 - **Upstream disposition:** ConfigurationManifest is active. SA-110 consumes
   only its frozen v1alpha2/schema/registry/import-preview/no-secret contract;
   upstream server work is not Setup implementation evidence.
 - **Resolved graphs:** The isolated CommunityToolkit.Mvvm `8.4.2` probe and the
   Microsoft DI `10.0.10` plus Abstractions `10.0.10` probe passed, and the
   post-probe dependency/IP, security, and accessibility reviews each issued
-  `Approve` for the Toolkit shared-presentation role and the DI executable-roo    role. Evidence:
+  `Approve` for the Toolkit shared-presentation role and the DI executable-root
+  role. Evidence:
   [B1 probe evidence](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-probe-evidence.md),
   `sha256:424ef6b6e3b7b7700b4d26b11149545b0f97fe0165a22890d35a67f9e8e14be8`.
-- **Blocker:** Avalonia shared/browser/desktop `12.1.1` and Terminal.Gui
-  `2.4.17` remain `ApprovedDisabled`, absent, and unresolvable. Blocked package
-  material retains no exception or waiver path and those presentation shells
-  stay disabled.
+- **Resolved Terminal decision:** Avalonia remains `ApprovedDisabled`.
+  Terminal.Gui is required through the separately named, minimally patched
+  package authorized in
+  [setup-assistant-terminal-gui-steward-approval.md](setup-assistant-terminal-gui-steward-approval.md).
+  The prior BCL/custom terminal path is removal-only and cannot remain as a
+  fallback.
 - **Mandatory build environment:** Every future restore, build, test, or
   publish evidence run sets `DOTNET_CLI_TELEMETRY_OPTOUT=1`,
   `DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1`,
@@ -56,10 +63,9 @@ Last Updated: 2026-09-01 Europe/Brussels
   [setup-assistant-security-and-portability-dependency-evidence.md](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md)
 - **I-VSD report:**
   [i-vsd-setup-assistant-security-and-portability.md](../../../islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md)
-- **I-VSD reviewed input revision:**
-  initial D2-1 binding
-  `sha256:cb2292e484bf137c5b6f4d963733fa282cc54100dc50ec06f226ca2b7261c3e9`;
-  corrected D2-1 revalidation is the current governance action.
+- **I-VSD review:** Current Terminal.Gui-only Steward revalidation; the report
+  binds this re-baselined execution ledger and preserves all accepted finding
+  and mitigation IDs.
 - **I-VSD status / disposition:** `current` / `plan-aligned`; all
   `IVSD-F001`–`IVSD-F046` and `IVSD-M001`–`IVSD-M046` mappings are preserved.
 - **First CTO review:** [Split before approval](setup-assistant-security-and-portability-cto-review.md), bound to prior plan/tasks hashes.
@@ -74,18 +80,21 @@ Last Updated: 2026-09-01 Europe/Brussels
   [API Green MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-5-green-mad-review.yaml).
 - **Current D2-6 review:**
   [SecretResolver Green MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-6-green-mad-review.yaml).
+- **Current D2-9 review:**
+  [Unix CLI protected-profile disposition MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-9-protected-profile-mad-review.yaml).
 - **Current user approval:**
   [D2-1 through D2-11 staged product sequence](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase9-d2-product-approval.md),
   `sha256:a5d01cb1d91a071c7885316edb3ec27f244d8f36e44687ebe6d4344dbeb6b97e`.
 
 ## Resume From Here
 
-1. Implement D2-7 against the staged secret-write and concurrent-revocation Reds.
-2. Verify the focused `SetupLiveAuthoritySecurityTests` selector, including
-   selected-authority, HMAC, idempotency, cancellation, and barrier evidence,
-   then obtain exact-revision Tier 1 review before D2-8.
-3. Do not start client generation, protected profile,
-   or adapter work early. Capability flags remain false.
+1. Execute Phase 5R and keep the D2-11 capability manifest fail-closed.
+2. D2-10 remains approved at a weighted 100/100 Tier 1 vote with 34/34 focused
+   adapter tests; generated client methods remain the sole canonical route
+   owner while HAL relation/method presence gates actions.
+3. After the sole Terminal.Gui target is Green and independently reviewed,
+   resume D2-11's canonical capability generation, docs, full relevant tests,
+   Release build, and weighted review.
 
 ## Successor Ownership Ledger
 
@@ -96,9 +105,9 @@ checkbox.
 | Successor | PR slices and SA ownership | State / entry gate |
 |---|---|---|
 | A foundation-offline | A1 SA-110-SA-130 and ten package-free project shells; A2 SA-210-SA-230; A3 SA-310-SA-340; A4 SA-410-SA-430 BCL CLI/terminal wizard | SA-110-SA-430 and Phase 1-4 verification Green |
-| B presentation-targets | B1 SA-510/SA-515/SA-518 shared presentation; B2 SA-520 shared Avalonia; B3 SA-525 Terminal.Gui; B4 SA-530 accessibility/localization; B5 SA-540 legal; B6 SA-610-SA-640 browser; B7 SA-710-SA-730 desktop | B0 superseded; SA-510-SA-730 and Phases 5-7 are Green. Toolkit shared presentation and Unix protected output are active. DI remains executable-root-only. Avalonia, Terminal.Gui, browser/desktop secret UI, rendered accessibility, legal-editor, and Windows protected output are `ApprovedDisabled`, absent or fail-closed, unresolvable, and unsupported |
+| B presentation-targets | B1 SA-510/SA-515/SA-518 shared presentation; B2 SA-520 shared Avalonia; B3 SA-525R-SA-527 patched Terminal.Gui/sole target; B4 SA-530R accessibility/localization/security; B5 SA-540R file-based legal; B6 SA-610-SA-640 browser; B7 SA-710-SA-730 desktop | B0 superseded; prior Phases 5-7 are historical Green. Phase 5R is open. Toolkit shared presentation and Unix protected output remain active; DI remains executable-root-only; Avalonia/browser/desktop stay `ApprovedDisabled`; Terminal.Gui becomes active only after the exact internal package and sole target pass every Phase 5R gate |
 | C composition-scale | C1 SA-810/SA-820; C2 SA-830 | SA-810-SA-830 and Phase 8 Green with bounded composition and measured-profile evidence |
-| D live-control-plane | D1 SA-910 Red/server contracts; D2 SA-920/SA-930 server/generated contracts; D3 SA-1010 Red plus SA-1020/SA-1030 adapters/UI | D2-0b API Red, corrected D2-1 Wire Green, and D2-2 Domain Green are approved. D2-3 has an attributable 7/7 Application contract Red awaiting review; no outer owner or capability exists |
+| D live-control-plane | D1 SA-910 Red/server contracts; D2 SA-920/SA-930 server/generated contracts; D3 SA-1010 Red plus SA-1020/SA-1030 adapters/UI | D2-1 through D2-10 are approved; the separately compiled ephemeral authenticated outer adapter passes 34/34 and no capability is active while D2-11 closure runs |
 | E application-data-migration | E1 SA-1110 privacy/tenant Red; E2 SA-1120; E3 SA-1130; E4 SA-1132 Setup UI activation | Inactive; D contracts plus fresh Tier 2 custody/erasure, Tier 1 tenant, I-VSD/CTO/user approval, and named privacy/provider evidence |
 | F sovereign-payment-migration | F1 SA-1135 Worst Break Red/Tier 0 record; F2 SA-1140 Domain/Persistence/provider reconciliation; F3 SA-1145 API/HAL/Setup activation | Inactive and optional; D/E contracts plus fresh Tier 0/I-VSD/CTO/user and provider/legal/operator approvals; may resolve `ApprovedDisabled` |
 | G release-and-agent-contract | G1 SA-1210/SA-1220 per subset; G2 SA-1240 after CLI schema; G3 SA-1250 reconciliation | Inactive; each owning successor green; evidence describes only the selected subset |
@@ -694,6 +703,96 @@ Plan reference: Phase 5 and Sections 3.1, 3.4, 3.8, 3.10, 3.16, 5.4, and 5.7.
   ApprovedDisabled target disposition verifier passes without restoring the
   blocked target.
 
+## Phase 5R: Terminal.Gui-Only Replacement
+
+This re-baseline supersedes the historical SA-525/SA-530/SA-540
+`ApprovedDisabled` outcomes. It does not rewrite those historical results; it
+adds the Project Steward-authorized replacement work that must complete before
+Phase 9 D2-11 resumes.
+
+- [x] **SA-525R — Freeze the downstream package contract and author failing dependency/provenance ratchets**
+  - **Acceptance:** Bind official `v2.4.17` tag object
+    `58f3af1a4afe5d2772be134b2299a0f78f35c93c`, commit
+    `d0a0ed9b150d3fc8aacf4ab07b7f7d91264fe6d6`, internal identity
+    `ISLAMU.Terminal.Gui`, version `2.4.17-islamu.1`, MIT license/notice
+    retention, and the exact allowed patch scope. Architecture tests fail
+    until the built package, lock graph, SBOM, and publish inventory contain no
+    `TextMateSharp.Grammars`, unused `TextMateSharp`, official `Terminal.Gui`
+    package identity, or unapproved editor/highlighting asset.
+  - **Verification:** Run only the new Terminal downstream-package
+    architecture test class with `--minimum-expected-tests 1`.
+
+- [x] **SA-526 — Build the minimally patched internal package and prove its final closure**
+  - **Acceptance:** A persistent repository tool fetches the exact official
+    source revision, verifies the tag/commit, applies one minimal recorded
+    patch series, retains upstream MIT/copyright/notices plus an ISLAMU
+    modification notice, packs the distinct internal identity, and emits a
+    deterministic package digest, dependency closure, CycloneDX SBOM, and
+    vulnerability/license/provenance evidence. CI rebuilds the package and
+    fails on artifact drift or any grammar/editor dependency re-entry.
+  - **Constraint:** No unrelated upstream change, permanent fork branding,
+    floating ref, source substitution, or manual binary edit is permitted.
+  - **Verification:** The package architecture test class passes against the
+    rebuilt artifact and the repository dependency-license audit passes.
+
+- [x] **SA-527 — Replace the repository-native console TUI with the sole Terminal.Gui executable target**
+  - **Acceptance:** Add `Event.SetupAssistant.Terminal` and its focused test
+    project; map Terminal.Gui controls/events to the existing shared
+    presentation state and Core workflows. Delete `ConsoleSetupTerminalDriver`
+    and every CLI-owned interactive terminal driver/session/fallback path.
+    `Event.SetupAssistant.Cli` becomes machine/noninteractive only and does not
+    reference Terminal.Gui or advertise `event-setup tui`.
+  - **Verification:** `SetupTerminalGuiAdapterTests` prove lifecycle, command,
+    collection, focus, resize, cancellation, teardown, and byte-identical Core
+    output; architecture tests prove the console fallback is absent.
+
+- [x] **SA-530R — Make Terminal.Gui the only secret-capable terminal UI and prove the trust boundary**
+  - **Acceptance:** Secret entry is target-owned, masked, interactive-TTY-only,
+    bounded, value-free outside the owned mutable buffer, excluded from
+    arguments/environment/captured stdin/stdout/logs/clipboard/history, and
+    cleared on completion, cancellation, disposal, signal, and ambiguous
+    failure. Protected output preserves the existing Unix transaction
+    invariants. No hidden console path or second renderer exists.
+  - **Verification:** Terminal security Invariant-Breakers and zero-secret
+    diagnostic scans pass with deterministic coordination and no fixed sleeps.
+
+- [x] **SA-540R — Close Terminal.Gui accessibility/localization and file-based legal-authoring behavior**
+  - **Acceptance:** Prove keyboard/focus/resize/small-terminal/non-color/
+    Unicode/RTL/localized error behavior to the support level Terminal.Gui can
+    truthfully provide. Legal authoring remains file-based validate/render/diff
+    over Core contracts; no replacement editor, syntax highlighter, grammar
+    corpus, plugin, or remote content path is built.
+  - **Verification:** Focused accessibility/localization/legal workspace tests
+    pass and support documentation states evidenced limitations without parity
+    overclaim.
+
+### Phase 5R Verification — RUN ONCE AFTER ALL PHASE TASKS
+
+- [x] Rebuild `ISLAMU.Terminal.Gui` from the pinned upstream commit and verify
+  package digest, lock closure, SBOM, notices, and publish inventory.
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.SetupAssistant.Terminal.Tests/Event.SetupAssistant.Terminal.Tests.csproj --configuration Release --verbosity quiet`
+- [x] Weighted dependency/IP, Tier 1 security, architecture, accessibility,
+  and quality review approves the exact package and target revision.
+
+#### Planned Commit Contract
+
+- **Default title:** `feat(self-hosting)!: make Terminal.Gui the sole setup terminal`
+- **Default description:** `Ship the audited ISLAMU-patched Terminal.Gui 2.4.17 package and replace the custom console workflow with one Terminal.Gui presentation target while keeping machine CLI automation independent.`
+- **Changelog treatment:** Change fragment `CHG-01M1FCCYVNKA3QG7E14T0BZ493`
+- **Required trailers:** `Change-Id: CHG-01M1FCCYVNKA3QG7E14T0BZ493`; `BREAKING CHANGE: Remove the event-setup tui console workflow and require the Terminal.Gui setup executable for human terminal operation.`
+- **Commit paths:** Phase 5R-owned package tooling/artifacts, Terminal target,
+  CLI fallback removals, focused tests, central dependency/solution/CI files,
+  change fragment, dependency/operator documentation, I-VSD report, and this
+  workstream's plan/context/tasks/approval artifacts. Resolve the exact file
+  list after the upstream patch audit and before staging; the shared dirty
+  worktree currently forbids commit execution.
+- **Message override:** Yes
+- **Reason:** The Project Steward materially replaced the prior
+  `ApprovedDisabled`/BCL-fallback phase outcome after its historical commit
+  contract was authored. No commit is authorized while Phase 5R shares files
+  with unrelated uncommitted work.
+
 ## Phase 6: Browser Locality And Secret Boundary
 
 Plan reference: Phase 6 and Sections 3.4–3.6 and 5.5.
@@ -1146,11 +1245,11 @@ Plan reference: Phase 9 and Sections 3.14 and 5.11.
 | D2-4 | Green approved | Persistence configurations/repositories/DbSets/lock coordinator; real PostgreSQL race/tenant Green, five-provider model parity, and generator-produced migrations/snapshots for PostgreSQL, MariaDB, MySQL, SQLite, and SQL Server |
 | D2-5 | Green approved | Exact API controller/HAL/problem/rate/timeout/body/DI/OpenAPI owner; 16/16 owned scenarios, deterministic PostgreSQL issuance race, and weighted 100/100 Tier 1 approval |
 | D2-6 | Green approved | Persisted binding authority fails closed before cache or source access; cold matrix 3/3, warm-cache transition 1/1, full class 16/16, weighted 100/100 approval |
-| D2-7 | Current | Selected-authority write-only provider/HMAC commitment/race/idempotency Red then Green; no raw-value persistence/log or P9-008 dependency |
-| D2-8 | Pending | Canonical OpenAPI/client regeneration and generated schema/diff/closure gates; no hand edit |
-| D2-9 | Pending | One explicit protected-profile target disposition: evidence-backed `Active` or `ApprovedDisabled`, with no fallback |
-| D2-10 | Pending | Real public/generated contract, `SetupLiveAdapterSecurityTests` Red and review, then `src/Event.SetupAssistant/SetupLive/**` behavior |
-| D2-11 | Pending | Capability manifest/generator, docs/change fragment, full relevant tests, Release build, weighted MAD, and flags false until closure |
+| D2-7 | Green approved | Selected-authority writer, separate value-free readiness port, HMAC commitment, reconciliation-safe idempotency, pre-body authorization, shared generation lease, telemetry closure, and real PostgreSQL both-ordering proof; weighted 100/100 approval |
+| D2-8 | Green approved | Canonical OpenAPI/client regeneration, exact typed/media/header closure, behavioral generated-client proof, and byte-identical second pass; weighted 100/100 approval |
+| D2-9 | ApprovedDisabled approved | `unix-cli = ApprovedDisabled`: complete target/build-input ratchets prove no platform credential-store/protected-handle owner; no persistence fallback; weighted 100/100 approval |
+| D2-10 | Green approved | Separately compiled nested outer adapter implements adapter-owned nonredirecting TLS, fresh ephemeral bearer authentication, private capability custody, exact generation/expiry transitions, complete HAL/method gating including nested-cache invalidation, RFC UUIDv7 mutation fences, exact Ready binding writes, post-dispatch cancellation/timeout authority clearing, bounded failures, and no persistence/log/provider surface; `SetupLiveAdapterSecurityTests` pass 34/34; weighted 100/100 approval |
+| D2-11 | In progress | Capability manifest/generator, docs/change fragment, full relevant tests, Release build, weighted MAD, and flags false until closure |
 
 Every stage requires its owning Red/review before behavior. Existing mixed-
 author files are narrow-hunk only. EF migrations/model snapshots and generated
@@ -1164,7 +1263,8 @@ source models/contracts are Green.
     checkpoint because no public adapter seam exists and a test-owned or
     reflection mirror would not exercise production behavior.
   - **Acceptance:** Red tests cover enrollment expiry/revocation, tenant scope,
-    HAL authority, protected profile handles, write-only secret binding,
+    HAL authority, rejection of protected-profile persistence for the selected
+    Unix CLI target, write-only secret binding,
     provider readiness, RFC 7807 errors, and value-free logs/support evidence.
     Every capability operation requires current bearer identity, exact actor
     match, and fresh server authorization. Issuance never uses generic
@@ -1188,15 +1288,18 @@ source models/contracts are Green.
   - **Dependencies:** Phase 8 and fresh I-VSD/CTO approval.
   - **Guidance:** auth-patterns, criticality-guardrail.
 
-- [ ] **SA-920 — Implement target enrollment, revocation, and optional protected profiles and verify short-lived scoped authority never enters portable artifacts or machine/process surfaces**
+- [ ] **SA-920 — Implement target enrollment and revocation with ephemeral Unix CLI authority and verify scoped authority never enters portable artifacts, persistence, or machine/process surfaces**
   - **Files:** new live Setup adapter, enrollment wire contracts, server
-    authorization endpoints/handlers, platform profile store and tests,
-    including new
+    authorization endpoints/handlers, and new
     `tests/Event.SetupAssistant.Tests/SetupLiveAdapterSecurityTests.cs` after
-    the generated/public live contract exists and before adapter behavior.
+    the generated/public live contract exists and before adapter behavior. The
+    selected Unix CLI target has no profile-store, protected-handle, or
+    credential-persistence source/tests; adding any requires a fresh target
+    disposition before implementation.
   - **Acceptance:** Interactive/device authorization binds exact target and
-    tenant; profiles store only target identity and revocable protected handles;
-    expiry/revocation clears authority; no long-lived plaintext token exists.
+    tenant; authority exists only in the adapter's bounded in-memory session;
+    expiry/revocation clears it; no saved profile, protected handle,
+    credential persistence, or long-lived plaintext token exists.
   - **Effort:** XL
   - **Dependencies:** SA-910.
   - **Guidance:** auth-patterns, clean-architecture-rules.
@@ -1443,10 +1546,11 @@ Plan reference: Phase 12 and Sections 3.10–3.15, 5.9–5.12, 8, and 9.
 
 ## Remaining / Deferred Work
 
-- Live API/HAL/BFF, authorization, provider binding, saved profiles, direct
-  transfer, and application-data/payment migration are no longer deferred;
-  they are owned by Phases 9–11 and remain blocked by their explicit review
-  gates.
+- Live API/HAL/BFF, authorization, provider binding, direct transfer, and
+  application-data/payment migration are owned by Phases 9–11 and remain
+  blocked by their explicit review and evidence gates. Saved profiles remain
+  deferred for the selected Unix CLI target; any future target owns them only
+  after a fresh `Active` disposition.
 - PWA/service worker, auto-update, downloaded executable plugins/packs, and
   mobile targets require a later approved workstream.
 - Hosted browser secret mode is planned only as a gated capability and

@@ -3,6 +3,33 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 
 # Self-Hosting Guide
 
+## Headless Instance Onboarding
+
+You can bring an instance up without touching the interactive setup screens.
+Set `INSTANCE_BOOTSTRAP_MODE=ConfiguredAdministrator` plus the provider key
+(`keycloak` or `atproto`), the exact subject, a positive
+`INSTANCE_BOOTSTRAP_BINDING_GENERATION`, the administrator email, and
+optionally both profile names together. Under `Interactive`, none of those six
+keys may be set. See [CONFIGURATION.md](CONFIGURATION.md) for the full matrix.
+
+For `keycloak`, the subject is paired with your existing `Keycloak:Authority`
+issuer. For `atproto`, use the canonical DID. Deployment mode stays on the
+existing `Deployment:Mode` setting.
+
+Startup order is fixed in both Split and Standalone: migrations and seeding,
+then the configuration manifest, then serializable preparation, then HTTP goes
+ready. A failure at any stage stops the ones after it, so read the earliest
+reason code, not the last symptom.
+
+Nothing is granted by configuration alone. The instance stays pending and
+healthy until the configured administrator signs in and presents the exact
+provider claim. That sign-in completes onboarding, and completion is final. If
+you need to change the administrator afterwards, use normal admin governance.
+
+Once onboarding is complete, remove the selector keys from your deployment
+environment. They no longer do anything, and keeping them around invites
+confusing drift failures on the next restart.
+
 ## Required Operator Identity
 
 Runtime API and Standalone hosts require a complete
@@ -636,6 +663,14 @@ The setup wizard guides you through:
 
 > [!NOTE]
 > **Setup session expires after 30 minutes** of inactivity. Successful setup actions extend the session. If it expires, re-enter your `SETUP_SECRET`; restarting the API is unnecessary unless the value itself changed.
+
+For a human terminal workflow, run `Event.SetupAssistant.Terminal` from a real
+interactive terminal with no arguments. It is the only terminal UI and creates
+`.env.setup` using the same canonical environment catalogue as the machine CLI.
+There is no console fallback and `Event.SetupAssistant.Cli` has no `tui`
+command. The terminal target currently writes protected secret files only on
+Linux, macOS, and FreeBSD; Windows fails closed until an audited owner-only ACL
+writer is available.
 
 ### Rate Limiting
 
@@ -1478,6 +1513,21 @@ flattened safe values. Before applying it elsewhere, compare the target
 instance ceiling and legal/provider operating model. Technical broadening
 rejection is not a substitute for operator, legal, or scholarly review of a
 deployment's payment model.
+
+### Setup Live operator boundary
+
+The private Setup Live API is an authenticated, tenant-scoped control-plane
+boundary, not a deployable Setup target. Its generated release manifest keeps
+the target, enrollment, readiness, write, and saved-profile capabilities
+disabled. Do not expose it as a public setup wizard or use it to move secrets
+between instances.
+
+When a future approved client uses this boundary, the target deployment must
+already select and configure Infisical. Values are written once to that
+target-local authority; Environment and User Secrets cannot be mutated through
+Setup and there is no source fallback or value readback. Operators recover by
+revoking the enrollment and clearing client memory, then repairing the selected
+authority before creating a fresh enrollment.
 
 ## Related Documentation
 
