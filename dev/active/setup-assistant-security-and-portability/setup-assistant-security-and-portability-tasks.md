@@ -3,57 +3,109 @@
 
 # Setup Assistant Security And Portability — Task Checklist
 
-Last Updated: 2026-08-31 Europe/Brussels
+Last Updated: 2026-09-01 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Successor A foundation-offline implementation active.
-- **Completed:** 10/41 implementation tasks; phase verification is tracked
+- **Overall status:** Successors A through C/Phase 8 are Green. Successor D
+  D2-0b has a clean isolated 10/10 attributable API Red; corrected D2-1
+  package-free strict Wire contracts and D2-2 Domain behavior are approved
+  Green. Corrected D2-3 Application contracts are approved Green at 7/7, and
+  D2-4 Persistence is approved Green at 5/5 provider models plus 6/6 real
+  PostgreSQL invariants. D2-5 API is approved Green at 16/16 owned scenarios,
+  a deterministic real-PostgreSQL issuance race, and a 100/100 weighted Tier 1
+  vote. D2-6 SecretResolver authority mismatch is approved Green at 16/16
+  focused class scenarios and a 100/100 weighted Tier 1 vote; no live-control
+  capability is active. Browser/desktop secret
+  surfaces remain `ApprovedDisabled`; the package-free Unix protected writer
+  is active.
+- **Completed:** 30/47 implementation tasks; phase verification is tracked
   separately.
-- **Current priority:** Phase 3 Release verification.
-- **Next recommended slice:** Run the Phase 3 Release build and focused Core
-  verification gates exactly as listed below.
+- **Current priority:** Turn the staged D2-7 selected-authority write and revocation barrier Reds Green.
+- **Next recommended slice:** Implement the existing writer, commitment,
+  operation, repository, and barrier contracts without raw-value persistence or
+  dispatch-before-commit. Do not start generated-client, profile, or adapter work early.
 - **Upstream disposition:** ConfigurationManifest is active. SA-110 consumes
   only its frozen v1alpha2/schema/registry/import-preview/no-secret contract;
   upstream server work is not Setup implementation evidence.
-- **Blocker:** None for Phase 1 verification. Blocked package material retains
-  no exception or waiver path and presentation shells remain disabled.
+- **Resolved graphs:** The isolated CommunityToolkit.Mvvm `8.4.2` probe and the
+  Microsoft DI `10.0.10` plus Abstractions `10.0.10` probe passed, and the
+  post-probe dependency/IP, security, and accessibility reviews each issued
+  `Approve` for the Toolkit shared-presentation role and the DI executable-roo    role. Evidence:
+  [B1 probe evidence](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-probe-evidence.md),
+  `sha256:424ef6b6e3b7b7700b4d26b11149545b0f97fe0165a22890d35a67f9e8e14be8`.
+- **Blocker:** Avalonia shared/browser/desktop `12.1.1` and Terminal.Gui
+  `2.4.17` remain `ApprovedDisabled`, absent, and unresolvable. Blocked package
+  material retains no exception or waiver path and those presentation shells
+  stay disabled.
+- **Mandatory build environment:** Every future restore, build, test, or
+  publish evidence run sets `DOTNET_CLI_TELEMETRY_OPTOUT=1`,
+  `DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1`,
+  `DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1`, and `DOTNET_NOLOGO=1` with
+  isolated package caches. The first traced no-restore build without them
+  showed .NET SDK workload-advertising egress and was failed for that reason.
+- **Historical workstream:** `dev/active/setup-assistant-presentation-targets/`
+  and its B0 I-VSD/CTO/binding artifacts are superseded and non-executable.
 - **Plan:**
   [setup-assistant-security-and-portability-plan.md](setup-assistant-security-and-portability-plan.md)
 - **Context:**
   [setup-assistant-security-and-portability-context.md](setup-assistant-security-and-portability-context.md)
 - **Clean-room evidence:**
-  [setup-assistant-security-and-portability-clean-room-evidence.md](setup-assistant-security-and-portability-clean-room-evidence.md)
+  [setup-assistant-security-and-portability-clean-room-evidence.md](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md)
 - **Dependency evidence:**
-  [setup-assistant-security-and-portability-dependency-evidence.md](setup-assistant-security-and-portability-dependency-evidence.md)
+  [setup-assistant-security-and-portability-dependency-evidence.md](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md)
 - **I-VSD report:**
   [i-vsd-setup-assistant-security-and-portability.md](../../../islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md)
 - **I-VSD reviewed input revision:**
-  `sha256:d2bbba40455c013e20883ab6202f84411bb05f2c20f6060a9e73095f44a8e4b1`
+  initial D2-1 binding
+  `sha256:cb2292e484bf137c5b6f4d963733fa282cc54100dc50ec06f226ca2b7261c3e9`;
+  corrected D2-1 revalidation is the current governance action.
 - **I-VSD status / disposition:** `current` / `plan-aligned`; all
   `IVSD-F001`–`IVSD-F046` and `IVSD-M001`–`IVSD-M046` mappings are preserved.
 - **First CTO review:** [Split before approval](setup-assistant-security-and-portability-cto-review.md), bound to prior plan/tasks hashes.
-- **Current correction review:** [Approved the BCL-only successor-A strategy](setup-assistant-security-and-portability-cto-review.md);
-  later successors inherit no approval.
-- **User approval:** [Bound to the reviewed BCL-only successor-A revision](setup-assistant-security-and-portability-approval.md).
+- **Current correction review:**
+  [Corrected D2-1 strict Wire Green approved](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase9-d2-1-corrected-cto-review.md),
+  `sha256:cd9b41d98111914e4aba5a392ebe0fe9d981c52f4d2d376a75eae74ca68ca72c`.
+- **Current D2-3 review:**
+  [Corrected Application Green MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-3-mad-review.yaml).
+- **Current D2-4 review:**
+  [Persistence Green MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-4-green-mad-review.yaml).
+- **Current D2-5 review:**
+  [API Green MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-5-green-mad-review.yaml).
+- **Current D2-6 review:**
+  [SecretResolver Green MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-6-green-mad-review.yaml).
+- **Current user approval:**
+  [D2-1 through D2-11 staged product sequence](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase9-d2-product-approval.md),
+  `sha256:a5d01cb1d91a071c7885316edb3ec27f244d8f36e44687ebe6d4344dbeb6b97e`.
+
+## Resume From Here
+
+1. Implement D2-7 against the staged secret-write and concurrent-revocation Reds.
+2. Verify the focused `SetupLiveAuthoritySecurityTests` selector, including
+   selected-authority, HMAC, idempotency, cancellation, and barrier evidence,
+   then obtain exact-revision Tier 1 review before D2-8.
+3. Do not start client generation, protected profile,
+   or adapter work early. Capability flags remain false.
 
 ## Successor Ownership Ledger
 
-This remains the sole checkbox ledger for the umbrella program; no successor
-directory exists yet. Ownership does not transfer approval.
+This remains the sole checkbox ledger for the umbrella program. The historical
+B0 ledger is non-executable and cannot complete or authorize an umbrella SA
+checkbox.
 
 | Successor | PR slices and SA ownership | State / entry gate |
 |---|---|---|
-| A foundation-offline | A1 SA-110-SA-130 and ten package-free project shells; A2 SA-210-SA-230; A3 SA-310-SA-340; A4 SA-410-SA-430 BCL CLI/terminal wizard | **Sole approved active successor**; SA-130 complete, Phase 1 verification current |
-| B presentation-targets | B1 SA-510-SA-540 framework-neutral GUI; B2 SA-610-SA-640 browser; B3 SA-710-SA-730 desktop | Inactive; owns GUI framework/runtime selection; stable A contracts plus fresh target intake/I-VSD/CTO/user approvals and provenance-complete dependency/security/accessibility evidence |
-| C composition-scale | C1 SA-810/SA-820; C2 SA-830 | Inactive; stable A2/A3 plus fresh scale intake/I-VSD/CTO/user approvals and measured-profile evidence |
-| D live-control-plane | D1 SA-910 Red/server contracts; D2 SA-920/SA-930 server/generated contracts; D3 SA-1010 Red plus SA-1020/SA-1030 adapters/UI | Inactive; fresh Tier 1/I-VSD/CTO/user approval and green ConfigurationManifest Tier 1/tenant/replay/atomicity evidence |
-| E application-data-migration | E1 SA-1110 privacy/tenant Red; E2 SA-1120; E3 SA-1130; E4 Setup UI activation | Inactive; D contracts plus fresh Tier 2 custody/erasure, Tier 1 tenant, I-VSD/CTO/user approval, and named privacy/provider evidence |
-| F sovereign-payment-migration | F1 dedicated Worst Break Red/Tier 0 record; F2 SA-1140 Domain/Persistence/provider reconciliation; F3 API/HAL/Setup activation | Inactive and optional; D/E contracts plus fresh Tier 0/I-VSD/CTO/user and provider/legal/operator approvals |
+| A foundation-offline | A1 SA-110-SA-130 and ten package-free project shells; A2 SA-210-SA-230; A3 SA-310-SA-340; A4 SA-410-SA-430 BCL CLI/terminal wizard | SA-110-SA-430 and Phase 1-4 verification Green |
+| B presentation-targets | B1 SA-510/SA-515/SA-518 shared presentation; B2 SA-520 shared Avalonia; B3 SA-525 Terminal.Gui; B4 SA-530 accessibility/localization; B5 SA-540 legal; B6 SA-610-SA-640 browser; B7 SA-710-SA-730 desktop | B0 superseded; SA-510-SA-730 and Phases 5-7 are Green. Toolkit shared presentation and Unix protected output are active. DI remains executable-root-only. Avalonia, Terminal.Gui, browser/desktop secret UI, rendered accessibility, legal-editor, and Windows protected output are `ApprovedDisabled`, absent or fail-closed, unresolvable, and unsupported |
+| C composition-scale | C1 SA-810/SA-820; C2 SA-830 | SA-810-SA-830 and Phase 8 Green with bounded composition and measured-profile evidence |
+| D live-control-plane | D1 SA-910 Red/server contracts; D2 SA-920/SA-930 server/generated contracts; D3 SA-1010 Red plus SA-1020/SA-1030 adapters/UI | D2-0b API Red, corrected D2-1 Wire Green, and D2-2 Domain Green are approved. D2-3 has an attributable 7/7 Application contract Red awaiting review; no outer owner or capability exists |
+| E application-data-migration | E1 SA-1110 privacy/tenant Red; E2 SA-1120; E3 SA-1130; E4 SA-1132 Setup UI activation | Inactive; D contracts plus fresh Tier 2 custody/erasure, Tier 1 tenant, I-VSD/CTO/user approval, and named privacy/provider evidence |
+| F sovereign-payment-migration | F1 SA-1135 Worst Break Red/Tier 0 record; F2 SA-1140 Domain/Persistence/provider reconciliation; F3 SA-1145 API/HAL/Setup activation | Inactive and optional; D/E contracts plus fresh Tier 0/I-VSD/CTO/user and provider/legal/operator approvals; may resolve `ApprovedDisabled` |
 | G release-and-agent-contract | G1 SA-1210/SA-1220 per subset; G2 SA-1240 after CLI schema; G3 SA-1250 reconciliation | Inactive; each owning successor green; evidence describes only the selected subset |
 
-One-way dependencies are A -> B/C -> D -> E; F depends on D/E contracts and is
-independently optional; G runs per shippable subset and at final reconciliation.
+One-way dependencies are A -> B and A -> C; D consumes selected stable B/C
+contracts; E depends on D; F depends on D/E contracts and is independently
+optional; G runs per shippable subset and at final reconciliation.
 No successor inherits umbrella or predecessor approval. Each must receive the
 current I-VSD plus fresh tier-appropriate intake, CTO review, exact-revision
 user approval, and named evidence before any owned checkbox starts.
@@ -131,7 +183,7 @@ Plan reference: Phase 1 and Sections 4, 5.1, 5.4, 5.7, and 5.9.
     five Setup source shells, five focused test shells, one
     `packages.lock.json` per project, the two generated SA-110 fail-closed
     ratchets, and the
-    [dependency evidence](setup-assistant-security-and-portability-dependency-evidence.md).
+    [dependency evidence](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md).
   - **Acceptance:** Treat Terminal.Gui `2.4.17` and its complete 24-package
     graph as blocked because mandatory TextMateSharp.Grammars `2.0.4` lacks
     complete component provenance/notices. Treat Avalonia `12.1.1` Desktop and
@@ -327,7 +379,7 @@ Plan reference: Phase 4 and Sections 3.4, 3.9, 5.2, and 5.7.
   - **Dependencies:** SA-410.
   - **Guidance:** clean architecture, record contracts.
 
-- [ ] **SA-430 — Implement repository-native BCL human terminal workflows and verify `SetupTerminalSecretBoundaryTests` proves TTY-only masked entry, protected output, state clearing, and byte parity with Core**
+- [x] **SA-430 — Implement repository-native BCL human terminal workflows and verify `SetupTerminalSecretBoundaryTests` proves TTY-only masked entry, protected output, state clearing, and byte parity with Core**
   - **Files:** new `src/Event.SetupAssistant.Cli/Tui/**`, focused CLI tests; no
     external TUI package.
   - **Acceptance:** The bounded linear terminal wizard supports the same
@@ -347,45 +399,249 @@ Plan reference: Phase 4 and Sections 3.4, 3.9, 5.2, and 5.7.
 
 ### Phase 4 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj --configuration Release --verbosity quiet`
 
-## Phase 5: Shared GUI Workspaces, Accessibility, And Localization
+## Phase 5: Shared MVVM Workspaces And Human Presentation Adapters
 
-Plan reference: Phase 5 and Sections 3.1, 3.4, 3.8, 3.10, and 5.4.
+Plan reference: Phase 5 and Sections 3.1, 3.4, 3.8, 3.10, 3.16, 5.4, and 5.7.
 
-- [ ] **SA-510 — Select a provenance-complete GUI graph, author shared-workspace parity and secret-state contracts, and verify `SetupAssistantWorkspaceTests` fails on missing selected-framework adapters without duplicating Core rules**
-  - **Files:** existing package-free disabled
-    `tests/Event.SetupAssistant.Tests/**` shell; new successor-B dependency
-    decision and selected-framework test adapters.
-  - **Acceptance:** Before activating the shell, record the exact GUI graph and
-    runtime targets and obtain fresh I-VSD, CTO, user, dependency, security,
-    and accessibility approval. Red tests specify workspace transitions,
-    review/readiness, mode boundaries, immutable Core results,
-    cancellation/expiry clearing, and byte-equivalent output while rejecting
-    UI-owned validators, serializers, relevance rules, or secret
-    classification. Avalonia is not presumed; if reconsidered it requires new
-    authoritative component/build evidence and exact target approval.
+- [x] **SA-510 — Bind and evaluate independent B1 package graphs through the restricted non-shipping probe protocol and record an exact verdict for every presentation decision unit**
+  - **Files:** B1 binding/intake/dependency evidence; isolated
+    `eng/setup-assistant/probes/**`; machine-consumed adapter dispositions.
+  - **Acceptance:** B0 is superseded. CommunityToolkit/DI, shared Avalonia,
+    Avalonia Browser, Avalonia Desktop, and Terminal.Gui are independently
+    bound and reviewed through plan Section 5.4.1. Every node records exact
+    identity/role/lock/hash/signature/vulnerability/license/NOTICE/SBOM/
+    telemetry/publish evidence. Each candidate receives `Approve`,
+    `ApprovedDisabled`, `Reject`, or `NotSelected`; only approved adapter
+    manifests use `Active` or `ApprovedDisabled`. Product projects, central
+    pins, locks, generated capabilities, support, and shipping flags remain
+    unchanged and false throughout probing.
+  - **Effort:** L
+  - **Dependencies:** Phases 3 and 4; corrected B1 Tier 1 intake, I-VSD,
+    dependency, security, accessibility, CTO, and exact-revision user approval
+    for the probe only.
+  - **Guidance:** criticality-guardrail, accessibility, ip-clean-room,
+    agentic-research.
+  - **Result:** Complete. The exact isolated Toolkit `8.4.2` and Microsoft DI
+    `10.0.10` plus Abstractions `10.0.10` probes passed, and the post-probe
+    dependency/IP, security, and accessibility reviews each returned `Approve`
+    for the Toolkit shared-presentation role and the DI executable-root role.
+    Avalonia shared/browser/desktop `12.1.1` and Terminal.Gui `2.4.17` stay
+    `ApprovedDisabled`, absent, and unresolvable. Corrected builds under
+    `DOTNET_CLI_TELEMETRY_OPTOUT=1`, `DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1`,
+    `DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1`, and `DOTNET_NOLOGO=1` with
+    isolated package caches recorded zero `AF_INET`/`AF_INET6`
+    `connect`/`sendto`; the first traced no-restore run without that
+    environment showed SDK workload-advertising egress and was failed. Product
+    projects, product/test locks, central pins, the solution, shipping CI,
+    generated capabilities, and support/release/shipping flags stayed
+    byte-identical and false throughout. Evidence:
+    [B1 probe evidence](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-probe-evidence.md),
+    `sha256:424ef6b6e3b7b7700b4d26b11149545b0f97fe0165a22890d35a67f9e8e14be8`.
+
+- [x] **SA-515 — Author failing B1 presentation Invariant-Breakers and verify `SetupPresentationModelTests` fails only for absent approved shared owners**
+  - **Files:** replace obsolete
+    `tests/Event.SetupAssistant.Tests/SetupAssistantWorkspace*`; add focused
+    public-seam presentation tests.
+  - **Acceptance:** Tests exercise per-session messenger identity/no crosstalk,
+    recipient activation/deactivation, duplicate delivery, monotonic generation
+    fencing/exhaustion, cancellation and disposal races through exact signals,
+    single-settlement operation identity, immutable value-free messages,
+    bounded mutable public edit state, direct immutable Core result/byte
+    projection, target-owned secret-state exclusion, and disabled-adapter
+    non-resolution. They contain no duplicated Core transition table, type-name
+    inventory, synthetic framework proof, silent early return, fixed sleep,
+    timing poll, secret value, or mock-mirroring verifier.
   - **Focused Red selector:**
-    `dotnet run --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupAssistantWorkspaceTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
-  - **Effort:** M
-  - **Dependencies:** Phases 3 and 4.
-  - **Guidance:** criticality-guardrail, accessibility.
+    `dotnet run --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupPresentationModelTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** L
+  - **Dependencies:** SA-510 shared CommunityToolkit graph approval.
+  - **Historical evidence:** The earlier 8-test 5/3 and 7/1 observations belong
+    to the superseded B0 contract and are not B1 Red evidence.
+  - **Result:** B1 Red complete. The obsolete untracked B0
+    `SetupAssistantWorkspace*` files were removed and replaced with
+    `SetupPresentationModelContract.cs` and `SetupPresentationModelTests.cs`.
+    Ten focused tests compile and all ten fail only with
+    `missing-approved-owner:ISLAMU.Event.SetupAssistant.Presentation.SetupPresentationSession`.
+    No silent early return, synthetic transition table, class-name inventory,
+    fixed sleep, timing poll, secret fixture, or product/package reference was
+    introduced. The only emitted warning is the pre-existing CA1716 namespace
+    warning from the test `Program.cs`.
+  - **Guidance:** criticality-guardrail, accessibility, tests rule.
 
-- [ ] **SA-520 — Activate the approved shared GUI shell and product workspaces and verify manifest, environment, legal, review, and readiness flows adapt Core without server or network dependencies**
-  - **Files:** existing package-free disabled `src/Event.SetupAssistant/**`
-    shell; new approved framework integration, shared view models, resources,
-    views, styles, and tests.
-  - **Acceptance:** Workspaces expose progressive topology/capability selection,
-    typed fields, deterministic previews/diffs/coverage, explicit sensitivity,
-    no-secret primary action, review, clear, and save/download intents; no
-    Application/Domain/API/Blazor/network/provider dependency or duplicated
-    business rule exists.
+- [x] **SA-518 — Implement the approved framework-neutral CommunityToolkit presentation model and verify generated state/commands, session messaging, Core parity, and cancellation fencing**
+  - **State:** Not started. Correction Red and review rebinding must complete
+    before any Green product edit.
+  - **Correction-Red owned paths:**
+    `tests/Event.SetupAssistant.Tests/SetupPresentationModelContract.cs`,
+    `tests/Event.SetupAssistant.Tests/SetupPresentationModelTests.cs`,
+    `tests/Event.Architecture.Tests/SetupAssistantArchitectureTests.cs`, and
+    this SA-518 slice in
+    `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md`.
+  - **Correction-Red sequence and evidence:** Keep
+    `src/Event.SetupAssistant/Event.SetupAssistant.csproj`,
+    `src/Event.SetupAssistant/packages.lock.json`, and
+    `Directory.Packages.props` unchanged. Replace the common constructor
+    short-circuit with owner-local reflection, then compile the two changed
+    test projects before recording Red. The focused presentation selector
+    compiled and reported **18 total / 18 failed / 0 passed / 0 skipped** only
+    for absent product owners: `SetupPresentationSession` (1),
+    `SetupWorkspaceId` (1), `SetupOperationGeneration` (1),
+    `SetupPresentationOutcome` (1), `SetupPresentationWorkspace` (6),
+    `SetupOperationSettledMessage` (2),
+    `ISetupOperationGenerationAllocator` (2), and
+    `SetupOperationInvalidatedEventArgs` (4). The corrected focused
+    architecture selector reported **14 total / 1 failed / 13 passed / 0
+    skipped**; the sole intentional failure code is
+    `SA518-GRAPH-RATCHET`, covering the absent direct Toolkit reference,
+    central pin, exact lock node, and compiled Core/Toolkit closure. One prior
+    architecture invocation was invalid because the synthetic unsafe-JSON
+    fixture had one extra closing brace; that test-support defect was corrected
+    and its one-test selector passed before the recorded 14-test Red. No
+    product Green owner exists yet, and SA-518 remains unchecked.
+  - **Green owned paths:** exactly `Directory.Packages.props`,
+    `src/Event.SetupAssistant/Event.SetupAssistant.csproj`,
+    `src/Event.SetupAssistant/packages.lock.json`,
+    `src/Event.SetupAssistant/Presentation/SetupOperationGeneration.cs`,
+    `src/Event.SetupAssistant/Presentation/SetupWorkspaceId.cs`,
+    `src/Event.SetupAssistant/Presentation/SetupPresentationContracts.cs`,
+    `src/Event.SetupAssistant/Presentation/SetupPresentationSession.cs`,
+    `src/Event.SetupAssistant/Presentation/SetupPresentationWorkspace.cs`,
+    the three correction-Red test files named above, and this task ledger.
+    Any additional product or support file requires a reviewed SA-518 ledger
+    amendment before creation. SA-520, SA-525, accessibility, legal, target,
+    capability, CI, solution, release, and shipping paths are excluded.
+  - **Green acceptance:** Add the exact central
+    `CommunityToolkit.Mvvm` `8.4.2` pin, the sole direct product package
+    reference, and a force-evaluated net10 lock containing only Core/Wire
+    project nodes plus the direct Toolkit node with no transitive package.
+    Implement generated observable state and async execute/cancel commands over
+    exact immutable Core result and `ReadOnlyMemory<byte>` identities. One
+    injected messenger belongs to each session; typed generations and bounded
+    workspace identities cross every public seam. Deterministic invalidation
+    precedes cancellation on replacement, cancel, deactivate, and dispose;
+    duplicate settlement, stale completion, exhaustion, duplicate/decreasing
+    allocation, wrap, reseed, and new epoch all fail closed. The shared owner
+    exposes only target-agnostic `NotEvaluated` status and contains no adapter
+    registry, DI/Hosting, target UI, I/O, network, telemetry, provider,
+    persistence, serializer, service locator, default messenger/Ioc, secret,
+    or duplicated Core authority.
+  - **Mandatory safe CLI environment:** Before every restore, build, test, or
+    publish command, export
+    `DOTNET_CLI_TELEMETRY_OPTOUT=1`,
+    `DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1`,
+    `DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1`, `DOTNET_NOLOGO=1`, and
+    `NUGET_PACKAGES=/tmp/islamu-sa518-packages`. Do not start an application,
+    browser, container, live service, or publisher.
+  - **Green verification sequence:** Run
+    `dotnet restore src/Event.SetupAssistant/Event.SetupAssistant.csproj --force-evaluate`,
+    then the same restore with `--locked-mode`; run the focused presentation
+    selector
+    `dotnet run --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupPresentationModelTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`;
+    run the focused architecture selector
+    `dotnet run --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupAssistantArchitectureTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`;
+    then run one `dotnet build --configuration Release --verbosity quiet`.
+    All selected tests and the Release build must be Green in one execution;
+    warnings or failures introduced by SA-518 belong to SA-518 and block its
+    commit. Pre-existing unrelated failures are recorded verbatim and do not
+    permit weakening, retrying, or skipping an owned gate.
+  - **Immediate planned commit contract:** After all Green gates pass, inspect
+    and load the repository `conventional-commit` skill in the same
+    implementation session, then inspect
+    `git status --short` and `git diff --cached --name-only`; stage only the
+    exact Green owned paths with `git add -- <explicit paths>`. If unrelated
+    index entries exist, preserve them and use `git commit --only -- <exact
+    owned paths>`. Commit immediately with title
+    `feat(self-hosting): establish isolated setup presentation state` and
+    description `Add a framework-neutral generated MVVM session that projects exact Setup Core outcomes while fencing cancellation, stale completion, and generation exhaustion without activating a presentation target.`
+    This is a non-shipping B1 internal activation, so use
+    `Changelog: skip` and
+    `Changelog-Reason: non-shipping isolated setup presentation foundation with all human targets disabled`.
+    No release change fragment or `Change-Id` is required because this slice
+    activates no shipped target, external authority, migration, or release;
+    no additional trailer is required. Capture
+    `sa518_commit=$(git rev-parse HEAD)` and verify
+    `git diff-tree --no-commit-id --name-only -r "$sa518_commit"` matches the
+    exact staged owned-path list before proceeding to SA-520 or SA-525. Reuse
+    this planning-authored title, description, and changelog treatment when
+    they remain truthful. A material divergence may override them only after
+    this task ledger records the reason, replacement title, description,
+    changelog treatment, trailers, owned paths, and verification contract;
+    stylistic preference or implementation-time convenience is not an
+    override condition.
   - **Effort:** XL
-  - **Dependencies:** SA-510.
-  - **Guidance:** accessibility, clean architecture, ip-clean-room.
+  - **Dependencies:** corrected intentional Red, refreshed exact binding,
+    planning-mode I-VSD revalidation, fresh CTO verdict, and exact-revision
+    user approval; SA-515 alone no longer opens Green.
+  - **Guidance:** accessibility, clean-architecture-rules, ip-clean-room.
+  - **Result:** Green. `Event.SetupAssistant` now references only Setup Core and
+    CommunityToolkit.Mvvm `8.4.2`; its lock contains the exact approved direct
+    node and content hash with no transitive package. Five presentation files
+    implement bounded typed workspace identities, monotonic generation,
+    session-injected messaging, immutable value-free lifecycle contracts,
+    generated observable properties and async commands, exact Core result/byte
+    projection, invalidation-before-cancellation, stale/duplicate settlement
+    fencing, and fail-closed exhaustion. Focused presentation tests passed
+    18/18 and focused Setup architecture tests passed 14/14. The Release build
+    passed with zero errors; its 11,230 warnings are the pre-existing
+    repository analyzer inventory. Product inventory contains only Toolkit
+    `8.4.2`; vulnerability and deprecation audits are empty; the dependency
+    license policy passed 655 unique package/version pairs.
 
-- [ ] **SA-530 — Implement bundled localization, RTL, keyboard, focus, semantic automation, and error-announcement contracts and verify `SetupAccessibilityContractTests` exposes no secret value or unsupported parity claim**
+- [x] **SA-520 — Resolve the shared Avalonia view slice as Active or ApprovedDisabled and verify only an Active slice satisfies `SetupAvaloniaBindingContractTests`**
+  - **Files:** candidate `src/Event.SetupAssistant.Avalonia/**`; separate
+    `tests/Event.SetupAssistant.Avalonia.Tests/**`; exact project/lock/
+    dependency ratchets and adapter disposition.
+  - **Acceptance:** If approved, every AXAML view is a typed `UserControl` with
+    compiled bindings and `x:DataType`; selectors/classes/pseudo-classes own
+    visual state; code-behind owns no business logic; target-service contracts
+    express intents only; no secret value binding, lifetime root, protected
+    writer, DI service location, or duplicated Core authority exists. If the
+    graph remains blocked, record `ApprovedDisabled`, leave the project
+    nonfunctional/unresolvable, and do not restore its blocked test project.
+  - **Focused selector when Active:**
+    `dotnet run --project tests/Event.SetupAssistant.Avalonia.Tests/Event.SetupAssistant.Avalonia.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupAvaloniaBindingContractTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** XL
+  - **Dependencies:** SA-518 and an independently approved Avalonia shared-view
+    graph; otherwise an approved disabled disposition.
+  - **Guidance:** accessibility, clean-architecture-rules, ip-clean-room.
+  - **Result:** `ApprovedDisabled`. Avalonia `12.1.1` shared, Browser, and
+    Desktop graphs remain absent because telemetry, remote-protocol,
+    native/RID, publish, notice/provenance, and rendered-accessibility closure
+    is incomplete. No Avalonia project, package, lock node, AXAML view, target
+    resolution, support claim, or focused runtime test project exists.
+    `DisabledPresentationTargetsMustRemainMachineDisabledAndGraphAbsent`
+    verifies evaluated target flags and graph absence without restoring a
+    blocked target.
+
+- [x] **SA-525 — Resolve the no-secret Terminal.Gui slice as Active or ApprovedDisabled and verify only an Active slice satisfies `SetupTerminalGuiAdapterTests`**
+  - **Files:** candidate `src/Event.SetupAssistant.Terminal/**`; separate
+    `tests/Event.SetupAssistant.Terminal.Tests/**`; exact project/lock/
+    dependency ratchets and adapter disposition.
+  - **Acceptance:** If approved, one bounded disposable adapter maps
+    Terminal.Gui events/keys to shared commands, command/property/collection
+    changes to controls, and lifecycle/focus to activation/cancellation.
+    Teardown retains no handlers or recipients. The target has no secret
+    control, buffer, command, message, generator, clipboard/history path, or
+    protected writer and cannot invoke Browser/Desktop secret sessions. If the
+    graph remains blocked, record `ApprovedDisabled`; the Green BCL wizard
+    remains the sole terminal secret path and fallback.
+  - **Focused selector when Active:**
+    `dotnet run --project tests/Event.SetupAssistant.Terminal.Tests/Event.SetupAssistant.Terminal.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupTerminalGuiAdapterTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** XL
+  - **Dependencies:** SA-518 and an independently approved Terminal.Gui graph;
+    otherwise an approved disabled disposition.
+  - **Guidance:** accessibility, clean-architecture-rules, ip-clean-room.
+  - **Result:** `ApprovedDisabled`. Terminal.Gui `2.4.17` remains absent
+    because its mandatory grammar graph lacks complete component provenance
+    and notices. No Terminal project, package, lock node, adapter, secret
+    surface, or focused runtime test project exists. The Green BCL terminal
+    wizard remains the sole terminal human/secret path, and the architecture
+    disposition verifier proves Terminal.Gui cannot be resolved.
+
+- [x] **SA-530 — Implement bundled localization, RTL, keyboard, focus, semantic automation, and error-announcement contracts and verify `SetupAccessibilityContractTests` exposes no secret value or unsupported parity claim**
   - **Files:** new selected-framework resources/styles/accessibility services
     and tests; existing `docs/ACCESSIBILITY.md`, `docs/LOCALIZATION.md`.
   - **Acceptance:** Native controls and automation peers expose stable
@@ -397,10 +653,19 @@ Plan reference: Phase 5 and Sections 3.1, 3.4, 3.8, 3.10, and 5.4.
   - **Focused selector:**
     `dotnet run --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupAccessibilityContractTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** XL
-  - **Dependencies:** SA-520.
+  - **Dependencies:** SA-518 and every Active target adapter (SA-520 and/or
+    SA-525); a blocked target is labelled unavailable rather than blocking
+    another approved target.
   - **Guidance:** accessibility.
+  - **Result:** `ApprovedDisabled` for rendered target accessibility because
+    SA-520 and SA-525 selected no Active adapter. The shared model reports only
+    target-agnostic `NotEvaluated`, exposes no secret value/automation state,
+    and makes no keyboard, focus, RTL, screen-reader, localization, contrast,
+    or support claim. Existing Green BCL wizard accessibility limitations stay
+    explicit. No framework resource, style, automation peer, or unsupported
+    parity test was fabricated.
 
-- [ ] **SA-540 — Implement constrained legal-document editor and approved local-template boundary and verify `LegalAuthoringWorkspaceTests` rejects HTML, remote content, unresolved authority, and publication or acceptance mutation**
+- [x] **SA-540 — Implement constrained legal-document editor and approved local-template boundary and verify `LegalAuthoringWorkspaceTests` rejects HTML, remote content, unresolved authority, and publication or acceptance mutation**
   - **Files:** new shared legal views/view models/template manifest; focused
     tests and clean-room template evidence.
   - **Acceptance:** Source, outline, sanitized preview, typed placeholders,
@@ -412,19 +677,28 @@ Plan reference: Phase 5 and Sections 3.1, 3.4, 3.8, 3.10, and 5.4.
   - **Focused selector:**
     `dotnet run --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*LegalAuthoringWorkspaceTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** XL
-  - **Dependencies:** SA-520, SA-530.
+  - **Dependencies:** SA-518, SA-530, and at least one Active target adapter.
   - **Guidance:** i-vsd, accessibility, ip-clean-room.
+  - **Result:** `ApprovedDisabled` because there is no Active human
+    presentation adapter. No legal view, remote preview, plugin, spellcheck,
+    template pack, publication/acceptance mutation, or target handoff was
+    created. The already-Green package-free Core legal draft/codec/readiness
+    workflows remain the sole implemented legal authoring authority and no UI
+    capability or template provenance is claimed.
 
 ### Phase 5 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj --configuration Release --verbosity quiet`
+- [x] Every Active Avalonia/Terminal target test project passes; each
+  ApprovedDisabled target disposition verifier passes without restoring the
+  blocked target.
 
 ## Phase 6: Browser Locality And Secret Boundary
 
 Plan reference: Phase 6 and Sections 3.4–3.6 and 5.5.
 
-- [ ] **SA-610 — Author browser secret Invariant-Breakers and verify `BrowserSecretBoundaryTests` fails on the missing target while pinning safe default, preload, request, storage, navigation, expiry, and capability behavior**
+- [x] **SA-610 — Author browser secret Invariant-Breakers and verify `BrowserSecretBoundaryTests` fails on the missing target while pinning safe default, preload, request, storage, navigation, expiry, and capability behavior**
   - **Files:** new `tests/Event.SetupAssistant.Browser.Tests/**`.
   - **Acceptance:** Red tests cover fresh/refresh/back-forward/deep-link
     no-secret default, no URL/cookie/local/session/IndexedDB/cache/service-worker
@@ -436,8 +710,16 @@ Plan reference: Phase 6 and Sections 3.4–3.6 and 5.5.
   - **Effort:** L
   - **Dependencies:** Phase 5.
   - **Guidance:** criticality-guardrail, accessibility.
+  - **Result:** Intentional Red captured 10 total, 9 owner-local failures and
+    one passing generated-capability assertion. Missing owners independently
+    named fresh-session defaults, refresh/history, deep links, persistent
+    storage, bundled preload, request revocation, navigation clearing, exact
+    idle expiry, and value-free failure/support state. Because no browser graph
+    is approved, the historical Red was then replaced by three passing
+    `ApprovedDisabled` disposition tests rather than a conditional skip or
+    dormant runtime assertion.
 
-- [ ] **SA-620 — Implement browser no-secret composition and local download and verify every new session remains useful without entering or persisting secrets**
+- [x] **SA-620 — Implement browser no-secret composition and local download and verify every new session remains useful without entering or persisting secrets**
   - **Files:** new `src/Event.SetupAssistant.Browser/**`, static entry, local
     download adapter, tests.
   - **Acceptance:** The approved static client target starts in no-secret mode,
@@ -449,8 +731,13 @@ Plan reference: Phase 6 and Sections 3.4–3.6 and 5.5.
   - **Effort:** L
   - **Dependencies:** SA-610.
   - **Guidance:** selected framework's official guidance, i-vsd.
+  - **Result:** `ApprovedDisabled`. No approved Browser runtime exists, so no
+    static entry point, download adapter, profile persistence, framework
+    package, or runtime owner was created. The Green shared/Core/CLI workflows
+    remain useful for no-secret composition, while browser target enablement
+    stays false and the browser assembly exports no runtime type.
 
-- [ ] **SA-630 — Implement per-session browser trust and secret state machine and verify explicit opt-in, preload, network denial, clearing, and truthful origin copy remain bound to the exact release**
+- [x] **SA-630 — Implement per-session browser trust and secret state machine and verify explicit opt-in, preload, network denial, clearing, and truthful origin copy remain bound to the exact release**
   - **Files:** new Browser trust/capability adapters, shared view transitions,
     tests.
   - **Acceptance:** Interstitial shows official origin, version/digest/source,
@@ -462,8 +749,13 @@ Plan reference: Phase 6 and Sections 3.4–3.6 and 5.5.
   - **Effort:** XL
   - **Dependencies:** SA-620.
   - **Guidance:** criticality-guardrail, i-vsd.
+  - **Result:** `ApprovedDisabled`. Secret entry remains false in the generated
+    capability; no trust interstitial, secret buffer, request boundary,
+    navigation state, expiry state, origin copy, storage, or browser session
+    owner exists. No claim that the hosted origin cannot access secrets is
+    made.
 
-- [ ] **SA-640 — Generate and enforce browser CSP, static-bundle, and release-capability contracts and verify `BrowserReleaseContractTests` rejects remote assets, reporters, service workers, telemetry, diagnostics, or unapproved enablement**
+- [x] **SA-640 — Generate and enforce browser CSP, static-bundle, and release-capability contracts and verify `BrowserReleaseContractTests` rejects remote assets, reporters, service workers, telemetry, diagnostics, or unapproved enablement**
   - **Files:** new Browser CSP/release manifest generation under
     `eng/setup-assistant/**`, static host config, Browser/Architecture tests.
   - **Acceptance:** Policy intent denies connections/forms/framing/objects/
@@ -479,17 +771,22 @@ Plan reference: Phase 6 and Sections 3.4–3.6 and 5.5.
   - **Effort:** XL
   - **Dependencies:** SA-630.
   - **Guidance:** ci-cd, criticality-guardrail, ip-clean-room.
+  - **Result:** `ApprovedDisabled`. The generator-owned manifest keeps both
+    browser target and secret entry false. Focused release/disposition tests
+    prove there is no `wwwroot`, index, service worker, web manifest, host
+    config, remote-runtime graph, telemetry, reporter, or publishable browser
+    surface. No CSP or runtime bundle was fabricated for an absent target.
 
 ### Phase 6 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.SetupAssistant.Browser.Tests/Event.SetupAssistant.Browser.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.SetupAssistant.Browser.Tests/Event.SetupAssistant.Browser.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 7: Desktop Protected Output
 
 Plan reference: Phase 7 and Sections 3.4, 3.7, and 5.6.
 
-- [ ] **SA-710 — Author real-filesystem protected-write Invariant-Breakers and verify `DesktopProtectedWriteInvariantTests` fails on missing Windows/Unix adapters for links, permissions, races, atomicity, cleanup, and overwrite**
+- [x] **SA-710 — Author real-filesystem protected-write Invariant-Breakers and verify `DesktopProtectedWriteInvariantTests` fails on missing Windows/Unix adapters for links, permissions, races, atomicity, cleanup, and overwrite**
   - **Files:** new
     `tests/Event.SetupAssistant.Desktop.Tests/DesktopProtectedWriteInvariantTests.cs`
     and target-capability fixtures.
@@ -502,8 +799,14 @@ Plan reference: Phase 7 and Sections 3.4, 3.7, and 5.6.
   - **Effort:** L
   - **Dependencies:** Phase 5.
   - **Guidance:** criticality-guardrail, tests rule.
+  - **Result:** Intentional Red captured 9/9 missing-owner failures. Green
+    exercises real Linux files for create-new, explicit overwrite, exact
+    bytes, owner-only mode, no backup/sidecar, directory/link/device refusal,
+    target-created and target-replaced races between prepare/commit,
+    uncommitted cleanup, unsupported Windows behavior, and closed value-free
+    results. No sleep, polling, fixture secret, or in-memory filesystem is used.
 
-- [ ] **SA-720 — Implement Windows and Unix protected-write adapters and verify permission-first same-directory atomic replacement passes supported-runner invariants without unsafe fallback**
+- [x] **SA-720 — Implement Windows and Unix protected-write adapters and verify permission-first same-directory atomic replacement passes supported-runner invariants without unsafe fallback**
   - **Files:** new `src/Event.SetupAssistant.Desktop/Files/**`, platform target
     files, tests.
   - **Acceptance:** Handle-first target inspection, same-directory temp,
@@ -515,8 +818,16 @@ Plan reference: Phase 7 and Sections 3.4, 3.7, and 5.6.
   - **Effort:** XL
   - **Dependencies:** SA-710.
   - **Guidance:** criticality-guardrail, official .NET file APIs.
+  - **Result:** Green on the supported Unix runner. A public two-step
+    preparation owns a same-directory mode-0600 temporary file; commit
+    revalidates target state, rejects directory/link/device/swap/overwrite
+    violations, atomically moves, verifies final mode/length, and always cleans
+    uncommitted state. Windows remains truthfully unavailable until an
+    ACL-backed implementation receives runner evidence; it returns
+    `Unsupported` and never inherits ambient permissions or writes plaintext.
+    Focused invariants passed 9/9.
 
-- [ ] **SA-730 — Implement desktop composition, save review, and secret lifecycle and verify no autosave, restore, backup, recent-value, clipboard, telemetry, or raw exception path exists**
+- [x] **SA-730 — Implement desktop composition, save review, and secret lifecycle and verify no autosave, restore, backup, recent-value, clipboard, telemetry, or raw exception path exists**
   - **Files:** new Desktop startup/platform capability adapters, shared save
     views/view models, tests.
   - **Acceptance:** Native picker supplies user intent; exact path and redacted
@@ -527,65 +838,350 @@ Plan reference: Phase 7 and Sections 3.4, 3.7, and 5.6.
   - **Effort:** L
   - **Dependencies:** SA-720, SA-530.
   - **Guidance:** accessibility, i-vsd.
+  - **Result:** `ApprovedDisabled` for desktop composition and secret UI
+    because Avalonia Desktop and rendered accessibility remain blocked. The
+    package-free protected-write transaction is active independently, but no
+    desktop startup, view, save dialog, secret buffer, autosave, restore,
+    backup, recent-value, clipboard, telemetry, raw exception, or support
+    surface exists. Desktop `SetupTargetEnabled` remains false.
 
 ### Phase 7 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.SetupAssistant.Desktop.Tests/Event.SetupAssistant.Desktop.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.SetupAssistant.Desktop.Tests/Event.SetupAssistant.Desktop.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 8: YAML, Directory Composition, And Measured Scale
 
 Plan reference: Phase 8 and Sections 3.13 and 5.10.
 
-- [ ] **SA-810 — Author composition Invariant-Breakers and verify `SetupCompositionInvariantTests` rejects ambiguous, unsafe, non-canonical, and oversized source trees before output**
-  - **Files:** new Setup Core composition tests and fixtures.
-  - **Acceptance:** Red tests cover JSON/YAML parity, duplicate keys,
-    conflicting fragments, deterministic ordering, links, traversal, cycles,
-    unknown files, depth/count/byte ceilings, source-path omission, and
-    secret/provider/application-data smuggling.
+- [x] **SA-810 — Author composition Invariant-Breakers and verify `SetupCompositionInvariantTests` rejects ambiguous, unsafe, non-canonical, and oversized source trees before output**
+  - **Closure:** C1 Red only. No product, package, lock, generated artifact,
+    adapter, scale profile, or documentation change belongs to this slice.
+  - **Owned paths:** new
+    `tests/Event.Setup.Core.Tests/SetupCompositionInvariantTests.cs`,
+    `tests/Event.Setup.Core.Tests/SetupCompositionTestContract.cs` only.
+  - **Future public seam:** Tests discover and exercise
+    `ISLAMU.Event.Setup.Core.Composition.SetupCompositionCompiler`,
+    `SetupCompositionLimits`, typed source/result/failure contracts, and an
+    exact directory snapshot/commit barrier. They do not own a parser, merger,
+    filesystem policy, serializer, or canonicalization mirror.
+  - **Default ceilings:** aggregate source bytes `4,194,304`; YAML documents
+    `1`; parser events `131,072`; normalized nodes `65,536`; nesting depth
+    `32`; mapping entries per container `4,096`; sequence entries per container
+    `4,096`; scalar characters per scalar `65,536`; aggregate scalar
+    characters `1,048,576`; directories `256`; files `1,024`; entries per
+    directory `256`; relative-path characters `512`; path depth `16`;
+    per-file bytes `524,288`; aggregate directory bytes `4,194,304`; aggregate
+    directory nodes `65,536`. All arithmetic is checked and exact-boundary
+    tests accept `limit` and reject `limit + 1`.
+  - **Fourteen independent matrices:** (1) duplicate keys, non-scalar/null
+    keys, case and Unicode-normalization collisions; (2) aliases, anchors,
+    tags, merge keys, directives, and unsupported node kinds; (3) quoted/
+    unquoted scalar parity with explicit Core-owned bool/integer/null/string
+    conversion and no locale drift; (4) empty stream/document, scalar or
+    sequence root, multi-document, explicit/trailing document content;
+    (5) every byte/event/node/depth/mapping/sequence/scalar ceiling and checked
+    overflow; (6) rooted, absolute, traversal, escaped, overlong, reserved, and
+    normalization-colliding paths; (7) symlink/reparse/junction/hard-link/
+    special-file/cycle and unsupported filesystem semantics; (8)
+    deterministic add/remove/rename/replace/resize/retarget mutations after
+    discovery and after open but before publication commit; (9) duplicate/
+    conflicting fragments and deterministic ordinal precedence/order;
+    (10) cancellation before discovery, during read/parser/normalization/
+    validation/serialization, and at commit with no partial result;
+    (11) secret, provider-coordinate, application-data, publication,
+    acceptance, and tenant/user authority smuggling; (12) byte-identical
+    canonical v1alpha2 JSON, digest, coverage, legal and diagnostic parity
+    across accepted JSON/YAML/directory inputs; (13) closed value-free
+    failures, logs, metrics, exception surfaces, and source-path omission;
+    (14) unknown/disabled/evidence-mismatched profiles fail rather than clamp
+    or fall back.
+  - **Phase 8 Worst Break:** At an exact publication-commit barrier, mutate a
+    previously opened directory entry into a link/changed file while a bounded
+    YAML alias/parser-bomb input reaches its final ceiling. The compiler must
+    cancel/fail closed with one stable value-free code and produce no model,
+    canonical bytes, digest, coverage, metric value, partial file, or retained
+    source handle. No sleep, polling, path-only precheck, or mocked filesystem
+    may satisfy this breaker.
   - **Focused selector:**
     `dotnet run --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupCompositionInvariantTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Red disposition:** Every independent policy/vector test compiles; one
+    attributable aggregate test fails only for the absent production compiler.
+    Any helper, fixture, timing, unrelated, or multiple-owner failure blocks
+    C1 Green.
+  - **Immediate planned commit:** After the intentional Red is verified, load
+    `conventional-commit`, preserve unrelated index/worktree state, stage only
+    the two owned paths above, and use
+    `test(self-hosting): lock bounded setup composition invariants`.
+    **Literal description:**
+    `Define deterministic composition security contracts for ambiguous YAML,
+    mutable directories, canonical parity, and bounded resource use.`
+    `Pin fourteen invariant matrices, exact source ceilings, and the Phase 8
+    publication-commit Worst Break without activating product composition.`
+    **Literal footers:**
+    `Changelog: skip`
+    `Changelog-Reason: test-only security contract for unimplemented setup composition`
+    **Message override:** `Not overridden`.
+  - **Pre-commit ownership rule:** Inspect the existing index and full diff
+    before editing or staging. Any owned path with another contributor's hunk
+    blocks the slice until coordinated, separately committed, or clean. Never
+    include a conditional correction to an approved Red file unless this
+    ledger first records the exact path, defect, replacement contract, and
+    fresh verification. Stage and commit only wholly owned explicit paths;
+    verify the resulting commit file list and each file content hash against
+    the recorded owned set. A material divergence must first replace literal
+    title, description, changelog/footer copy, paths, and verification here.
+    Commit execution remains subject to the active agent's explicit
+    git-authorization boundary.
   - **Effort:** L
-  - **Dependencies:** Phases 2–5.
+  - **Dependencies:** Phases 2–4 plus fresh scale/I-VSD/CTO/user approval.
   - **Guidance:** criticality-guardrail, tests rule.
+  - **Result:** Intentional C1 Red passed the fourteen independent
+    policy/vector matrices and failed exactly one aggregate assertion for
+    absent
+    `ISLAMU.Event.Setup.Core.Composition.SetupCompositionCompiler`.
+    Selector result: 15 total, 14 passed, 1 failed; no compile, fixture,
+    timing, platform, helper, multiple-owner, or unrelated failure occurred.
+    Core/test package references, locks, central pins, and product source
+    remained unchanged.
 
-- [ ] **SA-820 — Implement bounded YAML and directory composition and verify all accepted inputs compile through one normalized model to byte-identical canonical v1alpha2 JSON**
-  - **Files:** new `src/Event.Setup.Core/Composition/**`, CLI/terminal/
-    selected-GUI source adapters, generated composition schema and focused
-    tests.
-  - **Acceptance:** Source formats add no wire identity; conflicts fail before
-    partial output; canonical serializer/validator owns final bytes; digests,
-    coverage, diagnostics, and legal limits match single-file JSON.
+- [x] **SA-820 — Implement bounded YAML and directory composition and verify all accepted inputs compile through one normalized model to byte-identical canonical v1alpha2 JSON**
+  - **Closure:** C1 Green Core only. CLI, terminal, browser, desktop, source
+    pickers, presentation adapters, generated scale profiles, and larger
+    limits are excluded and require later independent review.
+  - **Owned paths:** `src/Event.Setup.Core/Event.Setup.Core.csproj`;
+    `src/Event.Setup.Core/packages.lock.json`;
+    new `src/Event.Setup.Core/Composition/SetupCompositionContracts.cs`,
+    `src/Event.Setup.Core/Composition/SetupCompositionLimits.cs`,
+    `src/Event.Setup.Core/Composition/SetupCompositionCompiler.cs`,
+    `src/Event.Setup.Core/Composition/SetupCompositionYamlParser.cs`,
+    `src/Event.Setup.Core/Composition/SetupCompositionDirectoryReader.cs`,
+    `src/Event.Setup.Core/Composition/SetupCompositionNormalizer.cs`;
+    `tests/Event.Setup.Core.Tests/packages.lock.json`; and the unchanged C1 Red
+    tests as verification inputs only, never as C1 Green commit paths; plus new
+    `docs/SETUP_COMPOSITION.md` and
+    `docs/releases/changes/CHG-01M1C8MP8S1T10N8D3D5A7B9CX.yaml`; and the
+    tracked-clean
+    `tests/Event.Setup.Core.Tests/SetupCoreArchitectureTests.cs` under the
+    ratchet amendment below.
+  - **Ratchet amendment:** The first full Core run passed 58/59 and proved the
+    prior package-free architecture ratchet directly contradicts the approved
+    C1 Green scope. Replace only these stale rules: allow the exact
+    `YamlDotNet` assembly reference; allow public namespace
+    `ISLAMU.Event.Setup.Core.Composition`; allow `System.IO` calls only from
+    types in that Composition namespace. Preserve all public `System.IO`/
+    `System.Net` dependency bans, every ambient time/random/process/network
+    ban, mutable-collection/value-bearing failure bans, all other assembly/
+    namespace bans, and add/retain static rejection of YamlDotNet generic
+    deserializer/serializer/emitter/dynamic/naming-convention roles. The
+    architecture test file was tracked-clean before this amendment and becomes
+    wholly C1 Green-owned only for those assertions. Focused 15/15, full Core,
+    static role scan, and full Release verification must rerun after the
+    amendment. No C1 Red test changes are permitted.
+  - **Dependency role:** YamlDotNet `18.1.0` may enter Setup Core only after the
+    C1 Red disposition and exact approved one-node content hash are reverified.
+    Only parser events and representation/syntax-tree nodes are permitted.
+    Generic deserializer/serializer, emitter, naming convention, dynamic type,
+    alias/anchor/tag/merge support, and remote resolution remain forbidden by
+    static/assembly ratchets.
+  - **Acceptance:** All fourteen matrices and the Worst Break pass through one
+    normalized immutable Core model. Existing canonical v1alpha2 JSON
+    serializer/validator/digest/sensitivity/legal/coverage authorities own
+    final output. Source formats add no wire identity; every conflict,
+    mutation, cancellation, unsupported filesystem, or ceiling failure occurs
+    before any model/bytes/digest/partial output. Linux real-filesystem
+    invariants must pass; Windows directory input remains disabled unless a
+    Windows runner proves equivalent handle-safe semantics.
+  - **Green verification:** locked exact graph resolution; forbidden-role
+    static and compiled-assembly closure; focused C1 tests; then one full
+    Release build and full Setup Core test project. Phase-attributable failures
+    block this slice; unrelated pre-existing warnings remain reported, never
+    suppressed.
+  - **Immediate planned commit:** After Green verification, load
+    `conventional-commit`, stage only exact owned paths, preserve unrelated
+    state, and use
+    `feat(self-hosting): add bounded setup composition`.
+    **Literal description:**
+    `Compile bounded JSON, YAML, and directory sources through one immutable
+    Setup Core model and the existing canonical v1alpha2 JSON authority.`
+    `Reject ambiguous grammar, unsafe filesystem state, smuggled authority,
+    cancellation, and resource-limit violations before producing any output.`
+    **Literal footer:** `Change-Id: CHG-01M1C8MP8S1T10N8D3D5A7B9CX`.
+    **Message override:** `Not overridden`.
+  - **Exact change fragment:** Create
+    `docs/releases/changes/CHG-01M1C8MP8S1T10N8D3D5A7B9CX.yaml` with:
+    ```yaml
+    # ABOUTME: Public change fragment for bounded Setup composition source formats.
+    # ABOUTME: Records canonical parity and fail-closed parser/filesystem policy.
+    Change-Id: CHG-01M1C8MP8S1T10N8D3D5A7B9CX
+    Title: "Bounded Setup composition sources"
+    Type: feat
+    Scope: self-hosting
+    Summary: "Setup Core compiles bounded JSON, YAML, and directory sources to byte-identical canonical v1alpha2 JSON without adding wire identity."
+    Group: setup-composition
+    Supersedes: []
+    Impacts:
+      Breaking:
+        Reference: docs/SETUP_COMPOSITION.md
+        Disposition: documented
+        Detail: >-
+          Ambiguous YAML grammar, unsafe directory entries, unknown files,
+          smuggled authority, and inputs above exact ceilings fail closed;
+          no permissive or legacy source mode is retained.
+      Security:
+        Reference: docs/SECURITY_OVERVIEW.md
+        Disposition: documented
+        Public-Disclosure: documented
+        Detail: >-
+          Syntax-tree-only parsing, deterministic directory revalidation,
+          canonical parity, value-free failures, and no partial output protect
+          self-hosted composition.
+      Configuration:
+        Reference: docs/SETUP_COMPOSITION.md
+        Disposition: documented
+        Detail: >-
+          Canonical defaults bound source bytes, parser structure, paths,
+          files, directories, scalar sizes, and normalized nodes.
+      Operator:
+        Reference: docs/OPERATIONS.md
+        Disposition: documented
+        Detail: >-
+          Operators select one bounded source form and receive canonical output
+          only after complete validation; unsupported filesystem semantics
+          disable directory input.
+    ```
+  - **Pre-commit ownership rule:** The existing central YamlDotNet pin is a
+    verified input and is not edited or staged. Inspect index/full diff before
+    any owned-path edit; another contributor's hunk blocks that file and this
+    closure until coordinated, separately committed, or clean. C1 Green never
+    edits/stages C1 Red tests. Use explicit-path staging only for wholly owned
+    paths; verify committed file list and content hashes exactly. Material
+    divergence requires literal ledger replacement and re-review. Commit
+    execution remains subject to the active agent's explicit git-authorization
+    boundary.
   - **Effort:** XL
   - **Dependencies:** SA-810.
   - **Guidance:** clean-architecture-rules, ip-clean-room.
+  - **Result:** Green. Setup Core compiles bounded JSON, restricted YAML, and
+    Linux directory snapshots through one normalized model and the existing
+    Wire authority. Architecture 10/10, composition 15/15, full Core 61/61,
+    exact YamlDotNet 18.1.0 graph, LSP, static-role, canonical parity, and
+    Release build gates passed. Windows directory input remains disabled.
 
-- [ ] **SA-830 — Add measured scale profiles and verify `SetupCompositionScaleTests` keeps canonical defaults while enabling only evidence-backed limits compatible with the target server**
-  - **Files:** new Setup Core scale profiles/benchmarks, generated limits,
-    docs and tests.
-  - **Acceptance:** Memory/time/stack evidence owns every larger profile;
-    unknown or target-incompatible profiles remain disabled; UI/CLI disclose
-    selected limits and never silently raise them.
+- [x] **SA-830 — Add measured scale profiles and verify `SetupCompositionScaleTests` keeps canonical defaults while enabling only evidence-backed limits compatible with the target server**
+  - **Closure:** C2 scale only, after C1 Green. It does not change parser
+    grammar, normalized model, wire identity, filesystem semantics, UI/CLI
+    adapters, or canonical default limits.
+  - **Owned paths:** new
+    `src/Event.Setup.Core/Composition/SetupCompositionScaleProfile.cs`,
+    `tests/Event.Setup.Core.Tests/SetupCompositionScaleTests.cs`,
+    `.omo/evidence/20260831-setup-assistant-security-and-portability/phase8-scale-results.md`,
+    new `eng/setup-assistant/GenerateSetupCompositionScaleProfiles.cs`,
+    `eng/setup-assistant/generated/composition-scale-profiles.json`, and the
+    new `docs/SETUP_COMPOSITION_SCALE.md`.
+  - **Profiles:** measure `small`, `medium`, `large`, and `ceiling` with exact
+    synthetic source kind, directory/file/entry counts, aggregate/per-file
+    bytes, depth, nodes/events, mapping/sequence counts, scalar lengths, and
+    canonical artifact size/hash. Record OS/architecture, CPU count,
+    available/total memory, process limits, filesystem semantics, SDK/runtime,
+    commit, warmup/iteration counts, median/p95 elapsed, allocated bytes, peak
+    working set, GC counts, stack-overflow disposition, and cancellation.
+    Runtime telemetry may emit only closed source-kind/profile/outcome plus
+    aggregate bytes/nodes/files/duration; never values, keys, paths, hashes,
+    exception text, tenant/user IDs, secrets, or provider/application data.
+  - **Acceptance:** The canonical default remains the SA-810 ceiling set.
+    Larger profiles activate only when evidence fits client and target-server
+    limits. Unknown, disabled, target-incompatible, or evidence-mismatched
+    profiles fail closed and never clamp, fall back, or silently replace the
+    default.
   - **Focused selector:**
     `dotnet run --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupCompositionScaleTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Immediate planned commit:** After deterministic profile tests and
+    controlled evidence pass, load `conventional-commit`, preserve unrelated
+    state, stage only owned paths, and use
+    `perf(self-hosting): record setup composition scale profiles`.
+    **Literal description:**
+    `Record deterministic small, medium, large, and ceiling composition
+    measurements with host and filesystem evidence.`
+    `Keep canonical defaults unchanged and fail closed for unknown,
+    incompatible, disabled, or evidence-mismatched profiles.`
+    **Literal footers:**
+    `Changelog: skip`
+    `Changelog-Reason: measurement-only governance with unchanged canonical composition defaults`
+    **Message override:** `Not overridden`.
+  - **Pre-commit ownership rule:** Every C2 owned path is new. Inspect index and
+    full diff before editing/staging; any pre-existing or another contributor's
+    hunk blocks the path until coordinated, separately committed, or clean.
+    Stage only wholly owned explicit paths, then verify the commit file list
+    and content hashes exactly. Material divergence requires literal ledger
+    replacement and re-review. Commit execution remains subject to the active
+    agent's explicit git-authorization boundary.
   - **Effort:** M
   - **Dependencies:** SA-820.
   - **Guidance:** criticality-guardrail.
+  - **Result:** Green. The warning-free controlled generator measured
+    `small`, `medium`, `large`, and exact 4,096-entry `ceiling` workloads,
+    recorded host/revision/time/allocation/GC/cancellation/target evidence, and
+    verified canonical size/SHA-256 parity 4/4. Admission rejects unknown,
+    disabled, evidence-mismatched, and target-incompatible profiles without
+    clamping or fallback. Focused scale 4/4 and architecture 10/10 passed.
 
 ### Phase 8 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release --verbosity quiet`
+- [x] `dotnet build --configuration Release --verbosity quiet`
+- [x] `dotnet test --project tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Phase 9: Live Target Enrollment And Secret-Provider Binding
 
 Plan reference: Phase 9 and Sections 3.14 and 5.11.
 
+### Phase 9 Bound D2 Staging
+
+| Stage | Status | Exact ownership / exit |
+|---|---|---|
+| D2-0 | Corrected Red approved | Isolated one-file API Red; single HTTP ownership; exact `SetupLiveMilestone` ID/name/operation/milestone; bounded evidence claims |
+| D2-1 | Corrected Green approved | Package-free `src/Event.Wire.Contracts/SetupLive/**`; Wire/Core/Architecture contract Red then Green; exclude every P9-008 type |
+| D2-2 | Green approved | `src/Explore.Domain/SetupLive/**`; Domain aggregate Red then Green for enrollment, issuance claim, operation, generation, revocation, and fingerprints |
+| D2-3 | Corrected Green approved | `src/Explore.Application/Contracts/SetupLive/SetupSecretBindingContracts.cs` plus exact `Contracts/Secrets/ISetupSecretBindingWriter.cs` and `ISetupSecretBindingCommitBarrier.cs`; no `Features/SetupLive` owner exists. `Invalid = 0`, UUIDv7 RFC-variant checks, exact scalar mappings, and borrowed-memory identity are Green. D2-7 owns executable pre-dispatch ordering, revocation race, selected writer/HMAC, idempotency, call-count, cancellation, and lease-disposal proof |
+| D2-4 | Green approved | Persistence configurations/repositories/DbSets/lock coordinator; real PostgreSQL race/tenant Green, five-provider model parity, and generator-produced migrations/snapshots for PostgreSQL, MariaDB, MySQL, SQLite, and SQL Server |
+| D2-5 | Green approved | Exact API controller/HAL/problem/rate/timeout/body/DI/OpenAPI owner; 16/16 owned scenarios, deterministic PostgreSQL issuance race, and weighted 100/100 Tier 1 approval |
+| D2-6 | Green approved | Persisted binding authority fails closed before cache or source access; cold matrix 3/3, warm-cache transition 1/1, full class 16/16, weighted 100/100 approval |
+| D2-7 | Current | Selected-authority write-only provider/HMAC commitment/race/idempotency Red then Green; no raw-value persistence/log or P9-008 dependency |
+| D2-8 | Pending | Canonical OpenAPI/client regeneration and generated schema/diff/closure gates; no hand edit |
+| D2-9 | Pending | One explicit protected-profile target disposition: evidence-backed `Active` or `ApprovedDisabled`, with no fallback |
+| D2-10 | Pending | Real public/generated contract, `SetupLiveAdapterSecurityTests` Red and review, then `src/Event.SetupAssistant/SetupLive/**` behavior |
+| D2-11 | Pending | Capability manifest/generator, docs/change fragment, full relevant tests, Release build, weighted MAD, and flags false until closure |
+
+Every stage requires its owning Red/review before behavior. Existing mixed-
+author files are narrow-hunk only. EF migrations/model snapshots and generated
+API/client artifacts are produced only by canonical generators after their
+source models/contracts are Green.
+
 - [ ] **SA-910 — Author live-authority Invariant-Breakers and verify `SetupLiveAuthoritySecurityTests` rejects token leakage, replay, cross-target tenancy, source authority, provider-coordinate disclosure, and secret readback**
-  - **Files:** new API and Setup live-adapter security tests.
+  - **Files:** new
+    `tests/Event.API.IntegrationTests/Features/SetupLiveAuthoritySecurityTests.cs`
+    only. The Setup live-adapter Red moves to the SA-920 contract-first
+    checkpoint because no public adapter seam exists and a test-owned or
+    reflection mirror would not exercise production behavior.
   - **Acceptance:** Red tests cover enrollment expiry/revocation, tenant scope,
     HAL authority, protected profile handles, write-only secret binding,
     provider readiness, RFC 7807 errors, and value-free logs/support evidence.
+    Every capability operation requires current bearer identity, exact actor
+    match, and fresh server authorization. Issuance never uses generic
+    response-body idempotency replay; duplicates return a value-free receipt.
+    Concurrent revocation fences provider/outbox effects before dispatch.
+    Exact route/header/media/HAL/ProblemDetails/persistence/observability
+    identities are frozen by
+    `../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase9-final-intake.md`; a guessed
+    404 is invalid. D1 covers absent-owner and no-dispatch paths without
+    mirroring future contracts. Provider-success/inverse-dispatch assertions
+    begin after the real writer seam exists in SA-930.
+    Every test resets/reseeds database and tenant/actor state, time,
+    authorization, and telemetry. Commit/dispatch races coordinate only on
+    structured event `SetupLiveMilestone` (`19620`) with exact
+    `SetupOperation`/`SetupMilestone` values, never arbitrary activity start.
+    D1 does not claim writer or resolver/source call counts; those begin after
+    the real static seams exist in SA-930.
   - **Focused selector:**
     `dotnet run --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupLiveAuthoritySecurityTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** L
@@ -594,7 +1190,10 @@ Plan reference: Phase 9 and Sections 3.14 and 5.11.
 
 - [ ] **SA-920 — Implement target enrollment, revocation, and optional protected profiles and verify short-lived scoped authority never enters portable artifacts or machine/process surfaces**
   - **Files:** new live Setup adapter, enrollment wire contracts, server
-    authorization endpoints/handlers, platform profile store and tests.
+    authorization endpoints/handlers, platform profile store and tests,
+    including new
+    `tests/Event.SetupAssistant.Tests/SetupLiveAdapterSecurityTests.cs` after
+    the generated/public live contract exists and before adapter behavior.
   - **Acceptance:** Interactive/device authorization binds exact target and
     tenant; profiles store only target identity and revocable protected handles;
     expiry/revocation clears authority; no long-lived plaintext token exists.
@@ -704,28 +1303,65 @@ Plan reference: Phase 11 and Sections 3.15 and 5.12.
   - **Dependencies:** SA-1120.
   - **Guidance:** auth-patterns, accessibility, criticality-guardrail.
 
+- [ ] **SA-1132 — Activate application-data migration Setup workspaces and verify every category action is HAL-gated, tenant-qualified, resumable, and truthfully recoverable**
+  - **Files:** generated migration client contracts; shared Setup presentation
+    workspaces; Active target adapters; focused UI/contract tests.
+  - **Acceptance:** Setup projects server-authored category scope, blockers,
+    checkpoints, progress, receipts, retry/cancel, and completion without
+    creating local custody or migration authority. HAL links exclusively gate
+    actions; no PII, payload, token, mapping secret, or provider coordinate
+    enters presentation messages, diagnostics, support evidence, or portable
+    artifacts. An absent presentation target records `ApprovedDisabled`.
+  - **Effort:** L
+  - **Dependencies:** SA-1130 and at least one Active presentation target;
+    otherwise an approved disabled UI disposition.
+  - **Guidance:** auth-patterns, accessibility, criticality-guardrail.
+
+- [ ] **SA-1135 — Author the sovereign-payment Worst-Break Red and verify a replayed cross-tenant finalization/refund race produces zero money intent**
+  - **Files:** focused real-database/provider-contract concurrency tests and
+    Tier 0 decision evidence.
+  - **Acceptance:** Deterministic coordination subscribes before triggering the
+    public-seam race and uses a bounded timeout without sleeps or internal
+    mocks. The intentional Red independently asserts zero cross-tenant rows,
+    zero provider/outbox money intent, unchanged checked ledger balances,
+    exactly one durable value-free conflict receipt, and zero PII/secret logs.
+  - **Focused Red selector:**
+    `dotnet run --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupPaymentMigrationWorstBreakTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
+  - **Effort:** XL
+  - **Dependencies:** D/E contracts; fresh Tier 0 Grill-Me, current I-VSD, CTO,
+    exact-revision user approval, and provider/legal/operator evidence.
+  - **Guidance:** criticality-guardrail, outbox-pattern, error-tracking.
+
 - [ ] **SA-1140 — Implement sale-control, review, handoff, reconciliation, and refund migration state machines and verify money cannot mutate before target/provider reconciliation and explicit approval**
   - **Files:** new sovereign migration Domain/Application/Persistence/API and
     Setup workflow contracts, real-provider concurrency tests, runbooks.
   - **Acceptance:** Payment operations are separate from data/config imports.
-    Before production code, F1's **Worst Break Red — Replayed cross-tenant
-    sovereign race** uses deterministic coordination and a bounded timeout at
-    the public seam with the real owning database/provider contract, without
-    sleeps or internal mocks. A stale/replayed capability plus tenant mismatch
-    races finalization/refund and asserts zero cross-tenant rows, zero
-    provider/outbox money intent, unchanged checked ledger balances, exactly
-    one durable value-free conflict receipt, and zero PII/secret logs. Checked
-    amounts/currencies/provider identities reconcile; conflicting or stale
-    state pauses; retries are idempotent; compensation follows repository-native
-    domain authority.
+    SA-1135 is already Red for the exact public seam. Checked amounts,
+    currencies, provider identities, recipients, and refund allocations
+    reconcile; conflicting or stale state pauses; retries are idempotent;
+    compensation follows repository-native domain authority.
   - **Focused selector:**
     `dotnet run --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release -- --treenode-filter "/*/*/*SetupPaymentMigrationInvariantTests/*" --minimum-expected-tests 1 --progress off --maximum-parallel-tests 1`
   - **Effort:** XL
-  - **Dependencies:** D/E contracts; F1 Worst Break Red failing for the intended
-    reason; fresh Tier 0 Grill-Me, current I-VSD, CTO and exact-revision user
+  - **Dependencies:** SA-1135 failing for the intended reason; fresh Tier 0
+    Grill-Me, current I-VSD, CTO and exact-revision user
     approval; exact provider/ledger/recipient/currency/refund reconciliation
     and provider/legal/operator evidence.
   - **Guidance:** criticality-guardrail, outbox-pattern, error-tracking.
+
+- [ ] **SA-1145 — Activate sovereign-payment API/HAL and Setup workspaces and verify no UI can synthesize money authority or completion**
+  - **Files:** generated sovereign-operation clients; HAL policies; Setup
+    presentation workspaces; Active target adapters; focused tests.
+  - **Acceptance:** Every review, handoff, reconciliation, retry, cancellation,
+    compensation, and refund affordance comes from server HAL. Presentation
+    renders pending/unknown/conflicting states truthfully and carries no amount,
+    recipient, provider credential, capability, PII, or secret through messages
+    or support evidence beyond approved value objects. An absent target records
+    `ApprovedDisabled`.
+  - **Effort:** XL
+  - **Dependencies:** SA-1140 and at least one Active presentation target;
+    otherwise an approved disabled UI disposition.
+  - **Guidance:** auth-patterns, accessibility, criticality-guardrail.
 
 ### Phase 11 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
@@ -775,11 +1411,6 @@ Plan reference: Phase 12 and Sections 3.10–3.15, 5.9–5.12, 8, and 9.
   - **Dependencies:** SA-420, SA-1220.
   - **Guidance:** `create-agent-context-skill` intent, skill-authoring.
 
-### Phase 12 Verification — RUN ONCE AFTER SA-1210 THROUGH SA-1240
-
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-
 - [ ] **SA-1250 — Complete I-VSD/criticality reconciliation, create the Tier 2 change fragment, and verify final commit composition only after every phase gate is Green**
   - **Files:** existing I-VSD report/dev-doc triad; new append-only change
     fragment; clean-room, MAD/security, privacy, payment, legal, accessibility,
@@ -790,9 +1421,25 @@ Plan reference: Phase 12 and Sections 3.10–3.15, 5.9–5.12, 8, and 9.
     terminal `feat(setup): ...` composition has exact `Change-Id` and required
     breaking footer; no commit is created without explicit user authorization.
   - **Effort:** M
-  - **Dependencies:** SA-1220, SA-1240, all Phase 1–12 verification checkboxes.
+  - **Dependencies:** SA-1220, SA-1240, every selected capability task, every
+    ApprovedDisabled disposition, and all Phase 1–11 verification checkboxes.
+    This task precedes the Phase 12 gate and has no self-dependency.
   - **Guidance:** criticality-guardrail, epistemic-mad-review,
     conventional-commit, review-pr, i-vsd.
+
+### Phase 12 Verification — RUN ONCE AFTER SA-1210 THROUGH SA-1250
+
+- [ ] `dotnet build --configuration Release --verbosity quiet`
+- [ ] `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
+- [ ] CLI release gate is Green or explicitly ApprovedDisabled.
+- [ ] BCL terminal release gate is Green or explicitly ApprovedDisabled.
+- [ ] Shared presentation release gate is Green or explicitly ApprovedDisabled.
+- [ ] Avalonia Browser release gate is Green or explicitly ApprovedDisabled.
+- [ ] Avalonia Desktop release gate is Green or explicitly ApprovedDisabled.
+- [ ] Terminal.Gui release gate is Green or explicitly ApprovedDisabled.
+- [ ] Live-control release gate is Green or explicitly ApprovedDisabled.
+- [ ] Application-migration release gate is Green or explicitly ApprovedDisabled.
+- [ ] Sovereign-payment release gate is Green or explicitly ApprovedDisabled.
 
 ## Remaining / Deferred Work
 

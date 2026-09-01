@@ -3,7 +3,7 @@
 
 # I-VSD Consultancy Report: Setup Assistant Security And Portability
 
-Last Updated: 2026-08-31
+Last Updated: 2026-09-01
 
 ## Review Metadata
 
@@ -13,25 +13,48 @@ Last Updated: 2026-08-31
 - Report kind: consultancy-report
 - Report status: current
 - Disposition: plan-aligned
-- Evidence cutoff: 2026-08-31
-- Reviewed input revision: `sha256:d2bbba40455c013e20883ab6202f84411bb05f2c20f6060a9e73095f44a8e4b1`
-- Supersedes: plan-aligned revision
-  `sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f`
+- Evidence cutoff: 2026-09-01
+- Reviewed input revision: `sha256:edb31317a5c48168e35e97bdd60e61df1e1625f463efa93cd76101768baa9eb8`
+- Supersedes: plan-aligned report revision
+  `sha256:ede7b1a58b10962a74fd00f6577c6c825ae4adba10bedb4a44eb573a0ddc679a`
 
 ## Scope
 
 This report evaluates a new, small, cross-platform ISLAMU Event Setup
 Assistant delivered through independently approved successors. Successor A is
-a package-free, BCL-only offline CLI and bounded interactive terminal wizard;
-its presentation, Browser, and Desktop projects are disabled, non-shipped
-contract shells. Successor B retains the user-approved GUI/browser/desktop
-outcomes but selects and proves its GUI graph independently. The product is a
-shipped user-facing application under `src/`, not an internal contributor tool.
+a Green package-free, BCL-only offline CLI and bounded interactive terminal
+wizard; its presentation, Browser, and Desktop projects remain disabled,
+non-shipped contract shells. Successor B retains the user-approved human
+presentation/browser/desktop outcomes and now targets a framework-neutral
+CommunityToolkit state model with independently gated Avalonia and Terminal.Gui
+adapters, but selects and proves every exact graph independently. The product
+is a shipped user-facing application under `src/`, not an internal contributor
+tool.
+
+The historical successor-B B0 triad, intake, binding, CTO review, and separate
+B0 plan-review I-VSD report cover a restricted shared-Razor/static-browser
+candidate. Every B0 artifact now marks that candidate superseded,
+non-executable, non-authorizing, never user-approved, and replaced before any
+probe. B0's binding and `IVSD-F047`–`IVSD-F053` remain historical provenance
+only: they cannot be revived, refreshed, transferred, or imported as approval
+or findings for B1.
 
 It covers:
 
-- one framework-neutral shared GUI experience targeting browser and desktop,
-  implemented only by independently approved successor B;
+- B1's CommunityToolkit-only framework-neutral human-presentation state model,
+  target-root-only DI, one injected messenger per operator session, explicit
+  recipient activation/deactivation, strictly monotonic operation-generation
+  fencing, single settlement, and value-free immutable messages;
+- shared Avalonia views for Browser/Desktop and a separate no-secret-only
+  Terminal.Gui adapter, each independently `Active` or `ApprovedDisabled`,
+  while an unapproved candidate is absent;
+- Browser/Desktop target-owned disposable secret sessions outside shared
+  ViewModels, messages, commands, bindings, validation, automation metadata,
+  and shared DI, with the Green BCL wizard remaining the sole terminal secret
+  path;
+- six-stage isolated non-shipping graph probes that preserve false product,
+  generated-capability, secret-entry, support, release, and shipping flags and
+  grant no authority merely by succeeding;
 - Windows, Linux, and macOS distribution;
 - Linux portable archives plus `.deb`, `.rpm`, Arch package, AppImage, and
   optional Flatpak paths subject to license and release review;
@@ -74,8 +97,16 @@ It covers:
 - accessibility, localization, RTL, support, release, incident, and evaluation
   duties.
 
-This is a product and security design report. It does not claim that the
-software has been implemented.
+This is a product and security design report. It records successors A, B's
+approved/disabled slices, and C through Phase 8 as Green. Successor D has only
+the approved D2-1 package-free Wire vocabulary; no Domain aggregate, live
+capability, server endpoint, provider write, profile, adapter, deployment, or
+release exists. The current revalidation binds that contract-only Green over
+the accepted Tier 1 live-enrollment threat/Red packet and preserves D2-2
+onward as conditional under exact authorization, tenant, replay,
+protected-profile, write-only secret, provider, HAL, CTO/MAD, and stage-review
+gates. D1 owns one observed API Red; the Setup adapter Red occurs at SA-920's
+public-contract checkpoint before adapter behavior.
 
 ## Claim Boundary
 
@@ -170,10 +201,13 @@ boundary.
     unresolved and exact publish exclusion of `Avalonia.Remote.Protocol` is
     unproved. Successor A pins/restores no Avalonia package and may create only
     package-free disabled presentation contract shells.
-22. Successor B retains every user-approved GUI/browser/desktop and
-    accessibility outcome. It requires a provenance-complete graph or new
-    publisher-authoritative component/build evidence plus fresh I-VSD, CTO,
-    user, dependency, security, and accessibility approval before activation.
+22. Successor B retains every user-approved human-presentation/browser/desktop
+    and accessibility outcome. Its desired decomposition is a
+    CommunityToolkit-only ViewModel/message owner, a separate shared Avalonia
+    view project, and a separate Terminal.Gui event/command adapter; machine
+    CLI/Core remain outside MVVM. Every exact graph still requires
+    provenance-complete evidence plus fresh I-VSD, CTO, user, dependency,
+    security, and accessibility approval before activation.
 23. The expanded plan keeps YAML/directory inputs as bounded source adapters
     that converge on canonical v1alpha2 JSON; they do not become wire formats.
 24. Live target, tenant, HAL, provider, import, transfer, and transaction
@@ -185,10 +219,653 @@ boundary.
 26. The current payment baseline is `OrganizerDirect`; merchant recipient and
     currency are pinned, partial refunds have deterministic line allocation,
     and provider acceptance is not terminal until reconciliation.
-27. Prior CTO and user approvals bind an obsolete successor-A revision and do
-    not approve the changed BCL-only strategy. Fresh revision-bound CTO review
-    and exact-revision user approval are mandatory before SA-120 scaffolding
-    resumes; all later Tier 0/1/2 and successor gates remain independent.
+27. The corrected CTO and user approvals bind successor A's exact BCL-only
+    revision, which is now Green. They grant no authority to the re-baselined
+    successor-B architecture or any later Tier 0/1/2 successor; every later
+    gate remains independent.
+28. The successor-B B0 Razor/browser triad, intake, CTO review, binding, and
+    separate plan-review I-VSD report are explicitly superseded,
+    non-executable, non-authorizing, and historical. B0 received no user
+    approval and ran no probe; none of its conditional decisions or IDs can be
+    reused for B1.
+29. The final-Red B1 binding
+    `setup-assistant-security-and-portability-b1-final-red-20260831` binds the
+    exact current plan, final tasks, context, clean-room/dependency and probe
+    evidence, intake and post-probe verdicts, the second `Changes required` CTO
+    review, three final test files, and unchanged product/central dependency
+    preimages reviewed here.
+30. SA-510 still approves CommunityToolkit.Mvvm `8.4.2` only for shared
+    presentation and Microsoft DI `10.0.10` plus Abstractions `10.0.10` only
+    for executable roots. The final SA-518 Red retains 18/18 owner-local
+    presentation failures and 14 architecture tests with only
+    `SA518-GRAPH-RATCHET` failing.
+31. Avalonia shared, Browser, and Desktop `12.1.1` and Terminal.Gui `2.4.17`
+    remain `ApprovedDisabled`, absent, unresolvable, and unsupported. Product
+    pins, references, locks, implementation, capabilities, support, release,
+    and shipping remain unchanged in the bound preimage.
+32. The Phase 8 binding
+    `setup-assistant-security-and-portability-phase8-20260831` matches its
+    expected SHA-256 and every named planning, Core, test, lock, and central-pin
+    preimage was independently recomputed without drift.
+33. The isolated YamlDotNet `18.1.0` probe resolves one direct node with no
+    transitives and exercises only `YamlStream`, `YamlMappingNode`, and
+    `YamlScalarNode` against bounded in-memory syntax. It is absent from product
+    projects, locks, solution, CI, capabilities, support, release, and shipping.
+34. Phase 8 remains unimplemented. No composition owner, parser reference,
+    directory adapter, schema, generated artifact, or scale profile exists in
+    the bound Core/test preimage; SA-810 is therefore the next intentional Red.
+35. The corrected Phase 8 binding
+    `setup-assistant-security-and-portability-phase8-corrected-20260901`
+    matches its expected SHA-256 and every named planning, evidence, review,
+    report, Core, test, lock, and central-pin preimage was recomputed without
+    drift.
+36. Corrected C1 Red owns only three test/fixture paths and a future public Core
+    seam: `SetupCompositionCompiler`, `SetupCompositionLimits`, typed source/
+    result/failure contracts, and an exact directory snapshot/commit barrier.
+    Its fourteen matrices, numeric ceilings, deterministic barriers, and Phase
+    8 Worst Break are now executable requirements rather than broad topics.
+37. C1 Green is Core-only syntax-tree and canonical-parity closure. It excludes
+    presentation/source pickers and C2 scale; Linux directory semantics require
+    real-filesystem evidence, while Windows directory input remains disabled
+    unless a Windows runner proves equivalent handle-safe behavior.
+38. C2 begins only after C1 Green, measures named profiles, and keeps the
+    canonical SA-810 defaults unchanged. Every slice owns exact paths,
+    verification/failure disposition, explicit-path staging, unrelated-state
+    preservation, material-override recording, and post-commit file/hash checks;
+    this report authorizes no commit execution.
+39. The final Phase 8 binding
+    `setup-assistant-security-and-portability-phase8-final-20260901` matches its
+    expected SHA-256 and all fourteen named artifact/product preimages were
+    recomputed without drift. Technical matrices, ceilings, public seams,
+    platform rules, Worst Break, and C1/C2 split are unchanged.
+40. Final governance narrows C1 Red to exactly two new test files; makes the
+    existing central YamlDotNet pin read-only for C1 Green; pins exact Green
+    Core/lock/docs/change-fragment paths and matching `Change-Id`; makes every
+    C2 path a new file; and binds literal descriptions, changelog/trailers,
+    `Message override: Not overridden`, mixed-author blockers, and exact
+    post-commit file/hash checks without authorizing a commit.
+41. Phase 8 is now Green. Generated profile verification passed 4/4, focused
+    scale tests passed 4/4, Setup Core architecture passed 10/10, full Setup
+    Core passed 65/65, and the Release build completed with zero errors.
+42. The measured `small`, `medium`, `large`, and exact 4,096-entry `ceiling`
+    profiles remain bound to canonical defaults, target Wire acceptance,
+    cancellation, host/runtime/process limits, canonical size/SHA-256, and
+    evidence-digest admission. `expanded` is known-disabled.
+43. Configuration import already supplies a repository-native security pattern
+    for successor D: one-time capability issuance, digest-only persistence,
+    fixed-time comparison, exact target binding, expiry/cancellation/
+    consumption, header-only transport, no token in HAL hrefs, and bounded
+    ProblemDetails.
+44. Normal bearer identity, `PlatformIdentityPrincipalExtensions`, server
+    tenant resolution, resource authorization, idempotency middleware, and HAL
+    filtering remain the only existing API authority chain. Setup adds no
+    identity parser or browser-trusted authority header.
+45. `SecretBinding` persists provider coordinates but no values;
+    `ISecretResolver` is read-only and dispatches to exactly one selected
+    source. No approved write-only Setup provider API exists, so D1 must test
+    the future boundary and D2 must introduce a purpose-specific write seam
+    without turning resolution into readback.
+46. The Phase 9 intake binds normal bearer-to-purpose-capability enrollment,
+    route-derived tenant authority, SHA-256-only capability persistence,
+    terminal revocation, monotonic generation, UUIDv7 idempotency
+    fingerprinting, protected-handle-only profiles, write-only allowlisted
+    bindings, value-free readiness, generic failures, HAL-only actions, and
+    offline continuity.
+47. Corrected D1 SA-910 owns exactly one absent API integration test and no
+    production path. The absent Setup adapter test moves to SA-920 after a
+    public/generated live contract exists and before adapter behavior. Fresh
+    CTO/MAD and exact-revision user approval remain mandatory before D1.
+48. Independent review found that generic response idempotency could persist/
+    replay a one-time capability, the first packet allowed capability identity
+    ambiguity and lacked a revocation/effect race fence, and current request
+    fingerprinting omits Setup enrollment generation. The corrected intake
+    uses an Application-owned value-free issuance claim, current bearer/actor
+    authorization on every action, exact generation-bound fingerprints, and
+    transactional plus dispatch revocation fences.
+49. Capability shape is now exact: 32 cryptographic bytes, canonical unpadded
+    43-character Base64url, SHA-256-only persistence, bounded parsing, and
+    fixed-time comparison. Every invalid branch is byte-identical RFC 7807.
+50. Independent review also confirmed a relevant current defect:
+    `SecretResolver` may synthesize a registry default after an explicit
+    persisted source mismatch. D2 must make explicit mismatch `Invalid` and
+    prove zero fallback calls before SA-930 can be Green.
+51. D1 created exactly
+    `SetupLiveAuthoritySecurityTests.cs`. The API integration project compiles
+    with zero D1 warnings; 10/10 tests are discovered and all ten fail only for
+    the absent exact controller/route family before deeper assertions.
+52. Corrected D1 uses runtime cryptographic canaries, real HTTP/tenant/EF
+    seams, deterministic time and exact structured-log milestone barriers, and
+    capture-all observability.
+    It adds no product, package, lock, migration, generated client, adapter,
+    staging, commit, release, or shipping authority.
+53. D2-0 makes every test reset/reseed database and tenant/actor state, time,
+    authorization, and telemetry; fixes single request ownership; and narrows
+    D1 claims so writer and resolver/source call counts, provider success, and
+    final dispatch ordering begin only after real static D2 seams exist.
+54. D2-0b requires the exact milestone event ID/name plus operation/milestone,
+    describes explicit source mismatch as HTTP response-shape/value-exclusion
+    evidence only, and records D2-1 through D2-11 plus generator-produced
+    migrations/snapshots for PostgreSQL, MariaDB, MySQL, SQLite, and SQL Server
+    in plan/tasks/context.
+55. D2-0c corrects operational entry points only: tasks/context identify
+    D2-0b technical acceptance, require final review and explicit `approve`,
+    direct the next product action to D2-1 Wire contract Red only, prohibit
+    later-layer work early, and keep capability flags false through D2-11.
+56. D2-0d makes that resume path singular: all old session-progress,
+    quick-resume, and handoff directions are explicitly historical,
+    superseded, and non-executable; task/context status now names D2-0d final
+    review and future explicit `approve`.
+57. D2-0e corrects the sole remaining current contradiction: successor D now
+    names D2-0e final review, absent product/capability ownership, required
+    explicit `approve`, and D2-1 Wire Red as the sole first product slice.
+58. D2-0f corrects the last stale authoritative planning-status sentence so
+    every current surface names D2-0f final review and preserves the same
+    explicit-approval and Wire-first boundary.
+59. The user explicitly approved the reviewed D2 sequence. D2-1 alone is now
+    Green: package-free Wire metadata, immutable strict data, closed enums,
+    canonical redacted capability syntax, and source-generated JSON passed
+    Wire/Core/Architecture Red then Green without creating live authority.
+60. Initial D2-1 review found default capability serialization and permissive
+    generated JSON. Corrected D2-1 makes capability release method-only,
+    challenge/scope parsing canonical, every enum string-only, metadata closed,
+    and tests execute the shipped source-generated context.
+61. Corrected D2-1 review approved at 100/100. D2-2 now has a seven-test
+    attributable Domain Red for absent enrollment, issuance-claim, and
+    secret-operation owners, with no Domain product or outer-layer behavior.
+62. Initial D2-2 review required stronger dispatch, replay, mutation,
+    temporal, surface, audit, and concurrency closure. The corrected 14-test
+    Red closes those findings, removes prospective Domain `Revision`, uses
+    Persistence-managed `ConcurrencyStamp` only, and fails 5/3/6 on the exact
+    three absent owners.
+63. Second D2-2 review required complete accepted terminal results, actor/user
+    audit separation, and value-free exception diagnostics. The final Red
+    closes all three: exact named terminal snapshots, actor-only lineage with
+    user audit fields left for later authenticated ownership, and runtime
+    canary exclusion across exception chains.
+64. Final D2-2 Red review approved at 100/100. Three Domain owners now
+    implement the exact enrollment, issuance-claim, and secret-operation
+    contract; focused and full Domain suites are Green. Green execution also
+    corrected inherited-framework reflection false positives without
+    weakening the closed Setup live public surface.
+65. D2-2 Domain Green review approved at 100/100. D2-3 now has a seven-test
+    attributable Application contract Red for one-way writer, versioned
+    commitment, per-enrollment coordination, and exact dispatch-barrier ports,
+    with no handler, Persistence, provider, API, or activation behavior.
+66. Initial D2-3 review found unreachable closure contradictions, missing
+    constructor/lifetime/diagnostic invariants, and overstated race ownership.
+    Corrected Red closes executable constructor/metadata boundaries, defines
+    request bytes as borrowed, and assigns all executable ordering/race/
+    call-count/cancellation/lease proof to D2-7.
+67. The corrected D2-3 review found inherited public-surface escape hatches,
+    unenforced borrowed backing identity, and narrow UUID/diagnostic negatives.
+    Final Red forbids inherited contract surfaces, proves exact backing-segment
+    aliasing, rejects UUIDv1/v4/v6/v8, and denies transformed byte diagnostics.
+68. The final D2-3 review found one remaining complete-member bypass through
+    special-name interface methods and request/result fields/events. Complete
+    Red closes every public member kind and scans public field types.
+69. The complete D2-3 review found CLR-semantic bypasses in static/default/
+    generic ports, indexers/explicit interfaces, enum numeric values,
+    attributes, ownership, and forwarding. Exhaustive Red closes those
+    modifiers, private metadata, values, compiler metadata, and ownership.
+70. The exhaustive D2-3 review found private interface/metadata/enum behavior,
+    incomplete implementation flags, permissive compiler-attribute provenance,
+    and partial assembly/module inventory. Closed Red uses exact SDK witnesses,
+    all-visibility closure, and exact assembly/module/prefix baselines.
+71. The closed D2-3 review found residual Property/Param/Field table flags,
+    constructor return metadata, enum storage metadata, and textual attribute
+    identity. Approval-ready Red compares complete witness metadata and
+    structural attribute identities/payloads.
+72. The approval-ready D2-3 review found assembly/module attributes remained
+    full-name based and manifest-only. Final approvable Red binds exact BCL
+    attribute identities/payloads, one manifest module, and owner placement.
+
+D2-0d governance evidence is:
+
+- **E097:** D2-0d binding
+  `setup-assistant-security-and-portability-phase9-d2-0d-final-20260901`,
+  `sha256:9c935d1abb73002656bf4b2407c5700d43f316acf94e2dc98b7c3db1e1b886cb`.
+- **E098:** D2-0d correction/approval/evidence:
+  correction
+  `sha256:67d0263c58a06325b4ecebdcd6122f7d38188e707c35b1ee59f611bbf3a014f2`,
+  approval
+  `sha256:9028de169d44fc54a8e2e096db6fca87d383ce66cbae5a29b20ba93e0708a3f1`,
+  and evidence
+  `sha256:8e63503c7f5f749f80495d83837cc334865e91d98f371cfec9b72c871fd9d089`.
+- **E099:** D2-0c Changes-required review plus corrected canonical ledgers:
+  review
+  `sha256:e9f446c24b4ba9412e0ad7c133c3ad67855c2b17932819435e1ea293f9ef0282`,
+  tasks
+  `sha256:8ed36d8c25e32523423f13fd20c0497c7fef19070dbc2fddc00f01d6adff38e1`,
+  context
+  `sha256:59b65971ad93921afd3568e7b348a8c0705730f6594557e01b32311eb24133e7`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+D2-0d changes no executable/product fact and introduces no new finding. It
+preserves IVSD-F038/M038, F039/M039, and F040/M040 while removing contradictory
+authorization-routing prose.
+
+D2-0e governance evidence is:
+
+- **E100:** D2-0e binding
+  `setup-assistant-security-and-portability-phase9-d2-0e-final-20260901`,
+  `sha256:15aed34796930152e3e2dee19ab042b84f978a4d37b743cf9d0bae52bc718c9c`.
+- **E101:** D2-0e correction/approval/evidence:
+  correction
+  `sha256:5340ec315f6fcf38bab2ba1cc87c659fc2150fe291451f7f3d7771baa84c49a4`,
+  approval
+  `sha256:d19b17b242ba5532f6fb61ea49823a8fcbbeb5819296e86df232e35b1ee83c4a`,
+  and evidence
+  `sha256:308f4d25dcbff9057cf16e549d88b77b4edf5b6fbb71be18e178c2c60a0401c7`.
+- **E102:** D2-0d Changes-required review plus corrected canonical ledgers:
+  review
+  `sha256:36c00e1ed7db2aa5acfd0f185545ae84f8487d5fdd03ec92b67417a98da59b88`,
+  tasks
+  `sha256:64e372be271d52389bfb50fadbf1f1b19d3b95f20cad163ac39cc4804b1ba2ea`,
+  context
+  `sha256:f4c0ce97848eb4bbb2c9c9c579fb67bffc6a39179072b38a3f522d6a75843fe2`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+D2-0e changes no executable/product fact and introduces no new finding. It
+preserves IVSD-F038/M038, F039/M039, and F040/M040 while making every current
+ownership/status/resume surface coherent.
+
+D2-0f governance evidence is:
+
+- **E103:** D2-0f binding
+  `setup-assistant-security-and-portability-phase9-d2-0f-final-20260901`,
+  `sha256:9bdd703dd91801b436e602d9418b6d7d93a325cc8f35f037c6ed3620e077de73`.
+- **E104:** D2-0f correction/approval/evidence:
+  correction
+  `sha256:7386fb21ec2e36615247f27dbcbb2e8c800faa93b23142bf4ae4f4a03396f30c`,
+  approval
+  `sha256:0ae75140cb02dd96da229e526d3bbb5fbf6cc837ca2b77e7c827dcef0505926e`,
+  and evidence
+  `sha256:e7d416f403feb432de8b7314031f1258a11b00c284f2f4bd9137e64d67563297`.
+- **E105:** D2-0e Changes-required review plus corrected canonical ledgers:
+  review
+  `sha256:2d563b00938b614323a49c5d7cc2786e1f0651d2e05617198badca9ddeae5028`,
+  tasks
+  `sha256:1fa158bf1098624b87391c06c1568802c15ab299afad44716839ec089ec2a4c8`,
+  context
+  `sha256:56d2f1bf23b1674afb451f698bb966d82d4033fd8a6289ecf79276189fb970c3`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+D2-0f changes no executable/product fact and introduces no new finding. It
+preserves IVSD-F038/M038, F039/M039, and F040/M040 while making every current
+planning/ownership/status/resume surface coherent.
+
+D2-1 implementation evidence is:
+
+- **E106:** D2-1 review binding
+  `setup-assistant-security-and-portability-phase9-d2-1-green-20260901`,
+  `sha256:cb2292e484bf137c5b6f4d963733fa282cc54100dc50ec06f226ca2b7261c3e9`.
+- **E107:** explicit product approval and Red/Green evidence:
+  approval
+  `sha256:a5d01cb1d91a071c7885316edb3ec27f244d8f36e44687ebe6d4344dbeb6b97e`
+  and evidence
+  `sha256:cc73a3a6d36099f4593f08d6a90855e93174d69c0125ea13369a24a15f60e106`.
+- **E108:** canonical ledgers:
+  tasks
+  `sha256:c5c44977a61e1b32821cdbe711382f5e05ddb5dbbfc9eb993c76d8792a4f8054`,
+  context
+  `sha256:55be28a8e76bd1d321ed2bc9fab9a595064b19f34550d0611d7d9323589c2873`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+D2-1 adds only BCL/package-free transport syntax and immutable public data.
+The capability value is canonical/redacted and absent from JSON response
+contracts. Public outputs exclude authority, provider-coordinate, value, and
+P9-008 registration-provider surfaces. No server/provider behavior exists.
+This strengthens IVSD-F038/M038, F039/M039, and F040/M040 without adding a
+finding.
+
+Corrected D2-1 evidence is:
+
+- **E109:** corrected D2-1 binding
+  `setup-assistant-security-and-portability-phase9-d2-1-corrected-green-20260901`,
+  `sha256:1fa56ed5cf964151826cfd68a712657cb963ff29f5c1f4d10291ccaaccd6c2f7`.
+- **E110:** initial Changes-required review and corrected Red/Green evidence:
+  review
+  `sha256:61976036324b4f436ec3fd6271c18ae88de4ae2b14dbb1e5da6129f1873014ba`
+  and evidence
+  `sha256:fb4334dec215ac0fb03b23e6d6117772148dae2b642ff22c4ccde7ca2b439936`.
+- **E111:** corrected canonical ledgers:
+  tasks
+  `sha256:0f1be477a9a9eb84e792c1f632443a5d2695f39c30aec859db1d77afd5f91fd0`,
+  context
+  `sha256:c1809f4170f30735d01463c14d9622ed82dd076b9e83c405f2dc57aa113140fb`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+The correction moves lexical validity into the Wire boundary rather than
+deferring it to Domain. It prevents default JSON/public-property capability
+disclosure; rejects invalid challenge/scope/enum forms through the shipped
+context; and closes metadata aliases. No authority or provider behavior was
+added. IVSD-F038/M038, F039/M039, and F040/M040 remain sufficient.
+
+D2-2 Red evidence is:
+
+- **E112:** D2-2 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-2-red-20260901`,
+  `sha256:08cd9144a496522f27da007dd611177eae8a87798f662ea30302d53b6a03556a`.
+- **E113:** corrected D2-1 approval and D2-2 Red evidence:
+  review
+  `sha256:cd9b41d98111914e4aba5a392ebe0fe9d981c52f4d2d376a75eae74ca68ca72c`
+  and evidence
+  `sha256:44270c031d914201a48243cb68a945dfb77af27a8fda42bc6e13e0ad33cf2a12`.
+- **E114:** D2-2 Red and canonical ledgers:
+  test
+  `sha256:3c08bb1b93816f6ac5b2f1010c6c6215de71d063753e95508d2632f23d0d81b0`,
+  tasks
+  `sha256:d0dbb5ec0897d6616047dab9925a0807000916a0bad100570c10cf605dee7dfa`,
+  context
+  `sha256:5450da31bd12c7e841d6e394d1f79e5476b6b3add65ac7fc11e84ff396b64899`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+The Red freezes tenant/actor/generation lineage, monotonic rotation, terminal
+revocation/expiry, value-free issuance matching, accepted-to-terminal secret
+operation behavior, dispatch fencing, and digest/commitment-only evidence.
+Seven tests fail only for absent exact Domain owners. No authority or provider
+behavior exists yet. IVSD-F038/M038, F039/M039, and F040/M040 remain sufficient.
+
+Corrected D2-2 Red evidence is:
+
+- **E115:** corrected D2-2 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-2-corrected-red-20260901`,
+  `sha256:1bb0b910eee24795f8bed638d2f39613107b87d02647a7235dce855185cdce0f`.
+- **E116:** initial changes-required review and corrected evidence:
+  review
+  `sha256:9176183c69a1b595182acbfdb58a603d4a478be6b3622dfaa06476223a010c05`
+  and evidence
+  `sha256:e3f10d42bceed7d92fe9bffb12b4a1739b6a8be7ebcfd1d80d64f7bb395d912f`.
+- **E117:** corrected Red and canonical ledgers:
+  test
+  `sha256:c37c566a4262763c96b609e1f43b806d1dfca706c39cf58a2f8602720f13a63d`,
+  tasks
+  `sha256:58eb6d7352d36f4238558aa7e362c0144b450e6ae265677a6963c9a42349c3cb`,
+  context
+  `sha256:816990edb12c4b989dc624dfe0043479913a1e1de036f2312ce44e096b4e2af7`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+The corrected Red closes cross-bound dispatch, exact replay/commitment
+conflicts, rejected-mutation atomicity, UUIDv7/UTC/chronology/overflow,
+terminal matrices, exact value-free public surfaces, audit ownership, and the
+single Persistence-managed concurrency token. Fourteen tests compile and fail
+5/3/6 on the exact absent owners. No authority or provider behavior exists
+yet. IVSD-F038/M038, F039/M039, and F040/M040 remain sufficient.
+
+Final D2-2 Red evidence is:
+
+- **E118:** final D2-2 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-2-final-red-20260901`,
+  `sha256:90fc0b3be5ff307ffcc6466abb4b25d53711db1d344e3bd660f3812d4d6d34e7`.
+- **E119:** second changes-required review and final evidence:
+  review
+  `sha256:225120ba60178747284f57d2d837736bf381df8b4f77c7590920a0475b4fc114`
+  and evidence
+  `sha256:dff83e5860c548a0428413a56dc7399b4e59d0326c46deb3211a25620e8654d0`.
+- **E120:** final Red and canonical ledgers:
+  test
+  `sha256:6e2146f7520c2466a93a8285fdc55b6d24d94871ce26094e3051a887c7a8eaea`,
+  tasks
+  `sha256:95b3c6ec6099b867adbc958e8ad1c8211773264a41ecc6057b7bf0d6e2f83280`,
+  context
+  `sha256:6db2f721f8c9f537a121907e78eca4c3147a2772c30ce59c0c192b874c3a9b83`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+The final Red requires exact accepted terminal results, separates actor lineage
+from later authenticated-user audit assignment, and excludes runtime evidence
+canaries from exception chains. Fourteen tests still compile and fail 5/3/6
+on exact absent owners. No authority or provider behavior exists yet.
+IVSD-F038/M038, F039/M039, and F040/M040 remain sufficient.
+
+D2-2 Domain Green evidence is:
+
+- **E121:** D2-2 Green binding
+  `setup-assistant-security-and-portability-phase9-d2-2-green-20260901`,
+  `sha256:a34e6535fc6d8cbd599c618f26b8c7da002c37096ca19ba9661bcd4301122a02`.
+- **E122:** final Red approval and Green evidence:
+  review
+  `sha256:7723a3bd5663ba19a65f5c03f38b1a3c9df336692baaff7ca67ab04ca0725bd4`
+  and evidence
+  `sha256:2dfaad6ee5b78725c98f7009cf865d880695418a16bb72918e560d1e432fe01c`.
+- **E123:** Domain owners, final test, and ledgers:
+  enrollment
+  `sha256:c5b7b84cee92a35efe57e5834ff472853d5bcea8cd294bfdaaf4c2b36c313cde`,
+  claim
+  `sha256:11c9397d7fddc2972de7e4c74a403cf78098f9d87000ab2a54368bd899c89a9f`,
+  operation
+  `sha256:7ed7ab4340f218aa079c442e22ec11d2cb243264126aa76d44e338e71d5daf39`,
+  test
+  `sha256:ab3d630e7d4dad93f45a806aa557b9783590dced76fdf0433d111842a92092d3`,
+  tasks
+  `sha256:690b372347bcd8d08cc23e075f479c7e0f48565d88bb6bd936547f95f0af2f1e`,
+  context
+  `sha256:bc15d40ed289f56b2f1bbd50413405b78fa698befdf698e2511dd2f5b7562122`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+Domain Green is 14/14 focused and 1089/1089 full Domain, with 17/17 relevant
+architecture guards and a zero-warning Domain build. The full architecture
+suite has one D2-2-unrelated Phase 5/8 SetupAssistant lock-ratchet mismatch,
+bound and disclosed in E122. No outer owner or active capability exists.
+IVSD-F038/M038, F039/M039, and F040/M040 remain sufficient.
+
+D2-3 Application Red evidence is:
+
+- **E124:** D2-3 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-3-red-20260901`,
+  `sha256:bea912c635f0238a5bee2abc20f7b37f2123780d20fb816728580056b407e3a6`.
+- **E125:** D2-2 Green approval and D2-3 Red evidence:
+  review
+  `sha256:bf46d5c7fe2e3a8c56d8e0ffb0dc72375e38b0bb2b4eb38d1508adcf97479db2`
+  and evidence
+  `sha256:b4be470d195860a3359868c11feff96dd4e0d579f633349b20a01a23119d6e1f`.
+- **E126:** D2-3 Red and canonical ledgers:
+  test
+  `sha256:c9f5b901896d35ef29bac9e9df70e48e9519d1c301bf1627f206fce3f30d7ccc`,
+  tasks
+  `sha256:c2416986bf812fb90351765ddee9cac56c90fb2c93908cd43c2154d965d2868b`,
+  context
+  `sha256:4336d2f811b020c6c8c3412560228045a3cc6f155b55ed75607650e3fa57aabe`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+The Red freezes cancellation-aware one-way writer, versioned HMAC commitment,
+per-enrollment-generation lock, and payload-free dispatch-barrier contracts.
+Seven tests compile and fail only for exact absent Application owners. Actual
+dispatch, HMAC, distributed locking, races, call counts, handlers, and provider
+effects remain later owners. IVSD-F038/M038, F039/M039, and F040/M040 remain
+sufficient.
+
+Corrected D2-3 Application Red evidence is:
+
+- **E127:** corrected D2-3 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-3-corrected-red-20260901`,
+  `sha256:0dbc26bc5628e6e174e431e3a3e912239fa661f60666e178797bdbbf59079db0`.
+- **E128:** initial changes-required review and corrected evidence:
+  review
+  `sha256:eb4fdef0afae5633fdf0451327895df516f2f894f3f0c0473171543a641ee9b9`
+  and evidence
+  `sha256:16bb842e3e298058733682e50c294c3bb2f367058b315c6e208aa22a691d55ed`.
+- **E129:** corrected Red and canonical ledgers:
+  test
+  `sha256:801d964556d3e3cc0ca11500823d091b9c389a539baf47350b0ffb37c7637dcc`,
+  tasks
+  `sha256:912499ed4ae255a6c671f58c80329c65f83a6ca7525fa95cd7e4ef4b2fdd2142`,
+  context
+  `sha256:6038e66e124cacc6a2a6fb0a9dd51341d08d426e5794c30b263689b659db2b7f`,
+  and corrected plan
+  `sha256:0fc0037f1ac0cca143cb832e42c59302937901d7a1464b39f00162e968d8f06e`.
+
+Corrected Red is Green-satisfiable: constructor boundaries validate UUIDv7,
+positive versions, closed binding keys, bounded borrowed bytes, and commitment
+syntax; runtime diagnostics are value-free; metadata is exact; lock identity
+cannot split linearization; and D2-7 truthfully retains executable writer/race
+proof. Seven tests retain exact absent-owner attribution. IVSD-F038/M038,
+F039/M039, and F040/M040 remain sufficient.
+
+Final D2-3 Application Red evidence is:
+
+- **E130:** final D2-3 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-3-final-red-20260901`,
+  `sha256:732ad07fd18177326b3afc9a78833201b96dba383d67373919420affc89f0286`.
+- **E131:** second changes-required review and final evidence:
+  review
+  `sha256:8fd588fa609f9884eabc1feff9197ad3e55c5476234dfcc9056bf2d792406550`
+  and evidence
+  `sha256:d855661aa02e6721865bf49ef696a0f52c1eb70faaff0937c1ec7e37d61fdff7`.
+- **E132:** final Red and canonical ledgers:
+  test
+  `sha256:2cada8a0adeb210f1fa8cd626321c946d3e3ebe8b080c0e7597897736d057463`,
+  tasks
+  `sha256:302db716520657d3b4f0a8534dd32525a727e18ab5880f925950ab2c9d6109da`,
+  context
+  `sha256:dc25ca4a2fb13e46536847e200ab1bb82b3c42aae2123f748e7f4e876d8f15a7`,
+  and plan
+  `sha256:0fc0037f1ac0cca143cb832e42c59302937901d7a1464b39f00162e968d8f06e`.
+
+Final Red closes inherited interfaces and class bases, inspects complete public
+member/type semantics, proves exact borrowed array-segment identity and
+mutation visibility, rejects UUIDv1/v4/v6/v8, and denies plaintext, hex,
+Base64, and decimal byte diagnostics. Seven tests retain exact absent-owner
+attribution. IVSD-F038/M038, F039/M039, and F040/M040 remain sufficient.
+
+Complete D2-3 Application Red evidence is:
+
+- **E133:** complete D2-3 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-3-complete-red-20260901`,
+  `sha256:d7cbbcb14ecf15abdbd649cbb9ccce7b52672d97d972c534498225d81b27e39d`.
+- **E134:** third changes-required review and complete evidence:
+  review
+  `sha256:b2175ea8442cbc0af882bfacc1948f75aa5055e5052528bb3d9d8a0c9d326d99`
+  and evidence
+  `sha256:732bb6cf66a8f95505104518731801166d0ed84edb6e7b0659f4916fd1e33432`.
+- **E135:** complete Red and canonical ledgers:
+  test
+  `sha256:25a4086f985a6228c5f2fc6d0d801ac2f1c3bad256b78fc35f4982755dc068d2`,
+  tasks
+  `sha256:976be808357aa67934e39a46dff1d3aa7ef782b6aa9948d18edcca9505941770`,
+  context
+  `sha256:dc1ac9876d79c2f02e76157063611a071908e36c9cb3aa9134d285036fe0e8bd`,
+  and plan
+  `sha256:0fc0037f1ac0cca143cb832e42c59302937901d7a1464b39f00162e968d8f06e`.
+
+Complete Red includes special-name interface methods in exact comparison,
+forbids every unapproved public property/field/event/method/operator/nested
+type, extends static metadata closure, and scans public field types. Seven
+tests retain exact absent-owner attribution. IVSD-F038/M038, F039/M039, and
+F040/M040 remain sufficient.
+
+Exhaustive D2-3 Application Red evidence is:
+
+- **E136:** exhaustive D2-3 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-3-exhaustive-red-20260901`,
+  `sha256:fc1e95aef0afd6c759e2bf277d0359e8b39530445d67910d510eb6d401150c1d`.
+- **E137:** fourth changes-required review and exhaustive evidence:
+  review
+  `sha256:d5eadd2c34368a30c8343b16209803cb208c650b45408bebfb3589185e3de3d4`
+  and evidence
+  `sha256:8fdfb632915f51e5219a70e6f899db89caaacea897f66316e2379c7090bac074`.
+- **E138:** exhaustive Red and canonical ledgers:
+  test
+  `sha256:627567d68e080f45bc4f698dd48382062821160c86b14bf1d452010e1234a971`,
+  tasks
+  `sha256:cac0aa4d59d3636ca632b013124fb8658b3eab5bcba61014f784eb8d740e801b`,
+  context
+  `sha256:00ff43b016965ce28799d1bf8cab62c3bca3346cd9f639d10037d7d624e849d5`,
+  and plan
+  `sha256:0fc0037f1ac0cca143cb832e42c59302937901d7a1464b39f00162e968d8f06e`.
+
+Exhaustive Red freezes injectable abstract method semantics, non-indexed
+properties, zero explicit interfaces, exact readonly backing storage, enum
+numeric values, compiler-only metadata, defining assembly/top-level
+ownership, and absence of forwarding. Seven tests retain exact absent-owner
+attribution. IVSD-F038/M038, F039/M039, and F040/M040 remain sufficient.
+
+Closed D2-3 Application Red evidence is:
+
+- **E139:** closed D2-3 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-3-closed-red-20260901`,
+  `sha256:0c7cc11e2b895f474290c2939a97cb3f34f2ca498fa8df3ddfc5d654b0cfadce`.
+- **E140:** fifth changes-required review and closed evidence:
+  review
+  `sha256:fea22d226d869581063ea8afb18ce3669c89e7c8fe93ee4c4de0953544b46cd4`
+  and evidence
+  `sha256:a3bb1997a2faab3bfef611f2fe7ac4813075cb005654c320e906009fc7032149`.
+- **E141:** closed Red and canonical ledgers:
+  test
+  `sha256:ad6ecc9a6c8bd78cd1a066241fdcfdcf05c9563a158126d764039d46b8b041bf`,
+  tasks
+  `sha256:a90bcaed5d334c5e401044b87cd38d40fc3ef302e3c5c73d1a364af22c9c89d5`,
+  context
+  `sha256:2f3eb75ddc3f0efcedf6653e2f342dac66510ee7e47c639c7ef2cc0324b4c5ae`,
+  and plan
+  `sha256:0fc0037f1ac0cca143cb832e42c59302937901d7a1464b39f00162e968d8f06e`.
+
+Closed Red rejects private port/metadata/enum behavior, binds exact SDK
+method/getter/constructor and attribute metadata through same-shape witnesses,
+binds the existing Application assembly/module security baseline, and closes
+full exported/forwarded prefixes. Seven tests retain exact absent-owner
+attribution. IVSD-F038/M038, F039/M039, and F040/M040 remain sufficient.
+
+Approval-ready D2-3 Application Red evidence is:
+
+- **E142:** approval-ready D2-3 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-3-approved-ready-red-20260901`,
+  `sha256:3883929342439280a627915abbd7adbadeb819376cc8e9c5b6262e51c4d3b5de`.
+- **E143:** sixth changes-required review and approval-ready evidence:
+  review
+  `sha256:042f62d5bcd4ac92749e314640304202e6527a94221fdd390bb4dfb9723f6e80`
+  and evidence
+  `sha256:944f36e4bcca75458103f36838b8add977b43565e6f1b326e84f241eb3431c28`.
+- **E144:** approval-ready Red and canonical ledgers:
+  test
+  `sha256:fac62f11818682ead979b5c19f53f23e521a622262d6efe599fe83eecae1be01`,
+  tasks
+  `sha256:19c9e83a96a78286f321fa8ae43022a0b6e05557b529d271ac815126d166bda6`,
+  context
+  `sha256:c72ffa055b559a6f3b45033cff54ff957a6a6615c642552b417a18023585bfdb`,
+  and plan
+  `sha256:0fc0037f1ac0cca143cb832e42c59302937901d7a1464b39f00162e968d8f06e`.
+
+Approval-ready Red compares complete Property/Param/Field metadata, inspects
+constructor return MethodDef metadata without unstable cross-assembly token
+bytes, and structurally compares custom-attribute type/constructor/member/
+typed-payload identity. Seven tests retain exact absent-owner attribution.
+IVSD-F038/M038, F039/M039, and F040/M040 remain sufficient.
+
+Final approvable D2-3 Application Red evidence is:
+
+- **E145:** final approvable D2-3 Red binding
+  `setup-assistant-security-and-portability-phase9-d2-3-final-approvable-red-20260901`,
+  `sha256:edb31317a5c48168e35e97bdd60e61df1e1625f463efa93cd76101768baa9eb8`.
+- **E146:** seventh changes-required review and final approvable evidence:
+  review
+  `sha256:eb968040e608dce3408aeb379829894a2f0e377531f64f47ef16532fec4efb92`
+  and evidence
+  `sha256:c443616f85d308542aac18f767ecbe16a97c4b9caba4661437d50fd08ba4c33c`.
+- **E147:** final approvable Red and canonical ledgers:
+  test
+  `sha256:71e4dbceee9fb438f7f25d511a696b5bccc9b8e5b36c8c96db9e457094153791`,
+  tasks
+  `sha256:54157840db8e67003843d085bd3447c70e8d1214e9d7abbcd4601f6f47e4ea80`,
+  context
+  `sha256:b47a9226f94f1e37e4edcfc17771c9bb6bd10f680247456ff9b30fc64be0ae37`,
+  and plan
+  `sha256:0fc0037f1ac0cca143cb832e42c59302937901d7a1464b39f00162e968d8f06e`.
+
+Final approvable Red binds exact BCL assembly attribute identities/
+constructors/payloads, the exact single manifest module and its structural
+`RefSafetyRules(11)` metadata, and every owner to that module. Seven tests
+retain exact absent-owner attribution. IVSD-F038/M038, F039/M039, and
+F040/M040 remain sufficient.
 
 ## Requested Direction Coverage
 
@@ -242,34 +919,34 @@ boundary.
 | IVSD-F010 | accepted | Blocker | Desktop file safety | Amanah, Non-Harm; Technical/Operational | Plaintext `.env` can be exposed by weak permissions, symlinks, backups, or unsafe overwrite | E015-E016; standards-based design validation | IVSD-M010 | Desktop + Security |
 | IVSD-F011 | accepted | Critical | Secret-memory limitation | Truthfulness, Privacy; Technical | Managed/browser memory cannot promise deterministic secret erasure | E012-E016; design validation | IVSD-M011 | Security |
 | IVSD-F012 | accepted | Critical | Observability boundary | Avoiding Spying, Amanah; Technical/Operational | Telemetry, analytics, logs, crash capture, or update checks can violate the local-only promise | E004-E005, E012-E014; implementation traceability | IVSD-M012 | Security + Operations |
-| IVSD-F013 | accepted | Blocker | Dependency-license requirement | Amanah, Promise-Keeping; Governance | “FOSS” or a permissive top-level license does not prove complete component provenance/notices or compatibility for every outbound path; blocked graphs and prior approvals must not be inherited by a replacement | E008-E009, E017, E027-E028, E041-E043; repository policy and sanitized dependency/review evidence | IVSD-M013 | IP/Legal + Release |
+| IVSD-F013 | accepted | Blocker | Dependency-license requirement | Amanah, Promise-Keeping; Governance | “FOSS” or a permissive top-level license does not prove complete component provenance/notices or compatibility for every outbound path; blocked graphs and prior approvals must not be inherited by a replacement | E008-E009, E017, E027-E028, E041-E043, E048-E054, E056-E066; repository policy, exact B1 graph verdicts, final content-hash ratchet, and unchanged product preimages | IVSD-M013 | IP/Legal + Release |
 | IVSD-F014 | accepted | High | Distribution integrity | Amanah, Ihsan; Operational | Unsigned or unverifiable desktop/web artifacts expose secret-handling users to supply-chain substitution | E009-E011, E017; design validation | IVSD-M014 | Release + Security |
-| IVSD-F015 | accepted | High | Platform-support requirement | Justice, Ihsan; Design/Operational | Package-free shells or framework-neutral outcome mappings do not prove a GUI target; “cross-platform” remains misleading without real per-OS/browser packaging, launch, file, accessibility, and upgrade evidence | E010-E011, E018-E020, E034-E037, E041; official functional and current planning evidence | IVSD-M015 | Release + QA |
+| IVSD-F015 | accepted | High | Platform-support requirement | Justice, Ihsan; Design/Operational | Package-free shells, shared ViewModels, `ApprovedDisabled` adapters, or framework-neutral outcome mappings do not prove a GUI target; “cross-platform” remains misleading without real per-OS/browser packaging, launch, file, accessibility, and upgrade evidence | E010-E011, E018-E020, E034-E037, E041, E048-E066; official functional, exact B1 planning, graph, final Red, and non-drift evidence | IVSD-M015 | Release + QA |
 | IVSD-F016 | accepted | High | Hosting-governance concern | Truthfulness, Justice; Strategic/Governance | Ignoring web source cannot prevent malicious rebuilds or third-party hosting and can weaken public auditability | E009, E017, E021; legal/governance evidence | IVSD-M016 | Project Steward + Legal |
 | IVSD-F017 | accepted | Critical | Official-instance identity | Truthfulness, Amanah; Governance/Design | Users can confuse an unofficial fork with the official secret-capable service | E021; design validation | IVSD-M017 | Legal + Product |
-| IVSD-F018 | accepted | High | Accessibility requirement | Justice, Ihsan; Design/Evaluation | Complex forms, masked values, review, and file generation can exclude disabled users | E022; implementation traceability | IVSD-M018 | Accessibility + UI |
+| IVSD-F018 | accepted | High | Accessibility requirement | Justice, Ihsan; Design/Evaluation | Complex forms, masked values, review, and file generation can exclude disabled users; shared ViewModels and disabled adapters do not establish target accessibility | E022, E034-E037, E048-E055, E057-E060; standards, exact B1 planning, architecture verdict, corrected Red, and target-agnostic ownership evidence | IVSD-M018 | Accessibility + UI |
 | IVSD-F019 | accepted | High | Localization requirement | Justice, Ihsan; Design | Deployment and security explanations can be misunderstood without localization and RTL | E022-E023; implementation traceability | IVSD-M019 | Localization + UI |
 | IVSD-F020 | accepted | Blocker | Live-secret authority boundary | Amanah, Avoiding Spying; Technical | A convenience tool can drift into extracting secrets from live instances or Infisical | E003-E007; implementation traceability | IVSD-M020 | Security + Secrets |
 | IVSD-F021 | accepted | High | Claim-governance requirement | Truthfulness, Avoiding Gharar; Strategic/Governance | “Fully safe” or “we cannot get secrets” overstates what hosted or local software can prove | E012-E014; design validation | IVSD-M021 | Legal + Product |
-| IVSD-F022 | accepted | High | Evidence requirement | Ihsan, Amanah; Evaluation | Passing tests, signatures, or top-level metadata cannot prove zero disclosure, complete component provenance/notices, publish exclusions, package integrity, usability, or long-term safety | E009-E022, E041; design, policy, and sanitized dependency evidence | IVSD-M022 | QA + Security + Operations |
+| IVSD-F022 | accepted | High | Evidence requirement | Ihsan, Amanah; Evaluation | Passing tests, isolated probes, signatures, or top-level metadata cannot prove zero disclosure, complete component provenance/notices, publish exclusions, package integrity, accessibility, support, usability, or long-term safety | E009-E022, E041, E048-E066; design, policy, exact B1 graph/final-Red evidence, non-forgeable completion and retained-exhaustion contracts, governed commit closure, and unchanged product preimages | IVSD-M022 | QA + Security + Operations |
 | IVSD-F023 | accepted | Critical | Legal-authority requirement | Truthfulness, Justice; Governance/Technical | Portable legal text can misattribute instance, tenant, organizer, or merchant responsibility if scope is generic | E007, E024-E026; implementation traceability | IVSD-M023 | Legal + Architecture |
 | IVSD-F024 | accepted | Critical | Legal-lifecycle requirement | Amanah, Rights of People; Governance/Technical | Importing legal text can overwrite published history or fabricate prior user acceptance | E024-E026; implementation traceability | IVSD-M024 | Legal + Domain |
 | IVSD-F025 | accepted | High | Template-governance concern | Truthfulness, Avoiding Gharar; Design/Governance | A legal template can be mistaken for legal advice or jurisdictional compliance | User direction, E009; design validation | IVSD-M025 | Legal + Product |
 | IVSD-F026 | accepted | Critical | Markdown-content boundary | Non-Harm, Amanah; Technical/Design | Unrestricted Markdown/HTML can introduce scripts, tracking, deceptive links, inaccessible output, or remote resource loads | E012-E014, E022; standards and implementation traceability | IVSD-M026 | Security + Accessibility |
 | IVSD-F027 | accepted | High | Portability-completeness requirement | Promise-Keeping, Ihsan; Strategic/Technical | Legal links without portable source text leave migrations incomplete and dependent on old origins | E007, E024-E026; implementation traceability | IVSD-M027 | Product + Architecture |
 | IVSD-F028 | accepted | High | Content-scale requirement | Amanah, Ihsan; Technical/Operational | Legal Markdown and localized variants can exceed current manifest string/file limits or make diffs unusable | E007; implementation traceability | IVSD-M028 | Architecture + UX |
-| IVSD-F029 | accepted | High | Access/parity requirement | Justice, Ihsan; Design/Technical | Desktop/web-only operation excludes terminal-first, remote-shell, and automation users; replacing a blocked TUI graph must preserve bounded interactive and deterministic machine outcomes | E031-E037, E041; repository patterns and current planning evidence | IVSD-M029 | Product + CLI |
+| IVSD-F029 | accepted | High | Access/parity requirement | Justice, Ihsan; Design/Technical | Desktop/web-only operation excludes terminal-first, remote-shell, and automation users; a no-secret Terminal.Gui adapter must preserve the Green BCL secret path and deterministic machine outcomes | E031-E037, E041, E048-E055; repository patterns and exact B1 planning/Red evidence | IVSD-M029 | Product + CLI |
 | IVSD-F030 | accepted | Critical | Automation-contract requirement | Truthfulness, Amanah; Technical | Agents and scripts cannot safely automate an interactive TUI or unstable prose output | E031-E033; repository implementation traceability | IVSD-M030 | CLI + Tooling |
 | IVSD-F031 | accepted | Blocker | Terminal secret boundary | Amanah, Avoiding Spying; Technical/Operational | Arguments, shell history, scrollback, process listings, pipes, logs, and stdout can expose secrets | Design validation | IVSD-M031 | CLI + Security |
 | IVSD-F032 | accepted | Critical | Agent-safety requirement | Amanah, Non-Harm; Governance/Technical | An agentic skill can encourage agents to read, transmit, infer, or persist secrets unless explicitly prohibited | E032-E033; skill-contract evidence | IVSD-M032 | Agent Governance + Security |
 | IVSD-F033 | accepted | High | AI-boundary requirement | Truthfulness, Avoiding Gharar; Strategic/Technical | Embedded AI would add providers, data flows, cost, nondeterminism, and privacy duties unrelated to deterministic setup | User decision; design validation | IVSD-M033 | Product |
 | IVSD-F034 | accepted | High | Human-approval requirement | Autonomy, Justice; Design/Governance | Agent-generated configuration can silently broaden policy or publish legal text without informed review | E007, E032-E033; design validation | IVSD-M034 | Agent Governance + Product |
-| IVSD-F035 | accepted | High | Terminal accessibility limitation | Justice, Truthfulness; Design/Evaluation | A repository-native BCL wizard does not prove screen-reader, RTL, keyboard, color, Unicode, resize, signal, scrollback, or small-terminal parity | E022, E031-E037, E041; requirements and planning evidence only | IVSD-M035 | Accessibility + CLI |
+| IVSD-F035 | accepted | High | Terminal accessibility limitation | Justice, Truthfulness; Design/Evaluation | Neither the repository-native BCL wizard nor a shared ViewModel/no-secret Terminal.Gui plan proves screen-reader, RTL, keyboard, color, Unicode, resize, signal, scrollback, or small-terminal parity | E022, E031-E037, E041, E048-E055; requirements, exact B1 planning, and architecture evidence only | IVSD-M035 | Accessibility + CLI |
 | IVSD-F036 | accepted | Critical | Skill-lifecycle requirement | Promise-Keeping, Truthfulness; Governance | Publishing a skill before versioned commands exist teaches fictional or stale behavior | E032-E033; skill-contract evidence | IVSD-M036 | Skill owner + CLI owner |
-| IVSD-F037 | accepted | High | Composition-integrity requirement | Amanah, Truthfulness; Technical | YAML/directory ambiguity, path metadata, or unmeasured scale can change canonical meaning or conceal prohibited content | E034-E037; plan and task traceability | IVSD-M037 | Setup Core; SA-810–SA-830 |
-| IVSD-F038 | accepted | Blocker | Tenant-isolation boundary | Justice, Rights of People; Technical/Governance | Source identifiers, mappings, profiles, or capabilities can cross target or tenant authority during live and data migration | E034-E036, E038; repository and plan traceability | IVSD-M038 | Server authorization; SA-910, SA-1110–SA-1130 |
-| IVSD-F039 | accepted | Blocker | Authorization/replay boundary | Amanah, Non-Harm; Technical | Stale HAL, bearer replay, duplicate transfer, or local authority synthesis can mutate the wrong target or repeat effects | E034-E036; plan/task traceability | IVSD-M039 | Security; SA-910–SA-1030 |
-| IVSD-F040 | accepted | Blocker | Secret-provider boundary | Privacy, Avoiding Spying; Technical/Operational | Secret readback or provider-coordinate disclosure would turn Setup into a privileged extraction and reconnaissance client | E004-E006, E034-E036; repository and plan traceability | IVSD-M040 | Secrets + Security; SA-910–SA-930 |
+| IVSD-F037 | accepted | High | Composition-integrity requirement | Amanah, Truthfulness; Technical | YAML/directory ambiguity, path metadata, unsafe parser authority, platform overclaim, mixed ownership, or unmeasured scale can change canonical meaning or conceal prohibited content | E034-E037, E067-E074; final Phase 8 governance, unchanged technical contract/product preimages, independent reviews, and plan/task traceability | IVSD-M037 | Setup Core; C1 Red/Green and C2 |
+| IVSD-F038 | accepted | Blocker | Tenant-isolation boundary | Justice, Rights of People; Technical/Governance | Source identifiers, mappings, profiles, or capabilities can cross target or tenant authority during live and data migration | E034-E036, E038, E075-E147; current repository, predecessor, intake, binding, debate, Red, correction, approval, strict D2-1, D2-2 Domain Green, and final approvable D2-3 Application Red traceability | IVSD-M038 | Server authorization; SA-910, SA-1110–SA-1130 |
+| IVSD-F039 | accepted | Blocker | Authorization/replay boundary | Amanah, Non-Harm; Technical | Stale HAL, bearer replay, duplicate transfer, or local authority synthesis can mutate the wrong target or repeat effects | E034-E036, E075-E147; current repository, predecessor, intake, binding, debate, Red, correction, approval, strict D2-1, D2-2 Domain Green, and final approvable D2-3 Application Red traceability | IVSD-M039 | Security; SA-910–SA-1030 |
+| IVSD-F040 | accepted | Blocker | Secret-provider boundary | Privacy, Avoiding Spying; Technical/Operational | Secret readback or provider-coordinate disclosure would turn Setup into a privileged extraction and reconnaissance client | E004-E006, E034-E036, E075-E147; current repository, predecessor, intake, binding, debate, Red, correction, approval, strict D2-1, D2-2 Domain Green, and final approvable D2-3 Application Red traceability | IVSD-M040 | Secrets + Security; SA-910–SA-930 |
 | IVSD-F041 | accepted | Blocker | Data/PII custody boundary | Rights of People, Privacy; Technical/Governance | Application-data migration creates custody, purpose, retention, erasure, access, staging, and breach responsibilities independent of configuration portability | E034-E036, E039; repository and plan traceability | IVSD-M041 | Privacy authority; SA-1110–SA-1130 |
 | IVSD-F042 | accepted | Critical | Migration-continuity requirement | Amanah, Promise-Keeping; Technical/Operational | Non-durable checkpoints, mappings, or idempotency can duplicate, omit, corrupt, or resurrect application records after interruption | E034-E036, E039; repository and plan traceability | IVSD-M042 | Migration owner; SA-1110–SA-1130 |
 | IVSD-F043 | accepted | Blocker | Sovereign-money boundary | Justice, Amanah; Financial/Governance | Migrating payment/refund operations without provider, ledger, currency, recipient, and allocation reconciliation can mutate money falsely or unfairly | E034-E036, E040; repository and plan traceability | IVSD-M043 | Tier 0 payment authority; SA-1110, SA-1140 |
@@ -548,11 +1225,16 @@ license does not cure those gaps.
 
 Successor A therefore pins/restores neither graph and uses BCL plus the existing
 package-free `Event.Wire.Contracts`. Disabled package-free presentation shells
-are not package, target, support, or release approval. Successor B begins from
-framework-neutral outcomes and must obtain a provenance-complete graph or new
-authoritative evidence, fresh vulnerability/outbound review, planning-mode
-I-VSD revalidation, revision-bound CTO review, and exact-revision user approval.
-No prior approval or isolated graph fact is inherited.
+are not package, target, support, or release approval. B1 binds
+CommunityToolkit.Mvvm `8.4.2`, target-root Microsoft DI `10.0.10` plus
+Abstractions `10.0.10`, Avalonia `12.1.1`, and Terminal.Gui `2.4.17` as
+independent probe candidates only. Avalonia and Terminal.Gui begin
+`ApprovedDisabled`. Each six-stage restricted probe remains isolated and
+non-shipping, keeps every product/capability/support/release flag false, and
+produces evidence rather than approval. Exact graph admission still requires
+complete provenance, notices, native/publish mapping, vulnerability and
+outbound review, plus the named revision-bound authorities. No prior approval,
+probe result, or isolated graph fact is inherited.
 
 ### IVSD-F014 — Release Identity Protects Secret-Handling Users
 
@@ -643,7 +1325,10 @@ the appropriate way to distinguish official operation.
 ### IVSD-F018 — Secret Forms Must Remain Accessible
 
 Masked controls require real labels, description and error association,
-keyboard reveal controls, and non-color indicators. The workflow must support:
+keyboard reveal controls, and non-color indicators. B1's shared ViewModels,
+compiled-binding plan, and `ApprovedDisabled` states prove none of those
+outcomes; each `Active` target needs rendered and assistive-technology evidence.
+The workflow must support:
 
 - one logical heading structure;
 - skip navigation;
@@ -882,10 +1567,11 @@ Secret values must never be accepted through:
 - terminal scrollback;
 - command history.
 
-Initial CLI secret entry should be interactive TTY-only through masked,
-non-echoing fields, and secret-bearing output must go directly to a protected
-file. Noninteractive/agent mode defaults to placeholders and rejects secret
-values.
+CLI secret entry remains interactive TTY-only through masked, non-echoing
+fields, and secret-bearing output goes directly to a protected file.
+Terminal.Gui is no-secret-only and cannot reach Browser/Desktop secret
+sessions; the Green BCL wizard remains the sole terminal secret path.
+Noninteractive/agent mode defaults to placeholders and rejects secret values.
 
 ### IVSD-F032 — The Skill Must Protect Secrets From The Agent
 
@@ -976,12 +1662,99 @@ usable operational guidance.
 ### IVSD-F037 — Composition Must Not Create Competing Meaning
 
 YAML and directory trees are bounded authoring inputs, not new portable wire
-authorities. Duplicate keys, implicit merge precedence, links, traversal,
-cycles, unknown files, source ordering, and unmeasured expansion must fail
-before partial output. Every accepted representation compiles through one
-normalized model to the same canonical v1alpha2 JSON bytes, digest, coverage,
-and diagnostics. Named larger profiles remain disabled until measured and
-compatible with the target server's enforced limits.
+authorities. Duplicate keys, non-scalar keys, aliases, anchors, tags, merge
+keys, ambiguous scalar coercion, conflicting fragments, links/reparse points,
+traversal, changed entries, cycles, unknown files, source ordering, and
+unmeasured expansion must fail deterministically before partial output. Source
+paths, source-only metadata, secret values/references, provider identifiers,
+and application data must not enter the normalized model, canonical output,
+diagnostics, measurement records, or hashes.
+
+Every accepted representation compiles through one normalized model and the
+existing serializer/validator to the same canonical v1alpha2 JSON bytes,
+digest, section coverage, legal limits, and diagnostics. JSON remains the only
+wire identity. Composition stays self-hostable and offline: no network,
+telemetry, provider, remote-reference, resolver, or application-service role is
+introduced.
+
+The isolated YamlDotNet `18.1.0` result and independent dependency/IP verdict
+support only bounded parser-event and representation/syntax-tree parsing.
+Generic object deserialization, polymorphic or dynamic construction,
+serializer/emitter use, naming-convention policy, and wire or validation
+authority remain prohibited. Product references remain gated on the corrected
+C1 Red disposition and exact graph/content revalidation.
+
+C1 Red pins fourteen independent matrices: key shape; alias/anchor/tag;
+scalar parity; document shape; parser ceilings; directory escape; links/cycles;
+deterministic TOCTOU; conflict/order; cancellation/partial output; smuggling;
+canonical convergence; zero-value failure; and unknown profiles. The exact
+future public seam is `SetupCompositionCompiler`, `SetupCompositionLimits`,
+typed source/result/failure contracts, and a directory snapshot/commit barrier;
+tests must not implement a mirror parser, merger, filesystem policy, serializer,
+or canonicalizer.
+
+Its positive defaults are exact: 4,194,304 aggregate source bytes; one YAML
+document; 131,072 parser events; 65,536 normalized or aggregate directory
+nodes; depth 32; 4,096 mapping and sequence entries per container; 65,536
+characters per scalar; 1,048,576 aggregate scalar characters; 256 directories;
+1,024 files; 256 entries per directory; 512 relative-path characters; path
+depth 16; 524,288 bytes per file; and 4,194,304 aggregate directory bytes.
+Checked tests accept each limit and reject `limit + 1`.
+
+The Phase 8 Worst Break combines a post-open entry mutation into a link or
+changed file with a ceiling alias/parser bomb at the exact publication barrier.
+Deterministic discovery/open/read/revalidation/cancellation/commit barriers must
+produce one stable value-free failure and no model, bytes, digest, coverage,
+metric value, partial file, or retained handle. No sleep, polling, path-only
+precheck, or mocked filesystem identity counts as evidence.
+
+C1 Green is Core-only and must close all matrices through one normalized model
+and existing canonical authorities. Linux claims require real-filesystem
+evidence; Windows directory composition remains disabled absent equivalent
+Windows-runner handle/reparse evidence. C2 is scale-only after C1 Green: it
+measures small/medium/large/ceiling profiles while preserving the C1 defaults
+and enables no larger profile without client and target-server evidence.
+
+Final ownership is exact. C1 Red owns only the two new files
+`tests/Event.Setup.Core.Tests/SetupCompositionInvariantTests.cs` and
+`tests/Event.Setup.Core.Tests/SetupCompositionTestContract.cs`. C1 Green treats
+`Directory.Packages.props` as a read-only verified input and owns only:
+
+- `src/Event.Setup.Core/Event.Setup.Core.csproj` and `packages.lock.json`;
+- `SetupCompositionContracts.cs`, `SetupCompositionLimits.cs`,
+  `SetupCompositionCompiler.cs`, `SetupCompositionYamlParser.cs`,
+  `SetupCompositionDirectoryReader.cs`, and `SetupCompositionNormalizer.cs`
+  under `src/Event.Setup.Core/Composition/`;
+- `tests/Event.Setup.Core.Tests/packages.lock.json`;
+- new `docs/SETUP_COMPOSITION.md`; and
+- new `docs/releases/changes/CHG-01M1C8MP8S1T10N8D3D5A7B9CX.yaml`.
+
+C1 Red tests are verification inputs, never Green commit paths. The fragment's
+`Change-Id` matches the literal commit footer. C2 owns only these new files:
+`SetupCompositionScaleProfile.cs`, `SetupCompositionScaleTests.cs`, the
+controlled `phase8-scale-results.md`,
+`eng/setup-assistant/GenerateSetupCompositionScaleProfiles.cs`, generated
+`composition-scale-profiles.json`, and `docs/SETUP_COMPOSITION_SCALE.md`.
+
+Commit copy is literal. C1 Red uses title
+`test(self-hosting): lock bounded setup composition invariants`, its two bound
+description paragraphs, `Changelog: skip`, and
+`Changelog-Reason: test-only security contract for unimplemented setup composition`.
+C1 Green uses `feat(self-hosting): add bounded setup composition`, its two bound
+description paragraphs, and
+`Change-Id: CHG-01M1C8MP8S1T10N8D3D5A7B9CX`, matching the exact public change
+fragment. C2 uses
+`perf(self-hosting): record setup composition scale profiles`, its two bound
+description paragraphs, `Changelog: skip`, and
+`Changelog-Reason: measurement-only governance with unchanged canonical composition defaults`.
+All three bind `Message override: Not overridden`.
+
+Index and full diff inspection precede edits or staging. Any path with another
+contributor's hunk blocks the slice until coordinated, separately committed, or
+clean. Only wholly owned explicit paths may be staged, followed by exact commit
+file-list and content-hash verification. Material divergence requires literal
+ledger replacement and re-review. Actual commit execution remains outside
+I-VSD and requires the active agent's explicit git authority.
 
 ### IVSD-F038 — Every Live And Migrated Record Retains Tenant Authority
 
@@ -1102,20 +1875,28 @@ src/Event.SetupAssistant.Cli/
   is not a sixth Setup product executable.
 - `Event.Setup.Core` is pure, deterministic, headless, trim/AOT-friendly, and
   contains no network, persistence, provider SDK, UI, or secret storage.
-- Successor A makes `Event.SetupAssistant.Cli` functional with stable commands,
+- Successor A has made `Event.SetupAssistant.Cli` functional with stable commands,
   versioned machine output, terminal capability detection, and a bounded
   repository-native BCL human wizard. It uses no Terminal.Gui or replacement
   TUI package.
-- Successor A creates `Event.SetupAssistant`, Desktop, and Browser only as
+- Successor A created `Event.SetupAssistant`, Desktop, and Browser only as
   package-free, disabled, non-shipped contract shells. They are not UI,
   runtime-target, accessibility, support, or release evidence.
-- Successor B selects a provenance-complete GUI graph and activates shared GUI,
-  browser, and desktop adapters over stable Core contracts after fresh I-VSD,
-  CTO, user, dependency, security, and accessibility approval.
+- B1 binds CommunityToolkit.Mvvm `8.4.2`, Microsoft DI `10.0.10` plus
+  Abstractions `10.0.10`, Avalonia `12.1.1`, and Terminal.Gui `2.4.17` as probe
+  candidates only. `Event.SetupAssistant` may become a CommunityToolkit-only
+  human ViewModel/message owner after exact shared-graph approval; DI remains
+  target-root-only. Shared typed Avalonia views and the no-secret Terminal.Gui
+  adapter remain independent `ApprovedDisabled` candidates. Browser/Desktop
+  own any secret session outside shared state and DI; machine CLI/Core remain
+  presentation-free. This report permits the B1 plan to progress to its next
+  review gates only and does not approve a probe, package, implementation,
+  target, support claim, release, or shipping.
 
-The BCL terminal wizard and future successor-B GUI adapt the same workflow
-contracts; neither owns validation or rendering truth. Tests mirror each
-project boundary. Release and packaging implementation belongs under `eng/`,
+The BCL terminal wizard and future successor-B human adapters consume the same
+workflow contracts; none owns validation, readiness, sensitivity, or rendering
+truth. Session-bounded messages never carry secrets or replace direct
+parent/child composition. Tests mirror each project boundary. Release and packaging implementation belongs under `eng/`,
 not `.ci/scripts/`; CI discovery and release adapters remain under the
 repository’s established CI/CD paths.
 
@@ -1862,13 +2643,19 @@ error text.
 
 ### Expanded Capabilities And Separate Approval Gates
 
-Prior CTO and user approvals are revision-obsolete after the SA-120 dependency
-strategy change. This planning revalidation grants neither approval nor
-implementation authority: fresh revision-bound CTO review and exact-revision
-user approval are mandatory before SA-120 scaffolding resumes. No later
-successor inherits approval. The expanded capabilities remain gated as follows:
+Successor A's corrected CTO and user approvals remain bound to its exact Green
+BCL-only revision. This planning revalidation grants no approval or
+implementation authority to successor B or later work: fresh revision-bound
+CTO review and exact-revision user approval are mandatory before SA-510 package
+or shell activation. No later successor inherits approval. The expanded
+capabilities remain gated as follows:
 
-- bounded YAML/directory composition may start at SA-810 under IVSD-F037/M037;
+- final-governance C1 Red may start under IVSD-F037/M037 only after a fresh CTO
+  confirmation binds the final revision; the standing scope direction then needs no new
+  user prompt. C1 Green is conditional on one attributable absent-owner Red,
+  fourteen independently passing matrices, exact owned-path/commit closure, and
+  exact graph/role revalidation. C2 follows only C1 Green, changes no default,
+  and enables no profile without measured client and target-server evidence;
 - live enrollment, optional protected handles, and target-local provider writes
   may start only after SA-910's fresh Tier 1 adversarial boundary and the
   revision-bound CTO review;
@@ -1908,31 +2695,31 @@ source migration remain outside this revision.
 | IVSD-M010 | Use native picker, link refusal, restrictive permissions, atomic write, verification, and no plaintext backup | F010 |
 | IVSD-M011 | Minimize secret copies and lifetime; never promise deterministic memory erasure | F011 |
 | IVSD-M012 | Remove telemetry, remote logs, crash upload, CSP reports, update calls, and production developer tools | F012 |
-| IVSD-M013 | Fail closed on incomplete provenance/notices or unproved exclusions; enforce A's package-free graph and require each later target to obtain exact-graph outbound approval without inheritance | F013 |
+| IVSD-M013 | Fail closed on incomplete provenance/notices or unproved exclusions; isolate non-shipping B1 probes, enforce A's package-free graph, and require each later target to obtain exact-graph outbound approval without inheritance | F013 |
 | IVSD-M014 | Sign, attest, checksum, SBOM, archive, and identify every desktop/web release | F014 |
-| IVSD-M015 | Treat package-free shells as non-support evidence and publish an evidence-backed OS/browser/architecture/package matrix only for activated targets | F015 |
+| IVSD-M015 | Treat package-free shells, shared models, probes, and ApprovedDisabled adapters as non-support evidence; publish a matrix only for independently activated and evidenced targets | F015 |
 | IVSD-M016 | Track browser source and ignore generated output; reject source withholding as hosting protection | F016 |
 | IVSD-M017 | Use official origin, legal identity, trademark, source/release provenance, and fork disclosure | F017 |
-| IVSD-M018 | Meet WCAG 2.2 AA-aligned interaction and test with real platform assistive technologies | F018 |
+| IVSD-M018 | Meet WCAG 2.2 AA-aligned interaction and require rendered, keyboard, and real assistive-technology evidence independently for every Active target | F018 |
 | IVSD-M019 | Bundle localization/RTL resources before secret mode and localize all security consequences | F019 |
 | IVSD-M020 | Generate or accept new local values only; never retrieve live instance/Infisical secrets | F020 |
 | IVSD-M021 | Govern claims to identified behavior/evidence and state remaining trust explicitly | F021 |
-| IVSD-M022 | Run adversarial browser, desktop, terminal, packaging, component-provenance, publish-exclusion, license, accessibility, and recovery evidence gates | F022 |
+| IVSD-M022 | Keep probes non-shipping and run adversarial browser, desktop, terminal, packaging, component-provenance, publish-exclusion, license, accessibility, support, and recovery evidence gates | F022 |
 | IVSD-M023 | Add typed, role-scoped legal-document bundles for instance and tenant authority | F023 |
 | IVSD-M024 | Separate portable drafts/current source from immutable publication and acceptance evidence | F024 |
 | IVSD-M025 | Govern project-owned or approved FOSS templates as non-certifying, versioned starting points | F025 |
 | IVSD-M026 | Use one constrained Markdown parser/sanitizer across editor, server, public rendering, and packages | F026 |
 | IVSD-M027 | Export owned legal source/metadata and import it as target-reviewed drafts or new versions | F027 |
 | IVSD-M028 | Re-baseline bounded contract limits and legal-content diff UX | F028 |
-| IVSD-M029 | Ship the BCL-only bounded human terminal wizard and deterministic CLI as first-class adapters over the shared core | F029 |
+| IVSD-M029 | Preserve the BCL-only terminal secret path and deterministic CLI; admit a richer Terminal.Gui adapter only as an independently evidenced no-secret target | F029 |
 | IVSD-M030 | Provide versioned JSON, exit categories, help, dry-run, digests, and bounded diagnostics | F030 |
-| IVSD-M031 | Forbid terminal/argument secret transport; allow secret completion only in protected interactive TTY flow | F031 |
+| IVSD-M031 | Forbid terminal/argument secret transport; keep Terminal.Gui no-secret-only and allow terminal secret completion only in the protected BCL interactive TTY flow | F031 |
 | IVSD-M032 | Make the skill default to no-secret machine commands and prohibit agent access to secret-bearing files/values | F032 |
 | IVSD-M033 | Keep model SDKs, providers, prompts, chat, inference, and agent loops outside the product | F033 |
 | IVSD-M034 | Require human approval for writes, legal publication, live apply, and authority broadening | F034 |
-| IVSD-M035 | Publish separate BCL terminal accessibility/behavior evidence and preserve independently approved GUI alternatives | F035 |
+| IVSD-M035 | Publish separate BCL and any Active Terminal.Gui accessibility/behavior evidence and preserve independently approved GUI alternatives | F035 |
 | IVSD-M036 | Publish the operational skill only after the implemented CLI/version contract is verified | F036 |
-| IVSD-M037 | Compile bounded JSON/YAML/directory sources through one normalized model; reject ambiguity and evidence-free scale before output | F037 |
+| IVSD-M037 | Compile bounded JSON/YAML/directory sources offline through one normalized model and the existing canonical serializer; reject ambiguity, path/sensitivity smuggling, parser authority, partial output, and evidence-free scale | F037 |
 | IVSD-M038 | Reauthorize exact target, tenant, category, and actor server-side; keep mappings tenant-qualified and fail closed on lineage conflict | F038 |
 | IVSD-M039 | Use short-lived target-qualified HAL capabilities, protected revocable handles, request binding, expiry, and replay fencing for every live effect | F039 |
 | IVSD-M040 | Permit only server-authorized write/readiness operations; prohibit raw readback, provider-coordinate disclosure, portable bindings, and provider SDK access from Setup | F040 |
@@ -2230,26 +3017,40 @@ Domain review:
 
 ## Validation Gaps
 
-- A plan now exists, but no Setup Assistant implementation exists.
+- Successor A and Phases 1-4 are Green. The exact Toolkit shared-presentation
+  and DI executable-root graphs are approved for only those roles, and the
+  final 18/18 owner-local plus 14/1 architecture-ratchet Red is accepted, but
+  no successor-B shared model, adapter, browser/desktop runtime, support
+  surface, or release capability is implemented or activated.
 - The archived ConfigurationManifest baseline must be pinned before
   extraction; closure does not prove its retired atomic-apply, managed
   ownership, migration UI, or direct-transfer phases.
-- Successor A has selected a BCL-only product graph, but SA-120 has not yet
-  created or verified its ten package-free project shells, locks, or ratchets.
+- Successor A's BCL-only graph, ten package-free project boundaries/locks, and
+  generated ratchets are verified; this evidence does not approve B.
 - Terminal.Gui 2.4.17 and its complete 24-package graph remain blocked for
   incomplete bundled grammar provenance/notices; no blocked node may enter A.
 - Avalonia 12.1.1 Desktop/Browser runtime graphs remain blocked for unresolved
   native component/license mapping and unproved `Avalonia.Remote.Protocol`
   publish exclusion; A pins/restores no Avalonia package.
-- Successor B has no selected provenance-complete GUI graph or fresh target
-  approvals; A's package-free disabled shells are not implementation evidence.
+- B1 now has approved exact Toolkit `8.4.2` and DI/Abstractions `10.0.10`
+  closures for their bound roles plus non-forgeable real-continuation and
+  retained-exhaustion Red tests and an exact project/lock/assembly/content-hash
+  graph ratchet. The product package reference, central pin, product lock,
+  shared implementation, generated capabilities, support, release, and
+  shipping surfaces remain unchanged in the bound preimage.
+- B0 supersession is verified across its triad, intake, binding, CTO review,
+  and separate I-VSD report. Those records are historical only and create no
+  B1 authority.
 - No exact CSP has been proven against an approved successor-B browser output.
 - No browser test proves zero requests after secret-mode entry.
 - No memory/DOM/storage inspection has been performed.
 - No desktop permission writer has been tested across target filesystems.
-- No authoritative environment catalogue or activation predicates exist.
-- No support matrix has been approved.
-- No real users have tested the progressive form or understood omissions.
+- Successor A's implemented environment catalogue and activation predicates
+  are repository evidence for A only; no B1 human presentation or target has
+  been tested against them.
+- No B1 support matrix has been approved. `ApprovedDisabled` is not runtime,
+  accessibility, support, release, or shipping evidence.
+- No real users have tested the B1 progressive form or understood omissions.
 - No assistive-technology or RTL evidence exists for an activated successor-B
   GUI/browser/desktop target.
 - No reproducible build, code-signing, notarization, Linux package signature,
@@ -2263,15 +3064,22 @@ Domain review:
 - No content-size analysis proves realistic localized legal documents fit the
   next manifest/package limits.
 - No security review has approved hosted secret entry.
-- No CLI/BCL terminal project, command schema, exit-code contract, wizard, or
-  parity test exists.
-- No BCL terminal secret-entry threat model or supported-terminal matrix
-  exists.
-- No Setup Assistant skill exists, and it must not be published before the
-  command contract is real.
+- Successor A's CLI, command schema, exit categories, and BCL terminal wizard
+  are Green under A's evidence; B1 must not reinterpret them as presentation-
+  target, rich-TUI, accessibility, support, or release evidence.
+- No approved B1 Terminal.Gui graph or no-secret adapter exists. The BCL
+  terminal support/accessibility matrix remains a later release-evidence gate.
+- No Setup Assistant skill exists; its future release must bind the implemented
+  CLI version/schema and no-secret/human-approval behavior rather than infer
+  readiness from the now-Green A command contract.
 - No explicit decision identifies which Setup executables, if any, may become
   AGPL-only because of reciprocal dependencies.
-- No composition implementation or measured larger scale profile exists.
+- No corrected C1 Red test owner, aggregate absent-owner Red, C1 Green
+  implementation, Linux/Windows claimed-platform run, or C2 measured profile
+  exists. The corrected ledger now specifies fourteen matrices, exact ceilings,
+  public seams, deterministic barriers, Worst Break, owned paths, and commit
+  governance, but planning and isolated probe/review evidence do not prove
+  those future runtime outcomes.
 - No target-enrollment, capability-replay, revocation, saved-profile, or
   secret-provider write/readiness evidence exists.
 - No proof yet shows provider coordinates and raw values are absent from every
@@ -2295,15 +3103,37 @@ traceability only. It does not establish stakeholder or operational validation.
 
 ## Escalation Needed
 
-- Fresh revision-bound Senior CTO review and exact-revision user approval for
-  the changed BCL-only A plan/tasks before SA-120 scaffolding resumes; prior
-  approvals are obsolete and cannot be inherited.
-- Revision-bound security threat-model review of plan Sections 3, 10, and 14
-  before implementation approval.
+- Fresh Senior CTO confirmation of final Phase 8 binding
+  `setup-assistant-security-and-portability-phase8-final-20260901` before C1
+  Red. E073 is an `Approve with required changes` verdict on the prior corrected
+  revision; its governance changes are now present, but it is not confirmation
+  of E074. The standing user direction is sufficient after final technical
+  approval; no duplicate user prompt is required for unchanged scope.
+- Before C1 Green adds YamlDotNet to Setup Core, the exact approved YamlDotNet
+  `18.1.0` one-node content identity, notices/outbound fit, vulnerability/
+  deprecation state, parser-event/syntax-tree-only role, safe CLI environment,
+  and C1 Red disposition must be reverified together. Drift disables YAML.
+- C1 Green may claim directory support only on platforms with real handle/type/
+  identity evidence. Linux and Windows claims are independent; Windows remains
+  disabled until equivalent reparse-safe runner evidence exists.
+- C2 may enable a named larger profile only after C1 Green and measured resource
+  plus target-server-limit evidence. Missing or nondeterministic evidence
+  preserves the exact C1 default and disables the larger profile.
+- Fresh revision-bound Senior CTO review of final-Red binding
+  `setup-assistant-security-and-portability-b1-final-red-20260831` before
+  SA-518 changes the central pin, product reference, product lock, or shared
+  source. The user's persistent full-implementation/no-backward-compatibility
+  direction supplies the current product direction but does not replace this
+  technical gate or authorize any adapter, rendered accessibility, secret
+  mode, support, release, or shipping claim.
+- The bound post-probe security verdict governs SA-518's session, generation,
+  cancellation, settlement, secret-exclusion, and target boundaries. Any drift
+  in those boundaries requires fresh Tier 1 security review before continuing.
 - Independent security review before enabling online-hosted secret entry.
-- IP/legal dependency review must enforce the blocked Terminal.Gui and Avalonia
-  decisions for A, then review successor B's independently selected complete
-  GUI/runtime/packaging graph and any reciprocal-license target.
+- IP/legal dependency review must preserve A's blocked Terminal.Gui/Avalonia
+  decisions, then review successor B's independently selected complete
+  CommunityToolkit/DI/Avalonia/Terminal.Gui/runtime/packaging graphs and any
+  reciprocal-license target.
 - Qualified legal review for hosted secret-mode copy, privacy promises,
   official/unofficial attribution, AGPL network-source obligations, trademark,
   and incident notices.
@@ -2361,16 +3191,44 @@ traceability only. It does not establish stakeholder or operational validation.
 | E031 | `eng/release/src/ISLAMU.ReleaseEngineering/Program.cs` and schema-generator `Program.cs` | Existing deterministic command, exit, bounded-output, and help conventions |
 | E032 | `.agents/skills/_SKILL_SCHEMA.md` | Required skill metadata, progressive disclosure, and verification shape |
 | E033 | `.agents/skills/skill-authoring/SKILL.md` and resources | Skill lifecycle, command-evidence, and no-fiction requirements |
-| E034 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-plan.md` | Exact expanded scenarios, authority boundaries, phases, risks, and plan mappings |
-| E035 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` | Exact SA-810–SA-1250 acceptance, dependencies, and verification gates |
-| E036 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-context.md` | Current review state, user-directed expansion, known risks, and handoff |
-| E037 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md` | Source-free repository facts, architecture decisions, attestation, and evidence limits |
+| E034 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-plan.md` | Exact B1 Scenarios 3.1–3.16, CommunityToolkit-only shared model, target-root DI, session/fencing boundaries, six-stage probes, phases, risks, and mappings |
+| E035 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` | Corrected task ledger including C1 Red fourteen matrices/exact ceilings/public seam/Worst Break, Core-only C1 Green, scale-only C2, exact owned paths, and per-slice verification/commit governance |
+| E036 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-context.md` | Current successor-A Green state, B1 blockers, B0 supersession, known risks, and handoff |
+| E037 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md` | Source-free WPF/framework observations, independent B1 architecture, clean-room attestation, outbound boundaries, and evidence limits |
 | E038 | `docs/AUTHORIZATION.md`, `docs/MULTI_TENANCY.md`, and repository authorization/tenant contracts | Existing server-owned actor, target, and tenant authority boundary |
 | E039 | `docs/PRIVACY_ERASURE.md` and repository privacy-erasure authority contracts | Authority-first ordering, anti-resurrection fencing, payload-free receipts, replay, and retention |
 | E040 | `docs/PAYMENTS.md`, `islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md`, and repository payment/refund contracts | OrganizerDirect, immutable recipient/currency, deterministic allocation, idempotency, and reconciliation truth |
-| E041 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md` | Sanitized official-metadata handoff blocking Terminal.Gui/Avalonia graphs, selecting A's BCL-only graph, and defining B re-entry evidence |
-| E042 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-cto-review.md` | Prior technical approval scope and exact obsolete revisions; grants no approval to the changed strategy |
-| E043 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-approval.md` | Prior user approval scope and exact obsolete revisions; confirms no later-successor inheritance |
+| E041 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md` | Sanitized handoff preserving A's BCL-only graph and defining unapproved B1 CommunityToolkit/Avalonia/Terminal.Gui geometry/re-entry evidence |
+| E042 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-cto-review.md` | Technical approval bound to successor A's exact Green revision; grants no approval to B or later work |
+| E043 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-approval.md` | User approval bound to successor A's exact Green revision; confirms no later-successor inheritance |
+| E047 | `dev/active/setup-assistant-presentation-targets/` and `islamic-value-sensitive-design/i-vsd-setup-assistant-presentation-targets-b0.md` | Historical B0 shared-Razor/static-browser branch; explicitly superseded, non-executable, non-authorizing, never user-approved, and non-transferable to B1 |
+| E048 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-review-bindings.md` | Immutable B1 binding ID, six exact artifact hashes, architecture scope, authority boundary, and drift invalidation |
+| E049 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-intake-review.md` | Tier 1 decision-complete architecture, session/generation/secret invariants, adapter semantics, probe gates, and stop conditions |
+| E050 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-post-red-review-bindings.md` | Exact post-Red binding, activation scope, safe CLI environment, unchanged product preimage, and drift invalidation |
+| E051 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-probe-evidence.md` | Exact Toolkit/DI locks, roles, signatures, audits, egress observation, and authority non-drift |
+| E052 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-dependency-review.md` | Post-probe dependency/IP approval for exact Toolkit shared and DI executable-root roles only |
+| E053 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-security-review.md` | Post-probe security approval, session/secret boundaries, safe CLI mandate, and target exclusions |
+| E054 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-accessibility-review.md` | Post-probe architecture approval without rendered accessibility or support claims |
+| E055 | `tests/Event.SetupAssistant.Tests/SetupPresentationModelContract.cs` and `SetupPresentationModelTests.cs` | Bound ten-test intentional Red covering public session, lifecycle, fencing, projection, secrecy, and disabled-adapter seams |
+| E056 | `src/Event.SetupAssistant/Event.SetupAssistant.csproj`, `src/Event.SetupAssistant/packages.lock.json`, and `Directory.Packages.props` | Bound unchanged product reference, product lock, and central-pin preimages |
+| E057 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-corrected-red-review-bindings.md` | Exact corrected-Red binding, frozen product authority, activation scope, and drift invalidation |
+| E058 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-post-red-cto-review.md` | Five retained CTO correction groups and `Changes required` provenance |
+| E059 | `tests/Event.SetupAssistant.Tests/SetupPresentationModelContract.cs` and `SetupPresentationModelTests.cs` | Owner-local 18-test taxonomy; exact race orders; typed exhaustion/ABA; generated behavior; memory identity; dynamic-canary contracts |
+| E060 | `tests/Event.Architecture.Tests/SetupAssistantArchitectureTests.cs` | Adapter ownership and exact evaluated target, project, lock, package-pin, and compiled-assembly ratchets |
+| E061 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` plus unchanged product preimages | Independent SA-518 correction-Red/Green verification, safe environment, exact ownership, failure, and planned commit closure |
+| E062 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-final-red-review-bindings.md` | Exact final-Red binding, frozen product authority, activation scope, and drift invalidation |
+| E063 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-corrected-red-cto-review.md` | Four final residual corrections and second `Changes required` provenance |
+| E064 | `tests/Event.SetupAssistant.Tests/SetupPresentationModelContract.cs` and `SetupPresentationModelTests.cs` | No public workspace settlement injection; duplicate real continuations; retained final-generation completion after termination; unchanged 18/18 taxonomy |
+| E065 | `tests/Event.Architecture.Tests/SetupAssistantArchitectureTests.cs` | Exact approved Toolkit `contentHash` plus unchanged 14/1 graph-ratchet taxonomy |
+| E066 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` plus unchanged product preimages | Explicit conventional-commit loading, truthful-message reuse, material override replacement state, and unchanged SA-518 closure |
+| E067 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-review-bindings.md` | Exact Phase 8 planning/Core/test/lock/central-pin preimages, proposed source grammar, parser role, authority boundary, safe CLI environment, and drift triggers |
+| E068 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-yaml-probe-evidence.md` | Isolated YamlDotNet 18.1.0 one-node graph, content and artifact hashes, signature/audit/license observations, syntax-tree-only execution, and product non-drift without activation authority |
+| E069 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-corrected-review-bindings.md` | Exact corrected C1 Red/C1 Green/C2 split, all bound hashes, unchanged product preimages, owned-path/commit closures, and drift/authority boundary |
+| E070 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-dependency-review.md` | Independent dependency/IP approval for exact YamlDotNet 18.1.0 one-node graph and bounded syntax-tree role only, with product activation withheld |
+| E071 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-security-review.md` | Fourteen adversarial matrices, parser/filesystem/canonical/zero-value boundaries, platform evidence requirements, and conditional Green/scale gates |
+| E072 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-cto-review.md` | Pre-correction `Split before approval` verdict that required the now-bound split, ceilings, public seam, Worst Break, owned paths, verification, and commit governance; not CTO approval of E069 |
+| E073 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-corrected-cto-review.md` | Corrected-revision `Approve with required changes` verdict accepting the technical contract while requiring literal commit copy, change-fragment/Change-Id governance, and mixed-author blockers before execution |
+| E074 | `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-final-review-bindings.md` | Final governance-only binding with exact two-file Red, exact Green/C2 new paths, central-pin read-only rule, literal messages/footers/override state, mixed-author blockers, unchanged technical scope, and all hashes |
 
 ### Official Functional References
 
@@ -2390,38 +3248,428 @@ traceability only. It does not establish stakeholder or operational validation.
 | E028 | [GNU license FAQ](https://www.gnu.org/licenses/gpl-faq.html#AGPLGPL) | GPLv3/AGPLv3 linking compatibility and combined-work obligations |
 | E029 | [Terminal.Gui documentation](https://tui-cs.github.io/Terminal.Gui/index.html) | Windows/macOS/Linux TUI, editor, wizard, keyboard/mouse, Unicode, and inline/full-screen behavior |
 | E030 | [Terminal.Gui 2.4.17 NuGet metadata](https://api.nuget.org/v3/catalog0/data/2026.07.07.12.25.25/terminal.gui.2.4.17.json) | MIT package metadata, net10 target, and transitive dependency inventory |
+| E044 | [CommunityToolkit.Mvvm overview, generators, messenger, and recipient lifecycle](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/) | UI-framework-independent observable/command/message behavior and explicit recipient lifetime; no exact package graph approval |
+| E045 | [Avalonia compiled bindings](https://docs.avaloniaui.net/docs/data-binding/compiled-bindings), [application lifetimes](https://docs.avaloniaui.net/docs/fundamentals/application-lifetimes), [dependency injection](https://docs.avaloniaui.net/docs/app-development/dependency-injection), [storage provider](https://docs.avaloniaui.net/docs/services/storage/storage-provider), and [style selectors](https://docs.avaloniaui.net/docs/styling/style-selectors) | Typed compiled binding plus distinct target lifetime/service/style adaptation requirements; no runtime graph approval |
+| E046 | [Terminal.Gui v2 documentation](https://gui-cs.github.io/Terminal.GuiV2Docs/docs/) | Event/key-command application model requiring an explicit adapter rather than assumed WPF binding parity |
 
-This revalidation used repository evidence only. It did not browse or ingest
-external material; E041 is the sanitized official-metadata dependency handoff.
+This revalidation used the source-free E037/E041 handoffs, historical official
+E044-E046 functional documentation, prior post-Red/corrected-Red E050-E061
+evidence, and exact final-Red E062-E066 evidence. It did not ingest external
+implementation source, XAML, assets, copied prose, or expressive application
+organization.
 The historical official functional references remain context from prior
 reviews, not newly accessed evidence. No external source code, AST, schema,
 tests, migrations, prose, assets, screenshots, or product implementation
 structure was retained or copied.
 
-The current planning review is bound to the exact five workstream inputs below.
-Paths are sorted by their UTF-8 repository-relative path. For each file, the
-aggregate preimage appends the UTF-8 repository-relative `path`, one NUL byte,
-the ASCII decimal byte length, one NUL byte, then the exact raw file bytes.
-SHA-256 is computed once over that concatenated sequence; no newline
-normalization, report bytes, Git metadata, CTO/approval artifact bytes, or
-external content is included.
+The prior B1 final-Red revalidation was bound by binding ID
+`setup-assistant-security-and-portability-b1-final-red-20260831`. That binding
+file's verified SHA-256 is
+`ae262c99d9fb39b7263e057b1cfc9f10ec6b5f89637c91ca80512881e0bacf49`.
+Every artifact named by that binding was independently recomputed and matched:
 
-| Included input | Bytes | File SHA-256 |
-|---|---:|---|
-| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md` | 19769 | `6145403b66c97950c28e3e58ed306572fc3046ebe7e4df8635f2f63f92407821` |
-| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-context.md` | 25196 | `8368af4681bae70dc0b344d76ac84ecb99057c3cf69a36c5f88e27e5e5c4ea4d` |
-| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md` | 14612 | `5fd00f8b63648bcccaf8f22a37c834eb10c1fc56480263ebc332b3622b26bf41` |
-| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-plan.md` | 102960 | `55bd82962d6813312656dd1d2c1b299389ee24f1f0fceb6ef746e9f1b27b3dfb` |
-| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` | 55882 | `6b1e401bb021086ebbce15a99698f78224b29c41757810d1582a759dc37b0e58` |
+| Bound B1 input | File SHA-256 |
+|---|---|
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-plan.md` | `9ce42649427ec14c201af129e2d8781814905c6f70d9a23deac4c68d13b77649` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` | `ed219ef034888becfe900a3e3323a397c1e1a0c7bef267827e5be0ace1d26343` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-context.md` | `64eb113b4e3bb682465367189cfb9ede1e109f6f5067fdbecff47918227413aa` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md` | `d0a0d0e1a581d6b930e2bfb7b66d8787acd8b8e933660d3844eea9ccf5d3687c` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md` | `ce005b80fd4853a93e2bc20a393e9f015387454738484f5854c70ce20be4bee1` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-intake-review.md` | `bf595568582af05e1900126abe65a4adca67196eedd340cee4b0873904e37d59` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-probe-evidence.md` | `424ef6b6e3b7b7700b4d26b11149545b0f97fe0165a22890d35a67f9e8e14be8` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-dependency-review.md` | `f3a1b451dddfdae0c890eea518820a3e2ef0bb1392e290c79e06215903af0cde` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-security-review.md` | `bfc463df3f929d533399d0701ded38b963401a7020c2719062558d39d4f8978b` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-accessibility-review.md` | `d012e3383da39f5f14ef2e1897b9ef2b4217c9cb3ec1f32692b5c6b5930826cb` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-b1-corrected-red-cto-review.md` | `270ab1644c72ae06c2dc8022c38ecaa4ba4eb58dfbc5e371570c10c8a2a76255` |
+| `tests/Event.SetupAssistant.Tests/SetupPresentationModelContract.cs` | `7bfb63fe317b0df30d8a8c7c9a1427db5ce027c4a34ec91da130548242229322` |
+| `tests/Event.SetupAssistant.Tests/SetupPresentationModelTests.cs` | `eabeafe4442e06ec3e0476fc6d847c857f9711cee5a19b4969495f7ebc9d13eb` |
+| `tests/Event.Architecture.Tests/SetupAssistantArchitectureTests.cs` | `f3a1a3f286ee820a09bf1a986163212aa7c852de5986dfa3a9eb93179afe2399` |
+| `src/Event.SetupAssistant/Event.SetupAssistant.csproj` | `25a96b0efe99f70f142d62b2635eed8532f979c0af724134e79d814ca907ed09` |
+| `src/Event.SetupAssistant/packages.lock.json` | `94dd640c9d61220d025a020fb2f2381d82a644638707a5b0a0b335f50999a65f` |
+| `Directory.Packages.props` | `9a3f4fba1708461971ba9f73a275422681367ee91b3f6ae5179954e24a80ad9e` |
 
-The resulting reviewed input revision is
-`sha256:d2bbba40455c013e20883ab6202f84411bb05f2c20f6060a9e73095f44a8e4b1`.
-E038-E040 are repository-native corroborating authority evidence. E042-E043
-establish that prior CTO/user approvals are revision-obsolete. They are
-reviewed but excluded from the five-file digest because this revision binds the
-exact plan/tasks/context/clean-room/dependency decision inputs; report bytes are
-excluded to avoid a circular hash. E007 remains cross-report context and is
-also excluded.
+The binding—not a date, old aggregate, B0 digest, report hash, or prior review
+artifact—is the reviewed input revision. The bound evidence approves Toolkit
+and DI only for their exact roles and accepts the final owner-local Red; it
+does not establish rendered accessibility, target activation, secret
+capability, support, release, shipping, legal certification, or scholarly
+approval. Any material drift in a bound artifact, graph role/content hash, Red
+invariant, product preimage, target disposition, secret boundary, safe CLI
+environment, verification/commit contract, or review result makes this report
+stale.
+
+Review of the three final test files and task ledger confirms only the four
+final corrections: the public workspace has no settlement-injection seam and
+duplicate completion reaches the internal commit only through two real
+`ExecuteAsync` continuations; exhaustion terminates and cancels an in-flight
+final-generation operation before its retained completion is released and
+proven inert; the structured lock ratchet requires the exact approved Toolkit
+`contentHash`; and commit execution explicitly loads `conventional-commit`,
+reuses the planned message while truthful, and permits a material override only
+after recording the complete replacement reason, message, changelog/trailers,
+paths, and verification state. The observed Red remains 18/18 owner-local and
+14 total with only `SA518-GRAPH-RATCHET` failing. This is intentional Red and
+planning evidence, not implementation or runtime-target proof.
+
+Every future B1 restore, build, test, or publish evidence run must use
+`DOTNET_CLI_TELEMETRY_OPTOUT=1`,
+`DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1`,
+`DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1`, `DOTNET_NOLOGO=1`, and an
+isolated package cache. The first unguarded SDK build showed workload-
+advertising egress and is not accepted as no-egress evidence.
+
+The prior initial Phase 8 revalidation was bound by binding ID
+`setup-assistant-security-and-portability-phase8-20260831`. Its independently
+recomputed SHA-256 is
+`a9a1e4f05de526a6dc2af5e407ebcf118c49d6daa66b163dddb12826f0326ae1`,
+matching the expected digest. Every artifact named by the binding was also
+recomputed and matched:
+
+| Bound Phase 8 input | File SHA-256 |
+|---|---|
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-plan.md` | `9ce42649427ec14c201af129e2d8781814905c6f70d9a23deac4c68d13b77649` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` | `953259b780b6335b07f08a40025063f4b21521baf8911e57658088f136a7e34d` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-context.md` | `a6459a97e175bf29a68c1960de3e82f7315fde7e4990fad81327aa7d46e6ceb1` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md` | `d0a0d0e1a581d6b930e2bfb7b66d8787acd8b8e933660d3844eea9ccf5d3687c` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md` | `ce005b80fd4853a93e2bc20a393e9f015387454738484f5854c70ce20be4bee1` |
+| `islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md` (review preimage) | `84978de42607bdd8c6459de7777a2d4331134384c31d67b88900902b68a326a5` |
+| `src/Event.Setup.Core/Event.Setup.Core.csproj` | `b038160cde81ff2b188739d3a8f67eb014323e5b46f8833e48fdc7c6b59737cf` |
+| `src/Event.Setup.Core/packages.lock.json` | `d8d75d293ca094de8a27aaa566500176f5185cf1c06149668bb0a225efe8e8a8` |
+| `tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj` | `49f51e7f7c93c134bc359134be73fc1060033ba9c015265dbb50f9ff01f40d9e` |
+| `tests/Event.Setup.Core.Tests/packages.lock.json` | `fae9592f8dc76d561c8741cc8469eee2d25413951fd286a86e011fe2f728b4c2` |
+| `Directory.Packages.props` | `1cba249bd5e7520e7c4b1a5d22a4a44dc3fa251e80771ca44e009952441f529e` |
+
+The independently recomputed Phase 8 YAML probe-evidence SHA-256 is
+`39998d1f4f97c22399d60900d990bacfecd22d2548331a0e101839544b5ecf1b`.
+The probe records YamlDotNet `18.1.0` as one direct `net10.0` node with no
+transitives, a valid NuGet.org repository signature, no vulnerability or
+deprecation finding, MIT metadata, and successful restore/build/execution. Its
+role is limited to bounded in-memory syntax-tree parsing; no deserializer,
+serializer/emitter, dynamic type, naming policy, remote resolver, file,
+directory, network, telemetry, provider, Setup schema, canonical serializer,
+validator, or wire authority was exercised. The product and test preimages did
+not drift.
+
+This evidence is sufficient for I-VSD alignment of SA-810's tests and
+conditional Phase 8 progression under IVSD-F037/M037. It is not dependency/IP,
+security, CTO, package-reference, implementation, support, release, or shipping
+approval. All Phase 8 restore/build/test commands must use the binding's four
+safe CLI variables and isolated package cache. Material drift in a bound file,
+parser identity/version/graph/role, source grammar, limits, canonical authority,
+smuggling boundary, measurement profile, CLI environment, or review verdict
+makes this report stale.
+
+The prior corrected Phase 8 revalidation was bound by binding ID
+`setup-assistant-security-and-portability-phase8-corrected-20260901`. Its
+independently recomputed SHA-256 is
+`dbd6007b3d495334a6e749159be74ea979a4659f075a5378c7b7a224f8573c36`,
+matching the expected digest. Every artifact named by that binding matched:
+
+| Bound corrected Phase 8 input | File SHA-256 |
+|---|---|
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-plan.md` | `9ce42649427ec14c201af129e2d8781814905c6f70d9a23deac4c68d13b77649` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` | `eef411ec153669b3d5284563b2f9063846ed3404d5a203ed28d43575d94aaf29` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-context.md` | `992045fa95ff75e536084149658362f45e282e1c9ebebebbab6c8cec6ac42dc6` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md` | `d0a0d0e1a581d6b930e2bfb7b66d8787acd8b8e933660d3844eea9ccf5d3687c` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md` | `ce005b80fd4853a93e2bc20a393e9f015387454738484f5854c70ce20be4bee1` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-yaml-probe-evidence.md` | `39998d1f4f97c22399d60900d990bacfecd22d2548331a0e101839544b5ecf1b` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-dependency-review.md` | `d055ae1ab361d1be3cfe3a54a589df76bdd36634f3a16cb4305483337af2f051` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-security-review.md` | `83b07a08a533a763557ac0b0f8b801d89ce7570274ef0094da20fde75ab966cf` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-cto-review.md` | `a732deaef47aac604dfc2003836a08b72827efde821efb46e4ff4f00c1632ce2` |
+| `islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md` (review preimage) | `f13b603a4429e233ff241a0161d86c0812b822dc7e5797997e1a0803ebd5dbf6` |
+| `src/Event.Setup.Core/Event.Setup.Core.csproj` | `b038160cde81ff2b188739d3a8f67eb014323e5b46f8833e48fdc7c6b59737cf` |
+| `src/Event.Setup.Core/packages.lock.json` | `d8d75d293ca094de8a27aaa566500176f5185cf1c06149668bb0a225efe8e8a8` |
+| `tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj` | `49f51e7f7c93c134bc359134be73fc1060033ba9c015265dbb50f9ff01f40d9e` |
+| `tests/Event.Setup.Core.Tests/packages.lock.json` | `fae9592f8dc76d561c8741cc8469eee2d25413951fd286a86e011fe2f728b4c2` |
+| `Directory.Packages.props` | `1cba249bd5e7520e7c4b1a5d22a4a44dc3fa251e80771ca44e009952441f529e` |
+
+The corrected split is provider-responsibility aligned. C1 Red now makes every
+material composition failure independently attributable and binds exact public
+seams, ceilings, deterministic barriers, claimed-platform evidence, the Phase
+8 Worst Break, and no-partial/value-free outcomes. C1 Green isolates Core parser
+and canonical parity from presentation and scale pressure. C2 cannot change the
+canonical default and cannot enable an unevidenced profile. Exact owned paths,
+phase-attributable failure ownership, explicit-path staging, unrelated-state
+preservation, material-override recording, and post-commit file/hash checks
+make each slice auditable without granting commit authority.
+
+The bound dependency review approves the exact one-node syntax-tree role, and
+the bound security review supplies the retained adversarial constraints. The
+bound CTO review predates the corrected tasks and concludes `Split before
+approval`; its requested corrections are present in E069, but it does not
+approve E069. Fresh CTO review of the corrected binding remains the sole
+technical gate before C1 Red. The standing user direction is sufficient after
+that approval for unchanged scope. No product preimage changed, and no package,
+source, schema, generated artifact, adapter, profile, documentation, support,
+release, shipping, or commit authority is granted here.
+
+The current governance-only revalidation is bound by final Phase 8 binding ID
+`setup-assistant-security-and-portability-phase8-final-20260901`. Its
+independently recomputed SHA-256 is
+`58a6673b0f1555467a28661ef110cbfb3b6aae2ce3b83a9f2b5342778c305169`,
+matching the expected digest. Every named preimage matched before this report
+update:
+
+| Bound final Phase 8 input | File SHA-256 |
+|---|---|
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-plan.md` | `9ce42649427ec14c201af129e2d8781814905c6f70d9a23deac4c68d13b77649` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-tasks.md` | `b76f04c0e0809d6b2c3ccec3b5f9a8da569a7b44d84eb8abd42ea536c1e720c5` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-context.md` | `992045fa95ff75e536084149658362f45e282e1c9ebebebbab6c8cec6ac42dc6` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-yaml-probe-evidence.md` | `39998d1f4f97c22399d60900d990bacfecd22d2548331a0e101839544b5ecf1b` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-dependency-review.md` | `d055ae1ab361d1be3cfe3a54a589df76bdd36634f3a16cb4305483337af2f051` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-security-review.md` | `83b07a08a533a763557ac0b0f8b801d89ce7570274ef0094da20fde75ab966cf` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-cto-review.md` | `a732deaef47aac604dfc2003836a08b72827efde821efb46e4ff4f00c1632ce2` |
+| `dev/active/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase8-corrected-cto-review.md` | `ff9c0099a9bd2fea7ec92d8a81ae1bcab6d45dbf3953b2ac8f88f745f180534b` |
+| `islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md` (review preimage) | `ccb3d207f06926d9d34d8695a85ce61e685b6474d4eaad1142ef4c5519b9c13f` |
+| `src/Event.Setup.Core/Event.Setup.Core.csproj` | `b038160cde81ff2b188739d3a8f67eb014323e5b46f8833e48fdc7c6b59737cf` |
+| `src/Event.Setup.Core/packages.lock.json` | `d8d75d293ca094de8a27aaa566500176f5185cf1c06149668bb0a225efe8e8a8` |
+| `tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj` | `49f51e7f7c93c134bc359134be73fc1060033ba9c015265dbb50f9ff01f40d9e` |
+| `tests/Event.Setup.Core.Tests/packages.lock.json` | `fae9592f8dc76d561c8741cc8469eee2d25413951fd286a86e011fe2f728b4c2` |
+| `Directory.Packages.props` | `1cba249bd5e7520e7c4b1a5d22a4a44dc3fa251e80771ca44e009952441f529e` |
+
+E074 changes governance only. C1 Red now owns exactly two new files. C1 Green
+uses the existing central pin read-only, excludes Red tests from commit paths,
+and owns exact Core/lock/docs/change-fragment files with matching
+`Change-Id: CHG-01M1C8MP8S1T10N8D3D5A7B9CX`. C2 owns only exact new files.
+Every title, description paragraph, changelog outcome, trailer, and `Message
+override: Not overridden` value is literal. Mixed-author paths block rather than
+leak unrelated hunks into a slice. These corrections strengthen truthful,
+auditable ownership under IVSD-F037/M037 without changing a matrix, ceiling,
+public seam, parser role, platform claim, canonical authority, Worst Break,
+default, provider decision, stakeholder impact, or product preimage. No new
+finding or mitigation is needed.
+
+E073 accepted the technical contract but required precisely these governance
+corrections. Because E073 reviewed the predecessor revision, fresh CTO
+confirmation must bind E074 before C1 Red. I-VSD grants no staging or commit
+execution authority.
+
+The current Phase 9 planning revalidation is bound by:
+
+- **E075:** Phase 9 review binding
+  `setup-assistant-security-and-portability-phase9-20260901`,
+  `sha256:f1e33d2e2fe25c36abd1fde9c8d63dce47aa6f3ca69344aa215869d4b9e602f0`.
+- **E076:** Phase 9 Tier 1 intake
+  `sha256:54341bb7614b2415221769d3146017b69367b2ea88d0a1610779218eecacb866`.
+- **E077:** Green Phase 8 machine/profile evidence and observed gates:
+  generated profile record
+  `sha256:24f7141ccf2ede8ee0f5fda96a7f11dd2e0cc3e36abeb7b3f41286f680e00333`,
+  generated verification 4/4, scale 4/4, architecture 10/10, full Core 65/65,
+  and Release build zero errors.
+- **E078:** Exact existing authority preimages for ConfigurationImport's
+  target-bound digest-only capability/session/API pattern,
+  `ISecretResolver`'s one-source read-only boundary, `SecretBinding`'s
+  value-free persistence role, authenticated integration fixtures, and both
+  unchanged test projects, as enumerated in E075.
+
+Every E075 hash was recomputed before this report update. Both D1 test paths
+were absent. The intake resolves all repository-answerable Grill-Me branches:
+normal bearer identity remains authoritative; tenant scope comes from trusted
+route/request context; the new capability is purpose-bound, header-only,
+digest-persisted, expiring, terminally revocable, generation-fenced, and
+idempotency-fingerprinted; profiles contain protected handles only; secret
+binding is allowlisted and write-only; provider coordinates and values never
+cross the public boundary; HAL remains client action authority; and offline
+authoring survives any live failure.
+
+This is aligned with IVSD-F038/M038, IVSD-F039/M039, and IVSD-F040/M040. It
+does not prove the future implementation. D1 remains tests-only and requires
+fresh CTO/MAD plus exact-revision user approval. D2 additionally requires
+passing HTTP/persistence/provider/log breakers, generated-contract review,
+platform protected-store evidence or `ApprovedDisabled`, and no product or
+release capability activation before Green.
+
+Independent review then produced `changes-required`. The corrected
+revalidation is bound by:
+
+- **E079:** corrected Phase 9 binding
+  `setup-assistant-security-and-portability-phase9-corrected-20260901`,
+  `sha256:3b70f8f5f190ac0c4088d73b8d4f468bb6a8c03a6ccca39d4848d7e08fa48011`.
+- **E080:** corrected Tier 1 intake
+  `sha256:ff1f957f483e11f2be0d8921b5dafc240a8ab0bcec9578cb636c80a6642b1169`.
+- **E081:** anonymized weighted MAD findings
+  `sha256:147dfaafe9a04cd4a04c3e5133ad76a254fb2ad4f41429ae2d8fd8fb40e2ebf6`.
+
+E079's hashes and both absent future test paths were recomputed. The corrected
+intake accepts P9-001 through P9-007: value-free issuance idempotency, D1/D2
+adapter-Red sequencing, current bearer/actor authorization on every
+capability action, generation-aware application fingerprints, atomic and
+dispatch revocation fences, exact token/failure shape, and fail-closed explicit
+secret-binding mismatch before SA-930. P9-008 is contained as a pre-existing
+registration-provider risk: Setup must not reuse raw callback payloads,
+coordinate-rich event connection DTOs, or reusable embed tickets, while their
+own remediation remains outside D1.
+
+The correction strengthens IVSD-F038/M038, F039/M039, and F040/M040 without a
+new moral finding. D1 is now one compilable HTTP integration-test file. The
+Setup adapter Red moves to the SA-920 checkpoint after a real public/generated
+contract exists and before adapter behavior, preventing both compile-only Red
+and test-owned mirrors.
+
+Fresh CTO review then returned `Changes required` because the current I-VSD
+still contained two stale two-file/adapter-failure statements and the packet
+did not bind literal machine-consumed endpoint contracts. Final revalidation is
+bound by:
+
+- **E082:** final Phase 9 binding
+  `setup-assistant-security-and-portability-phase9-final-20260901`,
+  `sha256:8fc5f86ebb1775a4fa0942d702dc18676ebae73329143ee2d100c445a8b61952`.
+- **E083:** final D1 machine-contract amendment
+  `sha256:41796242f3baccaea482380f808d3af6efb75ef7a7d1a2efa27bc49fc9cfbea4`.
+- **E084:** corrected-packet CTO `Changes required` review
+  `sha256:26221e0b9a146481907ad36a4d820b4d51e457b19cc0ee9febd48e6e85da1c9b`.
+
+E082's hashes and both absent future paths were recomputed. E083 freezes the
+exact API owner; seven method/routes and route names; capability/idempotency
+headers; media, size, rate, timeout, success and cache contracts; closed request
+and response fields; seven HAL relations; complete invalid-capability and
+idempotency-conflict RFC 7807 tuples; three Domain/table identities; digest/
+commitment-only persistence; writer/barrier identities; and closed
+ActivitySource/Meter/instrument/operation/outcome vocabularies.
+
+This makes the D1 404 attributable rather than guessed. Positive owner/status
+assertions fail before deeper checks, so persistence/effect/observability
+assertions do not pass vacuously. Negative flows first require a real positive
+enrollment. D1 covers absent-owner and no-dispatch paths without defining a
+mirror. Provider-success/inverse-dispatch, the explicit source-mismatch fix,
+generated contracts, protected profiles, and adapter behavior remain D2 tests-
+first gates after their real seams exist.
+
+Every current I-VSD ownership statement now names one D1 API file. Adapter
+absence is not a valid D1 failure; the future adapter Red remains SA-920-owned.
+The final contract preserves IVSD-F038/M038, F039/M039, and F040/M040 and adds
+no new finding.
+
+The user then approved the exact final binding/report/CTO hashes by directing
+the workstream to continue. D1 execution is bound by:
+
+- **E085:** post-Red binding
+  `setup-assistant-security-and-portability-phase9-post-red-20260901`,
+  `sha256:494db8d6a5c0be3bb5f66b12f50ce70fe2995626355ae0545fc6021778133dd3`.
+- **E086:** D1 Red evidence
+  `sha256:149a27cdd0f4752e606e4a72b45207722764f754e016501abbb3a94033b66d1d`.
+- **E087:** exact approval
+  `sha256:4b26b5bba144dc389913839997d38643b7bf2975ae78304609203229d9ff9b24`
+  and sole test
+  `sha256:ba8af4190b7b04540cbe5d5112f19bb3f5764f07336da0987aad323456fcf028`.
+
+The final API project build has zero D1 errors/warnings. The focused selector
+discovers ten independent tests; all ten fail at the absent exact owner or the
+first literal route status, with zero pass/skip. An initial test-local EF
+assertion-order error was corrected before the final run. In the bound result,
+no deeper persistence/effect/observability check executes before positive HTTP
+ownership/status, and negative flows first require real enrollment.
+
+This is valid evidence for IVSD-F038/M038, F039/M039, and F040/M040, not Green
+implementation evidence. D2 remains blocked on fresh weighted post-Red review,
+an exact inward-to-outward owner set, current I-VSD/CTO revisions, and exact
+user approval. No new provider-responsibility finding emerged from D1.
+
+The first post-Red review accepted the attributable absence Red but returned
+`Changes required` for Green readiness. D2-0 correction is bound by:
+
+- **E088:** D2-0 review binding
+  `setup-assistant-security-and-portability-phase9-d2-0-final-20260901`,
+  `sha256:b159e98a4202efff1cb5b175343d6befa093035160d3d6c9a90ded29ffa66a43`.
+- **E089:** corrected Red evidence
+  `sha256:cfc025406e86a19c435e38282453fc7694fd0298ab01255635456f14dd64c917`
+  and corrected test
+  `sha256:586be7e7af867b8d1df06ab198de6dcd9ee2b21d7d249ba44c4567345f6054e3`.
+- **E090:** exact correction proposal/approval/review chain:
+  proposal
+  `sha256:365792ba799bc540b33c6942cdfb3cfa407659df633de00443a016a5e3fa6951`,
+  approval
+  `sha256:84f405f37a7deb3dd994a9c6c4570c146e8aaa8056d75548aec5c0236e305d7d`,
+  and Changes-required review
+  `sha256:fa6d9ad2f13624e3e8b0af6a5abb2477fb7eea7d553c6b1ce672028561d00994`.
+
+E088's hashes were recomputed. The corrected test isolates every database/
+tenant/actor/time/authorization/telemetry state, owns every request/response
+once, and coordinates only on value-free structured event
+`SetupLiveMilestone` (`19620`) with exact operation/milestone fields. The
+focused result remains ten exact absent-owner/route failures with zero
+pass/skip and no fixture, reset, disposal, telemetry, EF, environment, timeout,
+or unrelated failure.
+
+D1 claims are now epistemically bounded: it does not claim writer or
+resolver/source call counts, provider success/idempotency, final
+authorization-before-dispatch ordering, or inverse winner. Those are staged
+tests-first after the real D2 static seams exist. The D2-1 through D2-11
+inward-to-outward sequence is bound but not implemented. This remains aligned
+with IVSD-F038/M038, F039/M039, and F040/M040 and introduces no new
+provider-responsibility finding.
+
+Fresh D2-0 review accepted isolation, ownership, and claim scope but returned
+`Changes required` because the barrier did not match event ID/name and the
+canonical ledgers omitted the bound D2 stages/providers. Final D2-0b is bound
+by:
+
+- **E091:** D2-0b review binding
+  `setup-assistant-security-and-portability-phase9-d2-0b-final-20260901`,
+  `sha256:6fac4deb374ad98f1d9baad71e129d150ca8a841311f5633191d52d3993b92ea`.
+- **E092:** D2-0b evidence/test:
+  evidence
+  `sha256:3e1406058fc89a92e591c5da3f1509b0998a9c8a183d71205e1c472f85205f93`
+  and test
+  `sha256:131784835bd0b81f885c2f553decb56b31e5f5dfe3b20eb465072f634f2b48ed`.
+- **E093:** proposal/approval/review and ledgers:
+  proposal
+  `sha256:2769c37e9a58ae1691092e5acc6b43236eb419a81e158b48d4eecc9af656423c`,
+  approval
+  `sha256:6dbac904f044dc89c7e6be368b71b0a5e3556bfa1f03110a3af63d7519f4fccf`,
+  Changes-required review
+  `sha256:c6a4bc75f9a887802eb5fa518b055902980869f60e7786f9ecaafd6ea4741cc2`,
+  plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`,
+  tasks
+  `sha256:211e1ea2e093b1613be0bc132ad24973fbc50a2925b2e80232761a1caac3fe5c`,
+  and context
+  `sha256:eadd443ff803f4b1ec886eb269b5d93ee64b2c1a7d5ea903abc83dc9b04ef053`.
+
+The barrier now matches `EventId(19620, "SetupLiveMilestone")` and exact
+structured operation/milestone values. The source-mismatch test asserts only
+future HTTP `invalid` response shape plus value/coordinate exclusion; zero
+resolver/source calls remain D2-6 evidence. The focused Red remains ten exact
+failures with a clean build/diagnostics.
+
+Plan/tasks/context now expose D2-1 through D2-11 and all five generated
+migration providers. No migration, provider, product, client, protected
+profile, adapter, or capability behavior exists. This remains aligned with
+IVSD-F038/M038, F039/M039, and F040/M040 without a new finding.
+
+D2-0b technical review then returned `Changes required` only because canonical
+tasks/context still advertised obsolete resume state. Status-only D2-0c is
+bound by:
+
+- **E094:** D2-0c review binding
+  `setup-assistant-security-and-portability-phase9-d2-0c-final-20260901`,
+  `sha256:83bdf2889ed66f5c4aab6e407d025d15e6b8d6e53fe03ea25afee37c39f70c34`.
+- **E095:** D2-0c correction/approval/evidence:
+  correction
+  `sha256:e93af09ac989c936c82cce23bc11117cc27d59c5a06165c642286743cf5dd6eb`,
+  approval
+  `sha256:9ea7773cb3abb1012060721ce462927935554c24109e696b3bd04d788b5a5f86`,
+  and evidence
+  `sha256:ef101a63285e88a592a0482a12b26c06b30cc4407a5175c30dd7e45001fcf7d0`.
+- **E096:** accepted-technical/metadata-blocked review and corrected ledgers:
+  review
+  `sha256:4e2b243aeed3872606652481858d233034bc3c8d59de801b4b93e7be8c13bb2c`,
+  tasks
+  `sha256:b5746719a5dd06908f7a739b69870653bfcc7a7edcdab171e288ab955d543ea5`,
+  context
+  `sha256:31b15a0cf9655d0b53d332f52ed87539c84f71ec6b12c393db73af02e591e8dc`,
+  and unchanged plan
+  `sha256:cbe493c4540ad230c6ee02665305724f8e28dcd5fe009b8984c981e78e158403`.
+
+Tasks/context now agree: D2-0b technical Red/staging is accepted, D2-0c is
+status-only, final review plus explicit user `approve` is next, and D2-1
+package-free Wire contract Red is the sole first product slice. Later layers
+and all five migration generators remain gated in order; capability flags stay
+false.
+
+No executable/product evidence changed after D2-0b. D2-0c adds no finding and
+does not alter IVSD-F038/M038, F039/M039, or F040/M040.
+
 User decisions on 2026-08-29 additionally establish:
 
 - web and desktop targets;
@@ -2440,7 +3688,7 @@ User decisions on 2026-08-29 additionally establish:
   in A by a repository-native BCL wizard, not Terminal.Gui);
 - an external agentic skill instead of embedded AI.
 
-Planning revalidation on 2026-08-30 reviewed:
+Historical planning revalidation on 2026-08-30 reviewed:
 
 - `dev/active/setup-assistant-security-and-portability/`
   `setup-assistant-security-and-portability-clean-room-evidence.md`;
@@ -2454,29 +3702,20 @@ Planning revalidation on 2026-08-30 reviewed:
 - .NET 10 CSP and Unix file-mode documentation, Windows SignTool, Apple
   notarization, SLSA provenance, and Flatpak sandbox/portal guidance.
 
-Planning-mode revalidation on 2026-08-31 additionally reviewed exact expanded
-Scenarios 3.13–3.15, Phases 8–11, SA-810–SA-1250, the current workstream
-context, and the source-free clean-room evidence. This refresh reviewed the
-changed SA-120 dependency strategy under the deterministic five-file digest:
-Terminal.Gui 2.4.17's 24-package graph and Avalonia 12.1.1 runtime targets stay
-blocked; A becomes BCL-only; B retains framework-neutral outcomes behind fresh
-approval. It used E038-E043 without browsing or ingesting external source or
-prose.
+Historical planning-mode revalidation on 2026-08-31 additionally reviewed
+expanded Scenarios 3.13–3.15, Phases 8–11, SA-810–SA-1250, and the BCL-only A
+strategy. The prior B1 final-Red revalidation bound all 17 artifacts in that
+binding and reviewed only non-forgeable completion authority, retained
+final-generation exhaustion, exact Toolkit lock content identity, governed
+commit override state, the unchanged Red taxonomies, and unchanged product and
+target authority without ingesting external implementation source.
 
 ## Missing Evidence
 
-- SA-120 implementation proof that A's ten shells/locks/ratchets contain no
-  Terminal.Gui, Avalonia, replacement UI package, or exception material;
-- locked restore, point-in-time vulnerability audit, and repository license
-  validation for the exact BCL-only A project graph;
-- a provenance-complete successor-B GUI/browser/desktop graph, or new
-  authoritative Avalonia binary/component/license/notice and
-  `Avalonia.Remote.Protocol` publish-exclusion evidence;
-- fresh successor-B dependency, security, accessibility, I-VSD, CTO, and user
-  approvals for any activated target;
+- a provenance-complete B1 Avalonia/Terminal.Gui graph, or new authoritative
+  Avalonia binary/component/license/notice and `Avalonia.Remote.Protocol`
+  publish-exclusion evidence;
 - authoritative license record for every selected transitive/native artifact;
-- approved environment catalogue;
-- full key/default/activation mapping from current source;
 - independent review of the planned threat model and exact-build misuse cases;
 - official host deployment architecture;
 - browser compatibility matrix;
@@ -2492,12 +3731,22 @@ prose.
 - legal template provenance and counsel review;
 - legal publication/acceptance migration semantics;
 - localized legal-content size and usability evidence;
-- final CLI command/JSON/exit-code contract;
-- BCL terminal security/accessibility/TTY/echo/signal/resize/scrollback matrix;
+- final release evidence for the implemented CLI command/JSON/exit contract;
+- BCL terminal security/accessibility/TTY/echo/signal/resize/scrollback support
+  matrix and separate no-secret Terminal.Gui target evidence;
 - skill routing, resources, compatible CLI range, and executable examples;
 - Project Steward/legal decision for any reciprocal AGPL-only target;
-- measured composition scale evidence and target-compatible limits;
-- live enrollment/capability/revocation and cross-tenant adversarial evidence;
+- fresh weighted post-Red review bound to E085-E087/current-report revision,
+  an exact D2 owner/file/staging set, and exact-revision user approval before
+  D2 Green;
+- D2 Green live enrollment/capability/revocation, cross-target/tenant, replay,
+  HAL-synthesis, protected-profile downgrade, RFC 7807, log/support leakage,
+  provider-fallback, and secret-readback evidence turning the observed D1 API
+  Red Green without weakening it;
+- D2 real HTTP/persistence/provider integration evidence, generated contract
+  review, deterministic time/concurrency coordination, and terminal revocation;
+- platform protected-credential-store evidence for every claimed target, with
+  unsupported targets recorded `ApprovedDisabled`;
 - exact target-local provider allowlist and proof of value/coordinate-free
   write/readiness contracts;
 - category-level application-data/PII custody, purpose, compatibility,
@@ -2526,6 +3775,20 @@ Reviewed:
   retained from prior reviews;
 - the repository-local sanitized dependency handoff that supersedes candidate
   package assumptions for successor A;
+- the exact final-Red binding, all 17 bound planning/evidence/review/test
+  artifacts, and the three unchanged product dependency preimages;
+- the initial and corrected Phase 8 bindings/reviews; and the final Phase 8
+  binding with all fourteen named planning/review/report/Core/test/lock/
+  central-pin preimages, unchanged technical contract, exact final ownership,
+  literal commit copy, change-fragment/Change-Id, and mixed-author blockers;
+- Green Phase 8 bounded composition, scale profiles, generator/evidence,
+  focused/full test results, architecture closure, and Release build result;
+- the exact Phase 9 intake/binding, current ConfigurationImport capability and
+  HTTP boundaries, current secret resolver/binding boundaries, authenticated
+  integration fixtures, and absent D1 test/product owners;
+- the exact D1 approval, sole API test, compile/discovery/failure output,
+  post-Red evidence/binding, and continued absence of every product and future
+  adapter owner;
 - existing repository CLI and skill-authoring conventions;
 - official browser CSP/SRI guidance and .NET file/random APIs;
 - user’s initial architecture proposal and resolved web-mode decisions.
@@ -2533,6 +3796,12 @@ Reviewed:
 Not reviewed:
 
 - Avalonia, Terminal.Gui, or other third-party source code/prose;
+- rendered UI, browser, desktop, terminal, assistive-technology, support,
+  release, or shipping behavior;
+- SA-518 production implementation, because it remains absent in the prior B1
+  bound preimage;
+- Phase 9 D2 live product behavior, because the future SA-920 adapter Red and
+  all enrollment/provider-write/protected-profile owners remain absent;
 - SA-120 restore/build output or generated locks for the proposed A graph;
 - raw external commercial tooling terms or package payloads;
 - external competitor implementation or UI;
@@ -2597,17 +3866,22 @@ provider-responsibility constraints and refresh triggers.
 - **Workstream:** `setup-assistant-security-and-portability`
 - **Status:** current
 - **Reviewed input revision:**
-  `sha256:d2bbba40455c013e20883ab6202f84411bb05f2c20f6060a9e73095f44a8e4b1`
-- **Findings and mitigations:** `IVSD-F001` through `IVSD-F046` are accepted
+  `sha256:edb31317a5c48168e35e97bdd60e61df1e1625f463efa93cd76101768baa9eb8`
+  (binding ID
+  `setup-assistant-security-and-portability-phase9-d2-3-final-approvable-red-20260901`).
+- **Findings and mitigations:** `IVSD-F001` through `IVSD-F046` remain accepted
   and map one-to-one, without renumbering, to `IVSD-M001` through
-  `IVSD-M046`. No new stable finding or mitigation is required: F013/F015/F022
-  and F029/F035 already cover fail-closed dependency replacement, non-inherited
-  approval, target evidence, preserved terminal access, and terminal
-  accessibility without renumbering.
+  `IVSD-M046`. No new stable finding or mitigation is required: IVSD-F037/M037
+  already governs source ambiguity and evidence-bound scale.
+  IVSD-F038/M038, F039/M039, and F040/M040 now govern exact D1 tenant,
+  capability/replay/HAL, protected-profile, provider-coordinate, write-only
+  secret, and readback boundaries; F002/F009/F020/F022 preserve canonical Core,
+  secret separation, no provider extraction, and evidence limits.
 - **Required plan mappings for preserved scope:** Plan Section 9 maps
-  `IVSD-F001/M001` through `IVSD-F036/M036` to Scenarios 3.1–3.12 and
-  SA-110–SA-1240. SA-1250 performs final I-VSD/criticality reconciliation and
-  disables any unevidenced shipped capability.
+  `IVSD-F001/M001` through `IVSD-F036/M036` to Scenarios 3.1–3.12 and 3.16 and
+  SA-110–SA-1240, including SA-515/SA-520/SA-525/SA-530 for the re-baselined
+  human presentation. SA-1250 performs final I-VSD/criticality reconciliation
+  and disables any unevidenced shipped capability.
 - **Required plan mappings for expanded scope:**
   - `IVSD-F037/M037` -> Scenario 3.13; SA-810, SA-820, SA-830, SA-1220,
     SA-1250.
@@ -2629,28 +3903,72 @@ provider-responsibility constraints and refresh triggers.
     SA-1030, SA-1110, SA-1120, SA-1130, SA-1140, SA-1220, SA-1250.
   - `IVSD-F046/M046` -> Scenarios 3.12, 3.14, and 3.15; SA-1020, SA-1030,
     SA-1110, SA-1130, SA-1140, SA-1240, SA-1250.
-- **Disposition:** `plan-aligned`. The BCL-only successor-A strategy and
-  framework-neutral successor-B outcome mappings are complete for planning.
-  This report grants no implementation, CTO, user, provider, legal, privacy,
-  payment, release, accessibility, or scholarly authority.
-- **Approval reset:** the existing CTO review and user approval artifact bind
-  prior plan/tasks/report revisions and are revision-obsolete for this changed
-  strategy. No approval is inherited by A or any later successor.
-- **Mandatory before SA-120 resumes:** fresh Senior CTO review bound to this
-  exact changed plan/tasks revision, followed by exact-revision user approval.
-  SA-110's recorded Red remains evidence only; it authorizes no scaffolding.
+- **Disposition:** `plan-aligned` for the observed D1 SA-910 API Red and
+  verified D2-1 package-free Wire Green under IVSD-F038/M038, F039/M039, and
+  F040/M040, plus D2-2 Domain Green and final approvable D2-3 Application Red.
+  D2-3
+  behavior onward remains conditional. This disposition grants no
+  Domain/Application/Persistence/API schema, migration, OpenAPI/client,
+  provider-write, protected-profile, adapter, staging, commit, support,
+  release, shipping, legal-certification, or scholarly authority.
+- **Satisfied D1 gate:** E082-E084/current-report technical approval and exact
+  user approval were present; only the sole API test was created; the future
+  adapter path remains absent; safe CLI/isolated cache remained active; and
+  product/project/lock preimages did not change.
+- **Observed valid D1 Red:** the API test project compiles; ten deterministic
+  exploit tests fail only for the absent exact enrollment/capability/provider-
+  write API owner and route family; adapter-owner absence is not a D1 failure.
+  Tests cover
+  expiry, terminal revocation, cross-target/tenant reuse, idempotency replay,
+  source authority, HAL synthesis, protected-profile downgrade, provider
+  fallback/coordinate disclosure, secret readback, RFC 7807, logs/support
+  evidence, cancellation, and zero partial state. No hard-coded credential,
+  sleep, polling, random race, raw source scrape, or mock-mirroring is valid.
+- **Mandatory before D2-3 Green:** a fresh weighted D2-3 Red review binds
+  E145-E147/current report, exact final approvable contract/test hashes,
+  complete CLR table and structural manifest/module identity, exact SDK
+  witness metadata, borrowed backing proof, transformed diagnostic negatives,
+  attributable failures, and D2-7 race ownership;
+  production uses normal bearer identity plus one purpose-bound digest-only
+  capability, route-derived tenant scope, terminal revocation, monotonic
+  generation, UUIDv7 idempotency fingerprinting, HAL-only actions, a
+  purpose-specific write-only provider seam, explicit-binding mismatch
+  rejection, and protected-handle-only profile storage or `ApprovedDisabled`.
+  After the public/generated live contract exists and before adapter behavior,
+  SA-920 captures the separate Setup adapter behavioral Red.
+- **Approval boundary:** successors A, the selected/disabled B slices, and C
+  are Green under their own historical exact approvals. The user explicitly
+  approved the reviewed staged D sequence. D2-1 implements transport contracts
+  only; no live authority exists. This revalidation supplies I-VSD alignment
+  for review before D2-2.
+- **Satisfied predecessor gates:** SA-518 and Phase 8 completed their exact
+  focused, architecture, graph, evidence, and Release gates. Every later
+  restore/build/test/publish evidence run still sets
+  `DOTNET_CLI_TELEMETRY_OPTOUT=1`,
+  `DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1`,
+  `DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1`, `DOTNET_NOLOGO=1`, and an
+  isolated package cache.
+- **B0 lifecycle:** verified superseded, non-executable, non-authorizing,
+  never user-approved, and replaced before probing across the historical B0
+  triad, intake, binding, CTO review, and separate I-VSD report. B0 cannot be
+  revived or re-baselined as a fallback, and no conditional disposition,
+  digest, finding, or mitigation transfers to B1.
 - **Successor-A dependency boundary:** A uses BCL plus package-free
   `Event.Wire.Contracts`; Terminal.Gui 2.4.17 and its full 24-package graph are
   blocked; Avalonia 12.1.1 is neither pinned nor restored; presentation,
   Browser, and Desktop shells remain package-free, disabled, and non-shipped.
-- **Successor-B boundary:** B retains all user-approved framework-neutral GUI,
+- **Successor-B boundary:** B retains all user-directed human-presentation,
   browser, desktop, accessibility, self-hosting, protective-default, and
-  portability outcomes. Activation requires a provenance-complete graph or new
-  authoritative evidence plus fresh I-VSD, CTO, user, dependency, security,
-  and accessibility approval.
-- **Mandatory before SA-910:** Tier 1 adversarial authorization, tenant,
-  replay, provider-coordinate, and readback evidence plus fresh CTO approval
-  for the live-authority phase.
+  portability outcomes. CommunityToolkit.Mvvm `8.4.2` is approved only for the
+  shared model; Microsoft DI `10.0.10` plus Abstractions `10.0.10` is approved
+  only at executable roots. Avalonia shared/Browser/Desktop `12.1.1` and
+  Terminal.Gui `2.4.17` remain `ApprovedDisabled`, absent, unresolvable, and
+  unsupported; Terminal.Gui is no-secret-only, Browser/Desktop own any future
+  secret sessions, and machine CLI/Core remain presentation-free.
+- **SA-910 boundary:** the authorized one-file API Red remains intentionally
+  Red. D2-1 Wire contracts are Green without turning that HTTP Red Green. No
+  Domain, API, provider, profile, or adapter authority is inherited. The
+  adapter test remains SA-920-owned.
 - **Mandatory before SA-1110:** Tier 2 category custody/PII/retention/staging,
   authority-first erasure, anti-resurrection, and value-free receipt decisions;
   and Tier 0 decisions binding hold-expiration/finalization precedence,
@@ -2689,6 +4007,61 @@ provider-responsibility constraints and refresh triggers.
 | 2026-08-31 | stale / changes-required | current / plan-aligned | Planning-mode revalidation added IVSD-F037–F046/M037–M046, resolved repository-answerable privacy/payment defaults, mapped every accepted ID, and preserved fail-closed Tier 0/1/2 gates | Exact four-file review revision `sha256:055fb1dd8c0dfcdbd809bbfb89cbd2660904469fd3d866d6d6349af091793d4f` |
 | 2026-08-31 | current / plan-aligned | stale / changes-required | SA-120 blocked Terminal.Gui/Avalonia graphs and replaced A with a BCL-only terminal strategy while moving GUI graph selection to B | Changed plan/tasks/context/clean-room/dependency evidence; prior CTO/user approvals became revision-obsolete |
 | 2026-08-31 | stale / changes-required | current / plan-aligned | Planning-mode revalidation preserved F001-F046/M001-M046, bound fail-closed replacement/no-inheritance to existing controls, and confirmed framework-neutral B outcomes | Exact five-file review revision `sha256:d2bbba40455c013e20883ab6202f84411bb05f2c20f6060a9e73095f44a8e4b1` |
+| 2026-08-31 | current / plan-aligned | current / plan-aligned | Successor A became Green and the user directed a WPF-style shared human-presentation architecture; revalidation mapped Scenario 3.16 and SA-515/SA-520/SA-525 without changing provider authority, protective defaults, data flows, or release gates | Exact ordered five-file review revision `sha256:0576be649c1b1f7afc8e40e2c7ada54aec7cc1109d88e889de3a38b73e4ac265` |
+| 2026-08-31 | current / plan-aligned | current / plan-aligned | A concurrent unapproved B0 Razor/browser workstream appeared; the umbrella review preserved it untouched, classified it as non-transferable overlap, and added a mandatory supersession/re-baseline gate for the newer B1 direction | Exact ordered five-file review revision `sha256:f087c810ef74c31685c5472e33bfbd865ee21f3519192e3a57deb301c791bdc6` |
+| 2026-08-31 | current / plan-aligned | current / plan-aligned | Fresh B1 planning-mode revalidation verified B0's superseded/non-authorizing lifecycle and bound the CommunityToolkit-only model, target-root DI, per-session messaging, generation fencing, target-owned secret sessions, adapter states, six-stage non-shipping probes, accessibility/support truth, clean-room/outbound licensing, and later gates without granting probe or delivery authority | B1 binding `setup-assistant-security-and-portability-b1-20260831`, `sha256:bcadc5f8e8d7eba68a198629be694acf787e412e06270d8dce6f62dbf52ce4b7` |
+| 2026-08-31 | current / plan-aligned | current / plan-aligned | Post-Red revalidation approved SA-518 shared-model progression under preserved F001-F046/M001-M046 after exact Toolkit/DI role approvals, accepted the ten-test absent-owner Red, preserved disabled target and claim boundaries, and made the safe CLI environment mandatory | Post-Red binding `setup-assistant-security-and-portability-b1-post-red-20260831`, `sha256:e67b951bf34652fe507d5c28aa2fc8880cf1c5c6fc942448aa079ef53f0d04cb`; fresh bound CTO review remains required before SA-518 |
+| 2026-08-31 | current / plan-aligned | current / plan-aligned | Corrected-Red revalidation accepted all five CTO correction groups as stronger evidence for preserved F001-F046/M001-M046, moved adapter ownership to architecture checks, bound exact graph and independent SA-518 closure, and kept all product preimages and target claims unchanged | Corrected-Red binding `setup-assistant-security-and-portability-b1-corrected-red-20260831`, `sha256:d76bbf90507749a0f189ed6e6493f781afed168864c81efa935d9e77ab3e3f2d`; fresh bound CTO verdict remains required before SA-518 |
+| 2026-08-31 | current / plan-aligned | current / plan-aligned | Final-Red revalidation closed the four residuals with no public settlement injection, two real completion continuations, retained in-flight exhaustion rejection, exact Toolkit content-hash ratcheting, and explicit conventional-commit/override governance while preserving all product and claim exclusions | Final-Red binding `setup-assistant-security-and-portability-b1-final-red-20260831`, `sha256:ae262c99d9fb39b7263e057b1cfc9f10ec6b5f89637c91ca80512881e0bacf49`; fresh bound CTO verdict remains required before SA-518 |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | Phase 8 revalidation recomputed every bound preimage, evaluated isolated YamlDotNet syntax-tree evidence and product non-drift, preserved F001-F046/M001-M046, aligned SA-810 Red, and made SA-820/SA-830 conditional without granting package, security, dependency, CTO, support, or shipping authority | Phase 8 binding `setup-assistant-security-and-portability-phase8-20260831`, `sha256:a9a1e4f05de526a6dc2af5e407ebcf118c49d6daa66b163dddb12826f0326ae1`; probe evidence `sha256:39998d1f4f97c22399d60900d990bacfecd22d2548331a0e101839544b5ecf1b` |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | Corrected Phase 8 revalidation bound the C1 Red/Core-only C1 Green/scale-only C2 split, fourteen matrices, exact ceilings/public seam/barriers, Linux/Windows claim evidence, Phase 8 Worst Break, unchanged defaults/product preimages, and exact per-slice ownership/verification/commit governance while preserving F001-F046/M001-M046 | Corrected binding `setup-assistant-security-and-portability-phase8-corrected-20260901`, `sha256:dbd6007b3d495334a6e749159be74ea979a4659f075a5378c7b7a224f8573c36`; fresh corrected-revision CTO approval remains required before C1 Red |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | Final governance-only revalidation preserved every technical/provider-responsibility constraint and F001-F046/M001-M046 while binding exact two-file Red, central-pin-read-only exact Green with new docs/change fragment/Change-Id, new-file-only C2, literal messages/footers/override state, mixed-author blockers, and post-commit file/hash verification | Final binding `setup-assistant-security-and-portability-phase8-final-20260901`, `sha256:58a6673b0f1555467a28661ef110cbfb3b6aae2ce3b83a9f2b5342778c305169`; fresh final-revision CTO confirmation remains required before C1 Red |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | Phase 9 planning revalidation recorded Green Phase 8 predecessor evidence and bound D1's normal bearer-to-purpose-capability, route-tenant, replay, protected-handle, write-only provider, no-readback, HAL-only, and exact two-file Red contract without granting live implementation authority | Phase 9 binding `setup-assistant-security-and-portability-phase9-20260901`, `sha256:f1e33d2e2fe25c36abd1fde9c8d63dce47aa6f3ca69344aa215869d4b9e602f0`; fresh CTO/MAD and exact-revision user approval remain required before D1 |
+| 2026-09-01 | current / plan-aligned | stale / changes-required | Independent review found secret-bearing generic idempotency replay, absent-adapter Red contradiction, actor/authorization continuity gaps, generation-blind replay, revocation/effect race, underspecified token/failure shape, and explicit secret-binding fallback | Anonymized MAD findings `sha256:147dfaafe9a04cd4a04c3e5133ad76a254fb2ad4f41429ae2d8fd8fb40e2ebf6` |
+| 2026-09-01 | stale / changes-required | current / plan-aligned | Corrected revalidation accepted every relevant finding, narrowed D1 to one compilable API Red, moved adapter Red to SA-920 contract-first TDD, bound current bearer/actor authorization, value-free issuance idempotency, generation-aware replay, atomic/dispatch revocation fencing, exact capability/failure shape, and explicit binding mismatch rejection | Corrected binding `setup-assistant-security-and-portability-phase9-corrected-20260901`, `sha256:3b70f8f5f190ac0c4088d73b8d4f468bb6a8c03a6ccca39d4848d7e08fa48011`; fresh corrected CTO/MAD and exact-revision user approval remain required |
+| 2026-09-01 | current / plan-aligned | stale / changes-required | Corrected CTO review found two stale D1 ownership statements and no literal route/HAL/ProblemDetails/persistence/observability contract, making a guessed 404 and deeper negative assertions non-attributable | CTO review `sha256:26221e0b9a146481907ad36a4d820b4d51e457b19cc0ee9febd48e6e85da1c9b` |
+| 2026-09-01 | stale / changes-required | current / plan-aligned | Final revalidation removed all two-file/adapter-failure D1 authority and bound the exact owner/routes/metadata/shapes/HAL/problems/records/effect/telemetry contract, positive-before-deep assertion order, and D1 no-dispatch versus D2 provider-success split | Final Phase 9 binding `setup-assistant-security-and-portability-phase9-final-20260901`, `sha256:8fc5f86ebb1775a4fa0942d702dc18676ebae73329143ee2d100c445a8b61952`; fresh final CTO/MAD and exact-revision user approval remain required |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | Exact user approval authorized one API test; final D1 compiled and discovered 10/10 tests, all ten failed only for the absent exact owner/literal routes with no pass/skip or premature deeper assertion | Post-Red binding `setup-assistant-security-and-portability-phase9-post-red-20260901`, `sha256:494db8d6a5c0be3bb5f66b12f50ce70fe2995626355ae0545fc6021778133dd3`; D2 remains conditional on fresh post-Red review and exact approval |
+| 2026-09-01 | current / plan-aligned | stale / changes-required | Post-Red review accepted the absence Red but found shared database/time/authorization/telemetry state, request double-disposal, arbitrary activity barriers, and unsupported writer/resolver-call claims | Review `sha256:fa6d9ad2f13624e3e8b0af6a5abb2477fb7eea7d553c6b1ce672028561d00994` |
+| 2026-09-01 | stale / changes-required | current / plan-aligned | D2-0 isolated every test, fixed single HTTP ownership, replaced arbitrary activity barriers with exact value-free structured log milestones, narrowed claims to observed evidence, and retained 10/10 attributable absence failures | D2-0 binding `setup-assistant-security-and-portability-phase9-d2-0-final-20260901`, `sha256:b159e98a4202efff1cb5b175343d6befa093035160d3d6c9a90ded29ffa66a43`; product D2 still requires fresh review and exact approval |
+| 2026-09-01 | current / plan-aligned | stale / changes-required | D2-0 review accepted isolation/ownership/claim scope but found milestone matching omitted exact event ID/name and canonical ledgers omitted D2-1 through D2-11 plus all migration providers | Review `sha256:c6a4bc75f9a887802eb5fa518b055902980869f60e7786f9ecaafd6ea4741cc2` |
+| 2026-09-01 | stale / changes-required | current / plan-aligned | D2-0b matches event ID/name/operation/milestone, narrows mismatch evidence to HTTP shape/value exclusion, records D2-1 through D2-11 in plan/tasks/context, names all five generated migration providers, and retains 10/10 attributable Red | D2-0b binding `setup-assistant-security-and-portability-phase9-d2-0b-final-20260901`, `sha256:6fac4deb374ad98f1d9baad71e129d150ca8a841311f5633191d52d3993b92ea`; product D2 still requires fresh review and explicit approval |
+| 2026-09-01 | current / plan-aligned | stale / changes-required | D2-0b review accepted technical Red/staging but found tasks/context resume metadata still pointed at obsolete B1/Phase-8 work and omitted D2-1 as the next gated slice | Review `sha256:4e2b243aeed3872606652481858d233034bc3c8d59de801b4b93e7be8c13bb2c` |
+| 2026-09-01 | stale / changes-required | current / plan-aligned | Status-only D2-0c makes tasks/context identify final review plus explicit `approve` as next, D2-1 Wire Red as the sole first product slice, later layers/providers/generators gated, and capability flags false | D2-0c binding `setup-assistant-security-and-portability-phase9-d2-0c-final-20260901`, `sha256:83bdf2889ed66f5c4aab6e407d025d15e6b8d6e53fe03ea25afee37c39f70c34`; product D2 still requires fresh review and explicit approval |
+| 2026-09-01 | current / plan-aligned | stale / changes-required | D2-0c review accepted technical readiness but found executable-looking historical `IN PROGRESS`, `NEXT`, `Quick Resume`, `Current Handoff`, fresh-intake, and task-priority labels that contradicted the intended sole resume path | Review `sha256:e9f446c24b4ba9412e0ad7c133c3ad67855c2b17932819435e1ea293f9ef0282` |
+| 2026-09-01 | stale / changes-required | current / plan-aligned | D2-0d marks all old session-progress, quick-resume, and handoff directions historical/superseded/non-executable and makes final review plus explicit `approve`, then D2-1 Wire Red only, the singular current path | D2-0d binding `setup-assistant-security-and-portability-phase9-d2-0d-final-20260901`, `sha256:9c935d1abb73002656bf4b2407c5700d43f316acf94e2dc98b7c3db1e1b886cb`; product D2 still requires fresh review and explicit approval |
+| 2026-09-01 | current / plan-aligned | stale / changes-required | D2-0d review accepted technical/readiness evidence and the singular resume path but found the current successor-D ownership row still said D2-0c review was pending | Review `sha256:36c00e1ed7db2aa5acfd0f185545ae84f8487d5fdd03ec92b67417a98da59b88` |
+| 2026-09-01 | stale / changes-required | current / plan-aligned | D2-0e makes the successor-D ownership row agree that final D2-0e review then explicit `approve` is current, no product owner/capability exists, and D2-1 Wire Red is the sole first product slice | D2-0e binding `setup-assistant-security-and-portability-phase9-d2-0e-final-20260901`, `sha256:15aed34796930152e3e2dee19ab042b84f978a4d37b743cf9d0bae52bc718c9c`; product D2 still requires fresh review and explicit approval |
+| 2026-09-01 | current / plan-aligned | stale / changes-required | D2-0e review accepted the technical packet, ownership row, and singular resume path but found the authoritative context planning-status sentence still named D2-0c as current | Review `sha256:2d563b00938b614323a49c5d7cc2786e1f0651d2e05617198badca9ddeae5028` |
+| 2026-09-01 | stale / changes-required | current / plan-aligned | D2-0f makes every authoritative planning, ownership, status, and resume surface agree that final D2-0f review then explicit `approve` is current and D2-1 Wire Red is the sole first product slice | D2-0f binding `setup-assistant-security-and-portability-phase9-d2-0f-final-20260901`, `sha256:9bdd703dd91801b436e602d9418b6d7d93a325cc8f35f037c6ed3620e077de73`; product D2 still requires fresh review and explicit approval |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | Final D2-0f review approved the complete staged packet at 100/100 and the user explicitly approved it; D2-1 Wire Red became the sole authorized first product action | Review `sha256:fba631d7436e08ab397c72df4de04dacbcebfa150be258fd4bd03897bf5510e8`; approval `sha256:a5d01cb1d91a071c7885316edb3ec27f244d8f36e44687ebe6d4344dbeb6b97e` |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | D2-1 observed attributable Wire/Core/Architecture Red, then added only package-free immutable transport vocabulary and passed focused/full Wire, Core, Architecture, product-build, LSP, package-graph, and whitespace gates | D2-1 binding `setup-assistant-security-and-portability-phase9-d2-1-green-20260901`, `sha256:cb2292e484bf137c5b6f4d963733fa282cc54100dc50ec06f226ca2b7261c3e9`; D2-2 requires fresh focused review |
+| 2026-09-01 | current / plan-aligned | stale / changes-required | Initial D2-1 review reproduced clear capability default serialization plus null/invalid challenge, null/duplicate/numeric scope, numeric enum, and incomplete shipped-context test failures | Review `sha256:61976036324b4f436ec3fd6271c18ae88de4ae2b14dbb1e5da6129f1873014ba` |
+| 2026-09-01 | stale / changes-required | current / plan-aligned | Corrected D2-1 removes public capability data, adds canonical typed challenge and strict scope/enum converters, exercises the shipped context/default serializer, closes metadata aliases, and passes 8/8 focused plus 35/35 full Wire and architecture gates | Corrected binding `setup-assistant-security-and-portability-phase9-d2-1-corrected-green-20260901`, `sha256:1fa56ed5cf964151826cfd68a712657cb963ff29f5c1f4d10291ccaaccd6c2f7`; D2-2 requires fresh focused review |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | Corrected D2-1 review closed every serializer/capability/metadata finding at 100/100 and authorized D2-2 Domain Red only | Review `sha256:cd9b41d98111914e4aba5a392ebe0fe9d981c52f4d2d376a75eae74ca68ca72c` |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | D2-2 added one reflection-driven public-behavior Domain test file; seven tests compile and fail only for absent enrollment, issuance-claim, and secret-operation owners, with no Domain product path | D2-2 Red binding `setup-assistant-security-and-portability-phase9-d2-2-red-20260901`, `sha256:08cd9144a496522f27da007dd611177eae8a87798f662ea30302d53b6a03556a`; Green requires focused Red review |
+| 2026-09-01 | current / plan-aligned | current / changes-required | Initial D2-2 review found incomplete cross-bound dispatch, replay/commitment, mutation atomicity, temporal/overflow, public-surface, audit, and concurrency contracts | Review `sha256:9176183c69a1b595182acbfdb58a603d4a478be6b3622dfaa06476223a010c05`; no Green authority |
+| 2026-09-01 | current / changes-required | current / plan-aligned | Corrected D2-2 expands to 14 exact-surface and lifecycle tests, removes Domain `Revision`, assigns `ConcurrencyStamp` exclusively to Persistence, and produces exact 5/3/6 owner-absence failures | Corrected binding `setup-assistant-security-and-portability-phase9-d2-2-corrected-red-20260901`, `sha256:1bb0b910eee24795f8bed638d2f39613107b87d02647a7235dce855185cdce0f`; Green requires fresh focused review |
+| 2026-09-01 | current / plan-aligned | current / changes-required | Second D2-2 review found incomplete accepted terminal results, actor/user audit conflation, and value-bearing exception-diagnostic escape | Review `sha256:225120ba60178747284f57d2d837736bf381df8b4f77c7590920a0475b4fc114`; no Green authority |
+| 2026-09-01 | current / changes-required | current / plan-aligned | Final D2-2 requires exact named terminal snapshots, leaves user audit attribution to later authenticated ownership, and excludes runtime evidence canaries from exception chains while preserving exact 5/3/6 Red attribution | Final binding `setup-assistant-security-and-portability-phase9-d2-2-final-red-20260901`, `sha256:90fc0b3be5ff307ffcc6466abb4b25d53711db1d344e3bd660f3812d4d6d34e7`; Green requires fresh focused review |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | Final D2-2 Red review approved every closed lifecycle, audit, concurrency, and diagnostic matrix at 100/100 and authorized Domain Green only | Review `sha256:7723a3bd5663ba19a65f5c03f38b1a3c9df336692baaff7ca67ab04ca0725bd4` |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | D2-2 implements three exact Domain owners, turns 14/14 focused and 1089/1089 full Domain Green, and corrects Green-executable reflection false positives without weakening raw-material closure | Green binding `setup-assistant-security-and-portability-phase9-d2-2-green-20260901`, `sha256:a34e6535fc6d8cbd599c618f26b8c7da002c37096ca19ba9661bcd4301122a02`; D2-3 requires fresh Green review |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | D2-2 Domain Green review approved at 100/100 and authorized D2-3 Application Red only | Review `sha256:bf46d5c7fe2e3a8c56d8e0ffb0dc72375e38b0bb2b4eb38d1508adcf97479db2` |
+| 2026-09-01 | current / plan-aligned | current / plan-aligned | D2-3 added one reflection-driven static Application contract test file; seven tests compile and fail only for exact absent writer, commitment, coordinator, barrier, and vocabulary owners | D2-3 Red binding `setup-assistant-security-and-portability-phase9-d2-3-red-20260901`, `sha256:bea912c635f0238a5bee2abc20f7b37f2123780d20fb816728580056b407e3a6`; Green requires focused review |
+| 2026-09-01 | current / plan-aligned | current / changes-required | Initial D2-3 review found contradictory semantic exclusions, unexecuted constructor/lifetime/metadata boundaries, and overstated race/call-count ownership | Review `sha256:eb4fdef0afae5633fdf0451327895df516f2f894f3f0c0473171543a641ee9b9`; no Green authority |
+| 2026-09-01 | current / changes-required | current / plan-aligned | Corrected D2-3 closes UUIDv7/version/binding/byte/commitment constructors, borrowed lifetime, value-free diagnostics, exact metadata, coordination identity, and assigns executable race/call-count proof to D2-7 | Corrected binding `setup-assistant-security-and-portability-phase9-d2-3-corrected-red-20260901`, `sha256:0dbc26bc5628e6e174e431e3a3e912239fa661f60666e178797bdbbf59079db0`; Green requires fresh review |
+| 2026-09-01 | current / plan-aligned | current / changes-required | Second D2-3 review found inherited public-surface escape hatches, borrowed-memory copying remained possible, and UUID/diagnostic negatives were narrower than claimed | Review `sha256:8fd588fa609f9884eabc1feff9197ad3e55c5476234dfcc9056bf2d792406550`; no Green authority |
+| 2026-09-01 | current / changes-required | current / plan-aligned | Final D2-3 forbids inherited contract surfaces, requires direct object bases, proves exact borrowed segment aliasing, rejects UUIDv1/v4/v6/v8, and denies transformed byte diagnostics | Final binding `setup-assistant-security-and-portability-phase9-d2-3-final-red-20260901`, `sha256:732ad07fd18177326b3afc9a78833201b96dba383d67373919420affc89f0286`; Green requires fresh review |
+| 2026-09-01 | current / plan-aligned | current / changes-required | Third D2-3 review found special-name interface methods plus request/result public fields/events/nested members could bypass complete-surface claims | Review `sha256:b2175ea8442cbc0af882bfacc1948f75aa5055e5052528bb3d9d8a0c9d326d99`; no Green authority |
+| 2026-09-01 | current / changes-required | current / plan-aligned | Complete D2-3 closes every interface/request/result public member kind, metadata events/nested types, and semantic public field types | Complete binding `setup-assistant-security-and-portability-phase9-d2-3-complete-red-20260901`, `sha256:d7cbbcb14ecf15abdbd649cbb9ccce7b52672d97d972c534498225d81b27e39d`; Green requires fresh review |
+| 2026-09-01 | current / plan-aligned | current / changes-required | Fourth D2-3 review found static/default/generic port, indexer/explicit-interface, enum-value, attribute, ownership, and forwarding bypasses | Review `sha256:d5eadd2c34368a30c8343b16209803cb208c650b45408bebfb3589185e3de3d4`; no Green authority |
+| 2026-09-01 | current / changes-required | current / plan-aligned | Exhaustive D2-3 freezes CLR method/property/backing-field/enum semantics, compiler-only attributes, Application ownership, and absence of forwarding | Exhaustive binding `setup-assistant-security-and-portability-phase9-d2-3-exhaustive-red-20260901`, `sha256:fc1e95aef0afd6c759e2bf277d0359e8b39530445d67910d510eb6d401150c1d`; Green requires fresh review |
+| 2026-09-01 | current / plan-aligned | current / changes-required | Fifth D2-3 review found private interface/metadata/enum behavior, incomplete implementation flags, permissive compiler provenance, and partial assembly/module prefix inventory | Review `sha256:fea22d226d869581063ea8afb18ce3669c89e7c8fe93ee4c4de0953544b46cd4`; no Green authority |
+| 2026-09-01 | current / changes-required | current / plan-aligned | Closed D2-3 uses same-SDK exact metadata witnesses, all-visibility owner closure, exact assembly/module security payloads, and full exported/forwarded prefixes | Closed binding `setup-assistant-security-and-portability-phase9-d2-3-closed-red-20260901`, `sha256:0c7cc11e2b895f474290c2939a97cb3f34f2ca498fa8df3ddfc5d654b0cfadce`; Green requires fresh review |
+| 2026-09-01 | current / plan-aligned | current / changes-required | Sixth D2-3 review found residual Property/Param/Field table flags, constructor return metadata, enum storage metadata, and textual custom-attribute identity | Review `sha256:042f62d5bcd4ac92749e314640304202e6527a94221fdd390bb4dfb9723f6e80`; no Green authority |
+| 2026-09-01 | current / changes-required | current / plan-aligned | Approval-ready D2-3 compares complete witness member metadata, semantic constructor return MethodDef state, and structural custom-attribute identities/payloads | Approval-ready binding `setup-assistant-security-and-portability-phase9-d2-3-approved-ready-red-20260901`, `sha256:3883929342439280a627915abbd7adbadeb819376cc8e9c5b6262e51c4d3b5de`; Green requires fresh review |
+| 2026-09-01 | current / plan-aligned | current / changes-required | Seventh D2-3 review found assembly/module identities remained full-name based and only the manifest module was inventoried | Review `sha256:eb968040e608dce3408aeb379829894a2f0e377531f64f47ef16532fec4efb92`; no Green authority |
+| 2026-09-01 | current / changes-required | current / plan-aligned | Final approvable D2-3 binds exact BCL manifest attributes/payloads, exactly one named/scoped manifest module, structural module metadata, and every owner to that module | Final approvable binding `setup-assistant-security-and-portability-phase9-d2-3-final-approvable-red-20260901`, `sha256:edb31317a5c48168e35e97bdd60e61df1e1625f463efa93cd76101768baa9eb8`; Green requires fresh review |
 
 Refresh this report when:
 
@@ -2704,9 +4077,17 @@ Refresh this report when:
   agent approval, or embedded-AI boundary changes;
 - a package-free presentation shell is activated, shipped, or used as support
   evidence;
+- human-presentation state, message payloads/lifetimes, validation/readiness
+  ownership, machine-CLI isolation, or target-adapter parity changes;
 - a dependency/license choice or approval-inheritance assumption changes an
   executable's outbound path or authority;
 - packaging, signing, official identity, source availability, or legal copy
   changes;
+- Phase 8 split, fourteen matrices, exact ceilings, public seam, deterministic
+  barriers, Worst Break, owned paths, verification/commit governance, source
+  grammar, parser identity/version/graph/role, platform claims, directory safety,
+  canonical bytes/diagnostics, source-path or sensitivity exclusion, defaults,
+  measurement profiles, target-server compatibility, safe CLI environment, or
+  review verdict changes; or
 - implementation evidence, stakeholder feedback, incidents, approval revision,
   or audits change any IVSD-F001 through IVSD-F046 conclusion.

@@ -23,11 +23,11 @@ Last Updated: 2026-08-31 Europe/Brussels
 - **Reviewed context revision:**
   `sha256:8368af4681bae70dc0b344d76ac84ecb99057c3cf69a36c5f88e27e5e5c4ea4d`
 - **Reviewed clean-room evidence:**
-  [setup-assistant-security-and-portability-clean-room-evidence.md](setup-assistant-security-and-portability-clean-room-evidence.md)
+  [setup-assistant-security-and-portability-clean-room-evidence.md](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-clean-room-evidence.md)
 - **Reviewed clean-room evidence revision:**
   `sha256:6145403b66c97950c28e3e58ed306572fc3046ebe7e4df8635f2f63f92407821`
 - **Reviewed dependency evidence:**
-  [setup-assistant-security-and-portability-dependency-evidence.md](setup-assistant-security-and-portability-dependency-evidence.md)
+  [setup-assistant-security-and-portability-dependency-evidence.md](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md)
 - **Reviewed dependency evidence revision:**
   `sha256:5fd00f8b63648bcccaf8f22a37c834eb10c1fc56480263ebc332b3622b26bf41`
 - **Aggregate reviewed-input revision:**
