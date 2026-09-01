@@ -15,16 +15,17 @@ Last Updated: 2026-09-01
 - Disposition: plan-aligned
 - Evidence cutoff: 2026-09-01
 - Reviewed input revision: `sha256:67b4bd5297641ba402a20994186235f1907b9d6d76b5d428833f0f9785857cd7`
-- Reviewed plan revision: `sha256:dbe2c99c090bec18f6e330e9a3c3f5bb00f089cd45cf49e1bfae6fd923e228a4`
-- Reviewed context revision: `sha256:f54776eb899f07f1d0629b7054573142c68faebdcac7c37b933b89f0c7e281ad`
-- Reviewed tasks revision: `sha256:dc038de7c5f36dc9bb8afaaa5f0851f950f082f63e516f23fab732526d0a0e37`
+- Reviewed plan revision: `sha256:c5b9c7fc9cad96df19521ca7f5192053b2c16a089d1149b25ab0570ca14fe301`
+- Reviewed context revision: `sha256:e24f5fc439ae2297c1ed5c81077a11fa506a2e1c76c3aef4aeaa6e6d83379509`
+- Reviewed tasks revision: `sha256:72bc82ac1eefaa4d79a692b785aa51beb28dd2c1b630c9dc86354419fb7a2dfb`
 - Reviewed CTO review revision: `sha256:636aa802ddaede72f676db2e2c3d9eaf49fec0c92a36092cceb89cae18430561`
-- Approval currency: approved five-phase scope, user implementation authority, independent current-bytes technical CLEAR, and Phase 1 commit authority bind the current revision; later phases require fresh readiness
-- Supersedes: planning revision bound to plan `sha256:dbe2c99c090bec18f6e330e9a3c3f5bb00f089cd45cf49e1bfae6fd923e228a4`, context `sha256:1d22d5f324403108ae98e555933c3f7c3d1abba6d6a45bb6d43ee424b2393eee`, tasks `sha256:e30e82ac76722091d56aec5b1f3c711952c7a297941c0dc74aefedafa972ff84`
+- Phase 1 decision evidence revision: `sha256:ae9bf05db592a9c2b13511898ae485a3315578dd32532f3e98383dc12723a961`
+- Approval currency: Phase 1 implementation, verification, bounded whole-file authorization, and commit receipt are complete; fresh revision-bound Tier 1 approval is required before Phase 2 manifest authorship
+- Supersedes: implementation-evidence revision bound to plan `sha256:dbe2c99c090bec18f6e330e9a3c3f5bb00f089cd45cf49e1bfae6fd923e228a4`, context `sha256:f54776eb899f07f1d0629b7054573142c68faebdcac7c37b933b89f0c7e281ad`, tasks `sha256:dc038de7c5f36dc9bb8afaaa5f0851f950f082f63e516f23fab732526d0a0e37`
 
-> The stable evidence digest `67b4bd52…` is unchanged: this revalidation reviewed
-> the rewritten triad against the same repository evidence packet `E001`–`E007`,
-> plus the new CTO review `E008`. No new repository investigation was performed.
+> The stable evidence digest `67b4bd52…` is unchanged: it covers repository
+> evidence `E001`–`E008`. This refresh additionally reviews bounded lifecycle
+> evidence `E009`; no raw authorization text or new repository investigation is retained.
 
 ## Scope
 
@@ -67,7 +68,7 @@ product source or third-party implementation was reviewed.
 - Validation level: repository-source verified
 - Linked mitigation: `IVSD-M001`
 - Owner / next validation: Phase 1, Tasks 1.1–1.3
-- Escalation boundary: user implementation approval is received; implementation must not start without a clean CTO approval bound to the current workstream revision
+- Escalation boundary: Phase 1 authority is exhausted; Phase 2 manifest authorship must not start without fresh revision-bound Tier 1 approval of the current workstream packet
 
 The current Markdown workflow can describe approval but cannot prove that a
 review, plan, task ledger, and commit authority refer to the same bytes. A
@@ -290,6 +291,13 @@ authority bindings. Every transition verifies artifact digests and expected
 HEAD. A CTO verdict never grants user approval, and an executor never grants
 itself authority.
 
+Close each mutable planning packet over its review binding: whenever tasks,
+context, or execution state is committed, include
+`islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`, authored
+last against the exact settled plan/context/tasks bytes. Phase 5 increments 5A
+and 5B intentionally carry no mutable triad state; increment 5C performs that
+binding reconciliation.
+
 ### IVSD-M002 — Fence shared work and preserve uncertain state
 
 Use one path owner at a time, generation-fenced claims, expected-HEAD checks,
@@ -416,6 +424,7 @@ the bypass.
 | Closure lock cannot be acquired, or HEAD keeps moving | Use the 30-second default lock timeout and maximum 3 re-verification attempts from the revision-bound approved manifest, then block with a fixed diagnostic; never force-break a live lock and never retry indefinitely |
 | Committed tree differs from the planned packet | Raise a fixed diagnostic and stop; never self-repair by reverting or resetting |
 | The control plane blocks its own repair | Use the authorized break-glass, which suspends claim acquisition only and leaves every protection for others' work enforced |
+| A mutable packet omits its last-authored I-VSD binding | Block packet closure; Phase 2/3/4 and 5C include the report, while 5A/5B intentionally defer mutable-state reconciliation to 5C |
 
 ## Stakeholders
 
@@ -440,7 +449,7 @@ the bypass.
 
 ## Validation Gaps
 
-- No typed workstream schema or active-triad validator exists yet.
+- Phase 1 now provides the typed workstream schema and revision-bound validator; Phase 2 mutation/closure enforcement remains unimplemented.
 - No repository-owned path lease or phase-close coordinator exists.
 - Mixed-hunk ownership detection behavior is not yet proven.
 - No packet compiler enforces heading revisions or context budgets.
@@ -480,6 +489,7 @@ external service beyond an approved provider boundary.
 | `E006` | `implementation-plan`, `senior-cto-feedback`, `conventional-commit` skill trees | Revision/approval/phase-packet rules are detailed but primarily prose-enforced |
 | `E007` | `dev/zarchive/{enterprise-ci-cd-hardening,agent-architecture-modernization,refactor-context-engineering}/` | Historical decisions exist but contain obsolete assumptions and are not active owners |
 | `E008` | `dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-cto-review.md` | Senior CTO review bound to the pre-rewrite triad; blocking findings B1–B4 plus M1–M3 drove the revalidated shared-workspace, authority, adapter-sequencing, and disclosure changes in this revision |
+| `E009` | `.omo/evidence/20260901-agentic-workflow-control-plane/phase-1-whole-file-authorization.md` (`sha256:ae9bf05db592a9c2b13511898ae485a3315578dd32532f3e98383dc12723a961`) | Fixed decision `PH1_WHOLE_FILE_CAPTURE_AUTHORIZED`: user-class authorization for exactly two named mixed paths, committed in `eadeeabb4bd9745fef25bcb77dfdfab6c31844c1` with 20/20 path parity and empty post-commit index |
 
 ## Missing Evidence
 
@@ -519,20 +529,22 @@ external service beyond an approved provider boundary.
 | 2026-09-01 | current | current | Alignment-only Task 1.2/1.3 bootstrap correction: Task 1.2 now creates the standalone test project/lock/tests and executes a nonzero black-box red test run before Task 1.3 creates production | Rebound plan/context/tasks to the exact digests above and retained unchanged CTO digest `636aa802…`. Provider-controlled behavior, findings/mitigations, task IDs/count, phase count, later design, and commit packet paths/order are unchanged. Fresh clean revision-bound CTO approval is required for these bytes |
 | 2026-09-01 | current | current | Planning revalidation for explicit user scope removal | Rebound the five-phase plan/context/tasks and unchanged CTO review; `IVSD-F005` / `IVSD-M005` resolved by scope removal, `F003/M003` narrowed to packet-cache and fixed persistent-goal state/status privacy, and `F004/M004` narrowed to Phases 3/5. The execution manifest remains intentionally stale/fail-closed pending clean CTO approval. |
 | 2026-09-01 | current | current | Task 1.3 implementation-evidence and binding refresh after independent security review | Rebound unchanged plan, current context/tasks, and unchanged CTO review after the final targeted contract passed 8/8 and independent current-bytes review reported CLEAR with no blockers. No provider-controlled behavior, stakeholder, persisted-field, recovery, finding, mitigation, phase, task, or commit-packet mapping changed. `IVSD-F005/M005` remain resolved by scope removal; `IVSD-F008/M008` remain open and owned by Task 2.4. |
+| 2026-09-01 | current | current | Phase 1 receipt and packet-binding correction | Recorded bounded `E009` decision evidence for `PH1_WHOLE_FILE_CAPTURE_AUTHORIZED`, commit `eadeeabb4bd9745fef25bcb77dfdfab6c31844c1`, exact 20/20 paths, and empty index. Corrected Phase 2/3/4/5C packet path mappings so mutable state commits with the last-authored I-VSD report; 5A/5B remain intentionally excluded. Rebound exact plan/context/tasks hashes and unchanged CTO hash. Finding IDs, mappings, lifecycles, and dispositions remain unchanged; `IVSD-F008` stays open for Task 2.4. |
 
 ## Planning Handoff
 
 - Workstream: agentic-workflow-control-plane
 - Status: current / plan-aligned
-- Reviewed input revision: `sha256:67b4bd5297641ba402a20994186235f1907b9d6d76b5d428833f0f9785857cd7` (evidence packet `E001`–`E008`; not an artifact hash)
-- Reviewed plan revision: `sha256:dbe2c99c090bec18f6e330e9a3c3f5bb00f089cd45cf49e1bfae6fd923e228a4`
-- Reviewed context revision: `sha256:f54776eb899f07f1d0629b7054573142c68faebdcac7c37b933b89f0c7e281ad`
-- Reviewed tasks revision: `sha256:dc038de7c5f36dc9bb8afaaa5f0851f950f082f63e516f23fab732526d0a0e37`
+- Reviewed input revision: `sha256:67b4bd5297641ba402a20994186235f1907b9d6d76b5d428833f0f9785857cd7` (repository evidence packet `E001`–`E008`; not an artifact hash; bounded lifecycle evidence `E009` is separately hashed)
+- Reviewed plan revision: `sha256:c5b9c7fc9cad96df19521ca7f5192053b2c16a089d1149b25ab0570ca14fe301`
+- Reviewed context revision: `sha256:e24f5fc439ae2297c1ed5c81077a11fa506a2e1c76c3aef4aeaa6e6d83379509`
+- Reviewed tasks revision: `sha256:72bc82ac1eefaa4d79a692b785aa51beb28dd2c1b630c9dc86354419fb7a2dfb`
 - Reviewed CTO review revision: `sha256:636aa802ddaede72f676db2e2c3d9eaf49fec0c92a36092cceb89cae18430561`
+- Phase 1 decision evidence revision: `sha256:ae9bf05db592a9c2b13511898ae485a3315578dd32532f3e98383dc12723a961`
 - Findings and mitigations: `IVSD-F001→IVSD-M001`, `IVSD-F002→IVSD-M002`, `IVSD-F003→IVSD-M003`, `IVSD-F004→IVSD-M004`, `IVSD-F005→IVSD-M005`, `IVSD-F006→IVSD-M006`, `IVSD-F007→IVSD-M007`, `IVSD-F008→IVSD-M008`
 - Required plan mappings: Phase 1 / Tasks 1.1–1.3; Phase 2 / Tasks 2.1–2.4; Phase 3 / Tasks 3.1–3.3; Phase 4 / Tasks 4.1–4.3; Phase 5 / Tasks 5.1–5.4
 - Open findings: `IVSD-F008` is lifecycle `open` and plan-declared only; it is mapped to Task 2.4 but has no implementation or test evidence yet
-- Alignment disposition: 17 tasks, five phases, and seven planned commits; `IVSD-F005/M005` resolved by scope removal; Tasks 1.1–1.3 verified complete; `IVSD-F008/M008` remains open for Task 2.4
-- Implementation evidence: `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-green.md`; independent current-bytes review: `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-code-review.md` (`CLEAR`, no blockers)
-- Escalations required before: Phase 2 readiness; any persisted-field expansion; any vendor-specific canonical state; any widening of the `IVSD-M008` break-glass beyond per-repair human authorization
+- Alignment disposition: 17 tasks, five phases, and seven planned commits; `IVSD-F005/M005` resolved by scope removal; Phase 1 verified and committed; `IVSD-F008/M008` remains open for Task 2.4
+- Implementation evidence: `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-green.md`; independent current-bytes review: `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-code-review.md` (`CLEAR`, no blockers); bounded Phase 1 authorization/receipt: `E009`
+- Escalations required before: fresh revision-bound Tier 1 approval and Phase 2 manifest authorship; any persisted-field expansion; any vendor-specific canonical state; any widening of the `IVSD-M008` break-glass beyond per-repair human authorization
 - Refresh triggers: authority model, affected stakeholders, persisted machine-state fields, provider/model routing, shared-workspace recovery, adapter fail-closed behavior, or any mapped mitigation/task changes

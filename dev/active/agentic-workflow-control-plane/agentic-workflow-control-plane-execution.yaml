@@ -3,56 +3,48 @@ workstreamId: agentic-workflow-control-plane
 artifacts:
   plan:
     path: dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md
-    sha256: dbe2c99c090bec18f6e330e9a3c3f5bb00f089cd45cf49e1bfae6fd923e228a4
+    sha256: c5b9c7fc9cad96df19521ca7f5192053b2c16a089d1149b25ab0570ca14fe301
   tasks:
     path: dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md
-    sha256: dc038de7c5f36dc9bb8afaaa5f0851f950f082f63e516f23fab732526d0a0e37
+    sha256: 72bc82ac1eefaa4d79a692b785aa51beb28dd2c1b630c9dc86354419fb7a2dfb
   ivsd:
     path: islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
-    sha256: c1cd688461c08b8625679411ac7effa016e51219e8663ae85f041dadead19472
+    sha256: 2faa50adc9fcd40a806eded0351e277e8d3cfdbd1c9721aff2b70a6b08a7e22d
   ctoReview:
     path: dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-cto-review.md
     sha256: 636aa802ddaede72f676db2e2c3d9eaf49fec0c92a36092cceb89cae18430561
-revisionDigest: 3ab273e9a8043d051ce9dc0278bc479d813079b191da8398eb4b2baa8fe338cf
+revisionDigest: 02aaa87b21198490fdb71ddaf7860e088052df2323c0992d2208cb8eaa4f7887
 approvals:
   cto:
     decision: approved
-    revisionDigest: 3ab273e9a8043d051ce9dc0278bc479d813079b191da8398eb4b2baa8fe338cf
+    revisionDigest: 02aaa87b21198490fdb71ddaf7860e088052df2323c0992d2208cb8eaa4f7887
   userImplementation:
     decision: approved
-    revisionDigest: 3ab273e9a8043d051ce9dc0278bc479d813079b191da8398eb4b2baa8fe338cf
+    revisionDigest: 02aaa87b21198490fdb71ddaf7860e088052df2323c0992d2208cb8eaa4f7887
   phaseCommit:
     decision: approved
-    phaseId: phase-1
-    revisionDigest: 3ab273e9a8043d051ce9dc0278bc479d813079b191da8398eb4b2baa8fe338cf
-    expectedHead: 1e2a4d20fae97857e10bacdb24802b66e287cf80
-expectedHead: 1e2a4d20fae97857e10bacdb24802b66e287cf80
+    phaseId: phase-2
+    revisionDigest: 02aaa87b21198490fdb71ddaf7860e088052df2323c0992d2208cb8eaa4f7887
+    expectedHead: eadeeabb4bd9745fef25bcb77dfdfab6c31844c1
+expectedHead: eadeeabb4bd9745fef25bcb77dfdfab6c31844c1
 currentPhase:
-  id: phase-1
+  id: phase-2
   state: approved
   requestedTransition: implementing
   packet:
     paths:
-      - .agents/contract/intents.yaml
-      - .agents/contract/workstream.schema.json
-      - .agents/contract/README.md
-      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj
-      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Program.cs
-      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/WorkstreamExecution.cs
-      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ValidateWorkstreamCommand.cs
-      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/YamlWorkstreamStore.cs
-      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/packages.lock.json
-      - eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ISLAMU.AgentWorkflow.Tests.csproj
-      - eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/WorkstreamContractTests.cs
-      - eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/packages.lock.json
-      - Explore.slnx
+      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/WorkspaceClaim.cs
+      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Domain/PhaseClosure.cs
+      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClaimCommands.cs
+      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Application/ClosePhaseCommand.cs
+      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/GitWorkspaceCoordinator.cs
+      - eng/agent-workflow/src/ISLAMU.AgentWorkflow/Infrastructure/FileClaimStore.cs
+      - eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/SharedDevelopCoordinatorTests.cs
       - docs/AGENTIC_CONTEXT_ENGINEERING.md
-      - islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-cto-review.md
       - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml
+      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md
+      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
+      - islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
     verificationCommands:
       - dotnet run eng/agent-context/validate-contract.cs -- . --intent agent-workflow-control-plane
       - dotnet run .ci/scripts/validate-dependency-license-policy.cs -- .
@@ -64,4 +56,4 @@ currentPhase:
       changelog: skip
       trailers:
         - "Changelog: skip"
-        - "Changelog-Reason: internal agent workflow contract and tooling foundation"
+        - "Changelog-Reason: internal shared-workspace safety control"

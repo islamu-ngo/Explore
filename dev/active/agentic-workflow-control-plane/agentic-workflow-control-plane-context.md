@@ -10,33 +10,30 @@ Last Updated: 2026-09-01 Europe/Brussels
 - I-VSD report: `../../../islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md`
 - I-VSD stable evidence digest: `sha256:67b4bd5297641ba402a20994186235f1907b9d6d76b5d428833f0f9785857cd7` — digest of evidence packet `E001`–`E008`, not a triad artifact hash.
 - Authoritative artifact bindings: the I-VSD report's `Review Metadata`, authored last after the five-phase triad settles.
-- I-VSD status / disposition: current / plan-aligned after planning revalidation for the approved five-phase scope and Task 1.3 implementation-evidence refresh.
-- CTO review: historical review retained unchanged. Its recorded findings are applied; independent current-bytes technical review is CLEAR with no blockers at `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-code-review.md`.
-- User approval: implementation approval exists for the five-phase workstream, including removal of the former Phase 6 measurement scope, and Phase 1 commit authority is approved. Later-phase readiness remains separate.
-- Execution manifest: rebound to current plan/tasks/I-VSD/unchanged-CTO bytes, current Git HEAD, and approved Phase 1 start authority. It authorizes only `approved -> implementing` for the complete Phase 1 packet.
+- I-VSD status / disposition: current / plan-aligned after the Phase 1 receipt and packet-binding correction; authoritative exact bindings are refreshed in its Review Metadata.
+- CTO review: historical review retained unchanged at `sha256:636aa802ddaede72f676db2e2c3d9eaf49fec0c92a36092cceb89cae18430561`. Its findings remain applied, but this corrected packet needs fresh revision-bound Tier 1 approval before Phase 2.
+- User approval: Phase 1 implementation/commit authority was exercised. Whole-file capture for the two fixed mixed paths was separately authorized under `PH1_WHOLE_FILE_CAPTURE_AUTHORIZED`; this does not grant Phase 2 revision approval.
+- Execution manifest: intentionally remains at its committed Phase 1 state. It is not current Phase 2 authority and MUST NOT be edited until fresh revision-bound Tier 1 approval is received.
 
 ## Current Progress
 
 ### Verified complete
 
-- Task 1.1: dedicated Tier 1 `agent-workflow-control-plane` intent added and accepted by the bounded contract validator.
-- Task 1.2: standalone black-box test project and executable failing-first contract slice established before production implementation.
-
-- Task 1.3: complete. The validator now admits only `approved -> implementing`; rejects Windows-drive, traversal, symlink/reparse, directory/device/offline, and non-regular artifact paths; enforces the canonical schema digest plus bounded strict YAML; and streams bounded artifact hashing through owned handles.
-- Task 1.3 executor evidence: `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-green.md`.
-- Task 1.3 independent review: `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-code-review.md` — `codeQualityStatus: CLEAR`, recommendation `APPROVE`, no blockers.
+- Tasks 1.1–1.3 and the Phase 1 command gate are complete. The intent/license checks passed, the Release build exited 0 with 8,185 warnings and 0 errors, and `ISLAMU.AgentWorkflow.Tests` passed 8/8.
+- Phase 1 commit `eadeeabb4bd9745fef25bcb77dfdfab6c31844c1` has parent `1e2a4d20fae97857e10bacdb24802b66e287cf80`, exact 20/20 planned paths, and an empty post-commit index.
+- Decision `PH1_WHOLE_FILE_CAPTURE_AUTHORIZED` records user-class whole-file authorization for only `.agents/contract/intents.yaml` and `docs/AGENTIC_CONTEXT_ENGINEERING.md`, disposition `authorized_and_committed`.
+- Bounded decision evidence: `.omo/evidence/20260901-agentic-workflow-control-plane/phase-1-whole-file-authorization.md` (`sha256:ae9bf05db592a9c2b13511898ae485a3315578dd32532f3e98383dc12723a961`).
+- Task 1.3 executor and independent review evidence remain `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-green.md` and `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-code-review.md` (`CLEAR`, no blockers).
 
 ### In progress
 
-- Phase 1 verification, exact path-ownership inspection, and commit closure remain open. No Phase 2 task has started.
+- Planning-artifact correction only. No Phase 2 implementation or execution-manifest mutation has started.
 
 ### Next safe action
 
-1. Validate the rebound execution manifest through the real CLI.
-2. At the Phase 1 gate, run the current intent validator, dependency-license audit, one Release solution build, and one full `ISLAMU.AgentWorkflow.Tests` project test in the bound order.
-3. Record the external Setup Assistant `SA518-GRAPH-RATCHET` baseline as unrelated if it remains; do not claim the whole repository is green or repair it in this workstream.
-4. Prove every planned Phase 1 path is owned, preserve unrelated dirty/index state, and execute only the exact approved commit packet.
-5. Obtain separate Phase 2 readiness after the Phase 1 commit receipt.
+1. Obtain fresh revision-bound Tier 1 approval for the exact corrected plan/context/tasks/I-VSD packet.
+2. Only after approval, author the Phase 2 execution manifest binding.
+3. Begin Task 2.1 under that bound authority.
 
 ## Binding Scope Decision
 
@@ -80,10 +77,11 @@ There is no benchmark replay engine, live-model envelope, workflow telemetry or 
 10. Phase 5 retains ownership of hook/adapter `doctor` and the two-gate 5A/5B/5C convergence sequence.
 11. Existing active workstreams migrate only by explicit current-slice opt-in.
 12. The removed measurement capability is a deliberate non-goal, not deferred work.
+13. Revision binding is packet-closed: every future packet committing tasks, context, or execution state also commits the I-VSD report, authored last against exact settled plan/context/tasks bytes. Phase 5 increments 5A/5B intentionally exclude mutable state and are finalized by 5C.
 
 ## Validation Baseline
 
-Task 1.3's targeted black-box gate is green (8/8) and its final independent current-bytes review is CLEAR. This does not replace the still-open Phase 1 gate and does not establish a wholly green repository: the separately captured architecture baseline has an unrelated Setup Assistant `SA518-GRAPH-RATCHET` failure at `.omo/evidence/20260901-agentic-workflow-control-plane/test-results.txt` and `.omo/evidence/20260901-agentic-workflow-control-plane/st_01a05cbf-manual-qa.md`.
+Phase 1's focused paths are green: the validator and dependency audit passed, the Release build exited 0, and the selected AgentWorkflow project passed 8/8. The solution build emitted 8,185 warnings, but only one warning record plus the aggregate was retained; the other 8,184 records cannot be attributed without a prohibited rerun. This non-pristine external warning state prevents a wholly-green repository claim while leaving the Phase 1 focused disposition green. The separately captured unrelated Setup Assistant `SA518-GRAPH-RATCHET` baseline remains at `.omo/evidence/20260901-agentic-workflow-control-plane/test-results.txt` and `.omo/evidence/20260901-agentic-workflow-control-plane/st_01a05cbf-manual-qa.md`.
 
 | Phase | Release build | Selected test |
 |---|---|---|
@@ -101,7 +99,7 @@ The plan Section 6 and task ledger gates are authoritative. Phase 5 alone has tw
 | Risk / unknown | Current disposition | Owner |
 |---|---|---|
 | Same-user pathname/content replacement can race the final artifact check | Task 1.3 hashes the opened handle and fails unstable size observations closed; atomic ownership/fencing remains Phase 2 scope | 2.1–2.3 |
-| Phase 1 full build/test and packet ownership are not yet closed | Run the manifest-bound verification sequence once, then inspect exact ownership before commit | Phase 1 gate |
+| Fresh corrected-revision approval is absent | Keep the Phase 1 execution manifest unchanged; obtain revision-bound Tier 1 approval before authoring Phase 2 state | approval gate |
 | External Setup Assistant `SA518-GRAPH-RATCHET` baseline remains red | Treat as pre-existing/unrelated; do not repair or claim the repository wholly green | external workstream |
 | Cross-platform lock primitive | Preserve generation fencing and no dirty takeover | 2.2 |
 | Mixed hunk ownership cannot be inferred safely | Block and require human coordination | 2.1–2.3 |
@@ -109,24 +107,26 @@ The plan Section 6 and task ledger gates are authoritative. Phase 5 alone has tw
 | Executor amplifies a stale or bad plan | Immutable approvals and `NeedsReplan` | 4.1–4.3 |
 | Adapter removal occurs before parity | Gate 5-I snapshot, post-5B equivalence receipt, then Gate 5-II and 5C | 5.1–5.4 |
 | Shared dirty tree captures another contributor's work | Literal paths, normalized ownership, staged parity, no destructive recovery | 2.1–2.4 |
+| Mutable packet omits its last-authored I-VSD binding | Corrected Phase 2/3/4/5C packet lists and commands include I-VSD; 5A/5B remain intentionally immutable-state-only | planning artifacts |
 
 ## Shared-Tree Constraint
 
-The checkout contains extensive unrelated Setup Assistant work. This planning revision touches only the six explicitly allowed documents. Do not stage, commit, clean, repair, or absorb any unrelated path or hunk.
+The checkout contains extensive unrelated Setup Assistant work. This correction touches only the four authorized planning/report documents plus the bounded decision-evidence file. Do not stage, commit, clean, repair, or absorb any unrelated path or hunk.
 
-## Handoff — 2026-09-01 Europe/Brussels (Task 1.3 closure and manifest rebind)
+## Handoff — 2026-09-01 Europe/Brussels (Phase 1 receipt and packet-binding correction)
 
-- **Current state:** Tasks 1.1–1.3 are complete; 3/17 implementation tasks are done across five phases and seven planned commits. Phase 1 verification and commit closure remain open; no later task is complete.
-- **Architecture/security outcome:** The standalone read-only validator is closed-schema, revision/HEAD/authority bound, path-safe across platform syntax, resource-bounded, and restricted to the Phase 1 start transition. Independent current-bytes review is CLEAR.
-- **Evidence:** `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-green.md` and `.omo/evidence/20260901-agentic-workflow-control-plane/task-1.3-code-review.md`.
-- **Approved removal:** Former Phase 6 measurement/evaluation behavior remains removed. `IVSD-F005/M005` remain resolved by removal; `IVSD-F008` remains open for Task 2.4.
-- **Preserved:** The benchmark registry remains Phase 3 context-budget input only. The external Setup Assistant SA518 baseline remains unrelated and prevents any wholly-green repository claim.
-- **Next action:** real-manifest validation, then the bound Phase 1 validator/license/build/full-test sequence, exact ownership inspection, and exact packet commit closure.
+- **Current state:** Tasks 1.1–1.3 and commit 1/7 are complete; all 14 later implementation tasks remain open across the unchanged five phases.
+- **Phase 1 receipt:** `eadeeabb4bd9745fef25bcb77dfdfab6c31844c1`, parent `1e2a4d20fae97857e10bacdb24802b66e287cf80`, exact 20/20 paths, post-commit index empty.
+- **Bounded authority:** `PH1_WHOLE_FILE_CAPTURE_AUTHORIZED`, authorizer class `user`, fixed two-path list, disposition `authorized_and_committed`; no free-form authorization content is retained.
+- **Validation limitation:** Phase 1 focused paths are green, but the solution produced 8,185 warnings with incomplete attribution and the external SA518 baseline remains unrelated; no wholly-green repository claim is made.
+- **Binding defect and correction:** Future mutable-state packets previously omitted the last-authored I-VSD report. Phase 2, Phase 3, Phase 4, and increment 5C now include it in phase/task path ownership, staging, and path-limited commit contracts; 5A/5B remain intentionally excluded and finalized by 5C.
+- **Preserved:** Five phases, 17 tasks, seven commits, all finding IDs/mappings/dispositions, and all behavior/security controls. `IVSD-F008` remains open for Task 2.4.
+- **Next action:** fresh revision-bound Tier 1 approval, then Phase 2 manifest authorship.
 
 ## DoneClaim — 2026-09-01 Europe/Brussels
 
-- **Claim:** Task 1.3 repository state is closed and the first Phase 1 execution manifest is rebound to the approved five-phase workstream.
-- **Bound outcomes:** Tasks 1.1–1.3 are complete; all later tasks, Phase 1 verification, and Phase 1 commit closure remain open. The complete 20-path Phase 1 packet and its authority are machine-bound.
-- **Truth state:** The targeted Task 1.3 contract is green 8/8 and independent current-bytes review is CLEAR. The unrelated external SA518 baseline remains red, so no wholly-green repository claim is made.
-- **Authority state:** User implementation, independent technical, and Phase 1 commit authority bind the current aggregate revision and Git HEAD; later phases require fresh readiness.
-- **Scope:** Repository-state, I-VSD binding, and execution-manifest refresh only; no plan/CTO/intent/strategy/schema/source/test/project/solution edit, build, test, staging, or commit.
+- **Claim:** The bounded Phase 1 planning receipt and future packet-binding defect are reconciled.
+- **Bound outcomes:** Phase 1 is verified/committed with exact receipt evidence; future mutable packets are revision-complete; no Phase 2 execution state was authored.
+- **Truth state:** Exact commit and index facts are verified. The 8,185-warning solution state is disclosed as non-pristine while Phase 1 focused paths remain green.
+- **Authority state:** Whole-file authorization is exhausted by the fixed Phase 1 decision and commit; fresh revision-bound Tier 1 approval is the sole next gate.
+- **Scope:** Plan/tasks/context/I-VSD plus bounded decision evidence only; no execution manifest, CTO review, intent, strategy source, schema, source, test, stage, commit, build, or test mutation.
