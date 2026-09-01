@@ -261,7 +261,7 @@ Prefer splitting by risk boundary:
    - cleanup obsolete compatibility paths,
    - delete obsolete tests.
 
-These are risk boundaries, not permission for a final umbrella commit. If represented as phases in one shared-`develop` workstream, each boundary closes with its own verified, phase-owned Conventional Commit.
+These are risk boundaries, not permission for a final umbrella commit. If represented as phases in one workstream, each boundary closes on its task branch/worktree with its own verified, phase-owned Conventional Commit.
 
 ## Test-First Invariant Rewrite Pattern (for `tasks.md`)
 

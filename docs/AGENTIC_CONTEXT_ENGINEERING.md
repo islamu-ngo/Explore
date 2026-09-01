@@ -56,7 +56,7 @@ flowchart TB
         ArchTests["Architecture Tests\n(Clean Architecture & Conventions)"]
         TwoAxisReview["Two-Axis Review\n(Standards vs Spec Fidelity)"]
         EvidenceGate["QA Evidence Capture\n(.omo/evidence/<task>/)"]
-        PhaseCommit["Phase-Owned Conventional Commit\n(Shared develop, explicit paths)"]
+        PhaseCommit["Phase-Owned Conventional Commit\n(Task branch/worktree, explicit paths)"]
     end
 
     Harnesses --> CoreContract
@@ -435,7 +435,7 @@ dotnet test --project tests/<TargetProject>.Tests/<TargetProject>.Tests.csproj -
 # 3. Architecture & Convention Integrity Check:
 dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
 
-# 4. Immediate phase close on shared develop:
+# 4. Immediate phase close on the task branch/worktree:
 git status --short
 git diff --name-only
 git diff --cached --name-only

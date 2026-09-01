@@ -71,7 +71,7 @@ Phase-end verification only:
 dotnet build --configuration Release --verbosity quiet
 dotnet test --project <one-relevant-project>.csproj --configuration Release --verbosity quiet
 
-Immediate phase close on shared develop:
+Immediate phase close on the task branch/worktree:
 classify any failures as phase-attributable or proven unrelated
 inspect the dirty tree and existing index
 use the exact planned title and description by default

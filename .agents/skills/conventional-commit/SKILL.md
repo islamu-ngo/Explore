@@ -83,7 +83,7 @@ git add path/to/ProjectionUpdater.cs
 git commit -m "fix(database): wrap session projection rebuilds in db execution strategy" \
   -m "Execute projection rebuilds within execution strategies." -m "Changelog: skip" -m "Changelog-Reason: internal projection resilience enhancement"
 
-# Shared develop checkout with unrelated paths already staged
+# Checkout with unrelated paths already staged
 git status --short
 git diff --cached --name-only
 git add -- path/to/OwnedChange.cs path/to/OwnedChangeTests.cs
