@@ -94,24 +94,45 @@ public sealed class SecretResolverBindingTests
     }
 
     [Test]
-    public async Task ResolveAsync_WhenStoredInstanceBindingUsesOldAuthority_UsesSelectedAuthorityDefault()
+    [Arguments(
+        SecretProviderType.Infisical,
+        SecretSourceType.EnvironmentVariable)]
+    [Arguments(
+        SecretProviderType.Environment,
+        SecretSourceType.Infisical)]
+    [Arguments(
+        SecretProviderType.UserSecrets,
+        SecretSourceType.Infisical)]
+    public async Task ResolveAsync_WhenStoredInstanceBindingUsesDifferentAuthority_IsInvalidWithoutFallback(
+        SecretProviderType selectedProvider,
+        SecretSourceType storedSource)
     {
-        SecretBinding stale = SecretBinding.CreateEnvironmentVariable(
-            SecretDefinitionRegistry.Keys.Smtp.Password,
-            SecretScope.Instance,
-            scopeId: null,
-            "MAIL_SMTP_PASSWORD");
+        SecretBinding stale = storedSource == SecretSourceType.Infisical
+            ? SecretBinding.CreateInfisical(
+                SecretDefinitionRegistry.Keys.Smtp.Password,
+                SecretScope.Instance,
+                scopeId: null,
+                "staging",
+                "/smtp",
+                "MAIL_SMTP_PASSWORD")
+            : SecretBinding.CreateEnvironmentVariable(
+                SecretDefinitionRegistry.Keys.Smtp.Password,
+                SecretScope.Instance,
+                scopeId: null,
+                "MAIL_SMTP_PASSWORD");
         stale.Id = Guid.CreateVersion7();
-        var source = new RecordingSecretSource(SecretSourceType.Infisical);
+        var environment = new RecordingSecretSource(
+            SecretSourceType.EnvironmentVariable);
+        var infisical = new RecordingSecretSource(SecretSourceType.Infisical);
         var resolver = new SecretResolver(
             new FakeSecretBindingRepository([stale]),
-            [source],
+            [environment, infisical],
             new MemoryCache(new MemoryCacheOptions()),
             new SecretResolverMetrics(new TestMeterFactory()),
             NullLogger<SecretResolver>.Instance,
             Options.Create(new SecretProviderOptions
             {
-                Provider = SecretProviderType.Infisical,
+                Provider = selectedProvider,
                 Infisical = new InfisicalOptions { Environment = "staging" }
             }));
 
@@ -120,9 +141,68 @@ public sealed class SecretResolverBindingTests
             tenantId: null,
             CancellationToken.None);
 
-        await Assert.That(resolved.IsResolved).IsTrue();
-        await Assert.That(source.LastBinding!.SourceType).IsEqualTo(SecretSourceType.Infisical);
-        await Assert.That(source.LastBinding.InfisicalKey).IsEqualTo("MAIL_SMTP_PASSWORD");
+        await Assert.That(resolved.Status).IsEqualTo(SecretResolutionStatus.Invalid);
+        await Assert.That(resolved.Secret).IsNull();
+        await Assert.That(resolved.Value).IsNull();
+        await Assert.That(resolved.Source).IsNull();
+        await Assert.That(environment.CallCount).IsEqualTo(0);
+        await Assert.That(environment.LastBinding).IsNull();
+        await Assert.That(infisical.CallCount).IsEqualTo(0);
+        await Assert.That(infisical.LastBinding).IsNull();
+    }
+
+    [Test]
+    public async Task ResolveAsync_WhenCachedBindingAuthorityChanges_IsInvalidWithoutCacheReuse()
+    {
+        SecretBinding binding = SecretBinding.CreateEnvironmentVariable(
+            SecretDefinitionRegistry.Keys.Smtp.Password,
+            SecretScope.Instance,
+            scopeId: null,
+            "MAIL_SMTP_PASSWORD");
+        binding.Id = Guid.CreateVersion7();
+        var repository = new FakeSecretBindingRepository([binding]);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var meterFactory = new TestMeterFactory();
+        using var metrics = new SecretResolverMetrics(meterFactory);
+        var environment = new RecordingSecretSource(SecretSourceType.EnvironmentVariable);
+        var infisical = new RecordingSecretSource(SecretSourceType.Infisical);
+        var environmentResolver = new SecretResolver(
+            repository,
+            [environment, infisical],
+            cache,
+            metrics,
+            NullLogger<SecretResolver>.Instance,
+            Options.Create(new SecretProviderOptions { Provider = SecretProviderType.Environment }));
+
+        SecretResolutionResult initial = await environmentResolver.ResolveAsync(
+            binding.SettingKey,
+            tenantId: null,
+            CancellationToken.None);
+        var infisicalResolver = new SecretResolver(
+            repository,
+            [environment, infisical],
+            cache,
+            metrics,
+            NullLogger<SecretResolver>.Instance,
+            Options.Create(new SecretProviderOptions
+            {
+                Provider = SecretProviderType.Infisical,
+                Infisical = new InfisicalOptions { Environment = "staging" }
+            }));
+
+        SecretResolutionResult resolved = await infisicalResolver.ResolveAsync(
+            binding.SettingKey,
+            tenantId: null,
+            CancellationToken.None);
+
+        await Assert.That(initial.IsResolved).IsTrue();
+        await Assert.That(environment.CallCount).IsEqualTo(1);
+        await Assert.That(resolved.Status).IsEqualTo(SecretResolutionStatus.Invalid);
+        await Assert.That(resolved.Secret).IsNull();
+        await Assert.That(resolved.Value).IsNull();
+        await Assert.That(resolved.Source).IsNull();
+        await Assert.That(infisical.CallCount).IsEqualTo(0);
+        await Assert.That(infisical.LastBinding).IsNull();
     }
 
     [Test]
@@ -424,11 +504,13 @@ public sealed class SecretResolverBindingTests
     {
         public SecretSourceType SourceType => sourceType;
         public SecretBinding? LastBinding { get; private set; }
+        public int CallCount { get; private set; }
 
         public Task<SecretResolutionResult> GetSecretAsync(
             SecretBinding binding,
             CancellationToken cancellationToken = default)
         {
+            CallCount++;
             LastBinding = binding;
             return Task.FromResult(SecretResolutionResult.Resolved(new ResolvedSecret(
                 binding.SettingKey,

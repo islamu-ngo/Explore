@@ -212,14 +212,9 @@ public sealed class SecretResolver : ISecretResolver
         var instanceBinding = await _bindings.GetByKeyAndScopeAsync(
             settingKey, SecretScope.Instance, scopeId: null, cancellationToken)
             .ConfigureAwait(false);
-        if (instanceBinding is not null && instanceBinding.SourceType == SelectedSourceType())
-        {
-            return instanceBinding;
-        }
-
         if (instanceBinding is not null)
         {
-            _logger.LogWarning("secret_binding_authority_mismatch");
+            return instanceBinding;
         }
 
         return CreateDefaultInstanceBinding(settingKey);
@@ -256,6 +251,14 @@ public sealed class SecretResolver : ISecretResolver
         SecretBinding binding,
         CancellationToken cancellationToken)
     {
+        var selectedSource = SelectedSourceType();
+        if (selectedSource != binding.SourceType)
+        {
+            _logger.LogError("secret_source_invalid source={SourceType}", binding.SourceType);
+            _metrics.RecordError(binding.SourceType, SecretResolutionStatus.Invalid);
+            return SecretResolutionResult.Invalid;
+        }
+
         var logicalCacheKey = BuildCacheKey(binding.SettingKey, binding.Scope, binding.ScopeId, binding.Qualifier);
         var cacheKey = $"{logicalCacheKey}::{binding.SourceType}::{binding.Id:N}";
         if (_cache.TryGetValue<ResolvedSecret>(cacheKey, out var cached) && cached is not null)
@@ -265,14 +268,6 @@ public sealed class SecretResolver : ISecretResolver
         }
 
         _metrics.RecordCacheMiss();
-        var selectedSource = SelectedSourceType();
-        if (selectedSource != binding.SourceType)
-        {
-            _logger.LogError("secret_source_invalid source={SourceType}", binding.SourceType);
-            _metrics.RecordError(binding.SourceType, SecretResolutionStatus.Invalid);
-            return SecretResolutionResult.Invalid;
-        }
-
         if (!_sources.TryGetValue(binding.SourceType, out var source))
         {
             _logger.LogError("secret_source_invalid source={SourceType}", binding.SourceType);
