@@ -1,4 +1,4 @@
-// ABOUTME: Defines source-free command grammar, exit, terminal, and leak expectations for SA-410.
+// ABOUTME: Defines source-free machine-command grammar, exit, explicit-I/O, and leak expectations for SA-410.
 // ABOUTME: Keeps independent vectors executable before the final CLI command owners exist.
 
 using System.Collections.ObjectModel;
@@ -9,17 +9,7 @@ namespace ISLAMU.SetupAssistant.Cli.Tests;
 internal sealed record CliVector(
     IReadOnlyList<string> Arguments,
     string CapturedInput,
-    IReadOnlyCollection<string> EnvironmentNames,
-    TerminalVector Terminal);
-
-internal sealed record TerminalVector(
-    bool StdinIsTty,
-    bool StdoutIsTty,
-    bool StderrIsTty,
-    bool InputRedirected,
-    bool OutputRedirected,
-    bool ErrorRedirected,
-    bool SupportsColor);
+    IReadOnlyCollection<string> EnvironmentNames);
 
 internal static class SetupCliContractSpecification
 {
@@ -32,8 +22,7 @@ internal static class SetupCliContractSpecification
                 ["tenant-package"] = Set("create", "open", "validate", "format", "diff", "coverage", "export"),
                 ["env"] = Set("render", "validate"),
                 ["legal"] = Set("validate", "preview"),
-                ["doctor"] = Set("doctor"),
-                ["tui"] = Set("tui")
+                ["doctor"] = Set("doctor")
             });
 
     internal static readonly IReadOnlyDictionary<string, int> ExitCodes =
@@ -69,7 +58,7 @@ internal static class SetupCliContractSpecification
             errors.Add("usage-command-unknown");
         }
 
-        bool selfOperation = family is "doctor" or "tui";
+        bool selfOperation = family == "doctor";
         int optionStart = selfOperation ? 1 : 2;
         string operation = selfOperation ? family : args.Count > 1 ? args[1] : string.Empty;
         if (operation.Length == 0 || operations is null || !operations.Contains(operation))
@@ -150,17 +139,6 @@ internal static class SetupCliContractSpecification
         if (vector.EnvironmentNames.Any(LooksForbidden))
         {
             errors.Add("blocked-environment-name");
-        }
-
-        if (family == "tui")
-        {
-            TerminalVector terminal = vector.Terminal;
-            if (machine || hasInput || hasOutput || vector.CapturedInput.Length > 0 ||
-                !terminal.StdinIsTty || !terminal.StdoutIsTty || !terminal.StderrIsTty ||
-                terminal.InputRedirected || terminal.OutputRedirected || terminal.ErrorRedirected)
-            {
-                errors.Add("blocked-interactive-tty-required");
-            }
         }
 
         return errors.Distinct(StringComparer.Ordinal).ToArray();

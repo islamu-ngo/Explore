@@ -18,6 +18,8 @@ public sealed class SetupAssistantArchitectureTests
         "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg==";
     private const string BrowserCapabilityPath =
         "eng/setup-assistant/generated/browser-release-capabilities.json";
+    private const string SetupLiveCapabilityPath =
+        "eng/setup-assistant/generated/setup-live-release-capabilities.json";
     private const string FrozenContractBaselinePath =
         "eng/setup-assistant/generated/frozen-contract-baseline.json";
     private const string ManifestSchemaId =
@@ -50,14 +52,17 @@ public sealed class SetupAssistantArchitectureTests
         {
             ["Event.Setup.Core"] = ["Event.Wire.Contracts"],
             ["Event.SetupAssistant"] = ["Event.Setup.Core"],
+            ["Event.SetupAssistant.SetupLive"] = ["Event.Setup.Core", "Explore.Blazor.Client"],
             ["Event.SetupAssistant.Browser"] = ["Event.SetupAssistant"],
             ["Event.SetupAssistant.Desktop"] = ["Event.SetupAssistant"],
+            ["Event.SetupAssistant.Terminal"] = ["Event.SetupAssistant", "Event.Setup.Core"],
             ["Event.SetupAssistant.Cli"] = ["Event.Setup.Core"],
             ["SetupCliCommandSchemaGenerator"] = ["Event.SetupAssistant.Cli"],
             ["Event.Setup.Core.Tests"] = ["Event.Setup.Core"],
-            ["Event.SetupAssistant.Tests"] = ["Event.SetupAssistant"],
+            ["Event.SetupAssistant.Tests"] = ["Event.SetupAssistant", "Event.SetupAssistant.SetupLive"],
             ["Event.SetupAssistant.Browser.Tests"] = ["Event.SetupAssistant.Browser"],
             ["Event.SetupAssistant.Desktop.Tests"] = ["Event.SetupAssistant.Desktop"],
+            ["Event.SetupAssistant.Terminal.Tests"] = ["Event.SetupAssistant.Terminal"],
             ["Event.SetupAssistant.Cli.Tests"] = ["Event.SetupAssistant.Cli"]
         };
 
@@ -66,14 +71,17 @@ public sealed class SetupAssistantArchitectureTests
         {
             ["Event.Setup.Core"] = "src/Event.Setup.Core/Event.Setup.Core.csproj",
             ["Event.SetupAssistant"] = "src/Event.SetupAssistant/Event.SetupAssistant.csproj",
+            ["Event.SetupAssistant.SetupLive"] = "src/Event.SetupAssistant/SetupLive/Event.SetupAssistant.SetupLive.csproj",
             ["Event.SetupAssistant.Browser"] = "src/Event.SetupAssistant.Browser/Event.SetupAssistant.Browser.csproj",
             ["Event.SetupAssistant.Desktop"] = "src/Event.SetupAssistant.Desktop/Event.SetupAssistant.Desktop.csproj",
+            ["Event.SetupAssistant.Terminal"] = "src/Event.SetupAssistant.Terminal/Event.SetupAssistant.Terminal.csproj",
             ["Event.SetupAssistant.Cli"] = "src/Event.SetupAssistant.Cli/Event.SetupAssistant.Cli.csproj",
             ["SetupCliCommandSchemaGenerator"] = "eng/setup-assistant/SetupCliCommandSchemaGenerator/SetupCliCommandSchemaGenerator.csproj",
             ["Event.Setup.Core.Tests"] = "tests/Event.Setup.Core.Tests/Event.Setup.Core.Tests.csproj",
             ["Event.SetupAssistant.Tests"] = "tests/Event.SetupAssistant.Tests/Event.SetupAssistant.Tests.csproj",
             ["Event.SetupAssistant.Browser.Tests"] = "tests/Event.SetupAssistant.Browser.Tests/Event.SetupAssistant.Browser.Tests.csproj",
             ["Event.SetupAssistant.Desktop.Tests"] = "tests/Event.SetupAssistant.Desktop.Tests/Event.SetupAssistant.Desktop.Tests.csproj",
+            ["Event.SetupAssistant.Terminal.Tests"] = "tests/Event.SetupAssistant.Terminal.Tests/Event.SetupAssistant.Terminal.Tests.csproj",
             ["Event.SetupAssistant.Cli.Tests"] = "tests/Event.SetupAssistant.Cli.Tests/Event.SetupAssistant.Cli.Tests.csproj"
         };
 
@@ -81,7 +89,7 @@ public sealed class SetupAssistantArchitectureTests
         ["TUnit", "bunit", "NSubstitute", "Verify.TUnit"];
 
     private static readonly string[] BlockedPackageTerms =
-        ["Terminal.Gui", "Avalonia", "Sharprompt"];
+        ["TextMateSharp", "Avalonia", "Sharprompt"];
 
     private static readonly string[] ForbiddenPresentationClosureTerms =
     [
@@ -131,7 +139,11 @@ public sealed class SetupAssistantArchitectureTests
             pair => XDocument.Load(ContextSystemHelpers.RepoPath(
                 pair.Value.Split('/', StringSplitOptions.RemoveEmptyEntries))),
             StringComparer.Ordinal);
-        string[] violations = ValidateProjectMetadata(projects);
+        string[] violations =
+        [
+            .. ValidateProjectMetadata(projects),
+            .. ValidateSetupLiveProjectSplit(projects)
+        ];
 
         await Assert.That(violations).IsEmpty()
             .Because("Setup projects must preserve the exact offline inward graph and approved package boundary: "
@@ -158,10 +170,14 @@ public sealed class SetupAssistantArchitectureTests
             violations.AddRange(BlockedPackageTerms
                 .Where(term => lockContent.Contains(term, StringComparison.OrdinalIgnoreCase))
                 .Select(term => $"blocked package term {term} in {relativeLockPath}"));
+            using JsonDocument lockDocument = JsonDocument.Parse(lockContent);
+            if (FindJsonPropertyNames(lockDocument.RootElement).Contains(
+                    "Terminal.Gui", StringComparer.OrdinalIgnoreCase))
+                violations.Add($"official Terminal.Gui package in {relativeLockPath}");
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("all ten Setup locks must remain discoverable and package-free of blocked UI graphs: "
+            .Because("all Setup locks must remain discoverable and package-free of blocked UI graphs: "
                 + string.Join("; ", violations));
     }
 
@@ -194,8 +210,7 @@ public sealed class SetupAssistantArchitectureTests
         }
 
         string sourceRoot = ContextSystemHelpers.RepoPath("src");
-        string[] targetProjectCanaries =
-            ["Event.SetupAssistant.Avalonia", "Event.SetupAssistant.Terminal"];
+        string[] targetProjectCanaries = ["Event.SetupAssistant.Avalonia"];
         foreach (string target in targetProjectCanaries)
         {
             if (Directory.Exists(Path.Combine(sourceRoot, target)))
@@ -215,20 +230,20 @@ public sealed class SetupAssistantArchitectureTests
                 .Where(element => element.Name.LocalName is "PackageReference" or "ProjectReference")
                 .Select(element => element.Attribute("Include")?.Value ?? string.Empty);
             violations.AddRange(graphIdentities
-                .Where(identity => BlockedPackageTerms.Take(2).Any(term =>
+                .Where(identity => BlockedPackageTerms.Skip(1).Any(term =>
                     identity.Contains(term, StringComparison.OrdinalIgnoreCase)))
                 .Select(identity => $"disabled target reference exists: {identity}"));
 
             string lockPath = Path.Combine(Path.GetDirectoryName(projectPath)!, "packages.lock.json");
             using JsonDocument lockDocument = JsonDocument.Parse(File.ReadAllBytes(lockPath));
             violations.AddRange(FindJsonPropertyNames(lockDocument.RootElement)
-                .Where(identity => BlockedPackageTerms.Take(2).Any(term =>
+                .Where(identity => BlockedPackageTerms.Skip(1).Any(term =>
                     identity.Contains(term, StringComparison.OrdinalIgnoreCase)))
                 .Select(identity => $"disabled target lock node exists: {identity}"));
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("SA518-DISABLED-TARGET-BOUNDARY: Avalonia shared/browser/desktop and Terminal.Gui must remain disabled, absent, and non-resolvable: "
+            .Because("SA518-DISABLED-TARGET-BOUNDARY: Avalonia shared/browser/desktop targets must remain disabled, absent, and non-resolvable: "
                 + string.Join("; ", violations));
     }
 
@@ -250,8 +265,58 @@ public sealed class SetupAssistantArchitectureTests
         violations.AddRange(ValidatePresentationAssembly(assemblyPath));
 
         await Assert.That(violations).IsEmpty()
-            .Because("SA518-GRAPH-RATCHET: Event.SetupAssistant must close over exactly Core and CommunityToolkit.Mvvm 8.4.2: "
+            .Because("SA518-GRAPH-RATCHET: Event.SetupAssistant must close over exactly Core, YamlDotNet 18.1.0, and CommunityToolkit.Mvvm 8.4.2: "
                 + string.Join("; ", violations));
+    }
+
+    [Test]
+    public async Task SetupLiveOuterAdapterMustRemainTransportOnlyAndPersistenceFree()
+    {
+        string assemblyPath = ContextSystemHelpers.RepoPath(
+            "src", "Event.SetupAssistant", "SetupLive", "bin", "Release", "net10.0",
+            "Event.SetupAssistant.SetupLive.dll");
+        if (!File.Exists(assemblyPath))
+            throw new InvalidOperationException("compiled Setup live outer adapter is missing");
+
+        using FileStream stream = File.OpenRead(assemblyPath);
+        using var peReader = new PEReader(stream);
+        MetadataReader metadata = peReader.GetMetadataReader();
+        string[] references = metadata.AssemblyReferences
+            .Select(handle => metadata.GetString(metadata.GetAssemblyReference(handle).Name))
+            .ToArray();
+        string[] forbiddenReferences = references.Where(reference =>
+            reference.Contains("Persistence", StringComparison.OrdinalIgnoreCase)
+            || reference.Contains("Secrets", StringComparison.OrdinalIgnoreCase)
+            || reference.Contains("Infrastructure", StringComparison.OrdinalIgnoreCase)
+            || reference.Contains("Logging", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        string[] forbiddenTypes = FindForbiddenSetupLiveOuterTypes(metadata.TypeReferences
+            .Select(handle => metadata.GetTypeReference(handle))
+            .Select(reference =>
+                $"{metadata.GetString(reference.Namespace)}.{metadata.GetString(reference.Name)}"));
+
+        await Assert.That(forbiddenReferences.Concat(forbiddenTypes)).IsEmpty()
+            .Because("the live outer adapter may transport generated Setup calls but cannot own persistence, credentials, logs, process state, or telemetry");
+    }
+
+    [Test]
+    public async Task SetupLiveOuterAdapterRatchetRejectsPersistenceAndConsoleCanaries()
+    {
+        string[] violations = FindForbiddenSetupLiveOuterTypes(
+            [
+                "System.Console",
+                "System.IO.StreamWriter",
+                "System.Data.Common.DbConnection",
+                "System.Data.Common.DbCommand"
+            ]);
+
+        await Assert.That(violations).IsEquivalentTo(
+            [
+                "System.Console",
+                "System.IO.StreamWriter",
+                "System.Data.Common.DbConnection",
+                "System.Data.Common.DbCommand"
+            ]);
     }
 
     [Test]
@@ -276,7 +341,7 @@ public sealed class SetupAssistantArchitectureTests
             """<Project><ItemGroup><PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" /></ItemGroup></Project>""");
         using JsonDocument safeLock = JsonDocument.Parse(
             """
-            {"dependencies":{"net10.0":{"event.setup.core":{"type":"Project","dependencies":{"Event.Wire.Contracts":"[1.0.0, )"}},"event.wire.contracts":{"type":"Project"},"CommunityToolkit.Mvvm":{"type":"Direct","requested":"[8.4.2, )","resolved":"8.4.2","contentHash":"WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="}}}}
+            {"dependencies":{"net10.0":{"event.setup.core":{"type":"Project","dependencies":{"Event.Wire.Contracts":"[1.0.0, )","YamlDotNet":"[18.1.0, )"}},"event.wire.contracts":{"type":"Project"},"CommunityToolkit.Mvvm":{"type":"Direct","requested":"[8.4.2, )","resolved":"8.4.2","contentHash":"WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="},"YamlDotNet":{"type":"CentralTransitive","requested":"[18.1.0, )","resolved":"18.1.0","contentHash":"5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw=="}}}}
             """);
         using JsonDocument unsafeLock = JsonDocument.Parse(
             """
@@ -305,6 +370,24 @@ public sealed class SetupAssistantArchitectureTests
         string[] violations = ValidateBrowserCapability(document.RootElement);
         await Assert.That(violations).IsEmpty()
             .Because("The generated browser release capability must fail closed: "
+                + string.Join("; ", violations));
+    }
+
+    [Test]
+    public async Task SetupLiveReleaseCapability_MustExistAndRemainDisabledThroughD2Closure()
+    {
+        string path = ContextSystemHelpers.RepoPath(
+            SetupLiveCapabilityPath.Split('/', StringSplitOptions.RemoveEmptyEntries));
+        if (!File.Exists(path))
+        {
+            throw new InvalidOperationException(
+                $"Missing Setup live release-capability artifact: {SetupLiveCapabilityPath}");
+        }
+
+        using JsonDocument document = JsonDocument.Parse(await File.ReadAllBytesAsync(path));
+        string[] violations = ValidateSetupLiveCapability(document.RootElement);
+        await Assert.That(violations).IsEmpty()
+            .Because("D2-11 must close without activating an unfinished live-control target: "
                 + string.Join("; ", violations));
     }
 
@@ -417,16 +500,29 @@ public sealed class SetupAssistantArchitectureTests
     [Test]
     public async Task StructuredRatchetVerifiers_MustAcceptClosedAndRejectUnsafeFixtures()
     {
+        const string metadata =
+            """
+            "_metadata":{"about":["ABOUTME: Generated Setup Assistant architecture ratchet; do not edit by hand.","ABOUTME: Owned by eng/setup-assistant/GenerateSetupAssistantRatchets.cs."],"generatedBy":"eng/setup-assistant/GenerateSetupAssistantRatchets.cs"}
+            """;
         using JsonDocument safeCapability = JsonDocument.Parse(
-            """{"schemaVersion":1,"target":"browser","capabilities":{"secretEntry":false}}""");
+            "{" + metadata + ""","schemaVersion":1,"target":"browser","targetEnabled":false,"capabilities":{"secretEntry":false}}""");
         using JsonDocument unsafeCapability = JsonDocument.Parse(
-            """{"schemaVersion":1,"target":"browser","capabilities":{"secretEntry":true}}""");
+            """{"schemaVersion":1,"target":"browser","targetEnabled":true,"capabilities":{"secretEntry":true}}""");
+        using JsonDocument safeLiveCapability = JsonDocument.Parse(
+            "{" + metadata + ""","schemaVersion":1,"target":"setup-live","targetEnabled":false,"capabilities":{"targetEnrollment":false,"secretBindingReadiness":false,"secretBindingWrite":false,"savedProfiles":false}}""");
+        using JsonDocument unsafeLiveCapability = JsonDocument.Parse(
+            "{" + metadata + ""","schemaVersion":1,"target":"setup-live","targetEnabled":false,"activationAuthorized":true,"capabilities":{"targetEnrollment":false,"secretBindingReadiness":false,"secretBindingWrite":true,"savedProfiles":false}}""");
         using JsonDocument safeBaseline = JsonDocument.Parse(CreateBaselineFixture(21, true));
         using JsonDocument unsafeBaseline = JsonDocument.Parse(CreateBaselineFixture(22, false));
 
         await Assert.That(ValidateBrowserCapability(safeCapability.RootElement)).IsEmpty();
         await Assert.That(ValidateBrowserCapability(unsafeCapability.RootElement))
             .Contains("capabilities.secretEntry must be false");
+        await Assert.That(ValidateSetupLiveCapability(safeLiveCapability.RootElement)).IsEmpty();
+        await Assert.That(ValidateSetupLiveCapability(unsafeLiveCapability.RootElement))
+            .Contains("capabilities.secretBindingWrite must be false");
+        await Assert.That(ValidateSetupLiveCapability(unsafeLiveCapability.RootElement))
+            .Contains("root properties must match the exact generated set");
         await Assert.That(ValidateFrozenContractBaseline(safeBaseline.RootElement)).IsEmpty();
         await Assert.That(ValidateFrozenContractBaseline(unsafeBaseline.RootElement)).IsNotEmpty();
     }
@@ -450,6 +546,18 @@ public sealed class SetupAssistantArchitectureTests
     }
 
     [Test]
+    public async Task PatchedTerminalGuiPackage_MustRemainAuditedAndGrammarFree()
+    {
+        ProcessResult result = RunProcess(
+            "dotnet",
+            ["run", "eng/release/dependencies/terminal-gui/VerifyTerminalGuiPackage.cs", "--", "--check"],
+            ContextSystemHelpers.RepoPath());
+
+        await Assert.That(result.ExitCode).IsEqualTo(0)
+            .Because(result.Output);
+    }
+
+    [Test]
     public async Task SetupRepositoryPaths_MustTrackInputsAndIgnoreOnlyGeneratedOutputs()
     {
         string[] trackablePaths =
@@ -458,6 +566,7 @@ public sealed class SetupAssistantArchitectureTests
             "src/Event.SetupAssistant/Event.SetupAssistant.csproj",
             "src/Event.SetupAssistant.Browser/Event.SetupAssistant.Browser.csproj",
             "src/Event.SetupAssistant.Desktop/Event.SetupAssistant.Desktop.csproj",
+            "src/Event.SetupAssistant.Terminal/Event.SetupAssistant.Terminal.csproj",
             "src/Event.SetupAssistant.Cli/Program.cs",
             "tests/Event.Setup.Core.Tests/Program.cs",
             .. RequiredSolutionProjects.Values.Select(path =>
@@ -466,6 +575,10 @@ public sealed class SetupAssistantArchitectureTests
             "eng/setup-assistant/SetupCliCommandSchemaGenerator/Program.cs",
             BrowserCapabilityPath,
             FrozenContractBaselinePath,
+            "eng/release/dependencies/terminal-gui/source.json",
+            "eng/release/dependencies/terminal-gui/approval.json",
+            "eng/release/dependencies/terminal-gui/patches/0001-remove-textmate-grammars.patch",
+            "eng/release/dependencies/terminal-gui/feed/ISLAMU.Terminal.Gui.2.4.17-islamu.1.nupkg",
             "src/Event.SetupAssistant.Browser/wwwroot/index.html"
         ];
         string[] ignoredPaths =
@@ -521,36 +634,99 @@ public sealed class SetupAssistantArchitectureTests
     }
 
     [Test]
-    public async Task SetupTerminalBoundary_MustKeepAmbientAndSecretAuthorityInExactOwners()
+    public async Task SetupTerminalBoundary_MustHaveOneFrameworkTargetAndNoCliFallback()
     {
-        string root = ContextSystemHelpers.RepoPath("src", "Event.SetupAssistant.Cli");
-        string[] files = Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories)
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .ToArray();
         var violations = new List<string>();
-        foreach (string file in files)
+        string cliTuiPath = ContextSystemHelpers.RepoPath("src", "Event.SetupAssistant.Cli", "Tui");
+        if (Directory.Exists(cliTuiPath)
+            && Directory.EnumerateFiles(cliTuiPath, "*.cs", SearchOption.AllDirectories).Any())
+            violations.Add("CLI Tui fallback directory exists");
+
+        XDocument cli = XDocument.Load(ContextSystemHelpers.RepoPath(
+            "src", "Event.SetupAssistant.Cli", "Event.SetupAssistant.Cli.csproj"));
+        string[] cliPackages = cli.Descendants()
+            .Where(element => element.Name.LocalName == "PackageReference")
+            .Select(element => element.Attribute("Include")?.Value ?? string.Empty)
+            .ToArray();
+        if (cliPackages.Any(package => package.Contains("Terminal", StringComparison.OrdinalIgnoreCase)))
+            violations.Add("machine CLI references a terminal package");
+        string cliAssemblyPath = ContextSystemHelpers.RepoPath(
+            "src", "Event.SetupAssistant.Cli", "bin", "Release", "net10.0",
+            "Event.SetupAssistant.Cli.dll");
+        using (FileStream stream = File.OpenRead(cliAssemblyPath))
+        using (var peReader = new PEReader(stream))
         {
-            string relative = NormalizePath(Path.GetRelativePath(root, file));
-            string source = await File.ReadAllTextAsync(file);
-            bool consoleOwner = relative is "Program.cs" or "Tui/ConsoleSetupTerminalDriver.cs";
-            if (!consoleOwner && (source.Contains("Console.", StringComparison.Ordinal)
-                || source.Contains("PosixSignal", StringComparison.Ordinal)))
-                violations.Add($"ambient terminal API outside owner: {relative}");
-            bool fileOwner = relative is "Program.cs" or "Tui/UnixSetupTerminalProtectedWriter.cs";
-            if (!fileOwner && (source.Contains("File.", StringComparison.Ordinal)
-                || source.Contains("FileStream", StringComparison.Ordinal)
-                || source.Contains("Directory.", StringComparison.Ordinal)))
-                violations.Add($"filesystem API outside owner: {relative}");
-            if (source.Contains("new Thread", StringComparison.Ordinal)
-                && relative != "Tui/SetupTerminalReadCoordinator.cs")
-                violations.Add($"terminal reader thread outside coordinator: {relative}");
-            if (source.Contains("LocalSecretGenerator", StringComparison.Ordinal)
-                && relative != "Tui/SetupTerminalSession.cs")
-                violations.Add($"local generator outside TUI workflow: {relative}");
-            foreach (string forbidden in new[] { "ReadLine(", "KeyAvailable", "Clipboard", "Autosave", "System.Diagnostics.Process", "DllImport", "LibraryImport" })
-                if (source.Contains(forbidden, StringComparison.Ordinal)) violations.Add($"forbidden terminal API {forbidden}: {relative}");
+            MetadataReader metadata = peReader.GetMetadataReader();
+            string[] forbiddenConsoleMembers =
+            [
+                "Read", "ReadKey", "ReadLine", "get_KeyAvailable",
+                "SetCursorPosition", "set_CursorVisible",
+                "set_BufferHeight", "set_BufferWidth", "set_WindowHeight",
+                "set_WindowWidth"
+            ];
+            foreach (MemberReferenceHandle handle in metadata.MemberReferences)
+            {
+                MemberReference member = metadata.GetMemberReference(handle);
+                if (member.Parent.Kind != HandleKind.TypeReference)
+                    continue;
+                TypeReference owner = metadata.GetTypeReference((TypeReferenceHandle)member.Parent);
+                if (metadata.GetString(owner.Namespace) != "System"
+                    || metadata.GetString(owner.Name) != "Console")
+                    continue;
+                string name = metadata.GetString(member.Name);
+                if (forbiddenConsoleMembers.Contains(name, StringComparer.Ordinal))
+                    violations.Add($"machine CLI references interactive Console.{name}");
+            }
         }
+
+        XDocument terminal = XDocument.Load(ContextSystemHelpers.RepoPath(
+            "src", "Event.SetupAssistant.Terminal", "Event.SetupAssistant.Terminal.csproj"));
+        string[] terminalPackages = terminal.Descendants()
+            .Where(element => element.Name.LocalName == "PackageReference")
+            .Select(element => element.Attribute("Include")?.Value ?? string.Empty)
+            .ToArray();
+        if (terminalPackages.Count(package => string.Equals(
+                package, "ISLAMU.Terminal.Gui", StringComparison.Ordinal)) != 1)
+            violations.Add("Terminal target must reference exactly one audited ISLAMU.Terminal.Gui package");
+        if (terminalPackages.Any(package => string.Equals(
+                package, "Terminal.Gui", StringComparison.OrdinalIgnoreCase)))
+            violations.Add("Terminal target references the official package identity");
+
+        string[] presentationProjects = Directory.GetFiles(
+            ContextSystemHelpers.RepoPath("src"),
+            "Event.SetupAssistant*.csproj",
+            SearchOption.AllDirectories).Where(path => !path.Contains(
+                $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                StringComparison.Ordinal)).ToArray();
+        string[] enabledTargets = presentationProjects.Where(path =>
+        {
+            XDocument project = XDocument.Load(path);
+            return string.Equals(project.Descendants().SingleOrDefault(element =>
+                element.Name.LocalName == "SetupTargetEnabled")?.Value,
+                "true",
+                StringComparison.OrdinalIgnoreCase);
+        }).ToArray();
+        if (enabledTargets.Length != 1
+            || !string.Equals(
+                Path.GetFileNameWithoutExtension(enabledTargets.SingleOrDefault()),
+                "Event.SetupAssistant.Terminal",
+                StringComparison.Ordinal))
+            violations.Add("exactly one human Setup target must be enabled: Event.SetupAssistant.Terminal");
+        string? role = terminal.Descendants().SingleOrDefault(element =>
+            element.Name.LocalName == "SetupTargetRole")?.Value;
+        if (!string.Equals(role, "Terminal", StringComparison.Ordinal))
+            violations.Add("Terminal target role must be Terminal");
+
+        XDocument solution = XDocument.Load(ContextSystemHelpers.RepoPath("Explore.slnx"));
+        string[] unexpected = solution.Descendants()
+            .Where(element => element.Name.LocalName == "Project")
+            .Select(element => NormalizePath(element.Attribute("Path")?.Value ?? string.Empty))
+            .Where(path => Path.GetFileNameWithoutExtension(path).StartsWith(
+                    "Event.SetupAssistant",
+                    StringComparison.Ordinal)
+                && !RequiredSolutionProjects.Values.Contains(path, StringComparer.Ordinal))
+            .ToArray();
+        violations.AddRange(unexpected.Select(path => $"unapproved Setup presentation project: {path}"));
 
         await Assert.That(violations).IsEmpty().Because(string.Join("; ", violations));
     }
@@ -592,6 +768,10 @@ public sealed class SetupAssistantArchitectureTests
                 .Where(package => BlockedPackageTerms.Any(term =>
                     package.Contains(term, StringComparison.OrdinalIgnoreCase)))
                 .Select(package => $"blocked PackageReference {projectName}: {package}"));
+            violations.AddRange(packages
+                .Where(package => string.Equals(
+                    package, "Terminal.Gui", StringComparison.OrdinalIgnoreCase))
+                .Select(package => $"official PackageReference {projectName}: {package}"));
             if (projectName.EndsWith(".Tests", StringComparison.Ordinal))
             {
                 violations.AddRange(packages
@@ -608,6 +788,30 @@ public sealed class SetupAssistantArchitectureTests
                         $"forbidden source PackageReference {projectName}: {package}"));
             }
         }
+        return [.. violations];
+    }
+
+    private static string[] ValidateSetupLiveProjectSplit(
+        IReadOnlyDictionary<string, XDocument> projects)
+    {
+        var violations = new List<string>();
+        XDocument presentation = projects["Event.SetupAssistant"];
+        bool excludesLiveSources = presentation.Descendants()
+            .Where(element => element.Name.LocalName == "Compile")
+            .Any(element => string.Equals(
+                NormalizePath(element.Attribute("Remove")?.Value ?? string.Empty),
+                "SetupLive/**/*.cs",
+                StringComparison.Ordinal));
+        if (!excludesLiveSources)
+            violations.Add("Event.SetupAssistant must exclude SetupLive/**/*.cs");
+
+        XDocument live = projects["Event.SetupAssistant.SetupLive"];
+        if (live.Descendants().Any(element =>
+            element.Name.LocalName == "PackageReference"))
+        {
+            violations.Add("Event.SetupAssistant.SetupLive must not declare packages");
+        }
+
         return [.. violations];
     }
 
@@ -653,9 +857,9 @@ public sealed class SetupAssistantArchitectureTests
         string[] nodes = framework.EnumerateObject().Select(property => property.Name)
             .Order(StringComparer.Ordinal).ToArray();
         string[] expected =
-            ["CommunityToolkit.Mvvm", "event.setup.core", "event.wire.contracts"];
+            ["CommunityToolkit.Mvvm", "YamlDotNet", "event.setup.core", "event.wire.contracts"];
         if (!nodes.SequenceEqual(expected, StringComparer.Ordinal))
-            violations.Add("lock nodes must be exactly Core, Wire, and CommunityToolkit.Mvvm");
+            violations.Add("lock nodes must be exactly Core, Wire, YamlDotNet, and CommunityToolkit.Mvvm");
         if (!framework.TryGetProperty("CommunityToolkit.Mvvm", out JsonElement toolkit))
             violations.Add("CommunityToolkit.Mvvm lock node is missing");
         else
@@ -674,6 +878,17 @@ public sealed class SetupAssistantArchitectureTests
                 && dependencies.ValueKind == JsonValueKind.Object
                 && dependencies.EnumerateObject().Any())
                 violations.Add("CommunityToolkit.Mvvm must have no transitive package dependency");
+        }
+        if (!framework.TryGetProperty("YamlDotNet", out JsonElement yaml))
+            violations.Add("YamlDotNet lock node is missing");
+        else if (!TryGetString(yaml, "type", out string? yamlType)
+            || yamlType != "CentralTransitive"
+            || !TryGetString(yaml, "resolved", out string? yamlVersion)
+            || yamlVersion != "18.1.0"
+            || !TryGetString(yaml, "contentHash", out string? yamlHash)
+            || yamlHash != "5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw==")
+        {
+            violations.Add("YamlDotNet must be the approved central transitive 18.1.0 graph");
         }
         return [.. violations];
     }
@@ -740,22 +955,85 @@ public sealed class SetupAssistantArchitectureTests
         }
     }
 
-    private static string[] ValidateBrowserCapability(JsonElement root)
+    private static string[] ValidateBrowserCapability(JsonElement root) =>
+        ValidateDisabledCapability(root, "browser", ["secretEntry"]);
+
+    private static string[] ValidateSetupLiveCapability(JsonElement root) =>
+        ValidateDisabledCapability(
+            root,
+            "setup-live",
+            ["targetEnrollment", "secretBindingReadiness", "secretBindingWrite", "savedProfiles"]);
+
+    private static string[] ValidateDisabledCapability(
+        JsonElement root,
+        string expectedTarget,
+        string[] expectedCapabilities)
     {
         var violations = new List<string>();
+        string[] actualRootProperties = root.EnumerateObject()
+            .Select(property => property.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        string[] expectedRootProperties =
+            ["_metadata", "schemaVersion", "target", "targetEnabled", "capabilities"];
+        if (!actualRootProperties.SequenceEqual(
+                expectedRootProperties.Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            violations.Add("root properties must match the exact generated set");
+        if (!root.TryGetProperty("_metadata", out JsonElement metadata)
+            || metadata.ValueKind != JsonValueKind.Object)
+        {
+            violations.Add("_metadata must be an object");
+        }
+        else
+        {
+            string[] actualMetadataProperties = metadata.EnumerateObject()
+                .Select(property => property.Name)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            if (!actualMetadataProperties.SequenceEqual(
+                    new[] { "about", "generatedBy" }, StringComparer.Ordinal))
+                violations.Add("_metadata properties must match the exact generated set");
+            if (!TryGetString(metadata, "generatedBy", out string? generatedBy)
+                || generatedBy != "eng/setup-assistant/GenerateSetupAssistantRatchets.cs")
+                violations.Add("_metadata.generatedBy must name the canonical generator");
+            if (!metadata.TryGetProperty("about", out JsonElement about)
+                || about.ValueKind != JsonValueKind.Array
+                || !about.EnumerateArray().Select(item => item.GetString()).SequenceEqual(
+                    new[]
+                    {
+                        "ABOUTME: Generated Setup Assistant architecture ratchet; do not edit by hand.",
+                        "ABOUTME: Owned by eng/setup-assistant/GenerateSetupAssistantRatchets.cs."
+                    }, StringComparer.Ordinal))
+                violations.Add("_metadata.about must match the exact generated ownership summary");
+        }
         if (!TryGetInt32(root, "schemaVersion", out int version) || version != 1)
             violations.Add("schemaVersion must be 1");
         if (!TryGetString(root, "target", out string? target)
-            || !string.Equals(target, "browser", StringComparison.Ordinal))
+            || !string.Equals(target, expectedTarget, StringComparison.Ordinal))
         {
-            violations.Add("target must be browser");
+            violations.Add($"target must be {expectedTarget}");
         }
+        if (!root.TryGetProperty("targetEnabled", out JsonElement targetEnabled)
+            || targetEnabled.ValueKind != JsonValueKind.False)
+            violations.Add("targetEnabled must be false");
         if (!root.TryGetProperty("capabilities", out JsonElement capabilities)
-            || capabilities.ValueKind != JsonValueKind.Object
-            || !capabilities.TryGetProperty("secretEntry", out JsonElement secretEntry)
-            || secretEntry.ValueKind != JsonValueKind.False)
+            || capabilities.ValueKind != JsonValueKind.Object)
         {
-            violations.Add("capabilities.secretEntry must be false");
+            violations.Add("capabilities must be an object");
+            return [.. violations];
+        }
+        string[] actualCapabilities = capabilities.EnumerateObject()
+            .Select(property => property.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (!actualCapabilities.SequenceEqual(
+                expectedCapabilities.Order(StringComparer.Ordinal), StringComparer.Ordinal))
+            violations.Add("capabilities must match the exact generated set");
+        foreach (string capability in expectedCapabilities)
+        {
+            if (!capabilities.TryGetProperty(capability, out JsonElement value)
+                || value.ValueKind != JsonValueKind.False)
+                violations.Add($"capabilities.{capability} must be false");
         }
         return [.. violations];
     }
@@ -909,7 +1187,7 @@ public sealed class SetupAssistantArchitectureTests
             pair => XDocument.Parse(
                 $"""
                 <Project><ItemGroup>
-                  <ProjectReference Include="../{pair.Value[0]}/{pair.Value[0]}.csproj" />
+                  {string.Join(Environment.NewLine, pair.Value.Select(reference => $"<ProjectReference Include=\"../{reference}/{reference}.csproj\" />"))}
                   {(pair.Key.EndsWith(".Tests", StringComparison.Ordinal) ? "<PackageReference Include=\"TUnit\" />" : string.Empty)}
                 </ItemGroup></Project>
                 """),
@@ -938,10 +1216,12 @@ public sealed class SetupAssistantArchitectureTests
         var violations = new List<string>();
         string[] setupRouteInputs =
         [
-            "src/Event.Setup.Core/*", "src/Event.SetupAssistant/*",
+            "NuGet.Config", "src/Event.Setup.Core/*", "src/Event.SetupAssistant/*",
             "src/Event.SetupAssistant.Browser/*", "src/Event.SetupAssistant.Desktop/*",
-            "src/Event.SetupAssistant.Cli/*", "tests/Event.Setup*.Tests/*",
-            "eng/setup-assistant/*", "browser-release-capabilities.json",
+            "src/Event.SetupAssistant.Terminal/*", "src/Event.SetupAssistant.Cli/*",
+            "tests/Event.Setup*.Tests/*", "eng/setup-assistant/*",
+            "eng/release/dependencies/terminal-gui/*", "browser-release-capabilities.json",
+            "setup-live-release-capabilities.json",
             "frozen-contract-baseline.json"
         ];
         foreach (string routeInput in setupRouteInputs)
@@ -972,6 +1252,25 @@ public sealed class SetupAssistantArchitectureTests
             if (!reusable.Contains(project, StringComparison.Ordinal))
                 violations.Add($"missing Setup project gate: {project}");
         }
+        if (!reusable.Contains("dotnet test --project \"$project\"", StringComparison.Ordinal)
+            || !reusable.Contains("--minimum-expected-tests 1", StringComparison.Ordinal))
+            violations.Add("Setup project gates must execute every focused test project and reject empty runs");
+
+        string[] setupLiveRouteInputs =
+        [
+            "src/Event.Wire.Contracts/SetupLive/*",
+            "src/Explore.Domain/SetupLive/*",
+            "src/Explore.Application/Features/SetupLive/*",
+            "src/Explore.Persistence/Repositories/SetupLiveRepository.cs",
+            "src/Explore.Secrets/Services/SetupSecretBindingAuthority.cs",
+            "src/Explore.API/Controllers/SetupTargetEnrollmentsController.cs",
+            "tests/Event.API.IntegrationTests/Features/SetupLive*"
+        ];
+        foreach (string routeInput in setupLiveRouteInputs)
+        {
+            if (!caller.Contains(routeInput, StringComparison.Ordinal))
+                violations.Add($"missing SetupLive route input: {routeInput}");
+        }
 
         if (!reusable.Contains("run-setup-tests:", StringComparison.Ordinal)
             || !reusable.Contains("inputs.run-setup-tests", StringComparison.Ordinal))
@@ -989,6 +1288,10 @@ public sealed class SetupAssistantArchitectureTests
             || reusable.Contains("SetupCliCommandSchemaGenerator.csproj --configuration \"$DOTNET_CONFIGURATION\" --no-restore -- --write",
                 StringComparison.Ordinal))
             violations.Add("ratchet or command-schema check is missing or mutating");
+        if (!reusable.Contains(
+                "bash eng/release/dependencies/terminal-gui/BuildTerminalGuiPackage.sh --check",
+                StringComparison.Ordinal))
+            violations.Add("audited Terminal.Gui source rebuild check is missing");
 
         ValidateWorkflowAuthority(caller, "caller", violations);
         ValidateWorkflowAuthority(reusable, "reusable", violations);
@@ -1129,6 +1432,23 @@ public sealed class SetupAssistantArchitectureTests
             "FilePath", "Payload", "SecretValue", "SourceTenantId"
         }.Any(forbidden => string.Equals(
             name, forbidden, StringComparison.OrdinalIgnoreCase));
+
+    private static string[] FindForbiddenSetupLiveOuterTypes(
+        IEnumerable<string> identities)
+    {
+        string[] forbiddenTypeTerms =
+        [
+            "System.Console", "System.IO.File", "System.IO.Directory",
+            "System.IO.StreamWriter", "System.Environment",
+            "System.Data", "DbConnection", "DbCommand", "DbProviderFactory",
+            "System.Diagnostics.Process", "System.Diagnostics.Activity",
+            "System.Diagnostics.Metrics", "Microsoft.Extensions.Logging",
+            "ProtectedData", "CredentialStore", "Keychain", "Keyring"
+        ];
+        return identities.Where(identity => forbiddenTypeTerms.Any(term =>
+                identity.Contains(term, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+    }
 
     private static string NormalizePath(string path) => path.Replace('\\', '/');
 }

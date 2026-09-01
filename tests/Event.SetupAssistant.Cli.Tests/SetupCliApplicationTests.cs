@@ -102,19 +102,19 @@ public sealed class SetupCliApplicationTests
     }
 
     [Test]
-    public async Task RemainingFamiliesAliasesAndTuiHaveClosedOutcomes()
+    public async Task RemainingFamiliesAliasesAndRemovedTuiHaveClosedOutcomes()
     {
         byte[] manifest = Artifact(tenant: false);
         RunResult legal = Run(["legal", "validate", "--input", "manifest", "--machine"], new() { ["manifest"] = manifest });
         RunResult preview = Run(["legal", "preview", "--input", "manifest", "--machine"], new() { ["manifest"] = manifest });
         RunResult doctor = Run(["doctor", "--machine"]);
-        RunResult tui = Run(["tui", "--machine"]);
+        RunResult removedTui = Run(["tui", "--machine"]);
         RunResult alias = Run(["catalog", "list", "--machine"]);
 
         await Assert.That(legal.Exit).IsEqualTo(SetupCliExitCode.Success);
         await Assert.That(preview.Exit).IsEqualTo(SetupCliExitCode.Incomplete);
         await Assert.That(doctor.Exit).IsEqualTo(SetupCliExitCode.Success);
-        await Assert.That(tui.Exit).IsEqualTo(SetupCliExitCode.Blocked);
+        await Assert.That(removedTui.Exit).IsEqualTo(SetupCliExitCode.Usage);
         await Assert.That(alias.Exit).IsEqualTo(SetupCliExitCode.Usage);
     }
 
@@ -172,8 +172,10 @@ public sealed class SetupCliApplicationTests
         var output = new MemoryWriter(existingOutputs);
         var error = new MemoryWriter();
         var io = new SetupCliIo(input ?? new MemoryInput(inputs), output, error, 65_536, 4 * 1024 * 1024);
-        var invocation = new SetupCliInvocation(arguments, SetupCliMode.Text, io,
-            new SetupCliTerminalCapabilities(false, false, false, true, true, true, false),
+        var invocation = new SetupCliInvocation(
+            arguments,
+            SetupCliMode.Text,
+            io,
             new SetupCliEnvironmentPresence([]));
         SetupCliExitCode exit = new SetupCliApplication().Run(invocation);
         output.Values.TryGetValue("-", out byte[]? stdout);

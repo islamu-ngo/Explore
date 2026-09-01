@@ -1,4 +1,4 @@
-// ABOUTME: Pins the SA-410 command, machine, exit, explicit-I/O, TTY, and no-leak public contract.
+// ABOUTME: Pins the SA-410 machine command, exit, explicit-I/O, and no-leak public contract.
 // ABOUTME: Leaves one aggregate Red prerequisite for the absent SA-420 executable command owners.
 
 using System.Reflection;
@@ -11,9 +11,7 @@ namespace ISLAMU.SetupAssistant.Cli.Tests;
 
 public sealed class SetupCliContractTests
 {
-    private static readonly TerminalVector InteractiveTerminal = new(true, true, true, false, false, false, true);
-    private static readonly TerminalVector RedirectedTerminal = new(false, false, false, true, true, true, false);
-    private static readonly string[] InvocationPropertyNames = ["Arguments", "Mode", "Io", "Terminal", "Environment"];
+    private static readonly string[] InvocationPropertyNames = ["Arguments", "Mode", "Io", "Environment"];
 
     [Test]
     public async Task CheckedMachineSchemaIsCanonicalClosedBoundedAndFutureGeneratorOwned()
@@ -119,8 +117,7 @@ public sealed class SetupCliContractTests
             Vector(["tenant-package", "export", "--input", "artifact.json", "--output", "result.json", "--dry-run"]),
             Vector(["env", "render", "--output", "-", "--text", "--dry-run"]),
             Vector(["legal", "preview", "--input", "-", "--text"], "artifact"),
-            Vector(["doctor", "--machine"]),
-            Vector(["tui"], terminal: InteractiveTerminal)
+            Vector(["doctor", "--machine"])
         };
         foreach (CliVector vector in accepted)
         {
@@ -177,24 +174,6 @@ public sealed class SetupCliContractTests
     }
 
     [Test]
-    public async Task TuiAndFutureSecretModeRequireAllThreeInteractiveTtyFactsAndNoRedirection()
-    {
-        var rejected = new[]
-        {
-            Vector(["tui"], terminal: RedirectedTerminal),
-            Vector(["tui", "--machine"], terminal: InteractiveTerminal),
-            Vector(["tui", "--input", "-"], terminal: InteractiveTerminal),
-            Vector(["tui"], "captured", terminal: InteractiveTerminal),
-            Vector(["tui"], terminal: InteractiveTerminal with { StderrIsTty = false }),
-            Vector(["tui"], terminal: InteractiveTerminal with { ErrorRedirected = true })
-        };
-        foreach (CliVector vector in rejected)
-        {
-            await Assert.That(SetupCliContractSpecification.Validate(vector)).Contains("blocked-interactive-tty-required");
-        }
-    }
-
-    [Test]
     public async Task CliAssemblyIsExecutableAndPackageFreeWithOnlyCoreProjectDependency()
     {
         System.Reflection.Assembly assembly = System.Reflection.Assembly.Load("Event.SetupAssistant.Cli");
@@ -226,14 +205,13 @@ public sealed class SetupCliContractTests
         string[] owners =
         [
             "SetupCliApplication", "SetupCliInvocation", "SetupCliIo", "ISetupCliInput", "ISetupCliWriter",
-            "SetupCliTerminalCapabilities", "SetupCliEnvironmentPresence", "SetupCliExitCode",
+            "SetupCliEnvironmentPresence", "SetupCliExitCode",
             "SetupCliMachineEnvelope", "SetupCliJsonContext", "SetupCliCommandSchemaMetadata", "SetupCliExecutableMarker"
         ];
         var missing = owners.Where(name => assembly.GetType(prefix + name, throwOnError: false) is null).ToList();
         Type? application = assembly.GetType(prefix + "SetupCliApplication", throwOnError: false);
         Type? invocation = assembly.GetType(prefix + "SetupCliInvocation", throwOnError: false);
         Type? io = assembly.GetType(prefix + "SetupCliIo", throwOnError: false);
-        Type? terminal = assembly.GetType(prefix + "SetupCliTerminalCapabilities", throwOnError: false);
         Type? environment = assembly.GetType(prefix + "SetupCliEnvironmentPresence", throwOnError: false);
         Type? exitCode = assembly.GetType(prefix + "SetupCliExitCode", throwOnError: false);
         Type? context = assembly.GetType(prefix + "SetupCliJsonContext", throwOnError: false);
@@ -265,8 +243,6 @@ public sealed class SetupCliContractTests
             }
         }
         RequireProperties(io, ["Input", "Output", "Error", "MaximumCharacters", "MaximumBytes"], missing);
-        RequireProperties(terminal,
-            ["StdinIsTty", "StdoutIsTty", "StderrIsTty", "InputRedirected", "OutputRedirected", "ErrorRedirected", "SupportsColor"], missing);
         RequireProperties(environment, ["Names"], missing);
         if (exitCode is not null)
         {
@@ -310,9 +286,8 @@ public sealed class SetupCliContractTests
     private static CliVector Vector(
         IReadOnlyList<string> arguments,
         string capturedInput = "",
-        IReadOnlyCollection<string>? environmentNames = null,
-        TerminalVector? terminal = null) =>
-        new(arguments, capturedInput, environmentNames ?? Array.Empty<string>(), terminal ?? RedirectedTerminal);
+        IReadOnlyCollection<string>? environmentNames = null) =>
+        new(arguments, capturedInput, environmentNames ?? Array.Empty<string>());
 
     private static string RepositoryPath(params string[] parts)
     {

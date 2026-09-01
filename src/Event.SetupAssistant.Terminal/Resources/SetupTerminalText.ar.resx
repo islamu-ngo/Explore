@@ -1,0 +1,35 @@
+<!-- ABOUTME: Contains bundled Arabic text for the Terminal.Gui Setup Assistant. -->
+<!-- ABOUTME: Localizes labels and errors while retaining the documented RTL-shaping limitation. -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>مساعد إعداد فعالية إسلامو</value></data>
+  <data name="Introduction" xml:space="preserve"><value>أنشئ ملف بيئة محليًا محميًا. لا تُعرض القيم السرية ولا تُسجل.</value></data>
+  <data name="OutputFile" xml:space="preserve"><value>ملف الإخراج:</value></data>
+  <data name="SetupSecret" xml:space="preserve"><value>سر الإعداد:</value></data>
+  <data name="SaveManual" xml:space="preserve"><value>_حفظ السر المُدخل</value></data>
+  <data name="Generate" xml:space="preserve"><value>_توليد وحفظ</value></data>
+  <data name="Close" xml:space="preserve"><value>_إغلاق</value></data>
+  <data name="Cancel" xml:space="preserve"><value>_إلغاء</value></data>
+  <data name="Ready" xml:space="preserve"><value>جاهز. لا تُستبدل الملفات الموجودة.</value></data>
+  <data name="ProtectedUnavailable" xml:space="preserve"><value>الإخراج السري المحمي غير متاح على نظام التشغيل هذا.</value></data>
+  <data name="Limitations" xml:space="preserve"><value>وضع لوحة المفاتيح دون اعتماد على اللون. قارئ الشاشة وبرايل وتشكيل RTL ومسح سجل الشاشة ومسح ذاكرة .NET بعد تسليم Core غير متحقق منها.</value></data>
+  <data name="TerminalTooSmall" xml:space="preserve"><value>الطرفية صغيرة جدًا. غيّر الحجم إلى 40 عمودًا و17 صفًا على الأقل.</value></data>
+  <data name="InvalidOutputPartial" xml:space="preserve"><value>اسم ملف الإخراج يقبل الحروف اللاتينية والأرقام والنقطة والشرطة السفلية والشرطة فقط.</value></data>
+  <data name="InvalidSecret" xml:space="preserve"><value>إدخال السر غير صالح أو يتجاوز الحد المدعوم.</value></data>
+  <data name="SecretCommandsDisabled" xml:space="preserve"><value>أوامر الحافظة وقائمة السياق والتراجع معطلة في حقل السر.</value></data>
+  <data name="InvalidManual" xml:space="preserve"><value>أدخل سرًا غير فارغ واسم ملف إخراج صالحًا.</value></data>
+  <data name="InvalidOutput" xml:space="preserve"><value>أدخل اسم ملف إخراج صالحًا.</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>أُلغيت العملية.</value></data>
+  <data name="Unavailable" xml:space="preserve"><value>مساحة العمل مشغولة أو غير متاحة.</value></data>
+  <data name="Writing" xml:space="preserve"><value>جارٍ كتابة الإخراج المحمي...</value></data>
+  <data name="ReadinessReady" xml:space="preserve"><value>جاهز</value></data>
+  <data name="ReadinessIncomplete" xml:space="preserve"><value>غير مكتمل</value></data>
+  <data name="ReadinessBlocked" xml:space="preserve"><value>محظور</value></data>
+  <data name="DigestSuffix" xml:space="preserve"><value> بصمة الملف: {0}.</value></data>
+  <data name="OutcomeComplete" xml:space="preserve"><value>تم إنشاء الملف المحمي؛ الجاهزية: {0}.{1}</value></data>
+  <data name="OutcomeIncomplete" xml:space="preserve"><value>تم إنشاء الملف المحمي مع جاهزية غير مكتملة ({0}).{1}</value></data>
+  <data name="OutcomeFailed" xml:space="preserve"><value>فشلت العملية ({2})؛ الجاهزية: {0}.</value></data>
+</root>
