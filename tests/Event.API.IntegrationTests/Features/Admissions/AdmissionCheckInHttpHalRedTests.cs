@@ -1,6 +1,7 @@
 // ABOUTME: Phase 21 RED API and HAL specifications for online admission check-in and scanner capabilities.
 // ABOUTME: Pins least-privilege routes, one-time secrets, bounded door data, rate limits, authorization, and OpenAPI.
 
+using Explore.Application.Constants;
 using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Reflection;
@@ -45,7 +46,6 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
 {
     private const string OpenApiEndpoint = "/openapi/islamu-event.json";
     private const string ScannerCapabilityHeader = "X-Admission-Scanner-Capability";
-    private const string ScannerAuthenticationScheme = "AdmissionScanner";
     private const string StaffRatePolicy = "admission_check_in";
     private const string CapabilityManagementRatePolicy = "admission_scanner_capability";
     private const string ScannerRatePolicy = "admission_scanner_check_in";
@@ -526,15 +526,10 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
         {
             Url = url
         };
-        MethodInfo staffResource = typeof(AdmissionCheckInController).GetMethod(
-            "CheckInResource",
-            BindingFlags.NonPublic | BindingFlags.Instance)!;
-        var deniedStaff = (HalResource<AdmissionCheckInResultDto>)staffResource.Invoke(
-            staff,
-            [eventId, result, false, false])!;
-        var allowedStaff = (HalResource<AdmissionCheckInResultDto>)staffResource.Invoke(
-            staff,
-            [eventId, result, true, true])!;
+        HalResource<AdmissionCheckInResultDto> deniedStaff = staff.CheckInResource(
+            eventId, result, canCheckIn: false, canUndo: false);
+        HalResource<AdmissionCheckInResultDto> allowedStaff = staff.CheckInResource(
+            eventId, result, canCheckIn: true, canUndo: true);
         await Assert.That(deniedStaff.Links).DoesNotContainKey(LinkRelations.CheckInAdmissions);
         await Assert.That(deniedStaff.Links).DoesNotContainKey(LinkRelations.UndoAdmissionCheckIn);
         await Assert.That(allowedStaff.Links).ContainsKey(LinkRelations.CheckInAdmissions);
@@ -548,23 +543,15 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
         {
             Url = url
         };
-        MethodInfo healthResource = typeof(AdmissionCheckInOperationsController).GetMethod(
-            "HealthResource",
-            BindingFlags.NonPublic | BindingFlags.Instance)!;
-        var deniedOperations = (HalResource<AdmissionCheckInHealthDto>)healthResource.Invoke(
-            operations,
-            [eventId, healthResult, false])!;
-        var allowedOperations = (HalResource<AdmissionCheckInHealthDto>)healthResource.Invoke(
-            operations,
-            [eventId, healthResult, true])!;
+        HalResource<AdmissionCheckInHealthDto> deniedOperations = operations.HealthResource(
+            eventId, healthResult, canManage: false);
+        HalResource<AdmissionCheckInHealthDto> allowedOperations = operations.HealthResource(
+            eventId, healthResult, canManage: true);
         await Assert.That(deniedOperations.Links).DoesNotContainKey(LinkRelations.StopAdmissionCheckIn);
         await Assert.That(deniedOperations.Links).DoesNotContainKey(LinkRelations.ReconcileAdmissionCheckIn);
         await Assert.That(allowedOperations.Links).ContainsKey(LinkRelations.StopAdmissionCheckIn);
         await Assert.That(allowedOperations.Links).ContainsKey(LinkRelations.ReconcileAdmissionCheckIn);
 
-        MethodInfo scannerResource = typeof(AdmissionScannerCheckInController).GetMethod(
-            "Resource",
-            BindingFlags.NonPublic | BindingFlags.Instance)!;
         HalResource<AdmissionCheckInResultDto> ScannerResource(params AdmissionCheckInAction[] actions)
         {
             var controller = new AdmissionScannerCheckInController(null!);
@@ -584,10 +571,10 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
                         claims,
-                        AdmissionScannerAuthenticationDefaults.Scheme))
+                        ApiAuthenticationSchemeNames.AdmissionScanner))
                 }
             };
-            return (HalResource<AdmissionCheckInResultDto>)scannerResource.Invoke(controller, [result])!;
+            return controller.Resource(result);
         }
 
         HalResource<AdmissionCheckInResultDto> checkInOnly =
@@ -645,7 +632,7 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
         await Assert.That(RateLimitingExtensions.GetAuthenticatedPartitionKey(invalid))
             .IsEqualTo("anonymous");
         await Assert.That(AuthenticationExtensions.SelectDefaultAuthenticationScheme(invalid))
-            .IsEqualTo(AdmissionScannerAuthenticationDefaults.Scheme);
+            .IsEqualTo(ApiAuthenticationSchemeNames.AdmissionScanner);
 
         static DefaultHttpContext ScannerContext(Guid capabilityId)
         {
@@ -655,7 +642,7 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
                 new Claim(
                     AdmissionScannerAuthenticationDefaults.CapabilityIdClaim,
                     capabilityId.ToString("D"))
-            ], AdmissionScannerAuthenticationDefaults.Scheme));
+            ], ApiAuthenticationSchemeNames.AdmissionScanner));
             return context;
         }
     }
@@ -681,9 +668,9 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
             await Assert.That(operation.GetProperty("x-endpoint-class").GetString())
                 .IsEqualTo("Authenticated");
             if (route.Audience == Audience.ScannerCapability)
-                await Assert.That(SecuritySchemes(operation)).IsEquivalentTo([ScannerAuthenticationScheme]);
+                await Assert.That(SecuritySchemes(operation)).IsEquivalentTo([ApiAuthenticationSchemeNames.AdmissionScanner]);
             else
-                await Assert.That(SecuritySchemes(operation)).DoesNotContain(ScannerAuthenticationScheme);
+                await Assert.That(SecuritySchemes(operation)).DoesNotContain(ApiAuthenticationSchemeNames.AdmissionScanner);
             await Assert.That(ResponseSchemaReference(operation, SuccessStatus(operation)))
                 .IsEqualTo($"#/components/schemas/{route.SuccessSchema}");
         }
@@ -795,7 +782,7 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
         if (authorization.Length == 0)
             violations.Add($"{route.Path} is not authenticated");
         if (authorization.Any(attribute => AuthenticationSchemes(attribute).Contains(
-                ScannerAuthenticationScheme, StringComparer.Ordinal)))
+                ApiAuthenticationSchemeNames.AdmissionScanner, StringComparer.Ordinal)))
             violations.Add($"{route.Path} mixes staff bearer and AdmissionScanner authority");
         if (EffectiveAttribute<AllowAnonymousAttribute>(action) is not null)
             violations.Add($"{route.Path} unexpectedly permits anonymous callers");
@@ -809,7 +796,7 @@ public sealed class AdmissionCheckInHttpHalRedTests(ContractApiFixture fixture)
     {
         AuthorizeAttribute[] authorization = EffectiveAttributes<AuthorizeAttribute>(action);
         string[] schemes = authorization.SelectMany(AuthenticationSchemes).Distinct(StringComparer.Ordinal).ToArray();
-        if (authorization.Length != 1 || !schemes.SequenceEqual([ScannerAuthenticationScheme]))
+        if (authorization.Length != 1 || !schemes.SequenceEqual([ApiAuthenticationSchemeNames.AdmissionScanner]))
             violations.Add($"{route.Path} must use only [Authorize(AuthenticationSchemes = AdmissionScanner)]");
         if (EffectiveAttribute<AllowAnonymousAttribute>(action) is not null)
             violations.Add($"{route.Path} must never permit anonymous callers");

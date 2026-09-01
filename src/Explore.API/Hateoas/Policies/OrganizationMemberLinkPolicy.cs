@@ -47,7 +47,7 @@ public sealed class OrganizationMemberDetailLinkPolicy : ILinkPolicy<Organizatio
 
         // Delete link - requires authentication (organization admin)
         yield return new LinkDefinition(
-            "delete",
+            LinkRelations.Delete,
             RouteNames.DeleteOrganizationMember,
             new { id = dto.Id },
             "DELETE",

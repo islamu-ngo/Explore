@@ -14,6 +14,44 @@ namespace Event.Api.IntegrationTests.Features;
 public sealed class ManagedControlPlaneAuthenticationRoutingTests
 {
     [Test]
+    public async Task OpaqueProviderRatePartitionsBindSchemeWithoutDisclosingSubject()
+    {
+        const string subject = "same-private-provider-subject";
+        string first = RateLimitingExtensions.GetAuthenticatedPartitionKey(ProviderContext("provider-a", subject));
+        string second = RateLimitingExtensions.GetAuthenticatedPartitionKey(ProviderContext("provider-b", subject));
+
+        await Assert.That(first).IsNotEqualTo(second);
+        await Assert.That(first).DoesNotContain(subject);
+        await Assert.That(second).DoesNotContain(subject);
+    }
+
+    [Test]
+    public async Task OpaqueProviderRatePartitionIsStableWithinOneScheme()
+    {
+        const string subject = "stable-private-provider-subject";
+        string first = RateLimitingExtensions.GetAuthenticatedPartitionKey(ProviderContext("provider", subject));
+        string second = RateLimitingExtensions.GetAuthenticatedPartitionKey(ProviderContext("provider", subject));
+
+        await Assert.That(first).IsEqualTo(second);
+        await Assert.That(first.Length).IsLessThanOrEqualTo(80);
+    }
+
+    [Test]
+    public async Task UnauthenticatedSubjectCannotSmuggleRatePartition()
+    {
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal([
+                new ClaimsIdentity(authenticationType: "provider"),
+                new ClaimsIdentity([new Claim("sub", "smuggled-private-subject")])
+            ])
+        };
+
+        await Assert.That(RateLimitingExtensions.GetAuthenticatedPartitionKey(context))
+            .IsEqualTo("anonymous");
+    }
+
+    [Test]
     public async Task ManagedHeader_SelectsManagedSchemeAndAuthenticatedPartition()
     {
         var context = new DefaultHttpContext();
@@ -29,11 +67,11 @@ public sealed class ManagedControlPlaneAuthenticationRoutingTests
                     ManagedControlPlaneAuthenticationDefaults.ManagedInstanceIdClaim,
                     managedInstanceId.ToString("D"))
             ],
-            ManagedControlPlaneAuthenticationDefaults.Scheme,
+            ApiAuthenticationSchemeNames.ManagedControlPlane,
             ClaimTypes.Name,
             ClaimTypes.Role));
 
-        await Assert.That(scheme).IsEqualTo(ManagedControlPlaneAuthenticationDefaults.Scheme);
+        await Assert.That(scheme).IsEqualTo(ApiAuthenticationSchemeNames.ManagedControlPlane);
         await Assert.That(RateLimitingExtensions.GetAuthenticatedPartitionKey(context))
             .IsEqualTo($"managed-instance:{managedInstanceId:D}");
     }
@@ -48,7 +86,7 @@ public sealed class ManagedControlPlaneAuthenticationRoutingTests
         context.Request.Headers.Authorization = "Bearer token";
 
         await Assert.That(AuthenticationExtensions.SelectDefaultAuthenticationScheme(context))
-            .IsEqualTo(ManagedControlPlaneAuthenticationDefaults.Scheme);
+            .IsEqualTo(ApiAuthenticationSchemeNames.ManagedControlPlane);
     }
 
     [Test]
@@ -85,4 +123,12 @@ public sealed class ManagedControlPlaneAuthenticationRoutingTests
             new EndpointMetadataCollection(
                 new AuthorizeAttribute(ManagedControlPlaneAuthorizationPolicies.Write)),
             "managed"));
+
+    private static DefaultHttpContext ProviderContext(string scheme, string subject)
+    {
+        return new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", subject)], scheme))
+        };
+    }
 }

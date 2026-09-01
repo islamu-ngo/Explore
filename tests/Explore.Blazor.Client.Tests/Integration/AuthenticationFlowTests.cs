@@ -155,8 +155,8 @@ public class AuthenticationFlowTests
     public async Task CreateOrganization_RendersPage_WhenAnonymous()
     {
         // Arrange - Configure anonymous user
-        // Note: CreateOrganization doesn't use [Authorize] attribute,
-        // authentication is handled at submission time via AuthStateService
+        // Note: CreateOrganization doesn't use [Authorize] on initial render;
+        // the server remains authoritative when the form is submitted.
         using var ctx = CreateContext();
         AuthenticationScenarios.Anonymous().Build(ctx);
         RegisterOrganizationServices(ctx);
@@ -446,62 +446,6 @@ public class AuthenticationFlowTests
 
     #endregion
 
-    #region Claim Extraction Tests (Matching AuthStateService Pattern)
-
-    [Test]
-    [DisplayName("ClaimExtraction_UsesSubClaimFirst")]
-    public async Task ClaimExtraction_UsesSubClaimFirst()
-    {
-        // Arrange - Configure user with both sub and nameidentifier claims
-        using var ctx = CreateContext();
-        var subValue = Guid.NewGuid().ToString();
-        var nameIdValue = Guid.NewGuid().ToString();
-
-        var authContext = ctx.AddAuthorization();
-        authContext.SetAuthorized("Test User");
-        authContext.SetClaims(
-            new Claim("sub", subValue),
-            new Claim(ClaimTypes.NameIdentifier, nameIdValue)
-        );
-
-        var authState = ctx.Services.GetRequiredService<AuthenticationStateProvider>();
-        var state = await authState.GetAuthenticationStateAsync();
-
-        // Assert - Should find sub claim
-        var subClaim = state.User.FindFirst("sub");
-        await Assert.That(subClaim).IsNotNull();
-        await Assert.That(subClaim!.Value).IsEqualTo(subValue);
-    }
-
-    [Test]
-    [DisplayName("ClaimExtraction_FallsBackToNameIdentifier")]
-    public async Task ClaimExtraction_FallsBackToNameIdentifier()
-    {
-        // Arrange - Configure user with only nameidentifier claim (no sub)
-        using var ctx = CreateContext();
-        var nameIdValue = Guid.NewGuid().ToString();
-
-        var authContext = ctx.AddAuthorization();
-        authContext.SetAuthorized("Test User");
-        authContext.SetClaims(
-            new Claim(ClaimTypes.NameIdentifier, nameIdValue)
-        );
-
-        var authState = ctx.Services.GetRequiredService<AuthenticationStateProvider>();
-        var state = await authState.GetAuthenticationStateAsync();
-
-        // Assert - Should find nameidentifier claim
-        var nameIdClaim = state.User.FindFirst(ClaimTypes.NameIdentifier);
-        await Assert.That(nameIdClaim).IsNotNull();
-        await Assert.That(nameIdClaim!.Value).IsEqualTo(nameIdValue);
-
-        // Sub claim should not exist
-        var subClaim = state.User.FindFirst("sub");
-        await Assert.That(subClaim).IsNull();
-    }
-
-    #endregion
-
     #region Helper Methods
 
     private static void RegisterNavMenuServices(BlazorTestContext ctx)
@@ -509,13 +453,11 @@ public class AuthenticationFlowTests
         var settings = PublicExperienceSettingsBuilder.DefaultBranded().Build();
         NavMenuTestServices.Register(ctx, publicExperienceSettings: settings);
 
-        // AuthenticationFlowTests additionally needs IEventService and IAuthStateService
+        // AuthenticationFlowTests additionally needs IEventService.
         var eventService = Substitute.For<IEventService>();
         eventService.GetAllEventsAsync().Returns(new List<EventListDto>());
         ctx.Services.AddSingleton(eventService);
 
-        var authStateService = Substitute.For<IAuthStateService>();
-        ctx.Services.AddSingleton(authStateService);
     }
 
     private static void RegisterOrganizationServices(BlazorTestContext ctx)
@@ -523,12 +465,6 @@ public class AuthenticationFlowTests
         var organizationService = Substitute.For<IOrganizationService>();
         organizationService.GetMyOrganizationsAsync().Returns(new List<OrganizationListDto>());
         ctx.Services.AddSingleton(organizationService);
-
-        var authStateService = Substitute.For<IAuthStateService>();
-        authStateService.IsAuthenticatedAsync().Returns(Task.FromResult(true));
-        authStateService.GetCurrentUserIdAsync().Returns(Task.FromResult(Guid.NewGuid().ToString()));
-        authStateService.GetCurrentTenantIdAsync().Returns(Task.FromResult(AuthenticationTestConstants.DefaultTenantId));
-        ctx.Services.AddSingleton(authStateService);
 
         var eventService = Substitute.For<IEventService>();
         ctx.Services.AddSingleton(eventService);

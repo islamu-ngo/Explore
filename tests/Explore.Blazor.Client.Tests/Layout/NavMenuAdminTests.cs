@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Shell;
+using Explore.Blazor.Client.Layout;
 using Explore.Blazor.Client.Services.Shell;
 using Explore.Blazor.Client.Tests.Common.Authentication;
 
@@ -491,15 +492,10 @@ public class NavMenuAdminTests : IDisposable
         await Assert.That(cut.Markup).Contains($"/settings/group/{groupId}");
     }
 
-    private IRenderedComponent<DynamicComponent> RenderNavMenu()
-    {
-        var componentType = typeof(IUserService).Assembly.GetType("Explore.Blazor.Client.Layout.NavMenu")
-                            ?? throw new InvalidOperationException("NavMenu component type not found");
+    private IRenderedComponent<NavMenu> RenderNavMenu() =>
+        _ctx.RenderMudComponent<NavMenu>();
 
-        return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));
-    }
-
-    private static void OpenDropdown(IRenderedComponent<DynamicComponent> cut)
+    private static void OpenDropdown(IRenderedComponent<NavMenu> cut)
     {
         var dropdownButton = cut.Find(".navbar__user-btn");
         dropdownButton.Click();

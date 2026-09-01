@@ -2,6 +2,7 @@
 // ABOUTME: Verifies tag data appears in consolidated tenant lookup management UI.
 
 using MudBlazor;
+using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -31,15 +32,10 @@ public class TagsTests : IDisposable
         _ctx.Dispose();
     }
 
-    private IRenderedComponent<DynamicComponent> RenderTags()
-    {
-        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection")
-                            ?? throw new InvalidOperationException("TenantLookupTablesSection component type not found");
+    private IRenderedComponent<TenantLookupTablesSection> RenderTags() =>
+        _ctx.RenderMudComponent<TenantLookupTablesSection>();
 
-        return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));
-    }
-
-    private static void SelectTab(IRenderedComponent<DynamicComponent> cut, string tabName)
+    private static void SelectTab(IRenderedComponent<TenantLookupTablesSection> cut, string tabName)
     {
         var tab = cut.FindAll("[role='tab']").First(x => x.TextContent.Contains(tabName, StringComparison.OrdinalIgnoreCase));
         tab.Click();

@@ -16,6 +16,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Secrets;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
+using Explore.Domain.ValueObjects;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -127,7 +128,7 @@ public sealed class AtprotoJwtServiceTests
         var userId = Guid.NewGuid();
         var did = "did:plc:session-user";
 
-        var issued = await service.IssueAsync(userId, tenantId, did, CancellationToken.None);
+        var issued = await service.IssueAsync(userId, tenantId, AtprotoDid.Parse(did), CancellationToken.None);
         var principal = await service.ValidateSessionAsync(issued.Token, tenantId, CancellationToken.None);
 
         await Assert.That(principal).IsNotNull();

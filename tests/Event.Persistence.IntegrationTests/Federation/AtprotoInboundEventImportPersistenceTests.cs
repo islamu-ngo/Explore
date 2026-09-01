@@ -2370,12 +2370,12 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
                 DisplayName = "Default stamp actor"
             },
         };
-        var identity = new AtprotoIdentity
+        var identity = new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:default-stamp"))
         {
             Id = Guid.CreateVersion7(),
             ActorId = actor.Id,
             Actor = actor,
-            Did = "did:plc:default-stamp",
+
             PdsHost = "https://pds.example.invalid",
             IsActive = true,
             LastResolvedAt = DateTime.UtcNow,
@@ -2433,12 +2433,12 @@ public sealed class AtprotoInboundEventImportPersistenceTests(PostgreSqlContaine
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        var identity = new AtprotoIdentity
+        var identity = new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse(Did))
         {
             Id = Guid.CreateVersion7(),
             ActorId = actor.Id,
             Actor = actor,
-            Did = Did,
+
             PdsHost = "https://pds.example.invalid",
             IsActive = true,
             LastResolvedAt = now,

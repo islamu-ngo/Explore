@@ -27,7 +27,7 @@ public enum EndpointClass
 
     /// <summary>
     /// Restricted to administrators or setup-secret holders. Typically paired with
-    /// <c>[Authorize(Roles = "Admin")]</c> / <c>[Authorize(Roles = "InstanceAdmin")]</c>,
+    /// <c>[Authorize(Policy = ApiAuthorizationPolicies.Admin)]</c> / <c>[Authorize(Roles = "InstanceAdmin")]</c>,
     /// or gated by the setup-secret flow. Used for tenant / instance administration.
     /// </summary>
     Admin = 2,

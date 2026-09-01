@@ -2,6 +2,7 @@
 // ABOUTME: Validates bootstrap fallback and tenant-role filtering used by admin authorization.
 
 using System.Security.Claims;
+using Explore.Application.Constants;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Domain;
@@ -221,6 +222,78 @@ public class AdminContextTests
         await Assert.That(result).IsEqualTo(userId);
         await externalLoginRepository.Received(1)
             .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), subject);
+    }
+
+    [Test]
+    public async Task ResolveUserIdAsync_ConflictingGuidClaimsUsesCanonicalPriorityWithoutProviderLookup()
+    {
+        var subUserId = Guid.NewGuid();
+        var internalUserId = Guid.NewGuid();
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim("sub", subUserId.ToString("D")),
+            new Claim("internal_user_id", internalUserId.ToString("D"))
+        ], "Bearer"));
+        var sut = CreateSut(
+            CreateHttpContextAccessor(principal),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository);
+
+        var result = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(result).IsEqualTo(subUserId);
+        await externalLoginRepository.DidNotReceive()
+            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task ResolveUserIdAsync_PurposeBoundPrincipalFailsClosedWithoutProviderLookup()
+    {
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "provider-subject")],
+            ApiAuthenticationSchemeNames.ApiKey));
+        var sut = CreateSut(
+            CreateHttpContextAccessor(principal),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository);
+
+        var result = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await externalLoginRepository.DidNotReceive()
+            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task ResolveUserIdAsync_MixedAuthenticatedIdentitiesFailClosedWithoutProviderLookup()
+    {
+        var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        var principal = new ClaimsPrincipal(
+        [
+            new ClaimsIdentity([new Claim("sub", "provider-subject")], "Bearer"),
+            new ClaimsIdentity([new Claim("sub", Guid.NewGuid().ToString("D"))], ApiAuthenticationSchemeNames.ApiKey)
+        ]);
+        var sut = CreateSut(
+            CreateHttpContextAccessor(principal),
+            Substitute.For<IPlatformUserRoleRepository>(),
+            Substitute.For<IInstanceBootstrapStateRepository>(),
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLoginRepository);
+
+        var result = await sut.ResolveUserIdAsync(CancellationToken.None);
+
+        await Assert.That(result).IsNull();
+        await externalLoginRepository.DidNotReceive()
+            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<string>());
     }
 
     [Test]

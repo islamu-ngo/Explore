@@ -1,7 +1,9 @@
 // ABOUTME: Sanitizes browser-originated credential headers before BFF proxy forwarding.
 // ABOUTME: Ensures downstream API requests receive only server-owned privileged context.
 
+using Microsoft.Net.Http.Headers;
 namespace Event.Web.BffHosting.Security;
+
 
 public static class BffProxyHeaderSanitizer
 {
@@ -11,9 +13,9 @@ public static class BffProxyHeaderSanitizer
 
     private static readonly string[] BrowserCredentialHeaderNames =
     [
-        "Authorization",
-        "Proxy-Authorization",
-        "Cookie",
+        HeaderNames.Authorization,
+        HeaderNames.ProxyAuthorization,
+        HeaderNames.Cookie,
         EventBffHeaderNames.SetupSecret,
         EventBffHeaderNames.AtprotoBootstrapAssertion,
         EventBffHeaderNames.AtprotoSessionBridgeAssertion,

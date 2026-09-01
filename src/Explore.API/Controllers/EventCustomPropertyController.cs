@@ -4,6 +4,7 @@
 using System.ComponentModel.DataAnnotations;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Authentication;
 using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
@@ -221,7 +222,7 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Permanently purge a dependency-free event-local custom property definition.
     /// </summary>
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Admin)]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpDelete("{id:guid}/purge", Name = RouteNames.PurgeEventCustomPropertyDefinition)]
     [Consumes("application/json")]

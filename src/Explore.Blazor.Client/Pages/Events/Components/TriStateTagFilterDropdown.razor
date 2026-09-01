@@ -1,3 +1,6 @@
+@* ABOUTME: Renders the tri-state tag filter dropdown and its include/exclude affordances. *@
+@* ABOUTME: Exposes stable rendered selectors so behavior tests use public UI interactions. *@
+
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Models
@@ -20,11 +23,9 @@
     @* Overlay for click-outside-to-close *@
     <MudOverlay Visible="_isOpen" OnClick="ClosePopover" LockScroll="false" />
 
-    @* Popover content *@
-    <MudPopover Open="_isOpen"
-                AnchorOrigin="Origin.BottomLeft"
-                TransformOrigin="Origin.TopLeft"
-                Class="tri-state-tag-filter__popover">
+    @if (_isOpen)
+    {
+        <div class="tri-state-tag-filter__popover" role="dialog" aria-label="Tag filters">
         <MudPaper Class="pa-4" Style="min-width: 520px; max-width: min(650px, 92vw); max-height: 70vh; overflow-y: auto; overflow-x: hidden;" Elevation="8">
 
             @* Search + Reset controls *@
@@ -72,6 +73,7 @@
                             var tagId = tag.Id.Value;
                             var state = GetTagState(tagId);
                             <MudChip T="string"
+                                     data-tag-id="@tagId"
                                      Color="@GetChipColor(state)"
                                      Variant="@GetChipVariant(state)"
                                      Icon="@GetChipIcon(state)"
@@ -113,6 +115,7 @@
                 </div>
             </div>
 
-        </MudPaper>
-    </MudPopover>
+            </MudPaper>
+        </div>
+    }
 </div>

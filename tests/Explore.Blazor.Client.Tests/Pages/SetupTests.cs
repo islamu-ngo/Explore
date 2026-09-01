@@ -2,7 +2,7 @@
 // ABOUTME: Verifies status display, secret input, provider quick actions, and BFF JS interop integration.
 
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Pages;
 
 namespace Explore.Blazor.Client.Tests.Pages;
 
@@ -81,15 +81,6 @@ public class SetupTests : IDisposable
         }
     }
 
-    private static Type GetPageComponentType(string componentName)
-    {
-        var componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .FirstOrDefault(t => t.Name == componentName && typeof(IComponent).IsAssignableFrom(t));
-
-        return componentType ?? throw new InvalidOperationException($"Could not find component type '{componentName}'.");
-    }
-
     [Test]
     public async Task Setup_WhenSecretIsRequired_RendersOriginalSecretEntryGateway()
     {
@@ -100,8 +91,7 @@ public class SetupTests : IDisposable
         });
         SetupBffJsModule();
 
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
 
         cut.WaitForAssertion(() =>
         {
@@ -131,8 +121,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule(hasPersistedSecret: true, isValid: false, error: "Invalid setup secret.");
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -156,8 +145,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule(hasPersistedSecret: true, isValid: true);
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -181,8 +169,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule(hasPersistedSecret: true, isValid: true);
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -225,8 +212,7 @@ public class SetupTests : IDisposable
         nav.NavigateTo("/setup");
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
 
         cut.WaitForAssertion(() =>
         {
@@ -267,8 +253,7 @@ public class SetupTests : IDisposable
         var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
         nav.NavigateTo("/setup");
 
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
 
         cut.WaitForAssertion(() => cut.FindAll("button")
             .First(button => button.TextContent.Contains("Configure Authentication", StringComparison.OrdinalIgnoreCase))
@@ -299,8 +284,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule();
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -332,8 +316,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule();
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -356,8 +339,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule(hasPersistedSecret: true, isValid: true);
         var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
         nav.NavigateTo("/setup?returnUrl=%2Fonboarding%2Finstance%3Fsection%3Dlaunch");
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
         cut.WaitForAssertion(() =>
         {
             if (!cut.Markup.Contains("Continue Setup", StringComparison.OrdinalIgnoreCase))
@@ -393,8 +375,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule();
         var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
         nav.NavigateTo("/setup?returnUrl=%2Fonboarding%2Finstance%3Fsection%3Dlaunch");
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
         cut.WaitForAssertion(() => cut.Find("form"));
 
         cut.Find("input").Input("candidate-secret");
@@ -421,8 +402,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule(hasPersistedSecret: true, isValid: true);
         var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
         nav.NavigateTo("/setup?returnUrl=https%3A%2F%2Fevil.example");
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
         cut.WaitForAssertion(() =>
         {
             if (!cut.Markup.Contains("Continue Setup", StringComparison.OrdinalIgnoreCase))
@@ -458,8 +438,7 @@ public class SetupTests : IDisposable
         var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
 
         // Act
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+        var cut = _ctx.Render<Setup>();
 
         // Assert
         await Assert.That(nav.Uri).EndsWith("/");

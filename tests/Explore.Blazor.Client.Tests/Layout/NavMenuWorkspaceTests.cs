@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Components.Shell;
+using Explore.Blazor.Client.Layout;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Shell;
 using MudBlazor;
@@ -163,21 +164,11 @@ public sealed class NavMenuWorkspaceTests : IDisposable
         await Assert.That(cut.FindAll(".navbar__create-event-btn")).IsEmpty();
     }
 
-    private IRenderedComponent<DynamicComponent> RenderNavMenu() => RenderNavMenu(_ctx);
+    private IRenderedComponent<NavMenu> RenderNavMenu() => RenderNavMenu(_ctx);
 
-    private IRenderedComponent<DynamicComponent> RenderThemeQuickSwitcher()
-    {
-        var componentType = typeof(IUserService).Assembly.GetType("Explore.Blazor.Client.Layout.ThemeQuickSwitcher")
-            ?? throw new InvalidOperationException("ThemeQuickSwitcher component type not found");
+    private IRenderedComponent<ThemeQuickSwitcher> RenderThemeQuickSwitcher() =>
+        _ctx.RenderMudComponent<ThemeQuickSwitcher>();
 
-        return _ctx.RenderMudComponent<DynamicComponent>(parameters => parameters.Add(item => item.Type, componentType));
-    }
-
-    private static IRenderedComponent<DynamicComponent> RenderNavMenu(BlazorTestContext context)
-    {
-        var componentType = typeof(IUserService).Assembly.GetType("Explore.Blazor.Client.Layout.NavMenu")
-            ?? throw new InvalidOperationException("NavMenu component type not found");
-
-        return context.RenderMudComponent<DynamicComponent>(parameters => parameters.Add(component => component.Type, componentType));
-    }
+    private static IRenderedComponent<NavMenu> RenderNavMenu(BlazorTestContext context) =>
+        context.RenderMudComponent<NavMenu>();
 }

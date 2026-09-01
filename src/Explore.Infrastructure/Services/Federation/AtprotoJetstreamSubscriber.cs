@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Features.Federation.Atproto.Requests.Commands;
 using Explore.Domain.Federation;
+using Explore.Domain.ValueObjects;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -45,7 +46,7 @@ public sealed class AtprotoJetstreamSubscriber : BackgroundService
     });
     private readonly object _filterLock = new();
     private readonly IDisposable? _optionsChangeRegistration;
-    private string[] _desiredAllowedDids;
+    private AtprotoDid[] _desiredAllowedDids;
     private string? _lastCompletedRecoveryFingerprint;
 
     public AtprotoJetstreamSubscriber(
@@ -235,7 +236,8 @@ public sealed class AtprotoJetstreamSubscriber : BackgroundService
         Task<RecoveryPumpExit> recovery,
         CancellationToken leaseToken)
     {
-        string[] connectionDids = ReadDesiredAllowedDids();
+        AtprotoDid[] connectionDids = ReadDesiredAllowedDids();
+        string[] exactConnectionDids = ExactValues(connectionDids);
         var subscription = new AtprotoJetstreamSubscription(
             endpoint,
             AtprotoJetstreamConstants.Collections,
@@ -309,7 +311,7 @@ public sealed class AtprotoJetstreamSubscriber : BackgroundService
                 AtprotoJetstreamParsedEnvelope parsed = AtprotoJetstreamEnvelopeParser.Parse(
                     envelope,
                     state.Cursor,
-                    connectionDids,
+                    exactConnectionDids,
                     observedAt);
                 if (parsed.Ignored)
                 {
@@ -469,7 +471,7 @@ public sealed class AtprotoJetstreamSubscriber : BackgroundService
     /// with, coalescing bursts so a storm of configuration reloads costs a single reconnect.
     /// </summary>
     private async Task WaitForFilterChangeAsync(
-        string[] connectionDids,
+        AtprotoDid[] connectionDids,
         CancellationToken cancellationToken)
     {
         while (await _filterChanges.Reader.WaitToReadAsync(cancellationToken))
@@ -486,7 +488,7 @@ public sealed class AtprotoJetstreamSubscriber : BackgroundService
             {
             }
 
-            if (!ReadDesiredAllowedDids().SequenceEqual(connectionDids, StringComparer.Ordinal))
+            if (!ReadDesiredAllowedDids().SequenceEqual(connectionDids))
             {
                 return;
             }
@@ -511,7 +513,7 @@ public sealed class AtprotoJetstreamSubscriber : BackgroundService
             {
                 var command = new ReconcileAtprotoPdsSnapshotsCommand(
                     claim,
-                    ReadDesiredAllowedDids(),
+                    ExactValues(ReadDesiredAllowedDids()),
                     _timeProvider.GetUtcNow().UtcDateTime,
                     Volatile.Read(ref _lastCompletedRecoveryFingerprint));
                 AtprotoPdsRecoveryResult result = await _store.ReconcilePdsSnapshotsAsync(
@@ -564,10 +566,10 @@ public sealed class AtprotoJetstreamSubscriber : BackgroundService
 
     private void HandleOptionsChanged(AtprotoJetstreamOptions options, string? _)
     {
-        string[] desired = NormalizeAllowedDids(options.AllowedDids);
+        AtprotoDid[] desired = NormalizeAllowedDids(options.AllowedDids);
         lock (_filterLock)
         {
-            if (desired.SequenceEqual(_desiredAllowedDids, StringComparer.Ordinal))
+            if (desired.SequenceEqual(_desiredAllowedDids))
             {
                 return;
             }
@@ -578,7 +580,7 @@ public sealed class AtprotoJetstreamSubscriber : BackgroundService
         _filterChanges.Writer.TryWrite(true);
     }
 
-    private string[] ReadDesiredAllowedDids()
+    private AtprotoDid[] ReadDesiredAllowedDids()
     {
         lock (_filterLock)
         {
@@ -586,8 +588,19 @@ public sealed class AtprotoJetstreamSubscriber : BackgroundService
         }
     }
 
-    internal static string[] NormalizeAllowedDids(IEnumerable<string> dids) =>
-        dids.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+    internal static AtprotoDid[] NormalizeAllowedDids(IEnumerable<string> dids) =>
+        dids.Select(did => AtprotoDid.TryParse(did, out AtprotoDid parsedDid)
+                ? parsedDid
+                : throw new OptionsValidationException(
+                    AtprotoJetstreamOptions.SectionName,
+                    typeof(AtprotoJetstreamOptions),
+                    ["The Jetstream DID filter is invalid."]))
+            .Distinct()
+            .OrderBy(did => did.Value, StringComparer.Ordinal)
+            .ToArray();
+
+    private static string[] ExactValues(IEnumerable<AtprotoDid> dids) =>
+        dids.Select(did => did.Value).ToArray();
 
     private async Task RenewLeaseAsync(
         AtprotoJetstreamClaim claim,

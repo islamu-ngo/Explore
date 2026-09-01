@@ -3,16 +3,16 @@
 
 # Strong Typing And Reflection Debt Remediation — I-VSD Planning Review
 
-Last Updated: 2026-08-30
+Last Updated: 2026-09-01
 
 ## Review Metadata
 
-- Mode: planning
+- Mode: implementation review
 - Subject: Strong typing, executable assurance, and reflection-debt remediation
 - Workstream: `strong-typing-reflection-remediation`
 - Report kind: provider-responsibility planning review
 - Report status: current
-- Disposition: plan-aligned
+- Disposition: implementation-aligned
 - Evidence cutoff: 2026-08-30
 - Reviewed input revision: `sha256:1a2fa2e4cfaca23086cb49648c0111b5be9c68e85ab5abdddee08e20b1f9b157`
 - Supersedes: none
@@ -222,9 +222,20 @@ Primarily applicable domains: Technical, Governance, Evaluation, and Design. Str
 
 - No stakeholder usability or maintainer-experience study was performed.
 - No deployed incident or operational audit data was reviewed.
-- The final knowledge-graph blast radius is unavailable until implementation start.
-- The dirty shared worktree may change cited files before execution.
-- Implementation verification, adversarial results, and operational evidence remain unavailable because this is a planning review.
+- No production deployment or external security audit was performed; this remains pre-release repository evidence.
+
+## Implementation Validation
+
+| Finding / mitigation | Completed implementation evidence |
+|---|---|
+| `IVSD-F001 -> IVSD-M001` | Phases 5–6 replaced admission and persistence runtime dispatch/source assurance with typed services, real-provider ordering/concurrency behavior, and compiled EF metadata. Phase 9 added the Roslyn changed-test recurrence audit with bounded diagnostics and no historical debt allowlist. |
+| `IVSD-F002 -> IVSD-M002` | Phases 3–4 centralized GUID platform identity in `PlatformIdentityPrincipalExtensions`, kept provider subject/session purposes separate, and retained adversarial malformed/conflicting-claim and zero-PII logging tests. |
+| `IVSD-F003 -> IVSD-M003` | Phase 1 introduced only `AtprotoDid`; currency, country, email, and slug remain scalar under their existing validators. DID stays scalar at database, JWT/provider, HTTP, OpenAPI, and generated-client boundaries. |
+| `IVSD-F004 -> IVSD-M004` | Every removed reflection/source cohort received a typed, rendered, compiled-metadata, structured-artifact, or real-provider replacement before deletion. Money, tenant, privacy, security, state-machine, and concurrency gates were retained. |
+| `IVSD-F005 -> IVSD-M005` | Phase 0 added and validated `strong-typing-refactor`, its benchmark route, exact scope, skills, safety gates, and verification commands. Global contract/benchmark validation passes without missing archive/session paths. |
+| `IVSD-F006 -> IVSD-M006` | Phase 8 uses typed bUnit renders/services/models, exact HAL mutation relations, rendered keyboard/focus/live-region behavior, server-confirmed tenant context, and no browser role/current-user authority inference. The full Blazor project passes 2578/2578. |
+
+Generated OpenAPI, client, and API inventory remain byte-identical to the approved baseline. Five provider-generated application migrations record ordinal DID semantics without changing its scalar column/index/filter or wire contract. The final architecture gate passes 536/536, generated-contract gate 8/8, Blazor gate 2578/2578, and the semantic assurance audit reports zero findings in the changed-test scope.
 
 ## Escalation Needed
 
@@ -245,12 +256,9 @@ Primarily applicable domains: Technical, Governance, Evaluation, and Design. Str
 
 ## Missing Evidence
 
-- implementation-start knowledge-graph callers/callees/affected flows;
-- baseline build and selected project tests from the implementation revision;
-- completed transient invariant-disposition evidence;
-- adversarial identity and tenant-isolation results;
-- generated-artifact determinism evidence from the unconditional implementation gate;
-- stakeholder and operational validation.
+- stakeholder usability and maintainer-experience evidence;
+- deployed operational evidence and an external security assessment;
+- qualified scholarly validation, which is not required for this bounded engineering refactor.
 
 ## Context Inventory
 
@@ -258,7 +266,7 @@ Primarily applicable domains: Technical, Governance, Evaluation, and Design. Str
 - Lifecycle: pre-release greenfield; clean replacement is preferred over compatibility.
 - Existing authorities: platform identity extension, boundary-specific claim/header catalogs, `AuthorizationActions`/`ResourceKinds`, `RouteNames`, `Money`/`CurrencyMetadata`, lookup seeders.
 - Overlap: paused `blazor-clean-code-refactor`; no active `test-suite-rationalization` triad exists.
-- Worktree: extensive unrelated edits; implementation must isolate and avoid overwriting them.
+- Worktree: isolated `Event-strong-typing-reflection-remediation` worktree; the unrelated dirty `develop` worktree remains untouched.
 
 ## Common Overlooked Failures And Outcomes
 
@@ -270,10 +278,10 @@ Primarily applicable domains: Technical, Governance, Evaluation, and Design. Str
 - Route constant cleanup can accidentally change operation IDs or HAL resolution despite identical-looking names.
 - Positive outcome: contributors get compile-time navigation and failures closer to the owning contract while critical behavior remains executable and observable.
 
-## Planning Handoff
+## Implementation Handoff
 
 - Workstream: `strong-typing-reflection-remediation`
-- Status: current
+- Status: current / implementation-aligned
 - Reviewed input revision: `sha256:1a2fa2e4cfaca23086cb49648c0111b5be9c68e85ab5abdddee08e20b1f9b157`
 - Findings and mitigations: `IVSD-F001 -> IVSD-M001`; `IVSD-F002 -> IVSD-M002`; `IVSD-F003 -> IVSD-M003`; `IVSD-F004 -> IVSD-M004`; `IVSD-F005 -> IVSD-M005`; `IVSD-F006 -> IVSD-M006`
 - Verified plan mappings: Plan Section 9 maps every finding/mitigation to named scenarios and exact implementation task ranges
@@ -286,3 +294,4 @@ Primarily applicable domains: Technical, Governance, Evaluation, and Design. Str
 |---|---|---|---|---|
 | 2026-08-30 | none | draft / ready-for-planning | Implementation-plan intake and repository evidence packet completed | Evidence revision `sha256:1a2fa2e4cfaca23086cb49648c0111b5be9c68e85ab5abdddee08e20b1f9b157` |
 | 2026-08-30 | draft / ready-for-planning | current / plan-aligned | Completed plan, task, context, scenario, and `IVSD-*` mapping revalidation | Same evidence revision plus the completed workstream triad |
+| 2026-09-01 | current / plan-aligned | current / implementation-aligned | Completed typed boundary migration, provider-generated DID collation changes, recurrence audit, and final repository verification | Compiled/behavioral/provider gates recorded in the active workstream context and tasks |

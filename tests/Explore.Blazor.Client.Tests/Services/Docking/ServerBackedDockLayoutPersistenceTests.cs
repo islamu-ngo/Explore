@@ -12,7 +12,8 @@ public sealed class ServerBackedDockLayoutPersistenceTests
 {
     private readonly IDockLayoutPersistence _local = Substitute.For<IDockLayoutPersistence>();
     private readonly IUserSettingsService _settings = Substitute.For<IUserSettingsService>();
-    private readonly IAuthStateService _auth = Substitute.For<IAuthStateService>();
+    private readonly AuthenticationStateProvider _auth =
+        Substitute.For<AuthenticationStateProvider>();
     private readonly IUiShellContextService _shellContext = Substitute.For<IUiShellContextService>();
     private readonly ILogger<ServerBackedDockLayoutPersistence> _logger =
         Substitute.For<ILogger<ServerBackedDockLayoutPersistence>>();
@@ -21,7 +22,7 @@ public sealed class ServerBackedDockLayoutPersistenceTests
     public async Task LoadAsync_AuthenticatedServerSnapshot_ReturnsServerWithoutLocalRead()
     {
         var snapshot = CreateSnapshot();
-        _auth.IsAuthenticatedAsync().Returns(true);
+        SetAuthenticated(true);
         _settings.GetSettingsAsync(ServerBackedDockLayoutPersistence.PreferencesCategory, Arg.Any<CancellationToken>())
             .Returns(Settings((ServerBackedDockLayoutPersistence.LayoutPreferenceKey,
                 LocalStorageDockLayoutPersistence.Serialize(snapshot))));
@@ -37,7 +38,7 @@ public sealed class ServerBackedDockLayoutPersistenceTests
     public async Task LoadAsync_AuthenticatedWithoutServerSnapshot_PromotesTenantLocalSnapshotOnce()
     {
         var snapshot = CreateSnapshot();
-        _auth.IsAuthenticatedAsync().Returns(true);
+        SetAuthenticated(true);
         _settings.GetSettingsAsync(ServerBackedDockLayoutPersistence.PreferencesCategory, Arg.Any<CancellationToken>())
             .Returns(Settings((ServerBackedDockLayoutPersistence.LayoutPreferenceKey, "null")));
         _settings.UpdateSettingsBatchAsync(
@@ -62,7 +63,7 @@ public sealed class ServerBackedDockLayoutPersistenceTests
     public async Task SaveAsync_Anonymous_UsesOnlyTenantLocalPersistence()
     {
         var snapshot = CreateSnapshot();
-        _auth.IsAuthenticatedAsync().Returns(false);
+        SetAuthenticated(false);
         _local.SaveAsync(snapshot, Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await CreatePersistence().SaveAsync(snapshot);
@@ -77,7 +78,7 @@ public sealed class ServerBackedDockLayoutPersistenceTests
     public async Task SaveAsync_UserNavigationOverrideDisabled_OmitsWorkspaceNavigationPanel()
     {
         IDictionary<string, string>? captured = null;
-        _auth.IsAuthenticatedAsync().Returns(true);
+        SetAuthenticated(true);
         _shellContext.GetCachedContextAsync(Arg.Any<CancellationToken>())
             .Returns(new UiShellContextDto
             {
@@ -107,6 +108,15 @@ public sealed class ServerBackedDockLayoutPersistenceTests
         _auth,
         _shellContext,
         _logger);
+
+    private void SetAuthenticated(bool authenticated)
+    {
+        var identity = authenticated
+            ? new ClaimsIdentity(authenticationType: "TestAuth")
+            : new ClaimsIdentity();
+        _auth.GetAuthenticationStateAsync().Returns(
+            new AuthenticationState(new ClaimsPrincipal(identity)));
+    }
 
     private static DockLayoutSnapshot CreateSnapshot() => new(
         "shell",

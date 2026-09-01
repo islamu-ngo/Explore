@@ -27,22 +27,32 @@ public sealed class AtprotoSubjectOnboardingOperation(
 {
     public async Task<AtprotoSubjectOnboardingResult> ExecuteAsync(BootstrapAtprotoSessionCommand request, AtprotoVerifiedOAuthSession verified, User user, Actor userActor, Guid tenantId, DateTime at, CancellationToken cancellationToken)
     {
+        AtprotoDid did = verified.Did;
         if (user.IsDeleted || userActor.IsDeleted || userActor.IsSuspended || userActor.UserId != user.Id)
             return AtprotoSubjectOnboardingResult.Failed("linked_identity_incomplete");
-        var login = await logins.GetByProviderAndKey("atproto", verified.Did).ConfigureAwait(false);
-        if (login is null || login.UserId != user.Id || login.Provider != "atproto" || login.ProviderKey != verified.Did) return AtprotoSubjectOnboardingResult.Failed("account_not_linked");
+        var login = await logins.GetByProviderAndKey("atproto", did.Value).ConfigureAwait(false);
+        if (login is null || login.UserId != user.Id || login.Provider != "atproto" || login.ProviderKey != did.Value) return AtprotoSubjectOnboardingResult.Failed("account_not_linked");
 
         var tenantUser = await tenantUsers.GetByTenantAndUserAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false);
         if (tenantUser is not null && (tenantUser.IsDeleted || tenantUser.StatusId != (int)TenantUserStatusEnum.Active
             || tenantUser.ActorId is Guid tenantActorId && tenantActorId != userActor.Id)) return AtprotoSubjectOnboardingResult.Failed("linked_identity_incomplete");
 
-        var identity = await identities.GetByDid(verified.Did, cancellationToken).ConfigureAwait(false);
+        var identity = await identities.GetByDid(did, cancellationToken).ConfigureAwait(false);
         Actor represented;
         if (identity is null)
         {
             if (request.CanonicalActorId is not null) return AtprotoSubjectOnboardingResult.Failed("classification_conflict");
             represented = await CreateAsync(request.Classification, userActor, user.Id, verified.Handle, at).ConfigureAwait(false);
-            identity = new AtprotoIdentity { Did = verified.Did, ActorId = represented.Id, Actor = represented, Handle = verified.Handle, PdsHost = verified.PdsUri.AbsoluteUri, IsActive = true, LastResolvedAt = at, LastSeenAt = at, CreatedAt = at, CreatedBy = user.Id };
+            identity = new AtprotoIdentity(did);
+            identity.ActorId = represented.Id;
+            identity.Actor = represented;
+            identity.Handle = verified.Handle;
+            identity.PdsHost = verified.PdsUri.AbsoluteUri;
+            identity.IsActive = true;
+            identity.LastResolvedAt = at;
+            identity.LastSeenAt = at;
+            identity.CreatedAt = at;
+            identity.CreatedBy = user.Id;
             await identities.Create(identity).ConfigureAwait(false);
         }
         else
@@ -64,7 +74,7 @@ public sealed class AtprotoSubjectOnboardingOperation(
 
             identity.ActorId = represented.Id;
             identity.Actor = represented;
-            identity.RefreshVerifiedMetadata(AtprotoDid.Parse(verified.Did), verified.Handle, verified.PdsUri.AbsoluteUri, null, at);
+            identity.RefreshVerifiedMetadata(did, verified.Handle, verified.PdsUri.AbsoluteUri, null, at);
             identity.UpdatedAt = at;
             identity.UpdatedBy = user.Id;
             await identities.Update(identity).ConfigureAwait(false);

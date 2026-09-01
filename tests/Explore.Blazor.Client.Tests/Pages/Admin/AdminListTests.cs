@@ -2,6 +2,7 @@
 // ABOUTME: Verifies organization request summaries render correctly after admin page consolidation.
 
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -28,13 +29,8 @@ public class AdminListTests : IDisposable
         _ctx.Dispose();
     }
 
-    private IRenderedComponent<DynamicComponent> RenderOrganizationsSection()
-    {
-        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantOrganizationsSection")
-                            ?? throw new InvalidOperationException("TenantOrganizationsSection component type not found");
-
-        return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));
-    }
+    private IRenderedComponent<TenantOrganizationsSection> RenderOrganizationsSection() =>
+        _ctx.RenderMudComponent<TenantOrganizationsSection>();
 
     [Test]
     public async Task AdminList_ShowsLoadingState_WhileRequestsPending()

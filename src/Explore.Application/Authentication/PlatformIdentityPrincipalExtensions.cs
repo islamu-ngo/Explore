@@ -2,6 +2,7 @@
 // ABOUTME: Single authority for the documented user-id fallback chain and provider account reconstruction.
 
 using System.Security.Claims;
+using Explore.Application.Constants;
 using Explore.Domain.Constants;
 
 namespace Explore.Application.Authentication;
@@ -21,7 +22,18 @@ namespace Explore.Application.Authentication;
 /// </summary>
 public static class PlatformIdentityPrincipalExtensions
 {
-    private const string InternalUserIdClaimType = "internal_user_id";
+    private const string SubjectClaimType = "sub";
+    private const string SessionIdClaimType = "sid";
+    private static readonly HashSet<string> PurposeBoundAuthenticationSchemes =
+    [
+        ApiAuthenticationSchemeNames.ApiKey,
+        ApiAuthenticationSchemeNames.SetupSecret,
+        ApiAuthenticationSchemeNames.AdmissionScanner,
+        ApiAuthenticationSchemeNames.ManagedControlPlane,
+        ApiAuthenticationSchemeNames.AtprotoBootstrap,
+        ApiAuthenticationSchemeNames.AtprotoSession,
+        ApiAuthenticationSchemeNames.PrivacyErasureReceipt,
+    ];
 
     /// <summary>
     /// Resolves the platform user id using the documented fallback chain
@@ -38,17 +50,18 @@ public static class PlatformIdentityPrincipalExtensions
     {
         ArgumentNullException.ThrowIfNull(principal);
 
-        if (principal.Identity?.IsAuthenticated != true)
+        ClaimsIdentity? identity = principal.GetAmbientPlatformIdentity();
+        if (identity is null)
         {
             return null;
         }
 
         string?[] candidates =
         [
-            principal.FindFirst("sub")?.Value,
-            principal.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-            principal.FindFirst("sid")?.Value,
-            principal.FindFirst(InternalUserIdClaimType)?.Value,
+            identity.FindFirst(SubjectClaimType)?.Value,
+            identity.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+            identity.FindFirst(SessionIdClaimType)?.Value,
+            identity.FindFirst(PlatformIdentityClaimTypes.InternalUserId)?.Value,
         ];
 
         foreach (var candidate in candidates)
@@ -62,34 +75,38 @@ public static class PlatformIdentityPrincipalExtensions
         return null;
     }
 
+    internal static ClaimsIdentity? GetAmbientPlatformIdentity(this ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        ClaimsIdentity[] identities = principal.Identities
+            .Where(identity => identity.IsAuthenticated)
+            .ToArray();
+
+        return identities is
+        [
+            { AuthenticationType: { } authenticationType } identity
+        ] && !PurposeBoundAuthenticationSchemes.Contains(authenticationType)
+            ? identity
+            : null;
+    }
+
     /// <exception cref="UnauthorizedAccessException">The principal carries no usable platform user id.</exception>
     public static Guid GetRequiredPlatformUserId(this ClaimsPrincipal principal) =>
         principal.GetPlatformUserId()
         ?? throw new UnauthorizedAccessException("User is not authenticated or user ID is not available in the token.");
 
-    public static string? GetEmail(this ClaimsPrincipal principal)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
-        return principal.FindFirst("email")?.Value ?? principal.FindFirst(ClaimTypes.Email)?.Value;
-    }
+    public static string? GetEmail(this ClaimsPrincipal principal) =>
+        GetClaimValue(RequirePrincipal(principal), "email", ClaimTypes.Email);
 
-    public static string? GetUsername(this ClaimsPrincipal principal)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
-        return principal.FindFirst("preferred_username")?.Value ?? principal.FindFirst(ClaimTypes.Name)?.Value;
-    }
+    public static string? GetUsername(this ClaimsPrincipal principal) =>
+        GetClaimValue(RequirePrincipal(principal), "preferred_username", ClaimTypes.Name);
 
-    public static string? GetFirstName(this ClaimsPrincipal principal)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
-        return principal.FindFirst("given_name")?.Value ?? principal.FindFirst(ClaimTypes.GivenName)?.Value;
-    }
+    public static string? GetFirstName(this ClaimsPrincipal principal) =>
+        GetClaimValue(RequirePrincipal(principal), "given_name", ClaimTypes.GivenName);
 
-    public static string? GetLastName(this ClaimsPrincipal principal)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
-        return principal.FindFirst("family_name")?.Value ?? principal.FindFirst(ClaimTypes.Surname)?.Value;
-    }
+    public static string? GetLastName(this ClaimsPrincipal principal) =>
+        GetClaimValue(RequirePrincipal(principal), "family_name", ClaimTypes.Surname);
 
     /// <summary>
     /// Reconstructs the external provider account behind this principal for first-login bootstrap and account
@@ -98,44 +115,37 @@ public static class PlatformIdentityPrincipalExtensions
     /// </summary>
     public static ProviderIdentity? GetProviderIdentity(this ClaimsPrincipal principal)
     {
-        ArgumentNullException.ThrowIfNull(principal);
-
-        var subject = principal.GetProviderSubject();
+        ClaimsIdentity? identity = RequirePrincipal(principal);
+        var subject = GetProviderSubject(identity);
         if (string.IsNullOrWhiteSpace(subject))
         {
             return null;
         }
 
-        var provider = principal.GetAuthProvider();
-        var email = principal.GetEmail() ?? string.Empty;
-
+        var provider = GetAuthProvider(identity);
+        var email = GetClaimValue(identity, "email", ClaimTypes.Email) ?? string.Empty;
         return new ProviderIdentity(
             subject,
             provider,
-            principal.GetProviderId(subject, provider),
+            GetProviderId(identity, subject, provider),
             email,
-            principal.GetEmailVerified(provider, email));
+            GetEmailVerified(identity, provider, email));
     }
 
     /// <summary>The provider's stable subject claim, using the same chain as the platform user id.</summary>
-    public static string? GetProviderSubject(this ClaimsPrincipal principal)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
-
-        return principal.FindFirst("sub")?.Value
-            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? principal.FindFirst("sid")?.Value;
-    }
+    public static string? GetProviderSubject(this ClaimsPrincipal principal) =>
+        GetProviderSubject(RequirePrincipal(principal));
 
     /// <summary>
     /// Classifies the issuing provider from the explicit <c>idp</c> claim, then the issuer, then the subject
     /// shape. Keycloak is the default because it is the platform-managed identity provider.
     /// </summary>
-    public static string GetAuthProvider(this ClaimsPrincipal principal)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
+    public static string GetAuthProvider(this ClaimsPrincipal principal) =>
+        GetAuthProvider(RequirePrincipal(principal));
 
-        var explicitProvider = principal.FindFirst("idp")?.Value;
+    private static string GetAuthProvider(ClaimsIdentity? identity)
+    {
+        var explicitProvider = identity?.FindFirst("idp")?.Value;
         if (!string.IsNullOrWhiteSpace(explicitProvider))
         {
             var normalized = explicitProvider.Trim().ToLowerInvariant();
@@ -155,13 +165,13 @@ public static class PlatformIdentityPrincipalExtensions
             }
         }
 
-        var issuer = principal.FindFirst("iss")?.Value ?? string.Empty;
+        var issuer = identity?.FindFirst("iss")?.Value ?? string.Empty;
         if (issuer.Contains("accounts.google.com", StringComparison.OrdinalIgnoreCase))
         {
             return AuthSchemeNames.Google.ToLowerInvariant();
         }
 
-        var subject = principal.GetProviderSubject() ?? string.Empty;
+        var subject = GetProviderSubject(identity) ?? string.Empty;
         if (subject.StartsWith("did:", StringComparison.OrdinalIgnoreCase) ||
             issuer.Contains("atproto", StringComparison.OrdinalIgnoreCase))
         {
@@ -172,14 +182,15 @@ public static class PlatformIdentityPrincipalExtensions
     }
 
     /// <summary>ATProto identities are keyed by DID rather than by the raw subject claim.</summary>
-    public static string GetProviderId(this ClaimsPrincipal principal, string providerSubject, string provider)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
+    public static string GetProviderId(this ClaimsPrincipal principal, string providerSubject, string provider) =>
+        GetProviderId(RequirePrincipal(principal), providerSubject, provider);
 
+    private static string GetProviderId(ClaimsIdentity? identity, string providerSubject, string provider)
+    {
         if (string.Equals(provider, AuthSchemeNames.Atproto.ToLowerInvariant(), StringComparison.Ordinal))
         {
-            return principal.FindFirst("did")?.Value
-                ?? principal.FindFirst("atproto_did")?.Value
+            return identity?.FindFirst("did")?.Value
+                ?? identity?.FindFirst("atproto_did")?.Value
                 ?? providerSubject;
         }
 
@@ -190,11 +201,12 @@ public static class PlatformIdentityPrincipalExtensions
     /// Honors an explicit <c>email_verified</c> claim, otherwise defaults per provider: the OIDC providers
     /// verify addresses themselves, while ATProto carries no email guarantee and must stay unverified.
     /// </summary>
-    public static bool GetEmailVerified(this ClaimsPrincipal principal, string provider, string email)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
+    public static bool GetEmailVerified(this ClaimsPrincipal principal, string provider, string email) =>
+        GetEmailVerified(RequirePrincipal(principal), provider, email);
 
-        if (bool.TryParse(principal.FindFirst("email_verified")?.Value, out var emailVerified))
+    private static bool GetEmailVerified(ClaimsIdentity? identity, string provider, string email)
+    {
+        if (bool.TryParse(identity?.FindFirst("email_verified")?.Value, out var emailVerified))
         {
             return emailVerified;
         }
@@ -207,6 +219,21 @@ public static class PlatformIdentityPrincipalExtensions
             _ => !string.IsNullOrWhiteSpace(email),
         };
     }
+
+    private static ClaimsIdentity? RequirePrincipal(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        return principal.GetAmbientPlatformIdentity();
+    }
+
+    private static string? GetProviderSubject(ClaimsIdentity? identity) =>
+        identity?.FindFirst(SubjectClaimType)?.Value
+        ?? identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+        ?? identity?.FindFirst(SessionIdClaimType)?.Value;
+
+    private static string? GetClaimValue(ClaimsIdentity? identity, string protocolType, string frameworkType) =>
+        identity?.FindFirst(protocolType)?.Value
+        ?? identity?.FindFirst(frameworkType)?.Value;
 }
 
 /// <summary>External provider account behind an authenticated principal, used for bootstrap and sync only.</summary>

@@ -2,6 +2,7 @@
 // Verifies DB-first admin authority claims are correctly added to the ClaimsPrincipal.
 
 using System.Security.Claims;
+using Explore.Application.Constants;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
@@ -83,7 +84,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Test]
-    public async Task TransformAsync_KeycloakGuidSubject_UsesResolvedLocalUserInsteadOfRawSubject()
+    public async Task TransformAsync_KeycloakGuidSubject_UsesCanonicalSubjectWithoutProviderLookup()
     {
         // Arrange
         var keycloakSubject = Guid.NewGuid();
@@ -116,21 +117,37 @@ public class AdminClaimsTransformationTests
         _userExternalLoginRepository.GetByProviderAndKey("keycloak", keycloakSubject.ToString())
             .Returns((UserExternalLogin?)null);
         _userRepository.GetUserByEmail(email).Returns(localUser);
-        _adminContext.IsInstanceAdminAsync(localUserId, Arg.Any<CancellationToken>()).Returns(true);
-        _adminContext.GetAdminTenantIdsAsync(localUserId, Arg.Any<CancellationToken>())
+        _adminContext.IsInstanceAdminAsync(keycloakSubject, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminTenantIdsAsync(keycloakSubject, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
-        _adminContext.GetAdminOrganizationIdsAsync(localUserId, Arg.Any<CancellationToken>())
+        _adminContext.GetAdminOrganizationIdsAsync(keycloakSubject, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
 
         // Act
         var result = await _sut.TransformAsync(principal);
 
         // Assert
-        await Assert.That(result.HasClaim("internal_user_id", localUserId.ToString())).IsTrue();
-        await Assert.That(result.HasClaim("internal_user_id", keycloakSubject.ToString())).IsFalse();
+        await Assert.That(result.HasClaim("internal_user_id", keycloakSubject.ToString())).IsTrue();
         await Assert.That(result.HasClaim(AdminClaimTypes.InstanceAdmin, "true")).IsTrue();
-        await _adminContext.Received(1).IsInstanceAdminAsync(localUserId, Arg.Any<CancellationToken>());
-        await _adminContext.DidNotReceive().IsInstanceAdminAsync(keycloakSubject, Arg.Any<CancellationToken>());
+        await _adminContext.Received(1).IsInstanceAdminAsync(keycloakSubject, Arg.Any<CancellationToken>());
+        await _userExternalLoginRepository.DidNotReceive()
+            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<string>());
+        await _userRepository.DidNotReceive().GetUserByEmail(Arg.Any<string>());
+    }
+
+    [Test]
+    public async Task TransformAsync_PurposeBoundPrincipalDoesNotGainInternalOrAdminClaims()
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", Guid.NewGuid().ToString("D"))],
+            ApiAuthenticationSchemeNames.ApiKey));
+
+        var result = await _sut.TransformAsync(principal);
+
+        await Assert.That(result.HasClaim(c => c.Type == "internal_user_id")).IsFalse();
+        await Assert.That(result.HasClaim(c => c.Type == AdminClaimTypes.InstanceAdmin)).IsFalse();
+        await _adminContext.DidNotReceive()
+            .IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Test]

@@ -9,15 +9,13 @@ namespace ApplicationUnitTests.Contracts.Admissions.Support;
 internal sealed class RecoveryIdentityResolverFake(AdmissionTestScenario scenario) :
     IAdmissionRecoveryIdentityResolver
 {
-    internal const string PortName = nameof(IAdmissionRecoveryIdentityResolver);
-
     public Task<AdmissionRecoveryIdentityResult> FindAsync(
         AdmissionRecoveryRequest request,
         CancellationToken cancellationToken)
     {
         if (request.TenantId != scenario.TenantId)
         {
-            throw AdmissionContractRuntime.Missing("matching recovery identity tenant");
+            throw new InvalidOperationException("Recovery identity tenant does not match.");
         }
 
         return Task.FromResult(new AdmissionRecoveryIdentityResult(
@@ -25,7 +23,7 @@ internal sealed class RecoveryIdentityResolverFake(AdmissionTestScenario scenari
             scenario.RecoveryRequestId,
             scenario.IdentityPresent,
             scenario.TicketsByAssignment.Values
-                .Select(AdmissionContractRuntime.EntityId)
+                .Select(ticket => ticket.Id)
                 .ToArray()));
     }
 }
@@ -33,7 +31,6 @@ internal sealed class RecoveryIdentityResolverFake(AdmissionTestScenario scenari
 internal sealed class RecoveryRepositoryFake(AdmissionTestScenario scenario) :
     IAdmissionRecoveryRepository
 {
-    internal const string PortName = nameof(IAdmissionRecoveryRepository);
     private readonly Dictionary<string, AdmissionRecoveryCapability> entities =
         new(StringComparer.Ordinal);
 
@@ -43,7 +40,7 @@ internal sealed class RecoveryRepositoryFake(AdmissionTestScenario scenario) :
     {
         if (!scenario.IdentityPresent || entities.ContainsKey(capability.LookupDigest))
         {
-            throw AdmissionContractRuntime.Missing("new recovery entity after present identity");
+            throw new InvalidOperationException("Recovery entity must be new and identity-backed.");
         }
 
         entities.Add(capability.LookupDigest, capability);

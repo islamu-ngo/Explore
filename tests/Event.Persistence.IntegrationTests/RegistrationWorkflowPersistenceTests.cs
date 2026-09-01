@@ -37,11 +37,11 @@ public sealed class RegistrationWorkflowPersistenceTests
             IEntityType lookup = model.FindEntityType(lookupType)!;
             await Assert.That(lookup).IsNotNull();
             await Assert.That(lookup.FindPrimaryKey()!.Properties.Single().ClrType).IsEqualTo(typeof(int));
-            await Assert.That(lookup.FindProperty("Id")!.ValueGenerated).IsEqualTo(ValueGenerated.Never);
-            await Assert.That(lookup.FindProperty("MasterCode")!.GetMaxLength()).IsEqualTo(100);
-            await Assert.That(lookup.FindProperty("FullName")!.GetMaxLength()).IsEqualTo(200);
-            await Assert.That(lookup.FindProperty("Description")!.GetMaxLength()).IsEqualTo(500);
-            await Assert.That(lookup.GetIndexes().Any(index => index.IsUnique && HasProperties(index, "MasterCode"))).IsTrue();
+            await Assert.That(lookup.FindProperty(nameof(RegistrationRequirementCriticality.Id))!.ValueGenerated).IsEqualTo(ValueGenerated.Never);
+            await Assert.That(lookup.FindProperty(nameof(RegistrationRequirementCriticality.MasterCode))!.GetMaxLength()).IsEqualTo(100);
+            await Assert.That(lookup.FindProperty(nameof(RegistrationRequirementCriticality.FullName))!.GetMaxLength()).IsEqualTo(200);
+            await Assert.That(lookup.FindProperty(nameof(RegistrationRequirementCriticality.Description))!.GetMaxLength()).IsEqualTo(500);
+            await Assert.That(lookup.GetIndexes().Any(index => index.IsUnique && HasProperties(index, nameof(RegistrationRequirementCriticality.MasterCode)))).IsTrue();
             await Assert.That(lookup.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNull();
             await Assert.That(lookup.FindDeclaredQueryFilter(QueryFilterNames.SoftDelete)).IsNull();
             await Assert.That(lookup.GetSeedData().Count).IsEqualTo(0);
@@ -55,31 +55,31 @@ public sealed class RegistrationWorkflowPersistenceTests
         {
             await Assert.That(entity).IsNotNull();
             await Assert.That(entity.FindPrimaryKey()!.Properties.Single().ClrType).IsEqualTo(typeof(Guid));
-            await Assert.That(entity.FindProperty("Id")!.ValueGenerated).IsEqualTo(ValueGenerated.Never);
-            await Assert.That(entity.FindProperty("ConcurrencyStamp")!.IsConcurrencyToken).IsTrue();
+            await Assert.That(entity.FindProperty(nameof(RegistrationWorkflow.Id))!.ValueGenerated).IsEqualTo(ValueGenerated.Never);
+            await Assert.That(entity.FindProperty(nameof(RegistrationWorkflow.ConcurrencyStamp))!.IsConcurrencyToken).IsTrue();
             await Assert.That(entity.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
             await Assert.That(entity.FindDeclaredQueryFilter(QueryFilterNames.SoftDelete)).IsNotNull();
             await Assert.That(HasProviderSpecificMetadata(entity)).IsFalse();
         }
 
         await Assert.That(workflow.GetTableName()).IsEqualTo("registration_workflows");
-        await Assert.That(workflow.FindProperty("Purpose")!.GetMaxLength()).IsEqualTo(100);
-        await Assert.That(workflow.GetIndexes().Any(index => index.IsUnique && HasProperties(index, "TenantId", "EventId", "Purpose"))).IsTrue();
-        await AssertForeignKeyAsync(workflow, typeof(Explore.Domain.Event), DeleteBehavior.Restrict, "TenantId", "EventId");
+        await Assert.That(workflow.FindProperty(nameof(RegistrationWorkflow.Purpose))!.GetMaxLength()).IsEqualTo(100);
+        await Assert.That(workflow.GetIndexes().Any(index => index.IsUnique && HasProperties(index, nameof(RegistrationWorkflow.TenantId), nameof(RegistrationWorkflow.EventId), nameof(RegistrationWorkflow.Purpose)))).IsTrue();
+        await AssertForeignKeyAsync(workflow, typeof(Explore.Domain.Event), DeleteBehavior.Restrict, nameof(RegistrationWorkflow.TenantId), nameof(RegistrationWorkflow.EventId));
 
         await Assert.That(requirement.GetTableName()).IsEqualTo("registration_requirements");
-        await Assert.That(requirement.GetIndexes().Any(index => index.IsUnique && HasProperties(index, "RegistrationWorkflowId", "Ordinal"))).IsTrue();
+        await Assert.That(requirement.GetIndexes().Any(index => index.IsUnique && HasProperties(index, nameof(RegistrationRequirement.RegistrationWorkflowId), nameof(RegistrationRequirement.Ordinal)))).IsTrue();
         await AssertForeignKeyAsync(requirement, typeof(RegistrationWorkflow), DeleteBehavior.Cascade,
-            "TenantId", "EventId", "RegistrationWorkflowId");
-        await AssertForeignKeyAsync(requirement, typeof(RegistrationRequirementCriticality), DeleteBehavior.Restrict, "CriticalityId");
-        await AssertForeignKeyAsync(requirement, typeof(RegistrationRequirementCompletionEffect), DeleteBehavior.Restrict, "CompletionEffectId");
-        await AssertForeignKeyAsync(requirement, typeof(RegistrationAnswerSyncMode), DeleteBehavior.Restrict, "AnswerSyncModeId");
-        await AssertForeignKeyAsync(requirement, typeof(RegistrationRequirementSubjectType), DeleteBehavior.Restrict, "AppliesToSubjectTypeId");
+            nameof(RegistrationRequirement.TenantId), nameof(RegistrationRequirement.EventId), nameof(RegistrationRequirement.RegistrationWorkflowId));
+        await AssertForeignKeyAsync(requirement, typeof(RegistrationRequirementCriticality), DeleteBehavior.Restrict, nameof(RegistrationRequirement.CriticalityId));
+        await AssertForeignKeyAsync(requirement, typeof(RegistrationRequirementCompletionEffect), DeleteBehavior.Restrict, nameof(RegistrationRequirement.CompletionEffectId));
+        await AssertForeignKeyAsync(requirement, typeof(RegistrationAnswerSyncMode), DeleteBehavior.Restrict, nameof(RegistrationRequirement.AnswerSyncModeId));
+        await AssertForeignKeyAsync(requirement, typeof(RegistrationRequirementSubjectType), DeleteBehavior.Restrict, nameof(RegistrationRequirement.AppliesToSubjectTypeId));
 
         await Assert.That(channel.GetTableName()).IsEqualTo("registration_channels");
-        await Assert.That(channel.GetIndexes().Any(index => index.IsUnique && HasProperties(index, "RegistrationRequirementId", "Ordinal"))).IsTrue();
+        await Assert.That(channel.GetIndexes().Any(index => index.IsUnique && HasProperties(index, nameof(RegistrationChannel.RegistrationRequirementId), nameof(RegistrationChannel.Ordinal)))).IsTrue();
         await AssertForeignKeyAsync(channel, typeof(RegistrationRequirement), DeleteBehavior.Cascade,
-            "TenantId", "EventId", "RegistrationWorkflowId", "RegistrationRequirementId");
+            nameof(RegistrationChannel.TenantId), nameof(RegistrationChannel.EventId), nameof(RegistrationChannel.RegistrationWorkflowId), nameof(RegistrationChannel.RegistrationRequirementId));
     }
 
     [Test]

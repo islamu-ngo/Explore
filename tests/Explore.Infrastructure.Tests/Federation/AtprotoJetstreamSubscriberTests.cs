@@ -43,7 +43,7 @@ public sealed class AtprotoJetstreamSubscriberTests
         await Assert.That(source.Subscription!.Collections)
             .IsEquivalentTo([AtprotoJetstreamConstants.EventCollection, AtprotoJetstreamConstants.RsvpCollection]);
         await Assert.That(source.Subscription.Collections).DoesNotContain(collection => collection.Contains('*'));
-        await Assert.That(source.Subscription.Dids).IsEquivalentTo([AllowedDid]);
+        await Assert.That(source.Subscription.Dids.Select(did => did.Value)).IsEquivalentTo([AllowedDid]);
         await Assert.That(store.Applied).HasSingleItem();
         await Assert.That(store.Applied[0].Record!.Collection).IsEqualTo(AtprotoJetstreamConstants.EventCollection);
         await Assert.That(store.Applied[0].Presentations.Select(value => value.TenantId)).IsEquivalentTo([tenantId]);
@@ -93,7 +93,7 @@ public sealed class AtprotoJetstreamSubscriberTests
         bool consumed = await subscriber.RunSingleLeaseAsync(CancellationToken.None);
 
         await Assert.That(consumed).IsTrue();
-        await Assert.That(source.Subscription!.Dids).IsEmpty();
+        await Assert.That(source.Subscription!.Dids.Select(did => did.Value)).IsEmpty();
         await Assert.That(store.Applied).HasSingleItem();
         await Assert.That(store.Applied[0].Record).IsNotNull();
     }
@@ -171,13 +171,11 @@ public sealed class AtprotoJetstreamSubscriberTests
         var source = new FakeEventSource([EventEnvelope(100)]) { FailuresRemaining = 1 };
         using var subscriber = CreateSubscriber(store, source);
 
+        Task applyCompleted = store.ApplyCalled.Task;
         await subscriber.StartAsync(CancellationToken.None);
         try
         {
-            for (int attempt = 0; attempt < 100 && store.Cursor == 0; attempt++)
-            {
-                await Task.Delay(20);
-            }
+            await applyCompleted.WaitAsync(TimeSpan.FromSeconds(5));
 
             await Assert.That(store.Cursor).IsEqualTo(100);
             await Assert.That(source.SubscriptionCount).IsGreaterThanOrEqualTo(2);
@@ -215,8 +213,8 @@ public sealed class AtprotoJetstreamSubscriberTests
 
             // v2 filters are immutable per connection, so the new scope has to arrive as a new session.
             await Assert.That(source.SubscriptionCount).IsEqualTo(2);
-            await Assert.That(source.Subscriptions[0].Dids).IsEquivalentTo([AllowedDid]);
-            await Assert.That(source.Subscriptions[1].Dids).IsEquivalentTo(["did:plc:updated-owner"]);
+            await Assert.That(source.Subscriptions[0].Dids.Select(did => did.Value)).IsEquivalentTo([AllowedDid]);
+            await Assert.That(source.Subscriptions[1].Dids.Select(did => did.Value)).IsEquivalentTo(["did:plc:updated-owner"]);
             await Assert.That(source.Sessions[0].Disposed).IsTrue();
             await Assert.That(store.ClaimCount).IsEqualTo(1);
 
@@ -259,7 +257,7 @@ public sealed class AtprotoJetstreamSubscriberTests
 
             await Assert.That(source.Subscriptions.Select(value => value.LiveCursor).ToArray())
                 .IsEquivalentTo(new long?[] { savedCursor, savedCursor });
-            await Assert.That(source.Subscriptions[1].Dids).IsEquivalentTo(["did:plc:latest-desired"]);
+            await Assert.That(source.Subscriptions[1].Dids.Select(did => did.Value)).IsEquivalentTo(["did:plc:latest-desired"]);
             await Assert.That(store.Cursor).IsEqualTo(savedCursor);
         }
         finally
@@ -373,7 +371,7 @@ public sealed class AtprotoJetstreamSubscriberTests
             await source.WaitForSessionCountAsync(2).WaitAsync(TimeSpan.FromSeconds(5));
 
             await Assert.That(source.SubscriptionCount).IsEqualTo(2);
-            await Assert.That(source.Subscriptions[1].Dids).IsEquivalentTo(["did:plc:final-change"]);
+            await Assert.That(source.Subscriptions[1].Dids.Select(did => did.Value)).IsEquivalentTo(["did:plc:final-change"]);
         }
         finally
         {
@@ -586,6 +584,7 @@ public sealed class AtprotoJetstreamSubscriberTests
             await time.WaitForTimerAsync(TimeSpan.FromMilliseconds(100)).WaitAsync(TimeSpan.FromSeconds(5));
             time.Advance(TimeSpan.FromMilliseconds(100));
             await store.WaitForRecoveryCountAsync(2).WaitAsync(TimeSpan.FromSeconds(5));
+            await source.WaitForSessionCountAsync(2).WaitAsync(TimeSpan.FromSeconds(5));
 
             await Assert.That(store.RecoveryCommands[1].Claim.LeaseToken)
                 .IsNotEqualTo(store.RecoveryCommands[0].Claim.LeaseToken);
@@ -1409,7 +1408,6 @@ public sealed class AtprotoJetstreamSubscriberTests
             CancellationToken cancellationToken)
         {
             Applied.Add(request);
-            ApplyCalled.TrySetResult();
             if (FailNextApply)
             {
                 FailNextApply = false;
@@ -1426,6 +1424,7 @@ public sealed class AtprotoJetstreamSubscriberTests
                 throw new InvalidOperationException("simulated_crash_after_commit");
             }
 
+            ApplyCalled.TrySetResult();
             return Task.FromResult(true);
         }
     }

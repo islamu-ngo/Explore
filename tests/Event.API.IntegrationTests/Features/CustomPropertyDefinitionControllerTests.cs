@@ -4,14 +4,27 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Security.Claims;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.API.Controllers;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.DTOs.CustomPropertyDefinition;
+using Explore.Application.DTOs.Registration;
+using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
+using Explore.Application.Features.EventCustomProperties.Requests.Commands;
+using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
+using Explore.Application.Features.RegistrationAnswerFiles.Queries;
 using Explore.Application.Hateoas;
+using Explore.Application.Responses;
 using Explore.Domain.Enums;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -167,5 +180,112 @@ public class CustomPropertyDefinitionControllerTests
         var method = typeof(TController).GetMethods(BindingFlags.Instance | BindingFlags.Public).Single(m => m.Name == methodName);
         var httpMethod = method.GetCustomAttributes<HttpMethodAttribute>(inherit: true).Single();
         Assert.That(httpMethod.HttpMethods).Contains(expectedMethod);
+    }
+}
+
+public sealed class AdminRoleEndpointParityTests
+{
+    private static readonly string[] PurgeRoutes =
+    [
+        "/api/custompropertydefinition/{0}/purge",
+        "/api/eventcustomproperty/{0}/purge",
+        "/api/eventsessioncustomproperty/{0}/purge"
+    ];
+
+    [Test]
+    public async Task RepeatedAdminRoleEndpoints_AnonymousAndNonAdminCohortsRemainUnauthorizedOrForbidden()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        foreach (var request in CreateRequests(authHeader: null))
+        {
+            using (request)
+            using (var response = await client.SendAsync(request))
+            {
+                await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+            }
+        }
+
+        var nonAdmin = TestAuthHandler.CreateAuthHeaderValue(Guid.CreateVersion7());
+        foreach (var request in CreateRequests(nonAdmin))
+        {
+            using (request)
+            using (var response = await client.SendAsync(request))
+            {
+                await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+            }
+        }
+    }
+
+    [Test]
+    public async Task RepeatedAdminRoleEndpoints_AdminCohortReachesSuccessfulActions()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        var admin = TestAuthHandler.CreateAuthHeaderValue(
+            Guid.CreateVersion7(), "Admin user", (ClaimTypes.Role, "Admin"));
+
+        foreach (var request in CreateRequests(admin))
+        {
+            using (request)
+            using (var response = await client.SendAsync(request))
+            {
+                await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            }
+        }
+    }
+
+    private static IEnumerable<HttpRequestMessage> CreateRequests(string? authHeader)
+    {
+        foreach (var route in PurgeRoutes)
+        {
+            var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                string.Format(System.Globalization.CultureInfo.InvariantCulture, route, Guid.CreateVersion7()))
+            {
+                Content = JsonContent.Create(new { reason = "dependency-free test purge" })
+            };
+            AddAuth(request, authHeader);
+            yield return request;
+        }
+
+        var registrationFileRequest = new HttpRequestMessage(
+            HttpMethod.Get, $"/api/registration-answer-files/{Guid.CreateVersion7()}");
+        AddAuth(registrationFileRequest, authHeader);
+        yield return registrationFileRequest;
+    }
+
+    private static void AddAuth(HttpRequestMessage request, string? authHeader)
+    {
+        if (authHeader is not null)
+        {
+            request.Headers.Add(TestAuthHandler.AuthHeaderName, authHeader);
+        }
+    }
+
+    private static WebApplicationFactory<Program> CreateFactory()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var result = new CustomPropertyPurgeResultDto(
+            Guid.CreateVersion7(), Guid.CreateVersion7(), "test", true, Guid.CreateVersion7(),
+            "dependency-free test purge", 0, 0, 0, 0, 0);
+        var success = BaseCommandResponse.Success(result);
+        mediator.Send(Arg.Any<PurgeCustomPropertyDefinitionCommand>(), Arg.Any<CancellationToken>()).Returns(success);
+        mediator.Send(Arg.Any<PurgeEventCustomPropertyDefinitionCommand>(), Arg.Any<CancellationToken>()).Returns(success);
+        mediator.Send(Arg.Any<PurgeEventSessionCustomPropertyDefinitionCommand>(), Arg.Any<CancellationToken>()).Returns(success);
+        mediator.Send(Arg.Any<GetRegistrationAnswerFileQuery>(), Arg.Any<CancellationToken>()).Returns(new RegistrationAnswerFileDto(
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            "answer.pdf", "application/pdf", ".pdf", 128, "quarantined", "clean",
+            DateTime.UnixEpoch, null, null, null));
+
+        return new AuthenticatedWebApplicationFactory
+        {
+            AuthorizationProviderOverride = new StubAuthorizationProvider()
+        }.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IMediator>();
+            services.AddSingleton(mediator);
+        }));
     }
 }

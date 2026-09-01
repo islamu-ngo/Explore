@@ -390,7 +390,7 @@ public class BlazorTestContext : BunitContext
         var claims = new List<Claim>
         {
             // Primary user ID claims - stored as string (JWT standard)
-            // Fallback order in AuthStateService: sub -> nameidentifier -> sid
+            // Test-only identity claims for components that consume AuthenticationStateProvider directly.
             new("sub", userIdString),
             new(ClaimTypes.NameIdentifier, userIdString)
         };
@@ -546,11 +546,9 @@ public class BlazorTestContext : BunitContext
     /// <summary>
     /// Register all core service mocks with default configuration.
     /// </summary>
-    /// <param name="userId">Optional user ID for auth service</param>
-    /// <param name="tenantId">Optional tenant ID for auth service</param>
-    public void AddAllCoreMocks(Guid? userId = null, Guid? tenantId = null)
+    public void AddAllCoreMocks()
     {
-        MockServiceFactory.RegisterAllCoreMocks(Services, userId, tenantId);
+        MockServiceFactory.RegisterAllCoreMocks(Services);
     }
 
     /// <summary>

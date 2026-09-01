@@ -3,7 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Shell;
-using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Pages.User.Components;
 using Explore.Blazor.Client.Services.Shell;
 
 namespace Explore.Blazor.Client.Tests.Pages.User;
@@ -37,12 +37,7 @@ public sealed class SettingsScopeSelectorTests : IDisposable
                     new SettingsScopeDto { Scope = "Tenant", DisplayName = "Tenant" }
                 ]
             });
-        Type componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .Single(type => type.Name == "SettingsScopeSelector" && typeof(IComponent).IsAssignableFrom(type));
-
-        var cut = _ctx.Render<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, componentType));
+        var cut = _ctx.Render<SettingsScopeSelector>();
 
         cut.WaitForState(() => cut.Markup.Contains("Community", StringComparison.Ordinal));
         await Assert.That(cut.Markup).Contains("href=\"/settings/personal\"");
@@ -132,22 +127,7 @@ public sealed class SettingsScopeSelectorTests : IDisposable
             .IsLessThan(cut.Markup.IndexOf($"/settings/organization/{organizationId}", StringComparison.Ordinal));
     }
 
-    private IRenderedComponent<DynamicComponent> RenderSelector(bool compact = false)
-    {
-        Type componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .Single(type => type.Name == "SettingsScopeSelector" && typeof(IComponent).IsAssignableFrom(type));
-
-        return _ctx.Render<DynamicComponent>(parameters =>
-        {
-            parameters.Add(component => component.Type, componentType);
-            if (compact)
-            {
-                parameters.Add(component => component.Parameters, new Dictionary<string, object>
-                {
-                    ["Compact"] = true
-                });
-            }
-        });
-    }
+    private IRenderedComponent<SettingsScopeSelector> RenderSelector(bool compact = false) =>
+        _ctx.Render<SettingsScopeSelector>(parameters =>
+            parameters.Add(component => component.Compact, compact));
 }

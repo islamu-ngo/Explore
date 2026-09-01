@@ -2,10 +2,10 @@
 // ABOUTME: Verifies tenant administrators are never redirected into instance-only administration.
 
 using System.Text.Json;
-using AngleSharp.Dom;
 using Explore.Blazor.Client.Contracts.Services.Shell;
 using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
-using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Pages.Admin.Tenant;
+using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -62,12 +62,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _onboardingService.GetStatusAsync()
             .Returns(new InstanceOnboardingStatusDto { SelectedDeploymentMode = nameof(DeploymentMode.SingleTenant) });
 
-        var componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .First(type => type.Name == "TenantAdminSettings" && typeof(IComponent).IsAssignableFrom(type));
-
-        _ctx.Render<DynamicComponent>(p =>
-            p.Add(x => x.Type, componentType));
+        _ctx.Render<TenantAdminSettings>();
 
         await Assert.That(_nav.Uri).EndsWith("/settings/admin");
     }
@@ -78,12 +73,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _onboardingService.GetStatusAsync()
             .Returns(new InstanceOnboardingStatusDto { SelectedDeploymentMode = nameof(DeploymentMode.MultiTenant) });
 
-        var componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .First(type => type.Name == "TenantAdminSettings" && typeof(IComponent).IsAssignableFrom(type));
-
-        _ctx.Render<DynamicComponent>(p =>
-            p.Add(x => x.Type, componentType));
+        _ctx.Render<TenantAdminSettings>();
 
         await Assert.That(_nav.Uri).EndsWith("/settings/admin");
     }
@@ -99,12 +89,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
                 IsCurrentUserPlatformAdministrator = true,
                 TenantId = Guid.NewGuid()
             });
-        Type layoutType = typeof(EventList).Assembly
-            .GetTypes()
-            .First(type => type.Name == "TenantAdminSettingsLayout" && typeof(IComponent).IsAssignableFrom(type));
-
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, layoutType));
+        var cut = RenderLayout();
         cut.WaitForState(() => cut.Markup.Contains(
             "You do not have tenant administrator permissions",
             StringComparison.Ordinal));
@@ -131,11 +116,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _tenantBrandingSettingsAdminService.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new TenantBrandingSettingsAdminModel());
 
-        Type layoutType = typeof(EventList).Assembly
-            .GetTypes()
-            .First(type => type.Name == "TenantAdminSettingsLayout" && typeof(IComponent).IsAssignableFrom(type));
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, layoutType));
+        var cut = RenderLayout();
         cut.WaitForState(() => cut.Markup.Contains("Event & Organization Policies", StringComparison.Ordinal));
 
         await Assert.That(cut.Markup).DoesNotContain("Save Tenant Settings", StringComparison.Ordinal);
@@ -263,14 +244,8 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             .Returns(new TenantBrandingSettingsAdminModel());
     }
 
-    private IRenderedComponent<DynamicComponent> RenderLayout()
-    {
-        Type layoutType = typeof(EventList).Assembly
-            .GetTypes()
-            .First(type => type.Name == "TenantAdminSettingsLayout" && typeof(IComponent).IsAssignableFrom(type));
-        return _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, layoutType));
-    }
+    private IRenderedComponent<TenantAdminSettingsLayout> RenderLayout() =>
+        _ctx.RenderMudComponent<TenantAdminSettingsLayout>();
 
     private static TenantPolicySettingsDto CreateManagementModel() => new()
     {
@@ -299,14 +274,8 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         ]
     };
 
-    private static IElement PolicyInput(IRenderedComponent<DynamicComponent> cut, string label) =>
-        cut.FindAll("label").Single(element =>
-                element.TextContent.Contains(label, StringComparison.OrdinalIgnoreCase))
-            .QuerySelector("input")
-        ?? throw new InvalidOperationException($"Policy switch input '{label}' not found.");
-
     private static Task NavigateTo(
-        IRenderedComponent<DynamicComponent> cut,
+        IRenderedComponent<TenantAdminSettingsLayout> cut,
         string section)
     {
         IRenderedComponent<MudListItem<string>> item =

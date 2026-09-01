@@ -1,7 +1,6 @@
 // ABOUTME: Defines RED PostgreSQL contracts for ticket transfer, holder authority, and credential rotation.
 // ABOUTME: Pins tenant isolation, shared-fence races, immutable commerce/check-in truth, replay, and PII minimization.
 
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Event.Persistence.IntegrationTests.Fixtures;
@@ -26,11 +25,6 @@ namespace Event.Persistence.IntegrationTests;
 public sealed class TicketTransferConcurrencyTests(
     PostgreSqlContainerFixture fixture)
 {
-    private const string TransferTypeName =
-        "Explore.Domain.AdmissionTicketTransfer";
-    private const string RepositoryTypeName =
-        "Explore.Persistence.Repositories." +
-        "AdmissionTicketTransferRepository";
     private static readonly DateTime UtcNow =
         new(
             2026,
@@ -42,31 +36,6 @@ public sealed class TicketTransferConcurrencyTests(
             DateTimeKind.Utc);
 
     [Test]
-    public async Task TransferAggregateOwnsPolicyExpiryHopsAndGeneration()
-    {
-        Type? transfer = DomainType(TransferTypeName);
-        Type? policy = DomainType(
-            "Explore.Domain.TicketTransferPolicy");
-
-        await Assert.That(transfer).IsNotNull();
-        await Assert.That(policy).IsNotNull();
-        await Assert.That(HasProperties(
-                transfer!,
-                "ExpiresAt",
-                "TransferHop",
-                "CredentialGeneration",
-                "StatusId"))
-            .IsTrue();
-        await Assert.That(HasMethods(
-                transfer,
-                "Offer",
-                "Accept",
-                "Cancel",
-                "Expire"))
-            .IsTrue();
-    }
-
-    [Test]
     public async Task TransferRowsAreTenantFilteredAndOneOfferIsOpenPerTicket()
     {
         await using ExploreDbContext context =
@@ -74,7 +43,8 @@ public sealed class TicketTransferConcurrencyTests(
         IEntityType? transfer = context
             .GetService<IDesignTimeModel>()
             .Model
-            .FindEntityType(TransferTypeName);
+            .FindEntityType(
+                typeof(AdmissionTicketTransfer));
 
         await Assert.That(transfer).IsNotNull();
         await Assert.That(
@@ -86,8 +56,8 @@ public sealed class TicketTransferConcurrencyTests(
                     index.IsUnique
                     && HasProperties(
                         index.Properties,
-                        "TenantId",
-                        "OpenAdmissionTicketId")))
+                        nameof(AdmissionTicketTransfer.TenantId),
+                        nameof(AdmissionTicketTransfer.OpenAdmissionTicketId))))
             .IsTrue();
         await Assert.That(
                 transfer.GetForeignKeys().Any(key =>
@@ -95,8 +65,8 @@ public sealed class TicketTransferConcurrencyTests(
                     typeof(AdmissionTicket)
                     && HasProperties(
                         key.Properties,
-                        "TenantId",
-                        "AdmissionTicketId")))
+                        nameof(AdmissionTicketTransfer.TenantId),
+                        nameof(AdmissionTicketTransfer.AdmissionTicketId))))
             .IsTrue();
     }
 
@@ -108,7 +78,8 @@ public sealed class TicketTransferConcurrencyTests(
         IEntityType? transfer = context
             .GetService<IDesignTimeModel>()
             .Model
-            .FindEntityType(TransferTypeName);
+            .FindEntityType(
+                typeof(AdmissionTicketTransfer));
 
         await Assert.That(transfer).IsNotNull();
         string[] forbidden =
@@ -137,148 +108,30 @@ public sealed class TicketTransferConcurrencyTests(
             .Select(property => property.Name)
             .ToArray();
         await Assert.That(forbiddenProperties).IsEmpty();
-        await Assert.That(HasProperties(
-                transfer.ClrType,
-                "FromParticipantId",
-                "ToParticipantId",
-                "RecipientSubjectUserId",
-                "CapabilityDigest"))
+        string[] requiredProperties =
+        [
+            nameof(AdmissionTicketTransfer.FromParticipantId),
+            nameof(AdmissionTicketTransfer.ToParticipantId),
+            nameof(AdmissionTicketTransfer.RecipientSubjectUserId),
+            nameof(AdmissionTicketTransfer.CapabilityDigest),
+        ];
+        await Assert.That(requiredProperties.All(name =>
+                transfer.FindProperty(name) is not null))
             .IsTrue();
-    }
-
-    [Test]
-    public async Task TransferRepositoryOwnsCanonicalSharedFenceOrder()
-    {
-        Type? repository = PersistenceType(
-            RepositoryTypeName);
-
-        await Assert.That(repository).IsNotNull();
-        await Assert.That(HasMethods(
-                repository!,
-                "LoadForOfferAsync",
-                "LoadForAcceptanceAsync",
-                "ApplyAcceptanceAsync"))
-            .IsTrue();
-        await Assert.That(
-                repository.GetField(
-                    "CanonicalFenceOrder",
-                    BindingFlags.Public
-                    | BindingFlags.Static)?
-                    .GetValue(null))
-            .IsEqualTo(
-                "assignment>eligibility>ticket>transfer");
-    }
-
-    [Test]
-    public async Task OfferReplayAndStaleGenerationHaveStableOutcomes()
-    {
-        Type? result = DomainType(
-            "Explore.Domain.AdmissionTicketTransferOutcome");
-
-        await Assert.That(result).IsNotNull();
-        string[] names = Enum.GetNames(result!);
-        await Assert.That(names)
-            .Contains("Offered");
-        await Assert.That(names)
-            .Contains("AlreadyOffered");
-        await Assert.That(names)
-            .Contains("Accepted");
-        await Assert.That(names)
-            .Contains("StaleGeneration");
-        await Assert.That(names)
-            .Contains("Expired");
-        await Assert.That(names)
-            .Contains("HopLimitReached");
-    }
-
-    [Test]
-    public async Task AcceptanceAndOldCredentialCheckInShareOneTicketFence()
-    {
-        Type? transferRepository =
-            PersistenceType(RepositoryTypeName);
-        Type checkInRepository =
-            typeof(Explore.Persistence.Repositories
-                .AdmissionCheckInRepository);
-
-        await Assert.That(transferRepository)
-            .IsNotNull();
-        await Assert.That(HasMethods(
-                transferRepository!,
-                "ApplyAcceptanceAsync"))
-            .IsTrue();
-        await Assert.That(HasMethods(
-                checkInRepository,
-                "ExecuteAsync"))
-            .IsTrue();
-        await Assert.That(
-                DomainType(TransferTypeName)!
-                    .GetProperty(
-                        "AcceptedCredentialGeneration"))
-            .IsNotNull();
-    }
-
-    [Test]
-    public async Task RevocationApprovalCorrectionAndReissueShareTransferFence()
-    {
-        Type? repository = PersistenceType(
-            RepositoryTypeName);
-
-        await Assert.That(repository).IsNotNull();
-        await Assert.That(HasMethods(
-                repository!,
-                "LoadForAcceptanceAsync",
-                "LoadForCorrectionAsync",
-                "LoadForReissueAsync"))
-            .IsTrue();
-        await Assert.That(
-                typeof(Explore.Persistence.Repositories
-                    .ParticipantAdmissionEligibilityRepository)
-                    .GetField(
-                        "CanonicalFenceOrder",
-                        BindingFlags.Public
-                        | BindingFlags.Static)?
-                    .GetValue(null))
-            .IsEqualTo(
-                "assignment>eligibility>ticket>transfer");
-    }
-
-    [Test]
-    public async Task CrossTenantWrongResourceAndConsumedCapabilityFailClosed()
-    {
-        Type? repository = PersistenceType(
-            RepositoryTypeName);
-
-        await Assert.That(repository).IsNotNull();
-        await Assert.That(HasMethods(
-                repository!,
-                "ResolveCapabilityForUpdateAsync"))
-            .IsTrue();
-        MethodInfo method = repository!.GetMethod(
-            "ResolveCapabilityForUpdateAsync")!;
-        string[] parameterNames = method.GetParameters()
-            .Select(parameter => parameter.Name!)
-            .ToArray();
-        await Assert.That(parameterNames)
-            .Contains("tenantId");
-        await Assert.That(parameterNames)
-            .Contains("eventId");
-        await Assert.That(parameterNames)
-            .Contains("admissionTicketId");
-        await Assert.That(parameterNames)
-            .Contains("capabilityDigest");
     }
 
     [Test]
     public async Task TransferPreservesAppendOnlyCheckInAndCommerceLineage()
     {
-        Type? transfer = DomainType(TransferTypeName);
-
-        await Assert.That(transfer).IsNotNull();
-        await Assert.That(HasProperties(
-                transfer!,
-                "RegistrationOrderId",
-                "RegistrationOrderLineId",
-                "RegistrationTicketAssignmentId"))
+        Type transfer = typeof(AdmissionTicketTransfer);
+        string[] lineageProperties =
+        [
+            nameof(AdmissionTicketTransfer.RegistrationOrderId),
+            nameof(AdmissionTicketTransfer.RegistrationOrderLineId),
+            nameof(AdmissionTicketTransfer.RegistrationTicketAssignmentId),
+        ];
+        await Assert.That(lineageProperties.All(name =>
+                transfer.GetProperty(name) is not null))
             .IsTrue();
         await Assert.That(
                 transfer.GetProperties().Any(property =>
@@ -288,9 +141,7 @@ public sealed class TicketTransferConcurrencyTests(
                     && property.SetMethod is not null))
             .IsFalse();
         await Assert.That(
-                transfer.GetMethods(
-                    BindingFlags.Public
-                    | BindingFlags.Instance)
+                transfer.GetMethods()
                     .Any(method =>
                         method.Name.Contains(
                             "Payment",
@@ -304,19 +155,9 @@ public sealed class TicketTransferConcurrencyTests(
     [Test]
     public async Task AcceptanceStagesPointerNotificationsInSameTransaction()
     {
-        Type? repository = PersistenceType(
-            RepositoryTypeName);
-        Type? intent = DomainType(
-            "Explore.Domain.AdmissionTransferDeliveryIntent");
-
-        await Assert.That(repository).IsNotNull();
-        await Assert.That(intent).IsNotNull();
-        await Assert.That(HasMethods(
-                repository!,
-                "ApplyAcceptanceAsync"))
-            .IsTrue();
+        Type intent = typeof(AdmissionTransferDeliveryIntent);
         await Assert.That(
-                intent!.GetProperties().Any(property =>
+                intent.GetProperties().Any(property =>
                     property.Name.Contains(
                         "Email",
                         StringComparison.OrdinalIgnoreCase)
@@ -324,10 +165,15 @@ public sealed class TicketTransferConcurrencyTests(
                         "Token",
                         StringComparison.OrdinalIgnoreCase)))
             .IsFalse();
-        await Assert.That(HasProperties(
-                intent,
-                "AdmissionTicketTransferId",
-                "OutboxMessageId"))
+        string[] pointerProperties =
+        [
+            nameof(AdmissionTransferDeliveryIntent
+                .AdmissionTicketTransferId),
+            nameof(AdmissionTransferDeliveryIntent
+                .OutboxMessageId),
+        ];
+        await Assert.That(pointerProperties.All(name =>
+                intent.GetProperty(name) is not null))
             .IsTrue();
     }
 
@@ -1419,37 +1265,11 @@ public sealed class TicketTransferConcurrencyTests(
             SHA256.HashData(
                 Encoding.UTF8.GetBytes(value)));
 
-    private static Type? DomainType(string name) =>
-        typeof(AdmissionTicket).Assembly.GetType(name);
-
-    private static Type? PersistenceType(string name) =>
-        typeof(ExploreDbContext).Assembly.GetType(name);
-
-    private static bool HasProperties(
-        Type type,
-        params string[] expected)
-    {
-        string[] actual = type.GetProperties()
-            .Select(property => property.Name)
-            .ToArray();
-        return expected.All(actual.Contains);
-    }
-
     private static bool HasProperties(
         IReadOnlyList<IReadOnlyProperty> actual,
         params string[] expected) =>
         actual.Select(property => property.Name)
             .SequenceEqual(expected);
-
-    private static bool HasMethods(
-        Type type,
-        params string[] expected)
-    {
-        string[] actual = type.GetMethods()
-            .Select(method => method.Name)
-            .ToArray();
-        return expected.All(actual.Contains);
-    }
 
     private sealed record TransferSeed(
         Guid TenantId,

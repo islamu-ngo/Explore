@@ -1,7 +1,6 @@
 // ABOUTME: Verifies canonical event snapshot eligibility, tenant isolation, and raw-location fail-closed behavior.
 // ABOUTME: Ensures repositories remain entity-first while the Application projection excludes provider and private data.
 
-using System.Reflection;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Features.Federation.Atproto.Models;
@@ -313,10 +312,10 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             CreatedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        actor.AtprotoIdentities.Add(new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:private-provider-canary"))
         {
             Id = Guid.CreateVersion7(),
-            Did = "private-provider-canary",
+
             ActorId = actor.Id,
             Actor = actor,
             PdsHost = "https://pds.example.test",
@@ -423,10 +422,10 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
         eventEntity.Actor.GroupId = organizerGroup.Id;
         eventEntity.Actor.Group = organizerGroup;
         eventEntity.Actor.Description = "organizer-description-canary";
-        eventEntity.Actor.AtprotoIdentities.Add(new AtprotoIdentity
+        eventEntity.Actor.AtprotoIdentities.Add(new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:organizer-canary"))
         {
             Id = Guid.CreateVersion7(),
-            Did = "did:plc:organizer-canary",
+
             ActorId = eventEntity.Actor.Id,
             Actor = eventEntity.Actor,
             Handle = "organizer.handle.canary",
@@ -513,7 +512,7 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
         location.Rooms.Add(room);
         EventLocation physicalPlacement = EventLocation.CreatePhysical(
             tenantId, eventEntity.Id, location.Id, actorUserId, now);
-        SetPrivateProperty(physicalPlacement, nameof(EventLocation.Location), location);
+        physicalPlacement.AttachLocation(location);
         physicalPlacement.ChangeDisclosurePolicy(
             EventLocationDisclosureFields.All,
             LocationDisclosureAudienceEnum.AnyCurrentRegistrant,
@@ -521,8 +520,8 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             1,
             actorUserId,
             EventLocationDisclosureAuditReasonEnum.OrganizerPolicyChange,
-            now.AddMinutes(1));
-        SetPrivateProperty(physicalPlacement, nameof(EventLocation.NeedsPrivacyReview), false);
+            now.AddMinutes(1),
+            needsPrivacyReview: false);
         EventLocation tbaPlacement = EventLocation.CreateToBeAnnounced(
             tenantId, eventEntity.Id, actorUserId, now);
 
@@ -667,12 +666,12 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        AddPrivateCollectionItem(eventProperty, "_options", eventOption);
-        AddPrivateCollectionItem(eventProperty, "_values", eventValue);
-        AddPrivateCollectionItem(eventProperty, "_values", CreateEventTypedValue(eventProperty, eventEntity, 2, number: 17.25m));
-        AddPrivateCollectionItem(eventProperty, "_values", CreateEventTypedValue(eventProperty, eventEntity, 3, boolean: true));
-        AddPrivateCollectionItem(eventProperty, "_values", CreateEventTypedValue(eventProperty, eventEntity, 4, dateTime: new DateTimeOffset(2026, 7, 21, 8, 0, 0, TimeSpan.Zero)));
-        AddPrivateCollectionItem(eventProperty, "_values", CreateEventTypedValue(eventProperty, eventEntity, 5, option: eventOption));
+        eventProperty.AddOption(eventOption);
+        eventProperty.AddValue(eventValue);
+        eventProperty.AddValue(CreateEventTypedValue(eventProperty, eventEntity, 2, number: 17.25m));
+        eventProperty.AddValue(CreateEventTypedValue(eventProperty, eventEntity, 3, boolean: true));
+        eventProperty.AddValue(CreateEventTypedValue(eventProperty, eventEntity, 4, dateTime: new DateTimeOffset(2026, 7, 21, 8, 0, 0, TimeSpan.Zero)));
+        eventProperty.AddValue(CreateEventTypedValue(eventProperty, eventEntity, 5, option: eventOption));
 
         EventSessionCustomPropertyDefinition sessionProperty = CreateSessionProperty(sessionOne, "session-property-canary");
         EventSessionCustomPropertyValue sessionValue = new()
@@ -705,12 +704,12 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             CreatedAt = now,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        AddPrivateCollectionItem(sessionProperty, "_options", sessionOption);
-        AddPrivateCollectionItem(sessionProperty, "_values", sessionValue);
-        AddPrivateCollectionItem(sessionProperty, "_values", CreateSessionTypedValue(sessionProperty, sessionOne, 2, number: 91.75m));
-        AddPrivateCollectionItem(sessionProperty, "_values", CreateSessionTypedValue(sessionProperty, sessionOne, 3, boolean: false));
-        AddPrivateCollectionItem(sessionProperty, "_values", CreateSessionTypedValue(sessionProperty, sessionOne, 4, dateTime: new DateTimeOffset(2026, 7, 22, 9, 0, 0, TimeSpan.Zero)));
-        AddPrivateCollectionItem(sessionProperty, "_values", CreateSessionTypedValue(sessionProperty, sessionOne, 5, option: sessionOption));
+        sessionProperty.AddOption(sessionOption);
+        sessionProperty.AddValue(sessionValue);
+        sessionProperty.AddValue(CreateSessionTypedValue(sessionProperty, sessionOne, 2, number: 91.75m));
+        sessionProperty.AddValue(CreateSessionTypedValue(sessionProperty, sessionOne, 3, boolean: false));
+        sessionProperty.AddValue(CreateSessionTypedValue(sessionProperty, sessionOne, 4, dateTime: new DateTimeOffset(2026, 7, 22, 9, 0, 0, TimeSpan.Zero)));
+        sessionProperty.AddValue(CreateSessionTypedValue(sessionProperty, sessionOne, 5, option: sessionOption));
 
         return new(
             eventEntity,
@@ -912,13 +911,6 @@ public sealed class AtprotoEventPublicationSnapshotFactoryTests
             CreatedAt = DateTime.UtcNow,
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-
-    private static void SetPrivateProperty<T>(object owner, string propertyName, T value)
-        => owner.GetType().GetProperty(propertyName)!.SetValue(owner, value);
-
-    private static void AddPrivateCollectionItem<T>(object owner, string fieldName, T item)
-        => ((List<T>)owner.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(owner)!).Add(item);
 
     private static EventSession CreateSession(Explore.Domain.Event eventEntity)
         => new(EventSessionStatusEnum.Published)

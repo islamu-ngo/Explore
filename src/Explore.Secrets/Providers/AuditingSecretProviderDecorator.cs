@@ -2,6 +2,7 @@
 // ABOUTME: Emits bounded failure codes and never persists values, keys, paths, or provider diagnostics.
 
 using System.Diagnostics;
+using Explore.Application.Authentication;
 using Explore.Secrets.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -47,10 +48,9 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
         var userId = GetUserId();
 
         _logger.LogInformation(
-            "Initializing secret provider {ProviderType}. CorrelationId: {CorrelationId}, UserId: {UserId}",
+            "Initializing secret provider {ProviderType}. CorrelationId: {CorrelationId}",
             _inner.ProviderType,
-            correlationId,
-            userId ?? "system");
+            correlationId);
 
         try
         {
@@ -217,14 +217,6 @@ public sealed class AuditingSecretProviderDecorator : ISecretProvider
             return null;
         }
 
-        // Try common claim types for user ID (matching QUICK_REFERENCE.md pattern)
-        var user = httpContext.User;
-
-        // Priority: sub → nameidentifier → sid
-        var userId = user.FindFirst("sub")?.Value
-            ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? user.FindFirst("sid")?.Value;
-
-        return userId;
+        return httpContext.User.GetPlatformUserId()?.ToString("D");
     }
 }

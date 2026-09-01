@@ -1,7 +1,6 @@
 // ABOUTME: Defines RED HAL, secret-handling, bounded-state, and accessibility contracts for transfer UI.
 // ABOUTME: Pins semantic live regions, deterministic pending actions, localization, focus, and RTL-safe CSS.
 
-using System.Reflection;
 using AngleSharp.Dom;
 using Bunit;
 using Explore.Blazor.Client.Clients;
@@ -18,41 +17,9 @@ namespace Explore.Blazor.Client.Tests;
 public sealed class TicketTransferComponentTests :
     IDisposable
 {
-    private const string ComponentTypeName =
-        "Explore.Blazor.Client.Components.Admissions." +
-        "TicketTransferPanel";
-    private const string ServiceTypeName =
-        "Explore.Blazor.Client.Contracts.Services.Admissions." +
-        "ITicketTransferService";
     private readonly BlazorTestContext _context = new();
 
     public void Dispose() => _context.Dispose();
-
-    [Test]
-    public async Task TransferComponentAndServiceExist()
-    {
-        Assembly client =
-            typeof(EventApiClient).Assembly;
-        Type? component =
-            client.GetType(ComponentTypeName);
-        Type? service =
-            client.GetType(ServiceTypeName);
-
-        await Assert.That(component).IsNotNull();
-        await Assert.That(service).IsNotNull();
-        await Assert.That(component!
-                .GetProperty("EventId"))
-            .IsNotNull();
-        await Assert.That(component
-                .GetProperty("AdmissionTicketId"))
-            .IsNotNull();
-        await Assert.That(component
-                .GetProperty("TransferId"))
-            .IsNotNull();
-        await Assert.That(component
-                .GetProperty("Capability"))
-            .IsNotNull();
-    }
 
     [Test]
     public async Task RenderedActionsComeOnlyFromHalRelations()

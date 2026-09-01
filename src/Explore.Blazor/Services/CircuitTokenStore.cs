@@ -3,8 +3,6 @@
 
 using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Microsoft.AspNetCore.DataProtection;
 
 namespace Explore.Blazor.Services;
 
@@ -131,8 +129,8 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
         if (expiry.HasValue && expiry.Value <= DateTime.UtcNow.Add(UsabilityBuffer))
         {
             _logger.LogDebug(
-                "[CircuitTokenStore] Rejected expired/near-expiry token for session {UserId}/{SessionId}",
-                userId, sessionId ?? "(none)");
+                "[CircuitTokenStore] Store completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} SessionPresent={SessionPresent}",
+                "rejected", "token_expired_or_near_expiry", "circuit", !string.IsNullOrWhiteSpace(sessionId));
             return new CircuitTokenStoreResult(false, "token_expired_or_near_expiry");
         }
 
@@ -141,8 +139,8 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
         _entries[key] = entry;
 
         _logger.LogDebug(
-            "[CircuitTokenStore] Stored token for {UserId}/{SessionId}. EntryCount={EntryCount}",
-            userId, sessionId ?? "(none)", _entries.Count);
+            "[CircuitTokenStore] Store completed | Outcome={Outcome} Purpose={Purpose} SessionPresent={SessionPresent} EntryCount={EntryCount}",
+            "accepted", "circuit", !string.IsNullOrWhiteSpace(sessionId), _entries.Count);
 
         EvictIfOverCapacity();
         EvictExpired();
@@ -161,8 +159,8 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
         if (!_entries.TryGetValue(key, out var entry))
         {
             _logger.LogDebug(
-                "[CircuitTokenStore] No entry for {UserId}/{SessionId}",
-                userId, sessionId ?? "(none)");
+                "[CircuitTokenStore] Resolve completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} SessionPresent={SessionPresent}",
+                "not_found", "no_entry", "circuit", !string.IsNullOrWhiteSpace(sessionId));
             return CircuitTokenResolution.NotFound("no_entry");
         }
 
@@ -170,8 +168,8 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
         if (!string.Equals(entry.UserId, userId, StringComparison.Ordinal))
         {
             _logger.LogWarning(
-                "[CircuitTokenStore] Cross-user isolation violation: requested {RequestUserId} but entry belongs to {EntryUserId}",
-                userId, entry.UserId);
+                "[CircuitTokenStore] Resolve completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose}",
+                "rejected", "cross_user_mismatch", "circuit");
             return CircuitTokenResolution.NotFound("cross_user_mismatch");
         }
 
@@ -179,8 +177,8 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
         {
             _entries.TryRemove(key, out _);
             _logger.LogDebug(
-                "[CircuitTokenStore] Evicted expired token for {UserId}/{SessionId}",
-                userId, sessionId ?? "(none)");
+                "[CircuitTokenStore] Resolve completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} SessionPresent={SessionPresent}",
+                "rejected", "token_expired", "circuit", !string.IsNullOrWhiteSpace(sessionId));
             return CircuitTokenResolution.NotFound("token_expired");
         }
 
@@ -208,13 +206,13 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
 
             _entries.TryRemove(kvp.Key, out _);
             _logger.LogDebug(
-                "[CircuitTokenStore] Evicted expired token for {UserId}/{SessionId} during ResolveByUserId",
-                userId, kvp.Value.SessionId ?? "(none)");
+                "[CircuitTokenStore] User resolve evicted an entry | Outcome={Outcome} Reason={Reason} Purpose={Purpose} SessionPresent={SessionPresent}",
+                "rejected", "token_expired", "circuit", !string.IsNullOrWhiteSpace(kvp.Value.SessionId));
         }
 
         _logger.LogDebug(
-            "[CircuitTokenStore] ResolveByUserId found no usable token for {UserId} across {Count} entries",
-            userId, candidates.Count);
+            "[CircuitTokenStore] User resolve completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} CandidateCount={CandidateCount}",
+            "not_found", "no_usable_token_for_subject", "circuit", candidates.Count);
 
         return CircuitTokenResolution.NotFound("no_usable_token_for_user");
     }
@@ -230,8 +228,8 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
         if (_entries.TryRemove(key, out _))
         {
             _logger.LogDebug(
-                "[CircuitTokenStore] Cleared session entry for {UserId}/{SessionId}",
-                userId, sessionId ?? "(none)");
+                "[CircuitTokenStore] Cleanup completed | Outcome={Outcome} Purpose={Purpose} SessionPresent={SessionPresent}",
+                "cleared", "circuit", !string.IsNullOrWhiteSpace(sessionId));
         }
     }
 
@@ -255,8 +253,8 @@ public sealed class CircuitTokenStore : ICircuitTokenStore
         if (keysToRemove.Count > 0)
         {
             _logger.LogDebug(
-                "[CircuitTokenStore] Cleared {Count} entries for user {UserId}",
-                keysToRemove.Count, userId);
+                "[CircuitTokenStore] Subject cleanup completed | Outcome={Outcome} Purpose={Purpose} EntryCount={EntryCount}",
+                "cleared", "circuit", keysToRemove.Count);
         }
     }
 

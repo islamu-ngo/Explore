@@ -103,8 +103,11 @@ public sealed class HealthCheckResponseWriterTests
         var checkData = check["data"]!.AsObject();
 
         await Assert.That(context.Response.ContentType).IsEqualTo("application/json; charset=utf-8");
+        await Assert.That(context.Response.Headers["Connection"].ToString()).IsEqualTo("close");
+        await Assert.That(context.Response.Headers["Access-Control-Allow-Origin"].ToString()).IsEqualTo("*");
         await Assert.That(context.Response.Headers["X-Health-Status"].ToString()).IsEqualTo("Healthy");
         await Assert.That(context.Response.Headers["Cache-Control"].ToString()).IsEqualTo("no-cache, no-store, must-revalidate");
+        await Assert.That(context.Response.Headers["Pragma"].ToString()).IsEqualTo("no-cache");
         await Assert.That(root["status"]!.GetValue<string>()).IsEqualTo("Healthy");
         await Assert.That(root["message"]!.GetValue<string>()).IsEqualTo("Ok");
         await Assert.That(check["name"]!.GetValue<string>()).IsEqualTo("mcp-adapter");

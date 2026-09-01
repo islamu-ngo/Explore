@@ -6,8 +6,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
+using Event.Web.BffHosting.Security;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Http;
 
 namespace Explore.Blazor.Services;
 
@@ -198,8 +198,8 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
                     if (!string.IsNullOrEmpty(_localToken) && !string.Equals(_localToken, resolution.Token, StringComparison.Ordinal))
                     {
                         _logger.LogInformation(
-                            "[CircuitAccessTokenService] Store token is overriding stale circuit-local token for {UserId}",
-                            userId);
+                            "[CircuitAccessTokenService] Token resolution completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose}",
+                            "replaced", "stale_local_token", "circuit");
                     }
 
                     return resolution.Token;
@@ -236,18 +236,13 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         // The forwarding handler resolves by the authenticated BFF principal. That id can
         // differ from the JWT subject after local-user/admin enrichment.
         var principalUserId = GetUserIdFromHttpContext();
-        var tokenUserId = ExtractUserIdFromToken(token, _logger);
-        var userId = principalUserId ?? tokenUserId;
-
         var principalSessionId = GetSessionIdFromHttpContext();
-        var tokenSessionId = ExtractSessionIdFromToken(token, _logger);
-        var sessionId = tokenSessionId ?? principalSessionId;
 
-        if (!string.IsNullOrEmpty(userId))
+        if (!string.IsNullOrEmpty(principalUserId))
         {
-            _userId = userId;
-            _sessionId = sessionId;
-            var result = _tokenStore.Store(userId, sessionId, token);
+            _userId = principalUserId;
+            _sessionId = principalSessionId;
+            var result = _tokenStore.Store(principalUserId, principalSessionId, token);
             if (!result.Accepted)
             {
                 _logger.LogDebug(
@@ -257,7 +252,7 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         }
         else
         {
-            _logger.LogWarning("[CircuitAccessTokenService] Could not extract userId from token — not stored in shared cache");
+            _logger.LogWarning("[CircuitAccessTokenService] Token store skipped | Outcome={Outcome} Reason={Reason} Purpose={Purpose}", "skipped", "trusted_principal_unavailable", "circuit");
         }
     }
 
@@ -283,75 +278,21 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         }
     }
 
-    /// <summary>
-    /// Extract the user ID (sub claim) directly from the JWT token.
-    /// This works even without HttpContext.
-    /// </summary>
-    private static string? ExtractUserIdFromToken(string token, ILogger logger)
-    {
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            if (handler.CanReadToken(token))
-            {
-                var jwtToken = handler.ReadJwtToken(token);
-                var userId = TryResolveUserId(jwtToken.Claims);
-                logger.LogDebug("[CircuitAccessTokenService] Extracted userId from JWT: {UserId}", userId ?? "(null)");
-                return userId;
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogDebug(ex, "[CircuitAccessTokenService] Failed to parse JWT");
-        }
-        return null;
-    }
-
-    private static string? ExtractSessionIdFromToken(string token, ILogger logger)
-    {
-        try
-        {
-            var handler = new JwtSecurityTokenHandler();
-            if (handler.CanReadToken(token))
-            {
-                var jwtToken = handler.ReadJwtToken(token);
-                var sessionId = TryResolveSessionId(jwtToken.Claims);
-                logger.LogDebug("[CircuitAccessTokenService] Extracted sessionId from JWT: {SessionId}", sessionId ?? "(none)");
-                return sessionId;
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogDebug(ex, "[CircuitAccessTokenService] Failed to parse JWT session id");
-        }
-        return null;
-    }
-
     private string? GetUserIdFromHttpContext()
     {
-        return TryResolveUserId(_httpContextAccessor.HttpContext?.User);
+        var principal = _httpContextAccessor.HttpContext?.User;
+        return principal.TryGetCircuitSubject(out var subject) ? subject.PartitionKey : null;
     }
 
     private string? GetSessionIdFromHttpContext()
     {
-        return TryResolveSessionId(_httpContextAccessor.HttpContext?.User?.Claims);
+        var principal = _httpContextAccessor.HttpContext?.User;
+        return principal.TryGetSessionId(out var sessionId) ? sessionId.PartitionKey : null;
     }
 
     private static string? TryResolveUserId(ClaimsPrincipal? user)
     {
-        return user is null ? null : TryResolveUserId(user.Claims);
-    }
-
-    private static string? TryResolveUserId(IEnumerable<Claim> claims)
-    {
-        return claims.FirstOrDefault(c => c.Type == "sub")?.Value
-            ?? claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
-            ?? claims.FirstOrDefault(c => c.Type == "sid")?.Value;
-    }
-
-    internal static string? TryResolveSessionId(IEnumerable<Claim>? claims)
-    {
-        return claims?.FirstOrDefault(c => c.Type == "sid")?.Value;
+        return user.TryGetCircuitSubject(out var subject) ? subject.PartitionKey : null;
     }
 }
 
@@ -391,7 +332,9 @@ public class AccessTokenForwardingHandler : DelegatingHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug("[AccessTokenForwardingHandler] Processing request to {Path}", request.RequestUri?.PathAndQuery);
+        var routeClass = BffLogRouteClassifier.Classify(request.RequestUri);
+        _logger.LogDebug("[AccessTokenForwardingHandler] Request processing started | Outcome={Outcome} RouteClass={RouteClass}",
+            "started", routeClass);
 
         string? token = null;
         string? nearExpiryHttpContextToken = null;
@@ -417,22 +360,22 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                     {
                         nearExpiryHttpContextToken = token;
                         _logger.LogInformation(
-                            "[AccessTokenForwardingHandler] HttpContext token is near expiry at {Path}; will use it only if no fresher circuit token is available",
-                            request.RequestUri?.PathAndQuery);
+                            "[AccessTokenForwardingHandler] Token assessment completed | Outcome={Outcome} Reason={Reason} RouteClass={RouteClass}",
+                            "deferred", "access_token_near_expiry", routeClass);
                         token = null;
                     }
                     else
                     {
                         _logger.LogWarning(
-                            "[AccessTokenForwardingHandler] Ignoring expired HttpContext token at {Path}",
-                            request.RequestUri?.PathAndQuery);
+                            "[AccessTokenForwardingHandler] Token assessment completed | Outcome={Outcome} Reason={Reason} RouteClass={RouteClass}",
+                            "rejected", "access_token_expired", routeClass);
                         token = null;
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogWarning(ex, "[AccessTokenForwardingHandler] Could not get token from HttpContext");
+                _logger.LogWarning("[AccessTokenForwardingHandler] Token lookup completed | Outcome={Outcome} Reason={Reason}", "rejected", "request_token_exception");
             }
         }
 
@@ -455,20 +398,20 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                         token = refreshedToken;
                         source = "HttpContextRefreshed";
                         _logger.LogInformation(
-                            "[AccessTokenForwardingHandler] Refreshed access token from cookie authentication for {Path}",
-                            request.RequestUri?.PathAndQuery);
+                            "[AccessTokenForwardingHandler] Token refresh completed | Outcome={Outcome} RouteClass={RouteClass}",
+                            "refreshed", routeClass);
                     }
                     else if (!string.IsNullOrEmpty(refreshedToken))
                     {
                         _logger.LogInformation(
-                            "[AccessTokenForwardingHandler] Cookie authentication returned an unusable access token for {Path}; trying circuit and BFF refresh fallbacks",
-                            request.RequestUri?.PathAndQuery);
+                            "[AccessTokenForwardingHandler] Token refresh completed | Outcome={Outcome} Reason={Reason} RouteClass={RouteClass}",
+                            "rejected", "refreshed_token_unusable", routeClass);
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogWarning(ex, "[AccessTokenForwardingHandler] Could not refresh access token via cookie authentication");
+                _logger.LogWarning("[AccessTokenForwardingHandler] Token refresh completed | Outcome={Outcome} Reason={Reason}", "rejected", "cookie_authentication_exception");
             }
         }
 
@@ -479,7 +422,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
 
             if (!string.IsNullOrEmpty(userId))
             {
-                var sessionId = CircuitAccessTokenService.TryResolveSessionId(httpContext?.User?.Claims);
+                var sessionId = httpContext?.User.TryGetSessionId(out var resolvedSessionId) == true ? resolvedSessionId.PartitionKey : null;
                 var resolution = _tokenStore.Resolve(userId, sessionId);
                 if (resolution.Found)
                 {
@@ -494,16 +437,16 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                         token = resolution.Token;
                         source = "TokenStore(userId-only)";
                         _logger.LogInformation(
-                            "[AccessTokenForwardingHandler] Session-keyed lookup missed for {UserId}; resolved token via user-only fallback",
-                            userId);
+                            "[AccessTokenForwardingHandler] Token lookup completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose}",
+                            "resolved", "subject_fallback", "forwarding");
                     }
                 }
             }
             else if (isAuthenticated)
             {
                 _logger.LogWarning(
-                    "[AccessTokenForwardingHandler] Authenticated user has no resolvable user identifier claims at {Path}",
-                    request.RequestUri?.PathAndQuery);
+                    "[AccessTokenForwardingHandler] Identity resolution completed | Outcome={Outcome} Reason={Reason} RouteClass={RouteClass}",
+                    "rejected", "identity_unavailable", routeClass);
             }
         }
 
@@ -517,8 +460,8 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             {
                 source = "CircuitAccessTokenService";
                 _logger.LogDebug(
-                    "[AccessTokenForwardingHandler] Got token from CircuitAccessTokenService scoped instance (user: {UserId})",
-                    _circuitUserContext.UserId ?? TryResolveUserId(httpContext?.User) ?? "(unknown)");
+                    "[AccessTokenForwardingHandler] Token lookup completed | Outcome={Outcome} Purpose={Purpose} SubjectPresent={SubjectPresent}",
+                    "resolved", "forwarding", !string.IsNullOrWhiteSpace(_circuitUserContext.UserId ?? TryResolveUserId(httpContext?.User)));
             }
         }
 
@@ -545,8 +488,8 @@ public class AccessTokenForwardingHandler : DelegatingHandler
                         token = resolution.Token;
                         source = "CircuitUserContext(userId-only)";
                         _logger.LogInformation(
-                            "[AccessTokenForwardingHandler] CircuitUserContext session-keyed lookup missed for {UserId}; resolved via user-only fallback",
-                            userId);
+                            "[AccessTokenForwardingHandler] Token lookup completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose}",
+                            "resolved", "circuit_subject_fallback", "forwarding");
                     }
                 }
             }
@@ -568,8 +511,8 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             token = nearExpiryHttpContextToken;
             source = "HttpContextNearExpiry";
             _logger.LogInformation(
-                "[AccessTokenForwardingHandler] Forwarding near-expiry HttpContext token to {Path}",
-                request.RequestUri?.PathAndQuery);
+                "[AccessTokenForwardingHandler] Token selection completed | Outcome={Outcome} Reason={Reason} RouteClass={RouteClass}",
+                "selected", "near_expiry_fallback", routeClass);
         }
 
         // Add Authorization header if we have a token
@@ -577,28 +520,30 @@ public class AccessTokenForwardingHandler : DelegatingHandler
         {
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             _logger.LogInformation(
-                "[AccessTokenForwardingHandler] Added Bearer token from {Source} to {Path}",
+                "[AccessTokenForwardingHandler] Authorization forwarding completed | Outcome={Outcome} Source={Source} RouteClass={RouteClass}",
+                "forwarded",
                 source,
-                request.RequestUri?.PathAndQuery);
+                routeClass);
         }
         else if (!string.IsNullOrEmpty(token))
         {
             _logger.LogDebug(
-                "[AccessTokenForwardingHandler] Authorization header already present for {Path}; token source was {Source}",
-                request.RequestUri?.PathAndQuery, source);
+                "[AccessTokenForwardingHandler] Authorization forwarding completed | Outcome={Outcome} Source={Source} RouteClass={RouteClass}",
+                "preserved", source, routeClass);
         }
         else if (string.IsNullOrEmpty(token))
         {
             var path = request.RequestUri?.PathAndQuery ?? string.Empty;
             if (IsAnonymousAllowedPath(path))
             {
-                _logger.LogDebug("[AccessTokenForwardingHandler] No token needed for anonymous endpoint {Path}", path);
+                _logger.LogDebug("[AccessTokenForwardingHandler] Token selection completed | Outcome={Outcome} Reason={Reason} RouteClass={RouteClass}",
+                    "not_required", "anonymous_route", routeClass);
             }
             else
             {
                 _logger.LogWarning(
-                    "[AccessTokenForwardingHandler] No token available for current user at {Path} — request will likely fail with 401",
-                    path);
+                    "[AccessTokenForwardingHandler] Token selection completed | Outcome={Outcome} Reason={Reason} RouteClass={RouteClass}",
+                    "not_found", "access_token_unavailable", routeClass);
             }
         }
 
@@ -623,36 +568,36 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning(
-                    "[AccessTokenForwardingHandler] BFF self refresh returned {StatusCode} before forwarding {Path}",
+                    "[AccessTokenForwardingHandler] Self refresh completed | Outcome={Outcome} StatusCode={StatusCode} RouteClass={RouteClass}",
+                    "rejected",
                     (int)response.StatusCode,
-                    outboundRequest.RequestUri?.PathAndQuery);
+                    BffLogRouteClassifier.Classify(outboundRequest.RequestUri));
                 return null;
             }
 
             var userId = TryResolveUserId(httpContext.User) ?? _circuitUserContext.UserId;
-            var sessionId = CircuitAccessTokenService.TryResolveSessionId(httpContext.User?.Claims)
-                ?? _circuitUserContext.SessionId;
+            var sessionId = httpContext.User.TryGetSessionId(out var resolvedSessionId)
+                ? resolvedSessionId.PartitionKey : _circuitUserContext.SessionId;
             var refreshedToken = ResolveTokenFromStore(userId, sessionId);
             if (!string.IsNullOrEmpty(refreshedToken))
             {
                 _circuitAccessTokenService.SetToken(refreshedToken);
                 _logger.LogInformation(
-                    "[AccessTokenForwardingHandler] Refreshed access token through BFF self endpoint for {Path}",
-                    outboundRequest.RequestUri?.PathAndQuery);
+                    "[AccessTokenForwardingHandler] Self refresh completed | Outcome={Outcome} RouteClass={RouteClass}",
+                    "refreshed", BffLogRouteClassifier.Classify(outboundRequest.RequestUri));
                 return refreshedToken;
             }
 
             _logger.LogWarning(
-                "[AccessTokenForwardingHandler] BFF self refresh succeeded before forwarding {Path}, but no usable token was available in the circuit token store",
-                outboundRequest.RequestUri?.PathAndQuery);
+                "[AccessTokenForwardingHandler] Self refresh completed | Outcome={Outcome} Reason={Reason} RouteClass={RouteClass}",
+                "not_found", "circuit_token_unavailable", BffLogRouteClassifier.Classify(outboundRequest.RequestUri));
             return null;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             _logger.LogWarning(
-                ex,
-                "[AccessTokenForwardingHandler] Could not refresh access token through BFF self endpoint before forwarding {Path}",
-                outboundRequest.RequestUri?.PathAndQuery);
+                "[AccessTokenForwardingHandler] Self refresh completed | Outcome={Outcome} Reason={Reason} RouteClass={RouteClass}",
+                "rejected", "self_refresh_exception", BffLogRouteClassifier.Classify(outboundRequest.RequestUri));
             return null;
         }
     }
@@ -698,8 +643,6 @@ public class AccessTokenForwardingHandler : DelegatingHandler
 
     private static string? TryResolveUserId(ClaimsPrincipal? user)
     {
-        return user?.FindFirst("sub")?.Value
-            ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user?.FindFirst("sid")?.Value;
+        return user.TryGetCircuitSubject(out var subject) ? subject.PartitionKey : null;
     }
 }

@@ -43,6 +43,9 @@
   <Folder Name="/Tooling/OpenAPI/">
     <Project Path="eng/tools/Explore.ApiContractInventory/Explore.ApiContractInventory.csproj" />
   </Folder>
+  <Folder Name="/Tooling/Assurance/">
+    <Project Path="eng/tools/Explore.AssuranceAudit/Explore.AssuranceAudit.csproj" />
+  </Folder>
   <Folder Name="/Test/">
     <Project Path="tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj" />
     <Project Path="tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" />

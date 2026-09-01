@@ -264,7 +264,8 @@ Client services follow `{EntityName}Service` with interface `I{EntityName}Servic
 | `EventService` / `IEventService` | Event API calls |
 | `OrganizationService` / `IOrganizationService` | Organization API calls |
 | `LookupCacheService` / `ILookupCacheService` | Caches lookup table data |
-| `AuthStateService` / `IAuthStateService` | Centralized auth state |
+| `AuthenticationStateProvider` | Framework-owned authentication presence; never a browser authority or claim-ID parser |
+| `UiShellContextService` / `IUiShellContextService` | Server-confirmed tenant and shell capability context |
 | `BffClient` | Low-level BFF HTTP calls with XSRF |
 | `ImageStorageService` / `IImageStorageService` | S3 presigned URL uploads |
 

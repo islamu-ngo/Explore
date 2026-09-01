@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
+using Event.Web.BffHosting.Security;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Explore.Blazor.Services;
@@ -197,9 +198,7 @@ public sealed class SetupSecretResolver(
 
     private static string? ResolveUserId(ClaimsPrincipal? user)
     {
-        return user?.FindFirst("sub")?.Value
-            ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user?.FindFirst("sid")?.Value;
+        return user.TryGetSetupSessionIdentity(out var identity) ? identity.PartitionKey : null;
     }
 
     private static string? ExtractUserIdFromAuthorizationHeader(HttpRequestMessage request)

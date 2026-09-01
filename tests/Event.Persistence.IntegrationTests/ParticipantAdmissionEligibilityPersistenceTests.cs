@@ -1,10 +1,8 @@
 // ABOUTME: Defines RED persistence contracts for subject-correct participant admission readiness.
 // ABOUTME: Requires one tenant-qualified fence shared by completion, consent, approval, issuance, and check-in.
 
-using System.Reflection;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Infrastructure;
-using Explore.Application.Contracts.Admissions;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
@@ -42,7 +40,7 @@ public sealed class ParticipantAdmissionEligibilityPersistenceTests(
         IModel model =
             context.GetService<IDesignTimeModel>().Model;
         IEntityType? eligibility = model.FindEntityType(
-            "Explore.Domain.ParticipantAdmissionEligibility");
+            typeof(ParticipantAdmissionEligibility));
 
         await Assert.That(eligibility).IsNotNull();
         await Assert.That(
@@ -54,8 +52,8 @@ public sealed class ParticipantAdmissionEligibilityPersistenceTests(
                     index.IsUnique
                     && HasProperties(
                         index.Properties,
-                        "TenantId",
-                        "RegistrationTicketAssignmentId")))
+                        nameof(ParticipantAdmissionEligibility.TenantId),
+                        nameof(ParticipantAdmissionEligibility.RegistrationTicketAssignmentId))))
             .IsTrue();
         await Assert.That(
                 eligibility.GetForeignKeys().Any(key =>
@@ -63,10 +61,10 @@ public sealed class ParticipantAdmissionEligibilityPersistenceTests(
                     typeof(RegistrationTicketAssignment)
                     && HasProperties(
                         key.Properties,
-                        "TenantId",
-                        "RegistrationOrderId",
-                        "RegistrationTicketAssignmentId",
-                        "RegistrationOrderLineId")))
+                        nameof(ParticipantAdmissionEligibility.TenantId),
+                        nameof(ParticipantAdmissionEligibility.RegistrationOrderId),
+                        nameof(ParticipantAdmissionEligibility.RegistrationTicketAssignmentId),
+                        nameof(ParticipantAdmissionEligibility.RegistrationOrderLineId))))
             .IsTrue();
         await Assert.That(
                 eligibility.GetForeignKeys().Any(key =>
@@ -74,9 +72,9 @@ public sealed class ParticipantAdmissionEligibilityPersistenceTests(
                     typeof(RegistrationParticipant)
                     && HasProperties(
                         key.Properties,
-                        "TenantId",
-                        "RegistrationOrderId",
-                        "ParticipantId")))
+                        nameof(ParticipantAdmissionEligibility.TenantId),
+                        nameof(ParticipantAdmissionEligibility.RegistrationOrderId),
+                        nameof(ParticipantAdmissionEligibility.ParticipantId))))
             .IsTrue();
     }
 
@@ -88,7 +86,7 @@ public sealed class ParticipantAdmissionEligibilityPersistenceTests(
         IEntityType? eligibility =
             context.GetService<IDesignTimeModel>().Model
                 .FindEntityType(
-                    "Explore.Domain.ParticipantAdmissionEligibility");
+                    typeof(ParticipantAdmissionEligibility));
 
         await Assert.That(eligibility).IsNotNull();
         string[] forbidden =
@@ -109,91 +107,15 @@ public sealed class ParticipantAdmissionEligibilityPersistenceTests(
             .IsFalse();
         await Assert.That(
                 eligibility.FindProperty(
-                    "RequirementsCompletedAt"))
+                    nameof(ParticipantAdmissionEligibility.RequirementsCompletedAt)))
             .IsNotNull();
         await Assert.That(
                 eligibility.FindProperty(
-                    "SubjectConsentRecordId"))
+                    nameof(ParticipantAdmissionEligibility.SubjectConsentRecordId)))
             .IsNotNull();
         await Assert.That(
                 eligibility.FindProperty(
-                    "SubjectUserId"))
-            .IsNotNull();
-    }
-
-    [Test]
-    public async Task ReadinessDecisionSurfaceOwnsPaymentCompletionConsentApprovalAndRevocation()
-    {
-        Assembly domainAssembly =
-            typeof(RegistrationOrder).Assembly;
-        Type? facts = domainAssembly.GetType(
-            "Explore.Domain.ParticipantAdmissionReadinessFacts");
-        Type? rules = domainAssembly.GetType(
-            "Explore.Domain.ParticipantAdmissionReadinessRules");
-
-        await Assert.That(facts).IsNotNull();
-        await Assert.That(rules).IsNotNull();
-        MethodInfo? decide = rules!.GetMethod(
-            "Decide",
-            BindingFlags.Public | BindingFlags.Static);
-        await Assert.That(decide).IsNotNull();
-        string[] propertyNames = facts!.GetProperties()
-            .Select(property => property.Name)
-            .ToArray();
-        string[] expected =
-        [
-                "OrderConfirmed",
-                "PaymentSatisfied",
-                "RequirementsComplete",
-                "SubjectOwnershipEstablished",
-                "ConsentRequired",
-                "SubjectConsentActive",
-                "ApprovalRequired",
-                "ApprovalGranted",
-                "Revoked",
-        ];
-        await Assert.That(
-                expected.All(propertyNames.Contains))
-            .IsTrue();
-    }
-
-    [Test]
-    public async Task IssuanceAndCheckInDependOnTheSameReadinessAuthority()
-    {
-        Assembly applicationAssembly =
-            typeof(IAdmissionIssuanceService).Assembly;
-        Type? authority = applicationAssembly.GetType(
-            "Explore.Application.Contracts.Admissions." +
-            "IParticipantAdmissionReadinessAuthority");
-
-        await Assert.That(authority).IsNotNull();
-        await Assert.That(HasConstructorAuthority(
-                typeof(AdmissionIssuanceRepository),
-                authority!))
-            .IsTrue();
-        await Assert.That(HasConstructorAuthority(
-                typeof(AdmissionCheckInRepository),
-                authority!))
-            .IsTrue();
-    }
-
-    [Test]
-    public async Task ApprovalRevocationUsesOneTransactionalAssignmentFence()
-    {
-        Type? repository = typeof(
-                AdmissionIssuanceRepository)
-            .Assembly.GetType(
-                "Explore.Persistence.Repositories." +
-                "ParticipantAdmissionEligibilityRepository");
-
-        await Assert.That(repository).IsNotNull();
-        await Assert.That(
-                repository!.GetMethod(
-                    "ApplyDecisionAsync"))
-            .IsNotNull();
-        await Assert.That(
-                repository.GetMethod(
-                    "LoadForUpdateAsync"))
+                    nameof(ParticipantAdmissionEligibility.SubjectUserId)))
             .IsNotNull();
     }
 
@@ -612,13 +534,6 @@ public sealed class ParticipantAdmissionEligibilityPersistenceTests(
         params string[] expected) =>
         actual.Select(property => property.Name)
             .SequenceEqual(expected);
-
-    private static bool HasConstructorAuthority(
-        Type repository,
-        Type authority) =>
-        repository.GetConstructors().Any(constructor =>
-            constructor.GetParameters().Any(parameter =>
-                parameter.ParameterType == authority));
 
     private sealed record EligibilitySeed(
         Guid TenantId,

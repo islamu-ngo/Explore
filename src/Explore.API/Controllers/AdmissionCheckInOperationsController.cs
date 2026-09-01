@@ -129,7 +129,7 @@ public sealed class AdmissionCheckInOperationsController(
             : Ok(OperationResource(eventId, result));
     }
 
-    private HalResource<AdmissionCheckInHealthDto> HealthResource(
+    internal HalResource<AdmissionCheckInHealthDto> HealthResource(
         Guid eventId,
         AdmissionCheckInHealthResult result,
         bool canManage)

@@ -78,4 +78,26 @@ public class EventSessionCustomPropertyDefinition : ITenantEntity, IAuditableEnt
 
     private readonly List<EventSessionCustomPropertyValue> _values = [];
     public IReadOnlyCollection<EventSessionCustomPropertyValue> Values => _values.AsReadOnly();
+
+    internal void AddOption(EventSessionCustomPropertyOption option)
+    {
+        ArgumentNullException.ThrowIfNull(option);
+        if (option.EventSessionCustomPropertyDefinitionId != Id)
+        {
+            throw new InvalidOperationException("The option must belong to this session custom-property definition.");
+        }
+
+        _options.Add(option);
+    }
+
+    internal void AddValue(EventSessionCustomPropertyValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        if (value.EventSessionCustomPropertyDefinitionId != Id)
+        {
+            throw new InvalidOperationException("The value must belong to this session custom-property definition.");
+        }
+
+        _values.Add(value);
+    }
 }

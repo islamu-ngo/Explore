@@ -2,6 +2,7 @@
 // ABOUTME: Keeps transitional Swashbuckle output aligned with the canonical native OpenAPI document.
 
 using Explore.API.OpenApi;
+using Explore.Application.Constants;
 using Microsoft.OpenApi;
 
 namespace Explore.API.Extensions;
@@ -34,13 +35,13 @@ internal static class ServiceCollectionExtensions
             options.OperationFilter<PrivacyErasureReceiptOpenApiSecurityTransformer>();
             options.OperationFilter<AdmissionScannerOpenApiSecurityTransformer>();
             options.AddSecurityDefinition(
-                ManagedControlPlaneOpenApiSecurityTransformer.SecuritySchemeName,
+                ApiAuthenticationSchemeNames.ManagedControlPlane,
                 ManagedControlPlaneOpenApiSecurityTransformer.CreateSecurityScheme());
             options.AddSecurityDefinition(
                 PrivacyErasureReceiptOpenApiSecurityTransformer.SecuritySchemeName,
                 PrivacyErasureReceiptOpenApiSecurityTransformer.CreateSecurityScheme());
             options.AddSecurityDefinition(
-                AdmissionScannerOpenApiSecurityTransformer.SecuritySchemeName,
+                ApiAuthenticationSchemeNames.AdmissionScanner,
                 AdmissionScannerOpenApiSecurityTransformer.CreateSecurityScheme());
 
             // Resolve from an explicit endpoint or the configured authority. If neither is available,

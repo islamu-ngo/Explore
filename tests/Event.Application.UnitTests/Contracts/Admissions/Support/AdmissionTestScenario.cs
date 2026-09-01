@@ -2,6 +2,7 @@
 // ABOUTME: Recovery storage retains digests and bounded metadata only; plaintext exists only at the delivery fake.
 
 using System.Security.Cryptography;
+using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -82,8 +83,8 @@ internal sealed class AdmissionTestScenario
     internal RegistrationOrder Order { get; }
     internal EventTicketCatalogVersion Catalog { get; }
     internal IReadOnlyList<(RegistrationOrderLine Line, RegistrationTicketAssignment Assignment, RegistrationParticipant Participant, EventTicketType TicketType)> AssignmentFacts { get; }
-    internal Dictionary<Guid, object> TicketsByAssignment { get; } = [];
-    internal Dictionary<Guid, object> DeliveryIntentsById { get; } = [];
+    internal Dictionary<Guid, AdmissionTicket> TicketsByAssignment { get; } = [];
+    internal Dictionary<Guid, AdmissionDeliveryIntent> DeliveryIntentsById { get; } = [];
     internal Dictionary<string, StoredRecoveryCapability> RecoveryByDigest { get; } = new(StringComparer.Ordinal);
     internal HashSet<Guid> PendingDeliveryIntentIds { get; } = [];
     internal List<int> IssuanceDispatchCommitCounts { get; } = [];
@@ -121,13 +122,13 @@ internal sealed class AdmissionTestScenario
     internal int ConsumedRecoveryCount => RecoveryByDigest.Values.Count(value => value.Consumed);
     internal int ActiveRecoveryCount => RecoveryByDigest.Values.Count(value => !value.Consumed && !value.Rotated);
     internal Guid CurrentAdmissionTicketId => TicketsByAssignment.Count == 1
-        ? AdmissionContractRuntime.EntityId(TicketsByAssignment.Values.Single())
-        : throw AdmissionContractRuntime.Missing("one issued admission ticket for recovery");
+        ? TicketsByAssignment.Values.Single().Id
+        : throw new InvalidOperationException("Expected one issued admission ticket for recovery.");
 
     internal void RecordIssuanceDispatch(Guid deliveryIntentId)
     {
         if (!PendingDeliveryIntentIds.Contains(deliveryIntentId))
-            throw AdmissionContractRuntime.Missing("persisted delivery intent before dispatch");
+            throw new InvalidOperationException("Delivery intent must be persisted before dispatch.");
         IssuanceDeliveryCalls++;
         IssuanceDispatchCommitCounts.Add(TransactionCommits);
         DeliveryCalledInsideTransaction |= UnitOfWork.InTransaction;
@@ -148,11 +149,11 @@ internal sealed class AdmissionTestScenario
 
     internal string TakeDeliveredCapability() => deliveredCapabilities.TryDequeue(out string? value)
         ? value
-        : throw AdmissionContractRuntime.Missing("one-time recovery delivery");
+        : throw new InvalidOperationException("Expected one-time recovery delivery.");
 
     internal Guid[] TicketIdsForLine(Guid lineId) => TicketsByAssignment
         .Where(pair => Assignments.Single(seed => seed.AssignmentId == pair.Key).LineId == lineId)
-        .Select(pair => AdmissionContractRuntime.EntityId(pair.Value))
+        .Select(pair => pair.Value.Id)
         .ToArray();
 
     private static (RegistrationOrder Order, EventTicketCatalogVersion Catalog,

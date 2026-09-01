@@ -1,7 +1,8 @@
 // ABOUTME: Defines the exact revocation repository port fake and immutable refund/cancellation matrix.
 // ABOUTME: The fake applies only service-computed revoked and preserved ticket identities.
 
-using System.Reflection;
+using Explore.Application.Contracts.Admissions;
+using Explore.Application.Services.Registration;
 
 namespace ApplicationUnitTests.Contracts.Admissions.Support;
 
@@ -61,93 +62,43 @@ internal sealed record AdmissionRevocationRow(
 
 internal static class AdmissionRevocationPorts
 {
-    internal const string RepositoryPort = "IAdmissionRevocationRepository";
+    internal static AdmissionRevocationService TypedService(AdmissionTestScenario scenario) => new(
+        new RevocationRepositoryFake(scenario),
+        scenario.UnitOfWork,
+        scenario.Clock);
 
-    internal static object Service(AdmissionTestScenario scenario)
-    {
-        _ = AdmissionContractRuntime.ApplicationType("AdmissionRevocationService");
-        return AdmissionContractRuntime.Service(
-            "AdmissionRevocationService",
-            scenario.Clock,
-            scenario.UnitOfWork,
-            (RepositoryPort, RevocationRepositoryFake.Create(scenario)));
-    }
-
-    internal static object Request(AdmissionTestScenario scenario, AdmissionRevocationRow row)
-    {
-        Type allocationType = AdmissionContractRuntime.ApplicationType("AdmissionRefundAllocationFact");
-        object[] allocations = row.Allocations.Select(value => AdmissionContractRuntime.Create(
-            allocationType,
-            ("OrderLineId", value.LineId),
-            ("IsAdmissionLine", value.IsAdmissionLine),
-            ("RefundedMinor", value.RefundedMinor),
-            ("RelevantLineTotalMinor", value.RelevantLineTotalMinor))).ToArray();
-        return AdmissionContractRuntime.ApplicationObject(
-            "AdmissionRevocationRequest",
-            ("TenantId", scenario.TenantId),
-            ("RegistrationOrderId", scenario.OrderId),
-            ("Reason", row.Cancellation ? "OrderCancellation" : "RefundReconciled"),
-            ("RefundAllocations", allocations));
-    }
+    internal static AdmissionRevocationRequest TypedRequest(
+        AdmissionTestScenario scenario,
+        AdmissionRevocationRow row) => new(
+        scenario.TenantId,
+        scenario.OrderId,
+        row.Cancellation
+            ? AdmissionRevocationService.OrderCancellationReason
+            : AdmissionRevocationService.RefundReconciledReason,
+        row.Allocations.Select(value => new AdmissionRefundAllocationFact(
+            value.LineId,
+            value.IsAdmissionLine,
+            value.RefundedMinor,
+            value.RelevantLineTotalMinor)).ToArray());
 }
 
-internal class RevocationRepositoryFake : DispatchProxy
+internal sealed class RevocationRepositoryFake(AdmissionTestScenario scenario) : IAdmissionRevocationRepository
 {
-    private AdmissionTestScenario scenario = null!;
+    public Task<AdmissionRevocationContext?> LoadAsync(
+        AdmissionRevocationRequest request,
+        CancellationToken cancellationToken) => Task.FromResult<AdmissionRevocationContext?>(new(
+        scenario.TenantId,
+        scenario.OrderId,
+        scenario.TicketsByAssignment.Values.ToArray()));
 
-    internal static object Create(AdmissionTestScenario scenario)
+    public Task<AdmissionRevocationResult> ApplyAsync(
+        AdmissionRevocationPersistenceRequest request,
+        CancellationToken cancellationToken)
     {
-        Type port = AdmissionContractRuntime.ApplicationType(AdmissionRevocationPorts.RepositoryPort);
-        object proxy = Create(port, typeof(RevocationRepositoryFake));
-        ((RevocationRepositoryFake)proxy).scenario = scenario;
-        return proxy;
-    }
-
-    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
-    {
-        MethodInfo method = targetMethod ?? throw AdmissionContractRuntime.Missing("revocation repository method");
-        object?[] arguments = args ?? [];
-        return method.Name switch
-        {
-            "LoadAsync" => Load(method.ReturnType, arguments.Single(value => value is not CancellationToken)!),
-            "ApplyAsync" => Apply(method.ReturnType, arguments.Single(value => value is not CancellationToken)!),
-            _ => throw AdmissionContractRuntime.Missing($"planned {AdmissionRevocationPorts.RepositoryPort}.{method.Name}")
-        };
-    }
-
-    private object? Load(Type returnType, object request)
-    {
-        _ = AdmissionContractRuntime.ExactObject(request, "AdmissionRevocationRequest");
-        Type payloadType = ExactPayload(returnType, "AdmissionRevocationContext");
-        object context = AdmissionContractRuntime.Create(
-            payloadType,
-            ("TenantId", scenario.TenantId),
-            ("RegistrationOrderId", scenario.OrderId),
-            ("Tickets", scenario.TicketsByAssignment.Values.ToArray()));
-        return AdmissionContractRuntime.WrapAsync(returnType, context);
-    }
-
-    private object? Apply(Type returnType, object request)
-    {
-        _ = AdmissionContractRuntime.ExactObject(request, "AdmissionRevocationPersistenceRequest");
-        Guid[] revoked = AdmissionContractRuntime.Ids(request, "RevokedTicketIds");
-        Guid[] preserved = AdmissionContractRuntime.Ids(request, "PreservedTicketIds");
         scenario.RevocationWriteCalls++;
-        Type payloadType = ExactPayload(returnType, "AdmissionRevocationResult");
-        object result = AdmissionContractRuntime.Create(
-            payloadType,
-            ("Outcome", "Applied"),
-            ("RevokedTicketIds", revoked),
-            ("PreservedTicketIds", preserved));
-        return AdmissionContractRuntime.WrapAsync(returnType, result);
-    }
-
-    private static Type ExactPayload(Type returnType, string expectedName)
-    {
-        Type payload = AdmissionContractRuntime.AsyncPayload(returnType)
-            ?? throw AdmissionContractRuntime.Missing($"{expectedName} return");
-        return payload.Name == expectedName
-            ? payload
-            : throw AdmissionContractRuntime.Missing($"exact {expectedName} return");
+        return Task.FromResult(new AdmissionRevocationResult(
+            AdmissionRevocationOutcome.Applied,
+            request.RevokedTicketIds,
+            request.PreservedTicketIds));
     }
 }

@@ -3,6 +3,7 @@
 
 using Explore.API.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Explore.Application.Constants;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -14,7 +15,6 @@ public sealed class ManagedControlPlaneOpenApiSecurityTransformer :
     IOpenApiOperationTransformer,
     IOperationFilter
 {
-    public const string SecuritySchemeName = "ManagedControlPlane";
 
     public Task TransformAsync(
         OpenApiDocument document,
@@ -24,7 +24,7 @@ public sealed class ManagedControlPlaneOpenApiSecurityTransformer :
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??=
             new Dictionary<string, IOpenApiSecurityScheme>(StringComparer.Ordinal);
-        document.Components.SecuritySchemes[SecuritySchemeName] = CreateSecurityScheme();
+        document.Components.SecuritySchemes[ApiAuthenticationSchemeNames.ManagedControlPlane] = CreateSecurityScheme();
 
         return Task.CompletedTask;
     }
@@ -88,7 +88,7 @@ public sealed class ManagedControlPlaneOpenApiSecurityTransformer :
         [
             new OpenApiSecurityRequirement
             {
-                [new OpenApiSecuritySchemeReference(SecuritySchemeName, document)] = []
+                [new OpenApiSecuritySchemeReference(ApiAuthenticationSchemeNames.ManagedControlPlane, document)] = []
             }
         ];
     }

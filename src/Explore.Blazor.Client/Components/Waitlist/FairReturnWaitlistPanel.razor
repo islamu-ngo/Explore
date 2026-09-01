@@ -54,6 +54,7 @@
             @if (HasLink(JoinRelation))
             {
                 <button type="button"
+                        data-relation="@JoinRelation"
                         disabled="@_isBusy"
                         @onclick="JoinAsync">
                     @Text("waitlist_join", "Join")
@@ -62,6 +63,7 @@
             @if (HasLink(LeaveRelation))
             {
                 <button type="button"
+                        data-relation="@LeaveRelation"
                         disabled="@_isBusy"
                         @onclick="LeaveAsync">
                     @Text("waitlist_leave", "Leave")
@@ -70,6 +72,7 @@
             @if (HasLink(AcceptRelation))
             {
                 <button type="button"
+                        data-relation="@AcceptRelation"
                         disabled="@_isBusy"
                         @onclick="AcceptAsync">
                     @Text("waitlist_accept", "Accept")
@@ -78,6 +81,7 @@
             @if (HasLink(WithdrawRelation))
             {
                 <button type="button"
+                        data-relation="@WithdrawRelation"
                         disabled="@_isBusy"
                         @onclick="WithdrawAsync">
                     @Text("waitlist_withdraw", "Withdraw")

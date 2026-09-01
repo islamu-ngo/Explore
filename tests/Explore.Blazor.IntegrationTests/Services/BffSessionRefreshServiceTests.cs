@@ -2,23 +2,19 @@
 // ABOUTME: Verifies refresh-session response shape and circuit token cleanup without exposing bearer tokens.
 
 using System.IdentityModel.Tokens.Jwt;
-using System.Net;
-using System.Net.Http.Json;
-using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Explore.Blazor.Authentication;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Client.Configuration;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using NSubstitute;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 
@@ -45,22 +41,19 @@ public sealed class BffSessionRefreshServiceTests
     {
         var principal = CreatePrincipal("user-1", "session-1");
         var authService = new TestAuthenticationService(AuthenticateResult.Success(CreateTicket(principal, accessToken: null)));
-        var tokenService = Substitute.For<ICircuitAccessTokenService>();
-        var userContext = Substitute.For<ICircuitUserContext>();
-        var cookieStore = Substitute.For<IBffAuthCookieStore>();
-        var tokenStore = Substitute.For<ICircuitTokenStore>();
-        var context = CreateContext(authService, tokenService, userContext, cookieStore, tokenStore);
+        var state = CreateRealCircuitState(authService, principal, "user-1", "session-1");
         var service = CreateService();
 
-        var result = await service.RefreshSessionAsync(context, CancellationToken.None);
+        var result = await service.RefreshSessionAsync(state.Context, CancellationToken.None);
 
-        await ExecuteAsync(result, context);
+        await ExecuteAsync(result, state.Context);
 
-        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
-        tokenService.Received(1).ClearToken();
-        userContext.Received(1).Clear();
-        cookieStore.Received(1).Clear();
-        tokenStore.Received(1).ClearSession("user-1", "session-1");
+        await Assert.That(state.Context.Response.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        await Assert.That(state.TokenService.AccessToken).IsNull();
+        await Assert.That(state.UserContext.UserId).IsNull();
+        await Assert.That(state.UserContext.SessionId).IsNull();
+        await Assert.That(state.CookieStore.CookieHeader).IsNull();
+        await Assert.That(state.TokenStore.Resolve("user-1", "session-1").Found).IsFalse();
     }
 
     [Test]
@@ -70,7 +63,8 @@ public sealed class BffSessionRefreshServiceTests
         var principal = CreatePrincipal("user-1", "session-1");
         var authService = new TestAuthenticationService(AuthenticateResult.Success(CreateTicket(principal, accessToken)));
         var tokenStore = Substitute.For<ICircuitTokenStore>();
-        tokenStore.Store("user-1", "session-1", accessToken)
+        var (subjectKey, sessionKey) = PartitionKeys(principal);
+        tokenStore.Store(subjectKey, sessionKey, accessToken)
             .Returns(new CircuitTokenStoreResult(true, null));
         var onboardingStatusProvider = Substitute.For<IBffOnboardingStatusProvider>();
         onboardingStatusProvider.GetStatusAsync(Arg.Any<CancellationToken>())
@@ -85,7 +79,7 @@ public sealed class BffSessionRefreshServiceTests
 
         await ExecuteAsync(result, context);
         await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status200OK);
-        tokenStore.Received(1).Store("user-1", "session-1", accessToken);
+        tokenStore.Received(1).Store(subjectKey, sessionKey, accessToken);
         await Assert.That(authService.SignInCalled).IsTrue();
 
         context.Response.Body.Position = 0;
@@ -94,7 +88,7 @@ public sealed class BffSessionRefreshServiceTests
         await Assert.That(root.GetProperty("refreshed").GetBoolean()).IsTrue();
         await Assert.That(root.GetProperty("adminClaimsUpdated").GetBoolean()).IsFalse();
         await Assert.That(root.TryGetProperty("tokenStatus", out var tokenStatus)).IsTrue();
-        await Assert.That(tokenStatus.GetString()).StartsWith("valid_until:");
+        await Assert.That(tokenStatus.GetString()).IsEqualTo("valid_access_token");
         await Assert.That(root.TryGetProperty("token", out _)).IsFalse();
         await Assert.That(root.GetRawText()).DoesNotContain(accessToken);
     }
@@ -118,7 +112,8 @@ public sealed class BffSessionRefreshServiceTests
         var result = await service.RefreshSessionAsync(context, CancellationToken.None);
 
         await ExecuteAsync(result, context);
-        var resolution = tokenStore.Resolve(principalUserId, principalSessionId);
+        var (subjectKey, sessionKey) = PartitionKeys(principal);
+        var resolution = tokenStore.Resolve(subjectKey, sessionKey);
         await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status200OK);
         await Assert.That(resolution.Found).IsTrue();
         await Assert.That(resolution.Token).IsEqualTo(accessToken);
@@ -131,7 +126,8 @@ public sealed class BffSessionRefreshServiceTests
         var principal = CreatePrincipal("user-1", "session-1");
         var authService = new TestAuthenticationService(AuthenticateResult.Success(CreateTicket(principal, accessToken)));
         var tokenStore = Substitute.For<ICircuitTokenStore>();
-        tokenStore.Store("user-1", "session-1", accessToken)
+        var (subjectKey, sessionKey) = PartitionKeys(principal);
+        tokenStore.Store(subjectKey, sessionKey, accessToken)
             .Returns(new CircuitTokenStoreResult(false, "token_rejected"));
         var context = CreateContext(authService: authService, tokenStore: tokenStore);
         var service = CreateService();
@@ -181,19 +177,73 @@ public sealed class BffSessionRefreshServiceTests
     public async Task RefreshSessionAsync_WithRejectedAtprotoSession_ClearsCookieAndRequiresReauthentication()
     {
         var principal = CreateAtprotoPrincipal();
-        var authService = new TestAuthenticationService(AuthenticateResult.Success(CreateTicket(principal, "old-platform-token")));
-        var tokenService = Substitute.For<ICircuitAccessTokenService>();
-        var context = CreateContext(authService: authService, tokenService: tokenService);
-        context.Request.Scheme = "https";
-        context.Request.Host = new HostString("events.example.com");
+        var authService = new TestAuthenticationService(AuthenticateResult.Success(
+            CreateTicket(principal, Guid.CreateVersion7().ToString("N"))));
+        var state = CreateRealCircuitState(authService, principal,
+            principal.FindFirstValue("sub")!, principal.FindFirstValue("sid")!);
+        state.Context.Request.Scheme = "https";
+        state.Context.Request.Host = new HostString("events.example.com");
         var service = CreateService(bridgeHandler: new AtprotoBridgeHandler(HttpStatusCode.Unauthorized));
 
-        var result = await service.RefreshSessionAsync(context, CancellationToken.None);
+        var result = await service.RefreshSessionAsync(state.Context, CancellationToken.None);
 
-        await ExecuteAsync(result, context);
-        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status401Unauthorized);
+        await ExecuteAsync(result, state.Context);
+        await Assert.That(state.Context.Response.StatusCode).IsEqualTo(StatusCodes.Status401Unauthorized);
         await Assert.That(authService.SignOutCalled).IsTrue();
-        tokenService.Received(1).ClearToken();
+        await AssertCircuitStateClearedAsync(state);
+    }
+
+    [Test]
+    public async Task RefreshSessionAsyncWithConflictingAtprotoSubjectsFailsClosedAndClearsSession()
+    {
+        var accessToken = Guid.CreateVersion7().ToString("N");
+        var principal = CreateAtprotoPrincipal();
+        ((ClaimsIdentity)principal.Identity!).AddClaim(
+            new Claim("sub", Guid.Parse("0190f50d-1690-7000-8000-000000000099").ToString("D")));
+        var authService = new TestAuthenticationService(
+            AuthenticateResult.Success(CreateTicket(principal, accessToken)));
+        var subject = principal.FindFirstValue("sub")!;
+        var session = principal.FindFirstValue("sid")!;
+        var state = CreateRealCircuitState(authService, principal, subject, session);
+        state.Context.Request.Scheme = "https";
+        state.Context.Request.Host = new HostString("events.example.com");
+        using var bridgeHandler = new AtprotoBridgeHandler(HttpStatusCode.OK);
+        var service = CreateService(bridgeHandler: bridgeHandler);
+
+        var result = await service.RefreshSessionAsync(state.Context, CancellationToken.None);
+
+        await ExecuteAsync(result, state.Context);
+        await Assert.That(state.Context.Response.StatusCode).IsEqualTo(StatusCodes.Status401Unauthorized);
+        await Assert.That(authService.SignOutCalled).IsTrue();
+        await AssertCircuitStateClearedAsync(state);
+    }
+
+    [Test]
+    public async Task RefreshSessionAsyncWithMissingAtprotoSubjectFailsClosedAndClearsSession()
+    {
+        var accessToken = Guid.CreateVersion7().ToString("N");
+        var principal = CreateAtprotoPrincipal();
+        var identity = (ClaimsIdentity)principal.Identity!;
+        identity.RemoveClaim(identity.FindFirst("sub")!);
+        identity.RemoveClaim(identity.FindFirst("sid")!);
+        identity.AddClaim(new Claim("sid", UserId.ToString("D")));
+        var authService = new TestAuthenticationService(
+            AuthenticateResult.Success(CreateTicket(principal, accessToken)));
+        var subject = UserId.ToString("D");
+        var session = principal.FindFirstValue("sid")!;
+        var state = CreateRealCircuitState(authService, principal, subject, session);
+        state.Context.Request.Scheme = "https";
+        state.Context.Request.Host = new HostString("events.example.com");
+        using var bridgeHandler = new AtprotoBridgeHandler(HttpStatusCode.OK);
+        var service = CreateService(bridgeHandler: bridgeHandler);
+
+        var result = await service.RefreshSessionAsync(state.Context, CancellationToken.None);
+
+        await ExecuteAsync(result, state.Context);
+        await Assert.That(state.Context.Response.StatusCode).IsEqualTo(StatusCodes.Status401Unauthorized);
+        await Assert.That(bridgeHandler.Method).IsNull();
+        await Assert.That(authService.SignOutCalled).IsTrue();
+        await AssertCircuitStateClearedAsync(state);
     }
 
     [Test]
@@ -243,6 +293,50 @@ public sealed class BffSessionRefreshServiceTests
                 environment),
             new AtprotoAuthenticationMetrics());
     }
+
+    private static RealCircuitState CreateRealCircuitState(
+        TestAuthenticationService authService,
+        ClaimsPrincipal principal,
+        string userId,
+        string sessionId)
+    {
+        var tokenStore = new CircuitTokenStore(NullLogger<CircuitTokenStore>.Instance);
+        var accessor = new HttpContextAccessor();
+        var tokenService = new CircuitAccessTokenService(
+            tokenStore, accessor, NullLogger<CircuitAccessTokenService>.Instance);
+        var userContext = new CircuitUserContext();
+        var (subjectKey, sessionKey) = PartitionKeys(principal);
+        userContext.SetUserId(subjectKey);
+        userContext.SetSessionId(sessionKey);
+        var cookieStore = new BffAuthCookieStore();
+        cookieStore.SetCookieHeader($"bff={Guid.CreateVersion7():N}");
+        var context = CreateContext(
+            authService, tokenService, userContext, cookieStore, tokenStore);
+        context.User = principal;
+        accessor.HttpContext = context;
+        tokenService.SetToken(CreateJwt(
+            userId, DateTime.UtcNow.AddMinutes(30), sessionId));
+        return new RealCircuitState(
+            context, tokenService, userContext, cookieStore, tokenStore, subjectKey, sessionKey);
+    }
+
+    private static async Task AssertCircuitStateClearedAsync(RealCircuitState state)
+    {
+        await Assert.That(state.TokenService.AccessToken).IsNull();
+        await Assert.That(state.UserContext.UserId).IsNull();
+        await Assert.That(state.UserContext.SessionId).IsNull();
+        await Assert.That(state.CookieStore.CookieHeader).IsNull();
+        await Assert.That(state.TokenStore.Resolve(state.UserId, state.SessionId).Found).IsFalse();
+    }
+
+    private sealed record RealCircuitState(
+        DefaultHttpContext Context,
+        CircuitAccessTokenService TokenService,
+        CircuitUserContext UserContext,
+        BffAuthCookieStore CookieStore,
+        CircuitTokenStore TokenStore,
+        string UserId,
+        string SessionId);
 
     private static DefaultHttpContext CreateContext(
         TestAuthenticationService? authService = null,
@@ -294,10 +388,17 @@ public sealed class BffSessionRefreshServiceTests
         return new AuthenticationTicket(principal, properties, "Cookies");
     }
 
+    private static (string SubjectKey, string SessionKey) PartitionKeys(ClaimsPrincipal principal)
+    {
+        principal.TryGetCircuitSubject(out var subject);
+        principal.TryGetSessionId(out var session);
+        return (subject.PartitionKey, session.PartitionKey);
+    }
+
     private static ClaimsPrincipal CreatePrincipal(string userId, string sessionId) => new(new ClaimsIdentity([
         new Claim("sub", userId),
         new Claim("sid", sessionId)
-    ], "test"));
+    ], "Cookies"));
 
     private static ClaimsPrincipal CreateAtprotoPrincipal() => new(new ClaimsIdentity([
         new Claim("sub", UserId.ToString("D")),
@@ -305,7 +406,7 @@ public sealed class BffSessionRefreshServiceTests
         new Claim("did", "did:plc:alice"),
         new Claim("tenant_id", TenantId.ToString("D")),
         new Claim("auth_provider", "atproto")
-    ], "test"));
+    ], "Atproto"));
 
     private static AtprotoClientKeyProvider CreateKeyProvider()
     {

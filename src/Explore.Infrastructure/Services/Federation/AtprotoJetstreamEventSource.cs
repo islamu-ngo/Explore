@@ -3,13 +3,14 @@
 
 using System.Runtime.CompilerServices;
 using CarpaNet.Jetstream;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Infrastructure.Services.Federation;
 
 public sealed record AtprotoJetstreamSubscription(
     Uri Endpoint,
     IReadOnlyList<string> Collections,
-    IReadOnlyList<string> Dids,
+    IReadOnlyList<AtprotoDid> Dids,
     long? LiveCursor,
     int MaxMessageSizeBytes)
 {
@@ -72,7 +73,7 @@ internal sealed class CarpaNetJetstreamEventSource : IAtprotoJetstreamEventSourc
                 AtprotoJetstreamConstants.EventCollection,
                 AtprotoJetstreamConstants.RsvpCollection
             ],
-            Dids = [.. subscription.Dids],
+            Dids = [.. subscription.Dids.Select(did => did.Value)],
             LiveCursor = subscription.LiveCursor,
             MaxMessageSizeBytes = subscription.MaxMessageSizeBytes
         };

@@ -1,6 +1,7 @@
 // ABOUTME: Defines RED PostgreSQL contracts for fair-return supply, waitlist order, and replacement payment.
 // ABOUTME: Pins commercial equivalence, one-winner fences, crash replay, refund ordering, and PII minimization.
 
+using System.Data.Common;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,6 +14,7 @@ using Explore.Persistence;
 using Explore.Persistence.QueryFilters;
 using Explore.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using TUnit.Core;
@@ -29,8 +31,6 @@ public sealed class FairReturnWaitlistConcurrencyTests(
     private const string RepositoryTypeName =
         "Explore.Persistence.Repositories." +
         "FairReturnWaitlistRepository";
-    private static readonly string RepositoryRoot =
-        FindRepositoryRoot();
     private static readonly DateTime UtcNow =
         new(
             2026,
@@ -60,39 +60,6 @@ public sealed class FairReturnWaitlistConcurrencyTests(
             await Assert.That(DomainType(typeName))
                 .IsNotNull();
         }
-    }
-
-    [Test]
-    public async Task LiteralQueueOrderIsPriorityThenEnqueueTimeThenStableId()
-    {
-        Type? repository =
-            PersistenceType(RepositoryTypeName);
-        await Assert.That(repository).IsNotNull();
-
-        FieldInfo? order = repository!.GetField(
-            "LiteralQueueOrder",
-            BindingFlags.Public
-            | BindingFlags.Static);
-        await Assert.That(order).IsNotNull();
-        await Assert.That(order!.GetRawConstantValue())
-            .IsEqualTo(
-                "priority>enqueued-at>id");
-
-        string source = await ReadSourceAsync(
-            "src/Explore.Persistence/Repositories/" +
-            "FairReturnWaitlistRepository.cs");
-        await Assert.That(source).Contains(
-            "OrderByDescending");
-        await Assert.That(source).Contains(
-            "Priority");
-        await Assert.That(source).Contains(
-            "ThenBy");
-        await Assert.That(source).Contains(
-            "EnqueuedAt");
-        await Assert.That(source).Contains(
-            "ThenBy");
-        await Assert.That(source).Contains(
-            "Id");
     }
 
     [Test]
@@ -220,35 +187,6 @@ public sealed class FairReturnWaitlistConcurrencyTests(
     }
 
     [Test]
-    public async Task CanonicalFenceOrdersSupplyQueueOfferBindingPaymentRefund()
-    {
-        Type? repository =
-            PersistenceType(RepositoryTypeName);
-        await Assert.That(repository).IsNotNull();
-        FieldInfo? order = repository!.GetField(
-            "CanonicalFenceOrder",
-            BindingFlags.Public
-            | BindingFlags.Static);
-        await Assert.That(order).IsNotNull();
-        await Assert.That(order!.GetRawConstantValue())
-            .IsEqualTo(
-                "policy>supply>queue>offer>binding>" +
-                "payment-dispatch>provider-observation>" +
-                "refund-intent");
-
-        string source = await ReadSourceAsync(
-            "src/Explore.Persistence/Repositories/" +
-            "FairReturnWaitlistRepository.cs");
-        await Assert.That(source).Contains(
-            "RelationalEntityRowFence");
-        string rowFence = await ReadSourceAsync(
-            "src/Explore.Persistence/Database/ProviderPrimitives/" +
-            "RelationalEntityRowFence.cs");
-        await Assert.That(rowFence).Contains(
-            "FOR UPDATE");
-    }
-
-    [Test]
     public async Task AllocateWithdrawSubstituteExpireFinalizeAreAtomicPrimitives()
     {
         Type? repository =
@@ -336,30 +274,6 @@ public sealed class FairReturnWaitlistConcurrencyTests(
     }
 
     [Test]
-    public async Task CrashAndRaceTestsUseExactSignalsWithoutTimingLuck()
-    {
-        string source = await ReadSourceAsync(
-            "tests/Event.Persistence.IntegrationTests/" +
-            "FairReturnWaitlistConcurrencyTests.cs");
-        string repository = await ReadSourceAsync(
-            "src/Explore.Persistence/Repositories/" +
-            "FairReturnWaitlistRepository.cs");
-
-        await Assert.That(source).Contains(
-            "TaskCompletionSource");
-        await Assert.That(repository).DoesNotContain(
-            "Task.Delay");
-        await Assert.That(repository).DoesNotContain(
-            "Thread.Sleep");
-        await Assert.That(source).Contains(
-            "AllArrived");
-        await Assert.That(source).Contains(
-            "Release");
-        await Assert.That(repository).Contains(
-            "SaveChangesAsync");
-    }
-
-    [Test]
     public async Task ConcurrentAllocationHasExactlyOneSupplyWinner()
     {
         const int contenderCount = 50;
@@ -380,12 +294,14 @@ public sealed class FairReturnWaitlistConcurrencyTests(
                 TimeSpan.FromSeconds(60));
         var gate = new WaitlistRaceGate(
             contenderCount);
+        var fenceCommands =
+            new FairReturnFenceCommandObserver();
 
         async Task<FairReturnWaitlistResult>
             AllocateAsync()
         {
             await using ExploreDbContext context =
-                fixture.CreateDbContext();
+                fixture.CreateDbContext(fenceCommands);
             await gate.ArriveAsync(timeout.Token);
             return await new FairReturnWaitlistRepository(
                     context)
@@ -432,9 +348,15 @@ public sealed class FairReturnWaitlistConcurrencyTests(
                         value =>
                             value.StatusId ==
                             (int)FairReturnSupplyStatus
-                                .Bound,
+                            .Bound,
                         timeout.Token))
             .IsEqualTo(1);
+        await Assert.That(fenceCommands.PolicyObserved)
+            .IsTrue();
+        await Assert.That(fenceCommands.SupplyObserved)
+            .IsTrue();
+        await Assert.That(fenceCommands.EntryObserved)
+            .IsTrue();
     }
 
     [Test]
@@ -531,42 +453,50 @@ public sealed class FairReturnWaitlistConcurrencyTests(
     }
 
     [Test]
-    public async Task QueuePositionExcludesCommerciallyDifferentEntries()
+    public async Task QueuePositionUsesPriorityTimeAndStableIdAndExcludesCommerciallyDifferentEntries()
     {
         WaitlistAccessSeed seed =
             await SeedWaitlistAccessAsync();
         await using ExploreDbContext context =
             fixture.CreateDbContext();
 
-        FairReturnWaitlistAccessContext? access =
-            await new FairReturnWaitlistRepository(
-                    context)
-                .GetAccessAsync(
+        var repository =
+            new FairReturnWaitlistRepository(context);
+        foreach (WaitlistAccessTarget target
+                 in seed.Targets)
+        {
+            FairReturnWaitlistAccessContext? access =
+                await repository.GetAccessAsync(
                     seed.TenantId,
                     seed.EventId,
-                    seed.RegistrationOrderId,
-                    seed.RegistrationOrderLineId,
+                    target.RegistrationOrderId,
+                    target.RegistrationOrderLineId,
                     CancellationToken.None);
 
-        await Assert.That(access).IsNotNull();
-        await Assert.That(access!.Position)
-            .IsEqualTo(1);
+            await Assert.That(access).IsNotNull();
+            await Assert.That(access!.Position)
+                .IsEqualTo(target.ExpectedPosition);
+        }
     }
 
     [Test]
-    public async Task AllocationUsesLiteralPriorityTimeAndStableIdOrder()
+    public async Task AllocationUsesPriorityTimeStableIdOrderAndExcludesOtherTenant()
     {
+        Guid earlierAtSamePriority = Guid.Parse(
+            "019c00aa-0000-7000-8000-000000000003");
         Guid stableFirst = Guid.Parse(
             "019c00aa-0000-7000-8000-000000000001");
         Guid stableSecond = Guid.Parse(
             "019c00aa-0000-7000-8000-000000000002");
+        Guid lowerPriority = Guid.Parse(
+            "019c00aa-0000-7000-8000-000000000004");
         WaitlistSeed seed =
             await SeedWaitlistAsync(
                 [
                     EntrySeed(
                         priority: 9,
                         UtcNow.AddMinutes(-10),
-                        Guid.CreateVersion7()),
+                        lowerPriority),
                     EntrySeed(
                         priority: 10,
                         UtcNow.AddMinutes(1),
@@ -575,28 +505,56 @@ public sealed class FairReturnWaitlistConcurrencyTests(
                         priority: 10,
                         UtcNow.AddMinutes(1),
                         stableFirst),
-                ]);
+                    EntrySeed(
+                        priority: 10,
+                        UtcNow,
+                        earlierAtSamePriority),
+                ],
+                supplyCount: 4);
+        Guid otherTenantEntryId =
+            await SeedOtherTenantQueueEntryAsync(
+                seed,
+                priority: int.MaxValue,
+                UtcNow.AddHours(-1));
 
-        await using ExploreDbContext context =
+        FairReturnWaitlistResult[] results =
+        [
+            await AllocateSeedAsync(seed),
+            await AllocateSeedAsync(seed),
+            await AllocateSeedAsync(seed),
+            await AllocateSeedAsync(seed),
+        ];
+        await Assert.That(results.All(value =>
+                value.Outcome ==
+                FairReturnOutcome.Allocated))
+            .IsTrue();
+        await Assert.That(results
+                .Select(value => value.Entry!.Id)
+                .SequenceEqual(
+                [
+                    earlierAtSamePriority,
+                    stableFirst,
+                    stableSecond,
+                    lowerPriority,
+                ]))
+            .IsTrue();
+        await using ExploreDbContext verification =
             fixture.CreateDbContext();
-        FairReturnWaitlistResult result =
-            await new FairReturnWaitlistRepository(
-                    context)
-                .AllocateAsync(
-                    new FairReturnAllocationRequest(
-                        seed.TenantId,
-                        seed.EventId,
-                        seed.PolicyId,
-                        Guid.CreateVersion7(),
-                        Guid.CreateVersion7(),
-                        Guid.CreateVersion7(),
-                        UtcNow.AddMinutes(2)),
-                    CancellationToken.None);
-
-        await Assert.That(result.Outcome)
-            .IsEqualTo(FairReturnOutcome.Allocated);
-        await Assert.That(result.Entry?.Id)
-            .IsEqualTo(stableFirst);
+        EventWaitlistEntry otherTenantEntry =
+            await verification.EventWaitlistEntries
+                .AsNoTracking()
+                .SingleAsync(value =>
+                    value.Id == otherTenantEntryId);
+        await Assert.That(otherTenantEntry.StatusId)
+            .IsEqualTo(
+                (int)EventWaitlistEntryStatus.Queued);
+        await Assert.That(
+                await verification
+                    .EventWaitlistOffers
+                    .CountAsync(value =>
+                        value.TenantId ==
+                        otherTenantEntry.TenantId))
+            .IsEqualTo(0);
     }
 
     [Test]
@@ -1554,6 +1512,57 @@ public sealed class FairReturnWaitlistConcurrencyTests(
             registrationOrderLineIds);
     }
 
+    private async Task<Guid>
+        SeedOtherTenantQueueEntryAsync(
+            WaitlistSeed seed,
+            int priority,
+            DateTime enqueuedAtUtc)
+    {
+        await using ExploreDbContext context =
+            fixture.CreateDbContext();
+        EventWaitlistEntry template =
+            await context.EventWaitlistEntries
+                .AsNoTracking()
+                .FirstAsync(value =>
+                    value.TenantId == seed.TenantId
+                    && value.EventId == seed.EventId);
+        var otherTenant = new Tenant
+        {
+            FullName = "Other fair return tenant",
+            Slug =
+                $"fair-return-other-" +
+                $"{Guid.CreateVersion7():N}",
+            TenantStatusId =
+                (int)TenantStatusEnum.Active,
+            TenantStatus = null!,
+        };
+        context.Tenants.Add(otherTenant);
+        await context.SaveChangesAsync();
+
+        Guid entryId = Guid.CreateVersion7();
+        context.EventWaitlistEntries.Add(
+            EventWaitlistEntry.Enqueue(
+                entryId,
+                otherTenant.Id,
+                template.EventId,
+                template.EventTicketTypeId,
+                template.TicketCatalogVersionId,
+                template.PurchasePolicySnapshotId,
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                template.CurrencyCode,
+                template.CommercialTermsDigest,
+                template.AdmissionEntitlementDigest,
+                template.GrossMinorUnits,
+                template.RefundFundingModeId,
+                priority,
+                enqueuedAtUtc));
+        await context.SaveChangesAsync();
+        return entryId;
+    }
+
     private async Task<WaitlistAccessSeed>
         SeedWaitlistAccessAsync()
     {
@@ -1662,7 +1671,7 @@ public sealed class FairReturnWaitlistConcurrencyTests(
                 eventEntity.Id,
                 includedQuantity: 1));
         catalog.Publish();
-        RegistrationOrder order =
+        RegistrationOrder CreateOrder() =>
             RegistrationOrder.Create(
                 tenant.Id,
                 eventEntity.Id,
@@ -1682,15 +1691,28 @@ public sealed class FairReturnWaitlistConcurrencyTests(
                 "USD",
                 UtcNow,
                 expiresAt: null);
-        RegistrationOrderLine line =
-            RegistrationOrderLine.Create(
+        RegistrationOrderLine AddLine(
+            RegistrationOrder order)
+        {
+            RegistrationOrderLine line =
+                RegistrationOrderLine.Create(
                 catalog,
                 ticketType,
                 order.Id,
                 quantity: 1,
                 chosenUnitPriceAmount: null,
                 platformFeePolicy: null);
-        order.AddLine(line);
+            order.AddLine(line);
+            return line;
+        }
+        RegistrationOrder order = CreateOrder();
+        RegistrationOrderLine line = AddLine(order);
+        RegistrationOrder firstOrder = CreateOrder();
+        RegistrationOrderLine firstLine =
+            AddLine(firstOrder);
+        RegistrationOrder secondOrder = CreateOrder();
+        RegistrationOrderLine secondLine =
+            AddLine(secondOrder);
         Guid purchasePolicySnapshotId =
             Guid.CreateVersion7();
         FairReturnSupplyPolicy policy =
@@ -1714,9 +1736,11 @@ public sealed class FairReturnWaitlistConcurrencyTests(
             string entitlementDigest,
             long gross,
             int funding,
-            int priority) =>
+            int priority,
+            Guid? id = null,
+            DateTime? enqueuedAtUtc = null) =>
             EventWaitlistEntry.Enqueue(
-                Guid.CreateVersion7(),
+                id ?? Guid.CreateVersion7(),
                 tenant.Id,
                 eventEntity.Id,
                 ticketType.Id,
@@ -1732,7 +1756,7 @@ public sealed class FairReturnWaitlistConcurrencyTests(
                 gross,
                 funding,
                 priority,
-                UtcNow);
+                enqueuedAtUtc ?? UtcNow);
         EventWaitlistEntry target = Target(
             order.Id,
             line.Id,
@@ -1742,7 +1766,38 @@ public sealed class FairReturnWaitlistConcurrencyTests(
             entitlement,
             12_345,
             1,
-            priority: 0);
+            priority: 9,
+            enqueuedAtUtc:
+                UtcNow.AddMinutes(-10));
+        EventWaitlistEntry[] orderedAhead =
+        [
+            Target(
+                firstOrder.Id,
+                firstLine.Id,
+                purchasePolicySnapshotId,
+                "USD",
+                terms,
+                entitlement,
+                12_345,
+                1,
+                priority: 10,
+                id: Guid.Parse(
+                    "019c00aa-0000-7000-8000-000000000001"),
+                enqueuedAtUtc: UtcNow),
+            Target(
+                secondOrder.Id,
+                secondLine.Id,
+                purchasePolicySnapshotId,
+                "USD",
+                terms,
+                entitlement,
+                12_345,
+                1,
+                priority: 10,
+                id: Guid.Parse(
+                    "019c00aa-0000-7000-8000-000000000002"),
+                enqueuedAtUtc: UtcNow),
+        ];
         EventWaitlistEntry[] different =
         [
             Target(
@@ -1810,15 +1865,30 @@ public sealed class FairReturnWaitlistConcurrencyTests(
             eventEntity,
             catalog,
             order,
+            firstOrder,
+            secondOrder,
             policy,
             target);
+        context.AddRange(orderedAhead);
         context.AddRange(different);
         await context.SaveChangesAsync();
         return new WaitlistAccessSeed(
             tenant.Id,
             eventEntity.Id,
-            order.Id,
-            line.Id);
+            [
+                new WaitlistAccessTarget(
+                    firstOrder.Id,
+                    firstLine.Id,
+                    ExpectedPosition: 1),
+                new WaitlistAccessTarget(
+                    secondOrder.Id,
+                    secondLine.Id,
+                    ExpectedPosition: 2),
+                new WaitlistAccessTarget(
+                    order.Id,
+                    line.Id,
+                    ExpectedPosition: 3),
+            ]);
     }
 
     private async Task<FairReturnWaitlistResult>
@@ -1877,38 +1947,6 @@ public sealed class FairReturnWaitlistConcurrencyTests(
             SHA256.HashData(
                 Encoding.UTF8.GetBytes(value)));
 
-    private static Task<string> ReadSourceAsync(
-        string relativePath)
-    {
-        string path = Path.Combine(
-            RepositoryRoot,
-            relativePath.Replace(
-                '/',
-                Path.DirectorySeparatorChar));
-        return File.Exists(path)
-            ? File.ReadAllTextAsync(path)
-            : Task.FromResult(string.Empty);
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        DirectoryInfo? directory = new(
-            AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(
-                    directory.FullName,
-                    "Explore.slnx")))
-            {
-                return directory.FullName;
-            }
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException(
-            "Repository root was not found.");
-    }
-
     private sealed class WaitlistRaceGate(
         int participantCount)
     {
@@ -1940,6 +1978,75 @@ public sealed class FairReturnWaitlistConcurrencyTests(
             _release.TrySetResult(true);
     }
 
+    private sealed class FairReturnFenceCommandObserver :
+        DbCommandInterceptor
+    {
+        private int _entryObserved;
+        private int _policyObserved;
+        private int _supplyObserved;
+
+        public bool EntryObserved => _entryObserved != 0;
+        public bool PolicyObserved => _policyObserved != 0;
+        public bool SupplyObserved => _supplyObserved != 0;
+
+        public override ValueTask<
+            InterceptionResult<DbDataReader>>
+            ReaderExecutingAsync(
+                DbCommand command,
+                CommandEventData eventData,
+                InterceptionResult<DbDataReader> result,
+                CancellationToken cancellationToken = default)
+        {
+            Observe(command.CommandText);
+            return ValueTask.FromResult(result);
+        }
+
+        public override ValueTask<InterceptionResult<int>>
+            NonQueryExecutingAsync(
+                DbCommand command,
+                CommandEventData eventData,
+                InterceptionResult<int> result,
+                CancellationToken cancellationToken = default)
+        {
+            Observe(command.CommandText);
+            return ValueTask.FromResult(result);
+        }
+
+        private void Observe(string commandText)
+        {
+            if (!commandText.Contains(
+                    "FOR UPDATE",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+            if (commandText.Contains(
+                    "fair_return_supply_policies",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Interlocked.Exchange(
+                    ref _policyObserved,
+                    1);
+            }
+            if (commandText.Contains(
+                    "fair_return_supply_units",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Interlocked.Exchange(
+                    ref _supplyObserved,
+                    1);
+            }
+            if (commandText.Contains(
+                    "event_waitlist_entries",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Interlocked.Exchange(
+                    ref _entryObserved,
+                    1);
+            }
+        }
+    }
+
     private sealed record WaitlistSeed(
         Guid TenantId,
         Guid EventId,
@@ -1951,8 +2058,12 @@ public sealed class FairReturnWaitlistConcurrencyTests(
     private sealed record WaitlistAccessSeed(
         Guid TenantId,
         Guid EventId,
+        IReadOnlyList<WaitlistAccessTarget> Targets);
+
+    private sealed record WaitlistAccessTarget(
         Guid RegistrationOrderId,
-        Guid RegistrationOrderLineId);
+        Guid RegistrationOrderLineId,
+        long ExpectedPosition);
 
     private sealed record WaitlistEntrySeed(
         Guid Id,

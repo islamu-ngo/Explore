@@ -29,10 +29,15 @@ public static class CurrentUserResolutionExtensions
         ArgumentNullException.ThrowIfNull(mediator);
         ArgumentNullException.ThrowIfNull(principal);
 
-        // A principal that already carries the local id needs no lookup; this is the common authenticated path.
-        if (Guid.TryParse(principal.FindFirst("internal_user_id")?.Value, out var internalUserId))
+        if (principal.GetAmbientPlatformIdentity() is null)
         {
-            return internalUserId;
+            return null;
+        }
+
+        // A principal that already carries the local id needs no lookup; this is the common authenticated path.
+        if (principal.GetPlatformUserId() is { } platformUserId)
+        {
+            return platformUserId;
         }
 
         var providerIdentity = principal.GetProviderIdentity();

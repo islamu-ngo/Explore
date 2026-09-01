@@ -107,41 +107,18 @@ public static class MockServiceFactory
     }
 
     /// <summary>
-    /// Creates a mock IAuthStateService with authenticated user defaults.
+    /// Creates an authenticated framework auth-state provider.
     /// </summary>
-    /// <param name="userId">User ID as Guid (converted to string for JWT claim compatibility)</param>
-    /// <param name="tenantId">Tenant ID (uses default if null)</param>
-    /// <remarks>
-    /// The userId parameter is Guid because that's the domain model type.
-    /// Internally, GetCurrentUserIdAsync() returns string because JWT claims are strings.
-    /// This design bridges domain model expectations with JWT reality.
-    /// </remarks>
-    public static IAuthStateService CreateAuthStateService(Guid? userId = null, Guid? tenantId = null)
+    public static AuthenticationStateProvider CreateAuthenticationStateProvider(
+        bool authenticated = true)
     {
-        var mock = Substitute.For<IAuthStateService>();
-
-        // Convert Guid to string (matching IAuthStateService.GetCurrentUserIdAsync signature)
-        // The interface returns string because JWT claims are strings
-        var userIdValue = userId ?? Guid.NewGuid();
-        mock.GetCurrentUserIdAsync().Returns(userIdValue.ToString());
-
-        // TenantId is already Guid in the interface
-        mock.GetCurrentTenantIdAsync().Returns(tenantId ?? Guid.Parse("018e4e5c-7f00-7000-8000-000000000001"));
-        mock.IsAuthenticatedAsync().Returns(true);
-
-        return mock;
-    }
-
-    /// <summary>
-    /// Creates a mock IAuthStateService for unauthenticated state.
-    /// </summary>
-    public static IAuthStateService CreateUnauthenticatedAuthStateService()
-    {
-        var mock = Substitute.For<IAuthStateService>();
-        mock.GetCurrentUserIdAsync().ThrowsAsync(new UnauthorizedAccessException("User is not authenticated"));
-        mock.GetCurrentTenantIdAsync().ThrowsAsync(new UnauthorizedAccessException("User is not authenticated"));
-        mock.IsAuthenticatedAsync().Returns(false);
-        return mock;
+        var provider = Substitute.For<AuthenticationStateProvider>();
+        var identity = authenticated
+            ? new ClaimsIdentity(authenticationType: "TestAuth")
+            : new ClaimsIdentity();
+        provider.GetAuthenticationStateAsync().Returns(
+            new AuthenticationState(new ClaimsPrincipal(identity)));
+        return provider;
     }
 
     /// <summary>
@@ -365,18 +342,13 @@ public static class MockServiceFactory
     /// Creates all core services with default mocks for a complete test setup.
     /// </summary>
     /// <param name="services">Service collection to add mocks to</param>
-    /// <param name="userId">Optional user ID for auth service</param>
-    /// <param name="tenantId">Optional tenant ID for auth service</param>
-    public static void RegisterAllCoreMocks(
-        IServiceCollection services,
-        Guid? userId = null,
-        Guid? tenantId = null)
+    public static void RegisterAllCoreMocks(IServiceCollection services)
     {
         services.AddSingleton(CreateEventApiClient());
         services.AddSingleton(CreateEventService());
         services.AddSingleton(CreateOrganizationService());
         services.AddSingleton(CreateGroupService());
-        services.AddSingleton(CreateAuthStateService(userId, tenantId));
+        services.AddSingleton(CreateAuthenticationStateProvider());
         services.AddSingleton(CreateUserService());
         services.AddSingleton(CreateCategoryService());
         services.AddSingleton(CreateTagService());

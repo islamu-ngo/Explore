@@ -2,10 +2,13 @@
 // ABOUTME: Canonicalizes JSON request bodies so equivalent formatting does not change fingerprints.
 
 using System.Buffers;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Explore.API.Authentication;
+using Explore.Application.Authentication;
+using Explore.Application.Constants;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.IO;
 using Microsoft.Net.Http.Headers;
@@ -36,10 +39,10 @@ internal static class IdempotencyRequestIdentityFactory
         var method = context.Request.Method.ToUpperInvariant();
         var requestTarget = ResolveRequestTarget(context);
         var contentType = NormalizeContentType(context.Request.ContentType);
-        var userId = ResolveUserId(context);
-        var scannerCapabilityId = ResolveScannerCapabilityId(context);
+        ClaimsIdentity? identity = ResolveAuthenticatedIdentity(context.User);
+        var userId = context.User.GetPlatformUserId()?.ToString("D");
         var principalFingerprint = ComputeSha256Hex(
-            $"{ResolvePrincipalScope(userId, scannerCapabilityId)}|capabilities:{CapabilityScope(context.Request)}");
+            $"{ResolvePrincipalScope(context.User, identity, userId)}|capabilities:{CapabilityScope(context.Request)}");
         var bodyHash = await ComputeBodyHashAsync(context.Request, streamManager, cancellationToken);
 
         return new IdempotencyRequestIdentity(
@@ -218,33 +221,69 @@ internal static class IdempotencyRequestIdentityFactory
                || mediaType.EndsWith("+json", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string? ResolveUserId(HttpContext context)
+    private static ClaimsIdentity? ResolveAuthenticatedIdentity(ClaimsPrincipal principal)
     {
-        if (context.User?.Identity?.IsAuthenticated != true)
-        {
-            return null;
-        }
-
-        return context.User.FindFirst("sub")?.Value
-               ?? context.User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-               ?? context.User.FindFirst("sid")?.Value;
-    }
-
-    private static string? ResolveScannerCapabilityId(HttpContext context)
-    {
-        string? value = context.User.FindFirst(
-            AdmissionScannerAuthenticationDefaults.CapabilityIdClaim)?.Value;
-        return Guid.TryParse(value, out Guid capabilityId) && capabilityId != Guid.Empty
-            ? capabilityId.ToString("N")
+        ClaimsIdentity[] identities = principal.Identities
+            .Where(candidate => candidate.IsAuthenticated)
+            .ToArray();
+        return identities is [{ AuthenticationType: { Length: > 0 } } identity]
+            ? identity
             : null;
     }
 
-    private static string ResolvePrincipalScope(string? userId, string? scannerCapabilityId) =>
-        scannerCapabilityId is not null
-            ? $"admission-scanner:{scannerCapabilityId}"
-            : userId is null
-                ? "anonymous"
-                : $"authenticated:{userId}";
+    private static string ResolvePrincipalScope(
+        ClaimsPrincipal principal,
+        ClaimsIdentity? identity,
+        string? userId)
+    {
+        if (identity is null)
+        {
+            return principal.Identities.Any(candidate => candidate.IsAuthenticated)
+                ? "ambiguous-authenticated-principal"
+                : "anonymous";
+        }
+
+        string scheme = identity.AuthenticationType!;
+        string? purposeIdentity = scheme switch
+        {
+            ApiAuthenticationSchemeNames.AdmissionScanner => ResolveGuidClaim(
+                identity,
+                AdmissionScannerAuthenticationDefaults.CapabilityIdClaim),
+            ApiAuthenticationSchemeNames.ManagedControlPlane => ResolveGuidClaim(
+                identity,
+                ManagedControlPlaneAuthenticationDefaults.ManagedInstanceIdClaim),
+            ApiAuthenticationSchemeNames.ApiKey => identity.FindFirst(
+                ApiAuthenticationClaimTypes.ApiKeyId)?.Value,
+            ApiAuthenticationSchemeNames.AtprotoBootstrap or ApiAuthenticationSchemeNames.AtprotoSession =>
+                identity.FindFirst(AtprotoJwtOptions.DidClaim)?.Value,
+            ApiAuthenticationSchemeNames.PrivacyErasureReceipt => identity.FindFirst(
+                PrivacyErasureReceiptAuthenticationHandler.IntentIdClaim)?.Value,
+            _ => null
+        };
+
+        if (!string.IsNullOrWhiteSpace(purposeIdentity))
+        {
+            return $"purpose:{scheme}:{purposeIdentity}";
+        }
+
+        if (userId is not null)
+        {
+            return $"platform:{scheme}:{userId}";
+        }
+
+        string? providerSubject = principal.GetProviderSubject();
+        return string.IsNullOrWhiteSpace(providerSubject)
+            ? $"authenticated:{scheme}"
+            : $"provider:{scheme}:{providerSubject}";
+    }
+
+    private static string? ResolveGuidClaim(ClaimsIdentity identity, string claimType)
+    {
+        string? value = identity.FindFirst(claimType)?.Value;
+        return Guid.TryParse(value, out Guid id) && id != Guid.Empty
+            ? id.ToString("N")
+            : null;
+    }
 
     private static string ComputeSha256Hex(string value)
         => ComputeSha256Hex(Encoding.UTF8.GetBytes(value));

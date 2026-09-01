@@ -764,38 +764,64 @@ public static class RateLimitingExtensions
 
     internal static string GetAuthenticatedPartitionKey(HttpContext context)
     {
-        string? managedInstancePartition = GetManagedInstancePartitionKey(context);
+        ClaimsIdentity? identity = GetSingleAuthenticatedIdentity(context.User);
+        if (identity is null)
+        {
+            return "anonymous";
+        }
+
+        string? managedInstancePartition = GetManagedInstancePartitionKey(identity);
         if (managedInstancePartition is not null)
         {
             return managedInstancePartition;
         }
 
-        string? rawScannerCapabilityId = context.User.FindFirstValue(
-            AdmissionScannerAuthenticationDefaults.CapabilityIdClaim);
+        string? rawScannerCapabilityId = identity.AuthenticationType == ApiAuthenticationSchemeNames.AdmissionScanner
+            ? identity.FindFirst(AdmissionScannerAuthenticationDefaults.CapabilityIdClaim)?.Value
+            : null;
         if (Guid.TryParse(rawScannerCapabilityId, out Guid scannerCapabilityId) &&
             scannerCapabilityId != Guid.Empty)
         {
             return $"admission-scanner:{scannerCapabilityId:N}";
         }
 
-        var apiKeyId = context.User.GetApiKeyId();
+        var apiKeyId = identity.AuthenticationType == ApiAuthenticationSchemeNames.ApiKey
+            ? identity.FindFirst(ApiAuthenticationClaimTypes.ApiKeyId)?.Value
+            : null;
         if (!string.IsNullOrWhiteSpace(apiKeyId))
         {
             return $"api-key:{apiKeyId}";
         }
 
-        var userId = context.User.FindFirstValue("sub")
-            ?? context.User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? context.User.FindFirstValue("sid")
-            ?? context.User.Identity?.Name;
+        if (context.User.GetPlatformUserId() is { } userId)
+        {
+            return userId.ToString("D");
+        }
 
-        return string.IsNullOrWhiteSpace(userId) ? "anonymous" : userId;
+        string? providerSubject = context.User.GetProviderSubject();
+        return string.IsNullOrWhiteSpace(providerSubject)
+            ? "anonymous"
+            : AuthenticationPartitionFingerprint.Create(identity.AuthenticationType!, providerSubject);
+    }
+
+    private static ClaimsIdentity? GetSingleAuthenticatedIdentity(ClaimsPrincipal principal)
+    {
+        ClaimsIdentity[] identities = principal.Identities.Where(candidate => candidate.IsAuthenticated).ToArray();
+        return identities is [{ AuthenticationType: { Length: > 0 } } identity] ? identity : null;
     }
 
     private static string? GetManagedInstancePartitionKey(HttpContext context)
     {
-        string? rawManagedInstanceId = context.User.FindFirstValue(
-            ManagedControlPlaneAuthenticationDefaults.ManagedInstanceIdClaim);
+        ClaimsIdentity? identity = GetSingleAuthenticatedIdentity(context.User);
+        return identity is null ? null : GetManagedInstancePartitionKey(identity);
+    }
+
+    private static string? GetManagedInstancePartitionKey(ClaimsIdentity identity)
+    {
+        string? rawManagedInstanceId = identity.AuthenticationType == ApiAuthenticationSchemeNames.ManagedControlPlane
+            ? identity.FindFirst(ManagedControlPlaneAuthenticationDefaults.ManagedInstanceIdClaim)?.Value
+            : null;
+
         return Guid.TryParse(rawManagedInstanceId, out Guid managedInstanceId)
             && managedInstanceId != Guid.Empty
                 ? $"managed-instance:{managedInstanceId:D}"

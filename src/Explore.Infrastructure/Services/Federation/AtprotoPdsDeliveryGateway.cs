@@ -10,6 +10,7 @@ using CarpaNet.OAuth;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain.Federation;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Infrastructure.Services.Federation;
 
@@ -24,52 +25,59 @@ public sealed class AtprotoPdsDeliveryGateway(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
+        if (!AtprotoDid.TryParse(command.Did, out AtprotoDid did))
+        {
+            return AtprotoPdsDeliveryResult.Failed("session_unavailable", retryable: false);
+        }
+
+        var delivery = AtprotoPdsDeliveryCommand.From(command, did);
 
         try
         {
             await using IAsyncDisposable refreshLease = await refreshLock.AcquireAsync(
-                command.TenantId,
-                command.UserId,
+                delivery.TenantId,
+                delivery.UserId,
                 RepositoryBackedAtprotoSession.Provider,
-                command.Did,
+                delivery.Did.Value,
                 cancellationToken).ConfigureAwait(false);
             var session = await tokenRepository.GetAtprotoSessionForReadAsync(
-                command.TenantId,
-                command.UserId,
+                delivery.TenantId,
+                delivery.UserId,
                 RepositoryBackedAtprotoSession.Provider,
-                command.Did,
+                delivery.Did.Value,
                 cancellationToken).ConfigureAwait(false);
             if (session is null
                 || string.IsNullOrWhiteSpace(session.PdsHost)
                 || string.IsNullOrWhiteSpace(session.OAuthClientKeyId)
                 || !Uri.TryCreate(session.PdsHost, UriKind.Absolute, out var storedPds)
-                || !SamePds(storedPds, command.PdsHost))
+                || !SamePds(storedPds, delivery.PdsHost))
             {
                 return AtprotoPdsDeliveryResult.Failed("session_unavailable", retryable: false);
             }
 
             var context = new AtprotoOAuthSessionStoreContext(
-                command.TenantId,
-                command.UserId,
-                command.Did,
-                command.PdsHost,
+                delivery.TenantId,
+                delivery.UserId,
+                did,
+                delivery.PdsHost,
                 session.OAuthClientKeyId);
             var store = new RepositoryBackedOAuthSessionStore(tokenRepository, protector, context);
             using var lease = await coreClientFactory.CreateAsync(
-                command.Did,
+                delivery.Did.Value,
                 session.OAuthClientKeyId,
                 store,
                 cancellationToken).ConfigureAwait(false);
 
-            if (!string.Equals(lease.Client.AuthenticatedDid, command.Did, StringComparison.Ordinal)
-                || !SamePds(lease.Client.BaseUrl, command.PdsHost))
+            if (!AtprotoDid.TryParse(lease.Client.AuthenticatedDid, out AtprotoDid providerDid)
+                || providerDid != delivery.Did
+                || !SamePds(lease.Client.BaseUrl, delivery.PdsHost))
             {
                 return AtprotoPdsDeliveryResult.Failed("session_binding_mismatch", retryable: false);
             }
 
             return await AtprotoPdsRepositoryWriter.DeliverAsync(
                 lease.Client,
-                command,
+                delivery,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -135,6 +143,37 @@ public sealed class AtprotoPdsDeliveryGateway(
     }
 }
 
+internal sealed record AtprotoPdsDeliveryCommand(
+    Guid TenantId,
+    Guid UserId,
+    AtprotoDid Did,
+    Uri PdsHost,
+    string Collection,
+    string RecordKey,
+    PdsSyncOperation Operation,
+    string? Payload,
+    string? ExpectedCid,
+    IReadOnlyList<string>? CompensationBasePayloads,
+    IReadOnlyList<string>? CompensationBaseCids,
+    bool CompensationEvidenceComplete)
+{
+    internal static AtprotoPdsDeliveryCommand From(
+        AtprotoPdsDeliveryRequest request,
+        AtprotoDid did) => new(
+            request.TenantId,
+            request.UserId,
+            did,
+            request.PdsHost,
+            request.Collection,
+            request.RecordKey,
+            request.Operation,
+            request.Payload,
+            request.ExpectedCid,
+            request.CompensationBasePayloads,
+            request.CompensationBaseCids,
+            request.CompensationEvidenceComplete);
+}
+
 internal static class AtprotoPdsRepositoryWriter
 {
     internal const string GetRecordNsid = "com.atproto.repo.getRecord";
@@ -143,26 +182,26 @@ internal static class AtprotoPdsRepositoryWriter
 
     internal static async Task<AtprotoPdsDeliveryResult> DeliverAsync(
         IATProtoClient client,
-        AtprotoPdsDeliveryRequest command,
+        AtprotoPdsDeliveryCommand delivery,
         CancellationToken cancellationToken)
     {
-        bool isCidlessCompensation = command.ExpectedCid is null
-            && command.Operation is PdsSyncOperation.Update or PdsSyncOperation.Delete;
+        bool isCidlessCompensation = delivery.ExpectedCid is null
+            && delivery.Operation is PdsSyncOperation.Update or PdsSyncOperation.Delete;
         if (isCidlessCompensation
-            && (!command.CompensationEvidenceComplete
-                || command.CompensationBasePayloads is not { Count: > 0 }
-                    && command.CompensationBaseCids is not { Count: > 0 }))
+            && (!delivery.CompensationEvidenceComplete
+                || delivery.CompensationBasePayloads is not { Count: > 0 }
+                    && delivery.CompensationBaseCids is not { Count: > 0 }))
         {
             return AtprotoPdsDeliveryResult.Failed("record_conflict", retryable: false);
         }
 
-        var existing = await GetExistingAsync(client, command, cancellationToken).ConfigureAwait(false);
-        if (command.Operation == PdsSyncOperation.Delete)
+        var existing = await GetExistingAsync(client, delivery, cancellationToken).ConfigureAwait(false);
+        if (delivery.Operation == PdsSyncOperation.Delete)
         {
-            return await DeleteAsync(client, command, existing, cancellationToken).ConfigureAwait(false);
+            return await DeleteAsync(client, delivery, existing, cancellationToken).ConfigureAwait(false);
         }
 
-        if (string.IsNullOrWhiteSpace(command.Payload))
+        if (string.IsNullOrWhiteSpace(delivery.Payload))
         {
             return AtprotoPdsDeliveryResult.Failed("payload_invalid", retryable: false);
         }
@@ -170,7 +209,7 @@ internal static class AtprotoPdsRepositoryWriter
         JsonElement desired;
         try
         {
-            desired = JsonSerializer.Deserialize<JsonElement>(command.Payload);
+            desired = JsonSerializer.Deserialize<JsonElement>(delivery.Payload);
         }
         catch (JsonException)
         {
@@ -182,30 +221,30 @@ internal static class AtprotoPdsRepositoryWriter
             return ValidResponse(existing.Uri, existing.Cid, existing.Cid);
         }
 
-        if (command.Operation == PdsSyncOperation.Create && existing is not null)
+        if (delivery.Operation == PdsSyncOperation.Create && existing is not null)
         {
             return AtprotoPdsDeliveryResult.Failed("record_conflict", retryable: false);
         }
 
-        if (command.Operation == PdsSyncOperation.Update
-            && command.ExpectedCid is not null
+        if (delivery.Operation == PdsSyncOperation.Update
+            && delivery.ExpectedCid is not null
             && existing is not null
-            && !string.Equals(existing.Cid, command.ExpectedCid, StringComparison.Ordinal))
+            && !string.Equals(existing.Cid, delivery.ExpectedCid, StringComparison.Ordinal))
         {
             return AtprotoPdsDeliveryResult.Failed("record_conflict", retryable: false);
         }
 
-        if (command.Operation == PdsSyncOperation.Update
+        if (delivery.Operation == PdsSyncOperation.Update
             && existing is null
-            && command.ExpectedCid is not null)
+            && delivery.ExpectedCid is not null)
         {
             return AtprotoPdsDeliveryResult.Failed("remote_record_missing", retryable: false);
         }
 
-        if (command.Operation == PdsSyncOperation.Update
-            && command.ExpectedCid is null
+        if (delivery.Operation == PdsSyncOperation.Update
+            && delivery.ExpectedCid is null
             && existing is not null
-            && !MatchesCompensationBase(existing, command))
+            && !MatchesCompensationBase(existing, delivery))
         {
             return AtprotoPdsDeliveryResult.Failed("record_conflict", retryable: false);
         }
@@ -214,13 +253,13 @@ internal static class AtprotoPdsRepositoryWriter
             PutRecordNsid,
             new AtprotoPutRecordInput
             {
-                Repo = command.Did,
-                Collection = command.Collection,
-                RecordKey = command.RecordKey,
+                Repo = delivery.Did.Value,
+                Collection = delivery.Collection,
+                RecordKey = delivery.RecordKey,
                 Validate = true,
                 Record = desired,
-                SwapRecord = command.Operation == PdsSyncOperation.Update
-                    ? command.ExpectedCid ?? existing?.Cid
+                SwapRecord = delivery.Operation == PdsSyncOperation.Update
+                    ? delivery.ExpectedCid ?? existing?.Cid
                     : null
             },
             cancellationToken).ConfigureAwait(false);
@@ -229,7 +268,7 @@ internal static class AtprotoPdsRepositoryWriter
 
     private static async Task<AtprotoGetRecordResponse?> GetExistingAsync(
         IATProtoClient client,
-        AtprotoPdsDeliveryRequest command,
+        AtprotoPdsDeliveryCommand delivery,
         CancellationToken cancellationToken)
     {
         try
@@ -237,9 +276,9 @@ internal static class AtprotoPdsRepositoryWriter
             return await client.GetAsync<AtprotoGetRecordResponse>(
                 GetRecordNsid,
                 [
-                    new("repo", command.Did),
-                    new("collection", command.Collection),
-                    new("rkey", command.RecordKey)
+                    new("repo", delivery.Did.Value),
+                    new("collection", delivery.Collection),
+                    new("rkey", delivery.RecordKey)
                 ],
                 cancellationToken).ConfigureAwait(false);
         }
@@ -253,37 +292,37 @@ internal static class AtprotoPdsRepositoryWriter
 
     private static async Task<AtprotoPdsDeliveryResult> DeleteAsync(
         IATProtoClient client,
-        AtprotoPdsDeliveryRequest command,
+        AtprotoPdsDeliveryCommand delivery,
         AtprotoGetRecordResponse? existing,
         CancellationToken cancellationToken)
     {
         if (existing is null)
         {
-            return command.ExpectedCid is { Length: > 0 } expectedCid
-                ? AtprotoPdsDeliveryResult.Success(BuildAtUri(command), expectedCid)
-                : AtprotoPdsDeliveryResult.SuccessAbsent(BuildAtUri(command));
+            return delivery.ExpectedCid is { Length: > 0 } expectedCid
+                ? AtprotoPdsDeliveryResult.Success(BuildAtUri(delivery), expectedCid)
+                : AtprotoPdsDeliveryResult.SuccessAbsent(BuildAtUri(delivery));
         }
 
-        if (command.ExpectedCid is not null
-            && !string.Equals(existing.Cid, command.ExpectedCid, StringComparison.Ordinal))
+        if (delivery.ExpectedCid is not null
+            && !string.Equals(existing.Cid, delivery.ExpectedCid, StringComparison.Ordinal))
         {
             return AtprotoPdsDeliveryResult.Failed("record_conflict", retryable: false);
         }
 
-        if (command.ExpectedCid is null
-            && !MatchesCompensationBase(existing, command))
+        if (delivery.ExpectedCid is null
+            && !MatchesCompensationBase(existing, delivery))
         {
             return AtprotoPdsDeliveryResult.Failed("record_conflict", retryable: false);
         }
 
-        var swapRecord = command.ExpectedCid ?? existing.Cid;
+        var swapRecord = delivery.ExpectedCid ?? existing.Cid;
         await client.PostAsync<AtprotoDeleteRecordInput, AtprotoDeleteRecordResponse>(
             DeleteRecordNsid,
             new AtprotoDeleteRecordInput
             {
-                Repo = command.Did,
-                Collection = command.Collection,
-                RecordKey = command.RecordKey,
+                Repo = delivery.Did.Value,
+                Collection = delivery.Collection,
+                RecordKey = delivery.RecordKey,
                 SwapRecord = swapRecord
             },
             cancellationToken).ConfigureAwait(false);
@@ -298,24 +337,24 @@ internal static class AtprotoPdsRepositoryWriter
             ? AtprotoPdsDeliveryResult.Failed("provider_response_invalid", retryable: true)
             : AtprotoPdsDeliveryResult.Success(uri, cid, observedBaseCid);
 
-    private static string BuildAtUri(AtprotoPdsDeliveryRequest command) =>
-        $"at://{command.Did}/{command.Collection}/{command.RecordKey}";
+    private static string BuildAtUri(AtprotoPdsDeliveryCommand delivery) =>
+        $"at://{delivery.Did.Value}/{delivery.Collection}/{delivery.RecordKey}";
 
     private static bool MatchesCompensationBase(
         AtprotoGetRecordResponse existing,
-        AtprotoPdsDeliveryRequest command)
+        AtprotoPdsDeliveryCommand delivery)
     {
-        if (command.CompensationBaseCids?.Contains(existing.Cid, StringComparer.Ordinal) == true)
+        if (delivery.CompensationBaseCids?.Contains(existing.Cid, StringComparer.Ordinal) == true)
         {
             return true;
         }
 
-        if (command.CompensationBasePayloads is null)
+        if (delivery.CompensationBasePayloads is null)
         {
             return false;
         }
 
-        foreach (string payload in command.CompensationBasePayloads)
+        foreach (string payload in delivery.CompensationBasePayloads)
         {
             try
             {

@@ -6,6 +6,7 @@ using System.Text.Json;
 using CarpaNet;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Federation;
+using Explore.Domain.ValueObjects;
 using Explore.Infrastructure.Services.Federation;
 using NSubstitute;
 
@@ -360,7 +361,7 @@ public sealed class AtprotoPdsRepositoryWriterTests
         return client;
     }
 
-    private static AtprotoPdsDeliveryRequest Command(
+    private static AtprotoPdsDeliveryCommand Command(
         PdsSyncOperation operation,
         string? expectedCid = null,
         IReadOnlyList<string>? compensationBasePayloads = null,
@@ -369,7 +370,7 @@ public sealed class AtprotoPdsRepositoryWriterTests
         new(
             Guid.Parse("0198ab00-0000-7000-8000-000000000001"),
             Guid.Parse("0198ab00-0000-7000-8000-000000000002"),
-            Did,
+            AtprotoDid.Parse(Did),
             new Uri("https://pds.example/"),
             Collection,
             RecordKey,

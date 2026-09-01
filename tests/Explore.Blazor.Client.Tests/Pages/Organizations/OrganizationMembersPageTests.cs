@@ -13,10 +13,11 @@ public sealed class OrganizationMembersPageTests : IDisposable
 {
     private readonly BlazorTestContext _ctx = new();
     private readonly IOrganizationMemberService _memberService = Substitute.For<IOrganizationMemberService>();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public OrganizationMembersPageTests()
     {
-        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Org Admin", "admin@example.com");
+        _ctx.SetAuthenticatedUser(_userId, "Org Admin", "admin@example.com");
         _ctx.Services.AddSingleton(_memberService);
         _ctx.Services.AddSingleton(Substitute.For<IOrganizationService>());
         _ctx.Services.AddScoped<RouterStateService>();
@@ -59,13 +60,36 @@ public sealed class OrganizationMembersPageTests : IDisposable
         await Assert.That(cut.FindAll("button.mud-menu-icon-button-activator").Count).IsEqualTo(1);
     }
 
-    private static OrganizationMemberDto CreateMember(int roleId, bool withEditLink, bool withDeleteLink)
+    [Test]
+    public async Task ExactHalRelations_RenderActions_ForSelfCreatorWithoutLocalInference()
+    {
+        _memberService.GetMembersWithAffordancesAsync(Arg.Any<Guid>())
+            .Returns(new OrganizationMembersResult(
+                [CreateMember(
+                    RoleHelper.OrgCreator,
+                    withEditLink: true,
+                    withDeleteLink: true,
+                    userId: _userId)],
+                CanCreate: false));
+
+        var cut = _ctx.RenderMudComponent<OrganizationMembers>();
+
+        await Assert.That(cut.Markup).Contains("Actions");
+        await Assert.That(cut.FindAll("button.mud-menu-icon-button-activator"))
+            .HasSingleItem();
+    }
+
+    private static OrganizationMemberDto CreateMember(
+        int roleId,
+        bool withEditLink,
+        bool withDeleteLink,
+        Guid? userId = null)
     {
         var member = new OrganizationMemberDto
         {
             Id = Guid.NewGuid(),
             OrganizationId = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
+            UserId = userId ?? Guid.NewGuid(),
             UserEmail = "member@example.com",
             UserFullName = "Member User",
             RoleId = roleId,

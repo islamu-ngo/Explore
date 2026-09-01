@@ -69,24 +69,30 @@ public class InstanceBootstrapAuditLoggerTests
     }
 
     [Test]
-    public async Task Log_WhenFieldsContainControlCharacters_RemovesThemFromStructuredState()
+    public async Task Log_WhenIdentityFieldsArePresent_EmitsOnlyPresenceMetadata()
     {
+        Guid actorUserId = Guid.CreateVersion7();
+        const string realm = "private-realm";
+        const string clientId = "private-client";
         _auditLogger.Log(new InstanceBootstrapAuditEvent(
             InstanceBootstrapAuditEventType.KeycloakBootstrapFailed,
             Operation: "keycloak_bootstrap",
             Outcome: "failed",
+            ActorUserId: actorUserId,
             FailureCode: "keycloak_admin_rejected",
-            Realm: "ISLAMU\nInjected",
-            ClientId: "client\rwith-control"));
+            Realm: realm,
+            ClientId: clientId));
 
         _logger.Received(1).Log(
             LogLevel.Warning,
             Arg.Any<EventId>(),
             Arg.Is<object>(state =>
-                LogStateContains(state, "Realm", "ISLAMUInjected")
-                && LogStateContains(state, "ClientId", "clientwith-control")
-                && !state.ToString()!.Contains('\n')
-                && !state.ToString()!.Contains('\r')),
+                LogStateContains(state, "ActorPresent", true)
+                && LogStateContains(state, "RealmPresent", true)
+                && LogStateContains(state, "ClientIdPresent", true)
+                && !state.ToString()!.Contains(actorUserId.ToString("D"), StringComparison.Ordinal)
+                && !state.ToString()!.Contains(realm, StringComparison.Ordinal)
+                && !state.ToString()!.Contains(clientId, StringComparison.Ordinal)),
             Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
 

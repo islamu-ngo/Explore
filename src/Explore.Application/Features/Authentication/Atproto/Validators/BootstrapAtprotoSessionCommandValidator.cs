@@ -14,9 +14,7 @@ public sealed class BootstrapAtprotoSessionCommandValidator : AbstractValidator<
     public BootstrapAtprotoSessionCommandValidator()
     {
         RuleFor(command => command.ExpectedDid)
-            .NotEmpty()
-            .MaximumLength(2048)
-            .Must(did => AtprotoDid.TryParse(did, out _));
+            .NotEqual(default(AtprotoDid));
         RuleFor(command => command.ExpectedPdsUri)
             .NotEmpty()
             .MaximumLength(2048)

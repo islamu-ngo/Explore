@@ -27,7 +27,7 @@ public readonly partial struct AtprotoDid : IEquatable<AtprotoDid>, IComparable<
     {
         if (!TryParse(value, out var did))
         {
-            throw new ArgumentException($"Invalid AT Protocol DID: '{value}'", nameof(value));
+            throw new ArgumentException("The AT Protocol DID is invalid.", nameof(value));
         }
 
         return did;
@@ -54,7 +54,7 @@ public readonly partial struct AtprotoDid : IEquatable<AtprotoDid>, IComparable<
         }
 
         var method = parts[1];
-        if (string.IsNullOrEmpty(method) || !method.All(c => c >= 'a' && c <= 'z'))
+        if (string.IsNullOrEmpty(method) || method == "deleted" || !method.All(c => c >= 'a' && c <= 'z'))
         {
             return false;
         }
@@ -68,7 +68,6 @@ public readonly partial struct AtprotoDid : IEquatable<AtprotoDid>, IComparable<
         return true;
     }
 
-    public static implicit operator string(AtprotoDid did) => did.Value;
 
     public static explicit operator AtprotoDid(string value) => Parse(value);
 
@@ -78,7 +77,7 @@ public readonly partial struct AtprotoDid : IEquatable<AtprotoDid>, IComparable<
 
     public override int GetHashCode() => Value != null ? StringComparer.Ordinal.GetHashCode(Value) : 0;
 
-    public override string ToString() => Value ?? string.Empty;
+    public override string ToString() => "[AT Protocol DID]";
 
     public int CompareTo(AtprotoDid other) => string.Compare(Value, other.Value, StringComparison.Ordinal);
 

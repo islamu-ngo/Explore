@@ -5,6 +5,7 @@ using CarpaNet.OAuth.Storage;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Infrastructure.Services.Federation;
 
@@ -118,7 +119,7 @@ public sealed class AtprotoOAuthSessionStoreContext
     public AtprotoOAuthSessionStoreContext(
         Guid tenantId,
         Guid userId,
-        string expectedSubjectDid,
+        AtprotoDid expectedSubjectDid,
         Uri expectedPdsUri,
         string oauthClientKeyId)
     {
@@ -127,10 +128,7 @@ public sealed class AtprotoOAuthSessionStoreContext
             throw new ArgumentException("ATProto OAuth session context is invalid.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(expectedSubjectDid);
-        if (expectedSubjectDid.Length > 2048
-            || !expectedSubjectDid.StartsWith("did:", StringComparison.Ordinal)
-            || expectedSubjectDid.Any(character => char.IsWhiteSpace(character) || char.IsControl(character)))
+        if (expectedSubjectDid == default)
         {
             throw new ArgumentException("ATProto OAuth subject is invalid.", nameof(expectedSubjectDid));
         }
@@ -146,7 +144,7 @@ public sealed class AtprotoOAuthSessionStoreContext
 
         TenantId = tenantId;
         UserId = userId;
-        ExpectedSubjectDid = expectedSubjectDid;
+        ExpectedDid = expectedSubjectDid;
         ExpectedPdsUri = NormalizePdsUri(expectedPdsUri.AbsoluteUri)
             ?? throw new ArgumentException("ATProto PDS URI is invalid.", nameof(expectedPdsUri));
         OAuthClientKeyId = oauthClientKeyId;
@@ -154,13 +152,14 @@ public sealed class AtprotoOAuthSessionStoreContext
 
     public Guid TenantId { get; }
     public Guid UserId { get; }
-    public string ExpectedSubjectDid { get; }
+    internal AtprotoDid ExpectedDid { get; }
+    public string ExpectedSubjectDid => ExpectedDid.Value;
     public string ExpectedPdsUri { get; }
     public string OAuthClientKeyId { get; }
 
     internal void RequireExpectedSubject(string sub)
     {
-        if (!string.Equals(sub, ExpectedSubjectDid, StringComparison.Ordinal))
+        if (!AtprotoDid.TryParse(sub, out AtprotoDid parsedDid) || parsedDid != ExpectedDid)
         {
             throw new AtprotoOAuthSessionUnavailableException("subject_mismatch");
         }

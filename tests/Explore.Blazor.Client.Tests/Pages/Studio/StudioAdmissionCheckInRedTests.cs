@@ -3,9 +3,9 @@
 
 using System.Globalization;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Admissions;
+using Explore.Blazor.Client.Pages.Studio;
 using ISLAMU.Wire.Contracts.Admissions;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -13,8 +13,6 @@ namespace Explore.Blazor.Client.Tests.Pages.Studio;
 
 public sealed class StudioAdmissionCheckInRedTests : IDisposable
 {
-    private const string ComponentName = "Explore.Blazor.Client.Pages.Studio.StudioAdmissionCheckIn";
-    private const string ServiceName = "Explore.Blazor.Client.Contracts.Services.Admissions.IAdmissionCheckInService";
     private const string CheckInRelation = "check-in-admissions";
     private const string PayloadPrefix = "islamu-admission:v1:";
     private const int QueueCapacity = 100;
@@ -43,7 +41,7 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
     [Test]
     public async Task ComponentDeclaresEventCheckInRouteAndExplicitCapabilityGeneration()
     {
-        Type component = RequireComponent();
+        Type component = typeof(StudioAdmissionCheckIn);
         string[] routes = component.GetCustomAttributes<RouteAttribute>()
             .Select(attribute => attribute.Template)
             .ToArray();
@@ -187,8 +185,6 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
         await Submit(cut, "hid-admission-input", PayloadPrefix + hidBearer);
         await Submit(cut, "manual-admission-input", manualBearer);
 
-        MethodInfo serviceMethod = RequireService().GetMethods().Single(method => method.Name == "CheckInAsync");
-        await Assert.That(_service.Calls.Select(call => call.Method).Distinct().Single()).IsEqualTo(serviceMethod);
         await Assert.That(_service.Calls.All(call => call.EventId == eventId)).IsTrue();
         await Assert.That(_service.Calls.All(call => call.TargetId == targetId)).IsTrue();
         await Assert.That(_service.CredentialValues).IsEquivalentTo([cameraBearer, hidBearer, manualBearer]);
@@ -374,13 +370,7 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
     {
         const string capability = "transient-scanner-capability";
         EventDto resource = Event(CheckInRelation);
-        Type serviceType = RequireService();
-        _ctx.Services.AddSingleton(serviceType, Phase21ServiceProxy.Create(serviceType, _service));
-        var parameters = ComponentParameters(resource, generation: 1);
-        parameters["ScannerCapability"] = capability;
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(component => component
-            .Add(dynamicComponent => dynamicComponent.Type, RequireComponent())
-            .Add(dynamicComponent => dynamicComponent.Parameters, parameters));
+        var cut = Render(resource, scannerCapability: capability);
 
         _scannerCapabilityState.Received(1).Activate(capability);
         await Assert.That(cut.Markup).DoesNotContain(capability);
@@ -460,14 +450,15 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
     [Test]
     public async Task ClientServiceContractRequiresExplicitEventAndTargetThroughOneTypedMethod()
     {
-        Type service = RequireService();
+        Type service = typeof(IAdmissionCheckInService);
         MethodInfo[] operations = service.GetMethods()
             .Where(method => !method.IsSpecialName)
             .ToArray();
         MethodInfo operation = operations.Single();
         ParameterInfo[] parameters = operation.GetParameters();
 
-        await Assert.That(operation.Name).IsEqualTo("CheckInAsync");
+        await Assert.That(operation.Name)
+            .IsEqualTo(nameof(IAdmissionCheckInService.CheckInAsync));
         await Assert.That(parameters.Length).IsEqualTo(4);
         await Assert.That((parameters[0].Name, parameters[0].ParameterType)).IsEqualTo(("eventId", typeof(Guid)));
         await Assert.That((parameters[1].Name, parameters[1].ParameterType)).IsEqualTo(("targetId", typeof(Guid)));
@@ -479,54 +470,47 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
             && operation.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)).IsTrue();
     }
 
-    private IRenderedComponent<DynamicComponent> Render(EventDto resource, long capabilityGeneration = 1)
+    private IRenderedComponent<StudioAdmissionCheckIn> Render(
+        EventDto resource,
+        long capabilityGeneration = 1,
+        string? scannerCapability = null)
     {
-        Type serviceType = RequireService();
-        object proxy = Phase21ServiceProxy.Create(serviceType, _service);
-        _ctx.Services.AddSingleton(serviceType, proxy);
-        return _ctx.RenderMudComponent<DynamicComponent>(parameters => parameters
-            .Add(component => component.Type, RequireComponent())
-            .Add(component => component.Parameters, ComponentParameters(resource, capabilityGeneration)));
+        _ctx.Services.AddSingleton<IAdmissionCheckInService>(_service);
+        NavigationManager navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo(navigation.GetUriWithQueryParameter("targetId", TargetId(resource)));
+        return _ctx.RenderMudComponent<StudioAdmissionCheckIn>(parameters => parameters
+            .Add(component => component.EventId, resource.Id!.Value)
+            .Add(component => component.Event, resource)
+            .Add(component => component.CapabilityGeneration, capabilityGeneration)
+            .Add(component => component.ScannerCapability, scannerCapability));
     }
 
-    private static void RenderAgain(
-        IRenderedComponent<DynamicComponent> cut,
+    private void RenderAgain(
+        IRenderedComponent<StudioAdmissionCheckIn> cut,
         EventDto resource,
-        long capabilityGeneration) => cut.Render(parameters => parameters
-        .Add(component => component.Type, RequireComponent())
-        .Add(component => component.Parameters, ComponentParameters(resource, capabilityGeneration)));
-
-    private static Dictionary<string, object> ComponentParameters(EventDto resource, long generation) => new()
+        long capabilityGeneration)
     {
-        ["EventId"] = resource.Id!.Value,
-        ["TargetId"] = TargetId(resource),
-        ["Event"] = resource,
-        ["CapabilityGeneration"] = generation
-    };
+        NavigationManager navigation = _ctx.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo(navigation.GetUriWithQueryParameter("targetId", TargetId(resource)));
+        cut.Render(parameters => parameters
+            .Add(component => component.EventId, resource.Id!.Value)
+            .Add(component => component.Event, resource)
+            .Add(component => component.CapabilityGeneration, capabilityGeneration));
+    }
 
-    private static async Task Submit(IRenderedComponent<DynamicComponent> cut, string testId, string value)
+    private static async Task Submit(
+        IRenderedComponent<StudioAdmissionCheckIn> cut,
+        string testId,
+        string value)
     {
         var input = cut.Find($"[data-testid='{testId}']");
         await input.InputAsync(new ChangeEventArgs { Value = value });
         await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter", Code = "Enter" });
     }
 
-    private static void DisposeRenderedPhase21Component(IRenderedComponent<DynamicComponent> cut)
-    {
-        MethodInfo findComponent = typeof(RenderedComponentExtensions).GetMethods()
-            .Single(method => method.Name == nameof(RenderedComponentExtensions.FindComponent)
-                && method.IsGenericMethod
-                && method.GetParameters().Length == 1);
-        object rendered = findComponent.MakeGenericMethod(RequireComponent()).Invoke(null, [cut])!;
-        object instance = rendered.GetType().GetProperty("Instance")!.GetValue(rendered)!;
-        ((IDisposable)instance).Dispose();
-    }
-
-    private static Type RequireComponent() => typeof(EventDto).Assembly.GetType(ComponentName)
-        ?? throw new InvalidOperationException($"Missing Phase 21 UI behavior: {ComponentName} has not been implemented.");
-
-    private static Type RequireService() => typeof(EventDto).Assembly.GetType(ServiceName)
-        ?? throw new InvalidOperationException($"Missing Phase 21 UI behavior: {ServiceName} has not been implemented.");
+    private static void DisposeRenderedPhase21Component(
+        IRenderedComponent<StudioAdmissionCheckIn> cut) =>
+        cut.Instance.Dispose();
 
     private static EventDto Event(string? relation)
     {
@@ -573,25 +557,22 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
     }
 
     private sealed record ServiceCall(
-        MethodInfo Method,
-        object?[] Arguments,
-        Guid? EventId,
-        Guid? TargetId,
+        Guid EventId,
+        Guid TargetId,
+        AdmissionCredentialBearer Credential,
         CancellationToken CancellationToken);
 
-    private sealed class Phase21ServiceHandler
+    private sealed class Phase21ServiceHandler : IAdmissionCheckInService
     {
         private readonly Queue<string> _resultCodes = new();
-        private readonly List<(Type ResultType, object Completion)> _held = [];
+        private readonly List<TaskCompletionSource<AdmissionCheckInUiResult>> _held = [];
         private Exception? _exception;
         private bool _hold;
 
         public List<ServiceCall> Calls { get; } = [];
 
         public IReadOnlyList<string> CredentialValues => Calls
-            .SelectMany(call => call.Arguments)
-            .OfType<AdmissionCredentialBearer>()
-            .Select(credential => credential.Value)
+            .Select(call => call.Credential.Value)
             .ToArray();
 
         public void EnqueueResult(string code) => _resultCodes.Enqueue(code);
@@ -600,30 +581,29 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
 
         public void Throw(Exception exception) => _exception = exception;
 
-        public object? Invoke(MethodInfo method, object?[]? arguments)
+        public Task<AdmissionCheckInUiResult> CheckInAsync(
+            Guid eventId,
+            Guid targetId,
+            AdmissionCredentialBearer credential,
+            CancellationToken cancellationToken)
         {
-            object?[] supplied = arguments ?? [];
-            Guid? eventId = supplied.ElementAtOrDefault(0) is Guid suppliedEventId ? suppliedEventId : null;
-            Guid? targetId = supplied.ElementAtOrDefault(1) is Guid suppliedTargetId ? suppliedTargetId : null;
-            CancellationToken cancellationToken = supplied.OfType<CancellationToken>().LastOrDefault();
-            Calls.Add(new ServiceCall(method, supplied, eventId, targetId, cancellationToken));
+            Calls.Add(new ServiceCall(eventId, targetId, credential, cancellationToken));
             if (_exception is not null)
             {
-                return Faulted(method.ReturnType, _exception);
+                return Task.FromException<AdmissionCheckInUiResult>(_exception);
             }
 
             if (_hold)
             {
-                Type resultType = method.ReturnType.GetGenericArguments().Single();
-                Type completionType = typeof(TaskCompletionSource<>).MakeGenericType(resultType);
-                object completion = Activator.CreateInstance(
-                    completionType,
-                    TaskCreationOptions.RunContinuationsAsynchronously)!;
-                _held.Add((resultType, completion));
-                return completionType.GetProperty("Task")!.GetValue(completion);
+                var completion = new TaskCompletionSource<AdmissionCheckInUiResult>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                _held.Add(completion);
+                return completion.Task;
             }
 
-            return Completed(method.ReturnType, _resultCodes.Count > 0 ? _resultCodes.Dequeue() : "CheckedIn");
+            return Task.FromResult(Result(
+                _resultCodes.Count > 0 ? _resultCodes.Dequeue() : "CheckedIn",
+                AdmissionCheckInUiStatus.Completed));
         }
 
         public void ReleaseHeldResults(
@@ -631,68 +611,20 @@ public sealed class StudioAdmissionCheckInRedTests : IDisposable
             AdmissionCheckInUiStatus status = AdmissionCheckInUiStatus.Completed)
         {
             _hold = false;
-            foreach ((Type resultType, object completion) in _held)
+            foreach (TaskCompletionSource<AdmissionCheckInUiResult> completion in _held)
             {
-                object result = Result(resultType, code, status);
-                completion.GetType().GetMethod("TrySetResult")!.Invoke(completion, [result]);
+                completion.TrySetResult(Result(code, status));
             }
             _held.Clear();
         }
 
-        private static object Faulted(Type taskType, Exception exception)
-        {
-            Type resultType = taskType.GetGenericArguments().Single();
-            return typeof(Task).GetMethods()
-                .Single(method => method.Name == nameof(Task.FromException) && method.IsGenericMethod)
-                .MakeGenericMethod(resultType)
-                .Invoke(null, [exception])!;
-        }
-
-        private static object Completed(Type taskType, string code)
-        {
-            Type resultType = taskType.GetGenericArguments().Single();
-            object result = Result(resultType, code, AdmissionCheckInUiStatus.Completed);
-            return typeof(Task).GetMethods()
-                .Single(method => method.Name == nameof(Task.FromResult) && method.IsGenericMethod)
-                .MakeGenericMethod(resultType)
-                .Invoke(null, [result])!;
-        }
-
-        private static object Result(
-            Type resultType,
+        private static AdmissionCheckInUiResult Result(
             string code,
-            AdmissionCheckInUiStatus status)
-        {
-            object result = RuntimeHelpers.GetUninitializedObject(resultType);
-            Set(result, "Code", code);
-            Set(result, "ResultCode", code);
-            Set(result, "Message", code);
-            resultType.GetProperty("Status")?.SetValue(result, status);
-            return result;
-        }
-
-        private static void Set(object target, string propertyName, string value)
-        {
-            PropertyInfo? property = target.GetType().GetProperty(propertyName);
-            if (property?.CanWrite == true && property.PropertyType == typeof(string))
+            AdmissionCheckInUiStatus status) => new()
             {
-                property.SetValue(target, value);
-            }
-        }
-    }
-
-    private class Phase21ServiceProxy : DispatchProxy
-    {
-        private Phase21ServiceHandler Handler { get; set; } = null!;
-
-        public static object Create(Type serviceType, Phase21ServiceHandler handler)
-        {
-            object proxy = DispatchProxy.Create(serviceType, typeof(Phase21ServiceProxy));
-            ((Phase21ServiceProxy)proxy).Handler = handler;
-            return proxy;
-        }
-
-        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) =>
-            Handler.Invoke(targetMethod!, args);
+                Code = code,
+                Message = code,
+                Status = status
+            };
     }
 }

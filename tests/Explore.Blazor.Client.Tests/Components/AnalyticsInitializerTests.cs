@@ -3,6 +3,7 @@
 
 using Bunit;
 using Explore.Blazor.Client.Models.Analytics;
+using Explore.Blazor.Client.Shared;
 
 namespace Explore.Blazor.Client.Tests.Components;
 
@@ -13,16 +14,12 @@ public class AnalyticsInitializerTests : IDisposable
     private const string PageReferrerProperty = "page_referrer";
 
     private readonly BlazorTestContext _ctx;
-    private readonly Type _analyticsInitializerType;
     private readonly ICookieConsentInterop _cookieInterop;
     private readonly CookieConsentStateService _consentStateService;
 
     public AnalyticsInitializerTests()
     {
         _ctx = new BlazorTestContext();
-        _analyticsInitializerType = typeof(IPublicExperienceService).Assembly.GetTypes()
-            .First(x => x.Name == "AnalyticsInitializer");
-
         _cookieInterop = Substitute.For<ICookieConsentInterop>();
         _ctx.Services.AddSingleton(_cookieInterop);
 
@@ -98,18 +95,8 @@ public class AnalyticsInitializerTests : IDisposable
         return !string.IsNullOrWhiteSpace(value);
     }
 
-    private IRenderedComponent<IComponent> RenderAnalyticsInitializer()
-    {
-        var method = typeof(BunitContext)
-            .GetMethods()
-            .Single(x => x.Name == "Render"
-                && x.IsGenericMethod
-                && x.GetParameters().Length == 1
-                && x.GetParameters()[0].HasDefaultValue);
-
-        return (IRenderedComponent<IComponent>)method.MakeGenericMethod(_analyticsInitializerType)
-            .Invoke(_ctx, new object?[] { null })!;
-    }
+    private IRenderedComponent<AnalyticsInitializer> RenderAnalyticsInitializer() =>
+        _ctx.Render<AnalyticsInitializer>();
 
     [Test]
     public async Task Renders_WithValidSettings_InitializesInteropAndTracksInitialPageView()

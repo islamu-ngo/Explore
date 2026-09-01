@@ -210,7 +210,7 @@ public sealed class PostgreSqlUserAuthenticationTokenRepositoryTests(PostgreSqlC
         new(repository, protector, new(
             tenantId,
             userId,
-            "did:plc:alice",
+            Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:alice"),
             new Uri("https://pds.example/"),
             "oauth-client-key"));
 

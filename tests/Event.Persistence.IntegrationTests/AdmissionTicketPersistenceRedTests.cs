@@ -2,8 +2,6 @@
 // ABOUTME: Proves provider parity, real PostgreSQL collisions, and public Application issuance replay.
 
 using System.Data.Common;
-using System.Linq.Expressions;
-using System.Reflection;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Configuration;
 using Explore.Application.Contracts.Admissions;
@@ -109,18 +107,35 @@ public sealed class AdmissionTicketPersistenceModelRedTests
         await Assert.That(ticket.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
         await Assert.That(credential.FindDeclaredQueryFilter(QueryFilterNames.Tenant)).IsNotNull();
         await Assert.That(ticket.GetIndexes().Any(index => index.IsUnique && AdmissionPersistenceSurface.HasProperties(
-            index.Properties, "TenantId", "RegistrationTicketAssignmentId"))).IsTrue();
+            index.Properties,
+            nameof(AdmissionTicket.TenantId),
+            nameof(AdmissionTicket.RegistrationTicketAssignmentId)))).IsTrue();
         await Assert.That(credential.GetIndexes().Any(index => index.IsUnique && AdmissionPersistenceSurface.HasProperties(
-            index.Properties, "TenantId", "AdmissionTicketId", "CredentialVersion"))).IsTrue();
+            index.Properties,
+            nameof(AdmissionTicketCredential.TenantId),
+            nameof(AdmissionTicketCredential.AdmissionTicketId),
+            nameof(AdmissionTicketCredential.CredentialVersion)))).IsTrue();
         await Assert.That(credential.GetIndexes().Any(index => index.IsUnique && AdmissionPersistenceSurface.HasProperties(
-            index.Properties, "TenantId", "AdmissionTicketId", "ActiveUniquenessSlot") &&
+            index.Properties,
+            nameof(AdmissionTicketCredential.TenantId),
+            nameof(AdmissionTicketCredential.AdmissionTicketId),
+            "ActiveUniquenessSlot") &&
             string.IsNullOrWhiteSpace(index.GetFilter()))).IsTrue();
         await Assert.That(credential.GetIndexes().Any(index => index.IsUnique && AdmissionPersistenceSurface.HasProperties(
-            index.Properties, "TenantId", "LookupKeyVersion", "LookupDigest"))).IsTrue();
+            index.Properties,
+            nameof(AdmissionTicketCredential.TenantId),
+            nameof(AdmissionTicketCredential.LookupKeyVersion),
+            nameof(AdmissionTicketCredential.LookupDigest)))).IsTrue();
         await Assert.That(credential.GetForeignKeys().Any(foreignKey =>
             foreignKey.PrincipalEntityType == ticket &&
-            AdmissionPersistenceSurface.HasProperties(foreignKey.Properties, "TenantId", "AdmissionTicketId") &&
-            AdmissionPersistenceSurface.HasProperties(foreignKey.PrincipalKey.Properties, "TenantId", "Id") &&
+            AdmissionPersistenceSurface.HasProperties(
+                foreignKey.Properties,
+                nameof(AdmissionTicketCredential.TenantId),
+                nameof(AdmissionTicketCredential.AdmissionTicketId)) &&
+            AdmissionPersistenceSurface.HasProperties(
+                foreignKey.PrincipalKey.Properties,
+                nameof(AdmissionTicket.TenantId),
+                nameof(AdmissionTicket.Id)) &&
             foreignKey.DeleteBehavior == DeleteBehavior.Restrict)).IsTrue();
 
         string[] forbiddenFragments = ["Plaintext", "Bearer", "RawCredential", "CapabilityToken", "Secret"];
@@ -132,11 +147,15 @@ public sealed class AdmissionTicketPersistenceModelRedTests
             .ToArray();
         await Assert.That(persistedNames.Any(name => forbiddenFragments.Any(fragment =>
             name.Contains(fragment, StringComparison.OrdinalIgnoreCase)))).IsFalse();
-        await Assert.That(credential.FindProperty("LookupDigest")!.ClrType).IsEqualTo(typeof(string));
+        await Assert.That(credential.FindProperty(
+                nameof(AdmissionTicketCredential.LookupDigest))!.ClrType)
+            .IsEqualTo(typeof(string));
         await Assert.That(ticket.FindProperty("CredentialDigest")).IsNull();
         await Assert.That(ticket.FindProperty("CredentialPlaintext")).IsNull();
-        await Assert.That(ticket.FindProperty("Id")!.ValueGenerated).IsEqualTo(ValueGenerated.Never);
-        await Assert.That(credential.FindProperty("Id")!.ValueGenerated).IsEqualTo(ValueGenerated.Never);
+        await Assert.That(ticket.FindProperty(nameof(AdmissionTicket.Id))!.ValueGenerated)
+            .IsEqualTo(ValueGenerated.Never);
+        await Assert.That(credential.FindProperty(nameof(AdmissionTicketCredential.Id))!.ValueGenerated)
+            .IsEqualTo(ValueGenerated.Never);
     }
 
     [Test]
@@ -152,13 +171,22 @@ public sealed class AdmissionTicketPersistenceModelRedTests
             AdmissionPersistenceSurface.RequireAdmissionEntities(context.GetService<IDesignTimeModel>().Model);
 
         await Assert.That(ticket.GetIndexes().Any(index => index.IsUnique && AdmissionPersistenceSurface.HasProperties(
-            index.Properties, "TenantId", "RegistrationTicketAssignmentId"))).IsTrue();
+            index.Properties,
+            nameof(AdmissionTicket.TenantId),
+            nameof(AdmissionTicket.RegistrationTicketAssignmentId)))).IsTrue();
         await Assert.That(credential.GetIndexes().Any(index => index.IsUnique && AdmissionPersistenceSurface.HasProperties(
-            index.Properties, "TenantId", "LookupKeyVersion", "LookupDigest"))).IsTrue();
+            index.Properties,
+            nameof(AdmissionTicketCredential.TenantId),
+            nameof(AdmissionTicketCredential.LookupKeyVersion),
+            nameof(AdmissionTicketCredential.LookupDigest)))).IsTrue();
         await Assert.That(credential.GetIndexes().Any(index => index.IsUnique && AdmissionPersistenceSurface.HasProperties(
-            index.Properties, "TenantId", "AdmissionTicketId", "ActiveUniquenessSlot"))).IsTrue();
+            index.Properties,
+            nameof(AdmissionTicketCredential.TenantId),
+            nameof(AdmissionTicketCredential.AdmissionTicketId),
+            "ActiveUniquenessSlot"))).IsTrue();
         await Assert.That(new[] { ticket, credential }.All(entity =>
-            entity.FindProperty("Id")!.GetDefaultValueSql() is null)).IsTrue();
+            entity.FindProperty(nameof(AdmissionTicket.Id))!
+                .GetDefaultValueSql() is null)).IsTrue();
     }
 }
 
@@ -185,31 +213,31 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         await PersistTicketAsync(tenantB.TenantId, graphB, CancellationToken.None);
 
         await using ExploreDbContext tenantAContext = TenantContext(tenantA.TenantId);
-        dynamic tenantARepository = surface.CreateTicketRepository(tenantAContext);
-        object? foundA = await tenantARepository.GetByCredentialDigestAsync(
+        var tenantARepository = new AdmissionTicketRepository(tenantAContext);
+        AdmissionTicket? foundA = await tenantARepository.GetByCredentialDigestAsync(
             tenantA.TenantId, keyVersion, sharedDigest, CancellationToken.None);
-        object? blockedBFromTenantA = await tenantARepository.GetByCredentialDigestAsync(
+        AdmissionTicket? blockedBFromTenantA = await tenantARepository.GetByCredentialDigestAsync(
             tenantB.TenantId, keyVersion, sharedDigest, CancellationToken.None);
-        object? absent = await tenantARepository.GetByCredentialDigestAsync(
+        AdmissionTicket? absent = await tenantARepository.GetByCredentialDigestAsync(
             Guid.CreateVersion7(), keyVersion, sharedDigest, CancellationToken.None);
-        object? replayA = await tenantARepository.GetByAssignmentAsync(
+        AdmissionTicket? replayA = await tenantARepository.GetByAssignmentAsync(
             tenantA.TenantId, tenantA.AssignmentId, CancellationToken.None);
 
         await using ExploreDbContext tenantBContext = TenantContext(tenantB.TenantId);
-        dynamic tenantBRepository = surface.CreateTicketRepository(tenantBContext);
-        object? foundB = await tenantBRepository.GetByCredentialDigestAsync(
+        var tenantBRepository = new AdmissionTicketRepository(tenantBContext);
+        AdmissionTicket? foundB = await tenantBRepository.GetByCredentialDigestAsync(
             tenantB.TenantId, keyVersion, sharedDigest, CancellationToken.None);
 
         await Assert.That(foundA).IsNotNull();
         await Assert.That(foundB).IsNotNull();
-        await Assert.That(AdmissionPersistenceSurface.Read<Guid>(foundA!, "Id")).IsEqualTo(graphA.TicketId);
-        await Assert.That(AdmissionPersistenceSurface.Read<Guid>(foundB!, "Id")).IsEqualTo(graphB.TicketId);
-        await Assert.That(AdmissionPersistenceSurface.Read<Guid>(foundA!, "TenantId")).IsEqualTo(tenantA.TenantId);
-        await Assert.That(AdmissionPersistenceSurface.Read<Guid>(foundB!, "TenantId")).IsEqualTo(tenantB.TenantId);
+        await Assert.That(foundA!.Id).IsEqualTo(graphA.TicketId);
+        await Assert.That(foundB!.Id).IsEqualTo(graphB.TicketId);
+        await Assert.That(foundA.TenantId).IsEqualTo(tenantA.TenantId);
+        await Assert.That(foundB.TenantId).IsEqualTo(tenantB.TenantId);
         await Assert.That(blockedBFromTenantA).IsNull();
         await Assert.That(absent).IsNull();
         await Assert.That(replayA).IsNotNull();
-        await Assert.That(AdmissionPersistenceSurface.Read<Guid>(replayA!, "Id")).IsEqualTo(graphA.TicketId);
+        await Assert.That(replayA!.Id).IsEqualTo(graphA.TicketId);
         await Assert.That(graphA.TicketId.Version).IsEqualTo(7);
         await Assert.That(graphB.TicketId.Version).IsEqualTo(7);
     }
@@ -227,21 +255,30 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         await PersistTicketAsync(seed.TenantId, original, CancellationToken.None);
 
         await using ExploreDbContext context = TenantContext(seed.TenantId);
-        dynamic repository = surface.CreateTicketRepository(context);
-        dynamic managed = await repository.GetByIdForUpdateAsync(seed.TenantId, original.TicketId, CancellationToken.None);
-        managed.RotateCredential(
-            Guid.CreateVersion7(), 2, 12, replacementDigest, UtcNow.AddMinutes(1));
-        await repository.SaveChangesAsync(CancellationToken.None);
+        var repository = new AdmissionTicketRepository(context);
+        await new EfCoreUnitOfWork(context).ExecuteInTransactionAsync(
+            async token =>
+            {
+                AdmissionTicket managed = await repository.GetByIdForUpdateAsync(
+                    seed.TenantId,
+                    original.TicketId,
+                    token) ?? throw new InvalidOperationException("Missing admission ticket.");
+                managed.RotateCredential(
+                    Guid.CreateVersion7(), 2, 12, replacementDigest, UtcNow.AddMinutes(1));
+                await repository.SaveChangesAsync(token);
+                return true;
+            },
+            CancellationToken.None);
         context.ChangeTracker.Clear();
 
-        object? oldLookup = await repository.GetByCredentialDigestAsync(
+        AdmissionTicket? oldLookup = await repository.GetByCredentialDigestAsync(
             seed.TenantId, 11, previousDigest, CancellationToken.None);
-        object? newLookup = await repository.GetByCredentialDigestAsync(
+        AdmissionTicket? newLookup = await repository.GetByCredentialDigestAsync(
             seed.TenantId, 12, replacementDigest, CancellationToken.None);
 
         await Assert.That(oldLookup).IsNull();
         await Assert.That(newLookup).IsNotNull();
-        await Assert.That(AdmissionPersistenceSurface.Read<Guid>(newLookup!, "Id")).IsEqualTo(original.TicketId);
+        await Assert.That(newLookup!.Id).IsEqualTo(original.TicketId);
     }
 
     [Test]
@@ -259,7 +296,9 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         await using ExploreDbContext context = TenantContext(seed.TenantId);
         var dispatcher = new RecordingAdmissionDispatcher(context);
         var service = new AdmissionIssuanceService(
-            new AdmissionIssuanceRepository(context),
+            new AdmissionIssuanceRepository(
+                context,
+                ReadyParticipantAdmissionReadinessAuthority.Instance),
             new AdmissionCredentialDigestService(
                 new AdmissionSecretResolver(),
                 Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })),
@@ -286,6 +325,66 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         await Assert.That(deliveryCount).IsEqualTo(1);
         await Assert.That(dispatcher.DispatchCount).IsEqualTo(1);
         Console.WriteLine($"ADMISSION_ISSUANCE_QA outcome={issued.Outcome} replay={replay.Outcome} tickets={ticketCount} credentials={credentialCount} deliveryIntents={deliveryCount} dispatches={dispatcher.DispatchCount}");
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task DefaultIssuanceCompositionRejectsPendingAndRevokedReadinessWithoutEffects(
+        bool revoked)
+    {
+        await fixture.ResetAsync();
+        SeededAssignment seed = await SeedAssignmentAsync(
+            revoked ? "readiness-revoked" : "readiness-pending");
+        ParticipantAdmissionEligibility eligibility =
+            ParticipantAdmissionEligibility.Create(
+                seed.TenantId,
+                seed.EventId,
+                seed.Assignment,
+                seed.Participant,
+                consentRequired: false,
+                approvalRequired: false,
+                UtcNow);
+        if (revoked)
+        {
+            eligibility.Revoke(
+                Guid.CreateVersion7(),
+                UtcNow.AddMinutes(1),
+                Guid.CreateVersion7());
+        }
+        RegistrationFinalizationEffect effect =
+            RegistrationFinalizationEffect.Create(seed.Order, UtcNow);
+
+        await using ExploreDbContext context = TenantContext(seed.TenantId);
+        context.AddRange(eligibility, effect);
+        await context.SaveChangesAsync();
+        var service = new AdmissionIssuanceService(
+            new AdmissionIssuanceRepository(context),
+            new AdmissionCredentialDigestService(
+                new AdmissionSecretResolver(),
+                Options.Create(new AdmissionCredentialOptions
+                {
+                    ActiveKeyVersion = 7,
+                })),
+            new AdmissionDeliveryEnvelopeProtector(
+                new EphemeralDataProtectionProvider()),
+            new RecordingAdmissionDispatcher(context),
+            new EfCoreUnitOfWork(context),
+            new FixedAdmissionTimeProvider(UtcNow));
+
+        AdmissionIssuanceResult result = await service.IssueConfirmedAsync(
+            new AdmissionIssuanceRequest(
+                seed.TenantId,
+                seed.OrderId,
+                effect.Id,
+                AdmissionIssuanceAuthority.ConfirmedFreeOrder),
+            CancellationToken.None);
+
+        await Assert.That(result.Outcome)
+            .IsEqualTo(AdmissionIssuanceOutcome.ReadinessPending);
+        await Assert.That(await context.AdmissionTickets.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.AdmissionTicketCredentials.CountAsync()).IsEqualTo(0);
+        await Assert.That(await context.AdmissionDeliveryIntents.CountAsync()).IsEqualTo(0);
     }
 
     [Test]
@@ -373,7 +472,9 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
             .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
         var dispatcher = new RecordingAdmissionDispatcher(context);
         var service = new AdmissionIssuanceService(
-            new AdmissionIssuanceRepository(context),
+            new AdmissionIssuanceRepository(
+                context,
+                ReadyParticipantAdmissionReadinessAuthority.Instance),
             new AdmissionCredentialDigestService(
                 new AdmissionSecretResolver(),
                 Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })),
@@ -412,7 +513,9 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
                 Arg.Any<CancellationToken>())
             .Returns(new AdmissionDeliveryDispatchResult(AdmissionDeliveryOutcome.Delivered));
         var service = new AdmissionIssuanceService(
-            new AdmissionIssuanceRepository(context),
+            new AdmissionIssuanceRepository(
+                context,
+                ReadyParticipantAdmissionReadinessAuthority.Instance),
             new AdmissionCredentialDigestService(
                 new AdmissionSecretResolver(),
                 Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })),
@@ -527,7 +630,9 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
             await issuanceContext.RegistrationFinalizationEffects
                 .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
         var issuance = new AdmissionIssuanceService(
-            new AdmissionIssuanceRepository(issuanceContext),
+            new AdmissionIssuanceRepository(
+                issuanceContext,
+                ReadyParticipantAdmissionReadinessAuthority.Instance),
             gatedDigest,
             new AdmissionDeliveryEnvelopeProtector(new EphemeralDataProtectionProvider()),
             new RecordingAdmissionDispatcher(issuanceContext),
@@ -619,7 +724,9 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
             await issuanceContext.RegistrationFinalizationEffects
                 .SingleAsync(value => value.RegistrationOrderId == seed.OrderId);
         var issuance = new AdmissionIssuanceService(
-            new AdmissionIssuanceRepository(issuanceContext),
+            new AdmissionIssuanceRepository(
+                issuanceContext,
+                ReadyParticipantAdmissionReadinessAuthority.Instance),
             gatedDigest,
             new AdmissionDeliveryEnvelopeProtector(new EphemeralDataProtectionProvider()),
             new RecordingAdmissionDispatcher(issuanceContext),
@@ -747,7 +854,9 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         await Assert.That(await verification.AdmissionDeliveryIntents.CountAsync()).IsEqualTo(1);
 
         AdmissionIssuanceService CreateService(ExploreDbContext context) => new(
-            new AdmissionIssuanceRepository(context),
+            new AdmissionIssuanceRepository(
+                context,
+                ReadyParticipantAdmissionReadinessAuthority.Instance),
             gatedDigest,
             new AdmissionDeliveryEnvelopeProtector(dataProtection),
             new RecordingAdmissionDispatcher(context),
@@ -1314,7 +1423,6 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         TicketGraph secondGraph,
         CollisionBarrierTarget barrierTarget)
     {
-        AdmissionPersistenceSurface surface = AdmissionPersistenceSurface.RequirePublicSurface();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await using ExploreDbContext metadataContext = fixture.CreateDbContext();
         (IEntityType ticketModel, IEntityType credentialModel) =
@@ -1346,17 +1454,17 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         await Assert.That(((PostgresException)collision.GetBaseException()).SqlState)
             .IsEqualTo(PostgresErrorCodes.UniqueViolation);
         await using ExploreDbContext verification = TenantContext(tenantId);
-        await Assert.That(AdmissionPersistenceSurface.CountRows(verification, ticketModel.ClrType)).IsEqualTo(1);
-        await Assert.That(AdmissionPersistenceSurface.CountRows(verification, credentialModel.ClrType)).IsEqualTo(1);
+        await Assert.That(await verification.AdmissionTickets.CountAsync(timeout.Token)).IsEqualTo(1);
+        await Assert.That(await verification.AdmissionTicketCredentials.CountAsync(timeout.Token)).IsEqualTo(1);
 
         async Task<Exception?> PersistCompetingTicketAsync(Guid writerId, TicketGraph graph)
         {
             var interceptor = new AdmissionInsertBarrierInterceptor(barrier, writerId, barrierTableIdentifier);
             await using ExploreDbContext context = TenantContext(tenantId, interceptor);
-            dynamic repository = surface.CreateTicketRepository(context);
+            var repository = new AdmissionTicketRepository(context);
             try
             {
-                await repository.AddAsync((dynamic)graph.Ticket, timeout.Token);
+                await repository.AddAsync(graph.Ticket, timeout.Token);
                 await repository.SaveChangesAsync(timeout.Token);
                 return null;
             }
@@ -1414,8 +1522,8 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
     private async Task PersistTicketAsync(Guid tenantId, TicketGraph graph, CancellationToken cancellationToken)
     {
         await using ExploreDbContext context = TenantContext(tenantId);
-        dynamic repository = AdmissionPersistenceSurface.RequirePublicSurface().CreateTicketRepository(context);
-        await repository.AddAsync((dynamic)graph.Ticket, cancellationToken);
+        var repository = new AdmissionTicketRepository(context);
+        await repository.AddAsync(graph.Ticket, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
     }
 
@@ -1441,7 +1549,9 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         context.RegistrationFinalizationEffects.Add(effect);
         await context.SaveChangesAsync();
         var service = new AdmissionIssuanceService(
-            new AdmissionIssuanceRepository(context),
+            new AdmissionIssuanceRepository(
+                context,
+                ReadyParticipantAdmissionReadinessAuthority.Instance),
             new AdmissionCredentialDigestService(
                 new AdmissionSecretResolver(),
                 Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })),
@@ -1461,7 +1571,9 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
 
     private AdmissionIssuanceService PaidIssuanceService(ExploreDbContext context) =>
         new(
-            new AdmissionIssuanceRepository(context),
+            new AdmissionIssuanceRepository(
+                context,
+                ReadyParticipantAdmissionReadinessAuthority.Instance),
             new AdmissionCredentialDigestService(
                 new AdmissionSecretResolver(),
                 Options.Create(new AdmissionCredentialOptions { ActiveKeyVersion = 7 })),
@@ -1586,12 +1698,19 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         context.AddRange(eventEntity, catalog, order);
         if (paid)
         {
+            Guid organizerPaymentProviderConnectionId = Guid.CreateVersion7();
             PaidOrderAcceptanceSnapshot acceptance = CreatePaidAcceptance(
-                tenant.Id, eventEntity.Id, order.Id, line.Id, assignmentCount, organizerMinor);
+                tenant.Id,
+                eventEntity.Id,
+                order.Id,
+                line.Id,
+                assignmentCount,
+                organizerMinor,
+                organizerPaymentProviderConnectionId);
             OrganizerPaymentRecipientSnapshot recipient = OrganizerPaymentRecipientSnapshot.Create(
                 tenant.Id,
                 actor.Id,
-                actor.Id,
+                organizerPaymentProviderConnectionId,
                 "stripe",
                 "platform-test",
                 "acct_admission_test",
@@ -1646,7 +1765,8 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
         Guid orderId,
         Guid orderLineId,
         int quantity,
-        long organizerMinor) =>
+        long organizerMinor,
+        Guid organizerPaymentProviderConnectionId) =>
         PaidOrderAcceptanceSnapshot.Create(
             Guid.CreateVersion7(),
             tenantId,
@@ -1707,7 +1827,11 @@ public sealed class AdmissionTicketPersistencePostgreSqlRedTests(PostgreSqlConta
                 500,
                 0,
                 organizerMinor)],
-            UtcNow);
+            UtcNow,
+            organizerPaymentProviderConnectionId: organizerPaymentProviderConnectionId,
+            connectPlatformId: "platform-test",
+            externalAccountId: "acct_admission_test",
+            merchantCountryCode: "BE");
 
     private sealed class GatedAdmissionDigestService(IAdmissionCredentialDigestService inner)
         : IAdmissionCredentialDigestService
@@ -1884,25 +2008,7 @@ internal sealed class AdmissionPersistenceSurface
 {
     private static readonly DateTime UtcNow = new(2026, 8, 25, 12, 0, 0, DateTimeKind.Utc);
 
-    internal const string TicketTypeName = "Explore.Domain.AdmissionTicket";
-    private const string CredentialTypeName = "Explore.Domain.AdmissionTicketCredential";
-    private const string TicketRepositoryTypeName = "Explore.Persistence.Repositories.AdmissionTicketRepository";
-
-    private readonly Type ticketRepositoryType;
-
-    private AdmissionPersistenceSurface(Type ticketRepositoryType)
-    {
-        this.ticketRepositoryType = ticketRepositoryType;
-    }
-
-    internal static AdmissionPersistenceSurface RequirePublicSurface()
-    {
-        Assembly domain = typeof(RegistrationOrder).Assembly;
-        Assembly persistence = typeof(ExploreDbContext).Assembly;
-        _ = RequireType(domain, TicketTypeName);
-        _ = RequireType(domain, CredentialTypeName);
-        return new(RequireType(persistence, TicketRepositoryTypeName));
-    }
+    internal static AdmissionPersistenceSurface RequirePublicSurface() => new();
 
     internal TicketGraph IssueTicketGraph(
         SeededAssignment seed,
@@ -1929,32 +2035,16 @@ internal sealed class AdmissionPersistenceSurface
         return new(ticket, ticketId, credentialId);
     }
 
-    internal object CreateTicketRepository(ExploreDbContext context) =>
-        CreateRepository(ticketRepositoryType, context);
-
-    internal static (IEntityType Ticket, IEntityType Credential) RequireAdmissionEntities(IModel model) =>
-        (RequireEntity(model, TicketTypeName), RequireEntity(model, CredentialTypeName));
-
-    internal static IEntityType RequireEntity(IModel model, string clrTypeName) =>
-        model.GetEntityTypes().SingleOrDefault(entity => entity.ClrType.FullName == clrTypeName)
-        ?? throw Missing($"EF entity/configuration {clrTypeName}");
-
-    internal static T Read<T>(object value, string propertyName)
-    {
-        PropertyInfo property = value.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)
-            ?? throw Missing($"public property {value.GetType().FullName}.{propertyName}");
-        return (T)property.GetValue(value)!;
-    }
-
-    internal static int CountRows(ExploreDbContext context, Type entityType)
-    {
-        IQueryable query = (IQueryable)typeof(DbContext).GetMethods()
-            .Single(method => method.Name == nameof(DbContext.Set) && method.IsGenericMethod && method.GetParameters().Length == 0)
-            .MakeGenericMethod(entityType)
-            .Invoke(context, null)!;
-        MethodCallExpression count = Expression.Call(typeof(Queryable), nameof(Queryable.Count), [entityType], query.Expression);
-        return query.Provider.Execute<int>(count);
-    }
+    internal static (IEntityType Ticket, IEntityType Credential)
+        RequireAdmissionEntities(IModel model) =>
+        (
+            model.FindEntityType(typeof(AdmissionTicket))
+            ?? throw Missing(
+                $"EF entity/configuration {typeof(AdmissionTicket).FullName}"),
+            model.FindEntityType(typeof(AdmissionTicketCredential))
+            ?? throw Missing(
+                $"EF entity/configuration {typeof(AdmissionTicketCredential).FullName}")
+        );
 
     internal static string DelimitedTableIdentifier(ExploreDbContext context, IEntityType entity)
     {
@@ -1993,29 +2083,6 @@ internal sealed class AdmissionPersistenceSurface
         return new ExploreDbContext(builder.UseSnakeCaseNamingConvention().Options);
     }
 
-    private static Type RequireType(Assembly assembly, string fullName) =>
-        assembly.GetType(fullName) ?? throw Missing($"public aggregate/repository {fullName}");
-
-    private static object InvokeFactory(
-        Type type,
-        string methodName,
-        Type[] parameterTypes,
-        object?[] arguments)
-    {
-        MethodInfo factory = type.GetMethod(
-            methodName, BindingFlags.Public | BindingFlags.Static, binder: null, parameterTypes, modifiers: null)
-            ?? throw Missing($"supported factory {type.FullName}.{methodName}");
-        return factory.Invoke(null, arguments)
-            ?? throw Missing($"result from supported factory {type.FullName}.{methodName}");
-    }
-
-    private static object CreateRepository(Type repositoryType, ExploreDbContext context)
-    {
-        ConstructorInfo constructor = repositoryType.GetConstructor([typeof(ExploreDbContext)])
-            ?? throw Missing($"supported {repositoryType.FullName}(ExploreDbContext) constructor");
-        return constructor.Invoke([context]);
-    }
-
     private static InvalidOperationException Missing(string surface) =>
         new($"Phase 20 product RED: missing {surface}.");
 }
@@ -2034,7 +2101,7 @@ internal sealed record SeededAssignment(
     EventTicketCatalogVersion Catalog,
     EventTicketType TicketType);
 
-internal sealed record TicketGraph(object Ticket, Guid TicketId, Guid CredentialId);
+internal sealed record TicketGraph(AdmissionTicket Ticket, Guid TicketId, Guid CredentialId);
 
 internal sealed class AdmissionInsertBarrier
 {

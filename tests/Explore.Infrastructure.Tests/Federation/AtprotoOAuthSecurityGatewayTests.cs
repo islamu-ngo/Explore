@@ -2,7 +2,6 @@
 // ABOUTME: Uses deterministic in-process transports to prove encrypted restore and mismatch zero-write behavior.
 
 using System.Net;
-using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -21,6 +20,7 @@ using Explore.Atproto.Transport;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
+using Explore.Domain.ValueObjects;
 using Explore.Infrastructure.Services.Federation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -33,6 +33,7 @@ namespace Explore.Infrastructure.Tests.Federation;
 public sealed class AtprotoOAuthSecurityGatewayTests
 {
     private const string Did = "did:plc:gateway-user";
+    private static readonly AtprotoDid ParsedDid = AtprotoDid.Parse(Did);
     private const string Pds = "https://pds.example/";
     private const string Issuer = "https://issuer.example/";
     private const string OAuthKeyId = "oauth-active";
@@ -45,7 +46,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var session = CreateSession();
 
         var verified = await fixture.Gateway.VerifyAsync(new AtprotoOAuthVerificationInput(
-            Did,
+            ParsedDid,
             new Uri(Pds),
             OAuthKeyId,
             JsonSerializer.SerializeToUtf8Bytes(session)), CancellationToken.None);
@@ -54,7 +55,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(1);
         await Assert.That(verified.FailureCode).IsNull();
         await Assert.That(verified.Session).IsNotNull();
-        await Assert.That(verified.Session!.Did).IsEqualTo(Did);
+        await Assert.That(verified.Session!.Did.Value).IsEqualTo(Did);
         await Assert.That(verified.Session.PdsUri.AbsoluteUri).IsEqualTo(Pds);
         await Assert.That(fixture.Transport.LastPdsPath)
             .IsEqualTo("/xrpc/com.atproto.server.getSession");
@@ -78,7 +79,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             new AtprotoOAuthSessionStoreContext(
                 tenantId,
                 userId,
-                Did,
+                Explore.Domain.ValueObjects.AtprotoDid.Parse(Did),
                 new Uri(Pds),
                 OAuthKeyId));
         using var lease = await fixture.CoreFactory.CreateAsync(
@@ -137,7 +138,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var payload = JsonSerializer.SerializeToUtf8Bytes(CreateSession());
 
         var result = await handler.Handle(new BootstrapAtprotoSessionCommand(
-            Did,
+            ParsedDid,
             Pds,
             OAuthKeyId,
             AtprotoSubjectClassification.Person,
@@ -165,7 +166,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         await PersistCurrentSessionAsync(fixture, tenantId, userId, expired);
 
         var result = await fixture.Gateway.RefreshAsync(
-            new AtprotoCurrentSessionIdentity(tenantId, userId, Did),
+            new AtprotoCurrentSessionIdentity(tenantId, userId, ParsedDid),
             CancellationToken.None);
 
         await Assert.That(fixture.Transport.TokenRequests).IsEqualTo(1);
@@ -178,7 +179,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
                 new AtprotoOAuthSessionStoreContext(
                     tenantId,
                     userId,
-                    Did,
+                    Explore.Domain.ValueObjects.AtprotoDid.Parse(Did),
                     new Uri(Pds),
                     OAuthKeyId))
             .GetAsync(Did, CancellationToken.None);
@@ -236,7 +237,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
                 new AtprotoOAuthSessionStoreContext(
                     tenantId,
                     userId,
-                    Did,
+                    Explore.Domain.ValueObjects.AtprotoDid.Parse(Did),
                     new Uri(Pds),
                     OAuthKeyId))
             .GetAsync(Did, CancellationToken.None);
@@ -311,7 +312,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var fixture = CreateFixture(Did);
 
         var result = await fixture.Gateway.RefreshAsync(new AtprotoCurrentSessionIdentity(
-            Guid.NewGuid(), Guid.NewGuid(), Did), CancellationToken.None);
+            Guid.NewGuid(), Guid.NewGuid(), ParsedDid), CancellationToken.None);
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("reauthentication_required");
@@ -326,7 +327,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var tenantId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         await PersistCurrentSessionAsync(fixture, tenantId, userId);
-        var identity = new AtprotoCurrentSessionIdentity(tenantId, userId, Did);
+        var identity = new AtprotoCurrentSessionIdentity(tenantId, userId, ParsedDid);
 
         var first = await fixture.Gateway.RevokeCurrentAsync(identity, CancellationToken.None);
         var repeated = await fixture.Gateway.RevokeCurrentAsync(identity, CancellationToken.None);
@@ -347,7 +348,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         await PersistCurrentSessionAsync(fixture, tenantId, userId);
 
         var result = await fixture.Gateway.RevokeCurrentAsync(
-            new AtprotoCurrentSessionIdentity(tenantId, userId, Did),
+            new AtprotoCurrentSessionIdentity(tenantId, userId, ParsedDid),
             CancellationToken.None);
 
         await Assert.That(result.Outcome)
@@ -367,7 +368,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         cancellation.Cancel();
 
         var result = await fixture.Gateway.RevokeCurrentAsync(
-            new AtprotoCurrentSessionIdentity(tenantId, userId, Did),
+            new AtprotoCurrentSessionIdentity(tenantId, userId, ParsedDid),
             cancellation.Token);
 
         await Assert.That(result.Outcome)
@@ -384,7 +385,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         await PersistCurrentSessionAsync(fixture, tenantId, userId);
 
         var result = await fixture.Gateway.RevokeCurrentAsync(
-            new AtprotoCurrentSessionIdentity(Guid.NewGuid(), Guid.NewGuid(), Did),
+            new AtprotoCurrentSessionIdentity(Guid.NewGuid(), Guid.NewGuid(), ParsedDid),
             CancellationToken.None);
 
         await Assert.That(result.Outcome).IsEqualTo(AtprotoSessionRevocationOutcome.AlreadyAbsent);
@@ -400,7 +401,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var userId = Guid.NewGuid();
         var prepared = await fixture.Gateway.PreparePersistenceAsync(
             new AtprotoVerifiedOAuthSession(
-                Did,
+                Explore.Domain.ValueObjects.AtprotoDid.Parse(Did),
                 "gateway-user.example",
                 new Uri(Pds),
                 OAuthKeyId,
@@ -427,6 +428,58 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task VerificationInputCarriesTypedDidWithoutDiagnosticDisclosure()
+    {
+        var input = new AtprotoOAuthVerificationInput(
+            ParsedDid,
+            new Uri(Pds),
+            OAuthKeyId,
+            JsonSerializer.SerializeToUtf8Bytes(CreateSession()));
+
+        await Assert.That(input.ExpectedDid).IsEqualTo(ParsedDid);
+        await Assert.That(input.ToString()).DoesNotContain(Did);
+    }
+
+    [Test]
+    public async Task VerifyMalformedProviderReturnedDidFailsAsBoundedIdentityMismatch()
+    {
+        const string malformedProviderDid = "did:plc:provider-sentinel#raw";
+        var fixture = CreateFixture(malformedProviderDid);
+
+        AtprotoOAuthVerificationResult result = await fixture.Gateway.VerifyAsync(
+            new AtprotoOAuthVerificationInput(
+                ParsedDid,
+                new Uri(Pds),
+                OAuthKeyId,
+                JsonSerializer.SerializeToUtf8Bytes(CreateSession())),
+            CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("pds_identity_mismatch");
+        await Assert.That(result.FailureCode).DoesNotContain(malformedProviderDid);
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(1);
+    }
+
+    [Test]
+    [Arguments("did:plc:delivery-sentinel?raw")]
+    [Arguments("did:deleted:0198ab00000070008000000000000001")]
+    public async Task DeliveryMalformedDidFailsBeforeRefreshLockRepositoryOrProviderTransport(string malformedDid)
+    {
+        var fixture = CreateFixture(Did);
+        var refreshLock = new BlockingRefreshLock(released: true);
+        AtprotoPdsDeliveryGateway gateway = CreateDeliveryGateway(fixture, refreshLock);
+        AtprotoPdsDeliveryRequest request = CreateDeliveryRequest(Guid.CreateVersion7(), Guid.CreateVersion7())
+            with { Did = malformedDid };
+
+        AtprotoPdsDeliveryResult result = await gateway.DeliverAsync(request, CancellationToken.None);
+
+        await Assert.That(result.FailureCode).IsEqualTo("session_unavailable");
+        await Assert.That(result.FailureCode).DoesNotContain(malformedDid);
+        await Assert.That(refreshLock.Entered.IsCompleted).IsFalse();
+        await Assert.That(fixture.Transport.MetadataRequests).IsEqualTo(0);
+        await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(0);
+    }
+
     private static async Task PersistCurrentSessionAsync(
         GatewayFixture fixture,
         Guid tenantId,
@@ -435,7 +488,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
     {
         var prepared = await fixture.Gateway.PreparePersistenceAsync(
             new AtprotoVerifiedOAuthSession(
-                Did,
+                Explore.Domain.ValueObjects.AtprotoDid.Parse(Did),
                 "gateway-user.example",
                 new Uri(Pds),
                 OAuthKeyId,
@@ -461,13 +514,11 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         GatewayFixture fixture,
         IAtprotoSessionRefreshLock refreshLock)
     {
-        var services = new ServiceCollection();
-        services.AddSingleton(fixture.TokenRepository);
-        services.AddSingleton(fixture.Protector);
-        services.AddSingleton(fixture.CoreFactory);
-        services.AddSingleton(refreshLock);
-        using ServiceProvider provider = services.BuildServiceProvider();
-        return ActivatorUtilities.CreateInstance<AtprotoPdsDeliveryGateway>(provider);
+        return new AtprotoPdsDeliveryGateway(
+            fixture.TokenRepository,
+            fixture.Protector,
+            fixture.CoreFactory,
+            refreshLock);
     }
 
     private static GatewayFixture CreateFixture(string pdsResponseDid)
@@ -523,7 +574,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             .Returns(call =>
             {
                 persistedRow = call.Arg<UserAuthenticationToken>();
-                return persistedRow;
+                return Task.FromResult(persistedRow!);
             });
         tokenRepository.UpdateAtprotoSessionAsync(
                 Arg.Any<UserAuthenticationToken>(),

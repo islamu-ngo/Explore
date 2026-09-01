@@ -607,3 +607,12 @@ Current branch: `develop`. Wave A is fully shipped. The `refactor/blazor-clean-c
 - Phase 5.2-5.8 — ILogger severity audit, correlation ID verification, event IDs, secret leakage check, startup config validation, tenant-aware log scope, 36-site `GetLogger` migration
 
 **Test baseline after Wave A:** 2837 pass / 1 skip (pre-existing MudBlazor v9) / 0 fail across 8 test projects; manual browser checks were deferred.
+
+### Ownership transfer — strong typing and reflection remediation (2026-09-01)
+
+The active `strong-typing-reflection-remediation` workstream owns and supersedes
+Phase 16 Tasks 16.1 and 16.6. It introduced the shared platform identity claim
+constants and deleted the client `AuthStateService` claim wrapper instead of
+preserving a compatibility abstraction. Task 16.7 and Phase 6A remain paused in
+this workstream because dynamic authentication-scheme stabilization is outside
+the bounded remediation scope.

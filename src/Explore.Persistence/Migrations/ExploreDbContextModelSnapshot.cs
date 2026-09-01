@@ -2976,7 +2976,8 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)")
                         .HasColumnName("did")
-                        .UseCollation("C");
+                        .UseCollation("C")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
 
                     b.Property<int?>("DidCustodyTypeId")
                         .HasColumnType("integer")

@@ -4,6 +4,7 @@
 using Explore.Domain;
 using Explore.Persistence;
 using Explore.Persistence.Database;
+using Explore.Persistence.QueryFilters;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -28,22 +29,47 @@ public sealed class ConfigurationManifestAuditProviderMigrationTests
             CreateOptions(provider));
         await using var context = new ExploreDbContext(optionsBuilder.Options);
 
-        string[] migrations = context.Database.GetMigrations().ToArray();
         IModel model = context.GetService<IDesignTimeModel>().Model;
         IEntityType operation = model.FindEntityType(typeof(ConfigurationManifestOperation))!;
         IEntityType result = model.FindEntityType(typeof(ConfigurationManifestTenantResult))!;
+        IEntityType identity = model.FindEntityType(typeof(AtprotoIdentity))!;
+        IProperty did = identity.FindProperty(nameof(AtprotoIdentity.Did))!;
         string expectedPrefix = provider == PrimaryDatabaseProvider.PostgreSql
             || provider == PrimaryDatabaseProvider.SqlServer
                 ? string.Empty
                 : "ie_";
+        string? expectedDidCollation = provider switch
+        {
+            PrimaryDatabaseProvider.PostgreSql => "C",
+            PrimaryDatabaseProvider.Sqlite => "BINARY",
+            PrimaryDatabaseProvider.SqlServer =>
+                "Latin1_General_100_BIN2",
+            PrimaryDatabaseProvider.MariaDb or
+                PrimaryDatabaseProvider.MySql => "ascii_bin",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(provider),
+                provider,
+                null),
+        };
 
-        await Assert.That(migrations).HasSingleItem();
-        await Assert.That(migrations[0]).EndsWith("_Init");
         await Assert.That(context.Database.HasPendingModelChanges()).IsFalse();
         await Assert.That(operation.GetTableName())
             .IsEqualTo($"{expectedPrefix}configuration_manifest_operations");
         await Assert.That(result.GetTableName())
             .IsEqualTo($"{expectedPrefix}configuration_manifest_tenant_results");
+        await Assert.That(did.ClrType).IsEqualTo(typeof(string));
+        await Assert.That(did.IsNullable).IsFalse();
+        await Assert.That(did.GetMaxLength()).IsEqualTo(2048);
+        await Assert.That(did.GetCollation()).IsEqualTo(expectedDidCollation);
+        await Assert.That(identity.GetIndexes().Any(index =>
+                index.IsUnique
+                && index.GetFilter() is null
+                && index.Properties.Count == 1
+                && index.Properties[0] == did))
+            .IsTrue();
+        await Assert.That(identity.FindDeclaredQueryFilter(
+                QueryFilterNames.SoftDelete))
+            .IsNotNull();
     }
 
     private static PrimaryDatabaseConnectionOptions CreateOptions(

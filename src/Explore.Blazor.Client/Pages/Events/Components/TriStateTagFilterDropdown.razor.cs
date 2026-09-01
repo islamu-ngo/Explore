@@ -1,5 +1,5 @@
 // ABOUTME: Code-behind for the tri-state tag filter dropdown component.
-// Manages tag states (Neutral/Include/Exclude), search, badge counts, and mode toggles.
+// ABOUTME: Manages tag states (Neutral/Include/Exclude), search, badge counts, and mode toggles.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;

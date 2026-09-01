@@ -2,6 +2,7 @@
 // ABOUTME: Projects instance, tenant, organization, and group scopes for trusted server-side decisions.
 
 using System.Security.Claims;
+using Explore.Application.Authentication;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
@@ -18,8 +19,6 @@ namespace Explore.Infrastructure.Identity;
 /// </summary>
 public sealed class AdminClaimsTransformation : IClaimsTransformation
 {
-    private const string InternalUserIdClaimType = "internal_user_id";
-
     private readonly IAdminContext _adminContext;
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly IUserRepository _userRepository;
@@ -50,10 +49,10 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
             return principal;
         }
 
-        if (!principal.HasClaim(c => c.Type == InternalUserIdClaimType))
+        if (!principal.HasClaim(c => c.Type == PlatformIdentityClaimTypes.InternalUserId))
         {
             var internalIdentity = new ClaimsIdentity();
-            internalIdentity.AddClaim(new Claim(InternalUserIdClaimType, userId.Value.ToString()));
+            internalIdentity.AddClaim(new Claim(PlatformIdentityClaimTypes.InternalUserId, userId.Value.ToString()));
             principal.AddIdentity(internalIdentity);
         }
 
@@ -99,10 +98,7 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
             if (identity.Claims.Any())
             {
                 principal.AddIdentity(identity);
-                _logger.LogDebug(
-                    "AdminClaimsTransformation: Added {ClaimCount} admin claims for user {UserId} " +
-                    "(instance={IsInstance}, tenants={TenantCount}, orgs={OrgCount}, groups={GroupCount})",
-                    identity.Claims.Count(), userId.Value, isInstanceAdmin, tenantIds.Count, orgIds.Count, groupIds.Count);
+                _logger.LogDebug("AdminClaimsTransformation: Added administrative authority claims");
             }
         }
         catch (Exception ex)
@@ -110,8 +106,8 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
             // Fail open for claims transformation — log the error but don't block authentication.
             // The authorization layer (Cerbos/MediatR behavior) provides the hard security boundary.
             _logger.LogWarning(ex,
-                "AdminClaimsTransformation: Failed to resolve admin authority for user {UserId}. " +
-                "Admin UI will be hidden but server-side authorization remains enforced.", userId.Value);
+                "AdminClaimsTransformation: Failed to resolve admin authority. " +
+                "Admin UI will be hidden but server-side authorization remains enforced.");
         }
 
         return principal;
@@ -119,112 +115,37 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
 
     private async Task<Guid?> ResolveInternalUserIdAsync(ClaimsPrincipal principal)
     {
-        var internalUserIdClaim = principal.FindFirst(InternalUserIdClaimType)?.Value;
-        if (Guid.TryParse(internalUserIdClaim, out var internalUserId))
+        if (principal.GetPlatformUserId() is { } platformUserId)
         {
-            return internalUserId;
+            return platformUserId;
         }
 
-        var subject = principal.FindFirst("sub")?.Value
-            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? principal.FindFirst("sid")?.Value;
-
-        if (string.IsNullOrWhiteSpace(subject))
+        var providerIdentity = ProviderLinkedPrincipalReader.GetProviderIdentity(principal);
+        if (providerIdentity is null)
         {
             return null;
         }
 
-        var provider = ResolveAuthProvider(principal, subject);
-        if (string.IsNullOrWhiteSpace(provider))
-        {
-            return Guid.TryParse(subject, out var subjectAsGuid) ? subjectAsGuid : null;
-        }
-
-        var providerId = ResolveProviderId(principal, subject, provider);
-        if (string.IsNullOrWhiteSpace(providerId))
-        {
-            return null;
-        }
-
-        var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerId);
+        var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(
+            providerIdentity.Provider,
+            providerIdentity.ProviderId);
         if (externalLogin != null)
         {
             return externalLogin.UserId;
         }
 
-        if (SupportsEmailAutoMatch(provider) && ResolveEmailVerified(principal))
+        if (SupportsEmailAutoMatch(providerIdentity.Provider)
+            && ResolveEmailVerified(principal)
+            && !string.IsNullOrWhiteSpace(providerIdentity.Email))
         {
-            var email = principal.FindFirst("email")?.Value
-                ?? principal.FindFirst(ClaimTypes.Email)?.Value;
-
-            if (!string.IsNullOrWhiteSpace(email))
+            var user = await _userRepository.GetUserByEmail(providerIdentity.Email.Trim().ToLowerInvariant());
+            if (user != null)
             {
-                var user = await _userRepository.GetUserByEmail(email.Trim().ToLowerInvariant());
-                if (user != null)
-                {
-                    return user.Id;
-                }
+                return user.Id;
             }
         }
 
         return null;
-    }
-
-    private static string ResolveAuthProvider(ClaimsPrincipal principal, string subject)
-    {
-        var idp = principal.FindFirst("idp")?.Value;
-        if (!string.IsNullOrWhiteSpace(idp))
-        {
-            var normalizedIdp = idp.Trim().ToLowerInvariant();
-            if (normalizedIdp.Contains("google"))
-            {
-                return AuthSchemeNames.Google.ToLowerInvariant();
-            }
-
-            if (normalizedIdp.Contains("atproto"))
-            {
-                return AuthSchemeNames.Atproto.ToLowerInvariant();
-            }
-
-            if (normalizedIdp.Contains("keycloak"))
-            {
-                return AuthSchemeNames.Keycloak.ToLowerInvariant();
-            }
-        }
-
-        var issuer = principal.FindFirst("iss")?.Value;
-        if (!string.IsNullOrWhiteSpace(issuer))
-        {
-            var normalizedIssuer = issuer.Trim().ToLowerInvariant();
-            if (normalizedIssuer.Contains("accounts.google.com"))
-            {
-                return AuthSchemeNames.Google.ToLowerInvariant();
-            }
-
-            if (normalizedIssuer.Contains("keycloak") || normalizedIssuer.Contains("/realms/"))
-            {
-                return AuthSchemeNames.Keycloak.ToLowerInvariant();
-            }
-        }
-
-        if (subject.StartsWith("did:", StringComparison.OrdinalIgnoreCase))
-        {
-            return AuthSchemeNames.Atproto.ToLowerInvariant();
-        }
-
-        return string.Empty;
-    }
-
-    private static string ResolveProviderId(ClaimsPrincipal principal, string subject, string provider)
-    {
-        if (provider == AuthSchemeNames.Atproto.ToLowerInvariant())
-        {
-            return principal.FindFirst("did")?.Value
-                ?? principal.FindFirst("atproto_did")?.Value
-                ?? subject;
-        }
-
-        return subject;
     }
 
     private static bool ResolveEmailVerified(ClaimsPrincipal principal)

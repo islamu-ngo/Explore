@@ -3,6 +3,7 @@
 
 using System.Security.Claims;
 using System.Security.Cryptography;
+using Event.Web.BffHosting.Security;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -133,9 +134,7 @@ public sealed class BffSelfCallTokenService(
     }
 
     private static string? ResolveUserId(ClaimsPrincipal? user) =>
-        user?.FindFirstValue("sub")
-        ?? user?.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? user?.FindFirstValue("sid");
+        user.TryGetCircuitSubject(out var subject) ? subject.PartitionKey : null;
 
     private sealed record BffSelfCallTokenPayload(
         string Method,

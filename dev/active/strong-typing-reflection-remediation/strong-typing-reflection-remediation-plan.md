@@ -3,7 +3,7 @@
 
 # Strong Typing And Reflection Debt Remediation — Implementation Plan
 
-Last Updated: 2026-08-30 Europe/Brussels
+Last Updated: 2026-09-01 Europe/Brussels
 
 ## 0. Planning Metadata
 
@@ -29,7 +29,7 @@ Last Updated: 2026-08-30 Europe/Brussels
 - **I-VSD reviewed input revision:** `sha256:1a2fa2e4cfaca23086cb49648c0111b5be9c68e85ab5abdddee08e20b1f9b157`
 - **I-VSD status / disposition:** current / plan-aligned
 - **CTO review:** Not reviewed
-- **User approval:** Approved by the user on 2026-08-30 for this exact workstream revision
+- **User approval:** Approved by the user on 2026-08-30; expanded on 2026-09-01 to finish the full workstream, including generated product-catalog collation migrations required by Task 6.5
 - **Grill-Me intake:** The request explicitly requires complete remediation and no backward compatibility. Repository evidence resolved the material branches: create one dedicated mixed-source intent; retain legitimate compiled metadata; eliminate runtime-name behavior dispatch; preserve separate protocol/identity authorities; introduce only `AtprotoDid`; keep scalar wire/storage values; migrate exact Blazor overlaps without absorbing the paused broad clean-code program.
 
 ## 1. Executive Summary
@@ -60,7 +60,7 @@ The single new Domain value is `AtprotoDid`. It validates live AT Protocol ident
 
 - No universal `AppClaimTypes`, `AppRoles`, `CurrencyCode`, `CountryCode`, `EmailAddress`, or generic `Slug` abstraction.
 - No ban on compiled architecture reflection, EF model metadata, endpoint metadata, `DynamicComponent` used for actual runtime-selected composition, or structured machine-artifact parsing.
-- No public API shape, generated-client shape, or database schema change is expected.
+- No public API or generated-client shape change is expected. The only database metadata change is the provider-native binary collation required for exact DID identity semantics; column name/type/length, index, and filter shape remain unchanged.
 - No hand edits to OpenAPI, generated clients, migrations, designers, or snapshots.
 - No resumption of the paused Blazor service-decomposition, localization, styling, or broad clean-code program beyond exact ownership transferred in this plan.
 - No backward-compatibility layer.
@@ -575,7 +575,7 @@ The refactor MUST NOT hand-edit or silently change generated API, client, migrat
 
 ### Phase 4 — BFF Claim And Configuration Boundaries
 
-- **Goal:** Replace repeated BFF provider/session claim spelling with purpose-specific helpers while preserving token, session, rate-partition, and configuration behavior.
+- **Goal:** Replace repeated BFF provider/session claim spelling with purpose-specific helpers while preserving token, session, and configuration behavior; unauthenticated setup attempts intentionally harden to a stable network partition so caller-controlled cookie rotation cannot bypass the sole limiter.
 - **Depends on:** Phase 2 and Phase 3.
 - **Relevant files:**
   - new `src/Event.Web.BffHosting/Security/EventBffPrincipalExtensions.cs`
@@ -589,11 +589,12 @@ The refactor MUST NOT hand-edit or silently change generated API, client, migrat
   - BFF helpers name their exact subject/session/rate-partition purpose and preserve opaque values;
   - custom privileged headers remain under the BFF catalog and standard headers use framework names;
   - repeated Keycloak child configuration paths are section/property-bound without changing fallback precedence;
+  - authenticated rate partitions remain purpose-bound, while unauthenticated setup attempts use stable effective remote IP and ignore arbitrary cookie rotation;
   - BFF logs do not enumerate or echo claim types/values.
 - **Phase-end verification:**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`
-- **Rollback / failure handling:** Preserve BFF token secrecy, rate partition stability, and antiforgery/session behavior. If a client needs missing authority metadata, record the missing HAL/status contract instead of restoring claim inspection.
+- **Rollback / failure handling:** Preserve BFF token secrecy, fail-closed rate limiting, and antiforgery/session behavior. If a client needs missing authority metadata, record the missing HAL/status contract instead of restoring claim inspection.
 
 ### Phase 5 — Typed Application Contract Tests
 
@@ -646,9 +647,9 @@ The refactor MUST NOT hand-edit or silently change generated API, client, migrat
   - fair-return queue position/allocation proves priority/time/ID order and tenant independence in PostgreSQL;
   - concurrency tests subscribe to exact gates before release and use no sleeps;
   - money overflow, replay, PII absence, tenant filters, fences, credential secrecy, and state transitions retain equal or stronger coverage;
-  - DID lookups compare the exact semantic value while source configuration preserves the scalar column/index contract;
-  - no migration/model snapshot is edited;
-  - a five-provider product-catalog model contract in this phase proves zero pending model change and explicitly excludes DataProtection/privacy-authority catalogs that do not contain AT Protocol identity state.
+  - DID lookups compare the exact semantic value while source configuration preserves the scalar column/index/filter contract;
+  - application-provider migrations and snapshots are generated through `dotnet ef`, never hand-edited, to record PostgreSQL `C`, SQLite `BINARY`, SQL Server `Latin1_General_100_BIN2`, and MariaDB/MySQL `ascii_bin` collations;
+  - a five-provider product-catalog model contract in this phase proves zero pending model change after generation and explicitly excludes DataProtection/privacy-authority catalogs that do not contain AT Protocol identity state.
 - **Phase-end verification:**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
@@ -944,11 +945,11 @@ Applicable principles: Trust/Amanah, Truthfulness/Sidq, Justice/Adl, Non-Harm/La
 
 ### Database
 
-- Expected schema impact: none.
+- Expected schema impact: one generated application-catalog collation migration per supported provider so live DID identity remains ordinal across PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL.
 - DID remains a scalar string owner field; no new table, column, owned type, complex type, or broad value converter.
-- Existing unique indexes, tenant filters, privacy metadata, and provider model snapshots remain.
-- Phase 6 unconditionally runs the five-provider product-catalog pending-model contract and records zero drift. DataProtection and privacy-erasure-authority catalogs are excluded because they do not persist AT Protocol identity state.
-- Any unexpected migration is generated through the approved provider workflow after plan re-baselining; no hand edits.
+- Existing column name/type/length, unique indexes, tenant filters, and privacy metadata remain; provider snapshots change only to record the explicit binary collation contract.
+- Phase 6 generates the five application-provider migrations and then runs the product-catalog pending-model contract to record zero remaining drift. DataProtection and privacy-erasure-authority catalogs are excluded because they do not persist AT Protocol identity state.
+- Migrations and snapshots are generated through the approved provider workflow; no hand edits.
 
 ### API and generated client
 

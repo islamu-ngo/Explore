@@ -52,8 +52,8 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
         }
 
         var login = await externalLoginRepository
-            .GetByProviderAndKey("atproto", verified.Did).ConfigureAwait(false);
-        if (!IsExactLinkedLogin(login, verified.Did))
+            .GetByProviderAndKey("atproto", verified.Did.Value).ConfigureAwait(false);
+        if (!IsExactLinkedLogin(login, verified.Did.Value))
         {
             return AtprotoSessionBootstrapResult.Failed("account_not_linked");
         }

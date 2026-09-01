@@ -824,12 +824,12 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
             Pii = new ActorPii { DisplayName = "Owner" },
             ConcurrencyStamp = Guid.CreateVersion7()
         };
-        actor.AtprotoIdentities.Add(new AtprotoIdentity
+        actor.AtprotoIdentities.Add(new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse($"did:plc:{Guid.NewGuid():N}"))
         {
             Id = Guid.CreateVersion7(),
             ActorId = actor.Id,
             Actor = actor,
-            Did = $"did:plc:{Guid.NewGuid():N}",
+
             Handle = $"owner-{Guid.NewGuid():N}.example.invalid",
             PdsHost = "https://pds.example.invalid",
             IsActive = true,

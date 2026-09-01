@@ -6,7 +6,9 @@ using AngleSharp.Dom;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.SupportAccess;
 using Explore.Blazor.Client.Models.Responses;
+using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -115,8 +117,7 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
             .Returns(ServiceResult<HalCollectionResourceOfSupportAccessSessionDto>.Success(
                 new HalCollectionResourceOfSupportAccessSessionDto()));
 
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetComponentType("TenantAdminSettingsLayout")));
+        var cut = _ctx.RenderMudComponent<TenantAdminSettingsLayout>();
         cut.WaitForAssertion(() =>
         {
             if (!cut.Markup.Contains("Support Evidence", StringComparison.OrdinalIgnoreCase))
@@ -125,13 +126,10 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
             }
         });
 
-        object layout = cut.Instance.Instance
-            ?? throw new InvalidOperationException("Dynamic component did not expose the rendered layout instance.");
-        SetPrivateField(layout, "_currentSection", "support-access-evidence");
-        SetPrivateField(layout, "_showMobileMenu", false);
-        await cut.InvokeAsync(() => typeof(ComponentBase)
-            .GetMethod("StateHasChanged", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .Invoke(layout, null));
+        cut.FindComponents<MudListItem<string>>()
+            .Single(item => item.Instance.Text == "Support Evidence")
+            .Find("[role='option']")
+            .Click();
 
         cut.WaitForAssertion(() =>
         {
@@ -190,11 +188,8 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
                 new HalCollectionResourceOfSupportAccessAuditEventDto()));
     }
 
-    private IRenderedComponent<DynamicComponent> RenderEvidenceSection()
-    {
-        return _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetComponentType("TenantSupportAccessEvidenceSection")));
-    }
+    private IRenderedComponent<TenantSupportAccessEvidenceSection> RenderEvidenceSection() =>
+        _ctx.RenderMudComponent<TenantSupportAccessEvidenceSection>();
 
     private HalResourceOfSupportAccessSessionDto CreateSessionResource(
         Guid sessionId,
@@ -263,24 +258,9 @@ public sealed class TenantSupportAccessEvidenceSectionTests : IDisposable
             PageSize = 100
         };
 
-    private static IReadOnlyList<IElement> FindAuditButtons(IRenderedComponent<DynamicComponent> cut) =>
+    private static IReadOnlyList<IElement> FindAuditButtons(IRenderedComponent<TenantSupportAccessEvidenceSection> cut) =>
         cut.FindAll("button")
             .Where(button => button.GetAttribute("aria-label")?.StartsWith("View audit events", StringComparison.Ordinal) == true)
             .ToList();
 
-    private static Type GetComponentType(string componentName)
-    {
-        var componentType = typeof(ITenantOnboardingService).Assembly
-            .GetTypes()
-            .FirstOrDefault(type => type.Name == componentName && typeof(IComponent).IsAssignableFrom(type));
-
-        return componentType ?? throw new InvalidOperationException($"Could not find component type '{componentName}'.");
-    }
-
-    private static void SetPrivateField(object instance, string fieldName, object? value)
-    {
-        instance.GetType()
-            .GetField(fieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .SetValue(instance, value);
-    }
 }

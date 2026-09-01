@@ -44,12 +44,12 @@ public sealed class GroupMembersSectionTests : IDisposable
     }
 
     [Test]
-    public async Task WithHalActionLinks_ShowsInviteAndRowActions()
+    public async Task CreatorWithHalActionLinks_ShowsInviteAndRowActions()
     {
         var groupId = Guid.NewGuid();
         _groupService.GetGroupMembersWithAffordancesAsync(groupId)
             .Returns(new GroupMembersResult(
-                [CreateMember(RoleHelper.GroupAdmin, withEditLink: true, withDeleteLink: true)],
+                [CreateMember(RoleHelper.GroupCreator, withEditLink: true, withDeleteLink: true)],
                 CanCreate: true));
 
         var cut = Render(groupId);
@@ -58,6 +58,23 @@ public sealed class GroupMembersSectionTests : IDisposable
         await Assert.That(cut.Markup).Contains("Actions");
         await Assert.That(cut.Markup).Contains("Save role");
         await Assert.That(cut.Markup).Contains("Remove member");
+    }
+
+    [Test]
+    public async Task MixedMemberLinks_RenderActionsOnlyForLinkedRow()
+    {
+        var groupId = Guid.NewGuid();
+        var linkedMember = CreateMember(RoleHelper.GroupAdmin, withEditLink: true, withDeleteLink: true);
+        var unlinkedMember = CreateMember(RoleHelper.GroupAdmin, withEditLink: false, withDeleteLink: false);
+        _groupService.GetGroupMembersWithAffordancesAsync(groupId)
+            .Returns(new GroupMembersResult([linkedMember, unlinkedMember], CanCreate: false));
+
+        var cut = Render(groupId);
+
+        await Assert.That(cut.FindAll($"[data-member-id='{linkedMember.Id}'][data-relation='edit']")).IsNotEmpty();
+        await Assert.That(cut.FindAll($"[data-member-id='{linkedMember.Id}'][title='Save role']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll($"[data-member-id='{linkedMember.Id}'][data-relation='delete']").Count).IsEqualTo(1);
+        await Assert.That(cut.FindAll($"[data-member-id='{unlinkedMember.Id}'][data-relation]")).IsEmpty();
     }
 
     private IRenderedComponent<GroupMembersSection> Render(Guid groupId)

@@ -122,6 +122,30 @@ public sealed class AtprotoIdentityLifecycleTests
     }
 
     [Test]
+    public async Task EraseForPrivacy_ReplacesLiveDidAndClearsProviderMetadataWithoutParsingTombstone()
+    {
+        var identity = CreateIdentity(isActive: true);
+        identity.Handle = "owner.example";
+        identity.SigningKey = "provider-key";
+        identity.CreatedBy = Guid.CreateVersion7();
+        identity.UpdatedBy = Guid.CreateVersion7();
+
+        identity.EraseForPrivacy(TransitionedAt);
+
+        await Assert.That(identity.Did).IsEqualTo($"did:deleted:{identity.Id:N}");
+        await Assert.That(AtprotoDid.TryParse(identity.Did, out _)).IsFalse();
+        await Assert.That(identity.Handle).IsNull();
+        await Assert.That(identity.PdsHost).IsEmpty();
+        await Assert.That(identity.SigningKey).IsNull();
+        await Assert.That(identity.IsActive).IsFalse();
+        await Assert.That(identity.IsDeleted).IsTrue();
+        await Assert.That(identity.DeletedAt).IsEqualTo(TransitionedAt);
+        await Assert.That(identity.CreatedBy).IsNull();
+        await Assert.That(identity.UpdatedBy).IsNull();
+        await Assert.That(identity.DeletedBy).IsNull();
+    }
+
+    [Test]
     public async Task RefreshVerifiedMetadata_WithMatchingDid_UpdatesState()
     {
         var identity = CreateIdentity(isActive: false);
@@ -168,10 +192,10 @@ public sealed class AtprotoIdentityLifecycleTests
             }
         };
 
-        return new AtprotoIdentity
+        return new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse("did:plc:identity-owner"))
         {
             Id = Guid.CreateVersion7(),
-            Did = "did:plc:identity-owner",
+
             ActorId = actor.Id,
             Actor = actor,
             PdsHost = "https://pds.example",

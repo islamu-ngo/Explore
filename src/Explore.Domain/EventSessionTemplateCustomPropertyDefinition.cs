@@ -65,4 +65,10 @@ public class EventSessionTemplateCustomPropertyDefinition : ITenantEntity, IAudi
 
     private readonly List<EventSessionTemplateCustomPropertyOption> _options = [];
     public IReadOnlyCollection<EventSessionTemplateCustomPropertyOption> Options => _options.AsReadOnly();
+
+    internal void ReplaceOptions(IEnumerable<EventSessionTemplateCustomPropertyOption> options)
+    {
+        _options.Clear();
+        _options.AddRange(options);
+    }
 }

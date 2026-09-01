@@ -103,12 +103,8 @@ public sealed class EventsWorkspaceNavigationTests : IDisposable
             }
         };
 
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters => parameters
-            .Add(component => component.Type, typeof(EventsWorkspaceNavigation))
-            .Add(component => component.Parameters, new Dictionary<string, object>
-            {
-                ["TenantLinks"] = tenantLinks
-            }));
+        var cut = _ctx.RenderMudComponent<EventsWorkspaceNavigation>(parameters =>
+            parameters.Add(component => component.TenantLinks, tenantLinks));
 
         var firstIndex = cut.Markup.IndexOf("First Link", StringComparison.Ordinal);
         var secondIndex = cut.Markup.IndexOf("Second Link", StringComparison.Ordinal);

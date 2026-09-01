@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -60,9 +61,9 @@ public sealed class BffSessionRefreshService(
         {
             ClearCircuitTokenState(context, authResult.Principal, logger, tokenAssessment.Reason);
             logger.LogWarning(
-                "[AuthEndpoints] Refresh session produced no API-usable bearer token | Reason={Reason} User={UserId}",
-                tokenAssessment.Reason,
-                tokenAssessmentService.ResolveUserId(authResult.Principal));
+                "[AuthEndpoints] Refresh session completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} SubjectPresent={SubjectPresent}",
+                "rejected", tokenAssessment.Reason, "session_refresh",
+                authResult.Principal.TryGetSessionRefreshSubject(out _));
             return Results.Json(
                 new { refreshed = false, reason = tokenAssessment.Reason },
                 statusCode: StatusCodes.Status409Conflict);
@@ -81,13 +82,13 @@ public sealed class BffSessionRefreshService(
 
         var userId = tokenAssessmentService.ResolveUserId(authResult.Principal);
         var tokenStoreResult = context.RequestServices.GetRequiredService<ICircuitTokenStore>()
-            .Store(userId ?? string.Empty, authResult.Principal.FindFirst("sid")?.Value, accessToken);
+            .Store(userId ?? string.Empty,
+                authResult.Principal.TryGetSessionId(out var sessionId) ? sessionId.PartitionKey : null, accessToken);
         if (!tokenStoreResult.Accepted)
         {
             logger.LogWarning(
-                "[AuthEndpoints] Refresh session could not hand off bearer token | Reason={Reason} User={UserId}",
-                tokenStoreResult.RejectionCode,
-                userId ?? "(unknown)");
+                "[AuthEndpoints] Token handoff completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} SubjectPresent={SubjectPresent}",
+                "rejected", tokenStoreResult.RejectionCode, "session_refresh", !string.IsNullOrWhiteSpace(userId));
             return Results.Json(
                 new { refreshed = false, reason = "token_handoff_failed" },
                 statusCode: StatusCodes.Status409Conflict);
@@ -99,10 +100,8 @@ public sealed class BffSessionRefreshService(
             authResult.Properties);
 
         logger.LogInformation(
-            "[AuthEndpoints] Refresh session confirmed usable bearer token | User={UserId} TokenSummary={TokenSummary} AdminClaimsUpdated={AdminClaimsUpdated}",
-            tokenAssessmentService.ResolveUserId(authResult.Principal),
-            tokenAssessmentService.Describe(accessToken),
-            adminClaimsUpdated);
+            "[AuthEndpoints] Refresh session completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} AdminClaimsUpdated={AdminClaimsUpdated}",
+            "accepted", tokenAssessment.Reason, "session_refresh", adminClaimsUpdated);
 
         return Results.Ok(new { refreshed = true, adminClaimsUpdated, tokenStatus = tokenAssessment.Reason });
     }
@@ -162,7 +161,7 @@ public sealed class BffSessionRefreshService(
         if (!string.IsNullOrWhiteSpace(userId))
         {
             var tokenStore = context.RequestServices.GetService<ICircuitTokenStore>();
-            var sessionId = principal?.FindFirst("sid")?.Value;
+            var sessionId = principal.TryGetSessionId(out var resolvedSessionId) ? resolvedSessionId.PartitionKey : null;
             if (string.IsNullOrWhiteSpace(sessionId))
             {
                 tokenStore?.ClearUser(userId);
@@ -174,10 +173,10 @@ public sealed class BffSessionRefreshService(
         }
 
         logger.LogDebug(
-            "[AuthEndpoints] Cleared circuit token state for user {UserId} session {SessionId} because {Reason}",
-            tokenAssessmentService.ResolveUserId(principal) ?? "(unknown)",
-            principal?.FindFirst("sid")?.Value ?? "(none)",
-            reason);
+            "[AuthEndpoints] Circuit token cleanup completed | Outcome={Outcome} Reason={Reason} Purpose={Purpose} SubjectPresent={SubjectPresent} SessionPresent={SessionPresent}",
+            "cleared", reason, "session_refresh",
+            principal.TryGetSessionRefreshSubject(out _),
+            principal.TryGetSessionId(out _));
     }
 
     private async Task<IResult> RefreshAtprotoSessionAsync(
@@ -304,8 +303,8 @@ public sealed class BffSessionRefreshService(
             || authentication.Principal is not { } principal
             || authentication.Properties is not { } properties
             || !HasSingleClaim(principal, "auth_provider", "atproto")
-            || !TryGetSingleClaim(principal, "sub", out var subject)
-            || !Guid.TryParse(subject, out var userId)
+            || !principal.TryGetOpaqueProviderSubject(out var subject)
+            || !Guid.TryParse(subject.Value, out var userId)
             || userId == Guid.Empty
             || !TryGetSingleClaim(principal, "did", out var did)
             || !TryGetSingleClaim(principal, "tenant_id", out var tenantValue)

@@ -25,18 +25,18 @@ public sealed class InstanceBootstrapAuditLogger : IInstanceBootstrapAuditLogger
         _logger.Log(
             GetLogLevel(auditEvent.EventType),
             new EventId((int)auditEvent.EventType, eventName),
-            "Instance bootstrap audit event. Event={BootstrapAuditEvent} Operation={Operation} Outcome={Outcome} ActorUserId={ActorUserId} RouteName={RouteName} TraceId={TraceId} FailureCode={FailureCode} Provider={Provider} Mode={Mode} Realm={Realm} ClientId={ClientId} DeploymentMode={DeploymentMode}",
+            "Instance bootstrap audit event. Event={BootstrapAuditEvent} Operation={Operation} Outcome={Outcome} ActorPresent={ActorPresent} RouteName={RouteName} TraceId={TraceId} FailureCode={FailureCode} Provider={Provider} Mode={Mode} RealmPresent={RealmPresent} ClientIdPresent={ClientIdPresent} DeploymentMode={DeploymentMode}",
             eventName,
             Normalize(auditEvent.Operation),
             Normalize(auditEvent.Outcome),
-            auditEvent.ActorUserId,
+            auditEvent.ActorUserId.HasValue,
             Normalize(auditEvent.RouteName),
             Normalize(auditEvent.TraceId),
             Normalize(auditEvent.FailureCode),
             Normalize(auditEvent.Provider),
             Normalize(auditEvent.Mode),
-            Normalize(auditEvent.Realm),
-            Normalize(auditEvent.ClientId),
+            !string.IsNullOrWhiteSpace(auditEvent.Realm),
+            !string.IsNullOrWhiteSpace(auditEvent.ClientId),
             Normalize(auditEvent.DeploymentMode));
     }
 

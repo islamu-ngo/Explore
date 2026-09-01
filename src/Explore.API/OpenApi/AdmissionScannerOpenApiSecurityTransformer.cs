@@ -3,6 +3,7 @@
 
 using Explore.API.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Explore.Application.Constants;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -14,7 +15,6 @@ public sealed class AdmissionScannerOpenApiSecurityTransformer :
     IOpenApiOperationTransformer,
     IOperationFilter
 {
-    public const string SecuritySchemeName = AdmissionScannerAuthenticationDefaults.Scheme;
 
     public Task TransformAsync(
         OpenApiDocument document,
@@ -24,7 +24,7 @@ public sealed class AdmissionScannerOpenApiSecurityTransformer :
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??=
             new Dictionary<string, IOpenApiSecurityScheme>(StringComparer.Ordinal);
-        document.Components.SecuritySchemes[SecuritySchemeName] = CreateSecurityScheme();
+        document.Components.SecuritySchemes[ApiAuthenticationSchemeNames.AdmissionScanner] = CreateSecurityScheme();
         return Task.CompletedTask;
     }
 
@@ -63,7 +63,7 @@ public sealed class AdmissionScannerOpenApiSecurityTransformer :
         [
             new OpenApiSecurityRequirement
             {
-                [new OpenApiSecuritySchemeReference(SecuritySchemeName, document)] = []
+                [new OpenApiSecuritySchemeReference(ApiAuthenticationSchemeNames.AdmissionScanner, document)] = []
             }
         ];
     }
@@ -71,5 +71,5 @@ public sealed class AdmissionScannerOpenApiSecurityTransformer :
     private static bool UsesAdmissionScanner(IAuthorizeData authorize) =>
         authorize.AuthenticationSchemes?
             .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .Contains(SecuritySchemeName, StringComparer.Ordinal) == true;
+            .Contains(ApiAuthenticationSchemeNames.AdmissionScanner, StringComparer.Ordinal) == true;
 }

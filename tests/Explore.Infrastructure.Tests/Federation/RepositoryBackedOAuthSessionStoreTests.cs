@@ -219,7 +219,7 @@ public sealed class RepositoryBackedOAuthSessionStoreTests
         var context = new AtprotoOAuthSessionStoreContext(
             TenantId,
             UserId,
-            Did,
+            Explore.Domain.ValueObjects.AtprotoDid.Parse(Did),
             new Uri("https://pds.example/"),
             "oauth-client-key");
         return (new(repository, new AtprotoSessionEnvelopeProtector(resolver), context), repository, () => row);

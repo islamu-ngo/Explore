@@ -4,9 +4,13 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json;
+using Event.Web.BffHosting.Abstractions;
+using Event.Web.BffHosting.Security;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 
 namespace Explore.Blazor.IntegrationTests;
@@ -125,6 +129,31 @@ public sealed class EventAddOnBffTests
     }
 
     [Test]
+    public async Task HostingAdapterResolvesTokenStoredForCircuitSubjectPurpose()
+    {
+        AddOnScope scope = AddOnScope.Create();
+        Guid userId = Guid.CreateVersion7();
+        string accessToken = CreateAccessToken(userId);
+        var transport = new RecordingApiTransport(scope);
+        await using WebApplicationFactory<Program> factory = CreateFactory(transport);
+        using var serviceScope = factory.Services.CreateScope();
+        var store = serviceScope.ServiceProvider.GetRequiredService<ICircuitTokenStore>();
+        store.Store(CircuitKey(userId), sessionId: null, accessToken);
+        var context = new DefaultHttpContext
+        {
+            RequestServices = serviceScope.ServiceProvider,
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim("sub", userId.ToString())],
+                CookieAuthenticationDefaults.AuthenticationScheme))
+        };
+        var provider = serviceScope.ServiceProvider.GetRequiredService<IEventBffAccessTokenProvider>();
+
+        var resolved = await provider.ResolveAccessTokenAsync(context, CancellationToken.None);
+
+        await Assert.That(resolved).IsEqualTo(accessToken);
+    }
+
+    [Test]
     public async Task AuthenticatedWritesForwardCanonicalRoutesHeadersAndJsonPayloads()
     {
         AddOnScope scope = AddOnScope.Create();
@@ -134,7 +163,7 @@ public sealed class EventAddOnBffTests
         await using WebApplicationFactory<Program> factory = CreateFactory(transport);
         using HttpClient client = CreateClient(factory);
         factory.Services.GetRequiredService<ICircuitTokenStore>().Store(
-            userId.ToString(),
+            CircuitKey(userId),
             sessionId: null,
             accessToken);
         string authentication = TestAuthHandler.CreateAuthHeaderValue(userId);
@@ -203,7 +232,7 @@ public sealed class EventAddOnBffTests
         await using WebApplicationFactory<Program> factory = CreateFactory(transport);
         using HttpClient client = CreateClient(factory);
         factory.Services.GetRequiredService<ICircuitTokenStore>().Store(
-            userId.ToString(),
+            CircuitKey(userId),
             sessionId: null,
             accessToken);
         string authentication = TestAuthHandler.CreateAuthHeaderValue(userId);
@@ -295,6 +324,13 @@ public sealed class EventAddOnBffTests
         new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
             claims: [new Claim("sub", userId.ToString())],
             expires: DateTime.UtcNow.AddMinutes(30)));
+
+    private static string CircuitKey(Guid userId) =>
+        new EventBffOpaqueIdentity(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            userId.ToString(),
+            EventBffOpaqueIdentityPurpose.CircuitSubject,
+            EventBffOpaqueIdentitySource.ProviderSubject).PartitionKey;
 
     private sealed record BrowserSession(
         string AntiforgeryToken,

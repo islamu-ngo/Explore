@@ -2,8 +2,10 @@
 // ABOUTME: Designed for observability; never logs sensitive data such as headers or bodies.
 
 using System.Diagnostics;
+using Explore.API.Hateoas;
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Services;
-using Microsoft.AspNetCore.Routing;
+using Microsoft.Net.Http.Headers;
 
 namespace Explore.API.Middleware;
 
@@ -36,46 +38,80 @@ public sealed class RequestLoggingMiddleware
             var elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
             var correlationId = context.Items["CorrelationId"] as string;
-            if (TryGetAdmissionRouteIdentity(context, out string routeIdentity))
+            if (SafeRouteMetadata.TryGetSensitiveRouteIdentity(context, out string routeIdentity))
             {
                 _logger.LogInformation(
-                    "HTTP {Method} {Route} responded {StatusCode} in {ElapsedMs:0.00}ms | CorrelationId={CorrelationId}",
+                    "HTTP {Method} {Route} responded {StatusCode} in {ElapsedMs:0.00}ms | CorrelationId={CorrelationId} RequestPath={RequestPath}",
                     context.Request.Method,
                     routeIdentity,
                     context.Response.StatusCode,
                     elapsed.TotalMilliseconds,
-                    correlationId ?? "-");
+                    correlationId ?? "-",
+                    routeIdentity);
             }
             else
             {
-                var userId = context.User?.FindFirst("sub")?.Value
-                    ?? context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                var tenantId = tenantContextAccessor.TenantId?.ToString();
-                var tenantSlug = context.Request.Headers[
-                    Explore.Application.Constants.TenantHeaderNames.TenantSlug].FirstOrDefault();
-                var authHeaderPresent = context.Request.Headers.ContainsKey("Authorization");
+                var platformIdentityPresent = context.User.GetPlatformUserId().HasValue;
+                var tenantPresent = tenantContextAccessor.TenantId.HasValue;
+                var tenantSlugPresent = context.Request.Headers.ContainsKey(
+                    Explore.Application.Constants.TenantHeaderNames.TenantSlug);
+                var authHeaderPresent = context.Request.Headers.ContainsKey(HeaderNames.Authorization);
                 var isAuthenticated = context.User?.Identity?.IsAuthenticated ?? false;
 
                 _logger.LogInformation(
-                    "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs:0.00}ms | User={UserId} Authenticated={IsAuthenticated} AuthHeaderPresent={AuthHeaderPresent} Tenant={TenantId} TenantSlug={TenantSlug} CorrelationId={CorrelationId}",
+                    "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs:0.00}ms | PlatformIdentityPresent={PlatformIdentityPresent} Authenticated={IsAuthenticated} AuthHeaderPresent={AuthHeaderPresent} TenantPresent={TenantPresent} TenantSlugPresent={TenantSlugPresent} CorrelationId={CorrelationId}",
                     context.Request.Method,
                     context.Request.Path.Value,
                     context.Response.StatusCode,
                     elapsed.TotalMilliseconds,
-                    userId ?? "-",
+                    platformIdentityPresent,
                     isAuthenticated,
                     authHeaderPresent,
-                    tenantId ?? "-",
-                    tenantSlug ?? "-",
+                    tenantPresent,
+                    tenantSlugPresent,
                     correlationId ?? "-");
             }
         }
     }
 
-    internal static bool TryGetAdmissionRouteIdentity(HttpContext context, out string routeIdentity)
+    internal static bool TryGetAdmissionRouteIdentity(HttpContext context, out string routeIdentity) =>
+        SafeRouteMetadata.TryGetSensitiveRouteIdentity(context, out routeIdentity);
+}
+
+internal static class SafeRouteMetadata
+{
+    internal const string UnresolvedRouteClassification = "route-unresolved";
+
+    internal static string GetRouteIdentityOrClassification(HttpContext context)
+    {
+        Endpoint? selectedEndpoint = context.GetEndpoint();
+        string? endpointName = selectedEndpoint?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName;
+        if (!string.IsNullOrWhiteSpace(endpointName))
+        {
+            return endpointName;
+        }
+
+        if (selectedEndpoint is RouteEndpoint endpoint &&
+            !string.IsNullOrWhiteSpace(endpoint.RoutePattern.RawText))
+        {
+            return "/" + endpoint.RoutePattern.RawText.Trim('/').ToLowerInvariant();
+        }
+
+        return UnresolvedRouteClassification;
+    }
+
+    internal static bool TryGetSensitiveRouteIdentity(HttpContext context, out string routeIdentity)
     {
         routeIdentity = string.Empty;
-        if (context.GetEndpoint() is not RouteEndpoint endpoint)
+        Endpoint? selectedEndpoint = context.GetEndpoint();
+        if (selectedEndpoint?.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName
+            == RouteNames.GetActorByDid)
+        {
+            routeIdentity = RouteNames.GetActorByDid;
+            return true;
+        }
+
+        if (selectedEndpoint is not RouteEndpoint endpoint)
             return false;
 
         string pattern = endpoint.RoutePattern.RawText ?? string.Empty;
@@ -86,8 +122,8 @@ public sealed class RequestLoggingMiddleware
         return true;
     }
 }
-
 public static class RequestLoggingMiddlewareExtensions
+
 {
     public static IApplicationBuilder UseRequestLogging(this IApplicationBuilder app)
     {

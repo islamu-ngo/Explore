@@ -420,10 +420,10 @@ public sealed class PublicEventEligibilityRepositoryTests
             _context.ExternalActorSubjects.Add(new ExternalActorSubject { Id = actor.ExternalActorSubjectId!.Value });
             _context.Actors.Add(actor);
             _context.AtprotoRecords.Add(record);
-            _context.AtprotoIdentities.Add(new AtprotoIdentity
+            _context.AtprotoIdentities.Add(new AtprotoIdentity(Explore.Domain.ValueObjects.AtprotoDid.Parse(didMatchesActorIdentity ? record.Did : $"did:plc:other-{name}"))
             {
                 Id = Guid.CreateVersion7(),
-                Did = didMatchesActorIdentity ? record.Did : $"did:plc:other-{name}",
+
                 ActorId = actor.Id,
                 Actor = null!,
                 PdsHost = "https://pds.example.test",

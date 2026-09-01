@@ -166,16 +166,7 @@ public sealed class PrivacyErasureApplier(
             actor.TombstoneForUserPrivacyErasure(prepared.AppliedAtUtc, intent.SubjectId);
             foreach (AtprotoIdentity identity in actor.AtprotoIdentities)
             {
-                identity.Did = $"did:deleted:{identity.Id:N}";
-                identity.Handle = null;
-                identity.PdsHost = string.Empty;
-                identity.SigningKey = null;
-                identity.IsActive = false;
-                identity.IsDeleted = true;
-                identity.CreatedBy = null;
-                identity.UpdatedBy = null;
-                identity.DeletedAt = prepared.AppliedAtUtc;
-                identity.DeletedBy = null;
+                identity.EraseForPrivacy(prepared.AppliedAtUtc);
             }
 
             if (actor.Pii is null)

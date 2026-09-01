@@ -3,7 +3,8 @@
 
 using ApplicationUnitTests.Contracts.Admissions.Support;
 using Explore.Application.Contracts.Admissions;
-using System.Reflection;
+using Explore.Application.Services.Registration;
+using Explore.Domain;
 
 namespace ApplicationUnitTests.Contracts.Admissions;
 
@@ -15,20 +16,18 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
     public async Task FreeConfirmedIssuanceCreatesOneTicketPerAssignmentAndReplayKeepsEveryIdentity()
     {
         AdmissionTestScenario scenario = AdmissionTestScenario.Free(UtcNow, Assignments());
-        object service = AdmissionIssuancePorts.Service(scenario);
-        object request = AdmissionIssuancePorts.Request(scenario);
+        AdmissionIssuanceService service = AdmissionIssuancePorts.TypedService(scenario);
+        AdmissionIssuanceRequest request = AdmissionIssuancePorts.TypedRequest(scenario);
 
-        object first = await AdmissionContractRuntime.InvokeAsync(
-            service, "IssueConfirmedAsync", request, CancellationToken.None);
+        AdmissionIssuanceResult first = await service.IssueConfirmedAsync(request, CancellationToken.None);
         int intentsAfterFirst = scenario.PersistedDeliveryIntentCount;
         int dispatchesAfterFirst = scenario.IssuanceDeliveryCalls;
         int commitsAfterFirst = scenario.TransactionCommits;
-        object replay = await AdmissionContractRuntime.InvokeAsync(
-            service, "IssueConfirmedAsync", request, CancellationToken.None);
-        Guid[] firstIds = AdmissionContractRuntime.Ids(first, "IssuedTicketIds");
-        Guid[] replayIds = AdmissionContractRuntime.Ids(replay, "ExistingTicketIds");
-        object firstCredential = AdmissionContractRuntime.Items(first, "OneTimeCredentials").First();
-        string plaintext = AdmissionContractRuntime.Value<string>(firstCredential, "PlaintextCredential");
+        AdmissionIssuanceResult replay = await service.IssueConfirmedAsync(request, CancellationToken.None);
+        Guid[] firstIds = first.IssuedTicketIds.ToArray();
+        Guid[] replayIds = replay.ExistingTicketIds.ToArray();
+        AdmissionOneTimeCredential firstCredential = first.OneTimeCredentials.First();
+        string plaintext = firstCredential.PlaintextCredential;
 
         await Assert.That(first.ToString()).DoesNotContain(plaintext);
         await Assert.That(firstCredential.ToString()).DoesNotContain(plaintext);
@@ -53,28 +52,22 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
     public async Task MalformedLineageAndPreCommitCancellationReturnTypedFailuresWithoutWriting()
     {
         AdmissionTestScenario malformedScenario = AdmissionTestScenario.Free(UtcNow, [Assignments()[0]]);
-        object malformedRequest = AdmissionContractRuntime.ApplicationObject(
-            "AdmissionIssuanceRequest",
-            ("TenantId", Guid.Empty),
-            ("RegistrationOrderId", malformedScenario.OrderId),
-            ("FinalizationEffectId", malformedScenario.FinalizationEffectId),
-            ("Authority", malformedScenario.Authority));
-        object malformed = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(malformedScenario), "IssueConfirmedAsync", malformedRequest, CancellationToken.None);
+        AdmissionIssuanceRequest malformedRequest = new(
+            Guid.Empty,
+            malformedScenario.OrderId,
+            malformedScenario.FinalizationEffectId,
+            malformedScenario.Authority);
+        AdmissionIssuanceResult malformed = await AdmissionIssuancePorts.TypedService(malformedScenario)
+            .IssueConfirmedAsync(malformedRequest, CancellationToken.None);
 
         AdmissionTestScenario cancelledScenario = AdmissionTestScenario.Free(UtcNow, [Assignments()[0]]);
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
-        object cancelledResult = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(cancelledScenario),
-            "IssueConfirmedAsync",
-            AdmissionIssuancePorts.Request(cancelledScenario),
-            cancelled.Token);
+        AdmissionIssuanceResult cancelledResult = await AdmissionIssuancePorts.TypedService(cancelledScenario)
+            .IssueConfirmedAsync(AdmissionIssuancePorts.TypedRequest(cancelledScenario), cancelled.Token);
 
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionIssuanceOutcome>(malformed, "Outcome"))
-            .IsEqualTo(AdmissionIssuanceOutcome.InvalidRequest);
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionIssuanceOutcome>(cancelledResult, "Outcome"))
-            .IsEqualTo(AdmissionIssuanceOutcome.CancelledBeforeCommit);
+        await Assert.That(malformed.Outcome).IsEqualTo(AdmissionIssuanceOutcome.InvalidRequest);
+        await Assert.That(cancelledResult.Outcome).IsEqualTo(AdmissionIssuanceOutcome.CancelledBeforeCommit);
         await Assert.That(malformedScenario.IssuanceWriteCalls).IsEqualTo(0);
         await Assert.That(cancelledScenario.IssuanceWriteCalls).IsEqualTo(0);
     }
@@ -84,36 +77,23 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
     {
         AdmissionAssignmentSeed assignment = Assignments()[0];
         AdmissionTestScenario paymentOnly = AdmissionTestScenario.Paid(UtcNow, [assignment], reconciled: false);
-        object denied = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(paymentOnly),
-            "IssueConfirmedAsync",
-            AdmissionIssuancePorts.Request(paymentOnly),
-            CancellationToken.None);
+        AdmissionIssuanceResult denied = await AdmissionIssuancePorts.TypedService(paymentOnly)
+            .IssueConfirmedAsync(AdmissionIssuancePorts.TypedRequest(paymentOnly), CancellationToken.None);
 
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionIssuanceOutcome>(denied, "Outcome"))
-            .IsEqualTo(AdmissionIssuanceOutcome.NotConfirmed);
+        await Assert.That(denied.Outcome).IsEqualTo(AdmissionIssuanceOutcome.NotConfirmed);
         await Assert.That(paymentOnly.TicketsByAssignment).IsEmpty();
         await Assert.That(paymentOnly.IssuanceWriteCalls).IsEqualTo(0);
 
         AdmissionTestScenario reconciled = AdmissionTestScenario.Paid(UtcNow, [assignment], reconciled: true);
-        object accepted = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(reconciled),
-            "IssueConfirmedAsync",
-            AdmissionIssuancePorts.Request(reconciled),
-            CancellationToken.None);
-        object replay = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(reconciled),
-            "IssueConfirmedAsync",
-            AdmissionIssuancePorts.Request(reconciled),
-            CancellationToken.None);
+        AdmissionIssuanceResult accepted = await AdmissionIssuancePorts.TypedService(reconciled)
+            .IssueConfirmedAsync(AdmissionIssuancePorts.TypedRequest(reconciled), CancellationToken.None);
+        AdmissionIssuanceResult replay = await AdmissionIssuancePorts.TypedService(reconciled)
+            .IssueConfirmedAsync(AdmissionIssuancePorts.TypedRequest(reconciled), CancellationToken.None);
 
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionIssuanceOutcome>(accepted, "Outcome"))
-            .IsEqualTo(AdmissionIssuanceOutcome.Issued);
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionIssuanceOutcome>(replay, "Outcome"))
-            .IsEqualTo(AdmissionIssuanceOutcome.AlreadyIssued);
-        await Assert.That(AdmissionContractRuntime.Ids(accepted, "IssuedTicketIds").Length).IsEqualTo(1);
-        await Assert.That(AdmissionContractRuntime.Ids(replay, "ExistingTicketIds"))
-            .IsEquivalentTo(AdmissionContractRuntime.Ids(accepted, "IssuedTicketIds"));
+        await Assert.That(accepted.Outcome).IsEqualTo(AdmissionIssuanceOutcome.Issued);
+        await Assert.That(replay.Outcome).IsEqualTo(AdmissionIssuanceOutcome.AlreadyIssued);
+        await Assert.That(accepted.IssuedTicketIds.Count).IsEqualTo(1);
+        await Assert.That(replay.ExistingTicketIds).IsEquivalentTo(accepted.IssuedTicketIds);
         await Assert.That(reconciled.TicketsByAssignment.Count).IsEqualTo(1);
         await Assert.That(reconciled.IssuanceWriteCalls).IsEqualTo(1);
     }
@@ -122,11 +102,8 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
     public async Task TicketAndDeliveryIntentPersistenceIsAtomicAndDispatchIsPostCommit()
     {
         AdmissionTestScenario scenario = AdmissionTestScenario.Free(UtcNow, Assignments());
-        _ = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(scenario),
-            "IssueConfirmedAsync",
-            AdmissionIssuancePorts.Request(scenario),
-            CancellationToken.None);
+        _ = await AdmissionIssuancePorts.TypedService(scenario)
+            .IssueConfirmedAsync(AdmissionIssuancePorts.TypedRequest(scenario), CancellationToken.None);
 
         await Assert.That(scenario.IssuanceWriteCalls).IsEqualTo(1);
         await Assert.That(scenario.AtomicTicketAndIntentWriteObserved).IsTrue();
@@ -149,18 +126,13 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
         scenario.LoseNextCommitAcknowledgement = true;
         scenario.LoseNextCommitAcknowledgementAsTimeout = reportAsTimeout;
 
-        object result = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(scenario),
-            "IssueConfirmedAsync",
-            AdmissionIssuancePorts.Request(scenario),
-            CancellationToken.None);
+        AdmissionIssuanceResult result = await AdmissionIssuancePorts.TypedService(scenario)
+            .IssueConfirmedAsync(AdmissionIssuancePorts.TypedRequest(scenario), CancellationToken.None);
 
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionIssuanceOutcome>(result, "Outcome"))
-            .IsEqualTo(AdmissionIssuanceOutcome.AlreadyIssued);
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionDeliveryOutcome>(result, "DeliveryOutcome"))
-            .IsEqualTo(AdmissionDeliveryOutcome.Delivered);
-        await Assert.That(AdmissionContractRuntime.Ids(result, "ExistingTicketIds").Length).IsEqualTo(1);
-        await Assert.That(AdmissionContractRuntime.Items(result, "OneTimeCredentials").Length).IsEqualTo(1);
+        await Assert.That(result.Outcome).IsEqualTo(AdmissionIssuanceOutcome.AlreadyIssued);
+        await Assert.That(result.DeliveryOutcome).IsEqualTo(AdmissionDeliveryOutcome.Delivered);
+        await Assert.That(result.ExistingTicketIds.Count).IsEqualTo(1);
+        await Assert.That(result.OneTimeCredentials.Count).IsEqualTo(1);
         await Assert.That(scenario.TransactionCommits).IsEqualTo(1);
         await Assert.That(scenario.DigestIssueCalls).IsEqualTo(1);
         await Assert.That(scenario.PersistedDeliveryIntentCount).IsEqualTo(1);
@@ -173,26 +145,16 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
         AdmissionTestScenario scenario = AdmissionTestScenario.Free(UtcNow, [Assignments()[0]]);
         scenario.FailNextIssuanceDelivery = true;
 
-        object committed = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(scenario),
-            "IssueConfirmedAsync",
-            AdmissionIssuancePorts.Request(scenario),
-            CancellationToken.None);
-        object replay = await AdmissionContractRuntime.InvokeAsync(
-            AdmissionIssuancePorts.Service(scenario),
-            "IssueConfirmedAsync",
-            AdmissionIssuancePorts.Request(scenario),
-            CancellationToken.None);
+        AdmissionIssuanceService service = AdmissionIssuancePorts.TypedService(scenario);
+        AdmissionIssuanceRequest request = AdmissionIssuancePorts.TypedRequest(scenario);
+        AdmissionIssuanceResult committed = await service.IssueConfirmedAsync(request, CancellationToken.None);
+        AdmissionIssuanceResult replay = await service.IssueConfirmedAsync(request, CancellationToken.None);
 
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionIssuanceOutcome>(committed, "Outcome"))
-            .IsEqualTo(AdmissionIssuanceOutcome.Issued);
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionDeliveryOutcome>(committed, "DeliveryOutcome"))
-            .IsEqualTo(AdmissionDeliveryOutcome.RecoverablePending);
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionDeliveryFailure>(committed, "DeliveryFailure"))
-            .IsEqualTo(AdmissionDeliveryFailure.RouteUnavailable);
-        await Assert.That(AdmissionContractRuntime.Value<AdmissionDeliveryOutcome>(replay, "DeliveryOutcome"))
-            .IsEqualTo(AdmissionDeliveryOutcome.Delivered);
-        await Assert.That(AdmissionContractRuntime.Items(replay, "OneTimeCredentials").Length).IsEqualTo(1);
+        await Assert.That(committed.Outcome).IsEqualTo(AdmissionIssuanceOutcome.Issued);
+        await Assert.That(committed.DeliveryOutcome).IsEqualTo(AdmissionDeliveryOutcome.RecoverablePending);
+        await Assert.That(committed.DeliveryFailure).IsEqualTo(AdmissionDeliveryFailure.RouteUnavailable);
+        await Assert.That(replay.DeliveryOutcome).IsEqualTo(AdmissionDeliveryOutcome.Delivered);
+        await Assert.That(replay.OneTimeCredentials.Count).IsEqualTo(1);
         await Assert.That(scenario.TransactionCommits).IsEqualTo(2);
         await Assert.That(scenario.TicketsByAssignment.Count).IsEqualTo(1);
         await Assert.That(scenario.PersistedDeliveryIntentCount).IsEqualTo(1);
@@ -212,18 +174,12 @@ public sealed class AdmissionIssuanceOrchestrationRedTests
         ];
     }
 
-    private static async Task AssertCanonicalCredentialChildrenAsync(IEnumerable<object> tickets)
+    private static async Task AssertCanonicalCredentialChildrenAsync(IEnumerable<AdmissionTicket> tickets)
     {
-        Type ticketType = AdmissionContractRuntime.DomainType("AdmissionTicket");
-        Type credentialType = AdmissionContractRuntime.DomainType("AdmissionTicketCredential");
-        foreach (object ticket in tickets)
+        foreach (AdmissionTicket ticket in tickets)
         {
-            await Assert.That(ticket.GetType()).IsEqualTo(ticketType);
-            PropertyInfo credentialsProperty = ticketType.GetProperty("Credentials", BindingFlags.Instance | BindingFlags.Public)
-                ?? throw AdmissionContractRuntime.Missing("AdmissionTicket.Credentials bounded child history");
-            object[] credentials = ((System.Collections.IEnumerable)credentialsProperty.GetValue(ticket)!).Cast<object>().ToArray();
-            await Assert.That(credentials.Length).IsEqualTo(1);
-            await Assert.That(credentials.Single().GetType()).IsEqualTo(credentialType);
+            await Assert.That(ticket.Credentials.Count).IsEqualTo(1);
+            await Assert.That(ticket.Credentials.Single().GetType()).IsEqualTo(typeof(AdmissionTicketCredential));
         }
     }
 }

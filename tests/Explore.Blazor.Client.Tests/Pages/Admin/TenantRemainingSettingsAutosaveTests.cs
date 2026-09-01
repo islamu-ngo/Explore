@@ -1,7 +1,7 @@
 // ABOUTME: bUnit tests for tenant render-policy and domain autosave controls.
 // ABOUTME: Verifies exact-key writes, lock gating, pending suppression, and authoritative recovery.
 
-using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -27,7 +27,7 @@ public sealed class TenantRemainingSettingsAutosaveTests : IDisposable
     public async Task RenderPolicyPreset_WhenChanged_WritesOnlyExactKey()
     {
         var model = EditableRenderPolicy();
-        IRenderedComponent<DynamicComponent> cut = Render("TenantRenderPolicySection", model);
+        IRenderedComponent<TenantRenderPolicySection> cut = RenderPolicy(model);
         MudSelect<string> preset = cut.FindComponents<MudSelect<string>>()
             .Single(component => component.Instance.Label == "Render Policy Preset")
             .Instance;
@@ -52,7 +52,7 @@ public sealed class TenantRemainingSettingsAutosaveTests : IDisposable
                 Arg.Any<CancellationToken>())
             .Returns(pending.Task);
         var model = EditableRenderPolicy();
-        IRenderedComponent<DynamicComponent> cut = Render("TenantRenderPolicySection", model);
+        IRenderedComponent<TenantRenderPolicySection> cut = RenderPolicy(model);
         MudSelect<string> preset = cut.FindComponents<MudSelect<string>>()
             .Single(component => component.Instance.Label == "Render Policy Preset")
             .Instance;
@@ -80,7 +80,7 @@ public sealed class TenantRemainingSettingsAutosaveTests : IDisposable
             .Returns(new BaseCommandResponseOfGuid { Success = false });
         _tenantOnboardingService.GetManagementSettingsAsync()
             .Returns(EditableDomain(subdomain: "authoritative"));
-        IRenderedComponent<DynamicComponent> cut = Render("TenantDomainSection", model);
+        IRenderedComponent<TenantDomainSection> cut = RenderDomain(model);
         IRenderedComponent<MudTextField<string>> field = cut.FindComponents<MudTextField<string>>()
             .Single(component => component.Instance.Label == "Subdomain");
 
@@ -104,7 +104,7 @@ public sealed class TenantRemainingSettingsAutosaveTests : IDisposable
         model.CanOverrideSubdomain = false;
         model.CanOverrideCustomDomain = false;
 
-        IRenderedComponent<DynamicComponent> cut = Render("TenantDomainSection", model);
+        IRenderedComponent<TenantDomainSection> cut = RenderDomain(model);
 
         await Assert.That(cut.FindComponents<MudSelect<string>>().Single().Instance.Disabled).IsTrue();
         await Assert.That(cut.FindComponents<MudTextField<string>>().All(component => component.Instance.Disabled)).IsTrue();
@@ -114,10 +114,13 @@ public sealed class TenantRemainingSettingsAutosaveTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
-    private IRenderedComponent<DynamicComponent> Render(string componentName, TenantPolicySettingsDto model) =>
-        _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetComponentType(componentName))
-                .Add(component => component.Parameters, new Dictionary<string, object> { ["Model"] = model }));
+    private IRenderedComponent<TenantRenderPolicySection> RenderPolicy(TenantPolicySettingsDto model) =>
+        _ctx.RenderMudComponent<TenantRenderPolicySection>(parameters =>
+            parameters.Add(component => component.Model, model));
+
+    private IRenderedComponent<TenantDomainSection> RenderDomain(TenantPolicySettingsDto model) =>
+        _ctx.RenderMudComponent<TenantDomainSection>(parameters =>
+            parameters.Add(component => component.Model, model));
 
     private static TenantPolicySettingsDto EditableRenderPolicy() => new()
     {
@@ -139,7 +142,4 @@ public sealed class TenantRemainingSettingsAutosaveTests : IDisposable
         CanOverrideCustomDomain = true
     };
 
-    private static Type GetComponentType(string componentName) => typeof(EventList).Assembly
-        .GetTypes()
-        .Single(type => type.Name == componentName && typeof(IComponent).IsAssignableFrom(type));
 }

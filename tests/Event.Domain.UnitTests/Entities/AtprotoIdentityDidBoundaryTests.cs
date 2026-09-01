@@ -1,7 +1,6 @@
 // ABOUTME: Guards the AT Protocol DID semantic boundary, syntax rules, and privacy-erasure tombstone lifecycle.
 // ABOUTME: Enforces Scenario 3.5A-3.5C invariants: case-sensitivity, length bounds, and tombstone distinction.
 
-using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
 
@@ -21,8 +20,7 @@ public sealed class AtprotoIdentityDidBoundaryTests
         var did = AtprotoDid.Parse(validDid);
 
         await Assert.That(did.Value).IsEqualTo(validDid);
-        await Assert.That(did.ToString()).IsEqualTo(validDid);
-        await Assert.That((string)did).IsEqualTo(validDid);
+        await Assert.That(did.ToString()).IsEqualTo("[AT Protocol DID]");
     }
 
     [Test]
@@ -52,20 +50,32 @@ public sealed class AtprotoIdentityDidBoundaryTests
     [Test]
     public async Task PrivacyErasureTombstone_IsNotLiveDid()
     {
-        var tombstone = "erased-did:deleted-user-" + Guid.CreateVersion7();
+        var tombstone = $"did:deleted:{Guid.CreateVersion7():N}";
 
         await Assert.That(() => AtprotoDid.Parse(tombstone)).Throws<ArgumentException>();
         await Assert.That(AtprotoDid.TryParse(tombstone, out _)).IsFalse();
     }
 
     [Test]
+    public async Task AtprotoIdentity_DidHasNoPublicSetter()
+    {
+        var didProperty = typeof(AtprotoIdentity).GetProperty(nameof(AtprotoIdentity.Did));
+
+        await Assert.That(didProperty).IsNotNull();
+        await Assert.That(didProperty!.SetMethod?.IsPublic == true).IsFalse();
+        await Assert.That(typeof(AtprotoIdentity).GetConstructors()
+            .Any(constructor => constructor.GetParameters() is [{ ParameterType: var parameterType }]
+                && parameterType == typeof(string))).IsFalse();
+    }
+
+    [Test]
     public async Task AtprotoIdentity_RefreshVerifiedMetadata_AcceptsOnlyValidLiveDid()
     {
         var actorId = Guid.CreateVersion7();
-        var identity = new AtprotoIdentity
+        var identity = new AtprotoIdentity(AtprotoDid.Parse("did:plc:z72i7hdynmk6r22z27h6tvur"))
         {
             Id = Guid.CreateVersion7(),
-            Did = "did:plc:z72i7hdynmk6r22z27h6tvur",
+
             ActorId = actorId,
             Actor = new Actor
             {

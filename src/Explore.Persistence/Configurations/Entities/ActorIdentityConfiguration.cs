@@ -2,6 +2,7 @@
 // ABOUTME: Enforces exact-DID uniqueness and immutable evidence relationships without tenant scope.
 
 using Explore.Domain;
+using Explore.Persistence.Schema;
 using Explore.Persistence.ValueGenerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -13,7 +14,7 @@ public sealed class AtprotoIdentityConfiguration : IEntityTypeConfiguration<Atpr
     public void Configure(EntityTypeBuilder<AtprotoIdentity> builder)
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
-        builder.Property(e => e.Did).HasMaxLength(2048).IsRequired().UseCollation("C");
+        builder.Property(e => e.Did).HasMaxLength(2048).IsRequired().UsePortableOrdinalAscii();
         builder.Property(e => e.Handle).HasMaxLength(253);
         builder.Property(e => e.PdsHost).HasMaxLength(2048).IsRequired();
         builder.Property(e => e.SigningKey).HasMaxLength(2048);

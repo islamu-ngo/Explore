@@ -1,7 +1,7 @@
 // ABOUTME: Implements the single global renewable Jetstream lease and fenced cursor ownership.
 // ABOUTME: Atomically applies canonical records, tombstones, tenant presentations, or quarantine before cursor advance.
 
-using System.Text;
+using System.Diagnostics.CodeAnalysis;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Federation.Atproto.Models;
@@ -863,18 +863,15 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
                     },
                     CreatedAt = observedAt
                 };
-                identity = new AtprotoIdentity
-                {
-                    Id = Guid.CreateVersion7(),
-                    Did = import.Did,
-                    ActorId = newActor.Id,
-                    Actor = newActor,
-                    PdsHost = string.Empty,
-                    IsActive = false,
-                    LastResolvedAt = observedAt,
-                    LastSeenAt = observedAt,
-                    CreatedAt = observedAt
-                };
+                identity = new AtprotoIdentity(AtprotoDid.Parse(import.Did));
+                identity.Id = Guid.CreateVersion7();
+                identity.ActorId = newActor.Id;
+                identity.Actor = newActor;
+                identity.PdsHost = string.Empty;
+                identity.IsActive = false;
+                identity.LastResolvedAt = observedAt;
+                identity.LastSeenAt = observedAt;
+                identity.CreatedAt = observedAt;
                 await _dbContext.AtprotoIdentities.AddAsync(identity, cancellationToken);
             }
             else
@@ -1294,7 +1291,8 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
             SafeDisplayName = displayName,
             Extension = extension,
             ContentType = mimeType,
-            Sha256Checksum = staged.Sha256Checksum,
+            Sha256Checksum = staged.Sha256Checksum
+                ?? throw new InvalidOperationException("Staged thumbnail checksum is missing."),
             Size = staged.SizeBytes,
             Visibility = StorageObjectVisibilities.PublicImage,
             Purpose = StorageObjectPurposes.EventImage,
@@ -1320,8 +1318,8 @@ public sealed class AtprotoJetstreamRepository : IAtprotoJetstreamRepository, IA
     private static bool TryValidateStagedThumbnail(
         AtprotoThumbnailBlobCandidate thumbnail,
         FileStorageWriteResult staged,
-        out string? mimeType,
-        out string? extension)
+        [NotNullWhen(true)] out string? mimeType,
+        [NotNullWhen(true)] out string? extension)
     {
         mimeType = null;
         extension = null;

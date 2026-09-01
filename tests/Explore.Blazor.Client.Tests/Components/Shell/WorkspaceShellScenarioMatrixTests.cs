@@ -115,8 +115,8 @@ public sealed class WorkspaceShellScenarioMatrixTests
                 });
         settings.ResetSettingAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
 
-        var auth = Substitute.For<IAuthStateService>();
-        auth.IsAuthenticatedAsync().Returns(scenario.Authenticated);
+        AuthenticationStateProvider auth =
+            MockServiceFactory.CreateAuthenticationStateProvider(scenario.Authenticated);
         return new ShellPreferencesService(settings, auth, Substitute.For<ILogger<ShellPreferencesService>>());
     }
 

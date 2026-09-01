@@ -11,6 +11,10 @@ public static class ApiAuthenticationSchemeNames
 
     public const string ApiKey = "ApiKey";
 
+    public const string AdmissionScanner = "AdmissionScanner";
+
+    public const string ManagedControlPlane = "ManagedControlPlane";
+
     public const string AtprotoBootstrap = "AtprotoBootstrap";
 
     public const string AtprotoSession = "AtprotoSession";

@@ -87,6 +87,8 @@ public sealed class GeneratedContractTransformerTests
             ExtractType(reverted.Text, "ResponseDto");
 
         await Assert.That(second.Text).IsEqualTo(first.Text);
+        await Assert.That(ExtractType(first.Text, "ResponseDto"))
+            .DoesNotContain("\n\n\n");
         await Assert.That(revertedResponse)
             .Contains("public partial class ResponseDto");
         await Assert.That(revertedResponse)

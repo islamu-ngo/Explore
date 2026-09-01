@@ -1,14 +1,12 @@
 @* ABOUTME: Group member management section for inviting, role updates, and removals. *@
 @* ABOUTME: Uses HAL member links to decide which membership actions are available. *@
 
-@using System.Security.Claims
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Services
 
 @inject IGroupService GroupService
-@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
@@ -109,29 +107,41 @@
                         @if (context.Id.HasValue)
                         {
                             <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd" AlignItems="AlignItems.Center">
-                                <MudSelect T="int"
-                                           Value="@GetPendingRole(context)"
-                                           ValueChanged="@((value) => SetPendingRole(context, value))"
-                                           Dense="true"
-                                           Disabled="@(!CanEditMember(context) || IsCreator(context))"
-                                           Variant="Variant.Outlined"
-                                           Style="min-width: 150px;">
-                                    <MudSelectItem Value="@RoleHelper.GroupCreator">Creator</MudSelectItem>
-                                    @foreach (var role in RoleHelper.GetAssignableGroupRoles())
-                                    {
-                                        <MudSelectItem Value="@role.Id">@role.Name</MudSelectItem>
-                                    }
-                                </MudSelect>
-                                <MudIconButton Icon="@Icons.Material.Filled.Save"
-                                               Color="Color.Primary"
-                                               Disabled="@(!CanEditMember(context) || !IsRoleChanged(context) || IsCreator(context) || _busyMemberId == context.Id)"
-                                               OnClick="@(() => SaveRoleAsync(context))"
-                                               Title="Save role" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                               Color="Color.Error"
-                                               Disabled="@(!CanDeleteMember(context) || IsCreator(context) || _busyMemberId == context.Id)"
-                                               OnClick="@(() => RemoveMemberAsync(context))"
-                                               Title="Remove member" />
+                                @if (CanEditMember(context))
+                                {
+                                    <MudSelect T="int"
+                                               Value="@GetPendingRole(context)"
+                                               ValueChanged="@((value) => SetPendingRole(context, value))"
+                                               Dense="true"
+                                               Disabled="@(_busyMemberId == context.Id)"
+                                               Variant="Variant.Outlined"
+                                               Style="min-width: 150px;"
+                                               data-member-id="@context.Id"
+                                               data-relation="edit">
+                                        <MudSelectItem Value="@RoleHelper.GroupCreator">Creator</MudSelectItem>
+                                        @foreach (var role in RoleHelper.GetAssignableGroupRoles())
+                                        {
+                                            <MudSelectItem Value="@role.Id">@role.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Save"
+                                                   Color="Color.Primary"
+                                                   Disabled="@(!IsRoleChanged(context) || _busyMemberId == context.Id)"
+                                                   OnClick="@(() => SaveRoleAsync(context))"
+                                                   Title="Save role"
+                                                   data-member-id="@context.Id"
+                                                   data-relation="edit" />
+                                }
+                                @if (CanDeleteMember(context))
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Disabled="@(_busyMemberId == context.Id)"
+                                                   OnClick="@(() => RemoveMemberAsync(context))"
+                                                   Title="Remove member"
+                                                   data-member-id="@context.Id"
+                                                   data-relation="delete" />
+                                }
                             </MudStack>
                         }
                     </MudTd>
@@ -156,7 +166,6 @@
     private bool _isInviting;
     private bool _canCreateMember;
     private string? _errorMessage;
-    private Guid? _currentUserId;
     private Guid? _busyMemberId;
 
     private string _inviteEmail = string.Empty;
@@ -175,9 +184,6 @@
         _errorMessage = null;
         try
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            _currentUserId = ExtractUserId(authState.User);
-
             var membersResult = await GroupService.GetGroupMembersWithAffordancesAsync(GroupId);
 
             _members.Clear();
@@ -375,23 +381,10 @@
         return member.HasHalLink("delete");
     }
 
-    private static bool IsCreator(GroupMemberDto member)
-    {
-        return member.RoleId == RoleHelper.GroupCreator;
-    }
-
     private static string GetInitial(GroupMemberDto member)
     {
         var value = member.UserFullName ?? member.UserEmail;
         return string.IsNullOrWhiteSpace(value) ? "?" : value[..1].ToUpperInvariant();
     }
 
-    private static Guid? ExtractUserId(ClaimsPrincipal user)
-    {
-        var raw = user.FindFirst("sub")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user.FindFirst("sid")?.Value;
-
-        return Guid.TryParse(raw, out var id) ? id : null;
-    }
 }

@@ -42,6 +42,7 @@ using Explore.Blazor.Client.Services.Scheduling;
 using Explore.Blazor.Client.Services.Shell;
 using Explore.Blazor.Client.Services.Webhooks;
 using Explore.Blazor.Client.Services.Waitlist;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using ExploreControlPlaneApiAdapter = Explore.Blazor.Client.Services.ControlPlane.ControlPlaneApiAdapter;
 
@@ -203,9 +204,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRuntimeRenderPolicyService, RuntimeRenderPolicyService>();
         services.AddScoped<IStartupRoutingService, StartupRoutingService>();
 
-        // Auth state
-        services.AddScoped<IAuthStateService, AuthStateService>();
-
         // Localization
         services.AddScoped<ITranslationService, TranslationService>();
         services.AddBffRefitClient<ILanguagePreferenceApi>(configureBffRefitClient)
@@ -225,7 +223,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDockLayoutPersistence>(provider => new ServerBackedDockLayoutPersistence(
             provider.GetRequiredService<LocalStorageDockLayoutPersistence>(),
             provider.GetRequiredService<IUserSettingsService>(),
-            provider.GetRequiredService<IAuthStateService>(),
+            provider.GetRequiredService<AuthenticationStateProvider>(),
             provider.GetRequiredService<IUiShellContextService>(),
             provider.GetRequiredService<ILogger<ServerBackedDockLayoutPersistence>>()));
         services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();

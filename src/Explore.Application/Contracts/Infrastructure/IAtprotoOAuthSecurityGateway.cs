@@ -2,6 +2,7 @@
 // ABOUTME: Keeps CarpaNet credential types and PDS network access in Infrastructure.
 
 using Explore.Application.Features.Authentication.Atproto.Models;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Application.Contracts.Infrastructure;
 
@@ -39,6 +40,6 @@ public interface IAtprotoSessionTokenIssuer
     Task<AtprotoIssuedSessionToken> IssueAsync(
         Guid userId,
         Guid tenantId,
-        string did,
+        AtprotoDid did,
         CancellationToken cancellationToken);
 }

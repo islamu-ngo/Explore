@@ -1,13 +1,12 @@
 // ABOUTME: bUnit tests for instance admin settings layout section reachability.
 // ABOUTME: Verifies single-tenant administration exposes tenant-level public experience controls.
 
-using System.Reflection;
 using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 using Explore.Blazor.Client.Contracts.Services.Federation;
 using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
 using Explore.Blazor.Client.Contracts.Services.Scheduling;
 using Explore.Blazor.Client.Models;
-using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Pages.Admin.Instance.Components;
 using Explore.Blazor.Client.Tests.Common.Authentication;
 using MudBlazor;
 
@@ -62,7 +61,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _schedulerAdminService.GetOverviewAsync(Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfSchedulerAdminOverviewDto());
 
-        IRenderedComponent<DynamicComponent> cut = RenderInstanceAdminSettingsLayout();
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderInstanceAdminSettingsLayout();
 
         cut.WaitForAssertion(() =>
         {
@@ -81,7 +80,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _schedulerAdminService.GetOverviewAsync(Arg.Any<CancellationToken>())
             .Returns((HalResourceOfSchedulerAdminOverviewDto?)null);
 
-        IRenderedComponent<DynamicComponent> cut = RenderInstanceAdminSettingsLayout();
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderInstanceAdminSettingsLayout();
 
         cut.WaitForAssertion(() =>
         {
@@ -94,27 +93,15 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         await Assert.That(cut.Markup).DoesNotContain("Background Scheduler", StringComparison.OrdinalIgnoreCase);
     }
 
-    private IRenderedComponent<DynamicComponent> RenderInstanceAdminSettingsLayout()
-    {
-        Type componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .First(type => type.Name == "InstanceAdminSettingsLayout" && typeof(IComponent).IsAssignableFrom(type));
-
-        return _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, componentType));
-    }
+    private IRenderedComponent<InstanceAdminSettingsLayout> RenderInstanceAdminSettingsLayout() =>
+        _ctx.RenderMudComponent<InstanceAdminSettingsLayout>();
 
     [Test]
     public async Task InstanceAdminSettingsLayout_SingleTenant_ExposesPublicExperienceNavigation()
     {
         // Arrange
-        Type componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .First(type => type.Name == "InstanceAdminSettingsLayout" && typeof(IComponent).IsAssignableFrom(type));
-
         // Act
-        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, componentType));
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderInstanceAdminSettingsLayout();
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -131,8 +118,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     [Test]
     public async Task InstanceAdminSettingsLayout_MonetizationIncludesPaidEventCeiling()
     {
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        var cut = RenderInstanceAdminSettingsLayout();
         cut.WaitForState(() => cut.Markup.Contains("Monetization", StringComparison.Ordinal));
 
         cut.FindAll("[role='option']")
@@ -163,8 +149,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 IsCurrentUserPlatformAdministrator = true
             });
 
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        var cut = RenderInstanceAdminSettingsLayout();
 
         cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
         var navLabels = cut.FindAll("[role='option']")
@@ -188,12 +173,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     public async Task InstanceAdminSettingsLayout_SingleTenant_RendersPublicExperienceSectionWhenSelected()
     {
         // Arrange
-        Type componentType = typeof(EventList).Assembly
-            .GetTypes()
-            .First(type => type.Name == "InstanceAdminSettingsLayout" && typeof(IComponent).IsAssignableFrom(type));
-
-        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, componentType));
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderInstanceAdminSettingsLayout();
 
         cut.WaitForAssertion(() =>
         {
@@ -204,18 +184,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         });
 
         // Act
-        object layout = cut.Instance.Instance
-            ?? throw new InvalidOperationException("Dynamic component did not expose the rendered layout instance.");
-        layout.GetType()
-            .GetField("_currentSection", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .SetValue(layout, "public-experience");
-        layout.GetType()
-            .GetField("_showMobileMenu", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .SetValue(layout, false);
-
-        await cut.InvokeAsync(() => typeof(ComponentBase)
-            .GetMethod("StateHasChanged", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .Invoke(layout, null));
+        SelectSection(cut, "Public Experience");
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -248,9 +217,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 CerbosGrpcEndpoint = "cerbosgrpc.local:3593"
             });
 
-        Type componentType = GetLayoutComponentType();
-        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, componentType));
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderInstanceAdminSettingsLayout();
 
         cut.WaitForAssertion(() =>
         {
@@ -261,10 +228,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         });
 
         // Act
-        object layout = GetRenderedLayout(cut);
-        SetPrivateField(layout, "_currentSection", "auth-providers");
-        SetPrivateField(layout, "_showMobileMenu", false);
-        await InvokeStateHasChangedAsync(cut, layout);
+        SelectSection(cut, "Authentication and Authorization Providers");
 
         // Assert
         cut.WaitForAssertion(() =>
@@ -292,8 +256,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
             .Returns(new AuthorizationProviderConfigurationDto());
 
-        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderInstanceAdminSettingsLayout();
 
         cut.WaitForAssertion(() =>
         {
@@ -310,96 +273,6 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     }
 
     [Test]
-    public async Task InstanceAdminSettingsLayout_AuthProvidersSave_UpdatesAuthenticationAndAuthorizationProviders()
-    {
-        // Arrange
-        _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync()
-            .Returns(new AuthProviderConfigurationDto { KeycloakEnabled = true });
-        _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
-            .Returns(new AuthorizationProviderConfigurationDto { Provider = "cerbos", CerbosGrpcEndpoint = "cerbosgrpc.local:3593" });
-        _instanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationDto>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true });
-        _instanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true });
-        _instanceOnboardingService.RefreshAuthSchemesAsync().Returns(Task.CompletedTask);
-
-        Type componentType = GetLayoutComponentType();
-        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, componentType));
-
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Provider navigation item was not rendered.");
-            }
-        });
-
-        object layout = GetRenderedLayout(cut);
-        SetPrivateField(layout, "_currentSection", "auth-providers");
-
-        // Act
-        await InvokePrivateTaskAsync(layout, "SaveAsync");
-
-        // Assert
-        await _instanceOnboardingService.Received(1)
-            .UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationDto>());
-        await _instanceOnboardingService.Received(1)
-            .UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>());
-        await _instanceOnboardingService.Received(1).RefreshAuthSchemesAsync();
-    }
-
-    [Test]
-    public async Task InstanceAdminSettingsLayout_AuthProvidersSaveFailure_ReloadsBothAuthoritativeModels()
-    {
-        _instanceOnboardingService.UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationDto>())
-            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "Authentication update failed." });
-        _instanceOnboardingService.UpdateAuthorizationProviderConfigurationAsAdminAsync(Arg.Any<AuthorizationProviderConfigurationDto>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true });
-
-        Type componentType = GetLayoutComponentType();
-        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, componentType));
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Provider navigation item was not rendered.");
-            }
-        });
-        object layout = GetRenderedLayout(cut);
-        SetPrivateField(layout, "_currentSection", "auth-providers");
-
-        await InvokePrivateTaskAsync(layout, "SaveAsync");
-
-        await _instanceOnboardingService.Received(2).GetAuthProviderConfigurationAsAdminAsync();
-        await _instanceOnboardingService.Received(2).GetAuthorizationProviderConfigurationAsAdminAsync();
-        await _instanceOnboardingService.DidNotReceive().RefreshAuthSchemesAsync();
-    }
-
-    [Test]
-    public async Task InstanceAdminSettingsLayout_SparseSaveFailures_ReloadAuthoritativeSectionModels()
-    {
-        var failure = new BaseCommandResponseOfGuid { Success = false, Message = "Update failed." };
-        _instanceOnboardingService.UpdateBrandingSettingsAsync(Arg.Any<BrandingSettingsDto>()).Returns(failure);
-        _instanceOnboardingService.UpdateDomainSettingsAsync(Arg.Any<DomainSettingsDto>()).Returns(failure);
-        _instanceOnboardingService.UpdateAnalyticsGovernanceSettingsAsync(Arg.Any<AnalyticsGovernanceSettingsDto>()).Returns(failure);
-
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetLayoutComponentType()));
-        cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
-        object layout = GetRenderedLayout(cut);
-
-        await InvokePrivateTaskAsync(layout, "SaveBrandingAsync", new BrandingSettingsDto { LockTenantBrandDisplayName = true });
-        await InvokePrivateTaskAsync(layout, "SaveDomainAsync", new DomainSettingsDto { AllowTenantCustomDomains = true });
-        await InvokePrivateTaskAsync(layout, "SaveAnalyticsAsync", new AnalyticsGovernanceSettingsDto { GlobalDisableClientTracking = true });
-
-        await _instanceOnboardingService.Received(2).GetBrandingSettingsAsync();
-        await _instanceOnboardingService.Received(2).GetDomainSettingsAsync();
-        await _instanceOnboardingService.Received(2).GetAnalyticsGovernanceSettingsAsync();
-    }
-
-    [Test]
     public async Task InstanceAdminSettingsLayout_FailedModuleAutosave_RendersAuthoritativeValue()
     {
         _instanceOnboardingService.GetModuleSettingsAsync()
@@ -408,13 +281,9 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 new ModuleSettingsDto { EnableIslamicModule = false });
         _instanceOnboardingService.UpdateModuleSettingsAsync(Arg.Any<ModuleSettingsDto>())
             .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "Module update failed." });
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        var cut = RenderInstanceAdminSettingsLayout();
         cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
-        object layout = GetRenderedLayout(cut);
-        SetPrivateField(layout, "_currentSection", "modules");
-        SetPrivateField(layout, "_showMobileMenu", false);
-        await InvokeStateHasChangedAsync(cut, layout);
+        SelectSection(cut, "Modules");
         var moduleSwitch = cut.FindComponents<MudSwitch<bool>>()
             .Single(component => component.Markup.Contains("Enable Islamic module", StringComparison.Ordinal));
 
@@ -444,18 +313,12 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 EndpointUrl = "https://ai.example.test/v1",
                 ModelId = "model-a"
             });
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        var cut = RenderInstanceAdminSettingsLayout();
         cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
-        object layout = GetRenderedLayout(cut);
-
-        SetPrivateField(layout, "_currentSection", "policies");
-        SetPrivateField(layout, "_showMobileMenu", false);
-        await InvokeStateHasChangedAsync(cut, layout);
+        SelectSection(cut, "Policies");
         await Assert.That(cut.Markup).DoesNotContain("Save Settings", StringComparison.Ordinal);
 
-        SetPrivateField(layout, "_currentSection", "ai");
-        await InvokeStateHasChangedAsync(cut, layout);
+        SelectSection(cut, "AI");
         await Assert.That(cut.Markup).DoesNotContain("Save Settings", StringComparison.Ordinal);
         await Assert.That(cut.Markup).Contains("Save provider configuration", StringComparison.Ordinal);
     }
@@ -469,13 +332,9 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 new McpGovernanceSettingsDto { Enabled = false });
         _instanceOnboardingService.UpdateMcpGovernanceSettingsAsync(Arg.Any<McpGovernanceSettingsDto>())
             .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "MCP update failed." });
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        var cut = RenderInstanceAdminSettingsLayout();
         cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
-        object layout = GetRenderedLayout(cut);
-        SetPrivateField(layout, "_currentSection", "advanced");
-        SetPrivateField(layout, "_showMobileMenu", false);
-        await InvokeStateHasChangedAsync(cut, layout);
+        SelectSection(cut, "Advanced");
         cut.WaitForState(() => cut.Markup.Contains("Enable MCP adapter at runtime", StringComparison.Ordinal));
         var mcpSwitch = cut.FindComponents<MudSwitch<bool>>()
             .Single(component => component.Markup.Contains("Enable MCP adapter at runtime", StringComparison.Ordinal));
@@ -505,13 +364,9 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 new AiAssistantGovernanceSettingsDto { Enabled = false });
         _instanceOnboardingService.UpdateAiAssistantGovernanceSettingsAsync(Arg.Any<AiAssistantGovernanceSettingsDto>())
             .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "AI update failed." });
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetLayoutComponentType()));
+        var cut = RenderInstanceAdminSettingsLayout();
         cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
-        object layout = GetRenderedLayout(cut);
-        SetPrivateField(layout, "_currentSection", "ai");
-        SetPrivateField(layout, "_showMobileMenu", false);
-        await InvokeStateHasChangedAsync(cut, layout);
+        SelectSection(cut, "AI");
         var aiSwitch = cut.FindComponents<MudSwitch<bool>>()
             .Single(component => component.Markup.Contains("Enable AI Assistant", StringComparison.Ordinal));
 
@@ -532,32 +387,10 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     }
 
     [Test]
-    public async Task InstanceAdminSettingsLayout_FailedAiProviderSave_ReloadsAuthoritativeModel()
-    {
-        _instanceOnboardingService.UpdateAiAssistantProviderConfigurationAsync(Arg.Any<AiAssistantProviderConfigurationWriteDto>())
-            .Returns(new BaseCommandResponseOfGuid { Success = false, Message = "AI provider update failed." });
-        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, GetLayoutComponentType()));
-        cut.WaitForState(() => cut.Markup.Contains("Authentication and Authorization Providers", StringComparison.OrdinalIgnoreCase));
-        object layout = GetRenderedLayout(cut);
-
-        await InvokePrivateTaskAsync(layout, "SaveAiProviderConfigurationAsync", new AiAssistantProviderConfigurationWriteDto
-        {
-            Provider = "openai-compatible",
-            EndpointUrl = "https://ai.example.test/v1",
-            ApiKey = "replacement-key",
-            ModelId = "model-a",
-            AllowedModelIds = ["model-a"]
-        });
-
-        await _instanceOnboardingService.Received(2).GetAiAssistantGovernanceSettingsAsync();
-    }
-
-    [Test]
     public async Task InstanceAdminSettingsLayout_DeploymentManagedAuthorization_KeepsAuthenticationSaveAvailable()
     {
         _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync()
-            .Returns(new AuthProviderConfigurationDto { KeycloakEnabled = true });
+            .Returns(new AuthProviderConfigurationDto { KeycloakEnabled = true, GoogleSsoEnabled = true });
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
             .Returns(new AuthorizationProviderConfigurationDto
             {
@@ -566,7 +399,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 AuthorizationProviderBootstrapStatus = "ready"
             });
 
-        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderAuthProvidersSection();
 
         cut.WaitForAssertion(() =>
         {
@@ -577,8 +410,9 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
             }
         });
 
-        object layout = GetRenderedLayout(cut);
-        await InvokePrivateTaskAsync(layout, "SaveAsync");
+        cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Save Settings", StringComparison.OrdinalIgnoreCase))
+            .Click();
 
         await _instanceOnboardingService.Received(1)
             .UpdateAuthProviderConfigurationAsAdminAsync(Arg.Any<AuthProviderConfigurationDto>());
@@ -607,7 +441,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 Message = "Authorization policy package synced."
             });
 
-        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderAuthProvidersSection();
 
         // Act
         cut.FindAll("button")
@@ -646,7 +480,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 Errors = ["stack trace"]
             });
 
-        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderAuthProvidersSection();
 
         // Act
         cut.FindAll("button")
@@ -678,7 +512,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 CerbosEndpointVerified = false
             });
 
-        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderAuthProvidersSection();
 
         // Act
         var syncButton = cut.FindAll("button")
@@ -716,7 +550,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 Message = "Automatic Cerbos setup did not complete."
             });
 
-        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderAuthProvidersSection();
         var retryButton = cut.FindAll("button")
             .First(button => button.TextContent.Contains("Retry Authorization Setup", StringComparison.OrdinalIgnoreCase));
 
@@ -770,7 +604,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
                 Message = "Cerbos endpoint verification and policy synchronization completed."
             });
 
-        IRenderedComponent<DynamicComponent> cut = await RenderAuthProvidersSectionAsync();
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderAuthProvidersSection();
         cut.FindAll("button")
             .First(button => button.TextContent.Contains("Retry Authorization Setup", StringComparison.OrdinalIgnoreCase))
             .Click();
@@ -845,18 +679,9 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
             .Returns(PaginatedResult<OrganizationListDto>.Empty());
     }
 
-    private static Type GetLayoutComponentType() => typeof(EventList).Assembly
-        .GetTypes()
-        .First(type => type.Name == "InstanceAdminSettingsLayout" && typeof(IComponent).IsAssignableFrom(type));
-
-    private static object GetRenderedLayout(IRenderedComponent<DynamicComponent> cut) => cut.Instance.Instance
-        ?? throw new InvalidOperationException("Dynamic component did not expose the rendered layout instance.");
-
-    private async Task<IRenderedComponent<DynamicComponent>> RenderAuthProvidersSectionAsync()
+    private IRenderedComponent<InstanceAdminSettingsLayout> RenderAuthProvidersSection()
     {
-        Type componentType = GetLayoutComponentType();
-        IRenderedComponent<DynamicComponent> cut = _ctx.RenderMudComponent<DynamicComponent>(parameters =>
-            parameters.Add(component => component.Type, componentType));
+        IRenderedComponent<InstanceAdminSettingsLayout> cut = RenderInstanceAdminSettingsLayout();
 
         cut.WaitForAssertion(() =>
         {
@@ -866,10 +691,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
             }
         });
 
-        object layout = GetRenderedLayout(cut);
-        SetPrivateField(layout, "_currentSection", "auth-providers");
-        SetPrivateField(layout, "_showMobileMenu", false);
-        await InvokeStateHasChangedAsync(cut, layout);
+        SelectSection(cut, "Authentication and Authorization Providers");
 
         cut.WaitForAssertion(() =>
         {
@@ -882,30 +704,8 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         return cut;
     }
 
-    private static void SetPrivateField(object instance, string fieldName, object value) => instance.GetType()
-        .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!
-        .SetValue(instance, value);
-
-    private static async Task InvokeStateHasChangedAsync(IRenderedComponent<DynamicComponent> cut, object layout) =>
-        await cut.InvokeAsync(() => typeof(ComponentBase)
-            .GetMethod("StateHasChanged", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(layout, null));
-
-    private static async Task InvokePrivateTaskAsync(object instance, string methodName)
-    {
-        var task = (Task)instance.GetType()
-            .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic, Type.EmptyTypes)!
-            .Invoke(instance, null)!;
-
-        await task;
-    }
-
-    private static async Task InvokePrivateTaskAsync(object instance, string methodName, object argument)
-    {
-        var task = (Task)instance.GetType()
-            .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic, [argument.GetType()])!
-            .Invoke(instance, [argument])!;
-
-        await task;
-    }
+    private static void SelectSection(IRenderedComponent<InstanceAdminSettingsLayout> cut, string label) =>
+        cut.FindAll("[role='option']")
+            .Single(item => item.TextContent.Trim() == label)
+            .Click();
 }

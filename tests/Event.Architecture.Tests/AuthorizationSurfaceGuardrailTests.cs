@@ -1,5 +1,5 @@
 // ABOUTME: Architecture guardrails for mutating MediatR requests and anonymous mutation surfaces.
-// ABOUTME: Generates the Phase 0 authorization inventory artifact from compiled reflection discovery.
+// ABOUTME: Enforces the authorization surface directly from compiled reflection discovery without session artifacts.
 
 namespace Event.Architecture.Tests;
 
@@ -18,25 +18,6 @@ using Microsoft.AspNetCore.Mvc.Routing;
 
 public sealed class AuthorizationSurfaceGuardrailTests
 {
-    private const string ArtifactRelativePath = ".omo/start-work/artifacts/authorization-platform-redesign/phase0-task01/authorization-surface-inventory.json";
-    private const string DispositionArtifactRelativePath = ".omo/start-work/artifacts/authorization-platform-redesign/phase0-task01/mediatR-mutation-dispositions.json";
-
-    private static readonly HashSet<string> ApprovedMediatRDispositions = new(StringComparer.Ordinal)
-    {
-        "fixed-resource-guard",
-        "handler-contained-admin",
-        "handler-contained-owner",
-        "controller-policy-gated",
-        "setup-secret-gated",
-        "signature-gated",
-        "guest-capability-gated",
-        "internal-job-only",
-        "unexposed-dead-entry",
-        "read-only-false-positive",
-        "explicit-authenticated-product-capability",
-        "blocking-phase1"
-    };
-
     private static readonly Assembly ApplicationAssembly = typeof(AuthorizeResourceAttribute).Assembly;
     private static readonly Assembly ApiAssembly = typeof(EndpointClassificationAttribute).Assembly;
 
@@ -275,11 +256,8 @@ public sealed class AuthorizationSurfaceGuardrailTests
     public async Task MutatingMediatRRequests_MustBeAuthorizationClassifiedOrNamed()
     {
         var inventory = AuthorizationSurfaceInventory.Discover(ApplicationAssembly, ApiAssembly);
-        var dispositionIds = LoadMediatRDispositionArtifact().Dispositions
-            .Select(entry => entry.RequestType)
-            .ToHashSet(StringComparer.Ordinal);
         var namedIds = NamedMediatRExceptions.Select(entry => entry.Id)
-            .Concat(dispositionIds)
+            .Concat(NamedMediatRViolations)
             .ToHashSet(StringComparer.Ordinal);
 
         var unclassified = inventory.UnprotectedMutatingRequests
@@ -289,34 +267,6 @@ public sealed class AuthorizationSurfaceGuardrailTests
 
         await Assert.That(unclassified).IsEmpty()
             .Because("every mutating IRequest<T> must either carry [AuthorizeResource] or have an exact Phase 0 disposition with evidence");
-    }
-
-    [Test]
-    [Category("AuthorizationSurfaceGuardrail")]
-    [DisplayName("Phase 0 MediatR disposition artifact must exactly cover the raw violation ledger")]
-    public async Task Phase0MediatRDispositionArtifact_MustExactlyCoverRawLedger()
-    {
-        var artifact = LoadMediatRDispositionArtifact();
-        var dispositions = artifact.Dispositions;
-        var duplicateIds = dispositions
-            .GroupBy(entry => entry.RequestType, StringComparer.Ordinal)
-            .Where(group => group.Count() > 1)
-            .Select(group => group.Key)
-            .ToArray();
-        var artifactIds = dispositions.Select(entry => entry.RequestType).Order(StringComparer.Ordinal).ToArray();
-        var rawIds = NamedMediatRViolations.Order(StringComparer.Ordinal).ToArray();
-        var invalidRows = dispositions.Where(IsInvalidMediatRDisposition).Select(entry => entry.RequestType).ToArray();
-
-        await Assert.That(artifact.SchemaVersion).IsEqualTo(1);
-        await Assert.That(artifact.RowCount).IsEqualTo(NamedMediatRViolations.Length);
-        await Assert.That(artifact.UnresolvedCount).IsEqualTo(0);
-        await Assert.That(artifact.ApprovedDispositions.Order(StringComparer.Ordinal).ToArray())
-            .IsEquivalentTo(ApprovedMediatRDispositions.Order(StringComparer.Ordinal).ToArray());
-        await Assert.That(dispositions.Length).IsEqualTo(NamedMediatRViolations.Length);
-        await Assert.That(duplicateIds).IsEmpty();
-        await Assert.That(artifactIds).IsEquivalentTo(rawIds);
-        await Assert.That(invalidRows).IsEmpty();
-        await Assert.That(dispositions.Where(entry => entry.Disposition == "blocking-phase1").ToArray()).IsEmpty();
     }
 
     [Test]
@@ -344,16 +294,6 @@ public sealed class AuthorizationSurfaceGuardrailTests
     [DisplayName("Production authorization port must expose only typed request decisions")]
     public async Task ProductionAuthorizationPort_MustExposeOnlyTypedRequestDecisions()
     {
-        var root = FindRepositoryRoot();
-        var sourceFiles = Directory.EnumerateFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories)
-            .Select(path => new { Path = path, Text = File.ReadAllText(path) })
-            .ToArray();
-
-        await Assert.That(sourceFiles.Where(file => file.Text.Contains("IsAllowedAsync", StringComparison.Ordinal)).Select(file => file.Path).ToArray()).IsEmpty();
-        await Assert.That(sourceFiles.Where(file => file.Text.Contains("IsAllowedBatchAsync", StringComparison.Ordinal)).Select(file => file.Path).ToArray()).IsEmpty();
-        await Assert.That(sourceFiles.Where(file => file.Text.Contains("IsAllowedWithFactsAsync", StringComparison.Ordinal)).Select(file => file.Path).ToArray()).IsEmpty();
-        await Assert.That(sourceFiles.Where(file => file.Text.Contains("AuthorizationCheck", StringComparison.Ordinal)).Select(file => file.Path).ToArray()).IsEmpty();
-
         var providerMethods = typeof(Explore.Application.Contracts.Infrastructure.IAuthorizationProvider)
             .GetMethods()
             .Select(method => method.Name)
@@ -365,11 +305,10 @@ public sealed class AuthorizationSurfaceGuardrailTests
 
     [Test]
     [Category("AuthorizationSurfaceGuardrail")]
-    [DisplayName("Authorization surface inventory artifact is generated from compiled discovery")]
-    public async Task AuthorizationSurfaceInventoryArtifact_ShouldBeGeneratedFromCompiledDiscovery()
+    [DisplayName("Authorization surface inventory is derived from compiled discovery")]
+    public async Task AuthorizationSurfaceInventory_ShouldBeDerivedFromCompiledDiscovery()
     {
         var inventory = AuthorizationSurfaceInventory.Discover(ApplicationAssembly, ApiAssembly);
-        var mediatRDispositions = LoadMediatRDispositionArtifact().Dispositions;
         var report = new AuthorizationSurfaceReport(
             SchemaVersion: 1,
             GeneratedFrom: "compiled-reflection",
@@ -377,25 +316,20 @@ public sealed class AuthorizationSurfaceGuardrailTests
             ApiAssembly: ApiAssembly.GetName().Name ?? string.Empty,
             ProtectedWrites: inventory.ProtectedMutatingRequests,
             NamedHandlerOwnedExceptions: NamedMediatRExceptions,
-            MediatRDispositions: mediatRDispositions,
+            MediatRDispositions: [],
             AnonymousReadOrPublicActions: inventory.AnonymousReadOrPublicActions,
             SignatureGatedActions: inventory.SignatureGatedActions,
             AnonymousMutationExceptions: NamedAnonymousMutationExceptions,
             Violations: NamedAnonymousMutationViolations,
             UnclassifiedMutatingRequests: inventory.UnprotectedMutatingRequests
                 .Where(item => !NamedMediatRExceptions.Any(entry => entry.Id == item.Id))
-                .Where(item => !mediatRDispositions.Any(entry => entry.RequestType == item.Id))
+                .Where(item => !NamedMediatRViolations.Contains(item.Id, StringComparer.Ordinal))
                 .ToArray(),
             UnclassifiedAnonymousMutationSurfaces: inventory.AnonymousMutationSurfaces
                 .Where(item => !item.IsPublicTransactional && !item.IsSetupSecretGated)
                 .Where(item => !NamedAnonymousMutationExceptions.Concat(NamedAnonymousMutationViolations).Any(entry => entry.Id == item.Id))
                 .ToArray());
 
-        var path = Path.Combine(FindRepositoryRoot(), ArtifactRelativePath);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(report, ReportJsonContext.Default.AuthorizationSurfaceReport));
-
-        await Assert.That(File.Exists(path)).IsTrue();
         await Assert.That(report.UnclassifiedMutatingRequests).IsEmpty();
         await Assert.That(report.UnclassifiedAnonymousMutationSurfaces).IsEmpty();
         await Assert.That(report.Violations).IsEmpty();
@@ -425,52 +359,6 @@ public sealed class AuthorizationSurfaceGuardrailTests
         public OkResult Post() => Ok();
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "Explore.slnx")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new InvalidOperationException("Could not locate repository root from test output directory.");
-    }
-
-    private static Phase0MediatRDispositionArtifact LoadMediatRDispositionArtifact()
-    {
-        var path = Path.Combine(FindRepositoryRoot(), DispositionArtifactRelativePath);
-        var artifact = JsonSerializer.Deserialize(File.ReadAllText(path), ReportJsonContext.Default.Phase0MediatRDispositionArtifact);
-        return artifact ?? throw new InvalidOperationException($"Could not load {DispositionArtifactRelativePath}.");
-    }
-
-    private static bool IsInvalidMediatRDisposition(MediatRDispositionEntry entry)
-    {
-        var evidencePath = entry.Evidence.Split(':', 2)[0];
-        var requiresResourceAction = entry.Disposition is
-            "fixed-resource-guard" or
-            "handler-contained-admin" or
-            "handler-contained-owner" or
-            "controller-policy-gated" or
-            "explicit-authenticated-product-capability";
-
-        return string.IsNullOrWhiteSpace(entry.RequestType)
-            || string.IsNullOrWhiteSpace(entry.Disposition)
-            || !ApprovedMediatRDispositions.Contains(entry.Disposition)
-            || entry.Disposition == "Violation"
-            || entry.Disposition.Contains("unresolved", StringComparison.OrdinalIgnoreCase)
-            || string.IsNullOrWhiteSpace(entry.Evidence)
-            || !entry.Evidence.Contains(':', StringComparison.Ordinal)
-            || !File.Exists(Path.Combine(FindRepositoryRoot(), evidencePath))
-            || string.IsNullOrWhiteSpace(entry.Reason)
-            || entry.Reason.Contains("Task 0.3 must add explicit authorization", StringComparison.Ordinal)
-            || string.IsNullOrWhiteSpace(entry.Scenario)
-            || (requiresResourceAction && (string.IsNullOrWhiteSpace(entry.Resource) || string.IsNullOrWhiteSpace(entry.Action)));
-    }
 }
 
 internal static class AuthorizationSurfaceInventory

@@ -18,7 +18,7 @@ public sealed class AtprotoDidTests
 
         await Assert.That(did.Value).IsEqualTo(rawDid);
         await Assert.That(did.Method).IsEqualTo(rawDid.Split(':')[1]);
-        await Assert.That(did.ToString()).IsEqualTo(rawDid);
+        await Assert.That(did.ToString()).IsEqualTo("[AT Protocol DID]");
 
         var success = AtprotoDid.TryParse(rawDid, out var parsed);
         await Assert.That(success).IsTrue();
@@ -73,11 +73,29 @@ public sealed class AtprotoDidTests
     }
 
     [Test]
-    public async Task ImplicitConversionToString_EmitsExactScalar()
+    public async Task PublicSurface_HasNoImplicitStringConversion()
     {
-        var did = AtprotoDid.Parse("did:plc:z72i7hdynmk6r22z27h6tvur");
-        string scalar = did;
+        bool hasImplicitConversion = typeof(AtprotoDid).GetMethods(
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Any(method => method.Name == "op_Implicit");
 
-        await Assert.That(scalar).IsEqualTo("did:plc:z72i7hdynmk6r22z27h6tvur");
+        await Assert.That(hasImplicitConversion).IsFalse();
+    }
+
+    [Test]
+    public async Task Parse_InvalidSentinelAndOversizedValuesHaveBoundedValueFreeDiagnostics()
+    {
+        const string sentinel = "did:plc:diagnostic-sentinel?raw";
+        string oversized = "did:plc:" + new string('z', 2050);
+
+        foreach (string invalid in new[] { sentinel, oversized })
+        {
+            ArgumentException? exception = await Assert.That(() => AtprotoDid.Parse(invalid))
+                .Throws<ArgumentException>();
+
+            await Assert.That(exception!.Message).DoesNotContain(invalid);
+            await Assert.That(exception.Message).DoesNotContain("diagnostic-sentinel");
+            await Assert.That(exception.Message.Length).IsLessThan(160);
+        }
     }
 }

@@ -2,6 +2,7 @@
 // ABOUTME: Receives only server-private bridge material after bootstrap assertion authentication.
 
 using Explore.Application.Features.Authentication.Atproto.Models;
+using Explore.Domain.ValueObjects;
 using MediatR;
 
 namespace Explore.Application.Features.Authentication.Atproto.Requests.Commands;
@@ -9,7 +10,7 @@ namespace Explore.Application.Features.Authentication.Atproto.Requests.Commands;
 public sealed record BootstrapAtprotoSessionCommand : IRequest<AtprotoSessionBootstrapResult>
 {
     public BootstrapAtprotoSessionCommand(
-        string ExpectedDid,
+        AtprotoDid ExpectedDid,
         string ExpectedPdsUri,
         string OAuthClientKeyId,
         AtprotoSubjectClassification Classification,
@@ -26,7 +27,7 @@ public sealed record BootstrapAtprotoSessionCommand : IRequest<AtprotoSessionBoo
         this.ExpectedCanonicalActorConcurrencyStamp = ExpectedCanonicalActorConcurrencyStamp;
     }
 
-    public string ExpectedDid { get; }
+    public AtprotoDid ExpectedDid { get; }
     public string ExpectedPdsUri { get; }
     public string OAuthClientKeyId { get; }
     public AtprotoSubjectClassification Classification { get; }

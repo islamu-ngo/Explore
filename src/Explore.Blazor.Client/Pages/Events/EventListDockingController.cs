@@ -138,29 +138,6 @@ internal sealed class EventListDockingController : IAsyncDisposable
         ClosePanelIfRegistered(EventDockPanels.EventPreviewId);
     }
 
-    public async Task<bool> ResetWorkspaceDockLayoutAsync()
-    {
-        _suppressWorkspaceDockLayoutAutosave = true;
-
-        try
-        {
-            ResetWorkspacePanelToDefaults(EventDockPanels.CustomizeView);
-            await _dockLayoutPersistence.DeleteAsync(WorkspaceDockLayoutKey);
-            _lastPersistedWorkspaceDockLayoutSnapshot = CreateWorkspaceDockLayoutSnapshot();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to reset event workspace dock layout.");
-            return false;
-        }
-        finally
-        {
-            _suppressWorkspaceDockLayoutAutosave = false;
-            _workspaceDockLayoutHydrated = true;
-        }
-    }
-
     public async ValueTask DisposeAsync()
     {
         _workspaceDockLayoutAutosaveCts?.Cancel();
@@ -219,27 +196,6 @@ internal sealed class EventListDockingController : IAsyncDisposable
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to save event workspace dock layout.");
-        }
-    }
-
-    private void ResetWorkspacePanelToDefaults(DockPanelDescriptor descriptor)
-    {
-        var entry = _dockLayoutState.GetPanel(descriptor.Id);
-        if (entry is null)
-        {
-            return;
-        }
-
-        if (entry.State.IsOpen && descriptor.CanClose)
-        {
-            _dockLayoutState.Close(descriptor.Id);
-        }
-
-        _dockLayoutState.SetMode(descriptor.Id, descriptor.DefaultMode);
-
-        if (descriptor.IsResizable)
-        {
-            _dockLayoutState.Resize(descriptor.Id, descriptor.DefaultWidth);
         }
     }
 

@@ -49,27 +49,24 @@ public class TriStateTagFilterDropdownTests : IDisposable
         };
     }
 
-    /// <summary>
-    /// Simulates a tag state toggle via the component's internal method.
-    /// Required because MudPopover content is not rendered in test context
-    /// (MockPopoverService returns empty ActivePopovers), making MudChip
-    /// elements inside the popover inaccessible for direct UI interaction.
-    /// All test assertions use the public GetCurrentFilter() API.
-    /// </summary>
-    private static async Task SimulateTagToggle(IRenderedComponent<TriStateTagFilterDropdownComponent> cut, Guid tagId)
+    private async Task ToggleRenderedTagAsync(
+        IRenderedComponent<TriStateTagFilterDropdownComponent> cut,
+        Guid tagId)
     {
-        var method = typeof(TriStateTagFilterDropdownComponent)
-            .GetMethod("ToggleTagState", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException("ToggleTagState not found — component API may have changed.");
+        string selector = $"[data-tag-id='{tagId}']";
+        if (cut.FindAll(selector).Count == 0)
+        {
+            await cut.Find("[role='button']").ClickAsync(new MouseEventArgs());
+            cut.WaitForElement(selector);
+        }
 
-        await cut.InvokeAsync(() => method.Invoke(cut.Instance, [tagId]));
+        await cut.Find(selector).ClickAsync(new MouseEventArgs());
     }
 
     private IRenderedComponent<TriStateTagFilterDropdownComponent> RenderDropdown(List<TagTypeWithTagsDto>? groups = null)
     {
-        _ctx.Render<MudPopoverProvider>();
-        return _ctx.Render<TriStateTagFilterDropdownComponent>(p => p
-            .Add(x => x.TagGroups, groups ?? GetMockTagGroups()));
+        return _ctx.RenderMudComponent<TriStateTagFilterDropdownComponent>(parameters => parameters
+            .Add(component => component.TagGroups, groups ?? GetMockTagGroups()));
     }
 
     [Test]
@@ -109,19 +106,19 @@ public class TriStateTagFilterDropdownTests : IDisposable
         var cut = RenderDropdown(groups);
 
         // Cycle 1: Neutral → Include
-        await SimulateTagToggle(cut, tagId);
+        await ToggleRenderedTagAsync(cut, tagId);
         var filter = cut.Instance.GetCurrentFilter();
         await Assert.That(filter.IncludedTagIds).Contains(tagId);
         await Assert.That(filter.ExcludedTagIds).DoesNotContain(tagId);
 
         // Cycle 2: Include → Exclude
-        await SimulateTagToggle(cut, tagId);
+        await ToggleRenderedTagAsync(cut, tagId);
         filter = cut.Instance.GetCurrentFilter();
         await Assert.That(filter.IncludedTagIds).DoesNotContain(tagId);
         await Assert.That(filter.ExcludedTagIds).Contains(tagId);
 
         // Cycle 3: Exclude → Neutral
-        await SimulateTagToggle(cut, tagId);
+        await ToggleRenderedTagAsync(cut, tagId);
         filter = cut.Instance.GetCurrentFilter();
         await Assert.That(filter.IncludedTagIds).DoesNotContain(tagId);
         await Assert.That(filter.ExcludedTagIds).DoesNotContain(tagId);
@@ -135,7 +132,7 @@ public class TriStateTagFilterDropdownTests : IDisposable
         var cut = RenderDropdown(groups);
 
         // Setup: include a tag
-        await SimulateTagToggle(cut, tagId);
+        await ToggleRenderedTagAsync(cut, tagId);
         await Assert.That(cut.Instance.GetCurrentFilter().IncludedTagIds).Contains(tagId);
 
         // Act: reset via public API
@@ -156,10 +153,10 @@ public class TriStateTagFilterDropdownTests : IDisposable
         var cut = RenderDropdown(groups);
 
         // tagId1 → Include (1 toggle)
-        await SimulateTagToggle(cut, tagId1);
+        await ToggleRenderedTagAsync(cut, tagId1);
         // tagId2 → Exclude (2 toggles: Neutral→Include→Exclude)
-        await SimulateTagToggle(cut, tagId2);
-        await SimulateTagToggle(cut, tagId2);
+        await ToggleRenderedTagAsync(cut, tagId2);
+        await ToggleRenderedTagAsync(cut, tagId2);
 
         var filter = cut.Instance.GetCurrentFilter();
 

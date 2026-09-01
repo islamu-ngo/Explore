@@ -2,6 +2,7 @@
 // ABOUTME: Verifies location data appears in consolidated tenant lookup management UI.
 
 using MudBlazor;
+using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -29,15 +30,10 @@ public class LocationsTests : IDisposable
         _ctx.Dispose();
     }
 
-    private IRenderedComponent<DynamicComponent> RenderLocations()
-    {
-        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection")
-                            ?? throw new InvalidOperationException("TenantLookupTablesSection component type not found");
+    private IRenderedComponent<TenantLookupTablesSection> RenderLocations() =>
+        _ctx.RenderMudComponent<TenantLookupTablesSection>();
 
-        return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));
-    }
-
-    private static void SelectTab(IRenderedComponent<DynamicComponent> cut, string tabName)
+    private static void SelectTab(IRenderedComponent<TenantLookupTablesSection> cut, string tabName)
     {
         var tab = cut.FindAll("[role='tab']").First(x => x.TextContent.Contains(tabName, StringComparison.OrdinalIgnoreCase));
         tab.Click();
@@ -116,7 +112,7 @@ public class LocationsTests : IDisposable
                 Country = "Belgium"
             }));
 
-        IRenderedComponent<DynamicComponent> cut = RenderLocations();
+        IRenderedComponent<TenantLookupTablesSection> cut = RenderLocations();
         SelectTab(cut, "Locations");
         cut.WaitForState(
             () => cut.Markup.Contains(
@@ -157,7 +153,7 @@ public class LocationsTests : IDisposable
         };
         _adminService.GetLocationsAsync().Returns(resource);
 
-        IRenderedComponent<DynamicComponent> cut = RenderLocations();
+        IRenderedComponent<TenantLookupTablesSection> cut = RenderLocations();
         SelectTab(cut, "Locations");
         cut.WaitForState(
             () => cut.Markup.Contains(

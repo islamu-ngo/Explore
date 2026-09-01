@@ -150,12 +150,12 @@ Legend: STRUCTURAL · BEHAVIORAL · SECURITY · CONTRACT · OPERATOR · HOTFIX
 **Phase 4 Lightweight Completion Note** (commit `6e5e37f0`): Per user decision, this session performed the *minimal* refactor — extracted all 5 inline middleware lambdas AND 3 shutdown event-handler lambdas into private static methods inside `Explore.Blazor/Extensions/MiddlewareExtensions.cs` (same file, no new classes). Arch guardrail Rule 1.03 now enforces zero violations (`Known_MiddlewareLambda_LongBodies` HashSet is empty). The formal Phase 4 items 4.1–4.4 remain open for future IMiddleware-class extraction + hosted-service isolation.
 
 ### Phase 16 — BFF Claims & HttpClient Rationalization [BEHAVIORAL/SECURITY]
-- [ ] 16.1 Extract shared claim type constants
+- [x] 16.1 Superseded by `strong-typing-reflection-remediation`: shared platform identity claim constants now have one typed owner
 - [ ] 16.2 Audit typed client registrations (no direct API bypass)
 - [ ] 16.3 Consolidate BrowserCredentialsMessageHandler constructors
 - [ ] 16.4 Verify auth context propagation server↔WASM
 - [ ] 16.5 Verify clear server-side vs browser-side ownership
-- [ ] 16.6 Eliminate magic claim type strings in AuthStateService.cs:44-46
+- [x] 16.6 Superseded by `strong-typing-reflection-remediation`: the shallow `AuthStateService` claim wrapper was deleted
 - [ ] 16.7 Eliminate magic config strings in DynamicAuthSchemeManager.cs:63-68 → strongly-typed IOptions<KeycloakOptions>/IOptions<GoogleOptions>
 
 ### Phase 6A — DynamicAuthSchemeManager Stabilization [SECURITY]
