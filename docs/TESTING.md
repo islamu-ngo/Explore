@@ -36,6 +36,7 @@ Each project has a specific role. Run individually — never use solution-level 
 | `Explore.Blazor.Client.Tests` | UI | Component rendering, service behavior | No |
 | `Event.Wire.Contracts.UnitTests` | Wire contracts | Parsed/serialized protocol values and redacted bearer semantics | No |
 | `Explore.Diagnostic.UnitTests` | Diagnostic tooling | Doctor exit codes, bounded command evidence, and redaction | No |
+| `ISLAMU.AgentWorkflow.Tests` | Repository tooling | Intents YAML syntax and literal-file commit guard | No |
 | `Event.Standalone.IntegrationTests` | Standalone host | In-process transport, combined host graph, configuration, and API parity | No |
 | `ISLAMU.ReleaseEngineering.Tests` | Release engineering | Commit/scope policy, canonical artifacts, Git trust, renderer, tag-anchored attestation, provider adapter plans | No (spawns `git`, `ssh-keygen`, and disposable repositories under the temp directory) |
 | `Event.Benchmarks` | Benchmarks | Advisory BenchmarkDotNet performance scenarios; build-only in PRs and executed by `performance-smoke.yml` | Optional PostgreSQL only for the dedicated provider benchmark |

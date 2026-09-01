@@ -34,14 +34,19 @@ The **Contribution Contract** is this repository's operating model for AI-assist
 
 The default bootstrap packet is the resolved intent, matching rules, selected skill routers, and exact evidence locations. Keep it under the repository budget; expand one named uncertainty at a time.
 
-### Agent workflow control-plane bootstrap boundary
+### Lightweight agent workflow guard
 
-`agent-workflow-control-plane` is the dedicated Tier 1 (Security) contract for the approved five-phase, 17-task, 7-commit control-plane workstream. Its deterministic path routing adds every matching `create-agent-context-skill` and `ci-cd-change` obligation; the primary Tier 1 controls remain authoritative, and no secondary gate is overridden. Task 1.1 authorizes only this registry and README bootstrap edit until `dotnet run eng/agent-context/validate-contract.cs -- . --intent agent-workflow-control-plane` passes. Before that green result, the intent's broader tool, test, harness, CI, operator-documentation, workstream-manifest, and I-VSD paths are illegal to edit; validation establishes routing scope, not phase readiness, ownership, approval, or commit authority.
+`agent-workflow-guard` deliberately has two responsibilities: parse this intents
+catalog as one bounded UTF-8 YAML document, and reject `git commit` command
+descriptions that use broad or non-literal pathspecs. It does not execute Git or
+own workflow manifests, artifact digests, approvals, claims, locks, persistent
+goals, context packets, hooks, or CI orchestration. Git history provides
+provenance, while branches and worktrees provide native concurrency isolation.
 
 ## Adding a new intent
 
 1. Add a new entry to `intents.yaml`.
-2. Run `dotnet run eng/agent-context/validate-contract.cs -- . --intent <intent-id>` to validate the complete manifest schema plus the selected intent's references, safe relative paths, test projects, benchmark parity, and deterministic routing.
+2. Run `dotnet run --project eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj -- validate-intents .agents/contract/intents.yaml` to validate YAML syntax. Review intent semantics and referenced paths normally in the change.
 3. Link the new intent from `docs/GOVERNANCE.md` → "Decision Framework" if it introduces a new decision point.
 4. Exercise the new intent with at least one scenario in `.agents/benchmarks/cold-start-tasks.yaml` before it is considered production-ready.
 

@@ -22,7 +22,7 @@ This system enforces five core design tenets:
 2. **Zero-Turn Structural Injection**: When graph tooling is available, pre-flight blast-radius slices reduce manual traversal by injecting callers, callees, impacted flows, and tests on Turn 1.
 3. **Behavior-Bound Test-First Invariants**: Requirements are written as observable system behavior (RFC 2119 + `WHEN`/`THEN` Scenarios) and mapped directly to failing Red tests at pre-agreed public seams *before* production code is touched.
 4. **Portable Root Contract With A Scoped Twin Pair**: `AGENTS.md` is the portable authority. Reciprocal path-rule twins currently cover only `.agents/rules` and `.omo/rules`; Claude, Cursor, Copilot, Gemini, and other harness adapters remain separate drift-prone integration surfaces.
-5. **Phase-Atomic Shared-Branch Delivery**: Planning pre-authors a self-sufficient phase packet containing exact commit metadata, wholly owned paths, inspection/staging/path-limited commit commands, and post-commit verification. Every verified phase closes immediately on shared `develop`; normal execution consumes the packet without reloading `conventional-commit`, and concurrent contributors' work remains untouched.
+5. **Phase-Atomic Native Git Delivery**: Planning pre-authors a self-sufficient phase packet containing exact commit metadata, wholly owned paths, inspection/staging/path-limited commit commands, and post-commit verification. Parallel contributors use separate branches/worktrees, while every verified phase closes with literal commit paths and leaves unrelated work untouched.
 
 ```mermaid
 flowchart TB
@@ -255,7 +255,7 @@ stateDiagram-v2
     InImplementation --> PhaseVerified: Phase Tasks [x] & Verification Resolved
     PhaseVerified --> PhaseCommitted: Planned Packet + Exact Owned Paths
     PhaseCommitted --> InImplementation: Next Approved Phase
-    PhaseCommitted --> Verified: Final Phase Hash Reconciled
+    PhaseCommitted --> Verified: Final Phase Reviewed
     Verified --> [*]: Ready for PR / Merge
 ```
 
@@ -264,12 +264,16 @@ stateDiagram-v2
 | Artifact | Canonical Responsibility | Strictly Forbidden Content | Update Frequency |
 |---|---|---|---|
 | `*-plan.md` | High-level architecture, design decisions, RFC 2119 contracts, `WHEN`/`THEN` scenarios, phase exit criteria, rollback handling. | Granular task checklists, `- [ ]` checkboxes, dynamic statuses (`IN PROGRESS`), ephemeral session progress. | Only when architectural direction or scope shifts. |
-| `*-tasks.md` | Hot execution ledger, granular Red/Green/Refactor tasks, exact phase-owned paths, verification disposition, exact planned commit contracts, governed overrides, commit tasks, and hashes. | Long architectural narratives, trade-off debates, session handoff logs. | During planning, after each subtask, before any override, and after each commit. |
+| `*-tasks.md` | Hot execution ledger, granular Red/Green/Refactor tasks, exact phase-owned paths, verification disposition, exact planned commit contracts, governed overrides, and commit tasks. | Long architectural narratives, trade-off debates, session handoff logs. | During planning, after each subtask, before any override, and after each commit. |
 | `*-context.md` | Working memory, quick resume state, blockers, loaded evidence ledger, validation baseline, unrelated shared-tree failures, phase commit hashes, and dated handoffs. | Duplicate task checklists, full source code copies, redundant documentation paste. | At start of session, after phase closure, on blockers, and before handoff/pause. |
 
-### Shared `develop` Phase-Close Protocol
+### Native Git Concurrency And Phase-Close Protocol
 
-This workflow deliberately uses one shared `develop` checkout rather than per-task worktrees. The phase boundary therefore owns both verification and Git isolation:
+Parallel contributors should use native Git branches or worktrees instead of
+editing one physical checkout concurrently. A task starts from the intended
+base commit, works on a dedicated branch/worktree, and integrates through normal
+Git review and merge. The phase boundary still owns verification and literal
+commit paths:
 
 | Step | Required action | Observable evidence |
 |---|---|---|
@@ -278,7 +282,7 @@ This workflow deliberately uses one shared `develop` checkout rather than per-ta
 | 3. Classify failures | Fix phase-attributable failures. A failure is unrelated only when concrete evidence points outside phase-owned files and the phase's selected verification lane is green. | `tasks.md` and `context.md` state the command, first actionable error, external path/owner evidence, and scoped green result. |
 | 4. Consume planned contract | Compare the actual phase outcome with the self-sufficient packet in `tasks.md`; do not load `conventional-commit` merely to reuse it. | Exact metadata, commit paths, inspection commands, staging command, path-limited commit command, and verification command are reused unchanged while truthful. |
 | 5. Govern exceptions | Only when the default will not be used, load `conventional-commit` for the five permitted divergence triggers. | Before commit, `tasks.md` records the reason and a complete metadata/path/command packet for every resulting commit. Style never qualifies. |
-| 6. Commit owned paths | Stage exact files only. If unrelated paths are already staged, do not unstage them; use an explicit path-limited commit only when the phase owns the complete diff of each named file. | No blind `git add .`/`git add -A`, no branch/worktree switch, no mixed-ownership file, and no unrelated path in the commit. |
+| 6. Commit owned paths | Stage exact files only. Use an explicit path-limited commit only when the task owns the complete diff of each named file. | No blind `git add .`/`git add -A`, no mixed-ownership file, and no unrelated path in the commit. |
 | 7. Prove isolation | Inspect the new commit's path list and record its hash before completing the phase. | Commit file list equals the intended phase-owned set; unrelated working/index state remains present and untouched. |
 
 A phase-attributable failure blocks its commit. A proven unrelated failure does not authorize the agent to repair, stage, discard, or claim ownership of another contributor's work. A message override never happens silently: if the divergence also changes architecture, scope, acceptance criteria, risk, or validation, the normal plan/context refresh triggers apply.
@@ -463,44 +467,26 @@ git diff --check -- .agents/ docs/ dev/
 
 ---
 
-## 10. Proposed Improvement Portfolio (Not Implemented)
+## 10. Lightweight Workflow Guard
 
-> [!IMPORTANT]
-> **Status: Incremental implementation.** The Phase 1 typed workstream foundation and standalone validator are partially implemented; shared-workspace mutation, packet compilation, persistent execution, and adapter convergence remain proposals rather than current authority. The approved roadmap has five capabilities. Benchmark replay, live-model evaluation, workflow telemetry/cost reporting, and a run journal are deliberate non-goals.
+The repository intentionally does not implement an “Agent OS.” There are no
+workstream manifests, concatenated plan/task/context digests, approval receipt
+chains, file claims, heartbeats, lock daemons, persistent goal state machines,
+custom context packet compilers, or harness-wide orchestration authority. Git
+commits provide provenance; branches and worktrees provide concurrency.
 
-### 10.1 Preserve The Judgment Boundary
+`eng/agent-workflow` is a small, read-only guard with two commands:
 
-The target architecture should automate facts and state transitions without replacing the reasoning that makes agentic development valuable:
+```bash
+dotnet run --project eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj -- validate-intents .agents/contract/intents.yaml
+dotnet run --project eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj -- validate-commit -- git commit --only -m "message" -- src/ExactFile.cs docs/ExactFile.md
+```
 
-| Machine-enforceable | Human / agent judgment |
-|---|---|
-| Schemas, digests, revision freshness, phase/task transitions, dependency order | Behavioral requirements, architecture, trade-offs, and legitimate scope changes |
-| Intent scope, required artifacts, exact paths, command packets, result receipts | Ambiguous intent classification and whether a planned outcome remains desirable |
-| Shared-checkout leases, expected-HEAD fences, commit contents, evidence binding | “Worst Break” analysis, semantic failure diagnosis, and recovery strategy |
-| Context bytes, duplicate content hashes, and cache hits | I-VSD judgment, CTO verdict, and explicit user approval |
-
-### 10.2 Ranked Improvements
-
-| Rank | Improvement | Current evidence and failure mode | Target outcome | Smallest useful increment |
-|---|---|---|---|---|
-| **1 — P0** | **Typed executable workstream contract** | Intent routing is typed in [`.agents/contract/schema.json`](../.agents/contract/schema.json), but plan/context/tasks state, approvals, phase packets, evidence, and revision bindings remain Markdown conventions. [`validate-contract.cs`](../eng/agent-context/validate-contract.cs) cannot validate triad consistency or phase transitions. | One machine state model for artifact digests, selected intents, phase DAG/state, owned paths, verification receipts, commit packets, and CTO/user approval bindings. Markdown keeps architecture, teaching, and handoff prose. | Add a workstream schema plus a repository-native `validate-workstream` command for one active task. Validate phase mapping, digests, approvals, packet completeness, and legal state transitions. |
-| **2 — P0** | **Fenced shared-`develop` coordination and phase closure** | The [phase-close protocol](#shared-develop-phase-close-protocol) is exact but manual. No coordinator claims paths, fences HEAD movement, detects overlapping ownership, or binds verification to the resulting commit. | Concurrent agents fail before overlapping edits; verification-to-commit is protected by expected-HEAD and ownership fences; unrelated staged work remains untouched; interrupted closure is recoverable without cleanup guesses. | Add repository-native `claim` and `phase close --dry-run` commands storing ephemeral leases/receipts under `.git/`, never in product commits or worktrees. |
-| **3 — P0** | **Content-addressed decision and execution packets** | [Context Engineering](../.agents/CONTEXT_ENGINEERING.md) requires `path + heading/symbol + revision`, but agents maintain the ledger manually. Planning and CTO skills still fan out across many mandatory resources, and large benchmark scenarios list extensive read sets. | Planning, review, and execution reuse one immutable intent-specific evidence packet; an executor receives only the current task, named decisions, matched rules, owned paths, tests, and content hashes. | Add `packet build --workstream <id> --task <id>` with byte/duplication limits from [`cold-start-tasks.yaml`](../.agents/benchmarks/cold-start-tasks.yaml) and a cache under `.git/`. |
-| **4 — P1** | **Repository-owned persistent execution state machine** | The lifecycle mentions `/goal`, while resumability is maintained manually across task/context prose and harness-specific state. There is no repository-owned idempotent transition model for approval, claim, implementation, verification, commit uncertainty, interruption, or replan. | Approved work resumes at one safe next action, cannot skip approval or duplicate a phase commit, and routes changed scope back through planning/review. | Implement `goal start|next|record|resume|block|abort` over the typed workstream contract, with explicit `Interrupted`, `Blocked`, `NeedsReplan`, and uncertain-commit recovery. |
-| **5 — P1** | **One gate implementation across harnesses, reviewers, and CI** | [Hook documentation](../.agents/hooks/README.md) claims four hooks while showing a five-hook configuration; [Claude settings](../.claude/settings.json) register only graph hooks; [Codex hooks](../.codex/hooks.json) use workstation-absolute paths; [`test.yml`](../.github/workflows/test.yml) intentionally ignores agent-context paths. Mechanical review also repeats across large LLM passes. | Thin harness adapters call the same provider-neutral C# policy; mechanical gates run before semantic reviewers; independent semantic dimensions share one immutable packet and merge deduplicated findings. | Add a hook/adapter `doctor`, relative-path synthetic hook tests, and a dedicated agent-workflow CI lane before parallelizing semantic review. |
-
-### 10.3 Recommended Delivery Order
-
-Build **1 → 2 → 3 → 4 → 5**. The typed contract prevents every later tool from becoming another prose parser; fenced closure provides the first safety payoff; content packets provide the first context-budget payoff. Keep semantic review agent-driven, but run deterministic schema, freshness, ownership, command-parity, and evidence checks before spending advanced-model context. The active workstream owns the detailed phase/task/commit sequence; this section remains the canonical capability boundary rather than duplicating that plan.
-
-Success should be observable:
-
-- zero execution from stale or mismatched approval revisions;
-- zero commits containing undeclared or mixed-ownership changes;
-- one bounded resume packet naming owner, next action, blocker, last verified state, and last phase commit;
-- zero unchanged duplicate context bytes inside measured packets;
-- context packet budgets enforced from existing repository facts without adding an evaluation engine;
-- agent-context changes cannot receive a CI no-op without their dedicated workflow gate.
+The first command checks that the canonical intents catalog is one bounded,
+valid UTF-8 YAML document. The second checks only that a described `git commit`
+uses distinct literal file pathspecs after `--`; it rejects `.`, directories,
+globs, traversal, rooted paths, Git pathspec magic, controls, and duplicates.
+The guard never executes Git or mutates repository state.
 
 ## 11. Related Documentation & Canonical Anchors
 

@@ -678,7 +678,7 @@ intents:
       mandatory_reviewers:
         - platform-operations-agent
     verification_commands:
-      - "dotnet run eng/agent-context/validate-contract.cs -- . --intent ci-cd-change"
+      - "dotnet run --project eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj -- validate-intents .agents/contract/intents.yaml"
 
   - id: external-infrastructure-bootstrap
     title: "Automate external infrastructure bootstrap or onboarding"
@@ -1055,89 +1055,46 @@ intents:
       mandatory_reviewers:
         - librarian-agent
     verification_commands:
-      - "dotnet run eng/agent-context/validate-contract.cs -- . --intent create-agent-context-skill"
+      - "dotnet run --project eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj -- validate-intents .agents/contract/intents.yaml"
 
-  - id: agent-workflow-control-plane
-    title: "Build and operate the repository agent workflow control plane"
+  - id: agent-workflow-guard
+    title: "Maintain the lightweight repository workflow guard"
     category: cross-cutting
     triggers:
+      - "agent workflow guard"
+      - "agent-workflow-guard"
       - "agent workflow control plane"
       - "agent-workflow-control-plane"
-      - "typed workstream execution"
-      - "shared develop path claims"
-      - "persistent approved goal execution"
-      - "agent harness convergence"
+      - "agent os"
+      - "validate intents yaml"
+      - "validate literal git commit paths"
     must_read_docs:
       - AGENTS.md
       - docs/QUICK_REFERENCE.md
-      - docs/GOVERNANCE.md
-      - docs/DOCUMENTATION_STYLE_GUIDE.md
       - docs/AGENTIC_CONTEXT_ENGINEERING.md
-      - docs/CI_CD_GOVERNANCE.md
       - docs/OPERATIONS.md
       - docs/TESTING.md
-      - docs/RELEASE_CHECKLIST.md
-      - docs/legal/IP_GOVERNANCE.md
-      - docs/DUAL_VERSIONING.md
-      - .agents/skills/_SKILL_SCHEMA.md
       - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-cto-review.md
-      - islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md
-    load_skills:
-      - criticality-guardrail
-      - grill-me
-      - epistemic-mad-review
-      - clean-architecture-rules
-      - skill-authoring
-      - agentic-research
-      - implementation-plan
-      - senior-cto-feedback
-      - i-vsd
-      - ip-clean-room
-      - conventional-commit
+    load_skills: []
     load_rules:
-      - .agents/rules/work-criticality-matrix.md
-      - .agents/rules/ip-clean-room.md
       - .agents/rules/tests.md
     paths_in_scope:
       - "AGENTS.md"
       - "Explore.slnx"
-      - ".agents/CONTEXT_ENGINEERING.md"
       - ".agents/contract/intents.yaml"
       - ".agents/contract/README.md"
-      - ".agents/contract/workstream.schema.json"
+      - ".agents/contract/schema.json"
       - ".agents/benchmarks/cold-start-tasks.yaml"
-      - ".agents/skills/persistent-goal-execution/**"
-      - ".agents/hooks/AgentWorkflowHook.cs"
-      - ".agents/hooks/README.md"
-      - ".agents/hooks/SecurityCheck.cs"
-      - ".agents/hooks/SkillTrigger.cs"
-      - ".agents/hooks/ContextTracker.cs"
-      - ".agents/hooks/FormatCode.cs"
-      - ".agents/hooks/BuildCheck.cs"
+      - ".agents/skills/implementation-plan/SKILL.md"
+      - ".agents/skills/implementation-plan/resources/operational-artifacts.md"
+      - ".agents/skills/senior-cto-feedback/resources/plan-rewrite-guidance.md"
       - "eng/agent-workflow/src/ISLAMU.AgentWorkflow/**"
       - "eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/**"
-      - "eng/agent-context/validate-contract.cs"
-      - "eng/agent-context/packages.lock.json"
-      - ".claude/settings.json"
-      - ".codex/hooks.json"
-      - ".cursorrules"
-      - ".github/copilot-instructions.md"
-      - ".github/workflows/agent-context.yml"
-      - ".github/workflows/test.yml"
-      - "tests/Event.Architecture.Tests/AgentWorkflowHarnessArchitectureTests.cs"
+      - "eng/agent-context/**"
       - "docs/AGENTIC_CONTEXT_ENGINEERING.md"
-      - "docs/CI_CD_GOVERNANCE.md"
       - "docs/OPERATIONS.md"
       - "docs/TESTING.md"
       - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md"
-      - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md"
-      - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md"
-      - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-cto-review.md"
-      - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml"
-      - "islamic-value-sensitive-design/i-vsd-agentic-workflow-control-plane.md"
     paths_forbidden:
       - "src/**"
       - "src/**/Migrations/**"
@@ -1150,112 +1107,51 @@ intents:
       - ".env.*"
       - "secrets/**"
     minimum_tests:
-      - Event.Architecture.Tests
+      - ISLAMU.AgentWorkflow.Tests
     docs_to_update:
       - docs/AGENTIC_CONTEXT_ENGINEERING.md
-      - docs/CI_CD_GOVERNANCE.md
       - docs/OPERATIONS.md
       - docs/TESTING.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md
       - .agents/contract/intents.yaml
+      - .agents/contract/README.md
+      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md
     unique_acceptance:
-      - "Revision-bound CTO, user, phase, path, expected-HEAD, verification, and commit authority fail closed before mutation"
-      - "Shared-develop claims are checkout-local, normalized, generation-fenced, and never take over dirty or mixed-ownership work"
-      - "Verification receipts bind exact HEAD and owned bytes; literal path lists and staged-set parity preserve unrelated dirty and staged state"
-      - "The deterministic executor emits one legal bounded action, never invokes a model, self-approves, expands scope, or hides cleanup"
-      - "Harness adapters and the always-present agent-context CI workflow converge on one provider-neutral fail-closed safety authority, then final artifacts and all seven commit receipts receive independent reconciliation review"
-      - "External GitHub Actions use full commit SHA pins with version comments, least permissions, no new secret/write/OIDC authority, and always-present required checks"
-      - "Manifests, packet caches, claims, receipts, persistent goal state, and goal status enforce fixed machine fields and reject source, prompts, secrets, PII, raw provider/model payloads, provider URLs, free-form fields, and command payloads"
-      - "Operator documentation ships with validate, claim, packet, goal, doctor, status, close, interruption, stale-claim, HEAD-race, and recovery guidance"
+      - "The guard parses `.agents/contract/intents.yaml` as one bounded UTF-8 YAML document"
+      - "The commit guard accepts only `git commit` commands with distinct literal file pathspecs after `--`"
+      - "The guard rejects `.`, directories, globs, traversal, rooted paths, pathspec magic, controls, and duplicates"
+      - "The guard never executes Git and owns no workflow state, digests, claims, locks, approvals, or context packets"
     pr_checklist:
-      - "Run failing-first adversarial Invariant-Breakers for claim concurrency, mixed ownership, stale approval, HEAD movement, starvation, crash recovery, fixed goal-state privacy, and adapter failure without sleeps"
-      - "Run `dotnet build --configuration Release --verbosity quiet` once at each approved phase exit"
-      - "Run `dotnet test --project eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ISLAMU.AgentWorkflow.Tests.csproj --configuration Release --verbosity quiet` for Phases 1-4"
-      - "Run `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` at both approved Phase 5 gates"
-      - "When project or package graphs change, run `dotnet run .ci/scripts/validate-dependency-license-policy.cs -- .` and retain dependency evidence"
-      - "Inspect the shared-develop dirty tree and index before mutation; prove every hunk and generated output is phase-owned and preserve unrelated state"
-      - "Record exact command, result, expected HEAD, path/hash set, nonzero test evidence, and any proven unrelated failure without claiming the whole repository green"
-      - "Keep GitHub Actions SHA-pinned, least-privileged, fork-safe, and always present for agent/context changes; document any path-conditional check explicitly"
-      - "Remove obsolete commands, hooks, and adapters after parity instead of adding compatibility aliases or long-lived dual authorities"
-      - "Complete anonymized Epistemic MAD review with security, shared-workspace, CI, recovery, and fixed machine-state privacy challenges before merge"
+      - "Run the focused `ISLAMU.AgentWorkflow.Tests` project"
+      - "Exercise the guard against the canonical intents YAML and a representative literal-file commit command"
+      - "Keep the implementation dependency-light and free of Git mutation"
     forbidden_without_approval:
       - "Changing product runtime, API, domain, persistence, migrations, generated artifacts, deployment behavior, or secret authority"
-      - "Editing an unrelated development workstream, archived workstream, broad GitHub surface, broad documentation tree, or path outside this explicit allow-list"
-      - "Using broad staging, directory or glob commit path sets, or modifying, staging, unstaging, committing, cleaning, or reclaiming another contributor's work"
-      - "Tool-initiated checkout, branch switching, worktree creation, stash, reset, clean, revert, force, history rewrite, or automatic dirty-state takeover"
-      - "Adding compatibility shims, deprecated aliases, duplicate safety authorities, hidden cleanup, or model-owned approval and scope expansion"
-      - "Adding prompts, source bodies, secrets, PII, raw provider/model payloads, provider URLs, free-form fields, or command payloads to manifests, packet caches, claims, receipts, or persistent goal state"
-      - "Weakening action pinning, workflow permissions, fork isolation, required-check presence, approval bindings, path ownership, or fail-closed gates"
+      - "Adding workflow manifests, digest chains, claims, heartbeats, locks, approval receipts, persistent goal state, context packet compilers, hooks, CI orchestration, or Git mutation"
+      - "Accepting `.`, directories, globs, traversal, rooted paths, Git pathspec magic, control characters, or duplicate commit paths"
     related_agents:
-      - architect-agent
-      - platform-operations-agent
-      - security-privacy-agent
       - quality-verifier-agent
       - change-reviewer-agent
     related_intents:
       - create-agent-context-skill
-      - ci-cd-change
-    routing:
-      precedence: primary_then_secondary
-      secondary:
-        - intent: create-agent-context-skill
-          when_paths:
-            - ".agents/contract/intents.yaml"
-            - ".agents/contract/README.md"
-            - ".agents/contract/workstream.schema.json"
-            - ".agents/benchmarks/cold-start-tasks.yaml"
-            - ".agents/skills/persistent-goal-execution/**"
-            - "eng/agent-context/validate-contract.cs"
-            - "eng/agent-context/packages.lock.json"
-            - "tests/Event.Architecture.Tests/AgentWorkflowHarnessArchitectureTests.cs"
-            - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md"
-            - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-context.md"
-            - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-tasks.md"
-            - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-execution.yaml"
-        - intent: ci-cd-change
-          when_paths:
-            - "Explore.slnx"
-            - ".agents/contract/intents.yaml"
-            - ".github/copilot-instructions.md"
-            - ".github/workflows/agent-context.yml"
-            - ".github/workflows/test.yml"
-            - "tests/Event.Architecture.Tests/AgentWorkflowHarnessArchitectureTests.cs"
-            - "docs/CI_CD_GOVERNANCE.md"
-            - "docs/OPERATIONS.md"
-            - "docs/TESTING.md"
-      conflict_overrides: []
     criticality:
-      tier: security
-      required_model_tier: advanced
-      verification_depth: exhaustive
+      tier: standard
+      required_model_tier: economical
+      verification_depth: standard
       tenancy_scope: system_level
       rollback_strategy: forward_fix_only
-      intake_clarification_mode: mandatory_grill_me
-      exploration_protocol: exhaustive_graph_blast_radius
-      testing_strategy: adversarial_concurrency_invariant_breakers
-      review_protocol: anonymized_epistemic_mad
+      intake_clarification_mode: autonomous_defaults
+      exploration_protocol: local_surface_only
+      testing_strategy: behavioral_unit_integration
+      review_protocol: lightweight_self_check
       safety_gates:
-        - "revision_bound_human_authority"
-        - "checkout_local_generation_fenced_path_ownership"
-        - "no_dirty_or_mixed_ownership_takeover"
-        - "expected_head_and_staged_set_parity"
-        - "literal_path_limited_git_mutation"
-        - "no_tool_initiated_destructive_git_recovery"
-        - "provider_neutral_always_present_ci_gate"
-        - "metadata_only_redacted_receipts"
-        - "no_backward_compatibility_shims"
+        - "intents_yaml_syntax_valid"
+        - "literal_commit_files_only"
+        - "no_git_mutation"
       mandatory_reviewers:
-        - security-privacy-agent
-        - platform-operations-agent
         - quality-verifier-agent
     verification_commands:
-      - "dotnet run eng/agent-context/validate-contract.cs -- . --intent agent-workflow-control-plane"
-      - "dotnet run .ci/scripts/validate-dependency-license-policy.cs -- ."
-      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet run --project eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj -- validate-intents .agents/contract/intents.yaml"
       - "dotnet test --project eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/ISLAMU.AgentWorkflow.Tests.csproj --configuration Release --verbosity quiet"
-      - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
 
   - id: update-ai-context-disclosure
     title: "Update or extend the AI Context Disclosure Policy"
@@ -2375,7 +2271,7 @@ intents:
           controlling_gate: no_backward_compatibility
           resolution: "Only within a secrets-authority change, remove obsolete secret-bearing API compatibility instead of preserving aliases; all other OpenAPI gates remain additive"
     verification_commands:
-      - "dotnet run eng/agent-context/validate-contract.cs -- . --intent secrets-authority"
+      - "dotnet run --project eng/agent-workflow/src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj -- validate-intents .agents/contract/intents.yaml"
       - "dotnet build --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"

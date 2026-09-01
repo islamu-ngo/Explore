@@ -32,7 +32,7 @@ priority: high
    - `*-plan.md`: Canonical architectural design, current state, design decisions, and phase-level exit criteria (no granular execution tasks, checkboxes, dynamic status, or session handoffs).
    - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes with atomic verification criteria, dynamic status, phase verification gates, and immediate phase-commit tasks).
    - `*-context.md`: The sole active working memory (session progress, quick resume, blockers, validation baseline results, and dated session handoffs).
-9. **Planned Phase Commit Contract**: Every phase ends with a commit task immediately after verification. While authoring/updating `tasks.md`, planning loads `conventional-commit` and writes the exact title, description, changelog treatment, trailers, commit paths, inspection commands, `git add`, path-limited `git commit`, and post-commit verification command. That packet is self-sufficient: when truthful, implementation executes it without loading the skill. Only material divergence authorizes loading the skill and recording complete replacement packets for every resulting commit. On shared `develop`, phase failures block and unrelated work remains untouched.
+9. **Planned Phase Commit Contract**: Every phase ends with a commit task immediately after verification. While authoring/updating `tasks.md`, planning loads `conventional-commit` and writes the exact title, description, changelog treatment, trailers, commit paths, inspection commands, `git add`, path-limited `git commit`, and post-commit verification command. That packet is self-sufficient: when truthful, implementation executes it without loading the skill. Only material divergence authorizes loading the skill and recording complete replacement packets for every resulting commit. Parallel tasks use native Git branches/worktrees; phase failures block and unrelated work remains untouched.
 
 ## Top Anti-Patterns
 1. Memory-based planning, which turns assumptions about the repository into false implementation facts.
@@ -115,4 +115,3 @@ This synergy combines Prometheus's structured interview capability (Metis gap an
 - [../conventional-commit/SKILL.md](../conventional-commit/SKILL.md)
 - [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md)
 - [../skill-authoring/SKILL.md](../skill-authoring/SKILL.md)
-

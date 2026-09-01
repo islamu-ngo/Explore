@@ -1,5 +1,5 @@
-<!-- ABOUTME: Defines standalone black-box TUnit coverage for the agent workflow control plane. -->
-<!-- ABOUTME: References no product or future control-plane source project. -->
+<!-- ABOUTME: Defines focused TUnit checks for the lightweight repository guard. -->
+<!-- ABOUTME: Covers only intents YAML syntax and literal-file commit validation. -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -9,5 +9,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="TUnit" />
+    <ProjectReference Include="../../src/ISLAMU.AgentWorkflow/ISLAMU.AgentWorkflow.csproj" />
   </ItemGroup>
 </Project>

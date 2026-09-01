@@ -2187,6 +2187,11 @@ gate; fixture success is not that evidence.
 
 AI-agent workflow rules are not runtime operations. Keep them in [../AGENTS.md](../AGENTS.md) and [the context-engineering contract](../.agents/CONTEXT_ENGINEERING.md) so operators do not have to scan agent tooling while diagnosing production behavior.
 
+The only repository workflow utility is the read-only `eng/agent-workflow`
+guard. Use `validate-intents .agents/contract/intents.yaml` for YAML syntax and
+`validate-commit -- git commit ... -- <literal-files>` to reject broad commit
+pathspecs. It owns no state and never executes Git.
+
 
 ## Planned Capacity Work
 

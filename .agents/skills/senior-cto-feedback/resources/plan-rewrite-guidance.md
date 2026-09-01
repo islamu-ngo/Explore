@@ -198,7 +198,7 @@ Rewrite rules:
 - each phase should name exactly one Release build and at most one fastest relevant non-browser project test at the end;
 - each phase should list exact phase-owned paths and place its commit task immediately after verification;
 - each phase commit should contain exact metadata, commit paths, inspection/staging/path-limited commit commands, and verification validated through `conventional-commit`; completed workstreams contain no placeholders;
-- the implementing agent should use that self-sufficient contract unchanged without loading `conventional-commit` and exclude every unrelated dirty or pre-staged path on shared `develop`;
+- the implementing agent should use that self-sufficient contract unchanged without loading `conventional-commit`, work on a task branch/worktree when parallelism is needed, and exclude every unrelated dirty or pre-staged path;
 - overrides should be rare and are the only execution path that loads `conventional-commit`; every replacement repeats the complete metadata/path/command packet before committing;
 - phase-attributable failures block commit; proven unrelated failures are recorded with exact external evidence while the phase-owned verification lane remains green;
 - no task should start the app/browser or use Playwright, Chrome DevTools MCP, E2E, Aspire/Docker startup, live-service smoke, or a manual runtime walkthrough;
