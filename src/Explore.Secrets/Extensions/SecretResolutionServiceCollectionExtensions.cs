@@ -3,7 +3,9 @@
 
 namespace Explore.Secrets.Extensions;
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Secrets;
+using Explore.Application.Contracts.SetupLive;
 using Explore.Secrets.HealthChecks;
 using Explore.Secrets.Infrastructure;
 using Explore.Secrets.Observability;
@@ -47,6 +49,14 @@ public static class SecretResolutionServiceCollectionExtensions
 
         // ---- Resolver --------------------------------------------------------
         services.TryAddScoped<ISecretResolver, SecretResolver>();
+        services.TryAddScoped<ISetupSecretBindingWriter, SetupSecretBindingWriter>();
+        services.TryAddScoped<ISetupSecretBindingReadinessReader>(provider =>
+            (ISetupSecretBindingReadinessReader)provider.GetRequiredService<
+                ISetupSecretBindingWriter>());
+        services.TryAddScoped<ISetupSecretBindingCommitmentAuthority,
+            SetupSecretBindingCommitmentAuthority>();
+        services.TryAddSingleton<ISetupSecretBindingCommitBarrier,
+            ImmediateSetupSecretBindingCommitBarrier>();
 
         // ---- Health check ----------------------------------------------------
         services.AddHealthChecks()

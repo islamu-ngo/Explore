@@ -64,13 +64,13 @@ public sealed class SecretResolverMetrics : IDisposable
     }
 
     public void RecordSuccess(SecretSourceType source) =>
-        _resolveSuccess.Add(1, Tag("source", source.ToString()));
+        _resolveSuccess.Add(1);
 
     public void RecordMiss(SecretSourceType? source) =>
-        _resolveMiss.Add(1, Tag("source", source?.ToString() ?? "unbound"));
+        _resolveMiss.Add(1);
 
     public void RecordError(SecretSourceType source, SecretResolutionStatus status) =>
-        _resolveError.Add(1, Tag("source", source.ToString()), Tag("status", status.ToString()));
+        _resolveError.Add(1, Tag("status", status.ToString()));
 
     public void RecordCacheHit() => _cacheHit.Add(1);
 

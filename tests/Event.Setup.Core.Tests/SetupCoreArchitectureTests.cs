@@ -453,7 +453,7 @@ internal static class SetupCoreAssemblyVerifier
         "Provider" or "Providers" or "get_Providers"
         or "SecretBindingEnvironmentKeys" or "get_SecretBindingEnvironmentKeys"
         or "secretBindingEnvironmentKeys" or "IsSecret" or "get_IsSecret" or "isSecret"
-        or "Value" or "get_Value" or "value" or "CopyValue"
+        or "Value" or "get_Value" or "value" or "CopyValue" or "CopyUtf8Bytes"
         or "GeneratedDotenvValue" or "LocalSecretGenerationProfile"
         or "LocalSecretGenerator" or "LocalSecretGenerationResult"
         or "ComposeNoSecrets" or "ComposeWithSecrets";

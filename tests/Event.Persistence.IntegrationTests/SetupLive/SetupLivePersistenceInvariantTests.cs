@@ -6,6 +6,7 @@ namespace Event.Persistence.IntegrationTests.SetupLive;
 using System.Data.Common;
 using System.Security.Cryptography;
 using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Secrets;
 using Explore.Application.Contracts.SetupLive;
@@ -290,6 +291,335 @@ public sealed class SetupLivePersistenceInvariantTests(
             await Assert.That(operation.Outcome)
                 .IsEqualTo(Explore.Domain.SetupLive.SetupSecretBindingOperationOutcome.Ready);
             await Assert.That(operation.SettledAt).IsNotNull();
+        }
+        finally
+        {
+            writer.Release();
+            CryptographicOperations.ZeroMemory(secret);
+        }
+    }
+
+    [Test]
+    public async Task ConcurrentDifferentBindingInputReturnsConflictAfterPostgreSqlLock()
+    {
+        await fixture.ResetAsync();
+        (Guid tenantId, Guid userId) = await SeedApplicationActorAsync();
+        SetupLiveEnrollmentResult enrollmentResult;
+        await using (ExploreDbContext enrollmentContext = fixture.CreateDbContext())
+        {
+            enrollmentResult = await ApplicationService(enrollmentContext, tenantId)
+                .CreateAsync(
+                    tenantId,
+                    userId,
+                    Guid.CreateVersion7(),
+                    new CreateSetupTargetEnrollmentRequest
+                    {
+                        ClientChallenge = SetupClientChallenge.FromBytes(new byte[32]),
+                        RequestedScopes = [SetupEnrollmentScope.SecretBindingWrite]
+                    },
+                    CancellationToken.None);
+            enrollmentContext.SecretBindings.AddRange(
+                SetupBinding("setup.signing", "ISLAMU_SETUP_SIGNING"),
+                SetupBinding("setup.encryption", "ISLAMU_SETUP_ENCRYPTION"));
+            await enrollmentContext.SaveChangesAsync();
+        }
+
+        using var writer = new BlockingAtomicSetupSecretBindingWriter();
+        var commitment = new FixedSetupCommitmentAuthority();
+        byte[] secret = RandomNumberGenerator.GetBytes(64);
+        try
+        {
+            await using ExploreDbContext firstContext = fixture.CreateDbContext();
+            await using ExploreDbContext secondContext = fixture.CreateDbContext();
+            await secondContext.Database.OpenConnectionAsync();
+            int secondPid = await secondContext.Database
+                .SqlQuery<int>($"SELECT pg_backend_pid() AS \"Value\"")
+                .SingleAsync();
+            SetupLiveApplicationService first = ApplicationService(
+                firstContext, tenantId, writer, commitment);
+            SetupLiveApplicationService second = ApplicationService(
+                secondContext, tenantId, writer, commitment);
+            Guid operationKey = Guid.CreateVersion7();
+            Task<SetupLiveSecretBindingResult> firstWrite = first.WriteSecretBindingAsync(
+                tenantId,
+                enrollmentResult.Data!.EnrollmentId,
+                userId,
+                enrollmentResult.Capability!.ToHeaderValue(),
+                operationKey,
+                "setup.signing",
+                secret,
+                CancellationToken.None);
+            Task firstMilestone = await Task.WhenAny(writer.Started, firstWrite)
+                .WaitAsync(TimeSpan.FromSeconds(10));
+            if (firstMilestone == firstWrite)
+            {
+                SetupLiveSecretBindingResult early = await firstWrite;
+                await Assert.That(early.Status).IsEqualTo(SetupLiveApplicationStatus.Success);
+                throw new InvalidOperationException("missing-setup-postgresql-provider-barrier");
+            }
+
+            Task<SetupLiveSecretBindingResult> secondWrite = second.WriteSecretBindingAsync(
+                tenantId,
+                enrollmentResult.Data.EnrollmentId,
+                userId,
+                enrollmentResult.Capability.ToHeaderValue(),
+                operationKey,
+                "setup.encryption",
+                secret,
+                CancellationToken.None);
+            await Assert.That(await WaitForAdvisoryLockWaiterAsync(secondPid, secondWrite))
+                .IsTrue();
+            writer.Release();
+            SetupLiveSecretBindingResult[] results = await Task.WhenAll(
+                    firstWrite,
+                    secondWrite)
+                .WaitAsync(TimeSpan.FromSeconds(30));
+
+            await Assert.That(results.Select(result => result.Status))
+                .IsEquivalentTo(
+                [
+                    SetupLiveApplicationStatus.Success,
+                    SetupLiveApplicationStatus.Conflict
+                ]);
+            await Assert.That(writer.CallCount).IsEqualTo(1);
+            await using ExploreDbContext verify = fixture.CreateDbContext();
+            SetupSecretBindingOperation operation = await verify
+                .Set<SetupSecretBindingOperation>()
+                .AsNoTracking()
+                .SingleAsync();
+            await Assert.That(operation.BindingKey).IsEqualTo("setup.signing");
+            await Assert.That(operation.State)
+                .IsEqualTo(Explore.Domain.SetupLive.SetupSecretBindingOperationState.Succeeded);
+        }
+        finally
+        {
+            writer.Release();
+            CryptographicOperations.ZeroMemory(secret);
+        }
+    }
+
+    [Test]
+    public async Task AcceptedUnknownWriteIsNeverRedispatchedAfterTerminalPersistenceFailure()
+    {
+        await fixture.ResetAsync();
+        (Guid tenantId, Guid userId) = await SeedApplicationActorAsync();
+        SetupLiveEnrollmentResult enrollment;
+        await using (ExploreDbContext setup = fixture.CreateDbContext())
+        {
+            enrollment = await ApplicationService(setup, tenantId).CreateAsync(
+                tenantId,
+                userId,
+                Guid.CreateVersion7(),
+                new CreateSetupTargetEnrollmentRequest
+                {
+                    ClientChallenge = SetupClientChallenge.FromBytes(new byte[32]),
+                    RequestedScopes = [SetupEnrollmentScope.SecretBindingWrite]
+                },
+                CancellationToken.None);
+            setup.SecretBindings.Add(SetupBinding(
+                "setup.signing", "ISLAMU_SETUP_SIGNING"));
+            await setup.SaveChangesAsync();
+        }
+
+        using var writer = new BlockingAtomicSetupSecretBindingWriter();
+        byte[] secret = RandomNumberGenerator.GetBytes(64);
+        Guid operationKey = Guid.CreateVersion7();
+        try
+        {
+            await using ExploreDbContext firstContext = fixture.CreateDbContext();
+            IUnitOfWork failing = new FailBeforeSerializableExecutionUnitOfWork(
+                new EfCoreUnitOfWork(firstContext),
+                failOnInvocation: 3);
+            SetupLiveApplicationService first = ApplicationService(
+                firstContext,
+                tenantId,
+                writer,
+                unitOfWork: failing);
+            Task<SetupLiveSecretBindingResult> firstWrite = first.WriteSecretBindingAsync(
+                tenantId,
+                enrollment.Data!.EnrollmentId,
+                userId,
+                enrollment.Capability!.ToHeaderValue(),
+                operationKey,
+                "setup.signing",
+                secret,
+                CancellationToken.None);
+            await writer.Started.WaitAsync(TimeSpan.FromSeconds(10));
+            writer.Release();
+            await Assert.That(async () => await firstWrite)
+                .Throws<TimeoutException>();
+
+            await using ExploreDbContext retryContext = fixture.CreateDbContext();
+            SetupLiveSecretBindingResult retry = await ApplicationService(
+                retryContext,
+                tenantId,
+                writer).WriteSecretBindingAsync(
+                    tenantId,
+                    enrollment.Data.EnrollmentId,
+                    userId,
+                    enrollment.Capability.ToHeaderValue(),
+                    operationKey,
+                    "setup.signing",
+                    secret,
+                    CancellationToken.None);
+
+            await Assert.That(retry.Status)
+                .IsEqualTo(SetupLiveApplicationStatus.Duplicate);
+            await Assert.That(retry.Data!.State)
+                .IsEqualTo(ISLAMU.Wire.Contracts.SetupLive.SetupSecretBindingOperationState.Accepted);
+            await Assert.That(writer.CallCount).IsEqualTo(1);
+        }
+        finally
+        {
+            writer.Release();
+            CryptographicOperations.ZeroMemory(secret);
+        }
+    }
+
+    [Test]
+    public async Task ProviderDispatchLeaseMakesRevokeWaitAndPreservesTerminalWrite()
+    {
+        await fixture.ResetAsync();
+        (Guid tenantId, Guid userId) = await SeedApplicationActorAsync();
+        SetupLiveEnrollmentResult enrollment;
+        await using (ExploreDbContext setup = fixture.CreateDbContext())
+        {
+            enrollment = await ApplicationService(setup, tenantId).CreateAsync(
+                tenantId,
+                userId,
+                Guid.CreateVersion7(),
+                new CreateSetupTargetEnrollmentRequest
+                {
+                    ClientChallenge = SetupClientChallenge.FromBytes(new byte[32]),
+                    RequestedScopes =
+                    [
+                        SetupEnrollmentScope.TargetRead,
+                        SetupEnrollmentScope.SecretBindingWrite
+                    ]
+                },
+                CancellationToken.None);
+            setup.SecretBindings.Add(SetupBinding(
+                "setup.signing", "ISLAMU_SETUP_SIGNING"));
+            await setup.SaveChangesAsync();
+        }
+
+        using var writer = new BlockingAtomicSetupSecretBindingWriter();
+        byte[] secret = RandomNumberGenerator.GetBytes(64);
+        try
+        {
+            await using ExploreDbContext writeContext = fixture.CreateDbContext();
+            await using ExploreDbContext revokeContext = fixture.CreateDbContext();
+            await revokeContext.Database.OpenConnectionAsync();
+            int revokePid = await revokeContext.Database
+                .SqlQuery<int>($"SELECT pg_backend_pid() AS \"Value\"")
+                .SingleAsync();
+            SetupLiveApplicationService writeService = ApplicationService(
+                writeContext, tenantId, writer);
+            SetupLiveApplicationService revokeService = ApplicationService(
+                revokeContext, tenantId, writer);
+            Task<SetupLiveSecretBindingResult> write = writeService.WriteSecretBindingAsync(
+                tenantId,
+                enrollment.Data!.EnrollmentId,
+                userId,
+                enrollment.Capability!.ToHeaderValue(),
+                Guid.CreateVersion7(),
+                "setup.signing",
+                secret,
+                CancellationToken.None);
+            await writer.Started.WaitAsync(TimeSpan.FromSeconds(10));
+            Task<SetupLiveEnrollmentResult> revoke = revokeService.RevokeAsync(
+                tenantId,
+                enrollment.Data.EnrollmentId,
+                userId,
+                Guid.CreateVersion7(),
+                enrollment.Capability.ToHeaderValue(),
+                CancellationToken.None);
+            await Assert.That(await WaitForAdvisoryLockWaiterAsync(revokePid, revoke))
+                .IsTrue();
+            writer.Release();
+
+            await Assert.That((await write).Status)
+                .IsEqualTo(SetupLiveApplicationStatus.Success);
+            await Assert.That((await revoke).Status)
+                .IsEqualTo(SetupLiveApplicationStatus.Success);
+            await Assert.That(writer.CallCount).IsEqualTo(1);
+        }
+        finally
+        {
+            writer.Release();
+            CryptographicOperations.ZeroMemory(secret);
+        }
+    }
+
+    [Test]
+    public async Task RevokeLeaseMakesWriteWaitAndPreventsProviderDispatch()
+    {
+        await fixture.ResetAsync();
+        (Guid tenantId, Guid userId) = await SeedApplicationActorAsync();
+        SetupLiveEnrollmentResult enrollment;
+        await using (ExploreDbContext setup = fixture.CreateDbContext())
+        {
+            enrollment = await ApplicationService(setup, tenantId).CreateAsync(
+                tenantId,
+                userId,
+                Guid.CreateVersion7(),
+                new CreateSetupTargetEnrollmentRequest
+                {
+                    ClientChallenge = SetupClientChallenge.FromBytes(new byte[32]),
+                    RequestedScopes =
+                    [
+                        SetupEnrollmentScope.TargetRead,
+                        SetupEnrollmentScope.SecretBindingWrite
+                    ]
+                },
+                CancellationToken.None);
+            setup.SecretBindings.Add(SetupBinding(
+                "setup.signing", "ISLAMU_SETUP_SIGNING"));
+            await setup.SaveChangesAsync();
+        }
+
+        using var writer = new BlockingAtomicSetupSecretBindingWriter();
+        byte[] secret = RandomNumberGenerator.GetBytes(64);
+        try
+        {
+            await using ExploreDbContext revokeContext = fixture.CreateDbContext();
+            await using ExploreDbContext writeContext = fixture.CreateDbContext();
+            await writeContext.Database.OpenConnectionAsync();
+            int writePid = await writeContext.Database
+                .SqlQuery<int>($"SELECT pg_backend_pid() AS \"Value\"")
+                .SingleAsync();
+            var blocker = new BlockingAfterAcquireCoordinator(
+                new RelationalSetupSecretBindingOperationCoordinator(revokeContext));
+            SetupLiveApplicationService revokeService = ApplicationService(
+                revokeContext, tenantId, writer, coordinator: blocker);
+            SetupLiveApplicationService writeService = ApplicationService(
+                writeContext, tenantId, writer);
+            Task<SetupLiveEnrollmentResult> revoke = revokeService.RevokeAsync(
+                tenantId,
+                enrollment.Data!.EnrollmentId,
+                userId,
+                Guid.CreateVersion7(),
+                enrollment.Capability!.ToHeaderValue(),
+                CancellationToken.None);
+            await blocker.Started.WaitAsync(TimeSpan.FromSeconds(10));
+            Task<SetupLiveSecretBindingResult> write = writeService.WriteSecretBindingAsync(
+                tenantId,
+                enrollment.Data.EnrollmentId,
+                userId,
+                enrollment.Capability.ToHeaderValue(),
+                Guid.CreateVersion7(),
+                "setup.signing",
+                secret,
+                CancellationToken.None);
+            await Assert.That(await WaitForAdvisoryLockWaiterAsync(writePid, write))
+                .IsTrue();
+            blocker.Release();
+
+            await Assert.That((await revoke).Status)
+                .IsEqualTo(SetupLiveApplicationStatus.Success);
+            await Assert.That((await write).Status)
+                .IsEqualTo(SetupLiveApplicationStatus.Unavailable);
+            await Assert.That(writer.CallCount).IsEqualTo(0);
         }
         finally
         {
@@ -694,20 +1024,35 @@ public sealed class SetupLivePersistenceInvariantTests(
             Now,
             Now.AddMinutes(10));
 
+    private static SecretBinding SetupBinding(string settingKey, string variableName) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            SettingKey = settingKey,
+            Scope = SecretScope.Instance,
+            SourceType = SecretSourceType.EnvironmentVariable,
+            EnvironmentVariableName = variableName,
+            CreatedAt = Now
+        };
+
     private SetupLiveApplicationService ApplicationService(
         ExploreDbContext context,
         Guid tenantId,
         ISetupSecretBindingWriter? writer = null,
-        ISetupSecretBindingCommitmentAuthority? commitmentAuthority = null) => new(
+        ISetupSecretBindingCommitmentAuthority? commitmentAuthority = null,
+        IUnitOfWork? unitOfWork = null,
+        ISetupSecretBindingOperationCoordinator? coordinator = null) => new(
         new SetupLiveRepository(context),
         new SecretBindingRepository(context),
-        new EfCoreUnitOfWork(context),
+        unitOfWork ?? new EfCoreUnitOfWork(context),
         new ActorRepository(context),
         new AllowAuthorizationProvider(),
         new TenantContext(tenantId),
         writer ?? new NoopSetupSecretBindingWriter(),
+        writer as ISetupSecretBindingReadinessReader
+            ?? new NoopSetupSecretBindingWriter(),
         commitmentAuthority ?? new FixedSetupCommitmentAuthority(),
-        new RelationalSetupSecretBindingOperationCoordinator(context),
+        coordinator ?? new RelationalSetupSecretBindingOperationCoordinator(context),
         new ImmediateSetupCommitBarrier(),
         TimeProvider.System,
         NullLogger<SetupLiveApplicationService>.Instance);
@@ -808,8 +1153,16 @@ public sealed class SetupLivePersistenceInvariantTests(
 
     private sealed class SetupRollbackSentinelException : Exception;
 
-    private sealed class NoopSetupSecretBindingWriter : ISetupSecretBindingWriter
+    private sealed class NoopSetupSecretBindingWriter :
+        ISetupSecretBindingWriter,
+        ISetupSecretBindingReadinessReader
     {
+        public Task<SetupSecretBindingWriteOutcome> GetReadinessAsync(
+            Guid bindingId,
+            string bindingKey,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(SetupSecretBindingWriteOutcome.Unavailable);
+
         public Task<SetupSecretBindingWriteOutcome> WriteAsync(
             SetupSecretBindingWriteRequest request,
             CancellationToken cancellationToken) =>
@@ -836,6 +1189,7 @@ public sealed class SetupLivePersistenceInvariantTests(
 
     private sealed class BlockingAtomicSetupSecretBindingWriter :
         ISetupSecretBindingWriter,
+        ISetupSecretBindingReadinessReader,
         IDisposable
     {
         private readonly TaskCompletionSource _started =
@@ -845,6 +1199,12 @@ public sealed class SetupLivePersistenceInvariantTests(
 
         public int CallCount => Volatile.Read(ref _callCount);
         public Task Started => _started.Task;
+
+        public Task<SetupSecretBindingWriteOutcome> GetReadinessAsync(
+            Guid bindingId,
+            string bindingKey,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(SetupSecretBindingWriteOutcome.Ready);
 
         public Task<SetupSecretBindingWriteOutcome> WriteAsync(
             SetupSecretBindingWriteRequest request,
@@ -864,6 +1224,65 @@ public sealed class SetupLivePersistenceInvariantTests(
         {
             Release();
             _release.Dispose();
+        }
+    }
+
+    private sealed class FailBeforeSerializableExecutionUnitOfWork(
+        IUnitOfWork inner,
+        int failOnInvocation) : IUnitOfWork
+    {
+        private int _invocations;
+
+        public Task ExecuteInTransactionAsync(
+            Func<CancellationToken, Task> operation,
+            CancellationToken ct = default) =>
+            inner.ExecuteInTransactionAsync(operation, ct);
+
+        public Task<T> ExecuteInTransactionAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default) =>
+            inner.ExecuteInTransactionAsync(operation, ct);
+
+        public Task<T> ExecuteSerializableAsync<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken ct = default)
+        {
+            if (Interlocked.Increment(ref _invocations) == failOnInvocation)
+                throw new TimeoutException("setup-terminal-persistence-failure");
+            return inner.ExecuteSerializableAsync(operation, ct);
+        }
+    }
+
+    private sealed class BlockingAfterAcquireCoordinator(
+        ISetupSecretBindingOperationCoordinator inner) :
+        ISetupSecretBindingOperationCoordinator
+    {
+        private readonly TaskCompletionSource _started =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _release =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Started => _started.Task;
+        public void Release() => _release.TrySetResult();
+
+        public async Task<IAsyncDisposable> AcquireAsync(
+            SetupSecretBindingCoordinationRequest request,
+            CancellationToken cancellationToken)
+        {
+            IAsyncDisposable lease = await inner.AcquireAsync(
+                request,
+                cancellationToken);
+            try
+            {
+                _started.TrySetResult();
+                await _release.Task.WaitAsync(cancellationToken);
+                return lease;
+            }
+            catch
+            {
+                await lease.DisposeAsync();
+                throw;
+            }
         }
     }
 

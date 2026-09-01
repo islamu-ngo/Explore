@@ -254,7 +254,7 @@ public sealed class SecretResolver : ISecretResolver
         var selectedSource = SelectedSourceType();
         if (selectedSource != binding.SourceType)
         {
-            _logger.LogError("secret_source_invalid source={SourceType}", binding.SourceType);
+            _logger.LogError("secret_source_invalid");
             _metrics.RecordError(binding.SourceType, SecretResolutionStatus.Invalid);
             return SecretResolutionResult.Invalid;
         }
@@ -270,7 +270,7 @@ public sealed class SecretResolver : ISecretResolver
         _metrics.RecordCacheMiss();
         if (!_sources.TryGetValue(binding.SourceType, out var source))
         {
-            _logger.LogError("secret_source_invalid source={SourceType}", binding.SourceType);
+            _logger.LogError("secret_source_invalid");
             _metrics.RecordError(binding.SourceType, SecretResolutionStatus.Invalid);
             return SecretResolutionResult.Invalid;
         }
@@ -288,7 +288,7 @@ public sealed class SecretResolver : ISecretResolver
         catch (Exception)
 #pragma warning restore CA1031
         {
-            _logger.LogError("secret_source_unavailable source={SourceType}", binding.SourceType);
+            _logger.LogError("secret_source_unavailable");
             _metrics.RecordError(binding.SourceType, SecretResolutionStatus.Unavailable);
             return SecretResolutionResult.Unavailable;
         }

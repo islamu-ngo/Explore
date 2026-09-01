@@ -342,13 +342,22 @@ public sealed class SetupLiveApplicationContractTests
             }
         }
 
-        Type[] featureOwners = ApplicationAssembly.GetExportedTypes()
+        string[] featureOwners = ApplicationAssembly.GetExportedTypes()
             .Where(type => type.Namespace is not null
                 && type.Namespace.StartsWith(
                     "Explore.Application.Features.SetupLive",
                     StringComparison.Ordinal))
+            .Select(type => type.FullName!)
+            .Order(StringComparer.Ordinal)
             .ToArray();
-        await Assert.That(featureOwners).IsEmpty();
+        await Assert.That(featureOwners).IsEquivalentTo(
+            [
+                "Explore.Application.Features.SetupLive.SetupLiveApplicationService",
+                "Explore.Application.Features.SetupLive.SetupLiveApplicationStatus",
+                "Explore.Application.Features.SetupLive.SetupLiveEnrollmentResult",
+                "Explore.Application.Features.SetupLive.SetupLiveReadinessResult",
+                "Explore.Application.Features.SetupLive.SetupLiveSecretBindingResult"
+            ]);
 
         Type[] forwardedOwners = ApplicationAssembly.GetForwardedTypes()
             .Where(type => type.Namespace == ContractNamespace

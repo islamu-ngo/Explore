@@ -7,6 +7,7 @@ using Infisical.Sdk;
 using Infisical.Sdk.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Text;
 
 namespace Explore.Secrets.Infrastructure;
 
@@ -143,17 +144,34 @@ public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisp
     /// Thin adapter from the library-agnostic <see cref="IInfisicalClient"/> contract to the
     /// concrete Infisical SDK <see cref="InfisicalClient"/>. Keeps the SDK out of Application.
     /// </summary>
-    private sealed class InfisicalClientFacade : IInfisicalClient
+    internal sealed class InfisicalClientFacade : IInfisicalClient
     {
+        private static readonly UTF8Encoding StrictUtf8 = new(
+            encoderShouldEmitUTF8Identifier: false,
+            throwOnInvalidBytes: true);
         private readonly InfisicalClient _client;
         private readonly string _projectId;
         private readonly ILogger _logger;
+        private readonly Func<UpdateSecretOptions, Task<bool>> _writeSecretAsync;
 
         public InfisicalClientFacade(InfisicalClient client, string projectId, ILogger logger)
         {
             _client = client;
             _projectId = projectId;
             _logger = logger;
+            _writeSecretAsync = async options =>
+                await client.Secrets().UpdateAsync(options).ConfigureAwait(false) is not null;
+        }
+
+        internal InfisicalClientFacade(
+            string projectId,
+            ILogger logger,
+            Func<UpdateSecretOptions, Task<bool>> writeSecretAsync)
+        {
+            _client = null!;
+            _projectId = projectId;
+            _logger = logger;
+            _writeSecretAsync = writeSecretAsync;
         }
 
         public async Task<string?> GetSecretAsync(
@@ -195,12 +213,28 @@ public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisp
             return null;
         }
 
-        public Task<bool> WriteSecretAsync(
+        public async Task<bool> WriteSecretAsync(
             string environment,
             string folderPath,
             string secretName,
             ReadOnlyMemory<byte> secretValue,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(environment);
+            ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+            ArgumentException.ThrowIfNullOrWhiteSpace(secretName);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            string value = StrictUtf8.GetString(secretValue.Span);
+            bool written = await _writeSecretAsync(new UpdateSecretOptions
+            {
+                ProjectId = _projectId,
+                EnvironmentSlug = environment,
+                SecretPath = folderPath,
+                SecretName = secretName,
+                NewSecretValue = value
+            }).ConfigureAwait(false);
+            return written;
+        }
     }
 }

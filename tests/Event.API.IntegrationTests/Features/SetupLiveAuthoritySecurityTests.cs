@@ -27,6 +27,7 @@ using Explore.Domain.SetupLive;
 using Explore.Persistence;
 using Explore.Persistence.Seed;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
@@ -46,7 +47,7 @@ using TUnit.Core.Interfaces;
 
 [Category(TestCategories.Security)]
 [ClassDataSource<SetupLiveAuthorityRedFixture>(Shared = SharedType.PerClass)]
-[NotInParallel("SetupLiveAuthoritySecurity")]
+[NotInParallel]
 public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture fixture)
 {
     private const string ControllerTypeName =
@@ -118,6 +119,27 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
     }
 
     [Test]
+    public async Task ReadinessPortRemainsValueFreeAndSeparateFromWriter()
+    {
+        MethodInfo writer = typeof(ISetupSecretBindingWriter).GetMethods().Single();
+        MethodInfo readiness = typeof(ISetupSecretBindingReadinessReader)
+            .GetMethods().Single();
+
+        await Assert.That(writer.Name).IsEqualTo("WriteAsync");
+        await Assert.That(writer.GetParameters().Select(parameter => parameter.ParameterType))
+            .IsEquivalentTo(
+            [
+                typeof(SetupSecretBindingWriteRequest),
+                typeof(CancellationToken)
+            ]);
+        await Assert.That(readiness.Name).IsEqualTo("GetReadinessAsync");
+        await Assert.That(readiness.ReturnType)
+            .IsEqualTo(typeof(Task<SetupSecretBindingWriteOutcome>));
+        await Assert.That(readiness.GetParameters().Select(parameter => parameter.ParameterType))
+            .IsEquivalentTo([typeof(Guid), typeof(string), typeof(CancellationToken)]);
+    }
+
+    [Test]
     public async Task AnonymousCreateRequiresAuthenticationAndPrivateNoStore()
     {
         await fixture.ResetAsync();
@@ -128,6 +150,28 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
         await Assert.That(response.Headers.CacheControl?.NoStore).IsTrue();
         await Assert.That(response.Headers.CacheControl?.Private).IsTrue();
+    }
+
+    [Test]
+    public async Task InvalidCapabilityIsRejectedBeforeSecretBodyRead()
+    {
+        await fixture.ResetAsync();
+        await fixture.AddSetupBinding("setup.signing");
+        EnrollmentResponse enrollment = await CreateEnrollment(
+            fixture.Primary, Guid.CreateVersion7(), NewToken(), HttpStatusCode.Created);
+        fixture.BodyProbe.Reset();
+        using HttpRequestMessage request = SecretWriteRequest(
+            enrollment, "setup.signing", NewLongToken(), Guid.CreateVersion7());
+        request.Headers.Remove(CapabilityHeader);
+        request.Headers.Add(CapabilityHeader, NewToken());
+        request.Headers.Add(UnreadBodyProbe.HeaderName, "1");
+
+        using HttpResponseMessage response = await fixture.Client.SendAsync(request);
+
+        await AssertUnavailableProblem(response);
+        await Assert.That(fixture.BodyProbe.ReadCount).IsEqualTo(0);
+        await Assert.That(fixture.CommitmentAuthority.CallCount).IsEqualTo(0);
+        await Assert.That(fixture.Writer.CallCount).IsEqualTo(0);
     }
 
     [Test]
@@ -542,6 +586,63 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
     }
 
     [Test]
+    [Arguments(SetupSecretBindingWriteOutcome.Unavailable, "unavailable")]
+    [Arguments(SetupSecretBindingWriteOutcome.Invalid, "invalid")]
+    [Arguments(SetupSecretBindingWriteOutcome.Unauthorized, "unauthorized")]
+    public async Task ReadinessSuppressesImpossibleWriteAffordances(
+        SetupSecretBindingWriteOutcome outcome,
+        string expectedState)
+    {
+        await fixture.ResetAsync();
+        await fixture.AddSetupBinding("setup.signing");
+        fixture.Writer.ReadinessOutcome = outcome;
+        EnrollmentResponse enrollment = await CreateEnrollment(
+            fixture.Primary, Guid.CreateVersion7(), NewToken(), HttpStatusCode.Created);
+
+        using HttpRequestMessage request = ReadinessRequest(enrollment);
+        using HttpResponseMessage response = await fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        using JsonDocument document = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
+        JsonElement signing = document.RootElement.GetProperty("_embedded")
+            .GetProperty("items").EnumerateArray().Single(item =>
+                item.GetProperty("bindingKey").GetString() == "setup.signing");
+        await Assert.That(signing.GetProperty("state").GetString())
+            .IsEqualTo(expectedState);
+        await Assert.That(signing.TryGetProperty("_links", out JsonElement links)
+                && links.EnumerateObject().Any())
+            .IsFalse();
+    }
+
+    [Test]
+    public async Task ReadinessScopeAloneNeverAdvertisesWriteAuthority()
+    {
+        await fixture.ResetAsync();
+        await fixture.AddSetupBinding("setup.signing");
+        EnrollmentResponse enrollment = await CreateEnrollment(
+            fixture.Primary,
+            Guid.CreateVersion7(),
+            NewToken(),
+            HttpStatusCode.Created,
+            ["secret_binding.readiness"]);
+
+        using HttpRequestMessage request = ReadinessRequest(enrollment);
+        using HttpResponseMessage response = await fixture.Client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        using JsonDocument document = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
+        JsonElement signing = document.RootElement.GetProperty("_embedded")
+            .GetProperty("items").EnumerateArray().Single(item =>
+                item.GetProperty("bindingKey").GetString() == "setup.signing");
+        await Assert.That(signing.GetProperty("state").GetString()).IsEqualTo("ready");
+        await Assert.That(signing.TryGetProperty("_links", out JsonElement links)
+                && links.EnumerateObject().Any())
+            .IsFalse();
+    }
+
+    [Test]
     public async Task HalAffordancesRequireTheCorrespondingEnrollmentScope()
     {
         await fixture.ResetAsync();
@@ -817,7 +918,8 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
             bindingId.ToString("D"),
             "setup.signing",
             "ISLAMU_SETUP_SIGNING",
-            fixture.CommitmentAuthority.LastCommitment
+            fixture.CommitmentAuthority.LastCommitment,
+            "forbidden-field:"
         ]);
 
         using HttpRequestMessage read = OperationReadRequest(enrollment, receipt.OperationId);
@@ -892,6 +994,34 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
     }
 
     [Test]
+    public async Task CommitmentAuthorityFailureCreatesNoDispatchableReceiptOrProviderCall()
+    {
+        await fixture.ResetAsync();
+        fixture.CommitmentAuthority.FailClosed = true;
+        await fixture.AddSetupBinding("setup.signing");
+        EnrollmentResponse enrollment = await CreateEnrollment(
+            fixture.Primary, Guid.CreateVersion7(), NewToken(), HttpStatusCode.Created);
+        string secret = NewLongToken();
+        Guid operationKey = Guid.CreateVersion7();
+        using HttpRequestMessage write = SecretWriteRequest(
+            enrollment, "setup.signing", secret, operationKey);
+        using HttpResponseMessage response = await fixture.Client.SendAsync(write);
+
+        await AssertUnavailableProblem(response);
+        await Assert.That(fixture.CommitmentAuthority.CallCount).IsEqualTo(1);
+        await Assert.That(fixture.CommitmentAuthority.LastBorrowedValue.Span.ToArray()
+                .All(static value => value == 0))
+            .IsTrue();
+        await Assert.That(fixture.Writer.CallCount).IsEqualTo(0);
+        await Assert.That(fixture.CommitBarrier.CallCount).IsEqualTo(0);
+        await Assert.That(fixture.Coordinator.AcquireCount).IsEqualTo(0);
+        await AssertEntityCount(OperationEntityName, 0);
+        await AssertStoredRowsDoNotContain(
+            [secret, enrollment.Capability], OperationEntityName);
+        await AssertCapturedDoesNotContain([secret, enrollment.Capability]);
+    }
+
+    [Test]
     public async Task SecretWriteCoordinationUsesRotatedEnrollmentGeneration()
     {
         await fixture.ResetAsync();
@@ -922,12 +1052,12 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
         SetupSecretBindingCoordinationRequest coordination =
-            fixture.Coordinator.Snapshot().Single();
+            fixture.Coordinator.Snapshot().Last();
         await Assert.That(coordination.TenantId).IsEqualTo(rotated.Scenario.TenantId);
         await Assert.That(coordination.EnrollmentId).IsEqualTo(rotated.EnrollmentId);
         await Assert.That(coordination.EnrollmentGeneration)
             .IsEqualTo(rotatedGeneration);
-        await Assert.That(fixture.Coordinator.DisposeCount).IsEqualTo(1);
+        await Assert.That(fixture.Coordinator.DisposeCount).IsEqualTo(2);
         await AssertCapturedDoesNotContain([secret, rotatedCapability]);
     }
 
@@ -1050,8 +1180,7 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
             fixture.Primary, Guid.CreateVersion7(), NewToken(), HttpStatusCode.Created);
         string secret = NewLongToken();
         Guid operationKey = Guid.CreateVersion7();
-        using TelemetryBarrier barrier = fixture.Capture.ArmStructuredLogBarrier(
-            "secret_binding.write", "before_provider_dispatch");
+        using CoordinatorAcquireBarrier barrier = fixture.Coordinator.ArmBeforeAcquireBarrier();
         using HttpRequestMessage write = SecretWriteRequest(
             enrollment, "setup.signing", secret, operationKey);
         Task<HttpResponseMessage> writeTask = fixture.Client.SendAsync(write);
@@ -1078,15 +1207,10 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
         await Assert.That(failureBody).DoesNotContain(secret);
         await Assert.That(failureBody).DoesNotContain(enrollment.Capability!);
         await Assert.That(fixture.Writer.CallCount).IsEqualTo(0);
-        await Assert.That(fixture.CommitBarrier.CallCount).IsEqualTo(1);
-        await Assert.That(fixture.Coordinator.AcquireCount).IsEqualTo(1);
-        await Assert.That(fixture.Coordinator.DisposeCount).IsEqualTo(1);
-        await AssertNoDispatchableOperation(enrollment.EnrollmentId);
-        SetupSecretBindingOperation operation = await LoadOperation(operationKey);
-        await Assert.That(operation.State).IsEqualTo(SetupSecretBindingOperationState.Failed);
-        await Assert.That(operation.Outcome)
-            .IsEqualTo(SetupSecretBindingOperationOutcome.UnavailableEnrollment);
-        await Assert.That(operation.SettledAt).IsNotNull();
+        await Assert.That(fixture.CommitBarrier.CallCount).IsEqualTo(0);
+        await Assert.That(fixture.Coordinator.AcquireCount).IsEqualTo(2);
+        await Assert.That(fixture.Coordinator.DisposeCount).IsEqualTo(2);
+        await AssertEntityCount(OperationEntityName, 0);
         await AssertStoredRowsDoNotContain([secret, enrollment.Capability], OperationEntityName);
         await AssertCapturedDoesNotContain([secret, enrollment.Capability]);
     }
@@ -1115,17 +1239,19 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
         }
 
         using HttpRequestMessage revoke = RevokeRequest(enrollment);
-        using HttpResponseMessage revokeResponse = await fixture.Client.SendAsync(revoke);
-        await Assert.That(revokeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        Task<HttpResponseMessage> revokeTask = fixture.Client.SendAsync(revoke);
         barrier.Release();
 
         using HttpResponseMessage writeResponse =
             await writeTask.WaitAsync(TimeSpan.FromSeconds(10));
+        using HttpResponseMessage revokeResponse =
+            await revokeTask.WaitAsync(TimeSpan.FromSeconds(10));
+        await Assert.That(revokeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(writeResponse.StatusCode).IsEqualTo(HttpStatusCode.Accepted);
         await Assert.That(fixture.Writer.CallCount).IsEqualTo(1);
         await Assert.That(fixture.CommitBarrier.CallCount).IsEqualTo(1);
-        await Assert.That(fixture.Coordinator.AcquireCount).IsEqualTo(1);
-        await Assert.That(fixture.Coordinator.DisposeCount).IsEqualTo(1);
+        await Assert.That(fixture.Coordinator.AcquireCount).IsEqualTo(2);
+        await Assert.That(fixture.Coordinator.DisposeCount).IsEqualTo(2);
         await AssertNoDispatchableOperation(enrollment.EnrollmentId);
         SetupSecretBindingOperation operation = await LoadOperation(operationKey);
         await Assert.That(operation.State)
@@ -1267,10 +1393,15 @@ public sealed class SetupLiveAuthoritySecurityTests(SetupLiveAuthorityRedFixture
         TenantScenarioSeed.TenantScenarioResult scenario,
         Guid operationKey,
         string challenge,
-        HttpStatusCode expected)
+        HttpStatusCode expected,
+        IReadOnlyList<string>? requestedScopes = null)
     {
         using HttpRequestMessage request = CreateEnrollmentRequest(
-            scenario.TenantId, scenario.UserId, operationKey, challenge);
+            scenario.TenantId,
+            scenario.UserId,
+            operationKey,
+            challenge,
+            requestedScopes);
         using HttpResponseMessage response = await fixture.Client.SendAsync(request);
         string body = await response.Content.ReadAsStringAsync();
 
@@ -1815,6 +1946,7 @@ public sealed class SetupLiveAuthorityRedFixture : IAsyncInitializer, IAsyncDisp
     public TestSetupSecretBindingCommitmentAuthority CommitmentAuthority { get; } = new();
     public RecordingSetupSecretBindingCommitBarrier CommitBarrier { get; } = new();
     public RecordingSetupSecretBindingOperationCoordinator Coordinator { get; } = new();
+    public UnreadBodyProbe BodyProbe { get; } = new();
     public SetupLiveAuthorityWebApplicationFactory Factory { get; private set; } = null!;
     public HttpClient Client { get; private set; } = null!;
     public TenantScenarioSeed.TenantScenarioResult Primary { get; private set; } = null!;
@@ -1828,7 +1960,8 @@ public sealed class SetupLiveAuthorityRedFixture : IAsyncInitializer, IAsyncDisp
             Writer,
             CommitmentAuthority,
             CommitBarrier,
-            Coordinator)
+            Coordinator,
+            BodyProbe)
         {
             AuthorizationProviderOverride = Authorization
         };
@@ -1846,6 +1979,7 @@ public sealed class SetupLiveAuthorityRedFixture : IAsyncInitializer, IAsyncDisp
         CommitmentAuthority.Reset();
         CommitBarrier.Reset();
         Coordinator.Reset();
+        BodyProbe.Reset();
         Clock.Reset();
         Capture.Reset();
         await using AsyncServiceScope scope = Factory.Services.CreateAsyncScope();
@@ -1886,6 +2020,7 @@ public sealed class SetupLiveAuthorityRedFixture : IAsyncInitializer, IAsyncDisp
     {
         Capture.Dispose();
         CommitmentAuthority.Dispose();
+        Coordinator.Dispose();
         Client.Dispose();
         await Factory.DisposeAsync();
     }
@@ -1897,7 +2032,8 @@ public sealed class SetupLiveAuthorityWebApplicationFactory(
     RecordingSetupSecretBindingWriter writer,
     TestSetupSecretBindingCommitmentAuthority commitmentAuthority,
     RecordingSetupSecretBindingCommitBarrier commitBarrier,
-    RecordingSetupSecretBindingOperationCoordinator coordinator)
+    RecordingSetupSecretBindingOperationCoordinator coordinator,
+    UnreadBodyProbe bodyProbe)
     : AuthenticatedWebApplicationFactory
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -1907,29 +2043,101 @@ public sealed class SetupLiveAuthorityWebApplicationFactory(
         {
             services.RemoveAll<TimeProvider>();
             services.RemoveAll<ISetupSecretBindingWriter>();
+            services.RemoveAll<ISetupSecretBindingReadinessReader>();
             services.RemoveAll<ISetupSecretBindingCommitmentAuthority>();
             services.RemoveAll<ISetupSecretBindingCommitBarrier>();
             services.RemoveAll<ISetupSecretBindingOperationCoordinator>();
             services.AddSingleton<TimeProvider>(clock);
             services.AddSingleton<ISetupSecretBindingWriter>(writer);
+            services.AddSingleton<ISetupSecretBindingReadinessReader>(writer);
             services.AddSingleton<ISetupSecretBindingCommitmentAuthority>(commitmentAuthority);
             services.AddSingleton<ISetupSecretBindingCommitBarrier>(commitBarrier);
             services.AddSingleton<ISetupSecretBindingOperationCoordinator>(coordinator);
             services.AddSingleton<ILoggerProvider>(capture.LoggerProvider);
+            services.AddSingleton<IStartupFilter>(
+                new UnreadBodyStartupFilter(bodyProbe));
         });
     }
 }
 
-public sealed class RecordingSetupSecretBindingWriter : ISetupSecretBindingWriter
+public sealed class UnreadBodyProbe
+{
+    public const string HeaderName = "X-Setup-Unread-Body-Probe";
+    private int _readCount;
+    public int ReadCount => Volatile.Read(ref _readCount);
+    public void RecordRead() => Interlocked.Increment(ref _readCount);
+    public void Reset() => Interlocked.Exchange(ref _readCount, 0);
+}
+
+public sealed class UnreadBodyStartupFilter(UnreadBodyProbe probe) : IStartupFilter
+{
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
+        app =>
+        {
+            app.Use(async (context, nextMiddleware) =>
+            {
+                if (context.Request.Headers.ContainsKey(UnreadBodyProbe.HeaderName))
+                    context.Request.Body = new ThrowOnReadStream(context.Request.Body, probe);
+                await nextMiddleware();
+            });
+            next(app);
+        };
+
+    private sealed class ThrowOnReadStream(Stream inner, UnreadBodyProbe probe) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => inner.CanSeek;
+        public override bool CanWrite => false;
+        public override long Length => inner.Length;
+        public override long Position { get => inner.Position; set => inner.Position = value; }
+        public override void Flush() => inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => Fail();
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken) => Task.FromResult(Fail());
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(Fail());
+        public override long Seek(long offset, SeekOrigin origin) => inner.Seek(offset, origin);
+        public override void SetLength(long value) =>
+            throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException();
+
+        private int Fail()
+        {
+            probe.RecordRead();
+            throw new InvalidOperationException("setup-secret-body-was-read");
+        }
+    }
+}
+
+public sealed class RecordingSetupSecretBindingWriter :
+    ISetupSecretBindingWriter,
+    ISetupSecretBindingReadinessReader
 {
     private ProviderWriteBarrier? _barrier;
     private int _callCount;
     public int CallCount => Volatile.Read(ref _callCount);
     public SetupSecretBindingWriteOutcome Outcome { get; set; } =
         SetupSecretBindingWriteOutcome.Ready;
+    public SetupSecretBindingWriteOutcome ReadinessOutcome { get; set; } =
+        SetupSecretBindingWriteOutcome.Ready;
     public SetupSecretBindingWriteRequest? LastRequest { get; private set; }
     public string? LastSecretDigest { get; private set; }
     public ReadOnlyMemory<byte> LastBorrowedValue { get; private set; }
+
+    public Task<SetupSecretBindingWriteOutcome> GetReadinessAsync(
+        Guid bindingId,
+        string bindingKey,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(ReadinessOutcome);
+    }
 
     public Task<SetupSecretBindingWriteOutcome> WriteAsync(
         SetupSecretBindingWriteRequest request,
@@ -1957,6 +2165,7 @@ public sealed class RecordingSetupSecretBindingWriter : ISetupSecretBindingWrite
         Interlocked.Exchange(ref _barrier, null)?.Release();
         Interlocked.Exchange(ref _callCount, 0);
         Outcome = SetupSecretBindingWriteOutcome.Ready;
+        ReadinessOutcome = SetupSecretBindingWriteOutcome.Ready;
         LastRequest = null;
         LastSecretDigest = null;
         LastBorrowedValue = default;
@@ -2003,6 +2212,7 @@ public sealed class TestSetupSecretBindingCommitmentAuthority :
     public ReadOnlyMemory<byte> LastBorrowedValue { get; private set; }
     public string? LastCommitment { get; private set; }
     public string? LastSecretDigest { get; private set; }
+    public bool FailClosed { get; set; }
 
     public Task<SetupSecretBindingCommitment> CommitAsync(
         SetupSecretBindingCommitmentRequest request,
@@ -2014,6 +2224,9 @@ public sealed class TestSetupSecretBindingCommitmentAuthority :
         LastBorrowedValue = request.SecretValue;
         LastSecretDigest = Convert.ToHexString(
             SHA256.HashData(request.SecretValue.Span)).ToLowerInvariant();
+        if (FailClosed)
+            throw new InvalidOperationException(
+                "setup-secret-binding-commitment-unavailable");
         LastCommitment = Convert.ToHexString(
             HMACSHA256.HashData(_key, request.SecretValue.Span)).ToLowerInvariant();
         return Task.FromResult(new SetupSecretBindingCommitment(
@@ -2028,6 +2241,7 @@ public sealed class TestSetupSecretBindingCommitmentAuthority :
         LastBorrowedValue = default;
         LastCommitment = null;
         LastSecretDigest = null;
+        FailClosed = false;
     }
 
     public void Dispose() => CryptographicOperations.ZeroMemory(_key);
@@ -2050,29 +2264,51 @@ public sealed class RecordingSetupSecretBindingCommitBarrier :
 }
 
 public sealed class RecordingSetupSecretBindingOperationCoordinator :
-    ISetupSecretBindingOperationCoordinator
+    ISetupSecretBindingOperationCoordinator,
+    IDisposable
 {
+    private CoordinatorAcquireBarrier? _beforeAcquireBarrier;
     private int _acquireCount;
     private int _disposeCount;
     private readonly ConcurrentQueue<SetupSecretBindingCoordinationRequest> _requests = new();
+    // ponytail: fixture-wide lock; replace with keyed locks only if this test fixture needs parallel enrollments.
+    private readonly SemaphoreSlim _gate = new(1, 1);
 
     public int AcquireCount => Volatile.Read(ref _acquireCount);
     public int DisposeCount => Volatile.Read(ref _disposeCount);
 
-    public Task<IAsyncDisposable> AcquireAsync(
+    public async Task<IAsyncDisposable> AcquireAsync(
         SetupSecretBindingCoordinationRequest request,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        Interlocked.Exchange(ref _beforeAcquireBarrier, null)?.SignalAndWait();
+        await _gate.WaitAsync(cancellationToken);
         Interlocked.Increment(ref _acquireCount);
         _requests.Enqueue(request);
-        return Task.FromResult<IAsyncDisposable>(new Lease(this));
+        return new Lease(this);
     }
 
     public SetupSecretBindingCoordinationRequest[] Snapshot() => _requests.ToArray();
 
+    public CoordinatorAcquireBarrier ArmBeforeAcquireBarrier()
+    {
+        var barrier = new CoordinatorAcquireBarrier();
+        if (Interlocked.CompareExchange(
+                ref _beforeAcquireBarrier,
+                barrier,
+                null) is not null)
+        {
+            throw new InvalidOperationException(
+                "setup-coordinator-acquire-barrier-already-armed");
+        }
+        return barrier;
+    }
+
+    public void Dispose() => _gate.Dispose();
+
     public void Reset()
     {
+        Interlocked.Exchange(ref _beforeAcquireBarrier, null)?.Release();
         Interlocked.Exchange(ref _acquireCount, 0);
         Interlocked.Exchange(ref _disposeCount, 0);
         while (_requests.TryDequeue(out _))
@@ -2088,9 +2324,35 @@ public sealed class RecordingSetupSecretBindingOperationCoordinator :
         public ValueTask DisposeAsync()
         {
             if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
                 Interlocked.Increment(ref owner._disposeCount);
+                owner._gate.Release();
+            }
             return ValueTask.CompletedTask;
         }
+    }
+}
+
+public sealed class CoordinatorAcquireBarrier : IDisposable
+{
+    private readonly TaskCompletionSource _started =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ManualResetEventSlim _release = new(initialState: false);
+
+    public Task Started => _started.Task;
+    public void Release() => _release.Set();
+
+    public void SignalAndWait()
+    {
+        _started.TrySetResult();
+        if (!_release.Wait(TimeSpan.FromSeconds(10)))
+            throw new TimeoutException("setup-coordinator-acquire-release-timeout");
+    }
+
+    public void Dispose()
+    {
+        Release();
+        _release.Dispose();
     }
 }
 
@@ -2213,7 +2475,20 @@ public sealed class SetupLiveCapture : IDisposable
         {
             _setupValues.Enqueue(eventId.Name);
             foreach (KeyValuePair<string, object?> property in properties)
+            {
                 _setupValues.Enqueue($"{property.Key}={property.Value}");
+                if (property.Key is not "SetupOperation"
+                    and not "SetupMilestone"
+                    and not "{OriginalFormat}"
+                    and not "EventId"
+                    and not "SourceContext"
+                    and not "MachineName"
+                    and not "ProcessId"
+                    and not "ThreadId")
+                {
+                    _setupValues.Enqueue($"forbidden-field:{property.Key}");
+                }
+            }
         }
         TelemetryBarrier? armed = _barrier;
         if (armed is null
@@ -2281,10 +2556,17 @@ public sealed class TelemetryBarrier(
 
 public sealed class SetupLiveCapturingLoggerProvider(
     ConcurrentQueue<string> values,
-    Action<EventId, IReadOnlyDictionary<string, object?>> observed) : ILoggerProvider
+    Action<EventId, IReadOnlyDictionary<string, object?>> observed) :
+    ILoggerProvider,
+    ISupportExternalScope
 {
+    private IExternalScopeProvider _scopeProvider = new LoggerExternalScopeProvider();
+
     public ILogger CreateLogger(string categoryName) =>
-        new CapturingLogger(categoryName, values, observed);
+        new CapturingLogger(categoryName, values, observed, () => _scopeProvider);
+
+    public void SetScopeProvider(IExternalScopeProvider scopeProvider) =>
+        _scopeProvider = scopeProvider;
 
     public void Dispose()
     {
@@ -2293,10 +2575,11 @@ public sealed class SetupLiveCapturingLoggerProvider(
     private sealed class CapturingLogger(
         string category,
         ConcurrentQueue<string> values,
-        Action<EventId, IReadOnlyDictionary<string, object?>> observed) : ILogger
+        Action<EventId, IReadOnlyDictionary<string, object?>> observed,
+        Func<IExternalScopeProvider> scopeProvider) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull =>
-            new CapturingScope(state, values);
+            scopeProvider().Push(state);
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
@@ -2311,26 +2594,33 @@ public sealed class SetupLiveCapturingLoggerProvider(
             values.Enqueue(eventId.Name
                 ?? eventId.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
             values.Enqueue(formatter(state, exception));
+            var snapshot = new Dictionary<string, object?>(StringComparer.Ordinal);
             if (state is IEnumerable<KeyValuePair<string, object?>> properties)
             {
-                IReadOnlyDictionary<string, object?> snapshot = properties
-                    .ToDictionary(
-                        property => property.Key,
-                        property => property.Value,
-                        StringComparer.Ordinal);
-                foreach (KeyValuePair<string, object?> property in snapshot)
-                    values.Enqueue($"{property.Key}={property.Value}");
-                observed(eventId, snapshot);
+                foreach (KeyValuePair<string, object?> property in properties)
+                    snapshot[property.Key] = property.Value;
             }
+            int scopeIndex = 0;
+            scopeProvider().ForEachScope<object?>(
+                (scope, _) =>
+                {
+                    if (scope is IEnumerable<KeyValuePair<string, object?>> pairs)
+                    {
+                        foreach (KeyValuePair<string, object?> pair in pairs)
+                            snapshot[$"Scope[{scopeIndex}].{pair.Key}"] = pair.Value;
+                    }
+                    else
+                    {
+                        snapshot[$"Scope[{scopeIndex}]"] = scope?.ToString();
+                    }
+                    scopeIndex++;
+                },
+                state: null);
+            foreach (KeyValuePair<string, object?> property in snapshot)
+                values.Enqueue($"{property.Key}={property.Value}");
+            observed(eventId, snapshot);
             if (exception is not null)
                 values.Enqueue(exception.ToString());
         }
-    }
-
-    private sealed class CapturingScope(
-        object state,
-        ConcurrentQueue<string> values) : IDisposable
-    {
-        public void Dispose() => values.Enqueue(state.ToString() ?? string.Empty);
     }
 }

@@ -524,15 +524,28 @@ public sealed class DotenvContractTests
             "STRIPE_PLATFORM_SECRET_KEY", LocalSecretGenerationProfile.OpaqueUrlSafe256);
         string firstValue = first.Output!.CopyValue();
         string secondValue = second.Output!.CopyValue();
+        byte[] firstBytes = first.Output.CopyUtf8Bytes();
 
-        await Assert.That(firstValue.Length).IsEqualTo(43);
-        await Assert.That(secondValue.Length).IsEqualTo(43);
-        await Assert.That(string.Equals(firstValue, secondValue, StringComparison.Ordinal)).IsFalse();
-        await Assert.That(first.Output.Provenance).IsEqualTo(DotenvProvenance.Generated);
-        await Assert.That(denied.Output is null).IsTrue();
-        await Assert.That(denied.Diagnostics.Select(item => item.Code)).Contains("secret-generation-key-unapproved");
-        await Assert.That(first.ToString().Contains(firstValue, StringComparison.Ordinal)).IsFalse();
-        await Assert.That(first.Output.ToString().Contains(firstValue, StringComparison.Ordinal)).IsFalse();
+        try
+        {
+            await Assert.That(firstValue.Length).IsEqualTo(43);
+            await Assert.That(firstBytes.Length).IsEqualTo(43);
+            await Assert.That(firstBytes.All(value => value is >= (byte)'0' and <= (byte)'9'
+                or >= (byte)'A' and <= (byte)'Z'
+                or >= (byte)'a' and <= (byte)'z'
+                or (byte)'-' or (byte)'_')).IsTrue();
+            await Assert.That(secondValue.Length).IsEqualTo(43);
+            await Assert.That(string.Equals(firstValue, secondValue, StringComparison.Ordinal)).IsFalse();
+            await Assert.That(first.Output.Provenance).IsEqualTo(DotenvProvenance.Generated);
+            await Assert.That(denied.Output is null).IsTrue();
+            await Assert.That(denied.Diagnostics.Select(item => item.Code)).Contains("secret-generation-key-unapproved");
+            await Assert.That(first.ToString().Contains(firstValue, StringComparison.Ordinal)).IsFalse();
+            await Assert.That(first.Output.ToString().Contains(firstValue, StringComparison.Ordinal)).IsFalse();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(firstBytes);
+        }
     }
 
     private static EnvironmentCatalogue CreateCompositionCatalogue()

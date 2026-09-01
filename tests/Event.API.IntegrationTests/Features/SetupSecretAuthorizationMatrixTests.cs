@@ -57,7 +57,7 @@ public class SetupSecretAuthorizationMatrixTests
     {
         await using var factory = CreateFactory(new MatrixSetupSecretProvider());
         using var client = factory.CreateClient();
-        var userId = Guid.NewGuid();
+        var userId = Guid.CreateVersion7();
         await SeedInstanceAdminAsync(factory, userId);
         using var request = BearerPatch(path, factory.CreateJwt(userId));
         request.Headers.Add(SetupSecretHeaderName, "invalid-setup-secret");
@@ -178,15 +178,13 @@ public class SetupSecretAuthorizationMatrixTests
                 LastName = "Admin"
             }
         });
-        dbContext.InstanceBootstrapStates.Add(new InstanceBootstrapState
-        {
-            Id = Guid.NewGuid(),
-            IsCompleted = true,
-            CreatedAt = DateTime.UtcNow,
-            CompletedAt = DateTime.UtcNow,
-            CompletedByUserId = userId,
-            SelectedDeploymentMode = DeploymentMode.SingleTenant.ToString()
-        });
+        var completedAt = DateTime.UtcNow;
+        var bootstrap = InstanceBootstrapState.CreateInteractivePending(
+            Guid.CreateVersion7(),
+            DeploymentMode.SingleTenant,
+            completedAt);
+        bootstrap.CompleteInteractive(userId, completedAt);
+        dbContext.InstanceBootstrapStates.Add(bootstrap);
         await dbContext.SaveChangesAsync();
     }
 
