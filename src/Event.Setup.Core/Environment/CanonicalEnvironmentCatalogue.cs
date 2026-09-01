@@ -82,6 +82,13 @@ public static partial class CanonicalEnvironmentCatalogue
         KEYCLOAK_REQUIRE_HTTPS_METADATA
         SETUP_SECRET
         SETUP_SECRET_REQUIRED
+        INSTANCE_BOOTSTRAP_MODE
+        INSTANCE_BOOTSTRAP_ADMIN_PROVIDER
+        INSTANCE_BOOTSTRAP_ADMIN_SUBJECT
+        INSTANCE_BOOTSTRAP_BINDING_GENERATION
+        INSTANCE_BOOTSTRAP_ADMIN_EMAIL
+        INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME
+        INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME
         HOSTING_REPLICA_COUNT
         PROMOTIONS_CODE_LOOKUP_ACTIVE_KEY_VERSION
         PROMOTIONS_CODE_LOOKUP_HMAC_KEY
@@ -741,7 +748,7 @@ public static partial class CanonicalEnvironmentCatalogue
         var graph = new EnvironmentActivationGraph(
             ["combined", "split", "standalone"],
             Enum.GetNames<EnvironmentVariableCategory>().Select(value => value.ToLowerInvariant()),
-            ["environment", "infisical", "local", "cerbos", "keycloak", "postgresql", "sqlite", "sqlserver", "mariadb", "mysql", "s3", "stripe", "svix"],
+            ["environment", "infisical", "local", "cerbos", "keycloak", "postgresql", "sqlite", "sqlserver", "mariadb", "mysql", "s3", "stripe", "svix", "interactive", "configured-administrator", "atproto"],
             new Dictionary<string, EnvironmentActivationExpression>(StringComparer.Ordinal)
             {
                 ["platform-config"] = EnvironmentActivationExpression.Capability("platform"),
@@ -760,6 +767,12 @@ public static partial class CanonicalEnvironmentCatalogue
                 ["keycloak-config"] = EnvironmentActivationExpression.All(
                     EnvironmentActivationExpression.Capability("identity"),
                     EnvironmentActivationExpression.Provider("keycloak")),
+                ["configured-bootstrap-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Capability("identity"),
+                    EnvironmentActivationExpression.Provider("configured-administrator")),
+                ["atproto-bootstrap-config"] = EnvironmentActivationExpression.All(
+                    EnvironmentActivationExpression.Feature("configured-bootstrap-config"),
+                    EnvironmentActivationExpression.Provider("atproto")),
                 ["security-config"] = EnvironmentActivationExpression.Capability("security"),
                 ["infisical-config"] = EnvironmentActivationExpression.All(
                     EnvironmentActivationExpression.Capability("security"),

@@ -3,6 +3,7 @@
 
 namespace ISLAMU.Setup.Core.EnvironmentTests;
 
+using System.Reflection;
 using ISLAMU.Event.Setup.Core.Environment;
 
 public sealed class EnvironmentCatalogueInvariantTests
@@ -148,6 +149,134 @@ public sealed class EnvironmentCatalogueInvariantTests
         await Assert.That(catalogue.Definitions.Count(item => item.Requirement == EnvironmentVariableRequirement.Defaulted)).IsGreaterThan(1);
         await Assert.That(catalogue.Definitions.Select(item => item.ValidatorId).Distinct(StringComparer.Ordinal).Count()).IsGreaterThan(5);
         await Assert.That(catalogue.Definitions.Select(item => item.RestartBehavior).Distinct().Count()).IsGreaterThan(2);
+    }
+
+    [Test]
+    public async Task ConfiguredBootstrapCatalogueHasExactClosedKeysAndValueSafeMetadata()
+    {
+        EnvironmentCatalogue catalogue = CanonicalEnvironmentCatalogue.Catalogue;
+        string[] expectedKeys =
+        [
+            "INSTANCE_BOOTSTRAP_MODE",
+            "INSTANCE_BOOTSTRAP_ADMIN_PROVIDER",
+            "INSTANCE_BOOTSTRAP_ADMIN_SUBJECT",
+            "INSTANCE_BOOTSTRAP_BINDING_GENERATION",
+            "INSTANCE_BOOTSTRAP_ADMIN_EMAIL",
+            "INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME",
+            "INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME",
+        ];
+        EnvironmentVariableDefinition[] definitions = catalogue.Definitions
+            .Where(item => item.Key.StartsWith("INSTANCE_BOOTSTRAP_", StringComparison.Ordinal))
+            .ToArray();
+
+        await Assert.That(definitions.Select(item => item.Key)).IsEquivalentTo(expectedKeys)
+            .Because("configured bootstrap is a closed deployment-local key matrix");
+
+        var expected = new Dictionary<string, (EnvironmentVariableSensitivity Sensitivity,
+            EnvironmentVariableRequirement Requirement, string Validator)>(StringComparer.Ordinal)
+        {
+            ["INSTANCE_BOOTSTRAP_MODE"] = (EnvironmentVariableSensitivity.Public,
+                EnvironmentVariableRequirement.Required, "instance-bootstrap-mode"),
+            ["INSTANCE_BOOTSTRAP_ADMIN_PROVIDER"] = (EnvironmentVariableSensitivity.Public,
+                EnvironmentVariableRequirement.Required, "instance-bootstrap-provider"),
+            ["INSTANCE_BOOTSTRAP_ADMIN_SUBJECT"] = (EnvironmentVariableSensitivity.Sensitive,
+                EnvironmentVariableRequirement.Required, "identity-subject"),
+            ["INSTANCE_BOOTSTRAP_BINDING_GENERATION"] = (EnvironmentVariableSensitivity.Public,
+                EnvironmentVariableRequirement.Required, "positive-integer"),
+            ["INSTANCE_BOOTSTRAP_ADMIN_EMAIL"] = (EnvironmentVariableSensitivity.Sensitive,
+                EnvironmentVariableRequirement.Required, "email-address"),
+            ["INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME"] = (EnvironmentVariableSensitivity.Sensitive,
+                EnvironmentVariableRequirement.Optional, "profile-name"),
+            ["INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME"] = (EnvironmentVariableSensitivity.Sensitive,
+                EnvironmentVariableRequirement.Optional, "profile-name"),
+        };
+
+        foreach (EnvironmentVariableDefinition definition in definitions)
+        {
+            var policy = expected[definition.Key];
+            await Assert.That(definition.Category).IsEqualTo(EnvironmentVariableCategory.Identity);
+            await Assert.That(definition.Sensitivity).IsEqualTo(policy.Sensitivity);
+            await Assert.That(definition.Requirement).IsEqualTo(policy.Requirement);
+            await Assert.That(definition.SafeDefault).IsNull();
+            await Assert.That(definition.ValidatorId).IsEqualTo(policy.Validator);
+            await Assert.That(definition.RestartBehavior).IsEqualTo(EnvironmentRestartBehavior.Process);
+            await Assert.That(definition.Generation.Surfaces.HasFlag(EnvironmentGenerationSurface.Dotenv)).IsTrue();
+            await Assert.That(definition.Generation.Surfaces.HasFlag(EnvironmentGenerationSurface.Startup)).IsTrue();
+            await Assert.That(definition.Generation.Surfaces.HasFlag(EnvironmentGenerationSurface.Compose)).IsFalse();
+        }
+
+        var identity = new HashSet<string>(["identity"], StringComparer.Ordinal);
+        string[] interactive = catalogue.Relevant(new EnvironmentActivationContext(
+                "standalone", identity, ["interactive", "keycloak"]))
+            .Select(item => item.Key).Where(expectedKeys.Contains).ToArray();
+        string[] keycloak = catalogue.Relevant(new EnvironmentActivationContext(
+                "standalone", identity, ["configured-administrator", "keycloak"]))
+            .Select(item => item.Key).Where(expectedKeys.Contains).ToArray();
+        string[] atproto = catalogue.Relevant(new EnvironmentActivationContext(
+                "standalone", identity, ["configured-administrator", "atproto"]))
+            .Select(item => item.Key).Where(expectedKeys.Contains).ToArray();
+
+        string[] keycloakKeys =
+        [
+            "INSTANCE_BOOTSTRAP_MODE", "INSTANCE_BOOTSTRAP_ADMIN_PROVIDER",
+            "INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", "INSTANCE_BOOTSTRAP_BINDING_GENERATION",
+        ];
+
+        await Assert.That(interactive).IsEquivalentTo(["INSTANCE_BOOTSTRAP_MODE"]);
+        await Assert.That(keycloak).IsEquivalentTo(keycloakKeys);
+        await Assert.That(atproto).IsEquivalentTo(expectedKeys);
+    }
+
+    [Test]
+    public async Task ConfiguredBootstrapGeneratedCatalogueNamesKeysWithoutValues()
+    {
+        string[] missing = _runtime.MissingCataloguePrerequisites(_repositoryRoot);
+        await Assert.That(missing).IsEmpty()
+            .Because("the machine catalogue prerequisite must exist before value-safety is inspected");
+        if (missing.Length != 0) return;
+
+        string catalogueText = File.ReadAllText(Path.Combine(
+            _repositoryRoot, EnvironmentContractExpectedVectors.MachineCatalogueRelativePath));
+        string envText = File.ReadAllText(Path.Combine(_repositoryRoot, ".env.example"));
+        MachineCatalogue machine = EnvironmentMachineConfiguration.ParseMachineCatalogue(catalogueText);
+        MachineEnvironmentFile env = EnvironmentMachineConfiguration.ParseEnvironmentTemplate(envText);
+        string[] expectedKeys =
+        [
+            "INSTANCE_BOOTSTRAP_MODE", "INSTANCE_BOOTSTRAP_ADMIN_PROVIDER",
+            "INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", "INSTANCE_BOOTSTRAP_BINDING_GENERATION",
+            "INSTANCE_BOOTSTRAP_ADMIN_EMAIL", "INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME",
+            "INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME",
+        ];
+
+        MachineCatalogueDefinition[] definitions = machine.Definitions
+            .Where(item => item.Key.StartsWith("INSTANCE_BOOTSTRAP_", StringComparison.Ordinal))
+            .ToArray();
+        MachineEnvironmentEntry[] entries = env.Entries
+            .Where(item => item.Key.StartsWith("INSTANCE_BOOTSTRAP_", StringComparison.Ordinal))
+            .ToArray();
+
+        await Assert.That(definitions.Select(item => item.Key)).IsEquivalentTo(expectedKeys);
+        await Assert.That(definitions.All(item => !item.HasSafeDefault)).IsTrue();
+        await Assert.That(definitions.All(item => item.GenerationSurfaces == (int)(
+            EnvironmentGenerationSurface.Dotenv | EnvironmentGenerationSurface.Startup))).IsTrue();
+        await Assert.That(entries.Select(item => item.Key)).IsEquivalentTo(expectedKeys);
+        await Assert.That(entries.All(item => item.IsEmptyPlaceholder)).IsTrue();
+    }
+
+    [Test]
+    public async Task ConfiguredBootstrapSetupBoundaryHasNoRuntimeOrNetworkDependency()
+    {
+        Assembly assembly = typeof(EnvironmentCatalogue).Assembly;
+        string[] referencedAssemblies = assembly.GetReferencedAssemblies()
+            .Select(item => item.Name!).Order(StringComparer.Ordinal).ToArray();
+        Type[] exportedTypes = assembly.GetExportedTypes();
+
+        await Assert.That(referencedAssemblies.Any(name => name.StartsWith(
+            "Explore.", StringComparison.Ordinal))).IsFalse();
+        await Assert.That(referencedAssemblies.Any(name => name.Contains(
+            "Http", StringComparison.OrdinalIgnoreCase))).IsFalse();
+        await Assert.That(exportedTypes.Any(type => type.Namespace?.Contains(
+            "SetupLive", StringComparison.Ordinal) == true)).IsFalse();
     }
 
     [Test]

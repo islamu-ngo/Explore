@@ -94,9 +94,15 @@ public static class DotenvComposer
                     "dotenv-input-key-unknown", "$.inputs", null, "dotenv-composition"));
                 continue;
             }
-            if (relevantByKey.ContainsKey(first.Key)) suppliedByKey.Add(first.Key, first);
+            if (!relevantByKey.ContainsKey(first.Key))
+            {
+                Add(diagnostics, "dotenv-input-key-irrelevant", first.Key);
+                continue;
+            }
+            suppliedByKey.Add(first.Key, first);
         }
 
+        ValidateConfiguredBootstrapMatrix(relevantByKey, suppliedByKey, diagnostics);
         var output = new List<DotenvEntry>();
         foreach (EnvironmentVariableDefinition definition in relevant)
         {
@@ -116,6 +122,13 @@ public static class DotenvComposer
                 if (!ValidSuppliedEntry(suppliedEntry, isProtected))
                 {
                     Add(diagnostics, "dotenv-input-provenance-invalid", definition.Key);
+                    if (definition.Requirement == EnvironmentVariableRequirement.Required)
+                        output.Add(Placeholder(definition.Key, isProtected));
+                    continue;
+                }
+                if (!ValidConfiguredBootstrapValue(definition, suppliedEntry.Value!))
+                {
+                    Add(diagnostics, "dotenv-input-value-invalid", definition.Key);
                     if (definition.Requirement == EnvironmentVariableRequirement.Required)
                         output.Add(Placeholder(definition.Key, isProtected));
                     continue;
@@ -160,6 +173,49 @@ public static class DotenvComposer
             DotenvEntryKind.GeneratedValueReference => entry.Provenance == DotenvProvenance.Generated,
             _ => false,
         };
+    }
+
+    private static bool ValidConfiguredBootstrapValue(
+        EnvironmentVariableDefinition definition,
+        string value) => definition.ValidatorId switch
+    {
+        "instance-bootstrap-mode" => value is "Interactive" or "ConfiguredAdministrator",
+        "instance-bootstrap-provider" => value is "keycloak" or "atproto",
+        "positive-integer" when definition.Key == "INSTANCE_BOOTSTRAP_BINDING_GENERATION" =>
+            int.TryParse(value, System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out int generation)
+            && generation > 0,
+        "email-address" when definition.Key == "INSTANCE_BOOTSTRAP_ADMIN_EMAIL" =>
+            ValidEmailAddress(value),
+        "profile-name" when definition.Key is "INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME"
+            or "INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME" =>
+            value.Length is >= 1 and <= 128 && !value.Any(char.IsControl),
+        _ => true,
+    };
+
+    private static bool ValidEmailAddress(string value)
+    {
+        if (value.Length is < 3 or > 320 || value.Any(character =>
+                char.IsWhiteSpace(character) || char.IsControl(character)))
+            return false;
+        int separator = value.IndexOf('@');
+        return separator > 0 && separator == value.LastIndexOf('@') && separator < value.Length - 1;
+    }
+
+    private static void ValidateConfiguredBootstrapMatrix(
+        Dictionary<string, EnvironmentVariableDefinition> relevant,
+        Dictionary<string, DotenvEntry> supplied,
+        List<EnvironmentDiagnostic> diagnostics)
+    {
+        const string firstName = "INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME";
+        const string lastName = "INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME";
+        if (!relevant.ContainsKey(firstName) || !relevant.ContainsKey(lastName)) return;
+        bool hasFirstName = supplied.ContainsKey(firstName);
+        bool hasLastName = supplied.ContainsKey(lastName);
+        if (hasFirstName == hasLastName) return;
+        string missingKey = hasFirstName ? lastName : firstName;
+        diagnostics.Add(new EnvironmentDiagnostic(
+            "dotenv-input-matrix-invalid", "$.inputs", missingKey, "dotenv-composition"));
     }
 
     private static DotenvEntry Placeholder(string key, bool isSecret) =>

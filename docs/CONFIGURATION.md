@@ -119,6 +119,13 @@ dotnet run --project eng/setup-assistant/EnvironmentCatalogueGenerator/Environme
 | `KEYCLOAK_REQUIRE_HTTPS_METADATA` | identity | public | optional | process | dotenv, compose, startup |
 | `SETUP_SECRET` | platform | secret | required | process | dotenv, compose, startup |
 | `SETUP_SECRET_REQUIRED` | platform | sensitive | optional | process | dotenv, compose, startup |
+| `INSTANCE_BOOTSTRAP_MODE` | identity | public | required | process | dotenv, startup |
+| `INSTANCE_BOOTSTRAP_ADMIN_PROVIDER` | identity | public | required | process | dotenv, startup |
+| `INSTANCE_BOOTSTRAP_ADMIN_SUBJECT` | identity | sensitive | required | process | dotenv, startup |
+| `INSTANCE_BOOTSTRAP_BINDING_GENERATION` | identity | public | required | process | dotenv, startup |
+| `INSTANCE_BOOTSTRAP_ADMIN_EMAIL` | identity | sensitive | required | process | dotenv, startup |
+| `INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME` | identity | sensitive | optional | process | dotenv, startup |
+| `INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME` | identity | sensitive | optional | process | dotenv, startup |
 | `HOSTING_REPLICA_COUNT` | deployment | public | defaulted | deployment | dotenv, compose, startup |
 | `PROMOTIONS_CODE_LOOKUP_ACTIVE_KEY_VERSION` | platform | public | optional | process | dotenv, compose, startup |
 | `PROMOTIONS_CODE_LOOKUP_HMAC_KEY` | security | secret | optional | process | dotenv, compose, startup |

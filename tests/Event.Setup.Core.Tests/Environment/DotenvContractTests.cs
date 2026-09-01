@@ -306,6 +306,210 @@ public sealed class DotenvContractTests
     }
 
     [Test]
+    public async Task ConfiguredBootstrapReadinessIsExactForInteractiveKeycloakAndAtprotoModes()
+    {
+        EnvironmentCatalogue catalogue = CanonicalEnvironmentCatalogue.Catalogue;
+        EnvironmentVariableDefinition[] bootstrap = catalogue.Definitions
+            .Where(item => item.Key.StartsWith("INSTANCE_BOOTSTRAP_", StringComparison.Ordinal))
+            .ToArray();
+        var interactive = new DotenvDocument(
+        [
+            Public("INSTANCE_BOOTSTRAP_MODE", "Interactive"),
+        ]);
+        var keycloak = new DotenvDocument(
+        [
+            Public("INSTANCE_BOOTSTRAP_MODE", "ConfiguredAdministrator"),
+            Public("INSTANCE_BOOTSTRAP_ADMIN_PROVIDER", "keycloak"),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", "subject-marker-not-an-identity"),
+            Public("INSTANCE_BOOTSTRAP_BINDING_GENERATION", "1"),
+        ]);
+        var atproto = new DotenvDocument(
+        [
+            Public("INSTANCE_BOOTSTRAP_MODE", "ConfiguredAdministrator"),
+            Public("INSTANCE_BOOTSTRAP_ADMIN_PROVIDER", "atproto"),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", "did-marker-not-an-identity"),
+            Public("INSTANCE_BOOTSTRAP_BINDING_GENERATION", "1"),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_EMAIL", "email-marker-not-an-address"),
+        ]);
+
+        string[] interactiveKeys = RelevantBootstrapKeys(catalogue, "interactive", "keycloak");
+        string[] keycloakKeys = RelevantBootstrapKeys(catalogue, "configured-administrator", "keycloak");
+        string[] atprotoKeys = RelevantBootstrapKeys(catalogue, "configured-administrator", "atproto");
+        DotenvReadinessResult interactiveReadiness = DotenvReadiness.Evaluate(
+            bootstrap.Where(item => interactiveKeys.Contains(item.Key)), interactive);
+        DotenvReadinessResult keycloakReadiness = DotenvReadiness.Evaluate(
+            bootstrap.Where(item => keycloakKeys.Contains(item.Key)), keycloak);
+        DotenvReadinessResult atprotoReadiness = DotenvReadiness.Evaluate(
+            bootstrap.Where(item => atprotoKeys.Contains(item.Key)), atproto);
+
+        await Assert.That(interactiveKeys).IsEquivalentTo(["INSTANCE_BOOTSTRAP_MODE"]);
+        await Assert.That(keycloakKeys).IsEquivalentTo(
+        [
+            "INSTANCE_BOOTSTRAP_MODE", "INSTANCE_BOOTSTRAP_ADMIN_PROVIDER",
+            "INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", "INSTANCE_BOOTSTRAP_BINDING_GENERATION",
+        ]);
+        await Assert.That(atprotoKeys).IsEquivalentTo(
+        [
+            "INSTANCE_BOOTSTRAP_MODE", "INSTANCE_BOOTSTRAP_ADMIN_PROVIDER",
+            "INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", "INSTANCE_BOOTSTRAP_BINDING_GENERATION",
+            "INSTANCE_BOOTSTRAP_ADMIN_EMAIL", "INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME",
+            "INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME",
+        ]);
+        await Assert.That(interactiveReadiness.State).IsEqualTo(DotenvReadinessState.Ready);
+        await Assert.That(keycloakReadiness.State).IsEqualTo(DotenvReadinessState.Ready);
+        await Assert.That(atprotoReadiness.State).IsEqualTo(DotenvReadinessState.Ready);
+    }
+
+    [Test]
+    public async Task ConfiguredBootstrapInvariantBreakersUseProductionCompositionAndReadiness()
+    {
+        EnvironmentCatalogue catalogue = CanonicalEnvironmentCatalogue.Catalogue;
+        var keycloakContext = new EnvironmentActivationContext(
+            "standalone", ["identity"], ["configured-administrator", "keycloak"]);
+        var atprotoContext = new EnvironmentActivationContext(
+            "standalone", ["identity"], ["configured-administrator", "atproto"]);
+
+        DotenvCompositionResult partial = DotenvComposer.ComposeWithSecrets(
+            catalogue, keycloakContext,
+            [Public("INSTANCE_BOOTSTRAP_MODE", "ConfiguredAdministrator")]);
+        await Assert.That(partial.Diagnostics.Select(item => item.Code))
+            .DoesNotContain("dotenv-input-key-unknown");
+        await Assert.That(BootstrapReadiness(
+            catalogue, keycloakContext, partial.Document).State).IsEqualTo(DotenvReadinessState.Blocked);
+        await Assert.That(BootstrapOnly(partial.Readiness.Missing)).IsEquivalentTo(
+            ["INSTANCE_BOOTSTRAP_ADMIN_PROVIDER", "INSTANCE_BOOTSTRAP_BINDING_GENERATION"]);
+        await Assert.That(BootstrapOnly(partial.Readiness.Blocked))
+            .IsEquivalentTo(["INSTANCE_BOOTSTRAP_ADMIN_SUBJECT"]);
+
+        DotenvEntry[] validKeycloakShape =
+        [
+            Public("INSTANCE_BOOTSTRAP_MODE", "ConfiguredAdministrator"),
+            Public("INSTANCE_BOOTSTRAP_ADMIN_PROVIDER", "keycloak"),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", "subject-marker-not-an-identity"),
+            Public("INSTANCE_BOOTSTRAP_BINDING_GENERATION", "1"),
+        ];
+        DotenvCompositionResult unknownMode = DotenvComposer.ComposeWithSecrets(
+            catalogue, keycloakContext,
+            validKeycloakShape.Select(item => item.Key == "INSTANCE_BOOTSTRAP_MODE"
+                ? Public(item.Key, "Unknown") : item));
+        DotenvCompositionResult unknownProvider = DotenvComposer.ComposeWithSecrets(
+            catalogue, keycloakContext,
+            validKeycloakShape.Select(item => item.Key == "INSTANCE_BOOTSTRAP_ADMIN_PROVIDER"
+                ? Public(item.Key, "unknown") : item));
+        DotenvCompositionResult invalidGeneration = DotenvComposer.ComposeWithSecrets(
+            catalogue, keycloakContext,
+            validKeycloakShape.Select(item => item.Key == "INSTANCE_BOOTSTRAP_BINDING_GENERATION"
+                ? Public(item.Key, "0") : item));
+
+        await Assert.That(unknownMode.Diagnostics.Any(item =>
+            item.Code == "dotenv-input-value-invalid"
+            && item.Key == "INSTANCE_BOOTSTRAP_MODE")).IsTrue();
+        await Assert.That(BootstrapReadiness(
+            catalogue, keycloakContext, unknownMode.Document).State).IsEqualTo(DotenvReadinessState.Incomplete);
+        await Assert.That(BootstrapOnly(unknownMode.Readiness.Missing))
+            .IsEquivalentTo(["INSTANCE_BOOTSTRAP_MODE"]);
+        await Assert.That(BootstrapOnly(unknownMode.Readiness.Blocked)).IsEmpty();
+        await Assert.That(unknownProvider.Diagnostics.Any(item =>
+            item.Code == "dotenv-input-value-invalid"
+            && item.Key == "INSTANCE_BOOTSTRAP_ADMIN_PROVIDER")).IsTrue();
+        await Assert.That(BootstrapReadiness(
+            catalogue, keycloakContext, unknownProvider.Document).State).IsEqualTo(DotenvReadinessState.Incomplete);
+        await Assert.That(BootstrapOnly(unknownProvider.Readiness.Missing))
+            .IsEquivalentTo(["INSTANCE_BOOTSTRAP_ADMIN_PROVIDER"]);
+        await Assert.That(BootstrapOnly(unknownProvider.Readiness.Blocked)).IsEmpty();
+        await Assert.That(invalidGeneration.Diagnostics.Any(item =>
+            item.Code == "dotenv-input-value-invalid"
+            && item.Key == "INSTANCE_BOOTSTRAP_BINDING_GENERATION")).IsTrue();
+        await Assert.That(BootstrapReadiness(
+            catalogue, keycloakContext, invalidGeneration.Document).State).IsEqualTo(DotenvReadinessState.Incomplete);
+        await Assert.That(BootstrapOnly(invalidGeneration.Readiness.Missing))
+            .IsEquivalentTo(["INSTANCE_BOOTSTRAP_BINDING_GENERATION"]);
+        await Assert.That(BootstrapOnly(invalidGeneration.Readiness.Blocked)).IsEmpty();
+
+        DotenvCompositionResult inapplicableFallback = DotenvComposer.ComposeWithSecrets(
+            catalogue, keycloakContext,
+            validKeycloakShape.Append(Sensitive(
+                "INSTANCE_BOOTSTRAP_ADMIN_EMAIL", "email-marker-not-an-address")));
+        await Assert.That(inapplicableFallback.Diagnostics.Any(item =>
+            item.Code == "dotenv-input-key-irrelevant"
+            && item.Key == "INSTANCE_BOOTSTRAP_ADMIN_EMAIL")).IsTrue();
+        await Assert.That(BootstrapReadiness(
+            catalogue, keycloakContext, inapplicableFallback.Document).State).IsEqualTo(DotenvReadinessState.Ready);
+        await Assert.That(BootstrapOnly(inapplicableFallback.Readiness.Missing)).IsEmpty();
+        await Assert.That(BootstrapOnly(inapplicableFallback.Readiness.Blocked)).IsEmpty();
+
+        DotenvEntry[] partialProfile =
+        [
+            Public("INSTANCE_BOOTSTRAP_MODE", "ConfiguredAdministrator"),
+            Public("INSTANCE_BOOTSTRAP_ADMIN_PROVIDER", "atproto"),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", "did-marker-not-an-identity"),
+            Public("INSTANCE_BOOTSTRAP_BINDING_GENERATION", "1"),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_EMAIL", "email-marker@example.invalid"),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME", "first-name-marker"),
+        ];
+        DotenvCompositionResult incompleteProfile = DotenvComposer.ComposeWithSecrets(
+            catalogue, atprotoContext, partialProfile);
+        DotenvCompositionResult oversizedProfile = DotenvComposer.ComposeWithSecrets(
+            catalogue, atprotoContext,
+            partialProfile.Append(Sensitive(
+                "INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME", new string('a', 129))));
+
+        await Assert.That(incompleteProfile.Diagnostics.Any(item =>
+            item.Code == "dotenv-input-matrix-invalid"
+            && item.Key == "INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME")).IsTrue();
+        await Assert.That(BootstrapReadiness(
+            catalogue, atprotoContext, incompleteProfile.Document).State).IsEqualTo(DotenvReadinessState.Ready);
+        await Assert.That(BootstrapOnly(incompleteProfile.Readiness.Missing)).IsEmpty();
+        await Assert.That(BootstrapOnly(incompleteProfile.Readiness.Blocked)).IsEmpty();
+        await Assert.That(oversizedProfile.Diagnostics.Any(item =>
+            item.Code == "dotenv-input-value-invalid"
+            && item.Key == "INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME")).IsTrue();
+        await Assert.That(BootstrapReadiness(
+            catalogue, atprotoContext, oversizedProfile.Document).State).IsEqualTo(DotenvReadinessState.Ready);
+        await Assert.That(BootstrapOnly(oversizedProfile.Readiness.Missing)).IsEmpty();
+        await Assert.That(BootstrapOnly(oversizedProfile.Readiness.Blocked)).IsEmpty();
+    }
+
+    [Test]
+    public async Task ConfiguredBootstrapSensitiveInputsAreRejectedAndNeverRendered()
+    {
+        EnvironmentCatalogue catalogue = CanonicalEnvironmentCatalogue.Catalogue;
+        var context = new EnvironmentActivationContext(
+            "standalone", ["identity"], ["configured-administrator", "atproto"]);
+        string[] markers =
+        [
+            "subject-marker-not-an-identity", "email-marker-not-an-address",
+            "first-name-marker", "last-name-marker",
+        ];
+        DotenvEntry[] supplied =
+        [
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", markers[0]),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_EMAIL", markers[1]),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME", markers[2]),
+            Sensitive("INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME", markers[3]),
+        ];
+
+        DotenvCompositionResult result = DotenvComposer.ComposeNoSecrets(catalogue, context, supplied);
+        DotenvRenderResult rendered = DotenvCodec.Render(result.Document, true);
+        string renderedText = Encoding.UTF8.GetString(rendered.Bytes.Span);
+        string[] forbiddenKeys = result.Diagnostics
+            .Where(item => item.Code == "dotenv-secret-input-forbidden")
+            .Select(item => item.Key!).ToArray();
+
+        await Assert.That(result.Diagnostics.Select(item => item.Code))
+            .DoesNotContain("dotenv-input-key-unknown");
+        await Assert.That(forbiddenKeys).IsEquivalentTo(
+        [
+            "INSTANCE_BOOTSTRAP_ADMIN_SUBJECT", "INSTANCE_BOOTSTRAP_ADMIN_EMAIL",
+            "INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME", "INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME",
+        ]);
+        await Assert.That(result.Document.Entries.Where(item => item.IsSecret)
+            .All(item => item.Value is null && item.Kind == DotenvEntryKind.EmptyPlaceholder)).IsTrue();
+        await Assert.That(markers.Any(marker => renderedText.Contains(
+            marker, StringComparison.Ordinal))).IsFalse();
+    }
+
+    [Test]
     public async Task ApprovedGeneratorConsumesFreshEntropyAndDeniesUnapprovedKeysWithoutRetention()
     {
         using var entropy = new SequenceEntropySource();
@@ -355,6 +559,34 @@ public sealed class DotenvContractTests
         var graph = new EnvironmentActivationGraph(["single"], ["platform", "other"], [], []);
         return EnvironmentCatalogue.Create(definitions, graph, ["SETUP_SECRET"]).Catalogue!;
     }
+
+    private static string[] RelevantBootstrapKeys(
+        EnvironmentCatalogue catalogue,
+        string mode,
+        string provider) => catalogue.Relevant(new EnvironmentActivationContext(
+            "standalone", ["identity"], [mode, provider]))
+        .Select(item => item.Key)
+        .Where(key => key.StartsWith("INSTANCE_BOOTSTRAP_", StringComparison.Ordinal))
+        .ToArray();
+
+    private static string[] BootstrapOnly(IEnumerable<string> keys) => keys
+        .Where(key => key.StartsWith("INSTANCE_BOOTSTRAP_", StringComparison.Ordinal))
+        .ToArray();
+
+    private static DotenvReadinessResult BootstrapReadiness(
+        EnvironmentCatalogue catalogue,
+        EnvironmentActivationContext context,
+        DotenvDocument document) => DotenvReadiness.Evaluate(
+        catalogue.Relevant(context).Where(definition =>
+            definition.Key.StartsWith("INSTANCE_BOOTSTRAP_", StringComparison.Ordinal)
+            && definition.Generation.Surfaces.HasFlag(EnvironmentGenerationSurface.Dotenv)),
+        document);
+
+    private static DotenvEntry Public(string key, string value) => new(
+        key, value, DotenvEntryKind.LocalHumanValue, false, DotenvProvenance.UserInput);
+
+    private static DotenvEntry Sensitive(string key, string value) => new(
+        key, value, DotenvEntryKind.LocalHumanValue, true, DotenvProvenance.UserInput);
 
     private sealed class SequenceEntropySource : RandomNumberGenerator
     {
