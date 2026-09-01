@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Queries;
@@ -26,10 +27,10 @@ public sealed class GetSystemOnboardingStatusQueryHandler
     public async Task<SystemOnboardingStatusDto> Handle(GetSystemOnboardingStatusQuery request, CancellationToken cancellationToken)
     {
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent(cancellationToken);
-        var requiresOnboarding = bootstrap?.IsCompleted != true;
+        var requiresOnboarding = bootstrap?.Status != InstanceBootstrapStatus.Completed;
         var deploymentMode = requiresOnboarding
             ? await _deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken)
-            : await _deploymentModeProvider.GetCurrentModeAsync(cancellationToken);
+            : bootstrap!.DeploymentMode;
 
         return new SystemOnboardingStatusDto
         {

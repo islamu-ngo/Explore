@@ -15421,32 +15421,91 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("completed_by_user_id");
 
+                    b.Property<string>("CompletedIdentityFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_identity_fingerprint")
+                        .IsFixedLength()
+                        .UseCollation("BINARY")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<string>("ConfigurationFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("configuration_fingerprint")
+                        .IsFixedLength()
+                        .UseCollation("BINARY")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasColumnName("created_at");
 
-                    b.Property<bool>("IsCompleted")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int>("DeploymentMode")
                         .HasColumnType("INTEGER")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_completed");
+                        .HasColumnName("deployment_mode");
 
-                    b.Property<string>("SelectedDeploymentMode")
-                        .HasMaxLength(32)
+                    b.Property<long>("Generation")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("generation");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("mode");
+
+                    b.Property<int?>("ProviderKind")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("provider_kind");
+
+                    b.Property<string>("SelectorFingerprint")
+                        .HasMaxLength(64)
                         .HasColumnType("TEXT")
-                        .HasColumnName("selected_deployment_mode");
+                        .HasColumnName("selector_fingerprint")
+                        .IsFixedLength()
+                        .UseCollation("BINARY")
+                        .HasAnnotation("Explore:PortableOrdinalAscii", true);
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("SupersededAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("superseded_at");
 
                     b.HasKey("Id")
                         .HasName("pk_ie_instance_bootstrap_states");
 
-                    b.HasIndex("IsCompleted")
-                        .IsUnique()
-                        .HasDatabaseName("ix_instance_bootstrap_states_is_completed")
-                        .HasFilter("\"is_completed\" = true");
+                    b.HasIndex("CompletedByUserId")
+                        .HasDatabaseName("ix_instance_bootstrap_states_completed_by_user_id");
 
-                    b.ToTable("ie_instance_bootstrap_states", (string)null);
+                    b.HasIndex("Generation")
+                        .IsUnique()
+                        .IsDescending()
+                        .HasDatabaseName("ix_instance_bootstrap_states_generation");
+
+                    b.HasIndex("Status", "Generation")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_instance_bootstrap_states_status_generation");
+
+                    b.ToTable("ie_instance_bootstrap_states", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_instance_bootstrap_states_deployment_mode", "deployment_mode BETWEEN 1 AND 2");
+
+                            t.HasCheckConstraint("ck_instance_bootstrap_states_generation", "generation > 0");
+
+                            t.HasCheckConstraint("ck_instance_bootstrap_states_lifecycle", "(status = 1 AND superseded_at IS NULL AND completed_at IS NULL AND completed_by_user_id IS NULL AND completed_identity_fingerprint IS NULL) OR (status = 2 AND mode = 2 AND superseded_at IS NOT NULL AND completed_at IS NULL AND completed_by_user_id IS NULL AND completed_identity_fingerprint IS NULL) OR (status = 3 AND superseded_at IS NULL AND completed_at IS NOT NULL AND completed_by_user_id IS NOT NULL AND ((mode = 1 AND completed_identity_fingerprint IS NULL) OR (mode = 2 AND completed_identity_fingerprint IS NOT NULL AND completed_identity_fingerprint = selector_fingerprint)))");
+
+                            t.HasCheckConstraint("ck_instance_bootstrap_states_mode", "mode BETWEEN 1 AND 2");
+
+                            t.HasCheckConstraint("ck_instance_bootstrap_states_mode_evidence", "(mode = 1 AND provider_kind IS NULL AND configuration_fingerprint IS NULL AND selector_fingerprint IS NULL) OR (mode = 2 AND provider_kind IS NOT NULL AND configuration_fingerprint IS NOT NULL AND selector_fingerprint IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_instance_bootstrap_states_provider_kind", "provider_kind IS NULL OR provider_kind BETWEEN 1 AND 2");
+
+                            t.HasCheckConstraint("ck_instance_bootstrap_states_status", "status BETWEEN 1 AND 3");
+
+                            t.HasCheckConstraint("ck_instance_bootstrap_states_terminal_timestamps", "(superseded_at IS NULL OR superseded_at >= created_at) AND (completed_at IS NULL OR completed_at >= created_at)");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.IntegrationSyncOutbox", b =>
@@ -40361,6 +40420,15 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     b.Navigation("ResultLookup");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.InstanceBootstrapState", b =>
+                {
+                    b.HasOne("Explore.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("CompletedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_instance_bootstrap_states_users_completed_by_user_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.IntegrationSyncOutbox", b =>

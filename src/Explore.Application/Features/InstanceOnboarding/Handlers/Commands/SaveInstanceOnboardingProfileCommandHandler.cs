@@ -9,6 +9,7 @@ using Explore.Application.Features.InstanceOnboarding.Common;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Onboarding;
 using Explore.Application.Responses;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
@@ -26,7 +27,7 @@ public sealed class SaveInstanceOnboardingProfileCommandHandler(
         CancellationToken cancellationToken)
     {
         var bootstrap = await instanceBootstrapStateRepository.GetCurrent(cancellationToken);
-        if (bootstrap?.IsCompleted == true || !setupSecretProvider.IsSetupModeActive)
+        if (bootstrap?.Status == InstanceBootstrapStatus.Completed || !setupSecretProvider.IsSetupModeActive)
         {
             const string message = "Setup mode is no longer active.";
             return BaseCommandResponse.Validation(

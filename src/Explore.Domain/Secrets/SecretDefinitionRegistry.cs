@@ -105,6 +105,8 @@ public static class SecretDefinitionRegistry
     public static class Keys
     {
         public const string SetupSecret = "api.setup_secret";
+        public const string SetupSecretBindingCommitmentHmacKey =
+            "setup.secret_binding_commitment_hmac_key";
 
         public static class Storage
         {
@@ -262,6 +264,17 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "SETUP_SECRET",
                 IsBootstrapSecret = true,
                 Description = "First-run setup token authorising instance onboarding.",
+            },
+            new()
+            {
+                Key = Keys.SetupSecretBindingCommitmentHmacKey,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/setup",
+                DefaultInfisicalKey = "SETUP_SECRET_BINDING_COMMITMENT_HMAC_KEY",
+                DefaultEnvironmentVariableName = "SETUP_SECRET_BINDING_COMMITMENT_HMAC_KEY",
+                IsBootstrapSecret = false,
+                Description = "Server-only HMAC key for Setup secret-write commitments.",
             },
 
             // --- storage/STORAGE_S3_* ---

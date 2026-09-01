@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for InstanceOnboardingService BFF endpoint mapping and command behavior.
-// ABOUTME: Covers onboarding/admin settings, auth provider flows, and storage HAL affordance mapping.
+// ABOUTME: Covers typed startup status mapping, onboarding/admin settings, auth provider flows, and storage HAL affordances.
 
 using System.Net;
 using System.Net.Http.Headers;
@@ -822,6 +822,273 @@ public class InstanceOnboardingServiceTests
     }
 
     #endregion
+
+    #region GetStartupStatusAsync
+
+    [Test]
+    public async Task GetStartupStatusAsync_MapsInteractivePending_FromCanonicalStateModeAndGeneration()
+    {
+        SetupBffClient(CreateJsonResponse(CreateStatusResource(
+            isCompleted: false,
+            state: "InteractivePending",
+            mode: "Interactive",
+            provider: null,
+            generation: 3)));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status.Disposition)
+            .IsEqualTo(InstanceOnboardingStartupDisposition.InteractivePending);
+        await Assert.That(status.Provider).IsNull();
+        await Assert.That(status.Generation).IsEqualTo(3L);
+    }
+
+    [Test]
+    [Arguments("Keycloak")]
+    [Arguments("Atproto")]
+    public async Task GetStartupStatusAsync_MapsConfiguredAdministratorPending_ForTheExactConfiguredProvider(
+        string provider)
+    {
+        SetupBffClient(CreateJsonResponse(CreateStatusResource(
+            isCompleted: false,
+            state: "ConfiguredAdministratorPending",
+            mode: "ConfiguredAdministrator",
+            provider: provider,
+            generation: 11)));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status.Disposition)
+            .IsEqualTo(InstanceOnboardingStartupDisposition.ConfiguredAdministratorPending);
+        await Assert.That(status.Provider).IsEqualTo(provider);
+        await Assert.That(status.Generation).IsEqualTo(11L);
+    }
+
+    [Test]
+    public async Task GetStartupStatusAsync_MapsCompletedInteractive_AndSurfacesServerAuthority()
+    {
+        SetupBffClient(CreateJsonResponse(CreateStatusResource(
+            isCompleted: true,
+            state: "Completed",
+            mode: "Interactive",
+            provider: null,
+            generation: 7,
+            isAuthenticated: true,
+            isCurrentUserInstanceAdmin: true,
+            selectedDeploymentMode: "MultiTenant")));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status.Disposition).IsEqualTo(InstanceOnboardingStartupDisposition.Completed);
+        await Assert.That(status.IsAuthenticated).IsTrue();
+        await Assert.That(status.IsCurrentUserInstanceAdmin).IsTrue();
+        await Assert.That(status.SelectedDeploymentMode).IsEqualTo("MultiTenant");
+        await Assert.That(status.Generation).IsEqualTo(7L);
+    }
+
+    [Test]
+    public async Task GetStartupStatusAsync_MapsCompletedConfiguredAdministrator_AndKeepsTheProvider()
+    {
+        SetupBffClient(CreateJsonResponse(CreateStatusResource(
+            isCompleted: true,
+            state: "Completed",
+            mode: "ConfiguredAdministrator",
+            provider: "Atproto",
+            generation: 4,
+            isAuthenticated: true,
+            isCurrentUserInstanceAdmin: false,
+            selectedDeploymentMode: "SingleTenant")));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status.Disposition).IsEqualTo(InstanceOnboardingStartupDisposition.Completed);
+        await Assert.That(status.Provider).IsEqualTo("Atproto");
+        await Assert.That(status.IsCurrentUserInstanceAdmin).IsFalse();
+        await Assert.That(status.SelectedDeploymentMode).IsEqualTo("SingleTenant");
+    }
+
+    [Test]
+    [Arguments(false, "InteractivePending", "Interactive", "Keycloak")]
+    [Arguments(false, "ConfiguredAdministratorPending", "ConfiguredAdministrator", null)]
+    [Arguments(false, "ConfiguredAdministratorPending", "ConfiguredAdministrator", "keycloak")]
+    [Arguments(false, "ConfiguredAdministratorPending", "ConfiguredAdministrator", "Google")]
+    [Arguments(false, "ConfiguredAdministratorPending", "Interactive", "Keycloak")]
+    [Arguments(false, "InteractivePending", "ConfiguredAdministrator", null)]
+    [Arguments(true, "InteractivePending", "Interactive", null)]
+    [Arguments(false, "Completed", "Interactive", null)]
+    [Arguments(true, "Bootstrapping", "Interactive", null)]
+    [Arguments(true, "Completed", "Headless", null)]
+    [Arguments(true, "completed", "Interactive", null)]
+    [Arguments(true, null, null, null)]
+    public async Task GetStartupStatusAsync_FailsClosed_WhenTheCanonicalContractIsInconsistent(
+        bool isCompleted,
+        string? state,
+        string? mode,
+        string? provider)
+    {
+        SetupBffClient(CreateJsonResponse(CreateStatusResource(
+            isCompleted,
+            state,
+            mode,
+            provider,
+            generation: 9)));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status).IsEqualTo(InstanceOnboardingStartupStatus.Unavailable);
+    }
+
+    [Test]
+    [Arguments(0L)]
+    [Arguments(-1L)]
+    public async Task GetStartupStatusAsync_FailsClosed_WhenGenerationIsNotPositive(long generation)
+    {
+        SetupBffClient(CreateJsonResponse(CreateStatusResource(
+            isCompleted: false,
+            state: "InteractivePending",
+            mode: "Interactive",
+            provider: null,
+            generation: generation)));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status).IsEqualTo(InstanceOnboardingStartupStatus.Unavailable);
+    }
+
+    [Test]
+    public async Task GetStartupStatusAsync_FailsClosed_WhenGenerationIsAbsent()
+    {
+        SetupBffClient(CreateJsonResponse(CreateStatusResource(
+            isCompleted: true,
+            state: "Completed",
+            mode: "Interactive",
+            provider: null,
+            generation: null,
+            isAuthenticated: true,
+            isCurrentUserInstanceAdmin: true,
+            selectedDeploymentMode: "MultiTenant")));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status).IsEqualTo(InstanceOnboardingStartupStatus.Unavailable);
+    }
+
+    [Test]
+    public async Task GetStartupStatusAsync_WithholdsAuthorityAndModeValues_WhenTheContractIsInconsistent()
+    {
+        SetupBffClient(CreateJsonResponse(CreateStatusResource(
+            isCompleted: true,
+            state: "ConfiguredAdministratorPending",
+            mode: "ConfiguredAdministrator",
+            provider: "Keycloak",
+            generation: 12,
+            isAuthenticated: true,
+            isCurrentUserInstanceAdmin: true,
+            selectedDeploymentMode: "MultiTenant")));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status.Disposition).IsEqualTo(InstanceOnboardingStartupDisposition.Unavailable);
+        await Assert.That(status.Provider).IsNull();
+        await Assert.That(status.Generation).IsEqualTo(0L);
+        await Assert.That(status.IsAuthenticated).IsFalse();
+        await Assert.That(status.IsCurrentUserInstanceAdmin).IsFalse();
+        await Assert.That(status.SelectedDeploymentMode).IsNull();
+    }
+
+    [Test]
+    public async Task GetStartupStatusAsync_FailsClosed_WhenOnlyLegacyBooleanAndExtensionFieldsArePresent()
+    {
+        SetupBffClient(CreateRawJsonResponse(
+            """
+            {
+              "isCompleted": false,
+              "requiresOnboarding": true,
+              "bootstrapState": "InteractivePending",
+              "bootstrapMode": "Interactive",
+              "generation": 5,
+              "isAuthenticated": true,
+              "isCurrentUserInstanceAdmin": true,
+              "selectedDeploymentMode": "MultiTenant"
+            }
+            """));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status).IsEqualTo(InstanceOnboardingStartupStatus.Unavailable);
+    }
+
+    [Test]
+    public async Task GetStartupStatusAsync_PrefersCanonicalFields_OverContradictingExtensionData()
+    {
+        SetupBffClient(CreateRawJsonResponse(
+            """
+            {
+              "isCompleted": false,
+              "state": "InteractivePending",
+              "mode": "Interactive",
+              "generation": 6,
+              "completed": true,
+              "requiresOnboarding": false,
+              "legacyProvider": "Keycloak"
+            }
+            """));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status.Disposition)
+            .IsEqualTo(InstanceOnboardingStartupDisposition.InteractivePending);
+        await Assert.That(status.Provider).IsNull();
+        await Assert.That(status.Generation).IsEqualTo(6L);
+    }
+
+    [Test]
+    public async Task GetStartupStatusAsync_FailsClosed_WhenTheStatusEndpointIsUnavailable()
+    {
+        SetupBffClient(_ => throw new HttpRequestException("status endpoint unreachable"));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status).IsEqualTo(InstanceOnboardingStartupStatus.Unavailable);
+    }
+
+    [Test]
+    public async Task GetStartupStatusAsync_PropagatesCancellation_WithoutReportingAStartupState()
+    {
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Assert.That(() => _service.GetStartupStatusAsync(cancellation.Token))
+            .Throws<OperationCanceledException>();
+    }
+
+    #endregion
+
+    private static HalResourceOfInstanceOnboardingStatusDto CreateStatusResource(
+        bool isCompleted,
+        string? state,
+        string? mode,
+        string? provider,
+        long? generation,
+        bool isAuthenticated = false,
+        bool isCurrentUserInstanceAdmin = false,
+        string? selectedDeploymentMode = null) => new()
+        {
+            IsCompleted = isCompleted,
+            State = state,
+            Mode = mode,
+            Provider = provider,
+            Generation = generation,
+            IsAuthenticated = isAuthenticated,
+            IsCurrentUserInstanceAdmin = isCurrentUserInstanceAdmin,
+            SelectedDeploymentMode = selectedDeploymentMode
+        };
+
+    private static HttpResponseMessage CreateRawJsonResponse(string json) =>
+        new(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
 
     private static HttpResponseMessage CreateJsonResponse<T>(T model, HttpStatusCode statusCode = HttpStatusCode.OK)
     {

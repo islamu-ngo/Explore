@@ -1,6 +1,7 @@
 // ABOUTME: Short-TTL cached onboarding status probe shared by middleware, cookie events, and admin enrichment.
 // ABOUTME: Fetches GET /api/InstanceOnboarding/status (AllowAnonymous, fast) and caches the result to avoid request storms.
 
+using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -29,10 +30,33 @@ public interface IBffOnboardingStatusProvider
 }
 
 /// <summary>Snapshot of onboarding status used by gating logic.</summary>
-public sealed record BffOnboardingStatus(bool IsCompleted, bool IsSetupModeActive, bool Known)
+public enum BffOnboardingDisposition
 {
-    /// <summary>Default conservative value when the API is unreachable — treat as not-completed.</summary>
-    public static BffOnboardingStatus Unknown { get; } = new(IsCompleted: false, IsSetupModeActive: true, Known: false);
+    InteractivePending,
+    ConfiguredAdministratorPending,
+    Completed,
+    Closed
+}
+
+public sealed record BffOnboardingStatus(
+    bool IsCompleted,
+    string? State,
+    string? Mode,
+    string? Provider,
+    long? Generation,
+    BffOnboardingDisposition Disposition)
+{
+    public static BffOnboardingStatus Unknown { get; } = new(
+        IsCompleted: false,
+        State: null,
+        Mode: null,
+        Provider: null,
+        Generation: null,
+        Disposition: BffOnboardingDisposition.Closed);
+
+    public bool AllowsProvider(string provider) =>
+        Disposition == BffOnboardingDisposition.ConfiguredAdministratorPending
+        && string.Equals(Provider, provider, StringComparison.OrdinalIgnoreCase);
 }
 
 public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
@@ -67,10 +91,18 @@ public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
             var dto = await apiClient.GetInstanceOnboardingStatusAsync(
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
+            var state = ReadString(dto.AdditionalProperties, "state");
+            var mode = ReadString(dto.AdditionalProperties, "mode");
+            var configuredProvider = ReadString(dto.AdditionalProperties, "provider");
+            var generation = ReadInt64(dto.AdditionalProperties, "generation");
+            var isCompleted = dto.IsCompleted == true;
             var status = new BffOnboardingStatus(
-                IsCompleted: dto.IsCompleted == true,
-                IsSetupModeActive: dto.IsSetupModeActive == true,
-                Known: true);
+                isCompleted,
+                state,
+                mode,
+                configuredProvider,
+                generation,
+                Classify(isCompleted, state, mode, configuredProvider, generation));
 
             _cache.Set(CacheKey, status, CacheTtl);
             return status;
@@ -87,4 +119,71 @@ public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
     }
 
     public void Invalidate() => _cache.Remove(CacheKey);
+
+    private static BffOnboardingDisposition Classify(
+        bool isCompleted,
+        string? state,
+        string? mode,
+        string? provider,
+        long? generation)
+    {
+        if (generation is null or < 0)
+        {
+            return BffOnboardingDisposition.Closed;
+        }
+
+        if (isCompleted && string.Equals(state, "Completed", StringComparison.Ordinal))
+        {
+            if (string.Equals(mode, "Interactive", StringComparison.Ordinal)
+                && string.IsNullOrEmpty(provider)
+                || string.Equals(mode, "ConfiguredAdministrator", StringComparison.Ordinal)
+                && provider is "Keycloak" or "Atproto")
+            {
+                return BffOnboardingDisposition.Completed;
+            }
+
+            return BffOnboardingDisposition.Closed;
+        }
+
+        if (!isCompleted
+            && string.Equals(state, "Pending", StringComparison.Ordinal)
+            && string.Equals(mode, "Interactive", StringComparison.Ordinal)
+            && string.IsNullOrEmpty(provider))
+        {
+            return BffOnboardingDisposition.InteractivePending;
+        }
+
+        if (!isCompleted
+            && string.Equals(state, "Pending", StringComparison.Ordinal)
+            && string.Equals(mode, "ConfiguredAdministrator", StringComparison.Ordinal)
+            && provider is "Keycloak" or "Atproto")
+        {
+            return BffOnboardingDisposition.ConfiguredAdministratorPending;
+        }
+
+        return BffOnboardingDisposition.Closed;
+    }
+
+    private static string? ReadString(IDictionary<string, object> values, string name)
+    {
+        if (!values.TryGetValue(name, out var value) || value is not JsonElement element
+            || element.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        return element.GetString();
+    }
+
+    private static long? ReadInt64(IDictionary<string, object> values, string name)
+    {
+        if (!values.TryGetValue(name, out var value) || value is not JsonElement element
+            || element.ValueKind != JsonValueKind.Number
+            || !element.TryGetInt64(out var result))
+        {
+            return null;
+        }
+
+        return result;
+    }
 }

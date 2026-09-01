@@ -24,6 +24,11 @@ public interface ISetupLiveRepository
         Guid enrollmentId,
         CancellationToken cancellationToken);
 
+    Task<SetupTargetEnrollment?> FindCurrentEnrollmentAsync(
+        Guid tenantId,
+        Guid enrollmentId,
+        CancellationToken cancellationToken);
+
     Task<SetupEnrollmentIssuanceClaim?> FindIssuanceClaimAsync(
         Guid tenantId,
         Guid operationKey,
@@ -32,6 +37,11 @@ public interface ISetupLiveRepository
     Task<SetupSecretBindingOperation?> FindOperationAsync(
         Guid tenantId,
         Guid operationKey,
+        CancellationToken cancellationToken);
+
+    Task<SetupSecretBindingOperation?> FindOperationByIdAsync(
+        Guid tenantId,
+        Guid operationId,
         CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

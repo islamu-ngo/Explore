@@ -4,19 +4,23 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Authentication;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
 using Explore.Application.Features.Authentication.Atproto.Services;
 using Explore.Application.Features.Authentication.Atproto.Validators;
+using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 
 namespace Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
 
 public sealed class BootstrapAtprotoSessionCommandHandler(
     IAtprotoOAuthSecurityGateway securityGateway,
     IAtprotoSessionTokenIssuer tokenIssuer,
+    ISender sender,
     IUserExternalLoginRepository externalLoginRepository,
     IUserRepository userRepository,
     IActorRepository actorRepository,
@@ -24,6 +28,7 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
     IUnitOfWork unitOfWork,
     IAdminCacheInvalidator adminCacheInvalidator,
     ITenantContext tenantContext,
+    IConfiguration configuration,
     TimeProvider timeProvider)
     : IRequestHandler<BootstrapAtprotoSessionCommand, AtprotoSessionBootstrapResult>
 {
@@ -51,11 +56,37 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
             return AtprotoSessionBootstrapResult.Failed(verification.FailureCode ?? "pds_verification_failed");
         }
 
-        var login = await externalLoginRepository
-            .GetByProviderAndKey("atproto", verified.Did.Value).ConfigureAwait(false);
-        if (!IsExactLinkedLogin(login, verified.Did.Value))
+        if (verified.Did != request.ExpectedDid)
         {
-            return AtprotoSessionBootstrapResult.Failed("account_not_linked");
+            return AtprotoSessionBootstrapResult.Failed("pds_identity_mismatch");
+        }
+
+        ProviderAccountKey accountKey = PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(verified.Did);
+        var login = await externalLoginRepository
+            .GetByProviderAndKey("atproto", accountKey).ConfigureAwait(false);
+        if (!IsExactLinkedLogin(login, accountKey))
+        {
+            var claim = await sender.Send(
+                new ClaimConfiguredInstanceAdministratorCommand
+                {
+                    AuthenticatedAccount = accountKey,
+                    UserId = Guid.CreateVersion7(),
+                    Email = configuration["INSTANCE_BOOTSTRAP_ADMIN_EMAIL"],
+                    FirstName = configuration["INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME"],
+                    LastName = configuration["INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME"],
+                    EmailVerified = false
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            login = await externalLoginRepository
+                .GetByProviderAndKey("atproto", accountKey).ConfigureAwait(false);
+            if (!IsExactLinkedLogin(login, accountKey))
+            {
+                return AtprotoSessionBootstrapResult.Failed(
+                    claim.IsSuccess
+                        ? "configured_claim_incomplete"
+                        : "account_not_linked");
+            }
         }
 
         var preparedSession = await securityGateway.PreparePersistenceAsync(
@@ -104,8 +135,8 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
             request.ExpectedCanonicalActorConcurrencyStamp);
     }
 
-    private static bool IsExactLinkedLogin(UserExternalLogin? login, string did) =>
+    private static bool IsExactLinkedLogin(UserExternalLogin? login, ProviderAccountKey accountKey) =>
         login is not null
         && string.Equals(login.Provider, "atproto", StringComparison.Ordinal)
-        && string.Equals(login.ProviderKey, did, StringComparison.Ordinal);
+        && string.Equals(login.ProviderKey, accountKey.Value, StringComparison.Ordinal);
 }

@@ -54,6 +54,7 @@ using Explore.Application.Features.Geocoding;
 using Explore.Application.Features.ManagedProviderProvisioning;
 using Explore.Application.Features.ManagedProviderProvisioning.Handlers.Commands;
 using Explore.Application.Features.Management;
+using Explore.Application.Features.InstanceOnboarding.Services;
 using Explore.Application.Features.OrganizerPaymentConnections;
 using Explore.Application.Features.RegistrationOrders.Handlers.Commands;
 using Explore.Application.Features.StorageObjects.Authorization;
@@ -297,6 +298,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IInstanceStorageSettingService, InstanceStorageSettingService>();
         services.AddScoped<IInstanceSmtpSettingService, InstanceSmtpSettingService>();
         services.AddScoped<IInstanceBootstrapAuditLogger, InstanceBootstrapAuditLogger>();
+        services.AddScoped<InstanceOnboardingCompletionOperation>();
         services.AddScoped<IWebhookAuditEventWriter, WebhookAuditEventWriter>();
         services.AddScoped<IWebhookOwnershipScopeResolver, WebhookOwnershipScopeResolver>();
         services.AddScoped<IAuthProviderConfigurationService, AuthProviderConfigurationService>();

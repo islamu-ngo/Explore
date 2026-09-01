@@ -40,10 +40,9 @@ public sealed class GetManagementCapabilitiesQueryHandler(
 
         var bootstrap = await bootstrapStateRepository.GetCurrent(cancellationToken);
         var registration = await registrationRepository.GetCurrentAsync(cancellationToken);
-        DeploymentMode mode = bootstrap?.IsCompleted == true
-            && Enum.TryParse(bootstrap.SelectedDeploymentMode, out DeploymentMode persistedMode)
-                ? persistedMode
-                : DeploymentMode.SingleTenant;
+        DeploymentMode mode = bootstrap?.Status == InstanceBootstrapStatus.Completed
+            ? bootstrap.DeploymentMode
+            : DeploymentMode.SingleTenant;
         ManagementTenantProvisioningCapacityDto? capacity = mode == DeploymentMode.MultiTenant
             && options.Value.MaximumTenantCount > 0
                 ? await tenantProvisioningCapacityReader.ReadAsync(cancellationToken, mode)
@@ -59,7 +58,7 @@ public sealed class GetManagementCapabilitiesQueryHandler(
             ManagedControlPlaneContract.ManagementApiVersion,
             ManagementVersionResolver.EventVersion,
             mode,
-            bootstrap is { IsCompleted: true } ? bootstrap.Id : null,
+            bootstrap is { Status: InstanceBootstrapStatus.Completed } ? bootstrap.Id : null,
             registration?.Status.ToString() ?? "Unregistered",
             capabilities,
             capacity);
@@ -159,7 +158,7 @@ public sealed class GetManagementUpgradePreflightQueryHandler(
         ManagementUpgradeAssessment.AddCommonBlockers(
             blockers,
             registration,
-            bootstrap is { IsCompleted: true },
+            bootstrap is { Status: InstanceBootstrapStatus.Completed },
             mode,
             health,
             now);
@@ -230,7 +229,7 @@ public sealed class GetManagementUpgradePostflightQueryHandler(
         ManagementUpgradeAssessment.AddCommonBlockers(
             blockers,
             registration,
-            bootstrap is { IsCompleted: true },
+            bootstrap is { Status: InstanceBootstrapStatus.Completed },
             mode,
             health,
             now);

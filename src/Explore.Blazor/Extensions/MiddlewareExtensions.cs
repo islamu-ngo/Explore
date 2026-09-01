@@ -285,27 +285,49 @@ public static class MiddlewareExtensions
         }
 
         var status = await ResolveOnboardingStatusAsync(ctx, logger);
-        var isCompleted = status.IsCompleted;
-
-        if (isRoot && !isCompleted)
+        switch (status.Disposition)
         {
-            ctx.Response.Redirect("/setup");
-            return;
-        }
+            case BffOnboardingDisposition.InteractivePending:
+                if (isRoot || isAuthEntry && !HasTrustedSetupSecret(ctx))
+                {
+                    ctx.Response.Redirect("/setup");
+                    return;
+                }
 
-        if (isSetup && isCompleted)
-        {
-            ctx.Response.Redirect("/");
-            return;
-        }
+                await next();
+                return;
 
-        if (isAuthEntry && !isCompleted && !HasTrustedSetupSecret(ctx))
-        {
-            ctx.Response.Redirect("/setup");
-            return;
-        }
+            case BffOnboardingDisposition.ConfiguredAdministratorPending:
+                if (isSetup)
+                {
+                    ctx.Response.Redirect("/");
+                    return;
+                }
 
-        await next();
+                if (isAuthEntry && !IsConfiguredProviderChallenge(ctx, status))
+                {
+                    ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return;
+                }
+
+                await next();
+                return;
+
+            case BffOnboardingDisposition.Completed:
+                if (isSetup)
+                {
+                    ctx.Response.Redirect("/");
+                    return;
+                }
+
+                await next();
+                return;
+
+            case BffOnboardingDisposition.Closed:
+            default:
+                ctx.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return;
+        }
     }
 
     private static bool IsAuthEntryPath(string path)
@@ -327,6 +349,19 @@ public static class MiddlewareExtensions
         var cookieProtector = ctx.RequestServices.GetService<ISetupSecretCookieProtector>();
         return cookieProtector?.TryUnprotect(protectedSetupSecret, out var setupSecret) == true
             && !string.IsNullOrWhiteSpace(setupSecret);
+    }
+
+    private static bool IsConfiguredProviderChallenge(HttpContext ctx, BffOnboardingStatus status)
+    {
+        if (!string.Equals(ctx.Request.Path.Value, "/auth/challenge", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var providers = ctx.Request.Query["provider"];
+        return providers.Count == 1
+            && providers[0] is { Length: > 0 } provider
+            && status.AllowsProvider(provider);
     }
 
     private static async Task<BffOnboardingStatus> ResolveOnboardingStatusAsync(

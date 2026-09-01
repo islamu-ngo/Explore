@@ -6,6 +6,10 @@ namespace Explore.Application.DTOs.Onboarding;
 public sealed record InstanceOnboardingStatusDto
 {
     public bool IsCompleted { get; init; }
+    public string State { get; init; } = "Invalid";
+    public string Mode { get; init; } = "Interactive";
+    public string? Provider { get; init; }
+    public long Generation { get; init; }
     public bool IsAuthenticated { get; init; }
     public bool IsCurrentUserInstanceAdmin { get; set; }
     public string? SelectedDeploymentMode { get; init; }

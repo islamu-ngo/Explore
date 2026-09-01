@@ -10,6 +10,7 @@ namespace Explore.Blazor.Client.Services;
 
 public interface IInstanceOnboardingService
 {
+    Task<InstanceOnboardingStartupStatus> GetStartupStatusAsync(CancellationToken cancellationToken = default);
     Task<SystemOnboardingStatusDto?> GetSystemOnboardingStatusAsync();
     Task<OnboardingPreflightDto?> GetOnboardingPreflightAsync();
     Task<InstanceOnboardingStatusDto?> GetStatusAsync();
@@ -85,6 +86,16 @@ public sealed class InstanceOnboardingService(
 {
     public Task<SystemOnboardingStatusDto?> GetSystemOnboardingStatusAsync() =>
         GetOptionalAsync(ct => api.GetSystemOnboardingStatusAsync(cancellationToken: ct), "system onboarding status");
+
+    public async Task<InstanceOnboardingStartupStatus> GetStartupStatusAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var resource = await GetOptionalAsync(
+            ct => api.GetInstanceOnboardingStatusAsync(cancellationToken: ct),
+            "instance onboarding startup status",
+            cancellationToken);
+        return InstanceOnboardingStartupStatusAdapter.FromGenerated(resource.ToDto());
+    }
 
     public Task<OnboardingPreflightDto?> GetOnboardingPreflightAsync() =>
         GetOptionalAsync(ct => api.GetSystemOnboardingPreflightAsync(cancellationToken: ct), "onboarding preflight");
@@ -498,12 +509,19 @@ public sealed class InstanceOnboardingService(
         request.BlazorWebOrigins = MergeBootstrapValues(request.BlazorWebOrigins, "+");
     }
 
-    private async Task<T?> GetOptionalAsync<T>(Func<CancellationToken, Task<T>> apiCall, string description)
+    private async Task<T?> GetOptionalAsync<T>(
+        Func<CancellationToken, Task<T>> apiCall,
+        string description,
+        CancellationToken cancellationToken = default)
         where T : class
     {
         try
         {
-            return await apiCall(CancellationToken.None);
+            return await apiCall(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

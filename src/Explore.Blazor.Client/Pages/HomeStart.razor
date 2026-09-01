@@ -139,26 +139,45 @@
 
     private async Task ResolveRootAsync()
     {
-        var instanceStatus = await InstanceOnboardingService.GetStatusAsync();
-        if (instanceStatus == null)
+        var instanceStatus = await InstanceOnboardingService.GetStartupStatusAsync();
+        switch (instanceStatus.Disposition)
         {
-            _state = RootState.ShowEvents;
-            PersistedRootState = _state;
+            case InstanceOnboardingStartupDisposition.InteractivePending:
+                Navigation.NavigateTo("/setup");
+                return;
+            case InstanceOnboardingStartupDisposition.ConfiguredAdministratorPending:
+                NavigateToProviderChallenge(instanceStatus.Provider);
+                return;
+            case InstanceOnboardingStartupDisposition.Unavailable:
+                Navigation.NavigateTo("/startup");
+                return;
+            case InstanceOnboardingStartupDisposition.Completed:
+                break;
+            default:
+                Navigation.NavigateTo("/startup");
+                return;
+        }
+
+        var isSingleTenant = string.Equals(
+            instanceStatus.SelectedDeploymentMode,
+            "SingleTenant",
+            StringComparison.Ordinal);
+        var isMultiTenant = string.Equals(
+            instanceStatus.SelectedDeploymentMode,
+            "MultiTenant",
+            StringComparison.Ordinal);
+        if (!isSingleTenant && !isMultiTenant)
+        {
+            Navigation.NavigateTo("/startup");
             return;
         }
 
-        if (instanceStatus.IsCompleted != true)
-        {
-            Navigation.NavigateTo("/setup");
-            return;
-        }
-
-        if (instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
+        if (isMultiTenant)
         {
             var resolvedTenantId = TenantContext?.TenantId;
             if (resolvedTenantId == null || resolvedTenantId == Guid.Empty)
             {
-                if (instanceStatus.IsAuthenticated == true)
+                if (instanceStatus.IsAuthenticated)
                 {
                     var redirection = await UserService.ResolveUserTenantRedirectionAsync();
                     if (redirection != null && !string.IsNullOrWhiteSpace(redirection.TenantSlug))
@@ -169,9 +188,9 @@
                     }
                     else
                     {
-                        if (instanceStatus.IsCurrentUserInstanceAdmin == true)
+                        if (instanceStatus.IsCurrentUserInstanceAdmin)
                         {
-            Navigation.NavigateTo("/settings/instance");
+                            Navigation.NavigateTo("/settings/instance");
                             return;
                         }
 
@@ -197,7 +216,16 @@
                 Navigation.NavigateTo("/setup");
                 return;
             case StartupRouteDecision.InstanceAdmin:
-            Navigation.NavigateTo("/settings/instance");
+                Navigation.NavigateTo("/settings/instance");
+                return;
+            case StartupRouteDecision.KeycloakChallenge:
+                NavigateToProviderChallenge("Keycloak");
+                return;
+            case StartupRouteDecision.AtprotoChallenge:
+                NavigateToProviderChallenge("Atproto");
+                return;
+            case StartupRouteDecision.Unavailable:
+                Navigation.NavigateTo("/startup");
                 return;
             case StartupRouteDecision.PublicLanding:
                 _state = RootState.ShowLanding;
@@ -208,6 +236,25 @@
                 PersistedRootState = _state;
                 return;
         }
+    }
+
+    private void NavigateToProviderChallenge(string? provider)
+    {
+        var providerQuery = provider switch
+        {
+            "Keycloak" => "keycloak",
+            "Atproto" => "atproto",
+            _ => null
+        };
+        if (providerQuery is null)
+        {
+            Navigation.NavigateTo("/startup");
+            return;
+        }
+
+        Navigation.NavigateTo(
+            $"/auth/challenge?provider={providerQuery}&returnUrl={Uri.EscapeDataString("/startup")}",
+            forceLoad: true);
     }
 
     private void RedirectToLogin()

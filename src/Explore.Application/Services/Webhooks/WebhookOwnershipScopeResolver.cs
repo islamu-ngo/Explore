@@ -122,7 +122,7 @@ public sealed class WebhookOwnershipScopeResolver(
         CancellationToken cancellationToken)
     {
         var state = await instanceBootstrapStateRepository.GetCurrent(cancellationToken);
-        if (state is null || !state.IsCompleted || state.Id == Guid.Empty)
+        if (state is null || state.Status != InstanceBootstrapStatus.Completed || state.Id == Guid.Empty)
         {
             return Failed(
                 "webhook_instance_identity_unavailable",

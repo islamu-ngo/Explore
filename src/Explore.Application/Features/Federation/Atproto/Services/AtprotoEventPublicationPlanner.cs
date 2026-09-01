@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Authentication;
 using Explore.Application.Features.Federation.Atproto.Models;
 using Explore.Application.Services.Federation;
 using Explore.Domain.Enums;
@@ -263,7 +264,8 @@ public sealed class AtprotoEventPublicationPlanner(
 
         Explore.Domain.UserExternalLogin? login = await externalLoginRepository.GetByProviderAndKey(
             RepositoryBackedAtprotoSession.Provider,
-            sessions[0].SubjectDid);
+            PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(
+                Explore.Domain.ValueObjects.AtprotoDid.Parse(sessions[0].SubjectDid)));
         if (login is null
             || login.TenantId != request.TenantId
             || login.UserId != ownerUserId
@@ -478,7 +480,8 @@ public sealed class AtprotoEventPublicationPlanner(
 
         Explore.Domain.UserExternalLogin? login = await externalLoginRepository.GetByProviderAndKey(
             RepositoryBackedAtprotoSession.Provider,
-            outbox.Did);
+            PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(
+                Explore.Domain.ValueObjects.AtprotoDid.Parse(outbox.Did)));
         if (login is null
             || login.TenantId != outbox.TenantId
             || login.UserId != outbox.UserId

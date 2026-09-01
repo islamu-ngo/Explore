@@ -42,6 +42,7 @@ public partial class EventApiClient
 
     static partial void UpdateJsonSerializerSettings(JsonSerializerOptions settings)
     {
+        settings.Converters.Add(new SetupEnrollmentScopeJsonConverter());
         settings.Converters.Add(new JsonStringEnumConverter());
     }
 
@@ -153,5 +154,31 @@ public partial class EventApiClient
     private sealed class GuestRegistrationOrderCapabilityCapture
     {
         public string? Value { get; set; }
+    }
+
+    private sealed class SetupEnrollmentScopeJsonConverter
+        : JsonConverter<SetupEnrollmentScope>
+    {
+        public override SetupEnrollmentScope Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options) => reader.GetString() switch
+        {
+            "target.read" => SetupEnrollmentScope.Target_read,
+            "secret_binding.readiness" => SetupEnrollmentScope.Secret_binding_readiness,
+            "secret_binding.write" => SetupEnrollmentScope.Secret_binding_write,
+            _ => throw new JsonException("Invalid Setup enrollment scope.")
+        };
+
+        public override void Write(
+            Utf8JsonWriter writer,
+            SetupEnrollmentScope value,
+            JsonSerializerOptions options) => writer.WriteStringValue(value switch
+        {
+            SetupEnrollmentScope.Target_read => "target.read",
+            SetupEnrollmentScope.Secret_binding_readiness => "secret_binding.readiness",
+            SetupEnrollmentScope.Secret_binding_write => "secret_binding.write",
+            _ => throw new JsonException("Invalid Setup enrollment scope.")
+        });
     }
 }

@@ -69,16 +69,32 @@ public sealed class BffSessionRefreshService(
                 statusCode: StatusCodes.Status409Conflict);
         }
 
-        // Invalidate onboarding status cache BEFORE enriching principal so that
-        // EnrichPrincipalAsync fetches fresh status (e.g. "completed" after onboarding)
-        // instead of serving a stale "not completed" entry from the cache.
-        context.RequestServices.GetService<IBffOnboardingStatusProvider>()?.Invalidate();
-
+        var onboardingStatusProvider = context.RequestServices
+            .GetRequiredService<IBffOnboardingStatusProvider>();
+        var initialOnboardingStatus = await onboardingStatusProvider
+            .GetStatusAsync(cancellationToken)
+            .ConfigureAwait(false);
         var adminClaimsUpdated = await adminClaimsTransformation.EnrichPrincipalAsync(
             authResult.Principal,
             authResult.Properties,
             forceRefresh: true,
+            synchronizeUser: true,
             cancellationToken: cancellationToken);
+        var refreshedOnboardingStatus = await onboardingStatusProvider
+            .GetStatusAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (!IsOnboardingSessionAllowed(
+                authResult.Principal,
+                initialOnboardingStatus,
+                refreshedOnboardingStatus,
+                adminClaimsUpdated))
+        {
+            return await RequireOnboardingReauthenticationAsync(
+                context,
+                authResult,
+                logger,
+                "onboarding_authority_rejected").ConfigureAwait(false);
+        }
 
         var userId = tokenAssessmentService.ResolveUserId(authResult.Principal);
         var tokenStoreResult = context.RequestServices.GetRequiredService<ICircuitTokenStore>()
@@ -239,12 +255,32 @@ public sealed class BffSessionRefreshService(
                 new AuthenticationToken { Name = "expires_at", Value = refreshed.ExpiresAt.ToString("O") },
                 new AuthenticationToken { Name = "token_type", Value = "Bearer" }
             ]);
-            context.RequestServices.GetService<IBffOnboardingStatusProvider>()?.Invalidate();
+            var onboardingStatusProvider = context.RequestServices
+                .GetRequiredService<IBffOnboardingStatusProvider>();
+            var initialOnboardingStatus = await onboardingStatusProvider
+                .GetStatusAsync(cancellationToken)
+                .ConfigureAwait(false);
             var adminClaimsUpdated = await adminClaimsTransformation.EnrichPrincipalAsync(
                 authentication.Principal!,
                 authentication.Properties,
                 forceRefresh: true,
+                synchronizeUser: true,
                 cancellationToken: cancellationToken);
+            var refreshedOnboardingStatus = await onboardingStatusProvider
+                .GetStatusAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (!IsOnboardingSessionAllowed(
+                    authentication.Principal!,
+                    initialOnboardingStatus,
+                    refreshedOnboardingStatus,
+                    adminClaimsUpdated))
+            {
+                return await RequireOnboardingReauthenticationAsync(
+                    context,
+                    authentication,
+                    logger,
+                    "onboarding_authority_rejected").ConfigureAwait(false);
+            }
             await context.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 authentication.Principal!,
@@ -282,15 +318,59 @@ public sealed class BffSessionRefreshService(
         long started,
         AtprotoAuthenticationOutcome outcome)
     {
-        ClearCircuitTokenState(context, authentication.Principal, logger, "atproto_reauthentication_required");
-        await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        var result = await RequireOnboardingReauthenticationAsync(
+            context,
+            authentication,
+            logger,
+            "atproto_reauthentication_required").ConfigureAwait(false);
         atprotoMetrics.Record(
             AtprotoAuthenticationOperation.Refresh,
             outcome,
             Stopwatch.GetElapsedTime(started));
+        return result;
+    }
+
+    private async Task<IResult> RequireOnboardingReauthenticationAsync(
+        HttpContext context,
+        AuthenticateResult authentication,
+        ILogger logger,
+        string reason)
+    {
+        ClearCircuitTokenState(context, authentication.Principal, logger, reason);
+        await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Results.Json(
             new { refreshed = false, reason = "reauthentication_required" },
             statusCode: StatusCodes.Status401Unauthorized);
+    }
+
+    private static bool IsOnboardingSessionAllowed(
+        ClaimsPrincipal principal,
+        BffOnboardingStatus initialStatus,
+        BffOnboardingStatus refreshedStatus,
+        bool hasAdminAuthority)
+    {
+        return initialStatus.Disposition switch
+        {
+            BffOnboardingDisposition.Completed =>
+                refreshedStatus.Disposition == BffOnboardingDisposition.Completed,
+            BffOnboardingDisposition.InteractivePending =>
+                refreshedStatus.Disposition is BffOnboardingDisposition.InteractivePending
+                    or BffOnboardingDisposition.Completed,
+            BffOnboardingDisposition.ConfiguredAdministratorPending =>
+                HasMatchingConfiguredProvider(principal, initialStatus)
+                && refreshedStatus.Disposition == BffOnboardingDisposition.Completed
+                && hasAdminAuthority,
+            BffOnboardingDisposition.Closed => false,
+            _ => false
+        };
+    }
+
+    private static bool HasMatchingConfiguredProvider(
+        ClaimsPrincipal principal,
+        BffOnboardingStatus status)
+    {
+        var providers = principal.FindAll("auth_provider").Take(2).ToArray();
+        return providers.Length == 1 && status.AllowsProvider(providers[0].Value);
     }
 
     private bool TryCreateAtprotoRequestContext(

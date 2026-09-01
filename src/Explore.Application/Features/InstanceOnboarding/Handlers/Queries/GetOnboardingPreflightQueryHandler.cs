@@ -30,9 +30,9 @@ public sealed class GetOnboardingPreflightQueryHandler(
     {
         var result = new OnboardingPreflightDto();
         var bootstrap = await instanceBootstrapStateRepository.GetCurrent(cancellationToken);
-        var onboardingCompleted = bootstrap?.IsCompleted == true;
+        var onboardingCompleted = bootstrap?.Status == InstanceBootstrapStatus.Completed;
         var deploymentMode = onboardingCompleted
-            ? await deploymentModeProvider.GetCurrentModeAsync(cancellationToken)
+            ? bootstrap!.DeploymentMode
             : await deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken);
 
         result.DeploymentMode = deploymentMode.ToString();

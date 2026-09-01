@@ -10,6 +10,8 @@ internal static class PortableOrdinalAsciiPropertyExtensions
 {
     internal const string AnnotationName = "Explore:PortableOrdinalAscii";
 
-    internal static PropertyBuilder<string> UsePortableOrdinalAscii(this PropertyBuilder<string> property) =>
+    internal static PropertyBuilder<TProperty> UsePortableOrdinalAscii<TProperty>(
+        this PropertyBuilder<TProperty> property)
+        where TProperty : class? =>
         property.UseCollation("C").HasAnnotation(AnnotationName, true);
 }

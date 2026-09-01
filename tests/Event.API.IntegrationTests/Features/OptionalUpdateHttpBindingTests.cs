@@ -139,15 +139,13 @@ public sealed class OptionalUpdateHttpBindingTests
                 LastName = "Admin"
             }
         });
-        dbContext.InstanceBootstrapStates.Add(new InstanceBootstrapState
-        {
-            Id = Guid.NewGuid(),
-            IsCompleted = true,
-            CreatedAt = DateTime.UtcNow,
-            CompletedAt = DateTime.UtcNow,
-            CompletedByUserId = userId,
-            SelectedDeploymentMode = "SingleTenant"
-        });
+        var completedAt = DateTime.UtcNow;
+        var bootstrap = InstanceBootstrapState.CreateInteractivePending(
+            Guid.CreateVersion7(),
+            Explore.Domain.Enums.DeploymentMode.SingleTenant,
+            completedAt);
+        bootstrap.CompleteInteractive(userId, completedAt);
+        dbContext.InstanceBootstrapStates.Add(bootstrap);
 
         await dbContext.SaveChangesAsync();
         return userId;

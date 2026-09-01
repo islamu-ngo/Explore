@@ -59,23 +59,8 @@ public sealed class BffAdminClaimsTransformation
         bool synchronizeUser = false,
         CancellationToken cancellationToken = default)
     {
-        if (principal.Identity?.IsAuthenticated != true)
-        {
-            return false;
-        }
-
-        if (!principal.TryGetAdminSubject(out var sub))
-        {
-            return false;
-        }
-
-        // Pre-onboarding skip: no admin records can exist in the DB yet, so calling
-        // api/User/admin-authority would always yield empty and can hang when the API's
-        // JWT signing keys are still warming up. Strip any stale admin claims and continue.
-        var onboardingStatus = await _onboardingStatusProvider
-            .GetStatusAsync(cancellationToken)
-            .ConfigureAwait(false);
-        if (onboardingStatus.Known && !onboardingStatus.IsCompleted)
+        if (principal.Identity?.IsAuthenticated != true
+            || !principal.TryGetAdminSubject(out var sub))
         {
             RemoveAdminClaims(principal);
             return false;
@@ -84,23 +69,49 @@ public sealed class BffAdminClaimsTransformation
         var accessToken = properties?.GetTokenValue("access_token");
         if (string.IsNullOrWhiteSpace(accessToken))
         {
+            RemoveAdminClaims(principal);
             _logger.LogDebug(
                 "BFF admin enrichment skipped | Outcome={Outcome} Reason={Reason} Purpose={Purpose}",
                 "skipped", "access_token_missing", "admin");
-            return HasAnyAdminClaims(principal);
+            return false;
         }
 
         var cacheKey = $"{CacheKeyPrefix}{sub.PartitionKey}";
+        var initialStatus = await _onboardingStatusProvider
+            .GetStatusAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (initialStatus.Disposition == BffOnboardingDisposition.Closed
+            || initialStatus.Disposition == BffOnboardingDisposition.ConfiguredAdministratorPending
+            && !HasConfiguredProvider(principal, initialStatus))
+        {
+            RemoveAdminClaims(principal);
+            _cache.Remove(cacheKey);
+            return false;
+        }
 
         if (synchronizeUser)
         {
             var internalUserId = await SynchronizeUserAsync(accessToken, cancellationToken);
-            if (internalUserId is not null)
+            if (internalUserId is null)
             {
-                ReplaceInternalUserIdClaim(principal, internalUserId.Value);
+                RemoveAdminClaims(principal);
+                _cache.Remove(cacheKey);
+                return false;
             }
 
+            ReplaceInternalUserIdClaim(principal, internalUserId.Value);
             _cache.Remove(cacheKey);
+            _onboardingStatusProvider.Invalidate();
+        }
+
+        var onboardingStatus = await _onboardingStatusProvider
+            .GetStatusAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (onboardingStatus.Disposition != BffOnboardingDisposition.Completed)
+        {
+            RemoveAdminClaims(principal);
+            _cache.Remove(cacheKey);
+            return false;
         }
 
         if (forceRefresh)
@@ -116,7 +127,8 @@ public sealed class BffAdminClaimsTransformation
                 return cached.Authority.HasAnyAuthority == true;
             }
 
-            return HasAnyAdminClaims(principal);
+            RemoveAdminClaims(principal);
+            return false;
         }
 
         var authority = await FetchAdminAuthorityAsync(accessToken, cancellationToken);
@@ -129,7 +141,8 @@ public sealed class BffAdminClaimsTransformation
         }
 
         _cache.Set(cacheKey, BffAdminAuthorityCacheEntry.Failure, FailureCacheDuration);
-        return HasAnyAdminClaims(principal);
+        RemoveAdminClaims(principal);
+        return false;
     }
 
     private async Task<Guid?> SynchronizeUserAsync(
@@ -145,6 +158,10 @@ public sealed class BffAdminClaimsTransformation
             return response.Success == true && response.Id is { } internalUserId && internalUserId != Guid.Empty
                 ? internalUserId
                 : null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (ApiException ex)
         {
@@ -179,6 +196,10 @@ public sealed class BffAdminClaimsTransformation
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
             var apiClient = new EventApiClient(client);
             return await apiClient.GetCurrentUserAdminAuthorityAsync(cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -246,12 +267,12 @@ public sealed class BffAdminClaimsTransformation
         principal.AddIdentity(new ClaimsIdentity([new Claim(InternalUserIdClaim, internalUserId.ToString())]));
     }
 
-    private static bool HasAnyAdminClaims(ClaimsPrincipal principal)
+    private static bool HasConfiguredProvider(
+        ClaimsPrincipal principal,
+        BffOnboardingStatus status)
     {
-        return principal.HasClaim(c => c.Type is InstanceAdminClaim
-            or TenantAdminClaim
-            or OrganizationAdminClaim
-            or GroupAdminClaim);
+        var claims = principal.FindAll("auth_provider").Take(2).ToArray();
+        return claims.Length == 1 && status.AllowsProvider(claims[0].Value);
     }
 
     private static void RemoveAdminClaims(ClaimsPrincipal principal)

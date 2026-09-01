@@ -65,7 +65,7 @@ public sealed class ExploreBffCookieSessionHandler(
             .GetStatusAsync(context.HttpContext.RequestAborted)
             .ConfigureAwait(false);
 
-        if (!onboardingStatus.Known || onboardingStatus.IsCompleted)
+        if (onboardingStatus.Disposition != BffOnboardingDisposition.InteractivePending)
         {
             return false;
         }

@@ -2,6 +2,7 @@
 // ABOUTME: Resolves provider subjects to global users before tenant authorization is evaluated.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Authentication;
 using Explore.Domain;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
@@ -17,12 +18,14 @@ public class UserExternalLoginRepository : GenericRepository<UserExternalLogin, 
         _dbContext = dbContext;
     }
 
-    public async Task<UserExternalLogin?> GetByProviderAndKey(string provider, string providerKey)
+    public async Task<UserExternalLogin?> GetByProviderAndKey(
+        string provider,
+        ProviderAccountKey accountKey)
     {
         return await _dbContext.UserExternalLogins
             .IgnoreTenantFilter(TenantFilterBypassReasons.UserExternalLoginAuthentication)
             .AsNoTracking()
-            .FirstOrDefaultAsync(l => l.Provider == provider && l.ProviderKey == providerKey);
+            .FirstOrDefaultAsync(l => l.Provider == provider && l.ProviderKey == accountKey.Value);
     }
 
     public async Task<List<UserExternalLogin>> GetByUser(Guid userId)

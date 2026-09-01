@@ -3,6 +3,7 @@
 
 using System.Security.Cryptography;
 using System.Text;
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
@@ -28,10 +29,11 @@ public sealed class AtprotoSubjectOnboardingOperation(
     public async Task<AtprotoSubjectOnboardingResult> ExecuteAsync(BootstrapAtprotoSessionCommand request, AtprotoVerifiedOAuthSession verified, User user, Actor userActor, Guid tenantId, DateTime at, CancellationToken cancellationToken)
     {
         AtprotoDid did = verified.Did;
+        ProviderAccountKey accountKey = PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(did);
         if (user.IsDeleted || userActor.IsDeleted || userActor.IsSuspended || userActor.UserId != user.Id)
             return AtprotoSubjectOnboardingResult.Failed("linked_identity_incomplete");
-        var login = await logins.GetByProviderAndKey("atproto", did.Value).ConfigureAwait(false);
-        if (login is null || login.UserId != user.Id || login.Provider != "atproto" || login.ProviderKey != did.Value) return AtprotoSubjectOnboardingResult.Failed("account_not_linked");
+        var login = await logins.GetByProviderAndKey("atproto", accountKey).ConfigureAwait(false);
+        if (login is null || login.UserId != user.Id || login.Provider != "atproto" || login.ProviderKey != accountKey.Value) return AtprotoSubjectOnboardingResult.Failed("account_not_linked");
 
         var tenantUser = await tenantUsers.GetByTenantAndUserAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false);
         if (tenantUser is not null && (tenantUser.IsDeleted || tenantUser.StatusId != (int)TenantUserStatusEnum.Active

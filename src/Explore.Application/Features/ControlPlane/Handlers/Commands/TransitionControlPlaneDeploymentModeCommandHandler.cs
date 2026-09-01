@@ -70,21 +70,21 @@ public sealed class TransitionControlPlaneDeploymentModeCommandHandler(
 
                     if (bootstrap is null)
                     {
-                        await instanceBootstrapStateRepository.Create(new InstanceBootstrapState
-                        {
-                            IsCompleted = true,
-                            CreatedAt = transitionedAt.UtcDateTime,
-                            CompletedAt = transitionedAt.UtcDateTime,
-                            CompletedByUserId = userId.Value,
-                            SelectedDeploymentMode = selectedMode
-                        });
+                        bootstrap = InstanceBootstrapState.CreateInteractivePending(
+                            Guid.CreateVersion7(),
+                            request.TargetMode,
+                            transitionedAt.UtcDateTime);
+                        bootstrap.CompleteInteractive(userId.Value, transitionedAt.UtcDateTime);
+                        await instanceBootstrapStateRepository.Create(bootstrap);
                     }
                     else
                     {
-                        bootstrap.IsCompleted = true;
-                        bootstrap.CompletedAt = transitionedAt.UtcDateTime;
-                        bootstrap.CompletedByUserId = userId.Value;
-                        bootstrap.SelectedDeploymentMode = selectedMode;
+                        if (bootstrap.Status != InstanceBootstrapStatus.Completed)
+                        {
+                            bootstrap.CompleteInteractive(userId.Value, transitionedAt.UtcDateTime);
+                        }
+
+                        bootstrap.TransitionDeploymentMode(request.TargetMode);
                         await instanceBootstrapStateRepository.Update(bootstrap);
                     }
 
@@ -112,14 +112,12 @@ public sealed class TransitionControlPlaneDeploymentModeCommandHandler(
 
     private static DeploymentMode ResolvePersistedMode(InstanceBootstrapState? bootstrap)
     {
-        if (bootstrap?.IsCompleted != true)
+        if (bootstrap?.Status != InstanceBootstrapStatus.Completed)
         {
             return DeploymentMode.SingleTenant;
         }
 
-        return Enum.TryParse(bootstrap.SelectedDeploymentMode, out DeploymentMode mode)
-            ? mode
-            : DeploymentMode.MultiTenant;
+        return bootstrap.DeploymentMode;
     }
 
     private static string? NormalizeReason(string? reason)

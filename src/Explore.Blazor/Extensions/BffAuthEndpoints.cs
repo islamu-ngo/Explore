@@ -97,11 +97,9 @@ public static class BffAuthEndpoints
 
         logger.LogInformation("[AuthEndpoints] Authentication challenge requested for {Provider}", provider);
 
-        if (await ShouldGateForOnboardingAsync(ctx))
+        var onboardingAdmission = await ResolveOnboardingAdmissionAsync(ctx, provider, isChallengeEndpoint: true);
+        if (!ApplyOnboardingAdmission(ctx, onboardingAdmission, logger, "/auth/challenge"))
         {
-            logger.LogInformation(
-                "[AuthEndpoints] Redirecting /auth/challenge to /setup because onboarding is incomplete.");
-            ctx.Response.Redirect("/setup");
             return;
         }
 
@@ -155,6 +153,10 @@ public static class BffAuthEndpoints
                 schemeName,
                 new AuthenticationProperties { RedirectUri = returnUrl });
         }
+        catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             var diagnostics = ctx.RequestServices.GetRequiredService<ISafeAuthDiagnosticsPolicy>();
@@ -176,9 +178,20 @@ public static class BffAuthEndpoints
     private static async Task<IResult> HandleAtprotoChallengeAsync(HttpContext ctx)
     {
         ctx.Response.Headers.CacheControl = "no-store";
-        if (ctx.Request.ContentLength is > 2048 || await ShouldGateForOnboardingAsync(ctx))
+        if (ctx.Request.ContentLength is > 2048)
         {
             return Results.BadRequest();
+        }
+
+        var onboardingAdmission = await ResolveOnboardingAdmissionAsync(
+            ctx,
+            "Atproto",
+            isChallengeEndpoint: true);
+        if (onboardingAdmission != AuthOnboardingAdmission.Allow)
+        {
+            return onboardingAdmission == AuthOnboardingAdmission.Unavailable
+                ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
+                : Results.StatusCode(StatusCodes.Status403Forbidden);
         }
 
         AtprotoChallengeRequest? request;
@@ -283,7 +296,12 @@ public static class BffAuthEndpoints
                 .ParseCanonicalOrigin();
             if (AtprotoTenantOriginResolver.OriginsEqual(completion.Seed.Origin, canonicalOrigin))
             {
-                await SignInAtprotoAsync(ctx, completion.Seed, completion.Session);
+                if (!await SignInAtprotoAsync(ctx, completion.Seed, completion.Session))
+                {
+                    ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return;
+                }
+
                 metrics.Record(
                     AtprotoAuthenticationOperation.Callback,
                     AtprotoAuthenticationOutcome.Success,
@@ -346,11 +364,16 @@ public static class BffAuthEndpoints
             return;
         }
 
-        await SignInAtprotoAsync(ctx, handoff.Seed, handoff.Session);
+        if (!await SignInAtprotoAsync(ctx, handoff.Seed, handoff.Session))
+        {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
         ctx.Response.Redirect(handoff.Seed.ReturnPath);
     }
 
-    private static async Task SignInAtprotoAsync(
+    private static async Task<bool> SignInAtprotoAsync(
         HttpContext ctx,
         AtprotoOAuthFlowSeed seed,
         AtprotoBffSessionResult session)
@@ -376,11 +399,52 @@ public static class BffAuthEndpoints
             new AuthenticationToken { Name = "expires_at", Value = session.ExpiresAt.ToString("O") },
             new AuthenticationToken { Name = "token_type", Value = "Bearer" }
         ]);
+        var principal = new ClaimsPrincipal(identity);
+        var statusProvider = ctx.RequestServices.GetRequiredService<IBffOnboardingStatusProvider>();
+        var initialStatus = await statusProvider.GetStatusAsync(ctx.RequestAborted);
+        if (initialStatus.Disposition == BffOnboardingDisposition.Closed
+            || initialStatus.Disposition == BffOnboardingDisposition.ConfiguredAdministratorPending
+            && !initialStatus.AllowsProvider("Atproto"))
+        {
+            await RejectAtprotoSignInAsync(ctx, principal, "configured_provider_mismatch");
+            return false;
+        }
+
+        var hasAdminAuthority = await ctx.RequestServices
+            .GetRequiredService<BffAdminClaimsTransformation>()
+            .EnrichPrincipalAsync(
+                principal,
+                properties,
+                forceRefresh: true,
+                synchronizeUser: true,
+                cancellationToken: ctx.RequestAborted);
+        var refreshedStatus = await statusProvider.GetStatusAsync(ctx.RequestAborted);
+        if (initialStatus.Disposition == BffOnboardingDisposition.ConfiguredAdministratorPending
+            && (refreshedStatus.Disposition != BffOnboardingDisposition.Completed || !hasAdminAuthority)
+            || refreshedStatus.Disposition == BffOnboardingDisposition.Closed)
+        {
+            await RejectAtprotoSignInAsync(ctx, principal, "onboarding_authority_rejected");
+            return false;
+        }
+
         await ctx.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity),
+            principal,
             properties);
         ctx.RequestServices.GetService<ICircuitAccessTokenService>()?.SetToken(session.AccessToken);
+        return true;
+    }
+
+    private static async Task RejectAtprotoSignInAsync(
+        HttpContext ctx,
+        ClaimsPrincipal principal,
+        string reason)
+    {
+        var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("AuthEndpoints");
+        ctx.RequestServices.GetRequiredService<IBffSessionRefreshService>()
+            .ClearCircuitTokenState(ctx, principal, logger, reason);
+        await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     }
 
     private static string GetSafePostedReturnPath(string? value) =>
@@ -408,17 +472,14 @@ public static class BffAuthEndpoints
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("AuthEndpoints");
 
-        if (await ShouldGateForOnboardingAsync(ctx))
-        {
-            logger.LogInformation(
-                "[AuthEndpoints] Redirecting /auth/login to /setup because onboarding is incomplete.");
-            ctx.Response.Redirect("/setup");
-            return;
-        }
-
         var returnUrlService = ctx.RequestServices.GetRequiredService<IBffReturnUrlService>();
         var returnUrl = returnUrlService.GetSafeReturnUrl(ctx, logger);
         var provider = ctx.Request.Query["provider"].ToString();
+        var onboardingAdmission = await ResolveOnboardingAdmissionAsync(ctx, provider, isChallengeEndpoint: false);
+        if (!ApplyOnboardingAdmission(ctx, onboardingAdmission, logger, "/auth/login"))
+        {
+            return;
+        }
 
         if (string.IsNullOrWhiteSpace(provider))
         {
@@ -431,35 +492,68 @@ public static class BffAuthEndpoints
         ctx.Response.Redirect(redirectUrl);
     }
 
-    private static async Task<bool> ShouldGateForOnboardingAsync(HttpContext ctx)
+    private static async Task<AuthOnboardingAdmission> ResolveOnboardingAdmissionAsync(
+        HttpContext ctx,
+        string provider,
+        bool isChallengeEndpoint)
+    {
+        var statusProvider = ctx.RequestServices.GetRequiredService<IBffOnboardingStatusProvider>();
+        var status = await statusProvider.GetStatusAsync(ctx.RequestAborted);
+        return status.Disposition switch
+        {
+            BffOnboardingDisposition.Completed => AuthOnboardingAdmission.Allow,
+            BffOnboardingDisposition.InteractivePending => HasTrustedSetupSecret(ctx)
+                ? AuthOnboardingAdmission.Allow
+                : AuthOnboardingAdmission.RedirectSetup,
+            BffOnboardingDisposition.ConfiguredAdministratorPending =>
+                isChallengeEndpoint && status.AllowsProvider(provider)
+                    ? AuthOnboardingAdmission.Allow
+                    : AuthOnboardingAdmission.Deny,
+            BffOnboardingDisposition.Closed => AuthOnboardingAdmission.Unavailable,
+            _ => AuthOnboardingAdmission.Unavailable
+        };
+    }
+
+    private static bool ApplyOnboardingAdmission(
+        HttpContext ctx,
+        AuthOnboardingAdmission admission,
+        ILogger logger,
+        string endpoint)
+    {
+        switch (admission)
+        {
+            case AuthOnboardingAdmission.Allow:
+                return true;
+            case AuthOnboardingAdmission.RedirectSetup:
+                logger.LogInformation(
+                    "[AuthEndpoints] Redirecting {Endpoint} to /setup because interactive onboarding is pending.",
+                    endpoint);
+                ctx.Response.Redirect("/setup");
+                return false;
+            case AuthOnboardingAdmission.Deny:
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return false;
+            case AuthOnboardingAdmission.Unavailable:
+            default:
+                ctx.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return false;
+        }
+    }
+
+    private static bool HasTrustedSetupSecret(HttpContext ctx)
     {
         var protectedSetupSecret = ctx.Request.Cookies["setup-secret"];
         var cookieProtector = ctx.RequestServices.GetService<ISetupSecretCookieProtector>();
-        if (cookieProtector?.TryUnprotect(protectedSetupSecret, out var setupSecret) == true
-            && !string.IsNullOrWhiteSpace(setupSecret))
-        {
-            return false;
-        }
+        return cookieProtector?.TryUnprotect(protectedSetupSecret, out var setupSecret) == true
+            && !string.IsNullOrWhiteSpace(setupSecret);
+    }
 
-        var provider = ctx.RequestServices.GetService<IBffOnboardingStatusProvider>();
-        if (provider is null)
-        {
-            return false;
-        }
-
-        try
-        {
-            var status = await provider.GetStatusAsync(ctx.RequestAborted);
-            return status.Known && !status.IsCompleted;
-        }
-        catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch
-        {
-            return false;
-        }
+    private enum AuthOnboardingAdmission
+    {
+        Allow,
+        RedirectSetup,
+        Deny,
+        Unavailable
     }
 
     private static async Task HandleSignoutAsync(HttpContext ctx)

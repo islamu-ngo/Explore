@@ -1,6 +1,7 @@
 // ABOUTME: Creates the real ATProto publication planner with federation disabled for unrelated handler unit tests.
 // ABOUTME: Keeps lifecycle tests focused while preserving the planner's fail-closed governance behavior.
 
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Federation.Atproto.Services;
@@ -9,6 +10,7 @@ using Explore.Application.Settings;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Federation;
+using Explore.Domain.ValueObjects;
 using NSubstitute;
 
 namespace Event.Application.UnitTests.Common;
@@ -112,7 +114,10 @@ internal static class AtprotoPublicationPlannerTestFactory
                 PdsHost = "https://pds.example/"
             }]);
         var logins = Substitute.For<IUserExternalLoginRepository>();
-        logins.GetByProviderAndKey(RepositoryBackedAtprotoSession.Provider, did)
+        logins.GetByProviderAndKey(
+                RepositoryBackedAtprotoSession.Provider,
+                PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(
+                    AtprotoDid.Parse(did)))
             .Returns(new UserExternalLogin
             {
                 Id = Guid.CreateVersion7(),

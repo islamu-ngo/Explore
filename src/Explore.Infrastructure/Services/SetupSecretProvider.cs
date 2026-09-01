@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -115,7 +116,7 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
             using var scope = _scopeFactory.CreateScope();
             var repository = scope.ServiceProvider.GetRequiredService<IInstanceBootstrapStateRepository>();
             var bootstrapState = await repository.GetCurrent(cancellationToken);
-            _isBootstrapComplete = bootstrapState?.IsCompleted == true;
+            _isBootstrapComplete = bootstrapState?.Status == InstanceBootstrapStatus.Completed;
 
             if (_isBootstrapComplete.Value)
             {

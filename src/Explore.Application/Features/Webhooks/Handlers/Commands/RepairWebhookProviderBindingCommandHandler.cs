@@ -12,6 +12,7 @@ using Explore.Application.Features.Webhooks.Requests.Commands;
 using Explore.Application.Features.Webhooks.Validators;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.Webhooks.Handlers.Commands;
@@ -82,7 +83,7 @@ public sealed class RepairWebhookProviderBindingCommandHandler(
         }
 
         var bootstrap = await bootstrapStateRepository.GetCurrent(cancellationToken);
-        if (bootstrap is not { IsCompleted: true } || bootstrap.Id == Guid.Empty)
+        if (bootstrap is not { Status: InstanceBootstrapStatus.Completed } || bootstrap.Id == Guid.Empty)
         {
             return Failure(
                 consumer.Id,

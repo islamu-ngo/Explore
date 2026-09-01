@@ -22,6 +22,8 @@ using Explore.Domain.Enums;
 using Explore.Domain.Secrets;
 using Explore.Domain.ValueObjects;
 using Explore.Infrastructure.Services.Federation;
+using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -108,11 +110,13 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         var atprotoIdentities = Substitute.For<IAtprotoIdentityRepository>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var tokenIssuer = Substitute.For<IAtprotoSessionTokenIssuer>();
+        var sender = Substitute.For<ISender>();
         var tenantContext = Substitute.For<ITenantContext>();
         tenantContext.TenantId.Returns(Guid.NewGuid());
         var handler = new BootstrapAtprotoSessionCommandHandler(
             fixture.Gateway,
             tokenIssuer,
+            sender,
             externalLogins,
             users,
             actors,
@@ -134,6 +138,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             unitOfWork,
             Substitute.For<IAdminCacheInvalidator>(),
             tenantContext,
+            new ConfigurationBuilder().Build(),
             TimeProvider.System);
         var payload = JsonSerializer.SerializeToUtf8Bytes(CreateSession());
 

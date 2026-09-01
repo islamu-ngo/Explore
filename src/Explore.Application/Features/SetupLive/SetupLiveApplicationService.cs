@@ -10,11 +10,17 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Secrets;
 using Explore.Application.Contracts.SetupLive;
+using Explore.Domain.Enums;
+using Explore.Domain.Secrets;
 using Explore.Domain.SetupLive;
 using ISLAMU.Wire.Contracts.SetupLive;
 using Microsoft.Extensions.Logging;
 using DomainEnrollmentState = Explore.Domain.SetupLive.SetupEnrollmentState;
 using WireEnrollmentState = ISLAMU.Wire.Contracts.SetupLive.SetupEnrollmentState;
+using DomainOperationOutcome = Explore.Domain.SetupLive.SetupSecretBindingOperationOutcome;
+using DomainOperationState = Explore.Domain.SetupLive.SetupSecretBindingOperationState;
+using WireOperationOutcome = ISLAMU.Wire.Contracts.SetupLive.SetupSecretBindingOperationOutcome;
+using WireOperationState = ISLAMU.Wire.Contracts.SetupLive.SetupSecretBindingOperationState;
 
 public enum SetupLiveApplicationStatus
 {
@@ -35,7 +41,8 @@ public sealed record SetupLiveEnrollmentResult(
 
 public sealed record SetupLiveReadinessResult(
     SetupLiveApplicationStatus Status,
-    IReadOnlyList<SetupSecretBindingReadinessItem>? Items = null);
+    IReadOnlyList<SetupSecretBindingReadinessItem>? Items = null,
+    bool CanWrite = false);
 
 public sealed record SetupLiveSecretBindingResult(
     SetupLiveApplicationStatus Status,
@@ -49,6 +56,7 @@ public sealed class SetupLiveApplicationService(
     IAuthorizationProvider authorization,
     ITenantContext tenantContext,
     ISetupSecretBindingWriter secretBindingWriter,
+    ISetupSecretBindingReadinessReader secretBindingReadiness,
     ISetupSecretBindingCommitmentAuthority commitmentAuthority,
     ISetupSecretBindingOperationCoordinator operationCoordinator,
     ISetupSecretBindingCommitBarrier commitBarrier,
@@ -58,7 +66,7 @@ public sealed class SetupLiveApplicationService(
     private static readonly EventId MilestoneEvent = new(19_620, "SetupLiveMilestone");
     private static readonly TimeSpan EnrollmentLifetime = TimeSpan.FromMinutes(15);
 
-    public Task<SetupLiveSecretBindingResult> WriteSecretBindingAsync(
+    public async Task<SetupLiveSecretBindingResult> WriteSecretBindingAsync(
         Guid tenantId,
         Guid enrollmentId,
         Guid userId,
@@ -66,9 +74,257 @@ public sealed class SetupLiveApplicationService(
         Guid operationKey,
         string bindingKey,
         ReadOnlyMemory<byte> secretValue,
-        CancellationToken cancellationToken) =>
-        Task.FromResult(new SetupLiveSecretBindingResult(
-            SetupLiveApplicationStatus.Unavailable));
+        CancellationToken cancellationToken)
+    {
+        if (!IsVersion7(operationKey)
+            || secretValue.Length is < 1 or > 65_536
+            || !IsSupportedBindingKey(bindingKey))
+        {
+            return new(SetupLiveApplicationStatus.Unavailable);
+        }
+
+        AuthorizedEnrollment? authorized = await AuthorizeCurrentEnrollmentAsync(
+            tenantId,
+            enrollmentId,
+            userId,
+            capability,
+            AuthorizationActions.Tenants.Update,
+            SetupEnrollmentScope.SecretBindingWrite,
+            cancellationToken);
+        if (authorized is null)
+            return new(SetupLiveApplicationStatus.Unavailable);
+
+        SecretBinding? binding = await secretBindingRepository.GetByKeyAndScopeAsync(
+            bindingKey,
+            SecretScope.Instance,
+            scopeId: null,
+            cancellationToken);
+        if (binding is null || !IsVersion7(binding.Id))
+            return new(SetupLiveApplicationStatus.Unavailable);
+
+        SetupSecretBindingCommitment commitment;
+        try
+        {
+            commitment = await commitmentAuthority.CommitAsync(
+                new SetupSecretBindingCommitmentRequest(
+                    tenantId,
+                    authorized.Enrollment.ActorId,
+                    enrollmentId,
+                    authorized.Enrollment.Generation,
+                    operationKey,
+                    bindingKey,
+                    secretValue),
+                cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            return new(SetupLiveApplicationStatus.Unavailable);
+        }
+
+        string requestFingerprint = Digest(
+            $"setup-live-secret-binding-v1\n{tenantId:D}\n{authorized.Enrollment.ActorId:D}\n{enrollmentId:D}\n{authorized.Enrollment.Generation}\n{operationKey:D}\n{binding.Id:D}\n{bindingKey}");
+        Guid operationId = Guid.CreateVersion7();
+        DateTime createdAt = UtcNow();
+        var coordination = new SetupSecretBindingCoordinationRequest(
+            tenantId,
+            enrollmentId,
+            authorized.Enrollment.Generation);
+        await using IAsyncDisposable lease = await operationCoordinator.AcquireAsync(
+            coordination,
+            cancellationToken);
+
+        SecretWriteAdmission admission = await unitOfWork.ExecuteSerializableAsync(
+            async token =>
+            {
+                AuthorizedEnrollment? current = await AuthorizeEnrollmentAsync(
+                    tenantId,
+                    enrollmentId,
+                    userId,
+                    capability,
+                    AuthorizationActions.Tenants.Update,
+                    SetupEnrollmentScope.SecretBindingWrite,
+                    token);
+                if (current is null
+                    || current.Enrollment.Generation
+                        != authorized.Enrollment.Generation)
+                {
+                    return new SecretWriteAdmission(
+                        SetupLiveApplicationStatus.Unavailable);
+                }
+
+                SetupSecretBindingOperation? existing =
+                    await setupLiveRepository.FindOperationAsync(
+                        tenantId,
+                        operationKey,
+                        token);
+                if (existing is not null)
+                {
+                    if (existing.Match(
+                            tenantId,
+                            current.Enrollment.ActorId,
+                            enrollmentId,
+                            current.Enrollment.Generation,
+                            operationKey,
+                            bindingKey,
+                            requestFingerprint,
+                            commitment.KeyVersion,
+                            commitment.Commitment)
+                        == SetupReplayDecision.Conflict)
+                    {
+                        return new SecretWriteAdmission(
+                            SetupLiveApplicationStatus.Conflict);
+                    }
+
+                    return new SecretWriteAdmission(
+                        SetupLiveApplicationStatus.Duplicate,
+                        existing);
+                }
+
+                var operation = SetupSecretBindingOperation.CreateAccepted(
+                    operationId,
+                    tenantId,
+                    current.Enrollment.ActorId,
+                    enrollmentId,
+                    current.Enrollment.Generation,
+                    operationKey,
+                    bindingKey,
+                    requestFingerprint,
+                    commitment.KeyVersion,
+                    commitment.Commitment,
+                    createdAt);
+                await setupLiveRepository.AddAsync(operation, token);
+                await setupLiveRepository.SaveChangesAsync(token);
+                return new SecretWriteAdmission(
+                    SetupLiveApplicationStatus.Created,
+                    operation);
+            },
+            cancellationToken);
+        if (admission.Status == SetupLiveApplicationStatus.Duplicate)
+            return new(admission.Status, MapOperation(admission.Operation!));
+        if (admission.Status != SetupLiveApplicationStatus.Created)
+            return new(admission.Status);
+
+        try
+        {
+            await LogMilestoneAsync(
+                SetupSecretBindingContractMetadata.Operation,
+                SetupSecretBindingContractMetadata.BeforeProviderDispatchMilestone);
+            await commitBarrier.WaitBeforeProviderDispatchAsync(cancellationToken);
+            bool canDispatch = await unitOfWork.ExecuteSerializableAsync(
+                async token =>
+                {
+                    SetupSecretBindingOperation? operation =
+                        await setupLiveRepository.FindOperationAsync(
+                            tenantId,
+                            operationKey,
+                            token);
+                    SetupTargetEnrollment? enrollment =
+                        await setupLiveRepository.FindCurrentEnrollmentAsync(
+                            tenantId,
+                            enrollmentId,
+                            token);
+                    if (operation is null || enrollment is null)
+                        return false;
+                    if (!operation.CanDispatch(enrollment, UtcNow()))
+                    {
+                        if (operation.State == DomainOperationState.Accepted)
+                        {
+                            operation.Fail(
+                                DomainOperationOutcome.UnavailableEnrollment,
+                                UtcNow());
+                            await setupLiveRepository.SaveChangesAsync(token);
+                        }
+                        return false;
+                    }
+                    return true;
+                },
+                cancellationToken);
+            if (!canDispatch)
+                return new(SetupLiveApplicationStatus.Unavailable);
+
+            SetupSecretBindingWriteOutcome outcome =
+                await secretBindingWriter.WriteAsync(
+                    new SetupSecretBindingWriteRequest(
+                        tenantId,
+                        enrollmentId,
+                        authorized.Enrollment.Generation,
+                        admission.Operation!.Id,
+                        binding.Id,
+                        bindingKey,
+                        secretValue),
+                    cancellationToken);
+            SetupSecretBindingOperation settled =
+                await unitOfWork.ExecuteSerializableAsync(
+                    async token =>
+                    {
+                        SetupSecretBindingOperation operation =
+                            await setupLiveRepository.FindOperationAsync(
+                                tenantId,
+                                operationKey,
+                                token)
+                            ?? throw new InvalidOperationException(
+                                "Setup secret-binding operation is missing.");
+                        DateTime settledAt = UtcNow();
+                        if (outcome == SetupSecretBindingWriteOutcome.Ready)
+                            operation.Succeed(settledAt);
+                        else
+                            operation.Fail(MapFailure(outcome), settledAt);
+                        await setupLiveRepository.SaveChangesAsync(token);
+                        return operation;
+                    },
+                    CancellationToken.None);
+            return new(
+                SetupLiveApplicationStatus.Success,
+                MapOperation(settled));
+        }
+        catch (OperationCanceledException)
+        {
+            await CancelOperationAsync(tenantId, operationKey);
+            throw;
+        }
+    }
+
+    public async Task<SetupLiveSecretBindingResult> GetSecretBindingOperationAsync(
+        Guid tenantId,
+        Guid enrollmentId,
+        Guid operationId,
+        Guid userId,
+        string? capability,
+        CancellationToken cancellationToken)
+    {
+        if (!IsVersion7(operationId))
+            return new(SetupLiveApplicationStatus.Unavailable);
+        AuthorizedEnrollment? authorized = await AuthorizeCurrentEnrollmentAsync(
+            tenantId,
+            enrollmentId,
+            userId,
+            capability,
+            AuthorizationActions.Tenants.View,
+            SetupEnrollmentScope.SecretBindingWrite,
+            cancellationToken);
+        if (authorized is null)
+            return new(SetupLiveApplicationStatus.Unavailable);
+
+        await using IAsyncDisposable lease = await operationCoordinator.AcquireAsync(
+            new SetupSecretBindingCoordinationRequest(
+                tenantId,
+                enrollmentId,
+                authorized.Enrollment.Generation),
+            cancellationToken);
+        SetupSecretBindingOperation? operation =
+            await setupLiveRepository.FindOperationByIdAsync(
+                tenantId,
+                operationId,
+                cancellationToken);
+        return operation is not null
+            && operation.EnrollmentId == enrollmentId
+            && operation.ActorId == authorized.Enrollment.ActorId
+            && operation.EnrollmentGeneration == authorized.Enrollment.Generation
+            ? new(
+                SetupLiveApplicationStatus.Success,
+                MapOperation(operation))
+            : new(SetupLiveApplicationStatus.Unavailable);
+    }
 
     public async Task<SetupLiveEnrollmentResult> CreateAsync(
         Guid tenantId,
@@ -195,7 +451,7 @@ public sealed class SetupLiveApplicationService(
 
                     await setupLiveRepository.AddAsync(enrollment, token);
                     await setupLiveRepository.AddAsync(claim, token);
-                    LogMilestone("enrollment.create", "before_commit");
+                    await LogMilestoneAsync("enrollment.create", "before_commit");
                     token.ThrowIfCancellationRequested();
                     await setupLiveRepository.SaveChangesAsync(token);
                     return new SetupLiveEnrollmentResult(
@@ -223,7 +479,7 @@ public sealed class SetupLiveApplicationService(
         string? capability,
         CancellationToken cancellationToken)
     {
-        AuthorizedEnrollment? authorized = await AuthorizeEnrollmentAsync(
+        AuthorizedEnrollment? authorized = await AuthorizeCurrentEnrollmentAsync(
             tenantId,
             enrollmentId,
             userId,
@@ -259,7 +515,7 @@ public sealed class SetupLiveApplicationService(
         if (!IsVersion7(operationKey))
             return new(SetupLiveApplicationStatus.Unavailable);
 
-        AuthorizedEnrollment? authorized = await AuthorizeEnrollmentAsync(
+        AuthorizedEnrollment? authorized = await AuthorizeCurrentEnrollmentAsync(
             tenantId,
             enrollmentId,
             userId,
@@ -269,6 +525,13 @@ public sealed class SetupLiveApplicationService(
             cancellationToken);
         if (authorized is null)
             return new(SetupLiveApplicationStatus.Unavailable);
+
+        await using IAsyncDisposable lease = await operationCoordinator.AcquireAsync(
+            new SetupSecretBindingCoordinationRequest(
+                tenantId,
+                enrollmentId,
+                authorized.Enrollment.Generation),
+            cancellationToken);
 
         DateTime observedAt = UtcNow();
         Guid claimId = Guid.CreateVersion7();
@@ -368,6 +631,38 @@ public sealed class SetupLiveApplicationService(
             $"setup-live-rotation-v1\n{tenantId:D}\n{actor.Id:D}\n{enrollmentId:D}\n{Digest(currentCapability!.ToHeaderValue())}");
         DateTime observedAt = UtcNow();
         Guid claimId = Guid.CreateVersion7();
+
+        SetupEnrollmentIssuanceClaim? observedClaim =
+            await setupLiveRepository.FindIssuanceClaimAsync(
+                tenantId,
+                operationKey,
+                cancellationToken);
+        long coordinationGeneration;
+        if (observedClaim is not null)
+        {
+            coordinationGeneration = observedClaim.EnrollmentGeneration;
+        }
+        else
+        {
+            AuthorizedEnrollment? current = await AuthorizeCurrentEnrollmentAsync(
+                tenantId,
+                enrollmentId,
+                userId,
+                currentCapability.ToHeaderValue(),
+                AuthorizationActions.Tenants.Update,
+                SetupEnrollmentScope.TargetRead,
+                cancellationToken);
+            if (current is null)
+                return new(SetupLiveApplicationStatus.Unavailable);
+            coordinationGeneration = current.Enrollment.Generation;
+        }
+
+        await using IAsyncDisposable lease = await operationCoordinator.AcquireAsync(
+            new SetupSecretBindingCoordinationRequest(
+                tenantId,
+                enrollmentId,
+                coordinationGeneration),
+            cancellationToken);
 
         byte[]? capabilityBytes = null;
         try
@@ -496,21 +791,51 @@ public sealed class SetupLiveApplicationService(
         if (authorized is null)
             return new(SetupLiveApplicationStatus.Unavailable);
 
+        SecretBinding? signing = await secretBindingRepository.GetByKeyAndScopeAsync(
+            "setup.signing",
+            SecretScope.Instance,
+            scopeId: null,
+            cancellationToken);
+        SecretBinding? encryption = await secretBindingRepository.GetByKeyAndScopeAsync(
+            "setup.encryption",
+            SecretScope.Instance,
+            scopeId: null,
+            cancellationToken);
+        SetupSecretBindingReadinessState signingState =
+            await ReadinessStateAsync(signing, cancellationToken);
+        SetupSecretBindingReadinessState encryptionState =
+            await ReadinessStateAsync(encryption, cancellationToken);
+        bool anyConfigured = signing is not null || encryption is not null;
+        bool canWrite = authorized.Scopes.Contains(
+                SetupEnrollmentScope.SecretBindingWrite)
+            && await IsAuthorizedAsync(
+                tenantId,
+                userId,
+                AuthorizationActions.Tenants.Update,
+                cancellationToken);
+
         SetupSecretBindingReadinessItem[] items =
         [
             new()
             {
                 BindingKey = "setup.signing",
-                State = SetupSecretBindingReadinessState.Unavailable
+                State = signing is null && anyConfigured
+                    ? SetupSecretBindingReadinessState.Unconfigured
+                    : signingState
             },
             new()
             {
                 BindingKey = "setup.encryption",
-                State = SetupSecretBindingReadinessState.Unavailable
+                State = encryption is null && anyConfigured
+                    ? SetupSecretBindingReadinessState.Unconfigured
+                    : encryptionState
             }
         ];
 
-        return new(SetupLiveApplicationStatus.Success, Array.AsReadOnly(items));
+        return new(
+            SetupLiveApplicationStatus.Success,
+            Array.AsReadOnly(items),
+            canWrite);
     }
 
     public async Task<SetupLiveApplicationStatus> ValidateSecretWriteAsync(
@@ -530,7 +855,7 @@ public sealed class SetupLiveApplicationService(
             return SetupLiveApplicationStatus.Unavailable;
         }
 
-        AuthorizedEnrollment? authorized = await AuthorizeEnrollmentAsync(
+        AuthorizedEnrollment? authorized = await AuthorizeCurrentEnrollmentAsync(
             tenantId,
             enrollmentId,
             userId,
@@ -550,6 +875,43 @@ public sealed class SetupLiveApplicationService(
         string? capabilityValue,
         string action,
         SetupEnrollmentScope requiredScope,
+        CancellationToken cancellationToken)
+        => await AuthorizeEnrollmentCoreAsync(
+            tenantId,
+            enrollmentId,
+            userId,
+            capabilityValue,
+            action,
+            requiredScope,
+            useCurrentSnapshot: false,
+            cancellationToken);
+
+    private async Task<AuthorizedEnrollment?> AuthorizeCurrentEnrollmentAsync(
+        Guid tenantId,
+        Guid enrollmentId,
+        Guid userId,
+        string? capabilityValue,
+        string action,
+        SetupEnrollmentScope requiredScope,
+        CancellationToken cancellationToken)
+        => await AuthorizeEnrollmentCoreAsync(
+            tenantId,
+            enrollmentId,
+            userId,
+            capabilityValue,
+            action,
+            requiredScope,
+            useCurrentSnapshot: true,
+            cancellationToken);
+
+    private async Task<AuthorizedEnrollment?> AuthorizeEnrollmentCoreAsync(
+        Guid tenantId,
+        Guid enrollmentId,
+        Guid userId,
+        string? capabilityValue,
+        string action,
+        SetupEnrollmentScope requiredScope,
+        bool useCurrentSnapshot,
         CancellationToken cancellationToken)
     {
         if (!IsVersion7(tenantId)
@@ -571,8 +933,12 @@ public sealed class SetupLiveApplicationService(
             return null;
         }
 
-        SetupTargetEnrollment? enrollment =
-            await setupLiveRepository.FindEnrollmentAsync(
+        SetupTargetEnrollment? enrollment = useCurrentSnapshot
+            ? await setupLiveRepository.FindCurrentEnrollmentAsync(
+                tenantId,
+                enrollmentId,
+                cancellationToken)
+            : await setupLiveRepository.FindEnrollmentAsync(
                 tenantId,
                 enrollmentId,
                 cancellationToken);
@@ -635,6 +1001,91 @@ public sealed class SetupLiveApplicationService(
         Issuance = issuance
     };
 
+    private static SetupSecretBindingOperationData MapOperation(
+        SetupSecretBindingOperation operation) => new()
+    {
+        OperationId = operation.Id,
+        State = operation.State switch
+        {
+            DomainOperationState.Succeeded => WireOperationState.Succeeded,
+            DomainOperationState.Failed => WireOperationState.Failed,
+            DomainOperationState.Cancelled => WireOperationState.Cancelled,
+            _ => WireOperationState.Accepted
+        },
+        Outcome = operation.Outcome switch
+        {
+            DomainOperationOutcome.Ready => WireOperationOutcome.Ready,
+            DomainOperationOutcome.Unavailable => WireOperationOutcome.Unavailable,
+            DomainOperationOutcome.Unauthorized => WireOperationOutcome.Unauthorized,
+            DomainOperationOutcome.Invalid => WireOperationOutcome.Invalid,
+            DomainOperationOutcome.Cancelled => WireOperationOutcome.Cancelled,
+            DomainOperationOutcome.UnavailableEnrollment =>
+                WireOperationOutcome.UnavailableEnrollment,
+            _ => WireOperationOutcome.Accepted
+        },
+        EnrollmentGeneration = operation.EnrollmentGeneration,
+        CreatedAt = new DateTimeOffset(operation.CreatedAt),
+        SettledAt = operation.SettledAt.HasValue
+            ? new DateTimeOffset(operation.SettledAt.Value)
+            : null
+    };
+
+    private async Task CancelOperationAsync(Guid tenantId, Guid operationKey)
+    {
+        await unitOfWork.ExecuteSerializableAsync(
+            async token =>
+            {
+                SetupSecretBindingOperation? operation =
+                    await setupLiveRepository.FindOperationAsync(
+                        tenantId,
+                        operationKey,
+                        token);
+                if (operation?.State == DomainOperationState.Accepted)
+                {
+                    operation.Cancel(UtcNow());
+                    await setupLiveRepository.SaveChangesAsync(token);
+                }
+                return true;
+            },
+            CancellationToken.None);
+    }
+
+    private static DomainOperationOutcome MapFailure(
+        SetupSecretBindingWriteOutcome outcome) => outcome switch
+    {
+        SetupSecretBindingWriteOutcome.Unauthorized =>
+            DomainOperationOutcome.Unauthorized,
+        SetupSecretBindingWriteOutcome.Invalid => DomainOperationOutcome.Invalid,
+        _ => DomainOperationOutcome.Unavailable
+    };
+
+    private async Task<SetupSecretBindingReadinessState> ReadinessStateAsync(
+        SecretBinding? binding,
+        CancellationToken cancellationToken)
+    {
+        if (binding is null)
+            return SetupSecretBindingReadinessState.Unavailable;
+        SetupSecretBindingWriteOutcome outcome =
+            await secretBindingReadiness.GetReadinessAsync(
+                binding.Id,
+                binding.SettingKey,
+                cancellationToken);
+        return outcome switch
+        {
+            SetupSecretBindingWriteOutcome.Ready =>
+                SetupSecretBindingReadinessState.Ready,
+            SetupSecretBindingWriteOutcome.Invalid =>
+                SetupSecretBindingReadinessState.Invalid,
+            SetupSecretBindingWriteOutcome.Unauthorized =>
+                SetupSecretBindingReadinessState.Unauthorized,
+            _ => SetupSecretBindingReadinessState.Unavailable
+        };
+    }
+
+    private static bool IsSupportedBindingKey(string value) =>
+        string.Equals(value, "setup.signing", StringComparison.Ordinal)
+        || string.Equals(value, "setup.encryption", StringComparison.Ordinal);
+
     private static IReadOnlyList<SetupEnrollmentScope> RecoverScopes(
         string expectedDigest)
     {
@@ -693,14 +1144,25 @@ public sealed class SetupLiveApplicationService(
 
     private DateTime UtcNow() => timeProvider.GetUtcNow().UtcDateTime;
 
-    private void LogMilestone(string operation, string milestone) =>
-        logger.LogInformation(
-            MilestoneEvent,
-            "Setup live milestone {SetupOperation} {SetupMilestone}",
-            operation,
-            milestone);
+    private async Task LogMilestoneAsync(string operation, string milestone)
+    {
+        Task emission;
+        using (ExecutionContext.SuppressFlow())
+        {
+            emission = Task.Run(() => logger.LogInformation(
+                MilestoneEvent,
+                "Setup live milestone {SetupOperation} {SetupMilestone}",
+                operation,
+                milestone));
+        }
+        await emission.ConfigureAwait(false);
+    }
 
     private sealed record AuthorizedEnrollment(
         SetupTargetEnrollment Enrollment,
         IReadOnlyList<SetupEnrollmentScope> Scopes);
+
+    private sealed record SecretWriteAdmission(
+        SetupLiveApplicationStatus Status,
+        SetupSecretBindingOperation? Operation = null);
 }

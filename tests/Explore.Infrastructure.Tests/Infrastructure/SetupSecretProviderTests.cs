@@ -4,6 +4,7 @@
 using System.Security.Cryptography;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +23,7 @@ public class SetupSecretProviderTests
             .Build();
         var provider = new SetupSecretProvider(
             configuration,
-            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+            CreateScopeFactory(CreatePendingBootstrap()));
 
         await provider.InitializeAsync();
 
@@ -89,13 +90,13 @@ public class SetupSecretProviderTests
 
         using var firstProvider = new SetupSecretProvider(
             configuration,
-            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+            CreateScopeFactory(CreatePendingBootstrap()));
         await firstProvider.InitializeAsync();
         var generatedSecret = (await File.ReadAllTextAsync(secretPath)).Trim();
 
         using var restartedProvider = new SetupSecretProvider(
             configuration,
-            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+            CreateScopeFactory(CreatePendingBootstrap()));
         await restartedProvider.InitializeAsync();
 
         await Assert.That(generatedSecret.Length).IsEqualTo(32);
@@ -125,7 +126,7 @@ public class SetupSecretProviderTests
         SetupSecretProvider[] providers = Enumerable.Range(0, 16)
             .Select(_ => new SetupSecretProvider(
                 configuration,
-                CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false })))
+                CreateScopeFactory(CreatePendingBootstrap())))
             .ToArray();
 
         await Task.WhenAll(providers.Select(provider => provider.InitializeAsync()));
@@ -148,7 +149,7 @@ public class SetupSecretProviderTests
             .Build();
         using (var generatedProvider = new SetupSecretProvider(
                    generatedConfiguration,
-                   CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false })))
+                   CreateScopeFactory(CreatePendingBootstrap())))
         {
             await generatedProvider.InitializeAsync();
         }
@@ -178,7 +179,7 @@ public class SetupSecretProviderTests
             .Build();
         using var provider = new SetupSecretProvider(
             configuration,
-            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+            CreateScopeFactory(CreatePendingBootstrap()));
         await provider.InitializeAsync();
 
         provider.Lock();
@@ -197,7 +198,7 @@ public class SetupSecretProviderTests
             .Build();
         using var provider = new SetupSecretProvider(
             configuration,
-            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = true }));
+            CreateScopeFactory(CreateCompletedBootstrap()));
 
         await provider.InitializeAsync();
 
@@ -219,7 +220,7 @@ public class SetupSecretProviderTests
             .Build();
         using var provider = new SetupSecretProvider(
             configuration,
-            CreateScopeFactory(new InstanceBootstrapState { IsCompleted = false }));
+            CreateScopeFactory(CreatePendingBootstrap()));
 
         InvalidOperationException exception = await Assert.That(
                 async () => await provider.InitializeAsync())
@@ -325,7 +326,7 @@ public class SetupSecretProviderTests
     [Test]
     public async Task IsSetupModeActive_WhenBootstrapComplete_ReturnsFalse()
     {
-        var provider = CreateProvider(new InstanceBootstrapState { IsCompleted = true });
+        var provider = CreateProvider(CreateCompletedBootstrap());
         await provider.InitializeAsync();
 
         await Assert.That(provider.IsSetupModeActive).IsEqualTo(false);
@@ -334,7 +335,7 @@ public class SetupSecretProviderTests
     [Test]
     public async Task IsSetupModeActive_WhenBootstrapNotCompleteAndNotLocked_ReturnsTrue()
     {
-        var provider = CreateProvider(new InstanceBootstrapState { IsCompleted = false });
+        var provider = CreateProvider(CreatePendingBootstrap());
         await provider.InitializeAsync();
 
         await Assert.That(provider.IsSetupModeActive).IsEqualTo(true);
@@ -343,7 +344,7 @@ public class SetupSecretProviderTests
     [Test]
     public async Task IsSetupModeActive_BeforeInitialize_ReturnsFalse()
     {
-        var provider = CreateProvider(new InstanceBootstrapState { IsCompleted = false });
+        var provider = CreateProvider(CreatePendingBootstrap());
 
         await Assert.That(provider.IsSetupModeActive).IsEqualTo(false);
     }
@@ -368,7 +369,7 @@ public class SetupSecretProviderTests
     public async Task Lock_AppliesSetupAndValidationTransitions()
     {
         var secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-        var provider = CreateProvider(secret, new InstanceBootstrapState { IsCompleted = false });
+        var provider = CreateProvider(secret, CreatePendingBootstrap());
         await provider.InitializeAsync();
 
         await Assert.That(provider.IsSetupModeActive).IsEqualTo(true);
@@ -404,6 +405,23 @@ public class SetupSecretProviderTests
         scopeFactory.CreateScope().Returns(scope);
 
         return scopeFactory;
+    }
+
+    private static InstanceBootstrapState CreatePendingBootstrap() =>
+        InstanceBootstrapState.CreateInteractivePending(
+            Guid.CreateVersion7(),
+            DeploymentMode.SingleTenant,
+            DateTime.UtcNow);
+
+    private static InstanceBootstrapState CreateCompletedBootstrap()
+    {
+        DateTime completedAt = DateTime.UtcNow;
+        InstanceBootstrapState bootstrap = InstanceBootstrapState.CreateInteractivePending(
+            Guid.CreateVersion7(),
+            DeploymentMode.SingleTenant,
+            completedAt.AddMinutes(-1));
+        bootstrap.CompleteInteractive(Guid.CreateVersion7(), completedAt);
+        return bootstrap;
     }
 
     private sealed class TemporaryDirectory : IDisposable

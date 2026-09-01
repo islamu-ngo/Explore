@@ -6,13 +6,27 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Authentication;
+using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
+using Explore.Application.Features.Authentication.Atproto.Models;
+using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
+using Explore.Application.Features.Authentication.Atproto.Services;
+using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 using Explore.Persistence;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -37,6 +51,7 @@ public class UserExternalLoginIntegrationTests
         request.Headers.Add(TestAuthHandler.AuthHeaderName,
             CreateCustomAuthHeader(
                 ("sub", "google-sub-123"),
+                ("iss", "https://accounts.google.com"),
                 ("name", "Shared User"),
                 ("email", "shared@example.com"),
                 ("given_name", "Shared"),
@@ -102,6 +117,274 @@ public class UserExternalLoginIntegrationTests
         await Assert.That(body).IsNotNull();
         await Assert.That(body!.IsSuccess).IsTrue();
         await Assert.That(body.Id).IsEqualTo(existingUserId);
+    }
+
+    [Test]
+    public async Task BootstrapAtprotoSession_WhenGatewayReturnsDifferentDid_FailsBeforeClaimOrWrites()
+    {
+        AtprotoDid expectedDid = AtprotoDid.Parse($"did:plc:{Guid.NewGuid():N}");
+        AtprotoDid substitutedDid = AtprotoDid.Parse($"did:plc:{Guid.NewGuid():N}");
+        var gateway = Substitute.For<IAtprotoOAuthSecurityGateway>();
+        gateway.VerifyAsync(Arg.Any<AtprotoOAuthVerificationInput>(), Arg.Any<CancellationToken>())
+            .Returns(AtprotoOAuthVerificationResult.Verified(new AtprotoVerifiedOAuthSession(
+                substitutedDid,
+                "substituted.example.test",
+                new Uri("https://pds.example.test"),
+                "oauth-key",
+                new byte[] { 1 })));
+        var sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<ClaimConfiguredInstanceAdministratorCommand>(), Arg.Any<CancellationToken>())
+            .Returns(BaseCommandResponse.Failure<Guid>("claim_rejected", "Claim rejected."));
+        var logins = Substitute.For<IUserExternalLoginRepository>();
+        var tokenIssuer = Substitute.For<IAtprotoSessionTokenIssuer>();
+        BootstrapAtprotoSessionCommandHandler handler = CreateAtprotoHandler(
+            gateway,
+            tokenIssuer,
+            sender,
+            logins,
+            out _);
+
+        AtprotoSessionBootstrapResult result = await handler.Handle(
+            CreateBootstrapCommand(expectedDid),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("pds_identity_mismatch");
+        await sender.DidNotReceiveWithAnyArgs().Send(default(ClaimConfiguredInstanceAdministratorCommand)!, default);
+        await logins.DidNotReceiveWithAnyArgs().GetByProviderAndKey(default!, default!);
+        await gateway.DidNotReceiveWithAnyArgs().PreparePersistenceAsync(default!, default, default, default);
+        await gateway.DidNotReceiveWithAnyArgs().PersistPreparedAsync(default!, default);
+        await tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
+    }
+
+    [Test]
+    public async Task BootstrapAtprotoSession_ConcurrentFirstClaim_RereadsAfterClaimAndPreservesOrdering()
+    {
+        AtprotoDid did = AtprotoDid.Parse($"did:plc:{Guid.NewGuid():N}");
+        Guid userId = Guid.CreateVersion7();
+        var events = new List<string>();
+        object eventLock = new();
+        void Record(string value)
+        {
+            lock (eventLock)
+            {
+                events.Add(value);
+            }
+        }
+
+        var gateway = Substitute.For<IAtprotoOAuthSecurityGateway>();
+        gateway.VerifyAsync(Arg.Any<AtprotoOAuthVerificationInput>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                Record("verify");
+                return AtprotoOAuthVerificationResult.Verified(new AtprotoVerifiedOAuthSession(
+                    did,
+                    "canonical.example.test",
+                    new Uri("https://pds.example.test"),
+                    "oauth-key",
+                    new byte[] { 1 }));
+            });
+        gateway.PreparePersistenceAsync(
+                Arg.Any<AtprotoVerifiedOAuthSession>(),
+                Arg.Any<Guid>(),
+                Arg.Any<Guid>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                Record("prepare");
+                return new AtprotoPreparedOAuthSession(
+                    new byte[] { 2 },
+                    "encryption-key",
+                    1,
+                    call.ArgAt<Guid>(1),
+                    call.ArgAt<Guid>(2),
+                    did,
+                    "https://pds.example.test/",
+                    "oauth-key",
+                    null);
+            });
+        gateway.PersistPreparedAsync(Arg.Any<AtprotoPreparedOAuthSession>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                Record("persist-session");
+                return Task.CompletedTask;
+            });
+
+        var login = new UserExternalLogin
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            User = null!,
+            TenantId = PlatformDefaults.DefaultTenantId,
+            Tenant = null!,
+            Provider = "atproto",
+            ProviderKey = did.Value,
+            ProviderDisplayName = "AT Protocol"
+        };
+        var logins = Substitute.For<IUserExternalLoginRepository>();
+        var bothInitialReads = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int loginReads = 0;
+        logins.GetByProviderAndKey("atproto", Arg.Any<ProviderAccountKey>())
+            .Returns(async _ =>
+            {
+                int read = Interlocked.Increment(ref loginReads);
+                if (read <= 2)
+                {
+                    Record("initial-read");
+                    if (read == 2)
+                    {
+                        bothInitialReads.TrySetResult();
+                    }
+                    await bothInitialReads.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                    return null;
+                }
+
+                Record(read <= 4 ? "post-claim-reread" : "transaction-reread");
+                return login;
+            });
+
+        var sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<ClaimConfiguredInstanceAdministratorCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                Record("claim");
+                return BaseCommandResponse.Success(Guid.CreateVersion7(), "claimed");
+            });
+        var tokenIssuer = Substitute.For<IAtprotoSessionTokenIssuer>();
+        tokenIssuer.IssueAsync(userId, Arg.Any<Guid>(), did, Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                Record("issue-token");
+                return new AtprotoIssuedSessionToken("platform-token", DateTimeOffset.UtcNow.AddMinutes(5));
+            });
+
+        BootstrapAtprotoSessionCommandHandler first = CreateAtprotoHandler(
+            gateway,
+            tokenIssuer,
+            sender,
+            logins,
+            out _);
+        BootstrapAtprotoSessionCommandHandler second = CreateAtprotoHandler(
+            gateway,
+            tokenIssuer,
+            sender,
+            logins,
+            out _);
+
+        AtprotoSessionBootstrapResult[] results = await Task.WhenAll(
+            first.Handle(CreateBootstrapCommand(did), CancellationToken.None),
+            second.Handle(CreateBootstrapCommand(did), CancellationToken.None));
+
+        await Assert.That(results.All(result => result.Success)).IsTrue();
+        await Assert.That(loginReads).IsEqualTo(6);
+        await sender.Received(2).Send(
+            Arg.Any<ClaimConfiguredInstanceAdministratorCommand>(),
+            Arg.Any<CancellationToken>());
+        List<string> snapshot;
+        lock (eventLock)
+        {
+            snapshot = [.. events];
+        }
+        await Assert.That(snapshot.IndexOf("verify")).IsLessThan(snapshot.IndexOf("claim"));
+        await Assert.That(snapshot.IndexOf("claim")).IsLessThan(snapshot.IndexOf("post-claim-reread"));
+        await Assert.That(snapshot.IndexOf("post-claim-reread")).IsLessThan(snapshot.IndexOf("prepare"));
+        await Assert.That(snapshot.IndexOf("prepare")).IsLessThan(snapshot.IndexOf("persist-session"));
+        await Assert.That(snapshot.IndexOf("persist-session")).IsLessThan(snapshot.IndexOf("issue-token"));
+    }
+
+    private static BootstrapAtprotoSessionCommand CreateBootstrapCommand(AtprotoDid did) =>
+        new(
+            did,
+            "https://pds.example.test/",
+            "oauth-key",
+            AtprotoSubjectClassification.Person,
+            new byte[] { 1 });
+
+    private static BootstrapAtprotoSessionCommandHandler CreateAtprotoHandler(
+        IAtprotoOAuthSecurityGateway gateway,
+        IAtprotoSessionTokenIssuer tokenIssuer,
+        ISender sender,
+        IUserExternalLoginRepository logins,
+        out IUnitOfWork unitOfWork)
+    {
+        var users = Substitute.For<IUserRepository>();
+        users.GetById(Arg.Any<Guid>()).Returns(call => new User
+        {
+            Id = call.Arg<Guid>(),
+            AuthProvider = "atproto",
+            AuthProviderId = "linked",
+            Pii = new UserPii
+            {
+                UserId = call.Arg<Guid>(),
+                Email = "atproto@example.test",
+                FirstName = "ATProto",
+                LastName = "User"
+            }
+        });
+        var actors = Substitute.For<IActorRepository>();
+        actors.GetTrackedActorByUserId(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new Actor
+            {
+                Id = Guid.CreateVersion7(),
+                ActorTypeId = (int)ActorTypeEnum.User,
+                ActorType = null!,
+                UserId = call.ArgAt<Guid>(0),
+                Pii = new ActorPii { DisplayName = "ATProto User" }
+            });
+        var identities = Substitute.For<IAtprotoIdentityRepository>();
+        identities.GetByDid(Arg.Any<AtprotoDid>(), Arg.Any<CancellationToken>())
+            .Returns((AtprotoIdentity?)null);
+        identities.Create(Arg.Any<AtprotoIdentity>()).Returns(call => call.Arg<AtprotoIdentity>());
+        var tenantUsers = Substitute.For<ITenantUserRepository>();
+        tenantUsers.GetByTenantAndUserAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((TenantUser?)null);
+        tenantUsers.Create(Arg.Any<TenantUser>()).Returns(call =>
+        {
+            TenantUser value = call.Arg<TenantUser>();
+            value.Id = Guid.CreateVersion7();
+            return value;
+        });
+        var tenantRoles = Substitute.For<ITenantUserRoleGrantRepository>();
+        tenantRoles.IsTenantAdminInCurrentTenantAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        var onboarding = new AtprotoSubjectOnboardingOperation(
+            logins,
+            identities,
+            actors,
+            Substitute.For<IActorTypeRepository>(),
+            tenantUsers,
+            tenantRoles,
+            Substitute.For<IOrganizationRepository>(),
+            Substitute.For<IOrganizationTenantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            Substitute.For<IGroupRepository>(),
+            Substitute.For<IGroupTenantRepository>(),
+            Substitute.For<IGroupMemberRepository>(),
+            Substitute.For<IActorReferenceConsolidationRepository>(),
+            Substitute.For<IGenericRepository<ActorMerge, Guid>>());
+        unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.ExecuteSerializableAsync(
+                Arg.Any<Func<CancellationToken, Task<AtprotoSubjectOnboardingResult>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<Func<CancellationToken, Task<AtprotoSubjectOnboardingResult>>>(0)(
+                call.ArgAt<CancellationToken>(1)));
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(PlatformDefaults.DefaultTenantId);
+        var configuration = new ConfigurationBuilder().Build();
+
+        return new BootstrapAtprotoSessionCommandHandler(
+            gateway,
+            tokenIssuer,
+            sender,
+            logins,
+            users,
+            actors,
+            onboarding,
+            unitOfWork,
+            Substitute.For<IAdminCacheInvalidator>(),
+            tenantContext,
+            configuration,
+            TimeProvider.System);
     }
 
     private async Task EnsureUserExistsAsync(Guid userId, string? email = null)

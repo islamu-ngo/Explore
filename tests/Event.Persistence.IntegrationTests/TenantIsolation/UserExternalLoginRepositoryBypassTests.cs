@@ -2,6 +2,7 @@
 // ABOUTME: Proves cross-tenant identity resolution does not leak unrelated ambient tenant login rows.
 
 using Event.Persistence.IntegrationTests.Fixtures;
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -31,8 +32,14 @@ public class UserExternalLoginRepositoryBypassTests(PostgreSqlContainerFixture f
         seedContext.Users.AddRange(userA, userB);
         await seedContext.SaveChangesAsync();
 
-        var tenantALogin = CreateExternalLogin(tenantA.Id, userA.Id, "keycloak", "subject-a");
-        var tenantBLogin = CreateExternalLogin(tenantB.Id, userB.Id, "keycloak", "subject-b");
+        ProviderAccountKey tenantAKey = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            "https://auth.example.test/realms/ISLAMU",
+            "subject-a");
+        ProviderAccountKey tenantBKey = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            "https://auth.example.test/realms/ISLAMU",
+            "subject-b");
+        var tenantALogin = CreateExternalLogin(tenantA.Id, userA.Id, "keycloak", tenantAKey.Value);
+        var tenantBLogin = CreateExternalLogin(tenantB.Id, userB.Id, "keycloak", tenantBKey.Value);
         seedContext.UserExternalLogins.AddRange(tenantALogin, tenantBLogin);
         await seedContext.SaveChangesAsync();
 
@@ -43,8 +50,8 @@ public class UserExternalLoginRepositoryBypassTests(PostgreSqlContainerFixture f
             .ToListAsync();
 
         var repository = new UserExternalLoginRepository(tenantBContext);
-        var tenantAByProviderKey = await repository.GetByProviderAndKey("keycloak", "subject-a");
-        var wrongProvider = await repository.GetByProviderAndKey("google", "subject-a");
+        var tenantAByProviderKey = await repository.GetByProviderAndKey("keycloak", tenantAKey);
+        var wrongProvider = await repository.GetByProviderAndKey("google", tenantAKey);
         var tenantAByUserWithoutBypass = await repository.GetByUser(userA.Id);
 
         await Assert.That(visibleWithoutBypass).IsEquivalentTo([tenantBLogin.Id]);

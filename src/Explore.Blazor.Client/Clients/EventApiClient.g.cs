@@ -6659,37 +6659,37 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> CreateSetupTargetEnrollmentAsync(System.Guid tenantId, CreateSetupTargetEnrollmentRequest body, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<SwaggerResponse<HalResourceOfSetupTargetEnrollmentData>> CreateSetupTargetEnrollmentAsync(System.Guid tenantId, string idempotency_Key, CreateSetupTargetEnrollmentRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> GetSetupTargetEnrollmentAsync(System.Guid tenantId, System.Guid enrollmentId, string? x_Setup_Enrollment_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> GetSetupTargetEnrollmentAsync(System.Guid tenantId, System.Guid enrollmentId, string x_Setup_Enrollment_Capability, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> RevokeSetupTargetEnrollmentAsync(System.Guid tenantId, System.Guid enrollmentId, string? x_Setup_Enrollment_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> RevokeSetupTargetEnrollmentAsync(System.Guid tenantId, System.Guid enrollmentId, string x_Setup_Enrollment_Capability, string idempotency_Key, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> RotateSetupTargetEnrollmentCapabilityAsync(System.Guid tenantId, System.Guid enrollmentId, string? x_Setup_Enrollment_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<SwaggerResponse<HalResourceOfSetupTargetEnrollmentData>> RotateSetupTargetEnrollmentCapabilityAsync(System.Guid tenantId, System.Guid enrollmentId, string x_Setup_Enrollment_Capability, string idempotency_Key, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingReadinessDocument> GetSetupSecretBindingReadinessAsync(System.Guid tenantId, System.Guid enrollmentId, string? x_Setup_Enrollment_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingReadinessDocument> GetSetupSecretBindingReadinessAsync(System.Guid tenantId, System.Guid enrollmentId, string x_Setup_Enrollment_Capability, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Accepted</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingOperationData> WriteSetupSecretBindingAsync(System.Guid tenantId, System.Guid enrollmentId, string bindingKey, string? x_Setup_Enrollment_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingOperationData> WriteSetupSecretBindingAsync(System.Guid tenantId, System.Guid enrollmentId, string bindingKey, string x_Setup_Enrollment_Capability, string idempotency_Key, System.IO.Stream body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingOperationData> GetSetupSecretBindingOperationAsync(System.Guid tenantId, System.Guid enrollmentId, System.Guid operationId, string? x_Setup_Enrollment_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingOperationData> GetSetupSecretBindingOperationAsync(System.Guid tenantId, System.Guid enrollmentId, System.Guid operationId, string x_Setup_Enrollment_Capability, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -98099,7 +98099,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> CreateSetupTargetEnrollmentAsync(System.Guid tenantId, CreateSetupTargetEnrollmentRequest body, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<SwaggerResponse<HalResourceOfSetupTargetEnrollmentData>> CreateSetupTargetEnrollmentAsync(System.Guid tenantId, string idempotency_Key, CreateSetupTargetEnrollmentRequest body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (tenantId == null)
                 throw new System.ArgumentNullException("tenantId");
@@ -98114,17 +98114,18 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
-                    if (idempotency_Key != null)
-                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+                    if (idempotency_Key == null)
+                        throw new System.ArgumentNullException("idempotency_Key");
+                    request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
 
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
                     var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
                     var content_ = new System.Net.Http.ByteArrayContent(json_);
-                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
                     request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/hal+json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
@@ -98169,7 +98170,7 @@ namespace Explore.Blazor.Client.Clients
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
-                            return objectResponse_.Object;
+                            return new SwaggerResponse<HalResourceOfSetupTargetEnrollmentData>(status_, headers_, objectResponse_.Object);
                         }
                         else
                         if (status_ == 201)
@@ -98179,7 +98180,7 @@ namespace Explore.Blazor.Client.Clients
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
-                            return objectResponse_.Object;
+                            return new SwaggerResponse<HalResourceOfSetupTargetEnrollmentData>(status_, headers_, objectResponse_.Object);
                         }
                         else
                         if (status_ == 400)
@@ -98274,7 +98275,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> GetSetupTargetEnrollmentAsync(System.Guid tenantId, System.Guid enrollmentId, string? x_Setup_Enrollment_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> GetSetupTargetEnrollmentAsync(System.Guid tenantId, System.Guid enrollmentId, string x_Setup_Enrollment_Capability, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (tenantId == null)
                 throw new System.ArgumentNullException("tenantId");
@@ -98289,13 +98290,14 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
-                    if (x_Setup_Enrollment_Capability != null)
-                        request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
+                    if (x_Setup_Enrollment_Capability == null)
+                        throw new System.ArgumentNullException("x_Setup_Enrollment_Capability");
+                    request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
 
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/hal+json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
@@ -98436,7 +98438,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> RevokeSetupTargetEnrollmentAsync(System.Guid tenantId, System.Guid enrollmentId, string? x_Setup_Enrollment_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> RevokeSetupTargetEnrollmentAsync(System.Guid tenantId, System.Guid enrollmentId, string x_Setup_Enrollment_Capability, string idempotency_Key, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (tenantId == null)
                 throw new System.ArgumentNullException("tenantId");
@@ -98451,16 +98453,18 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
-                    if (x_Setup_Enrollment_Capability != null)
-                        request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
+                    if (x_Setup_Enrollment_Capability == null)
+                        throw new System.ArgumentNullException("x_Setup_Enrollment_Capability");
+                    request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
 
-                    if (idempotency_Key != null)
-                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+                    if (idempotency_Key == null)
+                        throw new System.ArgumentNullException("idempotency_Key");
+                    request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
 
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
                     request_.Method = new System.Net.Http.HttpMethod("DELETE");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/hal+json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
@@ -98601,7 +98605,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupTargetEnrollmentData> RotateSetupTargetEnrollmentCapabilityAsync(System.Guid tenantId, System.Guid enrollmentId, string? x_Setup_Enrollment_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<SwaggerResponse<HalResourceOfSetupTargetEnrollmentData>> RotateSetupTargetEnrollmentCapabilityAsync(System.Guid tenantId, System.Guid enrollmentId, string x_Setup_Enrollment_Capability, string idempotency_Key, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (tenantId == null)
                 throw new System.ArgumentNullException("tenantId");
@@ -98616,17 +98620,19 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
-                    if (x_Setup_Enrollment_Capability != null)
-                        request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
+                    if (x_Setup_Enrollment_Capability == null)
+                        throw new System.ArgumentNullException("x_Setup_Enrollment_Capability");
+                    request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
 
-                    if (idempotency_Key != null)
-                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+                    if (idempotency_Key == null)
+                        throw new System.ArgumentNullException("idempotency_Key");
+                    request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
 
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
                     request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
                     request_.Method = new System.Net.Http.HttpMethod("POST");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/hal+json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
@@ -98673,7 +98679,7 @@ namespace Explore.Blazor.Client.Clients
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
-                            return objectResponse_.Object;
+                            return new SwaggerResponse<HalResourceOfSetupTargetEnrollmentData>(status_, headers_, objectResponse_.Object);
                         }
                         else
                         if (status_ == 400)
@@ -98768,7 +98774,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingReadinessDocument> GetSetupSecretBindingReadinessAsync(System.Guid tenantId, System.Guid enrollmentId, string? x_Setup_Enrollment_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingReadinessDocument> GetSetupSecretBindingReadinessAsync(System.Guid tenantId, System.Guid enrollmentId, string x_Setup_Enrollment_Capability, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (tenantId == null)
                 throw new System.ArgumentNullException("tenantId");
@@ -98783,13 +98789,14 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
-                    if (x_Setup_Enrollment_Capability != null)
-                        request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
+                    if (x_Setup_Enrollment_Capability == null)
+                        throw new System.ArgumentNullException("x_Setup_Enrollment_Capability");
+                    request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
 
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/hal+json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
@@ -98931,7 +98938,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>Accepted</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingOperationData> WriteSetupSecretBindingAsync(System.Guid tenantId, System.Guid enrollmentId, string bindingKey, string? x_Setup_Enrollment_Capability = null, string? idempotency_Key = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingOperationData> WriteSetupSecretBindingAsync(System.Guid tenantId, System.Guid enrollmentId, string bindingKey, string x_Setup_Enrollment_Capability, string idempotency_Key, System.IO.Stream body, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (tenantId == null)
                 throw new System.ArgumentNullException("tenantId");
@@ -98942,6 +98949,9 @@ namespace Explore.Blazor.Client.Clients
             if (bindingKey == null)
                 throw new System.ArgumentNullException("bindingKey");
 
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
             var client_ = _httpClient;
             var disposeClient_ = false;
             try
@@ -98949,17 +98959,21 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
-                    if (x_Setup_Enrollment_Capability != null)
-                        request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
+                    if (x_Setup_Enrollment_Capability == null)
+                        throw new System.ArgumentNullException("x_Setup_Enrollment_Capability");
+                    request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
 
-                    if (idempotency_Key != null)
-                        request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
+                    if (idempotency_Key == null)
+                        throw new System.ArgumentNullException("idempotency_Key");
+                    request_.Headers.TryAddWithoutValidation("Idempotency-Key", ConvertToString(idempotency_Key, System.Globalization.CultureInfo.InvariantCulture));
 
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
-                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    var content_ = new System.Net.Http.StreamContent(body);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream");
+                    request_.Content = content_;
                     request_.Method = new System.Net.Http.HttpMethod("PUT");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/hal+json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
@@ -99102,7 +99116,7 @@ namespace Explore.Blazor.Client.Clients
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingOperationData> GetSetupSecretBindingOperationAsync(System.Guid tenantId, System.Guid enrollmentId, System.Guid operationId, string? x_Setup_Enrollment_Capability = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalResourceOfSetupSecretBindingOperationData> GetSetupSecretBindingOperationAsync(System.Guid tenantId, System.Guid enrollmentId, System.Guid operationId, string x_Setup_Enrollment_Capability, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (tenantId == null)
                 throw new System.ArgumentNullException("tenantId");
@@ -99120,13 +99134,14 @@ namespace Explore.Blazor.Client.Clients
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
 
-                    if (x_Setup_Enrollment_Capability != null)
-                        request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
+                    if (x_Setup_Enrollment_Capability == null)
+                        throw new System.ArgumentNullException("x_Setup_Enrollment_Capability");
+                    request_.Headers.TryAddWithoutValidation("X-Setup-Enrollment-Capability", ConvertToString(x_Setup_Enrollment_Capability, System.Globalization.CultureInfo.InvariantCulture));
 
                     if (x_Api_Version != null)
                         request_.Headers.TryAddWithoutValidation("X-Api-Version", ConvertToString(x_Api_Version, System.Globalization.CultureInfo.InvariantCulture));
                     request_.Method = new System.Net.Http.HttpMethod("GET");
-                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("application/hal+json"));
 
                     var urlBuilder_ = new System.Text.StringBuilder();
 
@@ -123946,12 +123961,17 @@ namespace Explore.Blazor.Client.Clients
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("clientChallenge")]
-        [System.ComponentModel.DataAnnotations.Required]
-        public SetupClientChallenge ClientChallenge { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.StringLength(43, MinimumLength = 43)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^[A-Za-z0-9_-]{43}$")]
+        public string ClientChallenge { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("requestedScopes")]
+        // TODO(system.text.json): Add ItemConverterType with enum converter when supported
         [System.ComponentModel.DataAnnotations.Required]
-        public System.Collections.Generic.ICollection<object> RequestedScopes { get; set; } = new System.Collections.Generic.List<object>();
+        [System.ComponentModel.DataAnnotations.MinLength(1)]
+        [System.ComponentModel.DataAnnotations.MaxLength(3)]
+        public System.Collections.Generic.ICollection<SetupEnrollmentScope> RequestedScopes { get; set; } = new System.Collections.Generic.List<SetupEnrollmentScope>();
 
     }
 
@@ -132562,6 +132582,24 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalCollectionEmbeddedOfSetupSecretBindingReadinessItem
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("items")]
+        public System.Collections.Generic.ICollection<HalResourceOfSetupSecretBindingReadinessItem>? Items { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalCollectionEmbeddedOfStorageObjectListDto
     {
 
@@ -141146,6 +141184,19 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("isCompleted")]
         public bool? IsCompleted { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        public string? State { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mode")]
+        public string? Mode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("generation")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? Generation { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("isAuthenticated")]
         public bool? IsAuthenticated { get; set; } = default!;
 
@@ -144642,6 +144693,44 @@ namespace Explore.Blazor.Client.Clients
     public partial class HalResourceOfSetupSecretBindingOperationData
     {
 
+        [System.Text.Json.Serialization.JsonPropertyName("operationId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid OperationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupSecretBindingOperationState>))]
+        public SetupSecretBindingOperationState State { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("outcome")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupSecretBindingOperationOutcome>))]
+        public SetupSecretBindingOperationOutcome Outcome { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enrollmentGeneration")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long EnrollmentGeneration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset CreatedAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("settledAt")]
+        public System.DateTimeOffset? SettledAt { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -144657,6 +144746,51 @@ namespace Explore.Blazor.Client.Clients
     public partial class HalResourceOfSetupSecretBindingReadinessDocument
     {
 
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public HalCollectionEmbeddedOfSetupSecretBindingReadinessItem? _embedded { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HalResourceOfSetupSecretBindingReadinessItem
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string BindingKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupSecretBindingReadinessState>))]
+        public SetupSecretBindingReadinessState State { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -144671,6 +144805,48 @@ namespace Explore.Blazor.Client.Clients
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class HalResourceOfSetupTargetEnrollmentData
     {
+
+        [System.Text.Json.Serialization.JsonPropertyName("enrollmentId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid EnrollmentId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupEnrollmentState>))]
+        public SetupEnrollmentState State { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("generation")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long Generation { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scopes")]
+        // TODO(system.text.json): Add ItemConverterType with enum converter when supported
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(1)]
+        [System.ComponentModel.DataAnnotations.MaxLength(3)]
+        public System.Collections.Generic.ICollection<SetupEnrollmentScope> Scopes { get; set; } = new System.Collections.Generic.List<SetupEnrollmentScope>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("issuance")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupEnrollmentIssuance>))]
+        public SetupEnrollmentIssuance Issuance { get; set; } = default!;
+
+        /// <summary>
+        /// HAL hypermedia links
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_links")]
+        public System.Collections.Generic.IDictionary<string, HalLink>? _links { get; set; } = default!;
+
+        /// <summary>
+        /// Embedded related resources
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("_embedded")]
+        public object? _embedded { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -147135,6 +147311,19 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("isCompleted")]
         public bool? IsCompleted { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        public string? State { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("mode")]
+        public string? Mode { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("provider")]
+        public string? Provider { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("generation")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? Generation { get; init; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("isAuthenticated")]
         public bool? IsAuthenticated { get; init; } = default!;
@@ -161899,7 +162088,131 @@ namespace Explore.Blazor.Client.Clients
 }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class SetupClientChallenge
+    public enum SetupEnrollmentIssuance
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"issued")]
+        Issued = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"already_issued")]
+        Already_issued = 1,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum SetupEnrollmentScope
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"target.read")]
+        Target_read = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"secret_binding.readiness")]
+        Secret_binding_readiness = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"secret_binding.write")]
+        Secret_binding_write = 2,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum SetupEnrollmentState
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"active")]
+        Active = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"revoked")]
+        Revoked = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"expired")]
+        Expired = 2,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class SetupSecretBindingOperationData
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid OperationId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupSecretBindingOperationState>))]
+        public SetupSecretBindingOperationState State { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("outcome")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupSecretBindingOperationOutcome>))]
+        public SetupSecretBindingOperationOutcome Outcome { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enrollmentGeneration")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long EnrollmentGeneration { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset CreatedAt { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("settledAt")]
+        public System.DateTimeOffset? SettledAt { get; init; } = default!;
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum SetupSecretBindingOperationOutcome
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"accepted")]
+        Accepted = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ready")]
+        Ready = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"unavailable")]
+        Unavailable = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"unauthorized")]
+        Unauthorized = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"invalid")]
+        Invalid = 4,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"cancelled")]
+        Cancelled = 5,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"unavailable_enrollment")]
+        Unavailable_enrollment = 6,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum SetupSecretBindingOperationState
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"accepted")]
+        Accepted = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"succeeded")]
+        Succeeded = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"failed")]
+        Failed = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"cancelled")]
+        Cancelled = 3,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class SetupSecretBindingReadinessDocument
     {
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
@@ -161910,6 +162223,52 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class SetupSecretBindingReadinessItem
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("bindingKey")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string BindingKey { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupSecretBindingReadinessState>))]
+        public SetupSecretBindingReadinessState State { get; init; } = default!;
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum SetupSecretBindingReadinessState
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"unconfigured")]
+        Unconfigured = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"ready")]
+        Ready = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"unavailable")]
+        Unavailable = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"unauthorized")]
+        Unauthorized = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"invalid")]
+        Invalid = 4,
 
     }
 
@@ -161928,6 +162287,47 @@ namespace Explore.Blazor.Client.Clients
             get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
             set { _additionalProperties = value; }
         }
+
+        // Generated record values are intentionally omitted from diagnostic text.
+        protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+        {
+            return false;
+        }
+}
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record class SetupTargetEnrollmentData
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("enrollmentId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid EnrollmentId { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("state")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupEnrollmentState>))]
+        public SetupEnrollmentState State { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("generation")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long Generation { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("expiresAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset ExpiresAt { get; init; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("scopes")]
+        // TODO(system.text.json): Add ItemConverterType with enum converter when supported
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MinLength(1)]
+        [System.ComponentModel.DataAnnotations.MaxLength(3)]
+        public System.Collections.Generic.ICollection<SetupEnrollmentScope> Scopes { get; init; } = new System.Collections.Generic.List<SetupEnrollmentScope>();
+
+        [System.Text.Json.Serialization.JsonPropertyName("issuance")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<SetupEnrollmentIssuance>))]
+        public SetupEnrollmentIssuance Issuance { get; init; } = default!;
 
         // Generated record values are intentionally omitted from diagnostic text.
         protected virtual bool PrintMembers(System.Text.StringBuilder builder)
@@ -182041,6 +182441,32 @@ namespace Explore.Blazor.Client.Clients
                 _response.Dispose();
             if (_client != null)
                 _client.Dispose();
+        }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SwaggerResponse
+    {
+        public int StatusCode { get; private set; }
+
+        public System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IEnumerable<string>> Headers { get; private set; }
+
+        public SwaggerResponse(int statusCode, System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IEnumerable<string>> headers)
+        {
+            StatusCode = statusCode;
+            Headers = headers;
+        }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class SwaggerResponse<TResult> : SwaggerResponse
+    {
+        public TResult Result { get; private set; }
+
+        public SwaggerResponse(int statusCode, System.Collections.Generic.IReadOnlyDictionary<string, System.Collections.Generic.IEnumerable<string>> headers, TResult result)
+            : base(statusCode, headers)
+        {
+            Result = result;
         }
     }
 

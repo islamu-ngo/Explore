@@ -45,8 +45,11 @@
       "parameterDictionaryType": "System.Collections.Generic.IDictionary",
       "responseArrayType": "System.Collections.Generic.ICollection",
       "responseDictionaryType": "System.Collections.Generic.IDictionary",
-      "wrapResponses": false,
-      "wrapResponseMethods": [],
+      "wrapResponses": true,
+      "wrapResponseMethods": [
+        "EventApiClient.CreateSetupTargetEnrollment",
+        "EventApiClient.RotateSetupTargetEnrollmentCapability"
+      ],
       "generateResponseClasses": true,
       "responseClass": "SwaggerResponse",
       "namespace": "Explore.Blazor.Client.Clients",

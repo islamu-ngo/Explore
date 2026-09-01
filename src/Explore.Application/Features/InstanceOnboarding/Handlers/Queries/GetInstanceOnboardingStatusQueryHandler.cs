@@ -1,14 +1,13 @@
 // ABOUTME: Handles onboarding status queries for startup gating and role-aware onboarding UX.
 // ABOUTME: Combines bootstrap completion state with current user instance admin membership.
 
-using System.Text.Json;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
-using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Queries;
@@ -17,7 +16,6 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
 {
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly IAdminContext _adminContext;
-    private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly IDeploymentModeProvider _deploymentModeProvider;
@@ -25,14 +23,12 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
     public GetInstanceOnboardingStatusQueryHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         IAdminContext adminContext,
-        ISystemSettingRepository systemSettingRepository,
         ICurrentUserService currentUserService,
         ISetupSecretProvider setupSecretProvider,
         IDeploymentModeProvider deploymentModeProvider)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _adminContext = adminContext;
-        _systemSettingRepository = systemSettingRepository;
         _currentUserService = currentUserService;
         _setupSecretProvider = setupSecretProvider;
         _deploymentModeProvider = deploymentModeProvider;
@@ -41,12 +37,29 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
     public async Task<InstanceOnboardingStatusDto> Handle(GetInstanceOnboardingStatusQuery request, CancellationToken cancellationToken)
     {
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent(cancellationToken);
-        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode, cancellationToken);
-        var selectedDeploymentMode = await ResolveDeploymentModeAsync(bootstrap?.SelectedDeploymentMode, bootstrap?.IsCompleted == true, deploymentModeSetting?.Value, cancellationToken);
+        string state = bootstrap switch
+        {
+            null => "InteractivePending",
+            { Status: InstanceBootstrapStatus.Pending, Mode: InstanceBootstrapMode.Interactive } =>
+                "InteractivePending",
+            { Status: InstanceBootstrapStatus.Pending, Mode: InstanceBootstrapMode.ConfiguredAdministrator } =>
+                "ConfiguredAdministratorPending",
+            { Status: InstanceBootstrapStatus.Completed } => "Completed",
+            _ => "Invalid"
+        };
+        var isCompleted = state == "Completed";
+        var selectedDeploymentMode = bootstrap?.DeploymentMode.ToString()
+            ?? (await _deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken)).ToString();
 
         var response = new InstanceOnboardingStatusDto
         {
-            IsCompleted = bootstrap?.IsCompleted == true,
+            IsCompleted = isCompleted,
+            State = state,
+            Mode = bootstrap?.Mode.ToString() ?? InstanceBootstrapMode.Interactive.ToString(),
+            Provider = state == "ConfiguredAdministratorPending"
+                ? bootstrap!.ProviderKind?.ToString()
+                : null,
+            Generation = bootstrap?.Generation ?? 1,
             IsAuthenticated = _currentUserService.IsAuthenticated,
             IsCurrentUserInstanceAdmin = false,
             SelectedDeploymentMode = selectedDeploymentMode,
@@ -93,41 +106,4 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
             : "Setup secrets are never shown in startup output. Configure SETUP_SECRET and restart the application to continue.";
     }
 
-    private static string DeserializeString(string? rawValue, string defaultValue)
-    {
-        if (string.IsNullOrWhiteSpace(rawValue))
-        {
-            return defaultValue;
-        }
-
-        try
-        {
-            var deserialized = JsonSerializer.Deserialize<string>(rawValue);
-            return string.IsNullOrWhiteSpace(deserialized) ? defaultValue : deserialized;
-        }
-        catch
-        {
-            return rawValue.Trim('"');
-        }
-    }
-
-    private async Task<string> ResolveDeploymentModeAsync(
-        string? bootstrapMode,
-        bool isCompleted,
-        string? deploymentModeSettingValue,
-        CancellationToken cancellationToken)
-    {
-        if (!string.IsNullOrWhiteSpace(bootstrapMode))
-        {
-            return bootstrapMode;
-        }
-
-        if (!isCompleted)
-        {
-            return (await _deploymentModeProvider.GetConfiguredOnboardingModeAsync(cancellationToken)).ToString();
-        }
-
-        var currentMode = (await _deploymentModeProvider.GetCurrentModeAsync(cancellationToken)).ToString();
-        return DeserializeString(deploymentModeSettingValue, currentMode);
-    }
 }

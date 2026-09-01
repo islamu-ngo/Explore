@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Text.Json;
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Notifications;
 using Explore.Application.Contracts.Persistence;
@@ -105,8 +106,13 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         var normalizedExternalSystem = dto.ExternalSystem.Trim();
         var normalizedExternalCustomerId = dto.ExternalCustomerId.Trim();
         var normalizedTenantSlug = dto.TenantSlug.Trim().ToLowerInvariant();
-        var normalizedIdentityProvider = dto.ExternalAdmin.IdentityProvider.Trim();
-        var normalizedSubject = dto.ExternalAdmin.Subject.Trim();
+        var identityAuthority = dto.ExternalAdmin.IdentityProvider.Trim();
+        var normalizedSubject = dto.ExternalAdmin.Subject;
+        var normalizedIdentityProvider = ResolveIdentityProvider(identityAuthority, normalizedSubject);
+        ProviderAccountKey accountKey = CreateManagedProviderAccountKey(
+            normalizedIdentityProvider,
+            identityAuthority,
+            normalizedSubject);
         ManagedTenantProvisioningOperation? managedOperation = null;
         if (managementRequest is not null)
         {
@@ -188,45 +194,15 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             return Failure("A tenant with this slug already exists.", "Tenant slug must be unique across managed provider provisioning requests.");
         }
 
-        var existingLogin = await userExternalLoginRepository.GetByProviderAndKey(normalizedIdentityProvider, normalizedSubject);
+        var existingLogin = await userExternalLoginRepository.GetByProviderAndKey(
+            normalizedIdentityProvider,
+            accountKey);
         User? existingUser = existingLogin == null ? null : await userRepository.GetById(existingLogin.UserId);
         if (existingLogin != null && existingUser == null)
         {
             return Failure("External admin identity is linked to a missing user.", "The external login points to a user that could not be found.");
         }
 
-        if (existingLogin is null)
-        {
-            IReadOnlyList<User> matchingUsers = await userRepository.GetUsersByNormalizedEmailAsync(
-                dto.ExternalAdmin.Email,
-                cancellationToken);
-            if (matchingUsers.Count > 1)
-            {
-                return Failure(
-                    "Administrator email matches more than one account.",
-                    "Resolve the ambiguous normalized email before provisioning.",
-                    "tenant_administrator_email_ambiguous");
-            }
-
-            if (matchingUsers.Count == 1)
-            {
-                User matchingUser = matchingUsers[0];
-                bool invitation = managementRequest?.Administrator.Invitation is not null;
-                bool verifiedExternalIdentity = dto.ExternalAdmin.EmailVerified
-                    && SupportsVerifiedEmailMatch(normalizedIdentityProvider);
-                if ((invitation && matchingUser.EmailVerified == true) || verifiedExternalIdentity)
-                {
-                    existingUser = matchingUser;
-                }
-                else
-                {
-                    return Failure(
-                        "Administrator email is already linked to an account that cannot be safely matched.",
-                        "Only an existing verified invitation account or a verified Keycloak/Google identity can be matched by email.",
-                        "tenant_administrator_email_match_denied");
-                }
-            }
-        }
 
         var tenantId = Guid.CreateVersion7();
         var brandingDocumentId = Guid.CreateVersion7();
@@ -282,7 +258,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                     ct);
             Tenant tenant = creation.Tenant;
             tenant.Description = $"Provisioned from {dto.ExternalSystem.Trim()} customer {dto.ExternalCustomerId.Trim()} by provider {dto.ProviderKey.Trim()}.";
-            var user = await EnsureUserAsync(dto.ExternalAdmin, normalizedIdentityProvider, normalizedSubject, existingUser, userId);
+            var user = await EnsureUserAsync(dto.ExternalAdmin, normalizedIdentityProvider, accountKey, existingUser, userId);
             var userActor = await EnsureUserActorAsync(dto.ExternalAdmin, user, userActorId);
             var tenantUser = await EnsureTenantUserAsync(tenant.Id, user.Id, userActor.Id, tenantUserId, user.Id);
             var tenantUserProfile = await EnsureTenantUserProfileAsync(dto.ExternalAdmin, tenant.Id, tenantUser.Id, tenantUserProfileId, user.Id);
@@ -297,7 +273,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                     TenantId = tenant.Id,
                     Tenant = null!,
                     Provider = normalizedIdentityProvider,
-                    ProviderKey = normalizedSubject,
+                    ProviderKey = accountKey.Value,
                     ProviderDisplayName = dto.ExternalAdmin.IdentityProvider.Trim(),
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = user.Id
@@ -624,7 +600,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
     private async Task<User> EnsureUserAsync(
         ManagedProviderExternalAdminDto admin,
         string normalizedIdentityProvider,
-        string normalizedSubject,
+        ProviderAccountKey accountKey,
         User? existingUser,
         Guid userId)
     {
@@ -650,7 +626,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 LastName = admin.LastName.Trim()
             },
             AuthProvider = normalizedIdentityProvider,
-            AuthProviderId = normalizedSubject,
+            AuthProviderId = accountKey.Value,
             EmailVerified = admin.EmailVerified,
             CreatedAt = DateTime.UtcNow
         });
@@ -1344,6 +1320,44 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
         return ManagedTenantProvisioningRequestCodec.Deserialize(operation.RequestJson)
             .Administrator.Invitation?.Email;
     }
+
+    private static string ResolveIdentityProvider(string authority, string subject)
+    {
+        if (authority.Equals("atproto", StringComparison.OrdinalIgnoreCase))
+        {
+            _ = Explore.Domain.ValueObjects.AtprotoDid.Parse(subject);
+            return "atproto";
+        }
+
+        if (authority.Equals("managed-invitation", StringComparison.OrdinalIgnoreCase))
+        {
+            return "managed-invitation";
+        }
+
+        if (!Uri.TryCreate(authority, UriKind.Absolute, out Uri? issuer)
+            || (issuer.Scheme != Uri.UriSchemeHttps && issuer.Scheme != Uri.UriSchemeHttp))
+        {
+            throw new InvalidOperationException(
+                "Managed external identity requires an absolute OIDC issuer authority.");
+        }
+
+        return issuer.Host.Equals("accounts.google.com", StringComparison.OrdinalIgnoreCase)
+            ? "google"
+            : "keycloak";
+    }
+
+    private static ProviderAccountKey CreateManagedProviderAccountKey(
+        string provider,
+        string authority,
+        string subject) =>
+        provider == "atproto"
+            ? PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(
+                Explore.Domain.ValueObjects.AtprotoDid.Parse(subject))
+            : PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+                provider == "managed-invitation"
+                    ? "https://control-plane.invalid/managed-invitation"
+                    : authority,
+                subject);
 
     private static string ResolveDisplayName(ManagedProviderExternalAdminDto admin)
     {

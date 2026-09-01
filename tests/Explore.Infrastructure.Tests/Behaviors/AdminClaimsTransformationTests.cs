@@ -2,6 +2,7 @@
 // Verifies DB-first admin authority claims are correctly added to the ClaimsPrincipal.
 
 using System.Security.Claims;
+using Explore.Application.Authentication;
 using Explore.Application.Constants;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
@@ -18,7 +19,6 @@ public class AdminClaimsTransformationTests
 {
     private readonly IAdminContext _adminContext;
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
-    private readonly IUserRepository _userRepository;
     private readonly ILogger<AdminClaimsTransformation> _logger;
     private readonly AdminClaimsTransformation _sut;
 
@@ -26,9 +26,8 @@ public class AdminClaimsTransformationTests
     {
         _adminContext = Substitute.For<IAdminContext>();
         _userExternalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
-        _userRepository = Substitute.For<IUserRepository>();
         _logger = Substitute.For<ILogger<AdminClaimsTransformation>>();
-        _sut = new AdminClaimsTransformation(_adminContext, _userExternalLoginRepository, _userRepository, _logger);
+        _sut = new AdminClaimsTransformation(_adminContext, _userExternalLoginRepository, _logger);
     }
 
     [Test]
@@ -88,7 +87,6 @@ public class AdminClaimsTransformationTests
     {
         // Arrange
         var keycloakSubject = Guid.NewGuid();
-        var localUserId = Guid.NewGuid();
         const string email = "admin@test.islamu.org";
         var identity = new ClaimsIdentity(new[]
         {
@@ -98,25 +96,6 @@ public class AdminClaimsTransformationTests
             new Claim("email_verified", "true")
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
-        var localUser = new User
-        {
-            Id = localUserId,
-            Pii = new UserPii
-            {
-                UserId = localUserId,
-                Email = email,
-                FirstName = "Test",
-                LastName = "Admin"
-            },
-            AuthProvider = "keycloak",
-            AuthProviderId = keycloakSubject.ToString(),
-            EmailVerified = true,
-            ConcurrencyStamp = Guid.NewGuid()
-        };
-
-        _userExternalLoginRepository.GetByProviderAndKey("keycloak", keycloakSubject.ToString())
-            .Returns((UserExternalLogin?)null);
-        _userRepository.GetUserByEmail(email).Returns(localUser);
         _adminContext.IsInstanceAdminAsync(keycloakSubject, Arg.Any<CancellationToken>()).Returns(true);
         _adminContext.GetAdminTenantIdsAsync(keycloakSubject, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
@@ -131,8 +110,7 @@ public class AdminClaimsTransformationTests
         await Assert.That(result.HasClaim(AdminClaimTypes.InstanceAdmin, "true")).IsTrue();
         await _adminContext.Received(1).IsInstanceAdminAsync(keycloakSubject, Arg.Any<CancellationToken>());
         await _userExternalLoginRepository.DidNotReceive()
-            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<string>());
-        await _userRepository.DidNotReceive().GetUserByEmail(Arg.Any<string>());
+            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<ProviderAccountKey>());
     }
 
     [Test]

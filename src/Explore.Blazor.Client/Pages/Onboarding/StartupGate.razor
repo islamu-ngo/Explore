@@ -3,7 +3,7 @@
 @page "/startup"
 @using Explore.Blazor.Client.Routing.ControlPlane
 @using MudBlazor
-@inject IInstanceOnboardingService InstanceOnboardingService
+@inject IStartupRoutingService StartupRoutingService
 @inject NavigationManager Navigation
 @inject ILogger<StartupGate> Logger
 @rendermode InteractiveServer
@@ -23,8 +23,9 @@
     }
     else
     {
-        <MudPaper Class="pa-6">
+        <MudPaper Class="pa-6" role="status">
             <MudStack Spacing="3">
+                <MudText Typo="Typo.body1">Determining the safe startup destination.</MudText>
                 <MudSkeleton Width="60%" Height="32px" Class="mb-2" />
                 <MudSkeleton Width="100%" Height="20px" />
                 <MudSkeleton Width="80%" Height="20px" Class="mb-4" />
@@ -47,59 +48,44 @@
     {
         try
         {
-            var instanceStatus = await InstanceOnboardingService.GetStatusAsync();
-            if (instanceStatus == null)
+            var decision = await StartupRoutingService.GetRootDecisionAsync();
+            switch (decision)
             {
-                _error = "Could not determine onboarding status. Try refreshing.";
-                return;
-            }
-
-            if (instanceStatus.IsCompleted != true)
-            {
-                if (instanceStatus.IsAuthenticated == true &&
-                    await InstanceOnboardingService.GetAuthProviderConfiguredStateAsync() == true)
-                {
-                    Navigation.NavigateTo(
-                        await InstanceOnboardingService.ShouldSkipAuthorizationProviderStepAsync()
-                            ? "/onboarding/instance"
-                            : "/onboarding/authz-provider",
-                        forceLoad: true);
+                case StartupRouteDecision.Setup:
+                    Navigation.NavigateTo("/setup");
                     return;
-                }
-
-                Navigation.NavigateTo("/setup");
-                return;
+                case StartupRouteDecision.KeycloakChallenge:
+                    NavigateToProviderChallenge("keycloak");
+                    return;
+                case StartupRouteDecision.AtprotoChallenge:
+                    NavigateToProviderChallenge("atproto");
+                    return;
+                case StartupRouteDecision.InstanceAdmin:
+                    Navigation.NavigateTo(ControlPlaneRoutes.Overview);
+                    return;
+                case StartupRouteDecision.PublicLanding:
+                    Navigation.NavigateTo("/home");
+                    return;
+                case StartupRouteDecision.PublicHome:
+                    Navigation.NavigateTo("/events");
+                    return;
+                case StartupRouteDecision.Unavailable:
+                default:
+                    _error = "Could not determine a safe startup destination. Try refreshing.";
+                    return;
             }
-
-            var isSingleTenant = string.Equals(
-                instanceStatus.SelectedDeploymentMode,
-                "SingleTenant",
-                StringComparison.OrdinalIgnoreCase);
-            var isMultiTenant = string.Equals(
-                instanceStatus.SelectedDeploymentMode,
-                "MultiTenant",
-                StringComparison.OrdinalIgnoreCase);
-
-            if (!isSingleTenant && !isMultiTenant)
-            {
-                _error = "Could not determine deployment mode. Try refreshing.";
-                return;
-            }
-
-            if (isMultiTenant &&
-                instanceStatus.IsAuthenticated == true &&
-                instanceStatus.IsCurrentUserInstanceAdmin == true)
-            {
-                Navigation.NavigateTo(ControlPlaneRoutes.Overview);
-                return;
-            }
-
-            Navigation.NavigateTo("/events");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Startup routing failed.");
             _error = "Startup routing failed. Try refreshing.";
         }
+    }
+
+    private void NavigateToProviderChallenge(string provider)
+    {
+        Navigation.NavigateTo(
+            $"/auth/challenge?provider={provider}&returnUrl={Uri.EscapeDataString("/startup")}",
+            forceLoad: true);
     }
 }

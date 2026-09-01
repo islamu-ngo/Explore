@@ -15,6 +15,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using TUnit.Assertions.Enums;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 
@@ -68,7 +69,7 @@ public sealed class BffSessionRefreshServiceTests
             .Returns(new CircuitTokenStoreResult(true, null));
         var onboardingStatusProvider = Substitute.For<IBffOnboardingStatusProvider>();
         onboardingStatusProvider.GetStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(new BffOnboardingStatus(IsCompleted: false, IsSetupModeActive: true, Known: true));
+            .Returns(CompletedStatus());
         var context = CreateContext(
             authService: authService,
             tokenStore: tokenStore,
@@ -264,17 +265,104 @@ public sealed class BffSessionRefreshServiceTests
         await Assert.That(handler.PrivateAssertion).IsNotNull();
     }
 
+    [Test]
+    public async Task ConfiguredAdministratorRefreshSyncsThenRefreshesStatusAndCookieExactlyOnce()
+    {
+        var events = new List<string>();
+        var onboarding = new ClaimCompletingOnboardingStatusProvider(events, "Keycloak");
+        using var adminHandler = new AdminClaimHandler(events);
+        var accessToken = CreateJwt("provider-user", DateTime.UtcNow.AddMinutes(30), "session-1");
+        var principal = CreatePrincipal("provider-user", "session-1");
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("auth_provider", "keycloak"));
+        var authService = new TestAuthenticationService(
+            AuthenticateResult.Success(CreateTicket(principal, accessToken)));
+        var tokenStore = Substitute.For<ICircuitTokenStore>();
+        var (subjectKey, sessionKey) = PartitionKeys(principal);
+        tokenStore.Store(subjectKey, sessionKey, accessToken)
+            .Returns(new CircuitTokenStoreResult(true, null));
+        var context = CreateContext(
+            authService: authService,
+            tokenStore: tokenStore,
+            onboardingStatusProvider: onboarding);
+        var service = CreateService(onboarding, adminHandler: adminHandler);
+
+        var result = await service.RefreshSessionAsync(context, CancellationToken.None);
+
+        await ExecuteAsync(result, context);
+        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status200OK);
+        await Assert.That(events).IsEquivalentTo([
+            "status:pending",
+            "status:pending",
+            "http:sync",
+            "status:invalidate",
+            "status:completed",
+            "http:authority",
+            "status:completed"
+        ], CollectionOrdering.Matching);
+        await Assert.That(adminHandler.SyncCount).IsEqualTo(1);
+        await Assert.That(adminHandler.AuthorityCount).IsEqualTo(1);
+        await Assert.That(onboarding.InvalidationCount).IsEqualTo(1);
+        await Assert.That(authService.SignInCount).IsEqualTo(1);
+        await Assert.That(authService.SignOutCount).IsEqualTo(0);
+        tokenStore.Received(1).Store(subjectKey, sessionKey, accessToken);
+        await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsTrue();
+
+        context.Response.Body.Position = 0;
+        var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
+        await Assert.That(body).DoesNotContain(accessToken);
+    }
+
+    [Test]
+    public async Task ConfiguredAdministratorWrongProviderClearsStaleClaimsAndSessionWithoutRefresh()
+    {
+        var events = new List<string>();
+        var onboarding = new ClaimCompletingOnboardingStatusProvider(events, "Atproto");
+        using var adminHandler = new AdminClaimHandler(events);
+        var accessToken = CreateJwt("provider-user", DateTime.UtcNow.AddMinutes(30), "session-1");
+        var principal = CreatePrincipal("provider-user", "session-1");
+        var identity = (ClaimsIdentity)principal.Identity!;
+        identity.AddClaim(new Claim("auth_provider", "keycloak"));
+        identity.AddClaim(new Claim("explore:admin:instance", "true"));
+        var authService = new TestAuthenticationService(
+            AuthenticateResult.Success(CreateTicket(principal, accessToken)));
+        var tokenStore = Substitute.For<ICircuitTokenStore>();
+        var context = CreateContext(
+            authService: authService,
+            tokenStore: tokenStore,
+            onboardingStatusProvider: onboarding);
+        var service = CreateService(onboarding, adminHandler: adminHandler);
+
+        var result = await service.RefreshSessionAsync(context, CancellationToken.None);
+
+        await ExecuteAsync(result, context);
+        await Assert.That(context.Response.StatusCode).IsEqualTo(StatusCodes.Status401Unauthorized);
+        await Assert.That(adminHandler.SyncCount).IsEqualTo(0);
+        await Assert.That(adminHandler.AuthorityCount).IsEqualTo(0);
+        await Assert.That(authService.SignInCount).IsEqualTo(0);
+        await Assert.That(authService.SignOutCount).IsEqualTo(1);
+        await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsFalse();
+        tokenStore.DidNotReceive().Store(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>());
+    }
+
     private static BffSessionRefreshService CreateService(
         IBffOnboardingStatusProvider? onboardingStatusProvider = null,
-        HttpMessageHandler? bridgeHandler = null)
+        HttpMessageHandler? bridgeHandler = null,
+        HttpMessageHandler? adminHandler = null)
     {
         onboardingStatusProvider ??= Substitute.For<IBffOnboardingStatusProvider>();
         onboardingStatusProvider.GetStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(new BffOnboardingStatus(IsCompleted: false, IsSetupModeActive: true, Known: true));
+            .Returns(CompletedStatus());
+
+        IHttpClientFactory adminClientFactory = Substitute.For<IHttpClientFactory>();
+        if (adminHandler is not null)
+        {
+            adminClientFactory = new FixedHttpClientFactory(
+                new HttpClient(adminHandler) { BaseAddress = new Uri("https://api.example/") });
+        }
 
         var adminClaimsTransformation = new BffAdminClaimsTransformation(
-            Substitute.For<IHttpClientFactory>(),
-            Substitute.For<IMemoryCache>(),
+            adminClientFactory,
+            new MemoryCache(new MemoryCacheOptions()),
             onboardingStatusProvider,
             NullLogger<BffAdminClaimsTransformation>.Instance);
 
@@ -395,6 +483,14 @@ public sealed class BffSessionRefreshServiceTests
         return (subject.PartitionKey, session.PartitionKey);
     }
 
+    private static BffOnboardingStatus CompletedStatus() => new(
+        true,
+        "Completed",
+        "Interactive",
+        null,
+        1,
+        BffOnboardingDisposition.Completed);
+
     private static ClaimsPrincipal CreatePrincipal(string userId, string sessionId) => new(new ClaimsIdentity([
         new Claim("sub", userId),
         new Claim("sid", sessionId)
@@ -446,8 +542,10 @@ public sealed class BffSessionRefreshServiceTests
 
     private sealed class TestAuthenticationService(AuthenticateResult authenticateResult) : IAuthenticationService
     {
-        public bool SignInCalled { get; private set; }
-        public bool SignOutCalled { get; private set; }
+        public bool SignInCalled => SignInCount > 0;
+        public bool SignOutCalled => SignOutCount > 0;
+        public int SignInCount { get; private set; }
+        public int SignOutCount { get; private set; }
         public AuthenticationProperties? SignInProperties { get; private set; }
 
         public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme) =>
@@ -465,14 +563,14 @@ public sealed class BffSessionRefreshServiceTests
             ClaimsPrincipal principal,
             AuthenticationProperties? properties)
         {
-            SignInCalled = true;
+            SignInCount++;
             SignInProperties = properties;
             return Task.CompletedTask;
         }
 
         public Task SignOutAsync(HttpContext context, string? scheme, AuthenticationProperties? properties)
         {
-            SignOutCalled = true;
+            SignOutCount++;
             return Task.CompletedTask;
         }
     }
@@ -480,6 +578,84 @@ public sealed class BffSessionRefreshServiceTests
     private sealed class FixedHttpClientFactory(HttpClient client) : IHttpClientFactory
     {
         public HttpClient CreateClient(string name) => client;
+    }
+
+    private sealed class ClaimCompletingOnboardingStatusProvider(
+        List<string> events,
+        string provider) : IBffOnboardingStatusProvider
+    {
+        private bool _invalidated;
+
+        public int InvalidationCount { get; private set; }
+
+        public Task<BffOnboardingStatus> GetStatusAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            events.Add(_invalidated ? "status:completed" : "status:pending");
+            return Task.FromResult(_invalidated
+                ? new BffOnboardingStatus(
+                    true,
+                    "Completed",
+                    "ConfiguredAdministrator",
+                    provider,
+                    1,
+                    BffOnboardingDisposition.Completed)
+                : new BffOnboardingStatus(
+                    false,
+                    "Pending",
+                    "ConfiguredAdministrator",
+                    provider,
+                    1,
+                    BffOnboardingDisposition.ConfiguredAdministratorPending));
+        }
+
+        public void Invalidate()
+        {
+            InvalidationCount++;
+            events.Add("status:invalidate");
+            _invalidated = true;
+        }
+    }
+
+    private sealed class AdminClaimHandler(List<string> events) : HttpMessageHandler
+    {
+        public int SyncCount { get; private set; }
+        public int AuthorityCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            if (request.Method == HttpMethod.Post
+                && request.RequestUri!.AbsolutePath == "/api/user/sync")
+            {
+                SyncCount++;
+                events.Add("http:sync");
+                return Task.FromResult(Json(new { success = true, id = UserId }));
+            }
+
+            if (request.Method == HttpMethod.Get
+                && request.RequestUri!.AbsolutePath == "/api/user/admin-authority")
+            {
+                AuthorityCount++;
+                events.Add("http:authority");
+                return Task.FromResult(Json(new
+                {
+                    isInstanceAdmin = true,
+                    hasAnyAuthority = true,
+                    adminTenantIds = Array.Empty<Guid>(),
+                    adminOrganizationIds = Array.Empty<Guid>(),
+                    adminGroupIds = Array.Empty<Guid>()
+                }));
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+
+        private static HttpResponseMessage Json<T>(T value) => new(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(value)
+        };
     }
 
     private sealed class AtprotoBridgeHandler(HttpStatusCode statusCode) : HttpMessageHandler

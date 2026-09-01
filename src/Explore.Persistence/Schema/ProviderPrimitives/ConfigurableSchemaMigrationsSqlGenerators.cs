@@ -26,6 +26,9 @@ internal sealed class ConfigurableNpgsqlMigrationsSqlGenerator(
         Microsoft.EntityFrameworkCore.Metadata.IModel? model = null,
         MigrationsSqlGenerationOptions options = MigrationsSqlGenerationOptions.Default)
     {
+        operations = ConfigurableSchemaMigrationOperations.PrepareInstanceBootstrapLifecycleBackfill(
+            operations,
+            Dependencies.CurrentContext.Context);
         ConfigurableSchemaMigrationOperations.Rewrite(operations, Dependencies.CurrentContext.Context);
         return ConfigurableSchemaMigrationOperations.RewriteCommands(
             base.Generate(operations, model, options),
@@ -43,6 +46,9 @@ internal sealed class ConfigurableSqlServerMigrationsSqlGenerator(
         Microsoft.EntityFrameworkCore.Metadata.IModel? model = null,
         MigrationsSqlGenerationOptions options = MigrationsSqlGenerationOptions.Default)
     {
+        operations = ConfigurableSchemaMigrationOperations.PrepareInstanceBootstrapLifecycleBackfill(
+            operations,
+            Dependencies.CurrentContext.Context);
         ConfigurableSchemaMigrationOperations.Rewrite(operations, Dependencies.CurrentContext.Context);
         return ConfigurableSchemaMigrationOperations.RewriteCommands(
             base.Generate(operations, model, options),
@@ -61,7 +67,11 @@ internal sealed class ConfigurableSqliteMigrationsSqlGenerator(
         MigrationsSqlGenerationOptions options = MigrationsSqlGenerationOptions.Default)
     {
         IReadOnlyList<MigrationOperation> executableOperations =
-            ConfigurableSchemaMigrationOperations.RemoveRedundantForeignKeyDrops(operations);
+            ConfigurableSchemaMigrationOperations.PrepareInstanceBootstrapLifecycleBackfill(
+                operations,
+                Dependencies.CurrentContext.Context);
+        executableOperations =
+            ConfigurableSchemaMigrationOperations.RemoveRedundantForeignKeyDrops(executableOperations);
         IReadOnlyList<MigrationCommand> commands =
             base.Generate(executableOperations, model, options);
         commands = ConfigurableSchemaMigrationOperations.WrapSqliteTableDrops(
@@ -85,14 +95,57 @@ internal sealed class ConfigurableMySqlMigrationsSqlGenerator(
         IReadOnlyList<MigrationOperation> operations,
         Microsoft.EntityFrameworkCore.Metadata.IModel? model = null,
         MigrationsSqlGenerationOptions sqlOptions = MigrationsSqlGenerationOptions.Default)
-        => ConfigurableSchemaMigrationOperations.AppendPromotionCodeBackfill(
+    {
+        operations = ConfigurableSchemaMigrationOperations.PrepareInstanceBootstrapLifecycleBackfill(
+            operations,
+            Dependencies.CurrentContext.Context);
+        return ConfigurableSchemaMigrationOperations.AppendPromotionCodeBackfill(
             base.Generate(operations, model, sqlOptions),
             operations,
             Dependencies);
+    }
 }
 
 internal static class ConfigurableSchemaMigrationOperations
 {
+    private const string BootstrapBackfillMarker = "headless-instance-bootstrap-backfill";
+
+    public static IReadOnlyList<MigrationOperation> PrepareInstanceBootstrapLifecycleBackfill(
+        IReadOnlyList<MigrationOperation> operations,
+        Microsoft.EntityFrameworkCore.DbContext context)
+    {
+        DropColumnOperation[] legacyDrops = operations
+            .OfType<DropColumnOperation>()
+            .Where(IsLegacyBootstrapColumnDrop)
+            .ToArray();
+        if (legacyDrops.Length != 2
+            || !operations.OfType<AddColumnOperation>().Any(IsBootstrapStatusColumn)
+            || operations.OfType<SqlOperation>().Any(operation =>
+                operation.Sql.Contains(BootstrapBackfillMarker, StringComparison.Ordinal)))
+        {
+            return operations;
+        }
+
+        var prepared = operations
+            .Where(operation => operation is not DropColumnOperation drop
+                || !IsLegacyBootstrapColumnDrop(drop))
+            .ToList();
+        int lastBootstrapColumn = prepared.FindLastIndex(operation =>
+            operation is AddColumnOperation column && IsBootstrapLifecycleColumn(column));
+        if (lastBootstrapColumn < 0)
+        {
+            return operations;
+        }
+
+        prepared.Insert(lastBootstrapColumn + 1, new SqlOperation
+        {
+            Sql = BuildInstanceBootstrapBackfillSql(context),
+            SuppressTransaction = false,
+        });
+        prepared.InsertRange(lastBootstrapColumn + 2, legacyDrops);
+        return prepared;
+    }
+
     public static IReadOnlyList<MigrationOperation> RemoveRedundantForeignKeyDrops(
         IReadOnlyList<MigrationOperation> operations)
     {
@@ -268,6 +321,123 @@ internal static class ConfigurableSchemaMigrationOperations
                SET {Identifier("pre_discount_line_subtotal_minor_snapshot", quote)} = {Identifier("line_subtotal_snapshot", quote)},
                    {Identifier("post_discount_line_subtotal_minor_snapshot", quote)} = {Identifier("line_subtotal_snapshot", quote)};
                """;
+    }
+
+    private static bool IsLegacyBootstrapColumnDrop(DropColumnOperation operation) =>
+        IsInstanceBootstrapTable(operation.Table)
+        && operation.Name is "is_completed" or "selected_deployment_mode";
+
+    private static bool IsBootstrapStatusColumn(AddColumnOperation operation) =>
+        IsInstanceBootstrapTable(operation.Table)
+        && StringComparer.Ordinal.Equals(operation.Name, "status");
+
+    private static bool IsBootstrapLifecycleColumn(AddColumnOperation operation) =>
+        IsInstanceBootstrapTable(operation.Table)
+        && operation.Name is
+            "completed_identity_fingerprint"
+            or "configuration_fingerprint"
+            or "deployment_mode"
+            or "generation"
+            or "mode"
+            or "provider_kind"
+            or "selector_fingerprint"
+            or "status"
+            or "superseded_at";
+
+    private static bool IsInstanceBootstrapTable(string table) =>
+        table.EndsWith("instance_bootstrap_states", StringComparison.Ordinal);
+
+    private static string BuildInstanceBootstrapBackfillSql(
+        Microsoft.EntityFrameworkCore.DbContext context)
+    {
+        string provider = context.Database.ProviderName ?? string.Empty;
+        string prefix = UsesPrefixedTables(provider) ? RelationalModelNamespace.Prefix : string.Empty;
+        string? schema = UsesSchemas(provider) ? GetConfiguredSchema(context) : null;
+        string quote = QuoteStyle(provider);
+        string table = Table(schema, prefix + "instance_bootstrap_states", quote);
+        string id = Identifier("id", quote);
+        string createdAt = Identifier("created_at", quote);
+        string isCompleted = Identifier("is_completed", quote);
+        string selectedDeploymentMode = Identifier("selected_deployment_mode", quote);
+        string status = Identifier("status", quote);
+        string mode = Identifier("mode", quote);
+        string deploymentMode = Identifier("deployment_mode", quote);
+        string generation = Identifier("generation", quote);
+        string completedAt = Identifier("completed_at", quote);
+        string completedByUserId = Identifier("completed_by_user_id", quote);
+        string completedPredicate = provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase)
+            ? isCompleted
+            : $"{isCompleted} = 1";
+        string assignments = $"""
+                             {status} = CASE WHEN {completedPredicate} THEN 3 ELSE 1 END,
+                             {mode} = 1,
+                             {deploymentMode} = CASE WHEN {selectedDeploymentMode} = 'MultiTenant' THEN 2 ELSE 1 END,
+                             {generation} = ranked.bootstrap_generation,
+                             {completedAt} = CASE WHEN {completedPredicate} THEN {completedAt} ELSE NULL END,
+                             {completedByUserId} = CASE WHEN {completedPredicate} THEN {completedByUserId} ELSE NULL END
+                             """;
+
+        if (provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"""
+                    /* {BootstrapBackfillMarker} */
+                    WITH ranked AS (
+                        SELECT {id}, ROW_NUMBER() OVER (ORDER BY {createdAt}, {id}) AS bootstrap_generation
+                        FROM {table}
+                    )
+                    UPDATE {table} AS target
+                    SET {assignments}
+                    FROM ranked
+                    WHERE target.{id} = ranked.{id};
+                    """;
+        }
+
+        if (provider.Contains("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"""
+                    /* {BootstrapBackfillMarker} */
+                    WITH ranked AS (
+                        SELECT {id}, ROW_NUMBER() OVER (ORDER BY {createdAt}, {id}) AS bootstrap_generation
+                        FROM {table}
+                    )
+                    UPDATE target
+                    SET {assignments}
+                    FROM {table} AS target
+                    INNER JOIN ranked ON target.{id} = ranked.{id};
+                    """;
+        }
+
+        if (provider.Contains("MySql", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"""
+                    /* {BootstrapBackfillMarker} */
+                    UPDATE {table} AS target
+                    INNER JOIN (
+                        SELECT {id}, ROW_NUMBER() OVER (ORDER BY {createdAt}, {id}) AS bootstrap_generation
+                        FROM {table}
+                    ) AS ranked ON target.{id} = ranked.{id}
+                    SET {assignments};
+                    """;
+        }
+
+        return $"""
+                /* {BootstrapBackfillMarker} */
+                WITH ranked AS (
+                    SELECT {id}, ROW_NUMBER() OVER (ORDER BY {createdAt}, {id}) AS bootstrap_generation
+                    FROM {table}
+                )
+                UPDATE {table}
+                SET {status} = CASE WHEN {completedPredicate} THEN 3 ELSE 1 END,
+                    {mode} = 1,
+                    {deploymentMode} = CASE WHEN {selectedDeploymentMode} = 'MultiTenant' THEN 2 ELSE 1 END,
+                    {generation} = (
+                        SELECT ranked.bootstrap_generation
+                        FROM ranked
+                        WHERE ranked.{id} = {table}.{id}
+                    ),
+                    {completedAt} = CASE WHEN {completedPredicate} THEN {completedAt} ELSE NULL END,
+                    {completedByUserId} = CASE WHEN {completedPredicate} THEN {completedByUserId} ELSE NULL END;
+                """;
     }
 
     private static bool UsesSchemas(string provider) =>

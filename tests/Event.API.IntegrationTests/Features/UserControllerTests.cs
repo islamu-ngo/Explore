@@ -8,6 +8,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
 using Explore.API.Controllers;
 using Explore.API.Hateoas;
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.PrivacyErasure;
 using Explore.Application.DTOs.User;
@@ -91,6 +92,60 @@ public class UserControllerTests
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    [Category(TestCategories.Fast)]
+    public async Task SyncUser_WithOidcIssuerNormalization_PersistsAuthorityQualifiedProviderKey()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        string subject = Guid.NewGuid().ToString("D");
+        ProviderAccountKey expected = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            "https://auth.example.test/realms/ISLAMU",
+            subject);
+
+        using var request = CreateOidcSyncRequest(
+            subject,
+            "HTTPS://AUTH.EXAMPLE.TEST/realms/ISLAMU/",
+            "normalized@example.test");
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        UserExternalLogin login = await dbContext.UserExternalLogins.SingleAsync(x => x.Provider == "keycloak");
+        await Assert.That(login.ProviderKey).IsEqualTo(expected.Value);
+    }
+
+    [Test]
+    [Category(TestCategories.Fast)]
+    public async Task SyncUser_WhenOnlyRawSubjectLoginExists_DoesNotUseLegacyFallback()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        Guid legacyUserId = Guid.CreateVersion7();
+        string subject = Guid.NewGuid().ToString("D");
+        await SeedUserAndLoginAsync(factory, legacyUserId, "keycloak", subject, "legacy@example.test");
+
+        using var request = CreateOidcSyncRequest(
+            subject,
+            "https://auth.example.test/realms/ISLAMU",
+            "canonical@example.test");
+        using HttpResponseMessage response = await client.SendAsync(request);
+        BaseCommandResponse<Guid>? body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.Id).IsNotEqualTo(legacyUserId);
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await Assert.That(await dbContext.UserExternalLogins.CountAsync(x => x.Provider == "keycloak")).IsEqualTo(2);
+        await Assert.That(await dbContext.UserExternalLogins.AnyAsync(x =>
+            x.ProviderKey == PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+                "https://auth.example.test/realms/ISLAMU",
+                subject).Value
+            && x.UserId == body.Id)).IsTrue();
     }
 
     [Test]
@@ -286,13 +341,25 @@ public class UserControllerTests
     private static async Task SeedLinkedAtprotoUserAsync(
         AuthenticatedWebApplicationFactory factory,
         Guid userId,
-        string did)
+        string did) =>
+        await SeedUserAndLoginAsync(
+            factory,
+            userId,
+            "atproto",
+            did,
+            $"{userId:N}@integration.test");
+
+    private static async Task SeedUserAndLoginAsync(
+        AuthenticatedWebApplicationFactory factory,
+        Guid userId,
+        string provider,
+        string providerKey,
+        string email)
     {
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
 
-        var exists = await dbContext.Users.AnyAsync(x => x.Id == userId);
-        if (!exists)
+        if (!await dbContext.Users.AnyAsync(x => x.Id == userId))
         {
             dbContext.Users.Add(new User
             {
@@ -305,33 +372,51 @@ public class UserControllerTests
                 Pii = new UserPii
                 {
                     UserId = userId,
-                    Email = $"{userId:N}@integration.test",
+                    Email = email,
                     FirstName = "Integration",
                     LastName = "User"
                 }
             });
         }
 
-        var linked = await dbContext.UserExternalLogins.AnyAsync(x =>
-            x.UserId == userId && x.Provider == "atproto" && x.ProviderKey == did);
-        if (!linked)
+        if (!await dbContext.UserExternalLogins.AnyAsync(x =>
+                x.UserId == userId && x.Provider == provider && x.ProviderKey == providerKey))
         {
             dbContext.UserExternalLogins.Add(new UserExternalLogin
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.CreateVersion7(),
                 UserId = userId,
                 User = null!,
                 TenantId = PlatformDefaults.DefaultTenantId,
                 Tenant = null!,
-                Provider = "atproto",
-                ProviderKey = did,
-                ProviderDisplayName = "AT Protocol",
+                Provider = provider,
+                ProviderKey = providerKey,
+                ProviderDisplayName = provider,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = userId
             });
         }
 
         await dbContext.SaveChangesAsync();
+    }
+
+    private static HttpRequestMessage CreateOidcSyncRequest(
+        string subject,
+        string issuer,
+        string email)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/sync");
+        request.Headers.Add(
+            TestAuthHandler.AuthHeaderName,
+            TestAuthHandler.CreateAuthHeaderValue(
+                Guid.Parse(subject),
+                "OIDC User",
+                ("iss", issuer),
+                ("idp", "keycloak"),
+                ("email", email),
+                ("given_name", "OIDC"),
+                ("family_name", "User")));
+        return request;
     }
 
     private static HttpRequestMessage CreateAtprotoSyncRequest(

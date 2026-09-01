@@ -241,7 +241,7 @@ public class InstanceOnboardingControllerTests
     {
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
-        var userId = Guid.NewGuid();
+        var userId = Guid.CreateVersion7();
         await EnsureInstanceAdminRoleAsync(factory, userId);
 
         using var request = CreateInstanceAdminRequest(
@@ -519,7 +519,7 @@ public class InstanceOnboardingControllerTests
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var bootstrap = await dbContext.InstanceBootstrapStates.SingleAsync();
-        await Assert.That(bootstrap.SelectedDeploymentMode).IsEqualTo("SingleTenant");
+        await Assert.That(bootstrap.DeploymentMode).IsEqualTo(DeploymentMode.SingleTenant);
     }
 
     [Test]
@@ -548,7 +548,7 @@ public class InstanceOnboardingControllerTests
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var bootstrap = await dbContext.InstanceBootstrapStates.SingleAsync();
-        await Assert.That(bootstrap.SelectedDeploymentMode).IsEqualTo("MultiTenant");
+        await Assert.That(bootstrap.DeploymentMode).IsEqualTo(DeploymentMode.MultiTenant);
     }
 
     [Test]
@@ -593,7 +593,7 @@ public class InstanceOnboardingControllerTests
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
 
-        var userId = Guid.NewGuid();
+        var userId = Guid.CreateVersion7();
         await EnsureUserExistsAsync(factory, userId);
         await EnsureInstanceAdminRoleAsync(factory, userId);
 
@@ -619,7 +619,7 @@ public class InstanceOnboardingControllerTests
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
 
-        var userId = Guid.NewGuid();
+        var userId = Guid.CreateVersion7();
         await EnsureUserExistsAsync(factory, userId);
         await EnsureInstanceAdminRoleAsync(factory, userId);
         await EnsureUserExternalLoginAsync(factory, userId, "google", $"google-{userId:N}");
@@ -681,7 +681,7 @@ public class InstanceOnboardingControllerTests
         await Assert.That(status).IsNotNull();
         await Assert.That(status!.Configured).IsTrue();
 
-        var userId = Guid.NewGuid();
+        var userId = Guid.CreateVersion7();
         await EnsureUserExistsAsync(factory, userId);
         await EnsureInstanceAdminRoleAsync(factory, userId);
         using var adminRequest = CreateInstanceAdminRequest(
@@ -704,7 +704,7 @@ public class InstanceOnboardingControllerTests
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
 
-        var userId = Guid.NewGuid();
+        var userId = Guid.CreateVersion7();
         await EnsureUserExistsAsync(factory, userId);
         await EnsureInstanceAdminRoleAsync(factory, userId);
         await EnsureUserExternalLoginAsync(factory, userId, "google", $"google-{userId:N}");
@@ -947,7 +947,7 @@ public class InstanceOnboardingControllerTests
         });
         using var client = factory.CreateClient();
 
-        var userId = Guid.NewGuid();
+        var userId = Guid.CreateVersion7();
         await EnsureUserExistsAsync(factory, userId);
         await EnsureInstanceAdminRoleAsync(factory, userId);
 
@@ -1011,7 +1011,7 @@ public class InstanceOnboardingControllerTests
         });
         using var client = factory.CreateClient();
 
-        var userId = Guid.NewGuid();
+        var userId = Guid.CreateVersion7();
         await EnsureUserExistsAsync(factory, userId);
         await EnsureInstanceAdminRoleAsync(factory, userId);
 
@@ -1049,25 +1049,17 @@ public class InstanceOnboardingControllerTests
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync();
 
+        var completedAt = DateTime.UtcNow;
         if (bootstrap == null)
         {
-            dbContext.InstanceBootstrapStates.Add(new InstanceBootstrapState
-            {
-                Id = Guid.NewGuid(),
-                IsCompleted = true,
-                CreatedAt = DateTime.UtcNow,
-                CompletedAt = DateTime.UtcNow,
-                CompletedByUserId = userId,
-                SelectedDeploymentMode = "SingleTenant"
-            });
+            bootstrap = InstanceBootstrapState.CreateInteractivePending(
+                Guid.CreateVersion7(),
+                DeploymentMode.SingleTenant,
+                completedAt);
+            dbContext.InstanceBootstrapStates.Add(bootstrap);
         }
-        else
-        {
-            bootstrap.IsCompleted = true;
-            bootstrap.CompletedAt = DateTime.UtcNow;
-            bootstrap.CompletedByUserId = userId;
-            bootstrap.SelectedDeploymentMode ??= "SingleTenant";
-        }
+
+        bootstrap.CompleteInteractive(userId, completedAt);
 
         await dbContext.SaveChangesAsync();
     }

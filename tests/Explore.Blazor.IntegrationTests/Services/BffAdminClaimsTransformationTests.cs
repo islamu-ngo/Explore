@@ -8,6 +8,7 @@ using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
+using TUnit.Assertions.Enums;
 
 namespace Explore.Blazor.IntegrationTests.Services;
 
@@ -41,25 +42,24 @@ public sealed class BffAdminClaimsTransformationTests
     }
 
     [Test]
-    public async Task EnrichPrincipalAsync_WhenSyncReturnsBadRequest_StillResolvesAuthority()
+    public async Task EnrichPrincipalAsync_WhenSyncFails_ClearsStaleClaimsAndSkipsAuthority()
     {
         var handler = new IdentityReadinessHandler { SyncStatusCode = HttpStatusCode.BadRequest };
         using var cache = new MemoryCache(new MemoryCacheOptions());
         using var client = new HttpClient(handler) { BaseAddress = new("https://api.example/") };
         var service = CreateService(client, cache);
-        var principal = CreatePrincipal();
+        var principal = CreatePrincipal(("explore:admin:instance", "true"));
 
         var result = await service.EnrichPrincipalAsync(
             principal,
             CreateProperties(),
             synchronizeUser: true);
 
-        await Assert.That(result).IsTrue();
-        await Assert.That(handler.Requests.Count).IsEqualTo(2);
+        await Assert.That(result).IsFalse();
+        await Assert.That(handler.Requests.Count).IsEqualTo(1);
         await Assert.That(handler.Requests[0].Path).IsEqualTo("/api/user/sync");
-        await Assert.That(handler.Requests[1].Path).IsEqualTo("/api/user/admin-authority");
         await Assert.That(principal.FindFirst("internal_user_id")).IsNull();
-        await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsTrue();
+        await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsFalse();
     }
 
     [Test]
@@ -154,11 +154,71 @@ public sealed class BffAdminClaimsTransformationTests
         await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsTrue();
         await Assert.That(handler.Requests.Count).IsEqualTo(1);
     }
-    private static BffAdminClaimsTransformation CreateService(HttpClient client, IMemoryCache cache)
+
+    [Test]
+    public async Task ConfiguredProviderSyncRefreshesStatusThenEnrichesAuthorityExactlyOnce()
     {
-        var onboardingStatusProvider = Substitute.For<IBffOnboardingStatusProvider>();
+        var events = new List<string>();
+        var onboarding = new ClaimCompletingOnboardingStatusProvider(events, "Keycloak");
+        using var handler = new IdentityReadinessHandler(events);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var client = new HttpClient(handler) { BaseAddress = new("https://api.example/") };
+        var service = CreateService(client, cache, onboarding);
+        var principal = CreatePrincipal(("auth_provider", "keycloak"));
+
+        var result = await service.EnrichPrincipalAsync(
+            principal,
+            CreateProperties(),
+            forceRefresh: true,
+            synchronizeUser: true);
+
+        await Assert.That(result).IsTrue();
+        await Assert.That(events).IsEquivalentTo([
+            "status:pending",
+            "http:sync",
+            "status:invalidate",
+            "status:completed",
+            "http:authority"
+        ], CollectionOrdering.Matching);
+        await Assert.That(onboarding.InvalidationCount).IsEqualTo(1);
+        await Assert.That(handler.Requests.Count(request => request.Path == "/api/user/sync")).IsEqualTo(1);
+        await Assert.That(handler.Requests.Count(request => request.Path == "/api/user/admin-authority")).IsEqualTo(1);
+        await Assert.That(principal.FindFirst("internal_user_id")?.Value).IsEqualTo(InternalUserId.ToString("D"));
+        await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsTrue();
+    }
+
+    [Test]
+    public async Task ConfiguredProviderMismatchFailsClosedAndClearsStaleClaimsBeforeSync()
+    {
+        var events = new List<string>();
+        var onboarding = new ClaimCompletingOnboardingStatusProvider(events, "Atproto");
+        using var handler = new IdentityReadinessHandler(events);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        using var client = new HttpClient(handler) { BaseAddress = new("https://api.example/") };
+        var service = CreateService(client, cache, onboarding);
+        var principal = CreatePrincipal(
+            ("auth_provider", "keycloak"),
+            ("explore:admin:instance", "true"));
+
+        var result = await service.EnrichPrincipalAsync(
+            principal,
+            CreateProperties(),
+            synchronizeUser: true);
+
+        await Assert.That(result).IsFalse();
+        await Assert.That(events).IsEquivalentTo(["status:pending"], CollectionOrdering.Matching);
+        await Assert.That(handler.Requests).IsEmpty();
+        await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsFalse();
+    }
+
+    private static BffAdminClaimsTransformation CreateService(
+        HttpClient client,
+        IMemoryCache cache,
+        IBffOnboardingStatusProvider? onboardingStatusProvider = null)
+    {
+        onboardingStatusProvider ??= Substitute.For<IBffOnboardingStatusProvider>();
         onboardingStatusProvider.GetStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(new BffOnboardingStatus(IsCompleted: true, IsSetupModeActive: false, Known: true));
+            .Returns(CompletedStatus());
         return new(
             new FixedHttpClientFactory(client),
             cache,
@@ -166,8 +226,19 @@ public sealed class BffAdminClaimsTransformationTests
             NullLogger<BffAdminClaimsTransformation>.Instance);
     }
 
-    private static ClaimsPrincipal CreatePrincipal() => new(
-        new ClaimsIdentity([new Claim("sub", "provider-user")], "Cookies"));
+    private static BffOnboardingStatus CompletedStatus() => new(
+        true,
+        "Completed",
+        "Interactive",
+        null,
+        1,
+        BffOnboardingDisposition.Completed);
+
+    private static ClaimsPrincipal CreatePrincipal(params (string Type, string Value)[] additionalClaims) => new(
+        new ClaimsIdentity(
+            new[] { new Claim("sub", "provider-user") }
+                .Concat(additionalClaims.Select(claim => new Claim(claim.Type, claim.Value))),
+            "Cookies"));
 
     private static AuthenticationProperties CreateProperties()
     {
@@ -193,7 +264,7 @@ public sealed class BffAdminClaimsTransformationTests
         public HttpClient CreateClient(string name) => client;
     }
 
-    private sealed class IdentityReadinessHandler : HttpMessageHandler
+    private sealed class IdentityReadinessHandler(List<string>? events = null) : HttpMessageHandler
     {
         public HttpStatusCode SyncStatusCode { get; init; } = HttpStatusCode.OK;
         public AdminAuthorityDto Authority { get; set; } = CreateAdminAuthority();
@@ -210,6 +281,7 @@ public sealed class BffAdminClaimsTransformationTests
 
             if (request.Method == HttpMethod.Post && request.RequestUri.AbsolutePath == "/api/user/sync")
             {
+                events?.Add("http:sync");
                 return Task.FromResult(JsonResponse(
                     SyncStatusCode,
                     new BaseCommandResponseOfGuid { Success = true, Id = InternalUserId }));
@@ -217,6 +289,7 @@ public sealed class BffAdminClaimsTransformationTests
 
             if (request.Method == HttpMethod.Get && request.RequestUri.AbsolutePath == "/api/user/admin-authority")
             {
+                events?.Add("http:authority");
                 return Task.FromResult(JsonResponse(HttpStatusCode.OK, Authority));
             }
 
@@ -227,6 +300,43 @@ public sealed class BffAdminClaimsTransformationTests
         {
             Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json")
         };
+    }
+
+    private sealed class ClaimCompletingOnboardingStatusProvider(
+        List<string> events,
+        string provider) : IBffOnboardingStatusProvider
+    {
+        private bool _invalidated;
+
+        public int InvalidationCount { get; private set; }
+
+        public Task<BffOnboardingStatus> GetStatusAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            events.Add(_invalidated ? "status:completed" : "status:pending");
+            return Task.FromResult(_invalidated
+                ? new BffOnboardingStatus(
+                    true,
+                    "Completed",
+                    "ConfiguredAdministrator",
+                    provider,
+                    1,
+                    BffOnboardingDisposition.Completed)
+                : new BffOnboardingStatus(
+                    false,
+                    "Pending",
+                    "ConfiguredAdministrator",
+                    provider,
+                    1,
+                    BffOnboardingDisposition.ConfiguredAdministratorPending));
+        }
+
+        public void Invalidate()
+        {
+            InvalidationCount++;
+            events.Add("status:invalidate");
+            _invalidated = true;
+        }
     }
 
     private sealed record CapturedRequest(string Method, string Path, string? Authorization);

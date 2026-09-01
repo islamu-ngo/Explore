@@ -78,9 +78,8 @@ public sealed class TenantActivationCapacityPolicy(
     }
 
     private static DeploymentMode ResolvePersistedMode(InstanceBootstrapState? bootstrap) =>
-        bootstrap?.IsCompleted == true
-        && Enum.TryParse(bootstrap.SelectedDeploymentMode, out DeploymentMode mode)
-            ? mode
+        bootstrap?.Status == InstanceBootstrapStatus.Completed
+            ? bootstrap.DeploymentMode
             : DeploymentMode.SingleTenant;
 }
 

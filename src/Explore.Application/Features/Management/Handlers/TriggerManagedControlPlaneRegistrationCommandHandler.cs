@@ -122,7 +122,7 @@ public sealed class TriggerManagedControlPlaneRegistrationCommandHandler(
         CancellationToken cancellationToken)
     {
         var bootstrap = await bootstrapStateRepository.GetCurrent(cancellationToken);
-        if (bootstrap is not { IsCompleted: true })
+        if (bootstrap is not { Status: InstanceBootstrapStatus.Completed })
         {
             throw new InvalidOperationException(
                 "Instance onboarding must be complete before managed registration can start.");

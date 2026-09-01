@@ -4,6 +4,8 @@
 using System.Security.Claims;
 using Explore.Application.Constants;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
+using Explore.Domain.ValueObjects;
 
 namespace Explore.Application.Authentication;
 
@@ -116,29 +118,39 @@ public static class PlatformIdentityPrincipalExtensions
     public static ProviderIdentity? GetProviderIdentity(this ClaimsPrincipal principal)
     {
         ClaimsIdentity? identity = RequirePrincipal(principal);
-        var subject = GetProviderSubject(identity);
+        string? subject = GetProviderSubject(identity);
         if (string.IsNullOrWhiteSpace(subject))
         {
             return null;
         }
 
-        var provider = GetAuthProvider(identity);
-        var email = GetClaimValue(identity, "email", ClaimTypes.Email) ?? string.Empty;
+        string provider = GetAuthProvider(identity);
+        ProviderAccountKey? accountKey = GetProviderAccountKey(identity, provider, subject);
+        if (accountKey is null)
+        {
+            return null;
+        }
+
+        string email = GetClaimValue(identity, "email", ClaimTypes.Email) ?? string.Empty;
         return new ProviderIdentity(
             subject,
             provider,
-            GetProviderId(identity, subject, provider),
+            accountKey,
             email,
             GetEmailVerified(identity, provider, email));
     }
 
-    /// <summary>The provider's stable subject claim, using the same chain as the platform user id.</summary>
+    /// <summary>
+    /// Returns the provider's stable account subject. Session identifiers are
+    /// deliberately excluded because they identify authentication sessions,
+    /// not provider accounts.
+    /// </summary>
     public static string? GetProviderSubject(this ClaimsPrincipal principal) =>
         GetProviderSubject(RequirePrincipal(principal));
 
     /// <summary>
-    /// Classifies the issuing provider from the explicit <c>idp</c> claim, then the issuer, then the subject
-    /// shape. Keycloak is the default because it is the platform-managed identity provider.
+    /// Classifies the OIDC provider from the explicit <c>idp</c> claim and validated issuer.
+    /// ATProto identity is accepted only from its verified gateway adapter, never ambient OIDC claims.
     /// </summary>
     public static string GetAuthProvider(this ClaimsPrincipal principal) =>
         GetAuthProvider(RequirePrincipal(principal));
@@ -154,11 +166,6 @@ public static class PlatformIdentityPrincipalExtensions
                 return AuthSchemeNames.Google.ToLowerInvariant();
             }
 
-            if (normalized.Contains("atproto", StringComparison.Ordinal))
-            {
-                return AuthSchemeNames.Atproto.ToLowerInvariant();
-            }
-
             if (normalized.Contains("keycloak", StringComparison.Ordinal))
             {
                 return AuthSchemeNames.Keycloak.ToLowerInvariant();
@@ -171,30 +178,84 @@ public static class PlatformIdentityPrincipalExtensions
             return AuthSchemeNames.Google.ToLowerInvariant();
         }
 
-        var subject = GetProviderSubject(identity) ?? string.Empty;
-        if (subject.StartsWith("did:", StringComparison.OrdinalIgnoreCase) ||
-            issuer.Contains("atproto", StringComparison.OrdinalIgnoreCase))
-        {
-            return AuthSchemeNames.Atproto.ToLowerInvariant();
-        }
-
         return AuthSchemeNames.Keycloak.ToLowerInvariant();
     }
 
-    /// <summary>ATProto identities are keyed by DID rather than by the raw subject claim.</summary>
+    /// <summary>Returns the one canonical persisted key for the authenticated provider account.</summary>
     public static string GetProviderId(this ClaimsPrincipal principal, string providerSubject, string provider) =>
-        GetProviderId(RequirePrincipal(principal), providerSubject, provider);
+        GetProviderAccountKey(RequirePrincipal(principal), provider, providerSubject)?.Value
+        ?? throw new UnauthorizedAccessException("Provider authority is not available in the token.");
 
-    private static string GetProviderId(ClaimsIdentity? identity, string providerSubject, string provider)
+    public static ProviderAccountKey CreateOidcAccountKey(string issuer, string subject)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(subject);
+        string authority = NormalizeIssuerAuthority(issuer);
+        string exactSubject = subject;
+        return new ProviderAccountKey(
+            InstanceBootstrapProviderKind.Keycloak,
+            $"oidc:{authority.Length}:{authority}:{exactSubject}");
+    }
+
+    public static ProviderAccountKey CreateAtprotoAccountKey(AtprotoDid did) =>
+        new(InstanceBootstrapProviderKind.Atproto, did.Value);
+
+    private static ProviderAccountKey? GetProviderAccountKey(
+        ClaimsIdentity? identity,
+        string provider,
+        string providerSubject)
     {
         if (string.Equals(provider, AuthSchemeNames.Atproto.ToLowerInvariant(), StringComparison.Ordinal))
         {
-            return identity?.FindFirst("did")?.Value
+            string didValue = identity?.FindFirst("did")?.Value
                 ?? identity?.FindFirst("atproto_did")?.Value
                 ?? providerSubject;
+            return AtprotoDid.TryParse(didValue, out AtprotoDid did)
+                ? CreateAtprotoAccountKey(did)
+                : null;
         }
 
-        return providerSubject;
+        string? issuer = identity?.FindFirst("iss")?.Value;
+        if (string.IsNullOrWhiteSpace(issuer))
+        {
+            return null;
+        }
+
+        try
+        {
+            return CreateOidcAccountKey(issuer, providerSubject);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static string NormalizeIssuerAuthority(string issuer)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(issuer);
+        if (!Uri.TryCreate(issuer.Trim(), UriKind.Absolute, out Uri? uri)
+            || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)
+            || !string.IsNullOrEmpty(uri.UserInfo)
+            || !string.IsNullOrEmpty(uri.Query)
+            || !string.IsNullOrEmpty(uri.Fragment))
+        {
+            throw new ArgumentException("OIDC issuer authority is invalid.", nameof(issuer));
+        }
+
+        var builder = new UriBuilder(uri)
+        {
+            Scheme = uri.Scheme.ToLowerInvariant(),
+            Host = uri.IdnHost.ToLowerInvariant(),
+            Path = uri.AbsolutePath.TrimEnd('/'),
+            Query = string.Empty,
+            Fragment = string.Empty
+        };
+        if (uri.IsDefaultPort)
+        {
+            builder.Port = -1;
+        }
+
+        return builder.Uri.AbsoluteUri.TrimEnd('/');
     }
 
     /// <summary>
@@ -228,8 +289,7 @@ public static class PlatformIdentityPrincipalExtensions
 
     private static string? GetProviderSubject(ClaimsIdentity? identity) =>
         identity?.FindFirst(SubjectClaimType)?.Value
-        ?? identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-        ?? identity?.FindFirst(SessionIdClaimType)?.Value;
+        ?? identity?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
     private static string? GetClaimValue(ClaimsIdentity? identity, string protocolType, string frameworkType) =>
         identity?.FindFirst(protocolType)?.Value
@@ -240,6 +300,9 @@ public static class PlatformIdentityPrincipalExtensions
 public sealed record ProviderIdentity(
     string Subject,
     string Provider,
-    string ProviderId,
+    ProviderAccountKey AccountKey,
     string Email,
-    bool EmailVerified);
+    bool EmailVerified)
+{
+    public string ProviderId => AccountKey.Value;
+}

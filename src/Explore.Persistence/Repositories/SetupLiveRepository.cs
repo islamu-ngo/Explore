@@ -48,6 +48,16 @@ public sealed class SetupLiveRepository(ExploreDbContext dbContext)
             value => value.TenantId == tenantId && value.Id == enrollmentId,
             cancellationToken);
 
+    public Task<SetupTargetEnrollment?> FindCurrentEnrollmentAsync(
+        Guid tenantId,
+        Guid enrollmentId,
+        CancellationToken cancellationToken) =>
+        dbContext.SetupTargetEnrollments
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                value => value.TenantId == tenantId && value.Id == enrollmentId,
+                cancellationToken);
+
     public Task<SetupEnrollmentIssuanceClaim?> FindIssuanceClaimAsync(
         Guid tenantId,
         Guid operationKey,
@@ -64,6 +74,15 @@ public sealed class SetupLiveRepository(ExploreDbContext dbContext)
         dbContext.SetupSecretBindingOperations.SingleOrDefaultAsync(
             value => value.TenantId == tenantId
                 && value.OperationKey == operationKey,
+            cancellationToken);
+
+    public Task<SetupSecretBindingOperation?> FindOperationByIdAsync(
+        Guid tenantId,
+        Guid operationId,
+        CancellationToken cancellationToken) =>
+        dbContext.SetupSecretBindingOperations.SingleOrDefaultAsync(
+            value => value.TenantId == tenantId
+                && value.Id == operationId,
             cancellationToken);
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken) =>

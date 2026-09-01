@@ -373,7 +373,12 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
                 var mockOnboarding = NSubstitute.Substitute.For<Explore.Blazor.Services.IBffOnboardingStatusProvider>();
                 mockOnboarding.GetStatusAsync(Arg.Any<CancellationToken>())
                     .Returns(new Explore.Blazor.Services.BffOnboardingStatus(
-                        IsCompleted: true, IsSetupModeActive: false, Known: true));
+                        IsCompleted: true,
+                        State: "Completed",
+                        Mode: "Interactive",
+                        Provider: null,
+                        Generation: 0,
+                        Disposition: Explore.Blazor.Services.BffOnboardingDisposition.Completed));
                 services.RemoveAll<Explore.Blazor.Services.IBffOnboardingStatusProvider>();
                 services.AddSingleton(mockOnboarding);
 

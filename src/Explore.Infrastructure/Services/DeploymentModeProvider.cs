@@ -57,7 +57,7 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
         // Return SingleTenant so ApiTenantResolutionMiddleware falls back to the default tenant
         // rather than 404'ing every request. The configured onboarding mode is exposed separately
         // and persisted when onboarding completes.
-        if (bootstrap is null || !bootstrap.IsCompleted)
+        if (bootstrap?.Status != InstanceBootstrapStatus.Completed)
         {
             if (!IsCacheDisabled())
             {
@@ -68,11 +68,8 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
             return DeploymentMode.SingleTenant;
         }
 
-        // Post-onboarding: trust the persisted selection. Corrupted enum string falls back to
-        // MultiTenant (safer closed default for a fully bootstrapped instance).
-        var mode = Enum.TryParse<DeploymentMode>(bootstrap.SelectedDeploymentMode, out var dbMode)
-            ? dbMode
-            : DeploymentMode.MultiTenant;
+        // Post-onboarding: trust the typed persisted selection.
+        var mode = bootstrap.DeploymentMode;
 
         if (!IsCacheDisabled())
         {

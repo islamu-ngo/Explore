@@ -100,8 +100,11 @@ public class SecurityBlazorBffWebApplicationFactory : WebApplicationFactory<Prog
             mockOnboarding.GetStatusAsync(Arg.Any<CancellationToken>())
                 .Returns(new BffOnboardingStatus(
                     IsCompleted: true,
-                    IsSetupModeActive: false,
-                    Known: true));
+                    State: "Completed",
+                    Mode: "Interactive",
+                    Provider: null,
+                    Generation: 0,
+                    Disposition: BffOnboardingDisposition.Completed));
             services.AddSingleton(mockOnboarding);
         });
     }

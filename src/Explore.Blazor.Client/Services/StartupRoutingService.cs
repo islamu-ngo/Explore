@@ -19,20 +19,42 @@ public sealed class StartupRoutingService : IStartupRoutingService
 
     public async Task<StartupRouteDecision> GetRootDecisionAsync()
     {
-        var instanceStatus = await _instanceOnboardingService.GetStatusAsync();
-        if (instanceStatus == null)
+        var instanceStatus = await _instanceOnboardingService.GetStartupStatusAsync();
+        switch (instanceStatus.Disposition)
         {
-            return StartupRouteDecision.PublicHome;
+            case InstanceOnboardingStartupDisposition.InteractivePending:
+                return StartupRouteDecision.Setup;
+            case InstanceOnboardingStartupDisposition.ConfiguredAdministratorPending:
+                return instanceStatus.Provider switch
+                {
+                    "Keycloak" => StartupRouteDecision.KeycloakChallenge,
+                    "Atproto" => StartupRouteDecision.AtprotoChallenge,
+                    _ => StartupRouteDecision.Unavailable
+                };
+            case InstanceOnboardingStartupDisposition.Unavailable:
+                return StartupRouteDecision.Unavailable;
+            case InstanceOnboardingStartupDisposition.Completed:
+                break;
+            default:
+                return StartupRouteDecision.Unavailable;
         }
 
-        if (instanceStatus.IsCompleted != true)
+        var isSingleTenant = string.Equals(
+            instanceStatus.SelectedDeploymentMode,
+            "SingleTenant",
+            StringComparison.Ordinal);
+        var isMultiTenant = string.Equals(
+            instanceStatus.SelectedDeploymentMode,
+            "MultiTenant",
+            StringComparison.Ordinal);
+        if (!isSingleTenant && !isMultiTenant)
         {
-            return StartupRouteDecision.Setup;
+            return StartupRouteDecision.Unavailable;
         }
 
-        if (instanceStatus.IsAuthenticated == true &&
-            instanceStatus.IsCurrentUserInstanceAdmin == true &&
-            instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
+        if (instanceStatus.IsAuthenticated &&
+            instanceStatus.IsCurrentUserInstanceAdmin &&
+            isMultiTenant)
         {
             return StartupRouteDecision.InstanceAdmin;
         }
@@ -62,5 +84,8 @@ public enum StartupRouteDecision
     PublicHome,
     PublicLanding,
     Setup,
-    InstanceAdmin
+    InstanceAdmin,
+    KeycloakChallenge,
+    AtprotoChallenge,
+    Unavailable
 }

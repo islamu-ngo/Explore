@@ -2,7 +2,6 @@
 // ABOUTME: Proves antiforgery, pre-network input rejection, safe redirects, and authorization URL constraints.
 
 using System.Net;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -98,7 +97,7 @@ public sealed class AtprotoAuthenticationFlowTests
 
         foreach (var payload in payloads)
         {
-            var response = await InvokeChallengeHandlerAsync(factory, payload);
+            var response = await InvokeChallengeAsync(factory, GetChallengeEndpoint(factory), payload);
 
             await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest)
                 .Because($"payload {payload} must fail with a bounded problem response, but returned {response.Body}");
@@ -115,7 +114,10 @@ public sealed class AtprotoAuthenticationFlowTests
             classification = "person",
             padding = new string('x', 2200)
         });
-        var oversizedResponse = await InvokeChallengeHandlerAsync(factory, oversizedPayload);
+        var oversizedResponse = await InvokeChallengeAsync(
+            factory,
+            GetChallengeEndpoint(factory),
+            oversizedPayload);
 
         await Assert.That(oversizedResponse.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
         await Assert.That(oversizedResponse.Location).IsNull();
@@ -135,12 +137,36 @@ public sealed class AtprotoAuthenticationFlowTests
                      "{\"handle\":\"alice.example\",\"classification\":\"bot\"}"
                  })
         {
-            var response = await InvokeChallengeHandlerAsync(factory, payload);
+            var response = await InvokeChallengeAsync(factory, GetChallengeEndpoint(factory), payload);
 
             await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
             await Assert.That(response.Location).IsNull();
             await Assert.That(response.Body).Contains("ATProto sign-in could not be started.");
         }
+    }
+
+    [Test]
+    public async Task ConfiguredKeycloakPendingRejectsAtprotoChallengeAfterValidAntiforgery()
+    {
+        await using var factory = CreateFactory(
+            bypassAntiforgery: false,
+            onboardingStatus: PendingConfigured("Keycloak"));
+        using var client = CreateClient(factory);
+        var antiforgeryToken = await IssueAntiforgeryTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
+        {
+            Content = new StringContent(
+                "{\"handle\":\"alice.example\",\"classification\":\"person\"}",
+                Encoding.UTF8,
+                "application/json")
+        };
+        request.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await Assert.That(response.Headers.Location).IsNull();
+        await Assert.That(response.Headers.CacheControl?.NoStore).IsTrue();
     }
 
     [Test]
@@ -188,7 +214,7 @@ public sealed class AtprotoAuthenticationFlowTests
                      JsonSerializer.Serialize(new { handle = "alice.example", classification = "person", canonicalActorId = Guid.Empty, expectedCanonicalActorConcurrencyStamp = ExpectedCanonicalActorConcurrencyStamp })
                  })
         {
-            var response = await InvokeChallengeHandlerAsync(factory, payload);
+            var response = await InvokeChallengeAsync(factory, GetChallengeEndpoint(factory), payload);
 
             await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
             await Assert.That(atprotoServer.PushedAuthorizationRequestCount).IsEqualTo(0);
@@ -282,29 +308,26 @@ public sealed class AtprotoAuthenticationFlowTests
     }
 
     [Test]
-    public async Task AuthorizationUrlGuardAllowsOnlyCredentialFreeHttpsCarpaNetRedirects()
+    [Arguments(IdentityDocumentScenario.HttpAuthorizationEndpoint)]
+    [Arguments(IdentityDocumentScenario.CredentialedAuthorizationEndpoint)]
+    [Arguments(IdentityDocumentScenario.LoginHintAuthorizationEndpoint)]
+    [Arguments(IdentityDocumentScenario.TokenFragmentAuthorizationEndpoint)]
+    public async Task UnsafeAuthorizationEndpointFailsThroughHttpWithoutCredentialReflection(
+        IdentityDocumentScenario scenario)
     {
-        var guard = typeof(AtprotoAuthenticationHandler).GetMethod(
-            "ValidateAuthorizationUrl",
-            BindingFlags.NonPublic | BindingFlags.Static);
-        await Assert.That(guard).IsNotNull();
-        const string valid = "https://oauth.example/authorize?client_id=https%3A%2F%2Fevents.example.com%2Foauth%2Fclient-metadata.json&request_uri=urn%3Aexample%3Apar";
+        using var atprotoServer = new HermeticAtprotoServer(scenario);
+        using var apiServer = new HermeticBffApiServer();
+        await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer);
 
-        await Assert.That(guard!.Invoke(null, [valid])).IsEqualTo(valid);
+        using var response = await StartChallengeAsync(factory);
+        var body = await response.Content.ReadAsStringAsync();
 
-        string[] rejected =
-        [
-            "http://oauth.example/authorize",
-            "https://user:password@oauth.example/authorize",
-            "https://oauth.example/authorize?login_hint=alice.example",
-            "https://oauth.example/authorize#access_token=secret"
-        ];
-        foreach (var value in rejected)
-        {
-            Action action = () => guard.Invoke(null, [value]);
-            var exception = await Assert.That(action).Throws<TargetInvocationException>();
-            await Assert.That(exception!.InnerException).IsTypeOf<InvalidOperationException>();
-        }
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(response.Headers.Location).IsNull();
+        await Assert.That(body).DoesNotContain("login_hint");
+        await Assert.That(body).DoesNotContain("access_token");
+        await Assert.That(body).DoesNotContain("user:password");
+        await Assert.That(apiServer.BridgeCalls).IsEqualTo(0);
     }
 
     [Test]
@@ -375,6 +398,65 @@ public sealed class AtprotoAuthenticationFlowTests
     }
 
     [Test]
+    public async Task ConfiguredAtprotoPendingClaimsAndRefreshesStatusBeforeIssuingCookieOnce()
+    {
+        using var atprotoServer = new HermeticAtprotoServer();
+        using var apiServer = new HermeticBffApiServer();
+        var onboarding = new ClaimCompletingOnboardingStatusProvider("Atproto");
+        await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer, onboarding);
+
+        using var challenge = await StartChallengeAsync(factory);
+        await Assert.That(challenge.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        using var callbackClient = CreateClient(factory, CanonicalOrigin);
+        using var callback = await callbackClient.GetAsync(
+            $"/signin-atproto?code=authorization-code&state={Uri.EscapeDataString(atprotoServer.State!)}&iss={Uri.EscapeDataString("https://issuer.example")}");
+
+        await Assert.That(callback.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(callback.Headers.Location?.OriginalString).IsEqualTo("/");
+        await Assert.That(callback.Headers.GetValues("Set-Cookie")
+            .Count(value => value.StartsWith(".AspNetCore.Cookies=", StringComparison.Ordinal))).IsEqualTo(1);
+        await Assert.That(onboarding.InvalidationCount).IsEqualTo(1);
+        await Assert.That(apiServer.BridgeCalls).IsEqualTo(1);
+        await Assert.That(apiServer.SyncCalls).IsEqualTo(1);
+        await Assert.That(apiServer.AuthorityCalls).IsEqualTo(1);
+
+        var browserVisible = string.Join('\n', callback.Headers.SelectMany(header => header.Value));
+        await Assert.That(browserVisible).DoesNotContain(HermeticBffApiServer.PlatformAccessToken);
+        await Assert.That(browserVisible).DoesNotContain("pds-access-token");
+        await Assert.That(browserVisible).DoesNotContain("pds-refresh-token");
+    }
+
+    [Test]
+    public async Task UnsafePostedReturnPathFallsBackToRootWithoutTokenReflection()
+    {
+        using var atprotoServer = new HermeticAtprotoServer();
+        using var apiServer = new HermeticBffApiServer();
+        await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer);
+        using var client = CreateClient(factory);
+        var antiforgeryToken = await IssueAntiforgeryTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
+        {
+            Content = new StringContent(
+                "{\"handle\":\"alice.example\",\"returnPath\":\"https://evil.example/steal\",\"classification\":\"person\"}",
+                Encoding.UTF8,
+                "application/json")
+        };
+        request.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
+        using var challenge = await client.SendAsync(request);
+        await Assert.That(challenge.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var callbackClient = CreateClient(factory, CanonicalOrigin);
+        using var callback = await callbackClient.GetAsync(
+            $"/signin-atproto?code=authorization-code&state={Uri.EscapeDataString(atprotoServer.State!)}&iss={Uri.EscapeDataString("https://issuer.example")}");
+
+        await Assert.That(callback.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(callback.Headers.Location?.OriginalString).IsEqualTo("/");
+        var browserVisible = string.Join('\n', callback.Headers.SelectMany(header => header.Value));
+        await Assert.That(browserVisible).DoesNotContain("evil.example");
+        await Assert.That(browserVisible).DoesNotContain(HermeticBffApiServer.PlatformAccessToken);
+    }
+
+    [Test]
     public async Task RepeatedChallengesReuseIdentityResolutionButKeepAuthorizationFlowsIndependent()
     {
         using var atprotoServer = new HermeticAtprotoServer();
@@ -442,7 +524,8 @@ public sealed class AtprotoAuthenticationFlowTests
     private static WebApplicationFactory<Program> CreateFactory(
         bool withSigningKey = false,
         bool bypassAntiforgery = false,
-        bool enableRealAtprotoRateLimit = false)
+        bool enableRealAtprotoRateLimit = false,
+        BffOnboardingStatus? onboardingStatus = null)
     {
         var factory = new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
         {
@@ -487,7 +570,7 @@ public sealed class AtprotoAuthenticationFlowTests
                 services.RemoveAll<IBffOnboardingStatusProvider>();
                 var onboarding = Substitute.For<IBffOnboardingStatusProvider>();
                 onboarding.GetStatusAsync(Arg.Any<CancellationToken>())
-                    .Returns(new BffOnboardingStatus(true, false, true));
+                    .Returns(onboardingStatus ?? CompletedStatus());
                 services.AddSingleton(onboarding);
             });
         });
@@ -498,7 +581,8 @@ public sealed class AtprotoAuthenticationFlowTests
     private static WebApplicationFactory<Program> CreateHappyPathFactory(
         bool crossHost,
         HermeticAtprotoServer atprotoServer,
-        HermeticBffApiServer apiServer) =>
+        HermeticBffApiServer apiServer,
+        IBffOnboardingStatusProvider? onboardingStatusProvider = null) =>
         new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Atproto:PublicUrl", CanonicalOrigin);
@@ -537,12 +621,32 @@ public sealed class AtprotoAuthenticationFlowTests
                 services.AddSingleton(readiness);
 
                 services.RemoveAll<IBffOnboardingStatusProvider>();
-                var onboarding = Substitute.For<IBffOnboardingStatusProvider>();
-                onboarding.GetStatusAsync(Arg.Any<CancellationToken>())
-                    .Returns(new BffOnboardingStatus(true, false, true));
-                services.AddSingleton(onboarding);
+                if (onboardingStatusProvider is null)
+                {
+                    var onboarding = Substitute.For<IBffOnboardingStatusProvider>();
+                    onboarding.GetStatusAsync(Arg.Any<CancellationToken>())
+                        .Returns(CompletedStatus());
+                    onboardingStatusProvider = onboarding;
+                }
+                services.AddSingleton(onboardingStatusProvider);
             });
         });
+
+    private static BffOnboardingStatus CompletedStatus() => new(
+        true,
+        "Completed",
+        "Interactive",
+        null,
+        1,
+        BffOnboardingDisposition.Completed);
+
+    private static BffOnboardingStatus PendingConfigured(string provider) => new(
+        false,
+        "Pending",
+        "ConfiguredAdministrator",
+        provider,
+        1,
+        BffOnboardingDisposition.ConfiguredAdministratorPending);
 
     private static HttpClient CreateClient(WebApplicationFactory<Program> factory) =>
         CreateClient(factory, CanonicalOrigin);
@@ -623,53 +727,6 @@ public sealed class AtprotoAuthenticationFlowTests
 
         await endpoint.RequestDelegate!(context);
 
-        context.Response.Body.Position = 0;
-        using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
-        return new(
-            context.Response.StatusCode,
-            context.Response.Headers.Location.ToString() is { Length: > 0 } location ? location : null,
-            await reader.ReadToEndAsync());
-    }
-
-    private static async Task<EndpointResponse> InvokeChallengeHandlerAsync(
-        WebApplicationFactory<Program> factory,
-        string payload)
-    {
-        await using var scope = factory.Services.CreateAsyncScope();
-        var context = CreateChallengeContext(scope.ServiceProvider, payload);
-        var handler = typeof(BffAuthEndpoints).GetMethod(
-            "HandleAtprotoChallengeAsync",
-            BindingFlags.NonPublic | BindingFlags.Static);
-        await Assert.That(handler).IsNotNull();
-
-        var resultTask = handler!.Invoke(null, [context]) as Task<IResult>;
-        await Assert.That(resultTask is not null).IsTrue();
-        var result = await resultTask!;
-        await result.ExecuteAsync(context);
-
-        return await ReadEndpointResponseAsync(context);
-    }
-
-    private static DefaultHttpContext CreateChallengeContext(IServiceProvider services, string payload)
-    {
-        var context = new DefaultHttpContext
-        {
-            RequestServices = services
-        };
-        context.Request.Method = HttpMethods.Post;
-        context.Request.Scheme = Uri.UriSchemeHttps;
-        context.Request.Host = new HostString("events.example.com");
-        context.Request.Path = "/auth/atproto/challenge";
-        context.Request.ContentType = "application/json";
-        var bytes = Encoding.UTF8.GetBytes(payload);
-        context.Request.ContentLength = bytes.Length;
-        context.Request.Body = new MemoryStream(bytes);
-        context.Response.Body = new MemoryStream();
-        return context;
-    }
-
-    private static async Task<EndpointResponse> ReadEndpointResponseAsync(DefaultHttpContext context)
-    {
         context.Response.Body.Position = 0;
         using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
         return new(
@@ -809,7 +866,7 @@ public sealed class AtprotoAuthenticationFlowTests
                 && uri.Host == "issuer.example"
                 && uri.AbsolutePath == "/.well-known/oauth-authorization-server")
             {
-                return Json(AuthorizationServerMetadata);
+                return Json(CreateAuthorizationServerMetadata(scenario));
             }
 
             if (request.Method == HttpMethod.Post && uri.AbsolutePath == "/oauth/par")
@@ -876,6 +933,22 @@ public sealed class AtprotoAuthenticationFlowTests
                 """
         };
 
+        private static string CreateAuthorizationServerMetadata(IdentityDocumentScenario scenario)
+        {
+            var authorizationEndpoint = scenario switch
+            {
+                IdentityDocumentScenario.HttpAuthorizationEndpoint => "http://issuer.example/oauth/authorize",
+                IdentityDocumentScenario.CredentialedAuthorizationEndpoint => "https://user:password@issuer.example/oauth/authorize",
+                IdentityDocumentScenario.LoginHintAuthorizationEndpoint => "https://issuer.example/oauth/authorize?login_hint=alice.example",
+                IdentityDocumentScenario.TokenFragmentAuthorizationEndpoint => "https://issuer.example/oauth/authorize#access_token=secret",
+                _ => "https://issuer.example/oauth/authorize"
+            };
+            return AuthorizationServerMetadata.Replace(
+                "https://issuer.example/oauth/authorize",
+                authorizationEndpoint,
+                StringComparison.Ordinal);
+        }
+
         private const string AuthorizationServerMetadata = """
             {"issuer":"https://issuer.example","authorization_endpoint":"https://issuer.example/oauth/authorize","token_endpoint":"https://issuer.example/oauth/token","pushed_authorization_request_endpoint":"https://issuer.example/oauth/par","revocation_endpoint":"https://issuer.example/oauth/revoke","require_pushed_authorization_requests":true,"token_endpoint_auth_methods_supported":["private_key_jwt"],"token_endpoint_auth_signing_alg_values_supported":["ES256"],"dpop_signing_alg_values_supported":["ES256"],"grant_types_supported":["authorization_code","refresh_token"],"response_types_supported":["code"],"code_challenge_methods_supported":["S256"],"authorization_response_iss_parameter_supported":true,"client_id_metadata_document_supported":true,"scopes_supported":["atproto"],"require_request_uri_registration":true}
             """;
@@ -889,7 +962,11 @@ public sealed class AtprotoAuthenticationFlowTests
         MissingPds,
         DuplicatePds,
         NonHttpsPds,
-        InvalidPds
+        InvalidPds,
+        HttpAuthorizationEndpoint,
+        CredentialedAuthorizationEndpoint,
+        LoginHintAuthorizationEndpoint,
+        TokenFragmentAuthorizationEndpoint
     }
 
     private sealed class HermeticBffApiServer : HttpMessageHandler
@@ -897,6 +974,8 @@ public sealed class AtprotoAuthenticationFlowTests
         public const string PlatformAccessToken = "opaque-platform-access-token";
         private static readonly Guid UserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000002");
         public int BridgeCalls { get; private set; }
+        public int SyncCalls { get; private set; }
+        public int AuthorityCalls { get; private set; }
         public Guid? CanonicalActorId { get; private set; }
         public Guid? ExpectedCanonicalActorConcurrencyStamp { get; private set; }
 
@@ -931,6 +1010,20 @@ public sealed class AtprotoAuthenticationFlowTests
                 }));
             }
 
+            if (request.Method == HttpMethod.Post
+                && request.RequestUri!.AbsolutePath == "/api/user/sync")
+            {
+                SyncCalls++;
+                return Json(JsonSerializer.Serialize(new { success = true, id = UserId }));
+            }
+
+            if (request.Method == HttpMethod.Get
+                && request.RequestUri!.AbsolutePath == "/api/user/admin-authority")
+            {
+                AuthorityCalls++;
+                return Json("{\"hasAnyAuthority\":true,\"isInstanceAdmin\":true,\"adminTenantIds\":[],\"adminOrganizationIds\":[],\"adminGroupIds\":[]}");
+            }
+
             return Json("{\"hasAnyAuthority\":false,\"isInstanceAdmin\":false,\"adminTenantIds\":[],\"adminOrganizationIds\":[],\"adminGroupIds\":[]}");
         }
 
@@ -943,6 +1036,34 @@ public sealed class AtprotoAuthenticationFlowTests
         {
             Content = new StringContent(value, Encoding.UTF8, "application/json")
         };
+    }
+
+    private sealed class ClaimCompletingOnboardingStatusProvider(string provider)
+        : IBffOnboardingStatusProvider
+    {
+        private bool _invalidated;
+
+        public int InvalidationCount { get; private set; }
+
+        public Task<BffOnboardingStatus> GetStatusAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(_invalidated
+                ? new BffOnboardingStatus(
+                    true,
+                    "Completed",
+                    "ConfiguredAdministrator",
+                    provider,
+                    1,
+                    BffOnboardingDisposition.Completed)
+                : PendingConfigured(provider));
+        }
+
+        public void Invalidate()
+        {
+            InvalidationCount++;
+            _invalidated = true;
+        }
     }
 
     private sealed record EndpointResponse(int StatusCode, string? Location, string Body);

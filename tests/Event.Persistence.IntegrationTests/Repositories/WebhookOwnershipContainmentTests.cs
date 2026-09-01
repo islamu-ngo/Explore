@@ -275,14 +275,10 @@ public sealed class WebhookOwnershipContainmentTests(PostgreSqlContainerFixture 
         };
 
     private static InstanceBootstrapState CreateInstance() =>
-        new()
-        {
-            Id = Guid.CreateVersion7(),
-            IsCompleted = true,
-            CreatedAt = DateTime.UtcNow.AddMinutes(-1),
-            CompletedAt = DateTime.UtcNow,
-            SelectedDeploymentMode = "MultiTenant"
-        };
+        InstanceBootstrapState.CreateInteractivePending(
+            Guid.CreateVersion7(),
+            DeploymentMode.MultiTenant,
+            DateTime.UtcNow);
 
     private static WebhookProviderCapabilityProfile CreateProviderProfile() =>
         WebhookProviderCapabilityProfile.Create(

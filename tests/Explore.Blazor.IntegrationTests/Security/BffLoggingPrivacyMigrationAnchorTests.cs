@@ -59,7 +59,8 @@ public sealed class BffLoggingPrivacyMigrationAnchorTests
         ], "Cookies"));
         var readiness = Substitute.For<IBffOnboardingStatusProvider>();
         readiness.GetStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(new BffOnboardingStatus(true, false, true));
+            .Returns(new BffOnboardingStatus(
+                true, "Completed", "Interactive", null, 0, BffOnboardingDisposition.Completed));
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var service = new BffAdminClaimsTransformation(
             Substitute.For<IHttpClientFactory>(), cache, readiness,
@@ -125,7 +126,8 @@ public sealed class BffLoggingPrivacyMigrationAnchorTests
                 services.AddSingleton<CircuitHandler>(circuitCapture);
                 var readiness = Substitute.For<IBffOnboardingStatusProvider>();
                 readiness.GetStatusAsync(Arg.Any<CancellationToken>())
-                    .Returns(new BffOnboardingStatus(true, false, true));
+                    .Returns(new BffOnboardingStatus(
+                        true, "Completed", "Interactive", null, 0, BffOnboardingDisposition.Completed));
                 services.AddSingleton(new BffAdminClaimsTransformation(
                     Substitute.For<IHttpClientFactory>(),
                     Substitute.For<IMemoryCache>(),

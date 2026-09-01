@@ -96,7 +96,8 @@ public sealed class BffIdentityMigrationAnchorTests
             using var cache = new MemoryCache(new MemoryCacheOptions());
             var readiness = Substitute.For<IBffOnboardingStatusProvider>();
             readiness.GetStatusAsync(Arg.Any<CancellationToken>())
-                .Returns(new BffOnboardingStatus(true, false, true));
+                .Returns(new BffOnboardingStatus(
+                    true, "Completed", "Interactive", null, 0, BffOnboardingDisposition.Completed));
             var service = new BffAdminClaimsTransformation(
                 new FixedHttpClientFactory(client), cache, readiness,
                 NullLogger<BffAdminClaimsTransformation>.Instance);
@@ -166,7 +167,8 @@ public sealed class BffIdentityMigrationAnchorTests
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var readiness = Substitute.For<IBffOnboardingStatusProvider>();
         readiness.GetStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(new BffOnboardingStatus(true, false, true));
+            .Returns(new BffOnboardingStatus(
+                true, "Completed", "Interactive", null, 0, BffOnboardingDisposition.Completed));
         var admin = new BffAdminClaimsTransformation(
             new FixedHttpClientFactory(client), cache, readiness,
             NullLogger<BffAdminClaimsTransformation>.Instance);

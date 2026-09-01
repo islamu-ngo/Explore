@@ -50,9 +50,9 @@ public static class CurrentUserResolutionExtensions
             new ResolveCurrentUserIdByIdentityRequest
             {
                 Provider = providerIdentity.Provider,
-                ProviderId = providerIdentity.ProviderId,
-                Email = providerIdentity.Email,
-                EmailVerified = providerIdentity.EmailVerified,
+                ProviderId = providerIdentity.AccountKey.Value,
+                Email = null,
+                EmailVerified = false,
             },
             cancellationToken);
     }

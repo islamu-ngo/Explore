@@ -176,14 +176,13 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
             var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
             dbContext.Database.EnsureCreated();
 
-            dbContext.InstanceBootstrapStates.Add(new InstanceBootstrapState
-            {
-                Id = Guid.NewGuid(),
-                IsCompleted = true,
-                CreatedAt = DateTime.UtcNow,
-                CompletedAt = DateTime.UtcNow,
-                SelectedDeploymentMode = DeploymentMode.ToString()
-            });
+            var completedAt = DateTime.UtcNow;
+            var bootstrap = InstanceBootstrapState.CreateInteractivePending(
+                Guid.CreateVersion7(),
+                DeploymentMode,
+                completedAt);
+            bootstrap.CompleteInteractive(Guid.CreateVersion7(), completedAt);
+            dbContext.InstanceBootstrapStates.Add(bootstrap);
             dbContext.SaveChanges();
 
             dbContext.SystemSettings.AddRange(

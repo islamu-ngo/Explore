@@ -21,18 +21,15 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
 {
     private readonly IAdminContext _adminContext;
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
-    private readonly IUserRepository _userRepository;
     private readonly ILogger<AdminClaimsTransformation> _logger;
 
     public AdminClaimsTransformation(
         IAdminContext adminContext,
         IUserExternalLoginRepository userExternalLoginRepository,
-        IUserRepository userRepository,
         ILogger<AdminClaimsTransformation> logger)
     {
         _adminContext = adminContext;
         _userExternalLoginRepository = userExternalLoginRepository;
-        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -120,7 +117,7 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
             return platformUserId;
         }
 
-        var providerIdentity = ProviderLinkedPrincipalReader.GetProviderIdentity(principal);
+        var providerIdentity = principal.GetProviderIdentity();
         if (providerIdentity is null)
         {
             return null;
@@ -128,37 +125,7 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
 
         var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(
             providerIdentity.Provider,
-            providerIdentity.ProviderId);
-        if (externalLogin != null)
-        {
-            return externalLogin.UserId;
-        }
-
-        if (SupportsEmailAutoMatch(providerIdentity.Provider)
-            && ResolveEmailVerified(principal)
-            && !string.IsNullOrWhiteSpace(providerIdentity.Email))
-        {
-            var user = await _userRepository.GetUserByEmail(providerIdentity.Email.Trim().ToLowerInvariant());
-            if (user != null)
-            {
-                return user.Id;
-            }
-        }
-
-        return null;
-    }
-
-    private static bool ResolveEmailVerified(ClaimsPrincipal principal)
-    {
-        var raw = principal.FindFirst("email_verified")?.Value;
-        return bool.TryParse(raw, out var emailVerified)
-            ? emailVerified
-            : string.Equals(raw, "1", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool SupportsEmailAutoMatch(string provider)
-    {
-        return provider == AuthSchemeNames.Keycloak.ToLowerInvariant()
-            || provider == AuthSchemeNames.Google.ToLowerInvariant();
+            providerIdentity.AccountKey);
+        return externalLogin?.UserId;
     }
 }
