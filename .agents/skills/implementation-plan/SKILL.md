@@ -18,19 +18,21 @@ priority: high
 - [../i-vsd/SKILL.md](../i-vsd/SKILL.md)
 - [../i-vsd/resources/integration-contract.md](../i-vsd/resources/integration-contract.md)
 - [../grill-me/SKILL.md](../grill-me/SKILL.md)
+- [../conventional-commit/SKILL.md](../conventional-commit/SKILL.md)
 
 ## Top Invariants
 1. Investigate and plan only; do not edit runtime code or claim implementation has started.
 2. Follow I-VSD `planning` mode: reuse one shared repository evidence packet, create the draft `islamic-value-sensitive-design/i-vsd-<task-name>.md`, resolve material branches through `grill-me`, draft the triad, then revalidate its `IVSD-*` mappings before declaring it plan-aligned. The plan request satisfies the normal I-VSD agreement prompt but never suppresses necessary user questions.
-3. Verify every claimed path, symbol, test, contract, and configuration key from repository evidence, then classify the work against every relevant intent and carry its docs, skills, rules, scope, tests, acceptance criteria, forbidden moves, and **Release & Changelog Strategy** into the plan.
+3. Verify every claimed path, symbol, test, contract, and configuration key from repository evidence, then classify the work against every relevant intent and carry its docs, skills, rules, scope, tests, acceptance criteria, forbidden moves, and **Release, Changelog, And Phase Commit Strategy** into the plan.
 4. **Behavior vs. Code Separation & Scenario Contract**: In `plan.md`, define externally observable behavior contracts using RFC 2119 keywords (`SHALL`/`MUST`) and concrete `WHEN`/`THEN` scenarios before designing code. Implementation details (classes, handlers, migrations) belong strictly in Section 5 Architecture. Classify changes as `Behavioral Delta` (requiring scenarios) vs `Non-Behavioral Delta` (pure refactor/tooling).
 5. **Invariant-First Slicing & Quality Over Quantity**: Sequence failing invariant/specification tests (Red Phase) *before* production code (Green Phase) specifically for **Core Domain Invariants, Concurrency Races, State Machines, and Security Boundaries**. Standard CQRS commands/queries, API endpoints, and UI components do NOT require dogmatic Red/Green micro-task decomposition; implement them directly and verify via targeted contract/integration tests without boilerplate mock-mirroring (`NSubstitute.Received(1)`).
 6. **Greenfield Breaking Change Freedom**: This platform is pre-release (0 users, 0 external adopters). Never plan backward-compatibility shims, deprecated route aliases, or legacy compatibility layers. Break and replace cleanly to achieve optimal architecture.
 7. **Strict Deferrable Open Questions Gate**: Unknowns in `plan.md` Section 2.6 are strictly for genuinely deferrable details that will not alter scope, architectural patterns, or task breakdown. If an unknown would shift the task sequence, resolve it via `grill-me` before finalizing the plan.
 8. **Dev-Doc Triad Single Responsibility**: Maintain strict separation of concerns across artifacts:
    - `*-plan.md`: Canonical architectural design, current state, design decisions, and phase-level exit criteria (no granular execution tasks, checkboxes, dynamic status, or session handoffs).
-   - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes with atomic verification criteria, dynamic status, and phase verification gates).
+   - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes with atomic verification criteria, dynamic status, phase verification gates, and immediate phase-commit tasks).
    - `*-context.md`: The sole active working memory (session progress, quick resume, blockers, validation baseline results, and dated session handoffs).
+9. **Planned Phase Commit Contract**: Every phase ends with a commit task immediately after verification. While authoring/updating `tasks.md`, planning loads `conventional-commit` and writes the exact title, description, changelog treatment, trailers, commit paths, inspection commands, `git add`, path-limited `git commit`, and post-commit verification command. That packet is self-sufficient: when truthful, implementation executes it without loading the skill. Only material divergence authorizes loading the skill and recording complete replacement packets for every resulting commit. On shared `develop`, phase failures block and unrelated work remains untouched.
 
 ## Top Anti-Patterns
 1. Memory-based planning, which turns assumptions about the repository into false implementation facts.
@@ -42,6 +44,7 @@ priority: high
 7. Verification sprawl, which wastes implementation time on per-task checks, multiple test commands, app startup, browser automation, Playwright, Chrome DevTools MCP, Aspire, Docker, or live-service smoke tests.
 8. Stale checkbox debt, which postpones task updates until a separate refresh command and leaves completed implementation appearing unfinished.
 9. **Dev-Doc Triad Bleed / Duplication**, which pollutes `plan.md` with granular task checklists (`- [ ]`), dynamic execution statuses (`IN PROGRESS`), or session handoffs, duplicating `tasks.md` and `context.md`.
+10. **Final-Only, Reloaded, Reinvented, Or Mixed-Tree Commits**, which defers work to another session, reloads `conventional-commit` merely to reuse an approved contract, recreates a message already resolved during planning, silently overrides a truthful default, uses blind staging, or absorbs unrelated work.
 
 ## Minimal Examples
 ```text
@@ -67,6 +70,15 @@ dotnet run --project <one-relevant-project>.csproj --no-build -- --treenode-filt
 Phase-end verification only:
 dotnet build --configuration Release --verbosity quiet
 dotnet test --project <one-relevant-project>.csproj --configuration Release --verbosity quiet
+
+Immediate phase close on shared develop:
+classify any failures as phase-attributable or proven unrelated
+inspect the dirty tree and existing index
+use the exact planned title and description by default
+load conventional-commit only when a material-divergence override is required
+record the override reason and replacement contracts before committing
+stage and commit exact phase-owned paths only
+verify the resulting commit contains no unrelated files
 ```
 
 ```text

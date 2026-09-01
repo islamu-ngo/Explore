@@ -25,7 +25,7 @@
 - Every relevant implementation intent was captured.
 - **Change Classification** is explicitly declared (`Behavioral Delta` vs `Non-Behavioral Delta`).
 - Intent docs, skills, rules, scope, tests, docs impact, acceptance criteria, and forbidden moves are reflected in the plan.
-- The **Release & Changelog Strategy** is classified (Conventional Commit scopes, `docs/releases/changes/CHG-*.yaml` fragment requirement for high-impact/breaking changes, or explicit `Changelog: skip` trailers).
+- The **Release, Changelog, And Phase Commit Strategy** is classified. Every phase has planning-authored exact message metadata, commit paths, inspection/staging/path-limited commit commands, and post-commit verification validated against `conventional-commit`; no placeholder remains.
 - Security, authorization, privacy, abuse, multi-tenancy, federation, localization, accessibility, product, observability, operations, and migration are each classified with rationale.
 - Clean Architecture ownership and API/HAL/BFF trust boundaries are explicit where applicable.
 - **Greenfield Breaking Change Freedom**: Backward-compatibility shims, deprecated route aliases, and legacy adapters are forbidden in pre-v1. Cleanly break and replace obsolete structures.
@@ -45,6 +45,10 @@
 - **Subtask Verification**: Subtasks specify targeted TUnit tree-node filtering (`--treenode-filter "/*/*/*<TestClass>/*"`) for active iteration rather than full-project or solution-wide test commands.
 - Tests are specified against public contracts (MediatR requests, HTTP routes, ProblemDetails RFC 7807, database states) rather than private implementation details.
 - Every phase ends with exactly one Release build and at most one fastest relevant non-browser project test.
+- Every phase then ends with a self-sufficient executable packet. Its staging and path-limited commit pathspecs exactly equal `Commit paths`; its command encodes the declared message/trailers; normal execution does not load `conventional-commit`; and its verification proves the committed file list. Mixed ownership blocks.
+- Message overrides are limited to explicit user-driven outcome changes, atomic phase splits, material implementation divergence, changed breaking/change-fragment classification, or a planned message that became factually false. Stylistic preference is never sufficient.
+- Only an allowed override loads `conventional-commit`; every resulting actual contract repeats all metadata, path, inspection, staging, commit, and verification fields before any commit executes.
+- Phase-attributable failures block the commit. A broad command failure may be treated as unrelated only when exact external path/ownership evidence is recorded, the phase-owned verification lane is green, and the unrelated work remains untouched and unstaged by the phase agent.
 - The plan contains no app startup, Playwright, browser automation, Chrome DevTools MCP, visual QA, E2E, Docker/Aspire startup, live-service smoke, or manual runtime walkthrough.
 
 ## Continuity Gate
@@ -55,7 +59,8 @@
 - **Dev-Doc Triad Single Responsibility**: `plan.md` defines architectural phase exit criteria without embedding granular task execution checklists, checkboxes (`- [ ]`), or session handoffs; `tasks.md` is the sole hot execution ledger; `context.md` is the sole session memory and handoff log.
 - Context puts resume state and blockers near the top.
 - Tasks are checkable and mirror the plan's phases.
-- The implementation-agent contract makes `tasks.md` the hot ledger, requires substantial-task updates immediately and full reconciliation by phase end, and separates implementation completion from phase verification.
+- The implementation-agent contract makes `tasks.md` the hot ledger, requires substantial-task updates immediately and full reconciliation by phase end, and separates implementation completion, verification disposition, and the phase commit.
+- Every phase records exact phase-owned paths, a concrete planned commit contract, and post-verification commit checkboxes; completed phases record any override contract plus a commit hash whose file list contains no unrelated paths.
 - Context and plan update triggers are narrow enough to prevent documentation churn, while a dated handoff remains mandatory before pause or transfer.
 - Resume guidance reads context/tasks first and only relevant plan sections, avoiding repeated full-workstream rereads.
 
@@ -67,6 +72,7 @@
 - Unknowns that materially affect design are visible and assigned to investigation or user review.
 - The workstream is ready for user correction/approval before implementation begins.
 - No artificial test-only, documentation-only, QA-only, reporting-only, or verification-only phase was added.
+- No final-only catch-all commit task or separate commit-only session is required; the approved workstream authorizes the implementing agent to close each phase directly.
 
 ## Verification
 

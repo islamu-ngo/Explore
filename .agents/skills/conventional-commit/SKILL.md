@@ -1,6 +1,6 @@
 ---
 name: conventional-commit
-description: "Load when asked to write, split, squash, or review git commit messages, Conventional Commits, changelog subjects, or release-note entries from a diff; not for implementing the underlying change."
+description: "Load when asked to author/review commit messages or when material divergence requires replacing an approved phase commit contract; not for implementing code or executing a still-truthful planned contract."
 type: guardrail
 enforcement: block
 priority: high
@@ -9,7 +9,6 @@ priority: high
 <!-- ABOUTME: Groups each commit by releasable outcome instead of code layer or file type. -->
 
 # Conventional Commits
-
 ## Invariants & Rules
 
 1. **Smallest Releasable Vertical Slice**: One commit is the smallest complete, independently reviewable outcome—not every change related to a broad feature or workstream. Include only the layers and artifacts required for that exact behavior.
@@ -19,11 +18,13 @@ priority: high
 5. **Subject Quality**: State user/operator benefit in imperative mood; clear without reading the body.
 6. **Breaking Work & Change-Id**: Breaking changes require `!` and `BREAKING CHANGE:` footer. Governed security/migration work requires its change fragment and matching `Change-Id: CHG-...` footer.
 7. **Internal Nonbreaking Work**: Commits of type `test`, `build`, `ci`, `refactor`, `style`, or internal `docs`/`fix` must carry both `Changelog: skip` and non-empty `Changelog-Reason: <reason>`.
-8. **Safe Staging**: Never use blind `git add .` on mixed trees. Explicitly name staged files per atomic commit.
-9. **Execution Protocol**: Show proposed commit plan by default; execute stage-and-commit directly when explicitly instructed.
-10. **History Invariants**: Commit `B` is the sole commit whose terminal footers are `Changelog: skip` and `Changelog-Reason: release metadata commit`. Never rewrite published history on `develop` or release lines.
-11. **Oversized Commit Gate**: A large dirty tree is evidence that more clustering is required, not permission for one umbrella commit. Split independent behaviors, refactors, tests, documentation, plans, cleanup, provider integrations, and operational changes even when they share a capability scope.
-12. **Rare Large-Commit Exception**: A commit may touch dozens or hundreds of files only when the same indivisible change necessarily applies across them—for example a mechanical repository-wide rename, generated artifacts from one source change, or one schema/migration regeneration whose files cannot build or remain truthful independently. State that necessity in the commit plan; “same feature,” “same workstream,” or “all currently dirty” is never sufficient.
+8. **Safe Staging**: Never use blind `git add .` on mixed trees. Explicitly name staged files per atomic commit. On a shared checkout, inspect the existing index first; never unstage another contributor's work. If unrelated paths are already staged, use an explicit path-limited commit only when you own the complete diff of every named file, then verify the resulting commit file list. A file containing another contributor's hunks is a blocker until ownership is separated or coordinated.
+9. **Self-Sufficient Planned Contract**: Planning writes exact metadata, commit paths, inspection commands, `git add`, path-limited `git commit`, and post-commit verification in `tasks.md`. Pathspecs equal declared paths and the command encodes metadata/trailers. A truthful packet executes without loading this skill.
+10. **Material-Divergence Override Gate**: The executor loads this skill only when it will not use the planned packet due to user change, atomic split, material divergence, changed breaking/change-fragment classification, or factual invalidity. Before committing, record the reason and a complete metadata/path/command packet for every resulting commit. Style is insufficient.
+11. **Execution Protocol**: Show the proposed commit plan by default; execute stage-and-commit directly when explicitly instructed. An approved implementation-plan phase-close task is explicit instruction for the implementing agent to commit in the same session.
+12. **History Invariants**: Commit `B` is the sole commit whose terminal footers are `Changelog: skip` and `Changelog-Reason: release metadata commit`. Never rewrite published history on `develop` or release lines.
+13. **Oversized Commit Gate**: A large dirty tree is evidence that more clustering is required, not permission for one umbrella commit. Split independent behaviors, refactors, tests, documentation, plans, cleanup, provider integrations, and operational changes even when they share a capability scope.
+14. **Rare Large-Commit Exception**: A commit may touch dozens or hundreds of files only when the same indivisible change necessarily applies across them—for example a mechanical repository-wide rename, generated artifacts from one source change, or one schema/migration regeneration whose files cannot build or remain truthful independently. State that necessity in the commit plan; “same feature,” “same workstream,” or “all currently dirty” is never sufficient.
 
 ## Canonical Scope Registry
 
@@ -75,15 +76,20 @@ Changelog-Reason: concise explanation of why commit is excluded from public rele
 ```bash
 # Vertical feature commit (single-outcome staging)
 git add path/to/Domain.cs path/to/Page.razor path/to/ApiClient.g.cs
-git commit -m "feat(registration): present tenant-branded intermediary disclaimer on paid events" \
-           -m "Format canonical directory notice dynamically based on tenant branding."
+git commit -m "feat(registration): present tenant-branded intermediary disclaimer on paid events" -m "Format canonical directory notice dynamically based on tenant branding."
 
 # Internal nonbreaking commit (with required skip trailers)
 git add path/to/ProjectionUpdater.cs
 git commit -m "fix(database): wrap session projection rebuilds in db execution strategy" \
-           -m "Execute projection rebuilds within execution strategies." \
-           -m "Changelog: skip" \
-           -m "Changelog-Reason: internal projection resilience enhancement"
+  -m "Execute projection rebuilds within execution strategies." -m "Changelog: skip" -m "Changelog-Reason: internal projection resilience enhancement"
+
+# Shared develop checkout with unrelated paths already staged
+git status --short
+git diff --cached --name-only
+git add -- path/to/OwnedChange.cs path/to/OwnedChangeTests.cs
+git commit --only -m "fix(registration): reject expired holds before attendee confirmation" -m "Keep registration state unchanged when the submitted hold is no longer valid." \
+  -- path/to/OwnedChange.cs path/to/OwnedChangeTests.cs
+git show --name-only --format=fuller HEAD
 ```
 
 ## Anti-Pattern Catalog
@@ -97,6 +103,9 @@ git commit -m "fix(database): wrap session projection rebuilds in db execution s
 | `test: update tests` | `test(testing): harden persistence integration tests` | Descriptive subject and canonical scope. |
 | One commit for an entire multi-feature dirty tree | Separate commits for each independently reviewable behavior | Shared timing or scope does not make changes atomic. |
 | “Vertical slice” containing hundreds of loosely related files | Large commit only for one provably indivisible transformation or generated set | Atomic means smallest complete outcome, not largest complete workstream. |
+| Normal `git commit` while unrelated paths are already staged | Explicit path-limited commit plus post-commit file-list verification | Shared index state must not leak another contributor's work into the commit. |
+| Path-limited commit of a file containing another contributor's hunks | Stop and separate or coordinate ownership before committing | Path limitation isolates files, not mixed-author hunks inside one file. |
+| Loading this skill to reuse a truthful contract, or silently replacing a false one | Execute the self-sufficient default directly; load only to record material-divergence replacement contracts | Avoid context waste while making necessary drift explicit. |
 
 ## Resources
 

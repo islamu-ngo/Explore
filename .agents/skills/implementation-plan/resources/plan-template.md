@@ -134,11 +134,13 @@ Use reviewable architectural slices. Every phase in `plan.md` defines high-level
 - **Goal:**
 - **Depends on:**
 - **Relevant files:** existing/new status included
+- **Phase-owned paths:** exact files this phase may stage; update this list when legitimate phase work discovers or generates another file
 - **Related skills/rules:**
 - **Acceptance criteria:** observable architectural and contract outcomes (bullet list, not execution checkboxes)
 - **Phase-end verification (run once after all tasks):**
   - `dotnet build --configuration Release --verbosity quiet`
   - `dotnet test --project <one-relevant-project>.csproj --configuration Release --verbosity quiet`
+- **Phase-close commit outcome:** one benefit-led sentence from which `tasks.md` defines the exact default Conventional Commit message
 - **Rollback / failure handling:**
 ```
 
@@ -147,7 +149,7 @@ Use reviewable architectural slices. Every phase in `plan.md` defines high-level
 > - `plan.md` defines **architectural phases, goals, component files, phase-level acceptance criteria, verification commands, and rollback strategy**.
 > - Do **NOT** include granular `#### Task N.M:` execution blocks, task descriptions/effort, or `[ ]` / `[x]` checkboxes in `plan.md`.
 > - All granular task breakdowns (`Task N.M`), Red/Green/Refactor task sequences, and actionable execution checklists belong **strictly in `tasks.md`**.
-> - Ephemeral session progress, worktree dirty scopes, test pass counts, and handoffs belong **strictly in `context.md`**.
+> - Ephemeral session progress, shared working-tree dirty scopes, test pass counts, and handoffs belong **strictly in `context.md`**.
 
 #### Behavioral Slice Rule: Invariant-First Slicing (in `tasks.md`)
 To prevent **Post-Hoc Test Tautology ("The Ugly Mirror")** on critical paths while avoiding excessive test toil on standard orchestration, structure tasks in `tasks.md` with appropriate rigor:
@@ -173,19 +175,46 @@ Every task checkbox in `tasks.md` MUST include its explicit verification asserti
 
 Do not create standalone manual-QA, documentation-review, reporting, dev-doc maintenance, or redundant verification tasks. Run no build or test command until the phase implementation is complete.
 
-#### Final Phase Closing Rule: Changelog & Commit as the Final Task (in `tasks.md`)
-Every implementation workstream MUST sequence its **Changelog Contribution & Commit Composition** as the **FINAL task of the FINAL phase in `tasks.md`** (e.g. `Task N.Last: Changelog Contribution & Final Commit Composition`). This ensures that:
-1. All functional implementation across layers is 100% complete.
-2. All tests are green and verified.
-3. All relevant documentation (docs, schemas, runbooks) has been updated.
-4. Only then is the appropriate changelog artifact created (`docs/releases/changes/CHG-YYYY-NNNN.yaml` for Tier 2) and the final Conventional Commit composed.
+#### Per-Phase Closing Rule: Verify, Then Commit (in `tasks.md`)
+Every implementation phase MUST end with a **Phase N Commit** task immediately after its phase-verification tasks. The approved task ledger is standing authorization for the same implementing agent to execute the commit; do not defer commit composition to a new session or require another user invocation.
+
+While writing or updating the workstream, the planning agent MUST load `conventional-commit` and place this fully resolved contract in every phase's `tasks.md` section:
+
+```markdown
+#### Planned Commit Contract
+- **Default title:** `type(scope): benefit-led phase outcome`
+- **Default description:** Exact motivation and data/control-flow description for the planned phase outcome.
+- **Changelog treatment:** Public feature/fix | Change fragment `CHG-YYYY-NNNN` | `Changelog: skip`
+- **Required trailers:** Exact terminal trailer lines, or `None`
+- **Commit paths:** Exact ordered list of wholly phase-owned files for this commit.
+- **Pre-commit inspection commands:** Exact `git status --short`, unstaged-path, and staged-path inspection commands.
+- **Staging command:** Exact `git add -- <every commit path>` command.
+- **Commit command:** Exact path-limited `git commit --only` command containing the default title, description, every required trailer, and every commit path.
+- **Post-commit verification command:** Exact command that prints the committed file list and commit metadata.
+- **Message override:** Not overridden
+```
+
+Final workstream artifacts MUST contain concrete values, never the template placeholders above. The pathspec in the staging/commit commands MUST exactly equal `Commit paths`, and the commit command MUST encode the declared title, description, and trailers. Exact commit packets remain execution metadata in `tasks.md`; `plan.md` carries only the phase's benefit-led commit outcome.
+
+The phase-close task MUST:
+
+1. Treat the approved contract and embedded staging instructions as self-sufficient. If the planned contract remains truthful, use it directly and do not load `conventional-commit`.
+2. Reconcile the phase's task/context state and phase-owned path list before staging.
+3. Execute the contract's exact inspection commands, confirm every named file is wholly phase-owned, then execute its exact staging and path-limited commit commands. Never substitute blind/broad staging. Unrelated pre-staged paths remain staged; mixed-ownership files block the commit.
+4. Treat phase-attributable build/test failures as blockers. If a required broad command fails only because of concurrent changes outside the phase-owned paths, record the exact command, failure, external path/owner evidence, and successful phase-scoped verification in `tasks.md` and `context.md`; do not edit or stage the unrelated work.
+5. Use the planned default title, description, changelog treatment, and trailers unchanged when they remain truthful. The implementing agent MUST NOT rewrite them for style or preference.
+6. Inspect the resulting commit's file list and record its hash in the task ledger before marking the phase complete.
+
+An override is exceptional and allowed only when explicit user feedback changed the phase outcome, the phase had to split into multiple atomic commits, the implemented outcome materially differs from the approved design, the breaking/change-fragment classification changed, or the planned message became factually false. Only then does implementation load [`conventional-commit`](../../conventional-commit/SKILL.md). Before committing, set `Message override: Yes`, record `Reason`, and add an `Actual commit contracts` list. Every actual contract MUST repeat the complete schema above: title, description, changelog treatment, trailers, commit paths, exact inspection/staging/path-limited commit commands, and post-commit verification command. Apply normal plan/context update triggers when their owned state changes.
+
+Create any required changelog fragment, generated artifact, schema, runbook, or documentation in the phase that owns that outcome, before that phase's verification and commit. There is no final-phase-only catch-all commit.
 
 ## 7. Testing Strategy
 
 Keep this section short and high-leverage (strict **Quality over Quantity**):
 1. **Invariant Anchors**: Detail which test project (e.g., `Event.Domain.UnitTests`, `Event.Application.UnitTests`, `Event.API.IntegrationTests`, `Event.Persistence.IntegrationTests`) hosts the invariant and contract tests.
 2. **High-Leverage Adversarial Scenarios**: Prioritize high-value invariant tests (concurrency races, state machine exhaustiveness, real DB transaction boundaries, zero-PII log sinks, tenant isolation) over shallow mock-heavy boilerplate tests.
-3. **Phase Verification Lane**: Assign exactly one fastest relevant non-browser test project to each phase, never repeat a project without a concrete reason, and never schedule more than one `dotnet test` command in a phase. Do not plan E2E, Playwright, browser automation, Chrome DevTools MCP, visual QA, live-app smoke, Aspire/Docker startup, or manual runtime verification.
+3. **Phase Verification Lane**: Assign exactly one fastest relevant non-browser test project to each phase, never repeat a project without a concrete reason, and never schedule more than one `dotnet test` command in a phase. A broad shared-tree command that fails solely in proven unrelated concurrent work is recorded as an external verification blocker; the phase may close only when its own selected verification lane is green and no phase-attributable failure remains. Do not plan E2E, Playwright, browser automation, Chrome DevTools MCP, visual QA, live-app smoke, Aspire/Docker startup, or manual runtime verification.
 
 Record additional intent-mandated projects as contract requirements, then distribute them across existing phases where possible; do not create artificial test-only phases.
 
@@ -193,15 +222,15 @@ Record additional intent-mandated projects as contract requirements, then distri
 
 Name the exact docs, schemas, generated artifacts, settings, environment variables, Aspire/Compose files, deployment material, and runbooks to update or state why none apply.
 
-### 8.1 Release & Changelog Strategy (Procedural Contribution)
+### 8.1 Release, Changelog, And Phase Commit Strategy (Procedural Contribution)
 
-Every implementation plan MUST classify its procedural changelog approach across the 3-tier release model (executed in the plan's final closing task):
+Every implementation plan MUST classify its procedural changelog approach across the 3-tier release model. Planning pre-authors each phase's exact message metadata, commit paths, and executable Git command packet in `tasks.md`. Every phase then closes with that approved self-sufficient contract; release artifacts are created in the owning phase rather than deferred to one catch-all commit:
 
 1. **Tier 1 — Standard Feature or Fix (Conventional Commits):**
    - Use public capability scopes from `eng/release/policy/scope-registry.yaml` (e.g. `feat(event): ...`, `fix(auth): ...`).
    - The release engine automatically aggregates these into `What's Changed` at release time.
 2. **Tier 2 — High-Impact / Breaking / Migration / Security / Operator Impact (Change Fragment):**
-   - The plan's final phase MUST include a task creating an append-only change fragment under `docs/releases/changes/CHG-YYYY-NNNN.yaml`.
+   - The owning phase MUST include a task creating an append-only change fragment under `docs/releases/changes/CHG-YYYY-NNNN.yaml`.
    - The task acceptance criteria must enforce valid YAML structure, `ReleaseInputPolicy` validation, and terminal commit footer `Change-Id: CHG-YYYY-NNNN` (plus `BREAKING CHANGE:` where applicable).
 3. **Tier 3 — Internal Architecture / DevOps / Refactoring (Explicit Skip):**
    - The plan must specify terminal trailers: `Changelog: skip` and `Changelog-Reason: <clear-reason>` to prevent internal plumbing noise from leaking into public release notes.
@@ -238,7 +267,7 @@ Use a table with `Risk`, `Likelihood`, `Impact`, `Mitigation`, `Detection Signal
 
 ## 15. Success Metrics And Definition Of Done
 
-Define observable functional success. For each phase, the automated gate is only one Release build plus at most one selected project test; do not add separate browser, runtime, manual-QA, migration-command, documentation-check, or operator-smoke gates.
+Define observable functional success. For each phase, the automated gate is only one Release build plus at most one selected project test, followed immediately by the phase-owned Conventional Commit task; do not add separate browser, runtime, manual-QA, migration-command, documentation-check, or operator-smoke gates.
 
 ## 16. Implementation Agent Contract — KEEP DEV DOCS CURRENT
 
@@ -248,14 +277,19 @@ Require future implementation agents to:
 2. Keep a `path + heading/symbol + revision` ledger. During an uninterrupted session, do not reread unchanged plan/context/tasks; reopen only an invalidated exact section.
 3. Start from the highest-priority unchecked task unless the user overrides it.
 4. Treat `tasks.md` as the hot execution ledger: check a substantial task immediately after its implementation acceptance criteria are met, and reconcile smaller completed tasks together no later than phase end.
-5. Keep implementation-task and phase-verification checkboxes separate; a task may be checked when its implementation is complete, but the phase is complete only after its build and selected test checkboxes pass.
+5. Keep implementation-task, phase-verification, and phase-commit checkboxes separate; a task may be checked when its implementation is complete, but the phase is complete only after verification is resolved and its phase-owned commit succeeds.
 6. Update the task status summary, completed count, current priority, next recommended slice, discovered tasks, deferred work, and `Last Updated` whenever task state changes.
 7. Update context after a completed phase, meaningful decision, blocker, failed validation, material discovery, or before pause/compaction/transfer; do not rewrite it for trivial edits.
 8. Update the plan only when scope, architecture, phase order, acceptance criteria, risks, or validation strategy changes; do not churn it for ordinary progress.
-9. Record failed validation with the known cause and next recovery action in tasks/context without marking the phase complete.
-10. Before pausing, compaction, transfer, or PR creation, reconcile the affected tasks, add a concise dated handoff, and identify unrelated dirty files that the next contributor must avoid.
+9. Record failed validation with the known cause and next recovery action in tasks/context. A phase-attributable failure blocks the commit; a proven unrelated shared-tree failure must name the external path/evidence and must never be reported as green.
+10. Before every phase commit, reconcile the phase-owned path list against the dirty tree and existing index. Do not modify, unstage, stage, or commit another contributor's work.
 11. Run phase verification only after all phase tasks, with one Release build and at most one selected project test; do not repeat successful commands or start the application/browser.
-12. Never report completion when repository reality and the task ledger disagree.
+12. Immediately after the verification disposition, use the approved self-sufficient contract directly without loading `conventional-commit`; no separate user prompt or new commit-only session is required.
+13. Load `conventional-commit` only when a permitted material divergence means the planned contract will not be used, then update `tasks.md` with the reason and a complete actual contract for every resulting commit. Never load or recompute merely for stylistic preference.
+14. Apply plan/context update triggers when the divergence changes their owned decisions or state.
+15. Stage exact phase-owned paths and verify the resulting commit file list before recording its hash and completing the phase.
+16. Before pausing, compaction, transfer, or PR creation, reconcile the affected tasks, add a concise dated handoff, and identify unrelated dirty files that the next contributor must avoid.
+17. Never report completion when repository reality, the commit file list, and the task ledger disagree.
 
 Require every implementation summary to teach:
 
