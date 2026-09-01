@@ -11,4 +11,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Event.Wire.Contracts\Event.Wire.Contracts.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
 </Project>

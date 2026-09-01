@@ -16,7 +16,7 @@ public sealed class SetupCoreArchitectureTests
     private static readonly Assembly ProductAssembly = typeof(SetupProfile).Assembly;
 
     [Test]
-    public async Task ProductAssemblyRemainsWireAndBclOnlyWithoutAmbientAuthority()
+    public async Task ProductAssemblyRemainsWireBclAndApprovedYamlOnlyWithoutAmbientAuthority()
     {
         string[] violations = SetupCoreAssemblyVerifier.VerifyAssembly(ProductAssembly);
 
@@ -34,6 +34,34 @@ public sealed class SetupCoreArchitectureTests
     }
 
     [Test]
+    public async Task SetupLiveWireVocabularyDoesNotCreateCoreLiveAuthority()
+    {
+        Assembly wireAssembly = typeof(ConfigurationManifestV1Alpha2).Assembly;
+        string[] required =
+        [
+            "ISLAMU.Wire.Contracts.SetupLive.CreateSetupTargetEnrollmentRequest",
+            "ISLAMU.Wire.Contracts.SetupLive.SetupTargetEnrollmentData",
+            "ISLAMU.Wire.Contracts.SetupLive.SetupSecretBindingReadinessItem",
+            "ISLAMU.Wire.Contracts.SetupLive.SetupSecretBindingOperationData"
+        ];
+        string[] missing = required
+            .Where(name => wireAssembly.GetType(name) is null)
+            .ToArray();
+        string[] leakedCoreAuthority = ProductAssembly.GetExportedTypes()
+            .Where(type => type.Namespace?.Contains(
+                "SetupLive", StringComparison.Ordinal) == true)
+            .Select(type => type.FullName!)
+            .ToArray();
+
+        await Assert.That(missing).IsEmpty()
+            .Because("D2-1 requires the package-free Wire vocabulary: "
+                + string.Join(", ", missing));
+        await Assert.That(leakedCoreAuthority).IsEmpty()
+            .Because("Setup Core remains offline and cannot own live authority: "
+                + string.Join(", ", leakedCoreAuthority));
+    }
+
+    [Test]
     public async Task CompiledVerifierRejectsAmbientCallsMutableCollectionsAndLeakingDiagnostics()
     {
         string[] ambient = SetupCoreAssemblyVerifier.VerifyTypes([typeof(SyntheticAmbientFixture)]);
@@ -43,6 +71,63 @@ public sealed class SetupCoreArchitectureTests
         await Assert.That(ambient.Any(item => item.Contains("UtcNow", StringComparison.Ordinal))).IsTrue();
         await Assert.That(mutable.Any(item => item.Contains("mutable collection", StringComparison.Ordinal))).IsTrue();
         await Assert.That(leaking.Any(item => item.Contains("diagnostic field", StringComparison.Ordinal))).IsTrue();
+    }
+
+    [Test]
+    public async Task CompiledVerifierAllowsOnlyExactAssemblyNamespaceAndInternalIoRoles()
+    {
+        string[] assemblyViolations = SetupCoreAssemblyVerifier.VerifyAssemblyReferences(
+        [
+            new AssemblyName("System.Runtime"),
+            new AssemblyName("netstandard"),
+            new AssemblyName("Event.Wire.Contracts"),
+            new AssemblyName("YamlDotNet"),
+            new AssemblyName("Unapproved.Dependency")
+        ]);
+        SyntheticNamespaceCanaries canaries = SyntheticVerifierFactory.CreateNamespaceCanaries();
+        string[] exact = SetupCoreAssemblyVerifier.VerifyTypes(
+            [canaries.ApprovedIo], canaries.Assembly);
+        string[] denied = SetupCoreAssemblyVerifier.VerifyTypes(
+            [canaries.ChildNamespaceIo, canaries.RootNamespaceIo,
+                canaries.PublicIo, canaries.Network], canaries.Assembly);
+
+        await Assert.That(assemblyViolations).HasSingleItem();
+        await Assert.That(assemblyViolations[0]).Contains("Unapproved.Dependency");
+        await Assert.That(exact).IsEmpty().Because(string.Join("; ", exact));
+        await Assert.That(denied.Any(item =>
+            item.Contains(canaries.ChildNamespaceIo.FullName!, StringComparison.Ordinal)
+            && item.Contains("namespace", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(denied.Any(item =>
+            item.Contains(canaries.ChildNamespaceIo.FullName!, StringComparison.Ordinal)
+            && item.Contains("ambient call", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(denied.Any(item =>
+            item.Contains(canaries.RootNamespaceIo.FullName!, StringComparison.Ordinal)
+            && item.Contains("ambient call", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(denied.Any(item =>
+            item.Contains(canaries.PublicIo.FullName!, StringComparison.Ordinal)
+            && item.Contains("public method dependency", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(denied.Any(item =>
+            item.Contains(canaries.Network.FullName!, StringComparison.Ordinal)
+            && item.Contains("ambient call", StringComparison.Ordinal))).IsTrue();
+    }
+
+    [Test]
+    public async Task CompiledVerifierAllowsParserEventsAndRejectsEveryForbiddenYamlRole()
+    {
+        SyntheticYamlCanaries canaries = SyntheticVerifierFactory.CreateYamlCanaries();
+        string[] approved = SetupCoreAssemblyVerifier.VerifyTypes(
+            [canaries.Approved], canaries.Assembly);
+        string[] denied = SetupCoreAssemblyVerifier.VerifyTypes(
+            canaries.Forbidden, canaries.Assembly);
+
+        await Assert.That(approved).IsEmpty().Because(string.Join("; ", approved));
+        foreach (Type forbidden in canaries.Forbidden)
+            await Assert.That(denied.Any(item =>
+                item.Contains(forbidden.FullName!, StringComparison.Ordinal)
+                && item.Contains("forbidden yaml role", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(denied.Any(item =>
+            item.Contains(canaries.ConstructorAndLocal.FullName!, StringComparison.Ordinal)
+            && item.Contains("forbidden yaml role", StringComparison.Ordinal))).IsTrue();
     }
 
     [Test]
@@ -193,6 +278,8 @@ public sealed class SetupCoreArchitectureTests
 
 internal static class SetupCoreAssemblyVerifier
 {
+    private const string CompositionNamespace = "ISLAMU.Event.Setup.Core.Composition";
+
     private static readonly string[] ForbiddenPublicFragments =
     [
         "Password", "Secret", "Pii", "Credential", "ConnectionString",
@@ -206,18 +293,34 @@ internal static class SetupCoreAssemblyVerifier
         .Select(field => (OpCode)field.GetValue(null)!)
         .ToDictionary(opCode => opCode.Value);
 
+    private static readonly HashSet<string> ApprovedYamlTypes = new(StringComparer.Ordinal)
+    {
+        "YamlDotNet.Core.AnchorName",
+        "YamlDotNet.Core.IParser",
+        "YamlDotNet.Core.Mark",
+        "YamlDotNet.Core.Parser",
+        "YamlDotNet.Core.ScalarStyle",
+        "YamlDotNet.Core.TagDirectiveCollection",
+        "YamlDotNet.Core.TagName",
+        "YamlDotNet.Core.YamlException",
+        "YamlDotNet.Core.Tokens.TagDirective",
+        "YamlDotNet.Core.Tokens.VersionDirective"
+    };
+
     internal static string[] VerifyAssembly(Assembly assembly)
     {
         var failures = new List<string>();
-        failures.AddRange(assembly.GetReferencedAssemblies()
-            .Where(reference => reference.Name is not null
-                && !reference.Name.StartsWith("System", StringComparison.Ordinal)
-                && reference.Name != "netstandard"
-                && reference.Name != "Event.Wire.Contracts")
-            .Select(reference => $"forbidden assembly reference {reference.Name}"));
-        failures.AddRange(VerifyTypes(assembly.GetTypes()));
+        failures.AddRange(VerifyAssemblyReferences(assembly.GetReferencedAssemblies()));
+        failures.AddRange(VerifyTypes(assembly.GetTypes(), assembly));
         return failures.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
     }
+
+    internal static string[] VerifyAssemblyReferences(IEnumerable<AssemblyName> references) =>
+        references.Where(reference => reference.Name is not null
+                && !reference.Name.StartsWith("System", StringComparison.Ordinal)
+                && reference.Name is not "netstandard" and not "Event.Wire.Contracts" and not "YamlDotNet")
+            .Select(reference => $"forbidden assembly reference {reference.Name}")
+            .ToArray();
 
     internal static string[] VerifyOfflinePortabilityClosure(Assembly assembly)
     {
@@ -260,18 +363,23 @@ internal static class SetupCoreAssemblyVerifier
         return failures.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
     }
 
-    internal static string[] VerifyTypes(IEnumerable<Type> types)
+    internal static string[] VerifyTypes(IEnumerable<Type> types, Assembly? reviewedAssembly = null)
     {
         Type[] closure = types.ToArray();
+        reviewedAssembly ??= typeof(SetupProfile).Assembly;
         var failures = new List<string>();
         foreach (Type type in closure)
         {
+            bool isPublicContract = type.IsPublic || type.IsNestedPublic;
             bool isEnvironmentContract = string.Equals(
                 type.Namespace, "ISLAMU.Event.Setup.Core.Environment", StringComparison.Ordinal);
-            if ((type.IsPublic || type.IsNestedPublic)
-                && type.Assembly == typeof(SetupProfile).Assembly
+            bool isCompositionContract = string.Equals(
+                type.Namespace, CompositionNamespace, StringComparison.Ordinal);
+            if (isPublicContract
+                && IsReviewedAssembly(type.Assembly, reviewedAssembly)
                 && type.Namespace != "ISLAMU.Event.Setup.Core"
-                && !isEnvironmentContract)
+                && !isEnvironmentContract
+                && !isCompositionContract)
                 failures.Add($"forbidden public namespace {type.FullName}");
 
             foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Static))
@@ -282,20 +390,21 @@ internal static class SetupCoreAssemblyVerifier
                     failures.Add($"writable static field {type.FullName}.{field.Name}");
             }
 
-            if ((type.IsPublic || type.IsNestedPublic) && HasForbiddenPublicName(type.Name)
+            if (isPublicContract && HasForbiddenPublicName(type.Name)
                 && !(isEnvironmentContract && IsApprovedEnvironmentName(type.Name)))
                 failures.Add($"forbidden public type claim {type.FullName}");
 
             foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
-                if (IsMutableCollection(property.PropertyType))
+                if (isPublicContract && IsMutableCollection(property.PropertyType))
                     failures.Add($"mutable collection {type.FullName}.{property.Name}");
-                if (HasForbiddenPublicName(property.Name)
+                if (isPublicContract && HasForbiddenPublicName(property.Name)
                     && !(isEnvironmentContract && IsApprovedEnvironmentName(property.Name)))
                     failures.Add($"forbidden public member claim {type.FullName}.{property.Name}");
-                if (IsForbiddenDependency(property.PropertyType))
+                if (isPublicContract && IsForbiddenDependency(property.PropertyType))
                     failures.Add($"forbidden public dependency {type.FullName}.{property.Name}");
-                if (type.Name.EndsWith("Diagnostic", StringComparison.Ordinal)
+                if (isPublicContract
+                    && type.Name.EndsWith("Diagnostic", StringComparison.Ordinal)
                     && (isEnvironmentContract
                         ? property.Name is not "Code" and not "Path" and not "Key" and not "Category"
                         : property.Name is not "Code" and not "Path" and not "Severity"))
@@ -305,14 +414,16 @@ internal static class SetupCoreAssemblyVerifier
             foreach (MethodInfo method in type.GetMethods(
                          BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
             {
-                if ((HasForbiddenPublicName(method.Name)
+                if (isPublicContract
+                    && ((HasForbiddenPublicName(method.Name)
                         && !(isEnvironmentContract && IsApprovedEnvironmentName(method.Name)))
                     || method.GetParameters().Any(parameter =>
                         HasForbiddenPublicName(parameter.Name ?? string.Empty)
-                        && !(isEnvironmentContract && IsApprovedEnvironmentName(parameter.Name ?? string.Empty))))
+                        && !(isEnvironmentContract && IsApprovedEnvironmentName(parameter.Name ?? string.Empty)))))
                     failures.Add($"forbidden public method claim {type.FullName}.{method.Name}");
-                if (IsForbiddenDependency(method.ReturnType)
-                    || method.GetParameters().Any(parameter => IsForbiddenDependency(parameter.ParameterType)))
+                if (isPublicContract
+                    && (IsForbiddenDependency(method.ReturnType)
+                        || method.GetParameters().Any(parameter => IsForbiddenDependency(parameter.ParameterType))))
                     failures.Add($"forbidden public method dependency {type.FullName}.{method.Name}");
             }
 
@@ -320,10 +431,15 @@ internal static class SetupCoreAssemblyVerifier
             {
                 foreach (MethodBase called in CalledMethods(method).Where(IsAmbientCall))
                 {
-                    if (!IsApprovedCryptographicCall(type, called))
+                    if (!IsApprovedAmbientCall(type, called, reviewedAssembly))
                         failures.Add($"ambient call {type.FullName}.{method.Name} -> {called.DeclaringType?.FullName}.{called.Name}");
                 }
             }
+
+            foreach (Type dependency in ReferencedTypes(type)
+                         .SelectMany(TypeClosure)
+                         .Where(IsForbiddenYamlRole))
+                failures.Add($"forbidden yaml role {type.FullName} -> {dependency.FullName}");
         }
 
         return failures.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
@@ -344,14 +460,75 @@ internal static class SetupCoreAssemblyVerifier
 
     private static bool IsForbiddenDependency(Type type)
     {
-        type = type.IsByRef ? type.GetElementType()! : type;
-        string typeName = type.FullName ?? string.Empty;
+        return TypeClosure(type).Any(static dependency =>
+        {
+            string typeName = dependency.FullName ?? string.Empty;
+            string typeNamespace = dependency.Namespace ?? string.Empty;
+            return typeNamespace.StartsWith("System.IO", StringComparison.Ordinal)
+                || typeNamespace.StartsWith("System.Net", StringComparison.Ordinal)
+                || typeName == "System.Diagnostics.Process"
+                || typeName.StartsWith("Microsoft.Extensions", StringComparison.Ordinal)
+                || typeName.StartsWith("System.Reflection", StringComparison.Ordinal);
+        });
+    }
+
+    private static IEnumerable<Type> ReferencedTypes(Type type)
+    {
+        const BindingFlags fields = BindingFlags.Public | BindingFlags.NonPublic
+            | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+        if (type.BaseType is not null)
+            yield return type.BaseType;
+        foreach (Type dependency in type.GetInterfaces())
+            yield return dependency;
+        foreach (FieldInfo field in type.GetFields(fields))
+            yield return field.FieldType;
+        foreach (PropertyInfo property in type.GetProperties(fields))
+            yield return property.PropertyType;
+
+        foreach (MethodBase method in type.GetMethods(fields).Cast<MethodBase>()
+                     .Concat(type.GetConstructors(fields)))
+        {
+            if (method is MethodInfo methodInfo)
+                yield return methodInfo.ReturnType;
+            foreach (ParameterInfo parameter in method.GetParameters())
+                yield return parameter.ParameterType;
+            foreach (LocalVariableInfo local in method.GetMethodBody()?.LocalVariables ?? [])
+                yield return local.LocalType;
+            foreach (MethodBase called in CalledMethods(method))
+            {
+                if (called.DeclaringType is not null)
+                    yield return called.DeclaringType;
+                if (called is MethodInfo calledMethod)
+                    yield return calledMethod.ReturnType;
+                foreach (ParameterInfo parameter in called.GetParameters())
+                    yield return parameter.ParameterType;
+            }
+        }
+    }
+
+    private static IEnumerable<Type> TypeClosure(Type type)
+    {
+        yield return type;
+        if (type.HasElementType && type.GetElementType() is { } element)
+        {
+            foreach (Type dependency in TypeClosure(element))
+                yield return dependency;
+        }
+        foreach (Type argument in type.IsGenericType ? type.GetGenericArguments() : [])
+        {
+            foreach (Type dependency in TypeClosure(argument))
+                yield return dependency;
+        }
+    }
+
+    private static bool IsForbiddenYamlRole(Type type)
+    {
         string typeNamespace = type.Namespace ?? string.Empty;
-        return typeNamespace.StartsWith("System.IO", StringComparison.Ordinal)
-            || typeNamespace.StartsWith("System.Net", StringComparison.Ordinal)
-            || typeName == "System.Diagnostics.Process"
-            || typeName.StartsWith("Microsoft.Extensions", StringComparison.Ordinal)
-            || typeName.StartsWith("System.Reflection", StringComparison.Ordinal);
+        if (!typeNamespace.Equals("YamlDotNet", StringComparison.Ordinal)
+            && !typeNamespace.StartsWith("YamlDotNet.", StringComparison.Ordinal))
+            return false;
+        return typeNamespace != "YamlDotNet.Core.Events"
+            && !ApprovedYamlTypes.Contains(type.FullName ?? string.Empty);
     }
 
     private static bool IsMutableCollection(Type type)
@@ -448,26 +625,166 @@ internal static class SetupCoreAssemblyVerifier
             || ownerName == "System.Threading.Tasks.Task" && method.Name == "Delay"
             || ownerNamespace.StartsWith("System.IO", StringComparison.Ordinal)
             || ownerNamespace.StartsWith("System.Net", StringComparison.Ordinal)
+            || ownerNamespace.StartsWith("System.Reflection", StringComparison.Ordinal)
             || owner == typeof(System.Security.Cryptography.RandomNumberGenerator)
             || owner?.IsSubclassOf(typeof(System.Security.Cryptography.RandomNumberGenerator)) == true
             || ownerName == "System.Diagnostics.Process";
     }
 
-    private static bool IsApprovedCryptographicCall(Type caller, MethodBase called) =>
-        caller.FullName == "ISLAMU.Event.Setup.Core.Environment.LocalSecretGenerator"
-        && (called.DeclaringType == typeof(System.Security.Cryptography.RandomNumberGenerator)
-            || called.DeclaringType?.IsSubclassOf(
-                typeof(System.Security.Cryptography.RandomNumberGenerator)) == true);
+    private static bool IsApprovedAmbientCall(Type caller, MethodBase called, Assembly reviewedAssembly)
+    {
+        string calledNamespace = called.DeclaringType?.Namespace ?? string.Empty;
+        if (IsReviewedAssembly(caller.Assembly, reviewedAssembly)
+            && caller.Namespace == CompositionNamespace
+            && calledNamespace.StartsWith("System.IO", StringComparison.Ordinal))
+            return true;
+        return caller.FullName == "ISLAMU.Event.Setup.Core.Environment.LocalSecretGenerator"
+            && (called.DeclaringType == typeof(System.Security.Cryptography.RandomNumberGenerator)
+                || called.DeclaringType?.IsSubclassOf(
+                    typeof(System.Security.Cryptography.RandomNumberGenerator)) == true);
+    }
+
+    private static bool IsReviewedAssembly(Assembly candidate, Assembly reviewedAssembly) =>
+        string.Equals(
+            candidate.GetName().Name, reviewedAssembly.GetName().Name, StringComparison.Ordinal);
 }
 
-internal sealed class SyntheticAmbientFixture
+public sealed class SyntheticAmbientFixture
 {
     public DateTime Read() => DateTime.UtcNow;
 }
 
-internal sealed class SyntheticMutableFixture
+public sealed class SyntheticMutableFixture
 {
     public List<string> Items { get; } = [];
 }
 
-internal sealed record SyntheticLeakingDiagnostic(string Code, string Path, string Severity, string SuppliedValue);
+public sealed record SyntheticLeakingDiagnostic(string Code, string Path, string Severity, string SuppliedValue);
+
+internal sealed record SyntheticNamespaceCanaries(
+    Assembly Assembly, Type ApprovedIo, Type ChildNamespaceIo, Type RootNamespaceIo,
+    Type PublicIo, Type Network);
+
+internal sealed record SyntheticYamlCanaries(
+    Assembly Assembly, Type Approved, Type ConstructorAndLocal, Type[] Forbidden);
+
+internal static class SyntheticVerifierFactory
+{
+    private const string CompositionNamespace = "ISLAMU.Event.Setup.Core.Composition";
+
+    internal static SyntheticNamespaceCanaries CreateNamespaceCanaries()
+    {
+        ModuleBuilder module = CreateModule();
+        Type approved = DefineCall(module, $"{CompositionNamespace}.ApprovedIo",
+            typeof(Path).GetMethod(nameof(Path.GetTempPath), Type.EmptyTypes)!);
+        Type child = DefineCall(module, $"{CompositionNamespace}.Child.DeniedIo",
+            typeof(Path).GetMethod(nameof(Path.GetTempPath), Type.EmptyTypes)!);
+        Type root = DefineCall(module, "ISLAMU.Event.Setup.Core.DeniedIo",
+            typeof(Path).GetMethod(nameof(Path.GetTempPath), Type.EmptyTypes)!);
+        Type publicIo = DefinePublicParameter(
+            module, $"{CompositionNamespace}.PublicIo", typeof(Stream));
+        Type network = DefineCall(module, $"{CompositionNamespace}.Network",
+            typeof(System.Net.Dns).GetMethod(nameof(System.Net.Dns.GetHostName), Type.EmptyTypes)!);
+        return new SyntheticNamespaceCanaries(
+            module.Assembly, approved, child, root, publicIo, network);
+    }
+
+    internal static SyntheticYamlCanaries CreateYamlCanaries()
+    {
+        ModuleBuilder module = CreateModule();
+        Type parser = DefineDependency(module, "YamlDotNet.Core.Parser");
+        Type scalar = DefineDependency(module, "YamlDotNet.Core.Events.Scalar");
+        Type approved = DefineFields(
+            module, $"{CompositionNamespace}.ApprovedYaml", [parser, scalar]);
+
+        string[] roles =
+        [
+            "YamlDotNet.Serialization.DeserializerBuilder",
+            "YamlDotNet.Serialization.SerializerBuilder",
+            "YamlDotNet.Core.Emitter",
+            "YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention",
+            "YamlDotNet.Serialization.ObjectFactories.DefaultObjectFactory",
+            "YamlDotNet.Serialization.TypeInspectors.ReadablePropertiesTypeInspector",
+            "YamlDotNet.Serialization.TypeDiscriminators.TypeDiscriminator",
+            "YamlDotNet.Remote.IncludeResolver",
+            "YamlDotNet.Dynamic.PolymorphicType"
+        ];
+        var forbidden = new List<Type>(roles.Length + 1);
+        for (int index = 0; index < roles.Length; index++)
+        {
+            Type dependency = DefineDependency(module, roles[index]);
+            forbidden.Add(DefineFields(
+                module, $"{CompositionNamespace}.ForbiddenYamlRole{index}", [dependency]));
+        }
+        Type constructorDependency = DefineDependency(
+            module, "YamlDotNet.Serialization.ConstructorOnlyRole");
+        Type constructorAndLocal = DefineConstructorAndLocal(
+            module, $"{CompositionNamespace}.ConstructorAndLocalYamlRole", constructorDependency);
+        forbidden.Add(constructorAndLocal);
+        return new SyntheticYamlCanaries(
+            module.Assembly, approved, constructorAndLocal, forbidden.ToArray());
+    }
+
+    private static ModuleBuilder CreateModule()
+    {
+        var name = new AssemblyName($"SetupCoreVerifierCanaries.{Guid.NewGuid():N}");
+        return AssemblyBuilder.DefineDynamicAssembly(name, AssemblyBuilderAccess.Run)
+            .DefineDynamicModule(name.Name!);
+    }
+
+    private static Type DefineDependency(ModuleBuilder module, string fullName)
+    {
+        TypeBuilder builder = module.DefineType(
+            fullName, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
+        builder.DefineDefaultConstructor(MethodAttributes.Public);
+        return builder.CreateType()!;
+    }
+
+    private static Type DefineFields(ModuleBuilder module, string fullName, Type[] dependencies)
+    {
+        TypeBuilder builder = module.DefineType(
+            fullName, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
+        for (int index = 0; index < dependencies.Length; index++)
+            builder.DefineField($"_dependency{index}", dependencies[index], FieldAttributes.Private);
+        return builder.CreateType()!;
+    }
+
+    private static Type DefineCall(ModuleBuilder module, string fullName, MethodInfo called)
+    {
+        TypeBuilder builder = module.DefineType(
+            fullName, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
+        MethodBuilder method = builder.DefineMethod(
+            "Call", MethodAttributes.Public | MethodAttributes.Static, typeof(void), Type.EmptyTypes);
+        ILGenerator il = method.GetILGenerator();
+        il.Emit(OpCodes.Call, called);
+        if (called.ReturnType != typeof(void))
+            il.Emit(OpCodes.Pop);
+        il.Emit(OpCodes.Ret);
+        return builder.CreateType()!;
+    }
+
+    private static Type DefinePublicParameter(ModuleBuilder module, string fullName, Type dependency)
+    {
+        TypeBuilder builder = module.DefineType(
+            fullName, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
+        MethodBuilder method = builder.DefineMethod(
+            "Use", MethodAttributes.Public | MethodAttributes.Static, typeof(void), [dependency]);
+        method.GetILGenerator().Emit(OpCodes.Ret);
+        return builder.CreateType()!;
+    }
+
+    private static Type DefineConstructorAndLocal(
+        ModuleBuilder module, string fullName, Type dependency)
+    {
+        TypeBuilder builder = module.DefineType(
+            fullName, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
+        MethodBuilder method = builder.DefineMethod(
+            "Construct", MethodAttributes.Public | MethodAttributes.Static, typeof(void), Type.EmptyTypes);
+        ILGenerator il = method.GetILGenerator();
+        LocalBuilder local = il.DeclareLocal(dependency);
+        il.Emit(OpCodes.Newobj, dependency.GetConstructor(Type.EmptyTypes)!);
+        il.Emit(OpCodes.Stloc, local);
+        il.Emit(OpCodes.Ret);
+        return builder.CreateType()!;
+    }
+}
