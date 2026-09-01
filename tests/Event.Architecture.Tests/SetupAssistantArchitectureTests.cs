@@ -5,6 +5,8 @@ namespace Event.Architecture.Tests;
 
 using System.Diagnostics;
 using System.Reflection;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Text.Json;
 using System.Xml.Linq;
 using Explore.Application.Features.ConfigurationManifest.Catalog;
@@ -12,6 +14,8 @@ using Explore.Application.Features.ConfigurationManifest.Importing;
 
 public sealed class SetupAssistantArchitectureTests
 {
+    private const string CommunityToolkitContentHash =
+        "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg==";
     private const string BrowserCapabilityPath =
         "eng/setup-assistant/generated/browser-release-capabilities.json";
     private const string FrozenContractBaselinePath =
@@ -78,6 +82,16 @@ public sealed class SetupAssistantArchitectureTests
 
     private static readonly string[] BlockedPackageTerms =
         ["Terminal.Gui", "Avalonia", "Sharprompt"];
+
+    private static readonly string[] ForbiddenPresentationClosureTerms =
+    [
+        "DependencyInjection", "Microsoft.Extensions.Hosting", "Avalonia", "Terminal.Gui",
+        "System.IO", "System.Net", "HttpClient", "Socket", "Telemetry", "OpenTelemetry",
+        "ApplicationInsights", "Persistence", "EntityFramework", "Serializer",
+        "System.Text.Json", "Newtonsoft", "ServiceProvider", "ServiceLocator",
+        "Infisical", "HashiCorp", "AWSSDK", "Amazon.", "Azure.", "Google.Cloud",
+        "Stripe", "PayPal", "Braintree", "Adyen"
+    ];
 
     private static readonly string[] ForbiddenSourcePackageTerms =
     [
@@ -149,6 +163,131 @@ public sealed class SetupAssistantArchitectureTests
         await Assert.That(violations).IsEmpty()
             .Because("all ten Setup locks must remain discoverable and package-free of blocked UI graphs: "
                 + string.Join("; ", violations));
+    }
+
+    [Test]
+    public async Task DisabledPresentationTargetsMustRemainMachineDisabledAndGraphAbsent()
+    {
+        string[] disabledShells =
+        [
+            "src/Event.SetupAssistant.Browser/Event.SetupAssistant.Browser.csproj",
+            "src/Event.SetupAssistant.Desktop/Event.SetupAssistant.Desktop.csproj"
+        ];
+        var violations = new List<string>();
+        foreach (string relativePath in disabledShells)
+        {
+            string path = ContextSystemHelpers.RepoPath(
+                relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries));
+            XDocument project = XDocument.Load(path);
+            string? declared = project.Descendants()
+                .SingleOrDefault(element => element.Name.LocalName == "SetupTargetEnabled")?.Value;
+            if (!string.Equals(declared, "false", StringComparison.OrdinalIgnoreCase))
+                violations.Add($"SetupTargetEnabled is not false: {relativePath}");
+
+            ProcessResult evaluated = RunProcess(
+                "dotnet",
+                ["msbuild", path, "-getProperty:SetupTargetEnabled", "-nologo"],
+                ContextSystemHelpers.RepoPath());
+            if (evaluated.ExitCode != 0
+                || !string.Equals(evaluated.Output.Trim(), "false", StringComparison.OrdinalIgnoreCase))
+                violations.Add($"evaluated SetupTargetEnabled is not false: {relativePath}");
+        }
+
+        string sourceRoot = ContextSystemHelpers.RepoPath("src");
+        string[] targetProjectCanaries =
+            ["Event.SetupAssistant.Avalonia", "Event.SetupAssistant.Terminal"];
+        foreach (string target in targetProjectCanaries)
+        {
+            if (Directory.Exists(Path.Combine(sourceRoot, target)))
+                violations.Add($"disabled target project exists: {target}");
+        }
+
+        foreach (string projectPath in Directory.GetFiles(
+            sourceRoot,
+            "*.csproj",
+            SearchOption.AllDirectories).Where(path =>
+                Path.GetFileNameWithoutExtension(path).StartsWith(
+                    "Event.SetupAssistant",
+                    StringComparison.Ordinal)))
+        {
+            XDocument project = XDocument.Load(projectPath);
+            IEnumerable<string> graphIdentities = project.Descendants()
+                .Where(element => element.Name.LocalName is "PackageReference" or "ProjectReference")
+                .Select(element => element.Attribute("Include")?.Value ?? string.Empty);
+            violations.AddRange(graphIdentities
+                .Where(identity => BlockedPackageTerms.Take(2).Any(term =>
+                    identity.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .Select(identity => $"disabled target reference exists: {identity}"));
+
+            string lockPath = Path.Combine(Path.GetDirectoryName(projectPath)!, "packages.lock.json");
+            using JsonDocument lockDocument = JsonDocument.Parse(File.ReadAllBytes(lockPath));
+            violations.AddRange(FindJsonPropertyNames(lockDocument.RootElement)
+                .Where(identity => BlockedPackageTerms.Take(2).Any(term =>
+                    identity.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .Select(identity => $"disabled target lock node exists: {identity}"));
+        }
+
+        await Assert.That(violations).IsEmpty()
+            .Because("SA518-DISABLED-TARGET-BOUNDARY: Avalonia shared/browser/desktop and Terminal.Gui must remain disabled, absent, and non-resolvable: "
+                + string.Join("; ", violations));
+    }
+
+    [Test]
+    public async Task SetupAssistantPresentationGraphMustMatchExactProjectLockPinAndAssemblyClosure()
+    {
+        XDocument project = XDocument.Load(ContextSystemHelpers.RepoPath(
+            "src", "Event.SetupAssistant", "Event.SetupAssistant.csproj"));
+        XDocument central = XDocument.Load(ContextSystemHelpers.RepoPath(
+            "Directory.Packages.props"));
+        using JsonDocument lockDocument = JsonDocument.Parse(File.ReadAllBytes(
+            ContextSystemHelpers.RepoPath("src", "Event.SetupAssistant", "packages.lock.json")));
+        string assemblyPath = ContextSystemHelpers.RepoPath(
+            "src", "Event.SetupAssistant", "bin", "Release", "net10.0",
+            "Event.SetupAssistant.dll");
+        var violations = new List<string>();
+        violations.AddRange(ValidatePresentationProject(project, central));
+        violations.AddRange(ValidatePresentationLock(lockDocument.RootElement));
+        violations.AddRange(ValidatePresentationAssembly(assemblyPath));
+
+        await Assert.That(violations).IsEmpty()
+            .Because("SA518-GRAPH-RATCHET: Event.SetupAssistant must close over exactly Core and CommunityToolkit.Mvvm 8.4.2: "
+                + string.Join("; ", violations));
+    }
+
+    [Test]
+    public async Task PresentationGraphVerifiersMustRejectStructuredXmlAndJsonCanaries()
+    {
+        XDocument safeProject = XDocument.Parse(
+            """
+            <Project><ItemGroup>
+              <ProjectReference Include="../Event.Setup.Core/Event.Setup.Core.csproj" />
+              <PackageReference Include="CommunityToolkit.Mvvm" />
+            </ItemGroup></Project>
+            """);
+        XDocument unsafeProject = XDocument.Parse(
+            """
+            <Project><ItemGroup>
+              <ProjectReference Include="../Event.Setup.Core/Event.Setup.Core.csproj" />
+              <PackageReference Include="CommunityToolkit.Mvvm" />
+              <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+            </ItemGroup></Project>
+            """);
+        XDocument central = XDocument.Parse(
+            """<Project><ItemGroup><PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" /></ItemGroup></Project>""");
+        using JsonDocument safeLock = JsonDocument.Parse(
+            """
+            {"dependencies":{"net10.0":{"event.setup.core":{"type":"Project","dependencies":{"Event.Wire.Contracts":"[1.0.0, )"}},"event.wire.contracts":{"type":"Project"},"CommunityToolkit.Mvvm":{"type":"Direct","requested":"[8.4.2, )","resolved":"8.4.2","contentHash":"WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="}}}}
+            """);
+        using JsonDocument unsafeLock = JsonDocument.Parse(
+            """
+            {"dependencies":{"net10.0":{"event.setup.core":{"type":"Project","dependencies":{"Event.Wire.Contracts":"[1.0.0, )"}},"event.wire.contracts":{"type":"Project"},"CommunityToolkit.Mvvm":{"type":"Direct","requested":"[8.4.2, )","resolved":"8.4.2","dependencies":{"Microsoft.Extensions.DependencyInjection":"10.0.10"}},"Microsoft.Extensions.DependencyInjection":{"type":"Transitive","resolved":"10.0.10"}}}}
+            """);
+
+        await Assert.That(ValidatePresentationProject(safeProject, central)).IsEmpty();
+        await Assert.That(ValidatePresentationProject(unsafeProject, central)).Contains(
+            "PackageReferences must be exactly CommunityToolkit.Mvvm");
+        await Assert.That(ValidatePresentationLock(safeLock.RootElement)).IsEmpty();
+        await Assert.That(ValidatePresentationLock(unsafeLock.RootElement)).IsNotEmpty();
     }
 
     [Test]
@@ -470,6 +609,135 @@ public sealed class SetupAssistantArchitectureTests
             }
         }
         return [.. violations];
+    }
+
+    private static string[] ValidatePresentationProject(
+        XDocument project,
+        XDocument central)
+    {
+        var violations = new List<string>();
+        string[] projectReferences = project.Descendants()
+            .Where(element => element.Name.LocalName == "ProjectReference")
+            .Select(element => Path.GetFileNameWithoutExtension(
+                NormalizePath(element.Attribute("Include")?.Value ?? string.Empty)))
+            .ToArray();
+        if (!projectReferences.SequenceEqual(["Event.Setup.Core"], StringComparer.Ordinal))
+            violations.Add("ProjectReferences must be exactly Event.Setup.Core");
+
+        string[] packages = project.Descendants()
+            .Where(element => element.Name.LocalName == "PackageReference")
+            .Select(element => element.Attribute("Include")?.Value ?? string.Empty)
+            .ToArray();
+        if (!packages.SequenceEqual(["CommunityToolkit.Mvvm"], StringComparer.Ordinal))
+            violations.Add("PackageReferences must be exactly CommunityToolkit.Mvvm");
+
+        XElement[] pins = central.Descendants()
+            .Where(element => element.Name.LocalName == "PackageVersion"
+                && string.Equals(
+                    element.Attribute("Include")?.Value,
+                    "CommunityToolkit.Mvvm",
+                    StringComparison.Ordinal))
+            .ToArray();
+        if (pins.Length != 1
+            || !string.Equals(pins[0].Attribute("Version")?.Value, "8.4.2", StringComparison.Ordinal))
+            violations.Add("central CommunityToolkit.Mvvm pin must be exactly 8.4.2");
+        return [.. violations];
+    }
+
+    private static string[] ValidatePresentationLock(JsonElement root)
+    {
+        var violations = new List<string>();
+        if (!TryGetNested(root, out JsonElement framework, "dependencies", "net10.0")
+            || framework.ValueKind != JsonValueKind.Object)
+            return ["net10.0 lock graph is missing"];
+        string[] nodes = framework.EnumerateObject().Select(property => property.Name)
+            .Order(StringComparer.Ordinal).ToArray();
+        string[] expected =
+            ["CommunityToolkit.Mvvm", "event.setup.core", "event.wire.contracts"];
+        if (!nodes.SequenceEqual(expected, StringComparer.Ordinal))
+            violations.Add("lock nodes must be exactly Core, Wire, and CommunityToolkit.Mvvm");
+        if (!framework.TryGetProperty("CommunityToolkit.Mvvm", out JsonElement toolkit))
+            violations.Add("CommunityToolkit.Mvvm lock node is missing");
+        else
+        {
+            if (!TryGetString(toolkit, "type", out string? type) || type != "Direct")
+                violations.Add("CommunityToolkit.Mvvm lock node must be Direct");
+            if (!TryGetString(toolkit, "resolved", out string? resolved) || resolved != "8.4.2")
+                violations.Add("CommunityToolkit.Mvvm resolved version must be 8.4.2");
+            if (!TryGetString(toolkit, "requested", out string? requested)
+                || requested != "[8.4.2, )")
+                violations.Add("CommunityToolkit.Mvvm requested range must be [8.4.2, )");
+            if (!TryGetString(toolkit, "contentHash", out string? contentHash)
+                || contentHash != CommunityToolkitContentHash)
+                violations.Add("CommunityToolkit.Mvvm contentHash must match approved graph");
+            if (toolkit.TryGetProperty("dependencies", out JsonElement dependencies)
+                && dependencies.ValueKind == JsonValueKind.Object
+                && dependencies.EnumerateObject().Any())
+                violations.Add("CommunityToolkit.Mvvm must have no transitive package dependency");
+        }
+        return [.. violations];
+    }
+
+    private static string[] ValidatePresentationAssembly(string assemblyPath)
+    {
+        if (!File.Exists(assemblyPath))
+            return ["compiled Event.SetupAssistant assembly is missing"];
+        using FileStream stream = File.OpenRead(assemblyPath);
+        using var peReader = new PEReader(stream);
+        MetadataReader metadata = peReader.GetMetadataReader();
+        string[] references = metadata.AssemblyReferences
+            .Select(handle => metadata.GetString(metadata.GetAssemblyReference(handle).Name))
+            .ToArray();
+        var violations = new List<string>();
+        string[] required = ["CommunityToolkit.Mvvm"];
+        violations.AddRange(required.Where(requiredName =>
+            !references.Contains(requiredName, StringComparer.Ordinal))
+            .Select(requiredName => $"compiled reference is missing: {requiredName}"));
+        violations.AddRange(references.Where(reference =>
+            reference is not "Event.Setup.Core" and not "CommunityToolkit.Mvvm"
+            && reference is not "System" and not "netstandard" and not "mscorlib"
+            && !reference.StartsWith("System.", StringComparison.Ordinal))
+            .Select(reference => $"forbidden compiled assembly reference: {reference}"));
+
+        foreach (TypeReferenceHandle handle in metadata.TypeReferences)
+        {
+            TypeReference reference = metadata.GetTypeReference(handle);
+            string identity = $"{metadata.GetString(reference.Namespace)}.{metadata.GetString(reference.Name)}";
+            if (ForbiddenPresentationClosureTerms.Any(term =>
+                identity.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                violations.Add($"forbidden compiled type closure: {identity}");
+        }
+        foreach (MemberReferenceHandle handle in metadata.MemberReferences)
+        {
+            MemberReference member = metadata.GetMemberReference(handle);
+            if (metadata.GetString(member.Name) != "Default"
+                || member.Parent.Kind != HandleKind.TypeReference)
+                continue;
+            TypeReference owner = metadata.GetTypeReference((TypeReferenceHandle)member.Parent);
+            string ownerName = metadata.GetString(owner.Name);
+            if (ownerName is "WeakReferenceMessenger" or "Ioc")
+                violations.Add($"forbidden service location singleton: {ownerName}.Default");
+        }
+        return [.. violations];
+    }
+
+    private static IEnumerable<string> FindJsonPropertyNames(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (JsonProperty property in element.EnumerateObject())
+            {
+                yield return property.Name;
+                foreach (string nested in FindJsonPropertyNames(property.Value))
+                    yield return nested;
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement item in element.EnumerateArray())
+                foreach (string nested in FindJsonPropertyNames(item))
+                    yield return nested;
+        }
     }
 
     private static string[] ValidateBrowserCapability(JsonElement root)

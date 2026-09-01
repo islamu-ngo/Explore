@@ -1,16 +1,20 @@
-<!-- ABOUTME: Defines the disabled package-free shared presentation contract shell. -->
-<!-- ABOUTME: Successor B owns framework selection and any runtime activation. -->
+<!-- ABOUTME: Defines the framework-neutral shared Setup Assistant presentation model. -->
+<!-- ABOUTME: References Setup Core and the approved Toolkit without owning a runtime target. -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <SetupTargetEnabled>false</SetupTargetEnabled>
-    <SetupTargetRole>ContractShell</SetupTargetRole>
+    <SetupTargetRole>SharedPresentationModel</SetupTargetRole>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Event.Setup.Core\Event.Setup.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
   </ItemGroup>
 </Project>

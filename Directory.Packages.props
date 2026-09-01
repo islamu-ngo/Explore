@@ -60,6 +60,7 @@
     <PackageVersion Include="CarpaNet.Jetstream" Version="1.0.3" />
     <PackageVersion Include="CarpaNet.OAuth" Version="1.0.3" />
     <PackageVersion Include="Cerbos.Sdk" Version="1.10.2" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="DiffPlex" Version="1.9.0" />
     <PackageVersion Include="DotNetEnv" Version="3.2.0" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
