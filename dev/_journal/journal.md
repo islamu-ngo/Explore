@@ -1375,3 +1375,33 @@ closed phase manifests manufactures evidence that pass never produced.
 - [ ] Stays in journal only (one-off debugging lesson)
 
 ---
+
+[2026-09-02 Europe/Brussels] — Reject generic CRUD/lookup controller bases in favor of explicit concrete controllers
+
+**Context**: During CTO audit remediation planning for Phase 4 (controller consolidation across 172 controllers), proposals were evaluated to consolidate 23 lookup controllers into `LookupControllerBase<...>` and extract a generic `CrudControllerBase<...>`.
+
+**Symptom / Observation**: Introducing generic base classes to deduplicate standard CRUD and lookup endpoints creates a rigid inheritance hierarchy. It breaks route-name uniqueness and compile-time constant requirements (`RouteNames.Xxx`), degrades OpenAPI/NSwag metadata (`[EndpointSummary]`, `[EndpointDescription]`, operation IDs), and restricts customization when upcoming backlog requirements diverge across entities (custom validation, lifecycle state transitions, Cerbos authorization policies, multipart uploads).
+
+**Root Cause**: Controller duplication in Clean Architecture + CQRS is incidental HTTP presentation similarity, not essential domain duplication. Controllers are thin HTTP adapters that dispatch MediatR requests and format HTTP responses. Forcing distinct business entities into generic action templates creates an inflexible "framework inside a framework" that resists customization.
+
+**Resolution**: Formally drop generic `CrudControllerBase` and `LookupControllerBase` from the architecture. Standardize `EventControllerBase` (renaming legacy `ExploreControllerBase`) strictly for request identity (`CurrentUserId`/`RequiredUserId`) and strong ETag parsing (`TryParseConcurrencyStamp`), and migrate the 17 controllers that copy-pasted `TryParseConcurrencyStamp`. Reuse mechanics via domain-family bases (for multi-controller protocols) and composition (`CommandFailurePolicy`, `IResourceAssembler`, extension methods) while keeping all controllers concrete and declarative.
+
+**Why This Matters for Future Work**: Never attempt to deduplicate controllers by abstracting action methods into generic base classes. Keep controllers explicit and concrete so that routing, OpenAPI contracts, and authorization remain immediately discoverable and fully customizable as backlog features expand.
+
+**References**:
+- `dev/active/cto-audit-remediation/cto-audit-remediation-plan.md`
+- `src/Explore.API/Controllers/ExploreControllerBase.cs`
+- `docs/internal/API.md`
+- `docs/internal/GOVERNANCE.md`
+- `docs/internal/QUICK_REFERENCE.md`
+- `.agents/rules/api-controllers.md`
+- `.omo/rules/api-controllers.md`
+
+**Promotion Consideration**:
+- [x] Candidate for `docs/QUICK_REFERENCE.md` (promoted)
+- [x] Candidate for new `.agents/rules/*.md` entry (promoted)
+- [ ] Candidate for skill update: `cqrs-mediatr-guidelines`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
