@@ -41,7 +41,7 @@ public sealed class AtprotoOAuthClientFactory(
 
         if (!keyProvider.IsReady)
         {
-            return new(false, keyProvider.FailureCode is null ? "invalid_key_ring" : "key_ring_unavailable");
+            return new(false, keyProvider.FailureCode ?? "invalid_key_ring");
         }
 
         if (!serviceAvailability.IsService(typeof(IOAuthStateStore)))
@@ -72,7 +72,8 @@ public sealed class AtprotoOAuthClientFactory(
         var readiness = GetReadiness();
         if (!readiness.IsReady)
         {
-            throw new InvalidOperationException("ATProto OAuth is not ready.");
+            throw new InvalidOperationException(
+                $"ATProto OAuth is not ready ({readiness.FailureCode ?? "unknown"}).");
         }
 
         if (!keyProvider.HasKey(pinnedKeyId))

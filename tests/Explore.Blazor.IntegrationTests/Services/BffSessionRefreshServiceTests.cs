@@ -349,9 +349,10 @@ public sealed class BffSessionRefreshServiceTests
         HttpMessageHandler? bridgeHandler = null,
         HttpMessageHandler? adminHandler = null)
     {
-        onboardingStatusProvider ??= Substitute.For<IBffOnboardingStatusProvider>();
-        onboardingStatusProvider.GetStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(CompletedStatus());
+        if (onboardingStatusProvider is null)
+        {
+            onboardingStatusProvider = new FixedOnboardingStatusProvider();
+        }
 
         IHttpClientFactory adminClientFactory = Substitute.For<IHttpClientFactory>();
         if (adminHandler is not null)
@@ -444,7 +445,7 @@ public sealed class BffSessionRefreshServiceTests
             tokenStore.Store(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>())
                 .Returns(new CircuitTokenStoreResult(true, null));
         }
-        onboardingStatusProvider ??= Substitute.For<IBffOnboardingStatusProvider>();
+        onboardingStatusProvider ??= new FixedOnboardingStatusProvider();
 
         var services = new ServiceCollection()
             .AddLogging()
@@ -490,6 +491,20 @@ public sealed class BffSessionRefreshServiceTests
         null,
         1,
         BffOnboardingDisposition.Completed);
+
+    private sealed class FixedOnboardingStatusProvider : IBffOnboardingStatusProvider
+    {
+        public Task<BffOnboardingStatus> GetStatusAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(CompletedStatus());
+        }
+
+        public void Invalidate()
+        {
+        }
+    }
 
     private static ClaimsPrincipal CreatePrincipal(string userId, string sessionId) => new(new ClaimsIdentity([
         new Claim("sub", userId),

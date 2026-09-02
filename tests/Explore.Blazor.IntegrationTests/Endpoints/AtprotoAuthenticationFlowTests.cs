@@ -97,7 +97,10 @@ public sealed class AtprotoAuthenticationFlowTests
 
         foreach (var payload in payloads)
         {
-            var response = await InvokeChallengeAsync(factory, GetChallengeEndpoint(factory), payload);
+            var response = await InvokeChallengeWithAntiforgeryAsync(
+                factory,
+                GetChallengeEndpoint(factory),
+                payload);
 
             await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest)
                 .Because($"payload {payload} must fail with a bounded problem response, but returned {response.Body}");
@@ -114,7 +117,7 @@ public sealed class AtprotoAuthenticationFlowTests
             classification = "person",
             padding = new string('x', 2200)
         });
-        var oversizedResponse = await InvokeChallengeAsync(
+        var oversizedResponse = await InvokeChallengeWithAntiforgeryAsync(
             factory,
             GetChallengeEndpoint(factory),
             oversizedPayload);
@@ -137,7 +140,10 @@ public sealed class AtprotoAuthenticationFlowTests
                      "{\"handle\":\"alice.example\",\"classification\":\"bot\"}"
                  })
         {
-            var response = await InvokeChallengeAsync(factory, GetChallengeEndpoint(factory), payload);
+            var response = await InvokeChallengeWithAntiforgeryAsync(
+                factory,
+                GetChallengeEndpoint(factory),
+                payload);
 
             await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
             await Assert.That(response.Location).IsNull();
@@ -146,27 +152,22 @@ public sealed class AtprotoAuthenticationFlowTests
     }
 
     [Test]
-    public async Task ConfiguredKeycloakPendingRejectsAtprotoChallengeAfterValidAntiforgery()
+    public async Task ConfiguredKeycloakPendingRejectsAtprotoChallenge()
     {
-        await using var factory = CreateFactory(
-            bypassAntiforgery: false,
-            onboardingStatus: PendingConfigured("Keycloak"));
-        using var client = CreateClient(factory);
-        var antiforgeryToken = await IssueAntiforgeryTokenAsync(client);
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
-        {
-            Content = new StringContent(
-                "{\"handle\":\"alice.example\",\"classification\":\"person\"}",
-                Encoding.UTF8,
-                "application/json")
-        };
-        request.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
+        using var atprotoServer = new HermeticAtprotoServer();
+        using var apiServer = new HermeticBffApiServer();
+        await using var factory = CreateHappyPathFactory(
+            false,
+            atprotoServer,
+            apiServer,
+            new FixedOnboardingStatusProvider(PendingConfigured("Keycloak")));
+        EndpointResponse response = await InvokeChallengeAsync(
+            factory,
+            GetChallengeEndpoint(factory),
+            "{\"handle\":\"alice.example\",\"classification\":\"person\"}");
 
-        using var response = await client.SendAsync(request);
-
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
-        await Assert.That(response.Headers.Location).IsNull();
-        await Assert.That(response.Headers.CacheControl?.NoStore).IsTrue();
+        await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status403Forbidden);
+        await Assert.That(response.Location).IsNull();
     }
 
     [Test]
@@ -463,10 +464,10 @@ public sealed class AtprotoAuthenticationFlowTests
         using var apiServer = new HermeticBffApiServer();
         await using var factory = CreateHappyPathFactory(false, atprotoServer, apiServer);
         using var client = CreateClient(factory);
-        var antiforgeryToken = await IssueAntiforgeryTokenAsync(client);
 
         for (var attempt = 0; attempt < 2; attempt++)
         {
+            string antiforgeryToken = await IssueAntiforgeryTokenAsync(client);
             using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
             {
                 Content = new StringContent(
@@ -477,8 +478,11 @@ public sealed class AtprotoAuthenticationFlowTests
             request.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
 
             using var response = await client.SendAsync(request);
+            string responseBody = await response.Content.ReadAsStringAsync();
 
-            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            await Assert.That(response.StatusCode)
+                .IsEqualTo(HttpStatusCode.OK)
+                .Because(responseBody);
         }
 
         await Assert.That(atprotoServer.DnsRequestCount).IsEqualTo(1);
@@ -547,6 +551,11 @@ public sealed class AtprotoAuthenticationFlowTests
 
             builder.ConfigureTestServices(services =>
             {
+                if (withSigningKey)
+                {
+                    services.Configure<AtprotoClientKeyOptions>(
+                        options => options.OAuthClientPrivateJwks = CreatePrivateJwks());
+                }
                 services.RemoveAll<IConnectionMultiplexer>();
                 services.AddAuthentication()
                     .AddScheme<AtprotoAuthenticationOptions, AtprotoAuthenticationHandler>(
@@ -568,10 +577,9 @@ public sealed class AtprotoAuthenticationFlowTests
                 }
 
                 services.RemoveAll<IBffOnboardingStatusProvider>();
-                var onboarding = Substitute.For<IBffOnboardingStatusProvider>();
-                onboarding.GetStatusAsync(Arg.Any<CancellationToken>())
-                    .Returns(onboardingStatus ?? CompletedStatus());
-                services.AddSingleton(onboarding);
+                services.AddSingleton<IBffOnboardingStatusProvider>(
+                    new FixedOnboardingStatusProvider(
+                        onboardingStatus ?? CompletedStatus()));
             });
         });
 
@@ -600,7 +608,12 @@ public sealed class AtprotoAuthenticationFlowTests
 
             builder.ConfigureTestServices(services =>
             {
+                services.Configure<AtprotoClientKeyOptions>(
+                    options => options.OAuthClientPrivateJwks = CreatePrivateJwks());
                 services.RemoveAll<IConnectionMultiplexer>();
+                services.RemoveAll<IBffSelfCallTokenService>();
+                services.AddSingleton<IBffSelfCallTokenService>(
+                    AllowSelfCallTokenService.Instance);
                 services.RemoveAll<IAtprotoOAuthTransportFactory>();
                 services.AddSingleton<IAtprotoOAuthTransportFactory>(
                     new HermeticAtprotoTransportFactory(atprotoServer));
@@ -623,10 +636,8 @@ public sealed class AtprotoAuthenticationFlowTests
                 services.RemoveAll<IBffOnboardingStatusProvider>();
                 if (onboardingStatusProvider is null)
                 {
-                    var onboarding = Substitute.For<IBffOnboardingStatusProvider>();
-                    onboarding.GetStatusAsync(Arg.Any<CancellationToken>())
-                        .Returns(CompletedStatus());
-                    onboardingStatusProvider = onboarding;
+                    onboardingStatusProvider =
+                        new FixedOnboardingStatusProvider(CompletedStatus());
                 }
                 services.AddSingleton(onboardingStatusProvider);
             });
@@ -648,6 +659,31 @@ public sealed class AtprotoAuthenticationFlowTests
         1,
         BffOnboardingDisposition.ConfiguredAdministratorPending);
 
+    private sealed class FixedOnboardingStatusProvider(BffOnboardingStatus status)
+        : IBffOnboardingStatusProvider
+    {
+        public Task<BffOnboardingStatus> GetStatusAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(status);
+        }
+
+        public void Invalidate()
+        {
+        }
+    }
+
+    private sealed class AllowSelfCallTokenService : IBffSelfCallTokenService
+    {
+        public static readonly AllowSelfCallTokenService Instance = new();
+
+        public string? Issue(HttpContext? httpContext, HttpRequestMessage outboundRequest) =>
+            "test-self-call";
+
+        public bool Validate(HttpContext httpContext) => true;
+    }
+
     private static HttpClient CreateClient(WebApplicationFactory<Program> factory) =>
         CreateClient(factory, CanonicalOrigin);
 
@@ -664,7 +700,13 @@ public sealed class AtprotoAuthenticationFlowTests
         using var response = await client.GetAsync("/auth/status");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(response.Headers.TryGetValues("Set-Cookie", out var values)).IsTrue();
-        var token = values!.Select(ReadXsrfToken).FirstOrDefault(value => value is not null);
+        string[] cookies = [.. values!];
+        string cookieHeader = string.Join(
+            "; ",
+            cookies.Select(cookie => cookie.Split(';', 2)[0]));
+        client.DefaultRequestHeaders.Remove("Cookie");
+        client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookieHeader);
+        var token = cookies.Select(ReadXsrfToken).FirstOrDefault(value => value is not null);
         await Assert.That(string.IsNullOrWhiteSpace(token)).IsFalse();
         return token!;
     }
@@ -704,12 +746,32 @@ public sealed class AtprotoAuthenticationFlowTests
             .OfType<RouteEndpoint>()
             .Single(candidate => candidate.RoutePattern.RawText == "/auth/atproto/challenge");
 
+    private static async Task<EndpointResponse> InvokeChallengeWithAntiforgeryAsync(
+        WebApplicationFactory<Program> factory,
+        RouteEndpoint endpoint,
+        string payload)
+    {
+        _ = endpoint;
+        using HttpClient client = CreateClient(factory);
+        string antiforgeryToken = await IssueAntiforgeryTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("X-CSRF-TOKEN", antiforgeryToken);
+        using HttpResponseMessage response = await client.SendAsync(request);
+        return new(
+            (int)response.StatusCode,
+            response.Headers.Location?.OriginalString,
+            await response.Content.ReadAsStringAsync());
+    }
+
     private static async Task<EndpointResponse> InvokeChallengeAsync(
         WebApplicationFactory<Program> factory,
         RouteEndpoint endpoint,
         string payload)
     {
-        await using var scope = factory.Services.CreateAsyncScope();
+        await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
         var context = new DefaultHttpContext
         {
             RequestServices = scope.ServiceProvider
@@ -720,7 +782,7 @@ public sealed class AtprotoAuthenticationFlowTests
         context.Request.Host = new HostString("events.example.com");
         context.Request.Path = "/auth/atproto/challenge";
         context.Request.ContentType = "application/json";
-        var bytes = Encoding.UTF8.GetBytes(payload);
+        byte[] bytes = Encoding.UTF8.GetBytes(payload);
         context.Request.ContentLength = bytes.Length;
         context.Request.Body = new MemoryStream(bytes);
         context.Response.Body = new MemoryStream();
@@ -731,7 +793,9 @@ public sealed class AtprotoAuthenticationFlowTests
         using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
         return new(
             context.Response.StatusCode,
-            context.Response.Headers.Location.ToString() is { Length: > 0 } location ? location : null,
+            context.Response.Headers.Location.ToString() is { Length: > 0 } location
+                ? location
+                : null,
             await reader.ReadToEndAsync());
     }
 

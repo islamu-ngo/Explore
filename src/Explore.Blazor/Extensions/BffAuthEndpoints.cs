@@ -71,7 +71,7 @@ public static class BffAuthEndpoints
 
         // InteractiveServer self-calls cannot reliably satisfy browser antiforgery semantics,
         // so the server-side onboarding flow uses this authenticated internal variant instead.
-        app.MapPost("/bff/auth/refresh-session/internal", HandleRefreshSessionAsync)
+        app.MapPost("/bff/auth/refresh-session/internal", HandleInternalRefreshSessionAsync)
             .RequireAuthorization()
             .ExcludeFromDescription();
 
@@ -427,6 +427,7 @@ public static class BffAuthEndpoints
             return false;
         }
 
+        ExploreBffCookieSessionHandler.MarkUserSynchronizationCompleted(properties);
         await ctx.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
@@ -662,6 +663,19 @@ public static class BffAuthEndpoints
     {
         var refreshService = ctx.RequestServices.GetRequiredService<IBffSessionRefreshService>();
         return await refreshService.RefreshSessionAsync(ctx, cancellationToken);
+    }
+
+    private static async Task<IResult> HandleInternalRefreshSessionAsync(
+        HttpContext ctx,
+        CancellationToken cancellationToken)
+    {
+        var selfCallTokenService = ctx.RequestServices.GetRequiredService<IBffSelfCallTokenService>();
+        if (!selfCallTokenService.Validate(ctx))
+        {
+            return Results.StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        return await HandleRefreshSessionAsync(ctx, cancellationToken);
     }
 
     private static IResult HandleAuthStatus(HttpContext ctx)

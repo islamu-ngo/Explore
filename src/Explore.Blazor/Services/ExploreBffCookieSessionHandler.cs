@@ -14,6 +14,9 @@ public sealed class ExploreBffCookieSessionHandler(
     IBffOnboardingStatusProvider onboardingStatusProvider)
     : IEventBffCookieSessionHandler
 {
+    internal const string UserSynchronizationCompletedProperty =
+        ".islamu.bff.user-synchronization-completed";
+
     public async Task OnSigningInAsync(CookieSigningInContext context)
     {
         if (context.Principal is null)
@@ -21,12 +24,69 @@ public sealed class ExploreBffCookieSessionHandler(
             return;
         }
 
-        await adminClaimsTransformation.EnrichPrincipalAsync(
+        if (context.Properties.Items.Remove(UserSynchronizationCompletedProperty))
+        {
+            return;
+        }
+
+        var initialStatus = await onboardingStatusProvider
+            .GetStatusAsync(context.HttpContext.RequestAborted)
+            .ConfigureAwait(false);
+        var configuredPending = initialStatus.Disposition ==
+            BffOnboardingDisposition.ConfiguredAdministratorPending;
+        if (configuredPending)
+        {
+            if (!context.Properties.Items.TryGetValue(
+                    EventBffAuthenticationConstants.OidcSchemePropertyKey,
+                    out var oidcScheme)
+                || string.IsNullOrWhiteSpace(oidcScheme)
+                || !initialStatus.AllowsProvider(oidcScheme))
+            {
+                AbortConfiguredSignIn();
+            }
+
+            ReplaceProviderClaim(context.Principal, oidcScheme);
+        }
+
+        var hasAdminAuthority = await adminClaimsTransformation.EnrichPrincipalAsync(
             context.Principal,
             context.Properties,
             synchronizeUser: true,
             cancellationToken: context.HttpContext.RequestAborted);
+
+        if (configuredPending)
+        {
+            var completedStatus = await onboardingStatusProvider
+                .GetStatusAsync(context.HttpContext.RequestAborted)
+                .ConfigureAwait(false);
+            if (!hasAdminAuthority
+                || completedStatus.Disposition != BffOnboardingDisposition.Completed)
+            {
+                AbortConfiguredSignIn();
+            }
+        }
     }
+
+    internal static void MarkUserSynchronizationCompleted(
+        AuthenticationProperties properties) =>
+        properties.Items[UserSynchronizationCompletedProperty] = bool.TrueString;
+
+    private static void ReplaceProviderClaim(ClaimsPrincipal principal, string provider)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            foreach (var claim in identity.FindAll("auth_provider").ToList())
+            {
+                identity.RemoveClaim(claim);
+            }
+        }
+
+        principal.AddIdentity(new ClaimsIdentity([new Claim("auth_provider", provider)]));
+    }
+
+    private static void AbortConfiguredSignIn() =>
+        throw new InvalidOperationException(
+            "Configured administrator sign-in did not establish synchronized authority.");
 
     public async Task OnTokenRefreshSucceededAsync(
         CookieValidatePrincipalContext context,

@@ -110,6 +110,7 @@ public sealed class BffSessionRefreshService(
                 statusCode: StatusCodes.Status409Conflict);
         }
 
+        ExploreBffCookieSessionHandler.MarkUserSynchronizationCompleted(authResult.Properties);
         await context.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             authResult.Principal,

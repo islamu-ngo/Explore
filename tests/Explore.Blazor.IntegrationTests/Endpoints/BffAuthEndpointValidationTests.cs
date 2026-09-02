@@ -3,9 +3,13 @@
 
 using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services;
+using Explore.Blazor.Services.Auth;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
 
@@ -101,6 +105,72 @@ public sealed class BffAuthEndpointValidationTests
         await Assert.That(body).Contains("Antiforgery validation failed");
     }
 
+    [Test]
+    [Arguments(null)]
+    [Arguments("malformed-self-call-token")]
+    public async Task InternalRefreshSession_WithoutExactSelfCallToken_ReturnsForbiddenBeforeRefresh(string? token)
+    {
+        var selfCallTokens = new ExactSelfCallTokenService();
+        var refresh = new RecordingSessionRefreshService();
+        using var factory = CreateInternalRefreshFactory(selfCallTokens, refresh);
+        using var client = CreateAuthenticatedClient(factory);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/auth/refresh-session/internal");
+        if (token is not null)
+        {
+            request.Headers.TryAddWithoutValidation(BffSelfCallHeaders.Token, token);
+        }
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        await Assert.That(selfCallTokens.ValidationCount).IsEqualTo(1);
+        await Assert.That(refresh.RefreshCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task InternalRefreshSession_WithExactSelfCallToken_InvokesRefresh()
+    {
+        var selfCallTokens = new ExactSelfCallTokenService();
+        var refresh = new RecordingSessionRefreshService();
+        using var factory = CreateInternalRefreshFactory(selfCallTokens, refresh);
+        using var client = CreateAuthenticatedClient(factory);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/bff/auth/refresh-session/internal");
+        request.Headers.TryAddWithoutValidation(BffSelfCallHeaders.Token, ExactSelfCallTokenService.ExactToken);
+
+        using var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(selfCallTokens.ValidationCount).IsEqualTo(1);
+        await Assert.That(refresh.RefreshCount).IsEqualTo(1);
+    }
+
+    private static WebApplicationFactory<Program> CreateInternalRefreshFactory(
+        IBffSelfCallTokenService selfCallTokens,
+        IBffSessionRefreshService refresh) =>
+        new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IBffSelfCallTokenService>();
+                services.AddSingleton(selfCallTokens);
+                services.RemoveAll<IBffSessionRefreshService>();
+                services.AddSingleton(refresh);
+            });
+        });
+
+    private static HttpClient CreateAuthenticatedClient(WebApplicationFactory<Program> factory)
+    {
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.AuthHeaderName,
+            TestAuthHandler.CreateAuthHeaderValue(Guid.NewGuid(), "Internal Refresh Tester"));
+        return client;
+    }
+
     private sealed class ThrowingAuthSchemeManager : IDynamicAuthSchemeManager
     {
         public Task InitializeAsync() => Task.CompletedTask;
@@ -110,5 +180,46 @@ public sealed class BffAuthEndpointValidationTests
         public Task<IReadOnlyList<string>> GetRegisteredProviderSchemesAsync() =>
             throw new InvalidOperationException(
                 "raw provider failure refresh_token=secret-token secretLen=24 clientId=islamu-event-blazor");
+    }
+
+    private sealed class ExactSelfCallTokenService : IBffSelfCallTokenService
+    {
+        public const string ExactToken = "exact-self-call-token";
+        public int ValidationCount { get; private set; }
+        public string? Issue(HttpContext? httpContext, HttpRequestMessage outboundRequest) => ExactToken;
+
+        public bool Validate(HttpContext httpContext)
+        {
+            ValidationCount++;
+            return httpContext.Request.Headers[BffSelfCallHeaders.Token].Count == 1
+                && string.Equals(
+                    httpContext.Request.Headers[BffSelfCallHeaders.Token][0],
+                    ExactToken,
+                    StringComparison.Ordinal);
+        }
+    }
+
+    private sealed class RecordingSessionRefreshService : IBffSessionRefreshService
+    {
+        public int RefreshCount { get; private set; }
+
+        public Task<IResult> RefreshSessionAsync(HttpContext context, CancellationToken cancellationToken)
+        {
+            RefreshCount++;
+            return Task.FromResult(Results.Ok() as IResult);
+        }
+
+        public Task RevokeAtprotoSessionAsync(
+            HttpContext context,
+            AuthenticateResult authentication,
+            CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public void ClearCircuitTokenState(
+            HttpContext context,
+            ClaimsPrincipal? principal,
+            ILogger logger,
+            string reason)
+        {
+        }
     }
 }

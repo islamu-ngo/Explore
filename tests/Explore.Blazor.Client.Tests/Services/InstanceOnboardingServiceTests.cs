@@ -908,6 +908,23 @@ public class InstanceOnboardingServiceTests
     }
 
     [Test]
+    public async Task GetStartupStatusAsync_MapsCompletedConfiguredAdministrator_WhenProviderIsNull()
+    {
+        SetupBffClient(CreateJsonResponse(CreateStatusResource(
+            isCompleted: true,
+            state: "Completed",
+            mode: "ConfiguredAdministrator",
+            provider: null,
+            generation: 5)));
+
+        var status = await _service.GetStartupStatusAsync();
+
+        await Assert.That(status.Disposition).IsEqualTo(InstanceOnboardingStartupDisposition.Completed);
+        await Assert.That(status.Provider).IsNull();
+        await Assert.That(status.Generation).IsEqualTo(5L);
+    }
+
+    [Test]
     [Arguments(false, "InteractivePending", "Interactive", "Keycloak")]
     [Arguments(false, "ConfiguredAdministratorPending", "ConfiguredAdministrator", null)]
     [Arguments(false, "ConfiguredAdministratorPending", "ConfiguredAdministrator", "keycloak")]

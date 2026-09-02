@@ -1,7 +1,6 @@
 // ABOUTME: Short-TTL cached onboarding status probe shared by middleware, cookie events, and admin enrichment.
 // ABOUTME: Fetches GET /api/InstanceOnboarding/status (AllowAnonymous, fast) and caches the result to avoid request storms.
 
-using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -91,10 +90,10 @@ public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
             var dto = await apiClient.GetInstanceOnboardingStatusAsync(
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            var state = ReadString(dto.AdditionalProperties, "state");
-            var mode = ReadString(dto.AdditionalProperties, "mode");
-            var configuredProvider = ReadString(dto.AdditionalProperties, "provider");
-            var generation = ReadInt64(dto.AdditionalProperties, "generation");
+            var state = dto.State;
+            var mode = dto.Mode;
+            var configuredProvider = dto.Provider;
+            var generation = dto.Generation;
             var isCompleted = dto.IsCompleted == true;
             var status = new BffOnboardingStatus(
                 isCompleted,
@@ -127,26 +126,23 @@ public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
         string? provider,
         long? generation)
     {
-        if (generation is null or < 0)
+        if (generation is null or <= 0)
         {
             return BffOnboardingDisposition.Closed;
         }
 
-        if (isCompleted && string.Equals(state, "Completed", StringComparison.Ordinal))
-        {
-            if (string.Equals(mode, "Interactive", StringComparison.Ordinal)
+        if (isCompleted
+            && string.Equals(state, "Completed", StringComparison.Ordinal)
+            && (string.Equals(mode, "Interactive", StringComparison.Ordinal)
                 && string.IsNullOrEmpty(provider)
                 || string.Equals(mode, "ConfiguredAdministrator", StringComparison.Ordinal)
-                && provider is "Keycloak" or "Atproto")
-            {
-                return BffOnboardingDisposition.Completed;
-            }
-
-            return BffOnboardingDisposition.Closed;
+                && (string.IsNullOrEmpty(provider) || provider is "Keycloak" or "Atproto")))
+        {
+            return BffOnboardingDisposition.Completed;
         }
 
         if (!isCompleted
-            && string.Equals(state, "Pending", StringComparison.Ordinal)
+            && string.Equals(state, "InteractivePending", StringComparison.Ordinal)
             && string.Equals(mode, "Interactive", StringComparison.Ordinal)
             && string.IsNullOrEmpty(provider))
         {
@@ -154,7 +150,7 @@ public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
         }
 
         if (!isCompleted
-            && string.Equals(state, "Pending", StringComparison.Ordinal)
+            && string.Equals(state, "ConfiguredAdministratorPending", StringComparison.Ordinal)
             && string.Equals(mode, "ConfiguredAdministrator", StringComparison.Ordinal)
             && provider is "Keycloak" or "Atproto")
         {
@@ -162,28 +158,5 @@ public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
         }
 
         return BffOnboardingDisposition.Closed;
-    }
-
-    private static string? ReadString(IDictionary<string, object> values, string name)
-    {
-        if (!values.TryGetValue(name, out var value) || value is not JsonElement element
-            || element.ValueKind != JsonValueKind.String)
-        {
-            return null;
-        }
-
-        return element.GetString();
-    }
-
-    private static long? ReadInt64(IDictionary<string, object> values, string name)
-    {
-        if (!values.TryGetValue(name, out var value) || value is not JsonElement element
-            || element.ValueKind != JsonValueKind.Number
-            || !element.TryGetInt64(out var result))
-        {
-            return null;
-        }
-
-        return result;
     }
 }

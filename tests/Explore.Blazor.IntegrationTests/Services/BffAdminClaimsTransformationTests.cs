@@ -3,9 +3,12 @@
 
 using System.Text;
 using System.Text.Json;
+using Event.Web.BffHosting.Authentication;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using TUnit.Assertions.Enums;
@@ -211,14 +214,68 @@ public sealed class BffAdminClaimsTransformationTests
         await Assert.That(principal.HasClaim("explore:admin:instance", "true")).IsFalse();
     }
 
+    [Test]
+    [Arguments("provider")]
+    [Arguments("synchronization")]
+    [Arguments("completion")]
+    [Arguments("authority")]
+    public async Task ConfiguredPendingSigningFailureAbortsBeforeCookieCanBeIssued(string failure)
+    {
+        var state = CreateSigningState(failure);
+        Func<Task> signIn = () => state.Handler.OnSigningInAsync(state.Context);
+
+        await Assert.That(signIn).Throws<InvalidOperationException>();
+        await Assert.That(state.Context.HttpContext.Response.Headers.SetCookie).IsEmpty();
+    }
+
+    [Test]
+    public async Task ConfiguredPendingTrustedSchemePermitsExactlyOneSuccessfulSigningPath()
+    {
+        var state = CreateSigningState(failure: null);
+
+        await state.Handler.OnSigningInAsync(state.Context);
+
+        await Assert.That(state.Api.SyncCount).IsEqualTo(1);
+        await Assert.That(state.Api.AuthorityCount).IsEqualTo(1);
+        await Assert.That(state.Onboarding.InvalidationCount).IsEqualTo(1);
+        await Assert.That(state.Context.Principal!.HasClaim("explore:admin:instance", "true")).IsTrue();
+        await Assert.That(state.Context.Principal.FindAll("auth_provider").Select(claim => claim.Value))
+            .IsEquivalentTo(["Keycloak"]);
+    }
+
+    private static SigningTestState CreateSigningState(string? failure)
+    {
+        var onboarding = new SigningOnboardingStatusProvider(
+            failure == "provider" ? "Google" : "Keycloak",
+            completeAfterInvalidation: failure != "completion");
+        var api = new SigningApiHandler(
+            synchronizationSucceeds: failure != "synchronization",
+            hasAuthority: failure != "authority");
+        var client = new HttpClient(api) { BaseAddress = new Uri("https://api.example/") };
+        var transformation = CreateService(client, new MemoryCache(new MemoryCacheOptions()), onboarding);
+        var handler = new ExploreBffCookieSessionHandler(transformation, onboarding);
+        var properties = CreateProperties();
+        properties.Items[EventBffAuthenticationConstants.OidcSchemePropertyKey] = "Keycloak";
+        var context = new CookieSigningInContext(
+            new DefaultHttpContext(),
+            new AuthenticationScheme("Cookies", null, typeof(CookieAuthenticationHandler)),
+            new CookieAuthenticationOptions(),
+            CreatePrincipal(("auth_provider", "Google")),
+            properties,
+            new CookieOptions());
+        return new(handler, context, onboarding, api);
+    }
+
     private static BffAdminClaimsTransformation CreateService(
         HttpClient client,
         IMemoryCache cache,
         IBffOnboardingStatusProvider? onboardingStatusProvider = null)
     {
-        onboardingStatusProvider ??= Substitute.For<IBffOnboardingStatusProvider>();
-        onboardingStatusProvider.GetStatusAsync(Arg.Any<CancellationToken>())
-            .Returns(CompletedStatus());
+        if (onboardingStatusProvider is null)
+        {
+            onboardingStatusProvider = new FixedOnboardingStatusProvider();
+        }
+
         return new(
             new FixedHttpClientFactory(client),
             cache,
@@ -233,6 +290,20 @@ public sealed class BffAdminClaimsTransformationTests
         null,
         1,
         BffOnboardingDisposition.Completed);
+
+    private sealed class FixedOnboardingStatusProvider : IBffOnboardingStatusProvider
+    {
+        public Task<BffOnboardingStatus> GetStatusAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(CompletedStatus());
+        }
+
+        public void Invalidate()
+        {
+        }
+    }
 
     private static ClaimsPrincipal CreatePrincipal(params (string Type, string Value)[] additionalClaims) => new(
         new ClaimsIdentity(
@@ -296,7 +367,7 @@ public sealed class BffAdminClaimsTransformationTests
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
 
-        private static HttpResponseMessage JsonResponse<T>(HttpStatusCode statusCode, T value) => new(statusCode)
+        internal static HttpResponseMessage JsonResponse<T>(HttpStatusCode statusCode, T value) => new(statusCode)
         {
             Content = new StringContent(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json")
         };
@@ -336,6 +407,76 @@ public sealed class BffAdminClaimsTransformationTests
             InvalidationCount++;
             events.Add("status:invalidate");
             _invalidated = true;
+        }
+    }
+
+    private sealed record SigningTestState(
+        ExploreBffCookieSessionHandler Handler,
+        CookieSigningInContext Context,
+        SigningOnboardingStatusProvider Onboarding,
+        SigningApiHandler Api);
+
+    private sealed class SigningOnboardingStatusProvider(
+        string configuredProvider,
+        bool completeAfterInvalidation) : IBffOnboardingStatusProvider
+    {
+        private bool _invalidated;
+        public int InvalidationCount { get; private set; }
+
+        public Task<BffOnboardingStatus> GetStatusAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var completed = _invalidated && completeAfterInvalidation;
+            return Task.FromResult(new BffOnboardingStatus(
+                completed,
+                completed ? "Completed" : "Pending",
+                "ConfiguredAdministrator",
+                configuredProvider,
+                1,
+                completed
+                    ? BffOnboardingDisposition.Completed
+                    : BffOnboardingDisposition.ConfiguredAdministratorPending));
+        }
+
+        public void Invalidate()
+        {
+            InvalidationCount++;
+            _invalidated = true;
+        }
+    }
+
+    private sealed class SigningApiHandler(
+        bool synchronizationSucceeds,
+        bool hasAuthority) : HttpMessageHandler
+    {
+        public int SyncCount { get; private set; }
+        public int AuthorityCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            if (request.Method == HttpMethod.Post && request.RequestUri?.AbsolutePath == "/api/user/sync")
+            {
+                SyncCount++;
+                return Task.FromResult(IdentityReadinessHandler.JsonResponse(
+                    synchronizationSucceeds ? HttpStatusCode.OK : HttpStatusCode.BadRequest,
+                    new BaseCommandResponseOfGuid
+                    {
+                        Success = synchronizationSucceeds,
+                        Id = synchronizationSucceeds ? InternalUserId : Guid.Empty
+                    }));
+            }
+
+            AuthorityCount++;
+            return Task.FromResult(IdentityReadinessHandler.JsonResponse(HttpStatusCode.OK, new AdminAuthorityDto
+            {
+                HasAnyAuthority = hasAuthority,
+                IsInstanceAdmin = hasAuthority,
+                AdminTenantIds = [],
+                AdminOrganizationIds = [],
+                AdminGroupIds = []
+            }));
         }
     }
 

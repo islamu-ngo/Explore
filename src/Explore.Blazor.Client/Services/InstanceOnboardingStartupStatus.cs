@@ -59,7 +59,7 @@ internal static class InstanceOnboardingStartupStatusAdapter
                 InstanceOnboardingStartupDisposition.ConfiguredAdministratorPending,
             (true, "Completed", "Interactive", null) =>
                 InstanceOnboardingStartupDisposition.Completed,
-            (true, "Completed", "ConfiguredAdministrator", "Keycloak" or "Atproto") =>
+            (true, "Completed", "ConfiguredAdministrator", null or "Keycloak" or "Atproto") =>
                 InstanceOnboardingStartupDisposition.Completed,
             _ => InstanceOnboardingStartupDisposition.Unavailable
         };
