@@ -1,0 +1,65 @@
+---
+description: >-
+  Media types, hypermedia affordances, pagination, errors, concurrency, and
+  idempotency.
+---
+
+# HAL/REST Contract
+
+## Media types and minimal responses
+
+Request HAL explicitly when you need navigable affordances:
+
+```http
+Accept: application/hal+json;v=0.1
+```
+
+Use `Prefer: return=minimal` when a machine client does not need generated links. This reduces representation size but also removes the client's action authority; do not use it for a UI that must decide which mutations to show.
+
+## Hypermedia is the action contract
+
+A resource or collection may expose relations such as `self`, `edit`, `delete`, `check-in`, `undo-check-in`, `request-refund`, `create-refund`, or administration actions. Follow the link currently returned for the current caller, tenant, resource state, and policy.
+
+Do not construct mutation URLs from naming conventions or enable controls from local roles/claims. A link may disappear after state, tenant, policy, concurrency, or provider changes. Refresh the representation after a mutation or authorization-relevant event.
+
+## Pagination
+
+List operations use 1-based pages:
+
+```http
+GET /api/events?page=1&pageSize=20
+```
+
+Default page size is `20`; maximum is `100`. Preserve server-provided navigation links rather than calculating routes that may not carry all query/version context.
+
+## Writes, concurrency, and idempotency
+
+Use the HTTP method and target from HAL. Where the endpoint documents replay protection, generate one UUIDv7 per logical operation and reuse it only for retries of that same operation:
+
+```http
+Idempotency-Key: 0198f4a6-7b8c-7def-8123-456789abcdef
+```
+
+The platform scopes retained write replays by tenant and key for a bounded window. A new business action needs a new key. Idempotency does not replace optimistic concurrency, resource-version checks, provider reconciliation, or domain validation.
+
+## ProblemDetails
+
+Failed commands never return a success-shaped command body. Errors use `application/problem+json` and may include:
+
+```json
+{
+  "type": "https://errors.islamu.example/problem-code",
+  "title": "Request could not be completed",
+  "status": 409,
+  "detail": "A bounded public explanation.",
+  "traceId": "...",
+  "correlationId": "...",
+  "timestamp": "..."
+}
+```
+
+Treat `type`/problem code and HTTP status as the stable machine-facing signal. Production responses hide internal parser paths and unhandled exception detail. Authentication, authorization, not-found, concurrency, validation, and quota failures are normalized by shared handling.
+
+## Privacy and caching
+
+Private account, commerce, refund, and erasure responses are `no-store`. Never persist provider IDs, admission bearer material, idempotency material, erasure receipts, raw provider errors, or PII from diagnostic responses. Health and metrics are operational surfaces, not data-export APIs.

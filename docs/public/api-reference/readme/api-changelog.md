@@ -1,0 +1,46 @@
+---
+description: Curated pre-v1 API contract changes and migration expectations.
+---
+
+# API Changelog
+
+The current API version is `0.1`. Before v1, breaking changes are allowed when they simplify the contract or restore architectural invariants. Integrators must pin generated contracts and review changes before every upgrade.
+
+## Current mainline contract
+
+* HAL representations are default where available; clients use `_links` for resource actions.
+* API version negotiation uses media type, query, or `X-Api-Version`; URL-segment versions are not supported.
+* Failures use RFC 7807 ProblemDetails rather than failed success-shaped command bodies.
+* Pagination is 1-based with default size `20` and maximum `100`.
+* Bearer and `X-API-Key` authentication are mutually exclusive.
+* Tenant context comes from host/header/scoped key authority, not request-body identity.
+* Retryable documented writes use tenant-scoped idempotency keys.
+* Interactive OpenAPI surfaces are Development/Testing by default.
+
+## Recent externally visible themes
+
+### Operations and configuration
+
+Operational control-plane reads, safe health output, configuration-manifest workflows, privacy-erasure topology, and explicit managed-mode interfaces have been added or tightened. Optional managed interfaces remain disabled by default.
+
+### Events and commerce
+
+Public event slugs and Open Graph imagery, modular aspects, custom properties, registration/admission separation, buyer commerce reads, organizer refund actions, material-change response, and refund campaign operations are represented in the current contract. Provider-confirmed evidence controls payment/refund status.
+
+### Communications and integrations
+
+Web Push, SMTP/outbox behavior, sanitized Listmonk settings/test/credential-rotation operations, forms, webhook modes, MCP proposals, and selective federation have explicit contracts and limitations.
+
+### Security and tenancy
+
+Cerbos intent is explicit and fail closed. HAL action generation follows current authorization. Tenant resolution, secret-provider states, private/no-store commerce responses, and erasure-receipt handling have been hardened without compatibility aliases for removed pre-v1 shapes.
+
+## What counts as a breaking change
+
+Record removals, renames, authentication/authorization changes, request/response/problem changes, pagination/cursor changes, and generated-client changes. Each entry should name affected routes/schema/methods, old and new behavior, consumers, migration guidance or compatibility window, target release, and verification evidence.
+
+## Canonical sources
+
+The repository's `docs/API_CHANGELOG.md` is the detailed date-indexed contract log. The governed OpenAPI artifact is `schemas/openapi-islamu-event.json`. Regenerate all governed client artifacts after server contract changes; do not edit generated files manually.
+
+At API v1.0, breaking schema diffs become blocking. Until then, treat every upgrade as a deliberate contract migration.
