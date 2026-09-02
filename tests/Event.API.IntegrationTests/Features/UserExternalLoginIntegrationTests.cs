@@ -70,14 +70,17 @@ public class UserExternalLoginIntegrationTests
 
         using var scope = _fixture.Factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        string providerKey = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            "https://accounts.google.com",
+            "google-sub-123").Value;
         var googleLink = await dbContext.UserExternalLogins
-            .SingleOrDefaultAsync(x => x.Provider == "google" && x.ProviderKey == "google-sub-123");
+            .SingleOrDefaultAsync(x => x.Provider == "google" && x.ProviderKey == providerKey);
         await Assert.That(googleLink).IsNotNull();
         await Assert.That(googleLink!.UserId).IsEqualTo(existingUserId);
     }
 
     [Test]
-    public async Task SyncUser_AtprotoWithoutEmailWithoutExplicitLink_ShouldReturnBadRequest()
+    public async Task SyncUser_AmbientAtprotoClaimsWithoutExplicitLink_ShouldReturnUnauthorized()
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/user/sync");
         request.Headers.Add(TestAuthHandler.AuthHeaderName,
@@ -88,15 +91,11 @@ public class UserExternalLoginIntegrationTests
                 ("idp", "atproto")));
 
         var response = await _fixture.Client.SendAsync(request);
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-
-        var problemDetails = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
-        await Assert.That(problemDetails).IsNotNull();
-        await Assert.That(problemDetails!.Detail).Contains("explicitly linked");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
-    public async Task SyncUser_AtprotoWithoutEmailWithExplicitLink_ShouldResolveExistingUser()
+    public async Task SyncUser_AmbientAtprotoClaimsWithExistingLink_ShouldReturnUnauthorized()
     {
         var existingUserId = Guid.NewGuid();
         await EnsureUserExistsAsync(existingUserId, "linked@example.com");
@@ -111,12 +110,7 @@ public class UserExternalLoginIntegrationTests
                 ("idp", "atproto")));
 
         var response = await _fixture.Client.SendAsync(request);
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-
-        var body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
-        await Assert.That(body).IsNotNull();
-        await Assert.That(body!.IsSuccess).IsTrue();
-        await Assert.That(body.Id).IsEqualTo(existingUserId);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
@@ -258,18 +252,31 @@ public class UserExternalLoginIntegrationTests
                 return new AtprotoIssuedSessionToken("platform-token", DateTimeOffset.UtcNow.AddMinutes(5));
             });
 
+        var bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(
+            InstanceBootstrapState.CreateConfiguredAdministratorPending(
+                Guid.CreateVersion7(),
+                InstanceBootstrapProviderKind.Atproto,
+                DeploymentMode.MultiTenant,
+                1,
+                new string('a', 64),
+                new string('b', 64),
+                DateTime.UtcNow));
+
         BootstrapAtprotoSessionCommandHandler first = CreateAtprotoHandler(
             gateway,
             tokenIssuer,
             sender,
             logins,
-            out _);
+            out _,
+            bootstrapRepository);
         BootstrapAtprotoSessionCommandHandler second = CreateAtprotoHandler(
             gateway,
             tokenIssuer,
             sender,
             logins,
-            out _);
+            out _,
+            bootstrapRepository);
 
         AtprotoSessionBootstrapResult[] results = await Task.WhenAll(
             first.Handle(CreateBootstrapCommand(did), CancellationToken.None),
@@ -292,6 +299,141 @@ public class UserExternalLoginIntegrationTests
         await Assert.That(snapshot.IndexOf("persist-session")).IsLessThan(snapshot.IndexOf("issue-token"));
     }
 
+    [Test]
+    public async Task BootstrapAtprotoSession_ExactConfiguredRetryWithLinkedLogin_ReplaysClaimBeforeSessionEffects()
+    {
+        AtprotoDid did = AtprotoDid.Parse($"did:plc:{Guid.NewGuid():N}");
+        Guid userId = Guid.CreateVersion7();
+        var login = new UserExternalLogin
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            User = null!,
+            TenantId = PlatformDefaults.DefaultTenantId,
+            Tenant = null!,
+            Provider = "atproto",
+            ProviderKey = did.Value,
+            ProviderDisplayName = "AT Protocol"
+        };
+        var gateway = Substitute.For<IAtprotoOAuthSecurityGateway>();
+        gateway.VerifyAsync(Arg.Any<AtprotoOAuthVerificationInput>(), Arg.Any<CancellationToken>())
+            .Returns(AtprotoOAuthVerificationResult.Verified(new AtprotoVerifiedOAuthSession(
+                did,
+                "canonical.example.test",
+                new Uri("https://pds.example.test"),
+                "oauth-key",
+                new byte[] { 1 })));
+        var logins = Substitute.For<IUserExternalLoginRepository>();
+        logins.GetByProviderAndKey("atproto", Arg.Any<ProviderAccountKey>()).Returns(login);
+        var sender = Substitute.For<ISender>();
+        int claimAttempts = 0;
+        ClaimConfiguredInstanceAdministratorCommand? lastClaim = null;
+        sender.Send(Arg.Any<ClaimConfiguredInstanceAdministratorCommand>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                lastClaim = call.Arg<ClaimConfiguredInstanceAdministratorCommand>();
+                return Interlocked.Increment(ref claimAttempts) == 1
+                    ? throw new InvalidOperationException("Injected post-commit effect failure.")
+                    : BaseCommandResponse.Success(Guid.CreateVersion7(), "reconciled");
+            });
+        var bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(
+            InstanceBootstrapState.CreateConfiguredAdministratorPending(
+                Guid.CreateVersion7(),
+                InstanceBootstrapProviderKind.Atproto,
+                DeploymentMode.MultiTenant,
+                1,
+                new string('a', 64),
+                new string('b', 64),
+                DateTime.UtcNow));
+        var tokenIssuer = Substitute.For<IAtprotoSessionTokenIssuer>();
+        tokenIssuer.IssueAsync(userId, Arg.Any<Guid>(), did, Arg.Any<CancellationToken>())
+            .Returns(new AtprotoIssuedSessionToken("platform-token", DateTimeOffset.UtcNow.AddMinutes(5)));
+        BootstrapAtprotoSessionCommandHandler handler = CreateAtprotoHandler(
+            gateway,
+            tokenIssuer,
+            sender,
+            logins,
+            out _,
+            bootstrapRepository);
+
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            handler.Handle(CreateBootstrapCommand(did), CancellationToken.None));
+        AtprotoSessionBootstrapResult retry = await handler.Handle(
+            CreateBootstrapCommand(did),
+            CancellationToken.None);
+
+        await Assert.That(retry.Success).IsTrue();
+        await Assert.That(claimAttempts).IsEqualTo(2);
+        await Assert.That(lastClaim).IsNotNull();
+        await Assert.That(lastClaim!.AuthenticatedAccount)
+            .IsEqualTo(PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(did));
+        await Assert.That(lastClaim.UserId).IsEqualTo(userId);
+    }
+
+    [Test]
+    public async Task BootstrapAtprotoSession_NormalLinkedLogin_DoesNotInvokeConfiguredClaim()
+    {
+        AtprotoDid did = AtprotoDid.Parse($"did:plc:{Guid.NewGuid():N}");
+        Guid userId = Guid.CreateVersion7();
+        var verified = new AtprotoVerifiedOAuthSession(
+            did,
+            "canonical.example.test",
+            new Uri("https://pds.example.test"),
+            "oauth-key",
+            new byte[] { 1 });
+        var gateway = Substitute.For<IAtprotoOAuthSecurityGateway>();
+        gateway.VerifyAsync(Arg.Any<AtprotoOAuthVerificationInput>(), Arg.Any<CancellationToken>())
+            .Returns(AtprotoOAuthVerificationResult.Verified(verified));
+        gateway.PreparePersistenceAsync(
+                verified,
+                Arg.Any<Guid>(),
+                userId,
+                Arg.Any<CancellationToken>())
+            .Returns(call => new AtprotoPreparedOAuthSession(
+                new byte[] { 2 },
+                "encryption-key",
+                1,
+                call.ArgAt<Guid>(1),
+                userId,
+                did,
+                "https://pds.example.test/",
+                "oauth-key",
+                null));
+        var login = new UserExternalLogin
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            User = null!,
+            TenantId = PlatformDefaults.DefaultTenantId,
+            Tenant = null!,
+            Provider = "atproto",
+            ProviderKey = did.Value,
+            ProviderDisplayName = "AT Protocol"
+        };
+        var logins = Substitute.For<IUserExternalLoginRepository>();
+        logins.GetByProviderAndKey("atproto", Arg.Any<ProviderAccountKey>()).Returns(login);
+        var sender = Substitute.For<ISender>();
+        var tokenIssuer = Substitute.For<IAtprotoSessionTokenIssuer>();
+        tokenIssuer.IssueAsync(userId, Arg.Any<Guid>(), did, Arg.Any<CancellationToken>())
+            .Returns(new AtprotoIssuedSessionToken("platform-token", DateTimeOffset.UtcNow.AddMinutes(5)));
+        BootstrapAtprotoSessionCommandHandler handler = CreateAtprotoHandler(
+            gateway,
+            tokenIssuer,
+            sender,
+            logins,
+            out _);
+
+        AtprotoSessionBootstrapResult result = await handler.Handle(
+            CreateBootstrapCommand(did),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await sender.DidNotReceiveWithAnyArgs().Send(
+            default(ClaimConfiguredInstanceAdministratorCommand)!,
+            default);
+    }
+
     private static BootstrapAtprotoSessionCommand CreateBootstrapCommand(AtprotoDid did) =>
         new(
             did,
@@ -305,7 +447,8 @@ public class UserExternalLoginIntegrationTests
         IAtprotoSessionTokenIssuer tokenIssuer,
         ISender sender,
         IUserExternalLoginRepository logins,
-        out IUnitOfWork unitOfWork)
+        out IUnitOfWork unitOfWork,
+        IInstanceBootstrapStateRepository? bootstrapRepository = null)
     {
         var users = Substitute.For<IUserRepository>();
         users.GetById(Arg.Any<Guid>()).Returns(call => new User
@@ -377,6 +520,7 @@ public class UserExternalLoginIntegrationTests
             tokenIssuer,
             sender,
             logins,
+            bootstrapRepository ?? Substitute.For<IInstanceBootstrapStateRepository>(),
             users,
             actors,
             onboarding,

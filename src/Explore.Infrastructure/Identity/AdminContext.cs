@@ -58,7 +58,9 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         get
         {
             var user = _httpContextAccessor.HttpContext?.User;
-            return user?.GetPlatformUserId();
+            return user?.GetProviderIdentity() is null
+                ? user?.GetPlatformUserId()
+                : null;
         }
     }
 
@@ -74,12 +76,9 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         if (user is null)
             return null;
 
-        if (user.GetPlatformUserId() is { } platformUserId)
-            return platformUserId;
-
         var providerIdentity = user.GetProviderIdentity();
         if (providerIdentity is null)
-            return null;
+            return user.GetPlatformUserId();
 
         var cacheKey = $"{CacheKeyPrefix}ResolvedId_{providerIdentity.Provider}_{providerIdentity.AccountKey.Value}";
         if (_cache.TryGetValue<Guid>(cacheKey, out var cachedUserId))

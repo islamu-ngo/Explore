@@ -14,6 +14,7 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Logging;
 
 
 namespace Explore.Application.Features.Users.Handlers.Commands;
@@ -29,6 +30,7 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
     private readonly InstanceOnboardingCompletionOperation _onboardingCompletion;
     private readonly HybridCache _cache;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<SyncUserCommandHandler> _logger;
 
     public SyncUserCommandHandler(
         IUserRepository userRepository,
@@ -39,7 +41,8 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         ITenantContext tenantContext,
         InstanceOnboardingCompletionOperation onboardingCompletion,
         HybridCache cache,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILogger<SyncUserCommandHandler> logger)
     {
         _userRepository = userRepository;
         _userExternalLoginRepository = userExternalLoginRepository;
@@ -50,6 +53,7 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         _onboardingCompletion = onboardingCompletion;
         _cache = cache;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(SyncUserCommand request, CancellationToken cancellationToken)
@@ -64,25 +68,34 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
             var supportsEmailAutoMatch = SupportsEmailAutoMatch(provider);
             var email = NormalizeEmail(userDto.Email);
 
-            if ((provider == "atproto") !=
-                (accountKey.ProviderKind == InstanceBootstrapProviderKind.Atproto)
-                || (provider == "keycloak") !=
-                (accountKey.ProviderKind == InstanceBootstrapProviderKind.Keycloak))
+            bool usesAtprotoAuthority = provider == "atproto";
+            bool hasAtprotoAuthority =
+                accountKey.ProviderKind == InstanceBootstrapProviderKind.Atproto;
+            if (usesAtprotoAuthority != hasAtprotoAuthority)
             {
                 return BaseCommandResponse.Validation<Guid>(
                     ["Provider account authority is invalid."],
                     "Provider account authority is invalid.");
             }
 
+            var existingLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, accountKey);
             InstanceBootstrapState? bootstrap = await _bootstrapRepository.GetCurrent(cancellationToken);
             if (bootstrap is
                 {
-                    Status: InstanceBootstrapStatus.Pending,
                     Mode: InstanceBootstrapMode.ConfiguredAdministrator
                 })
             {
-                Guid claimUserId = userDto.Id == Guid.Empty ? Guid.CreateVersion7() : userDto.Id;
-                return await _onboardingCompletion.ClaimConfiguredAsync(
+                if (bootstrap.ProviderKind == InstanceBootstrapProviderKind.Keycloak
+                    && provider != "keycloak")
+                {
+                    return BaseCommandResponse.Failure<Guid>(
+                        "configured_administrator_claim_mismatch",
+                        "Configured administrator claim did not match.");
+                }
+
+                Guid claimUserId = existingLogin?.UserId
+                    ?? (userDto.Id == Guid.Empty ? Guid.CreateVersion7() : userDto.Id);
+                BaseCommandResponse<Guid> claim = await _onboardingCompletion.ClaimConfiguredAsync(
                     new ClaimConfiguredInstanceAdministratorCommand
                     {
                         AuthenticatedAccount = accountKey,
@@ -93,12 +106,22 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                         EmailVerified = userDto.EmailVerified
                     },
                     cancellationToken);
+                if (bootstrap.Status == InstanceBootstrapStatus.Pending)
+                {
+                    return claim;
+                }
+
+                if (!claim.IsSuccess
+                    && (existingLogin is null
+                        || bootstrap.CompletedByUserId != existingLogin.UserId))
+                {
+                    return claim;
+                }
             }
 
             if (!supportsEmailAutoMatch && string.IsNullOrWhiteSpace(email))
             {
-                var existingProviderLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, accountKey);
-                if (existingProviderLogin == null)
+                if (existingLogin == null)
                 {
                     const string message =
                         "AT Protocol identity must be explicitly linked to an existing account before sign-in sync without email.";
@@ -109,7 +132,6 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
             // Pre-reads for user resolution — outside transaction for fast rejection
             User? user = null;
 
-            var existingLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, accountKey);
             if (existingLogin != null)
             {
                 user = await _userRepository.GetById(existingLogin.UserId);
@@ -118,6 +140,23 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
             if (user == null && userDto.Id != Guid.Empty)
             {
                 user = await _userRepository.GetById(userDto.Id);
+            }
+
+            if (user == null
+                && supportsEmailAutoMatch
+                && userDto.EmailVerified == true
+                && !string.IsNullOrWhiteSpace(email))
+            {
+                IReadOnlyList<User> emailMatches =
+                    await _userRepository.GetUsersByNormalizedEmailAsync(email, cancellationToken);
+                if (emailMatches.Count > 1)
+                {
+                    const string message =
+                        "Verified email resolves to multiple user accounts; explicit linking is required.";
+                    return BaseCommandResponse.Validation<Guid>([message], message);
+                }
+
+                user = emailMatches.SingleOrDefault();
             }
 
 
@@ -208,9 +247,17 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
             await _cache.RemoveAsync($"user:detail:{syncedUser.Id}", cancellationToken);
             return BaseCommandResponse.Success(syncedUser.Id, "User synchronized successfully.");
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                "User synchronization failed with exception type {ExceptionType}.",
+                exception.GetType().FullName);
+            const string message = "User synchronization failed.";
+            return BaseCommandResponse.Validation<Guid>([message], message);
         }
     }
 

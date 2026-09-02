@@ -197,6 +197,41 @@ public class AdminContextTests
     }
 
     [Test]
+    public async Task IsInstanceAdminAsync_GuidProviderSubjectWithoutExactIssuerLink_CannotInheritInternalAdminAuthority()
+    {
+        Guid internalAdminId = Guid.CreateVersion7();
+        var platformRoles = Substitute.For<IPlatformUserRoleRepository>();
+        platformRoles.IsUserPlatformAdmin(internalAdminId).Returns(true);
+        var externalLogins = Substitute.For<IUserExternalLoginRepository>();
+        externalLogins.GetByProviderAndKey(
+                "keycloak",
+                PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+                    "https://attacker.example.test/realms/event",
+                    internalAdminId.ToString("D")))
+            .Returns((UserExternalLogin?)null);
+        var principal = CreateExternalPrincipal(
+            internalAdminId.ToString("D"),
+            idp: "keycloak",
+            issuer: "https://attacker.example.test/realms/event");
+        var sut = CreateSut(
+            CreateHttpContextAccessor(principal),
+            platformRoles,
+            Substitute.For<ITenantUserRoleGrantRepository>(),
+            Substitute.For<IOrganizationMemberRepository>(),
+            userExternalLoginRepository: externalLogins);
+
+        bool result = await sut.IsInstanceAdminAsync(CancellationToken.None);
+
+        await Assert.That(result).IsFalse()
+            .Because("an OIDC GUID subject is provider-owned and must resolve through its exact issuer-qualified external login");
+        await externalLogins.Received(1).GetByProviderAndKey(
+            "keycloak",
+            PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+                "https://attacker.example.test/realms/event",
+                internalAdminId.ToString("D")));
+    }
+
+    [Test]
     public async Task ResolveUserIdAsync_ConflictingGuidClaimsUsesCanonicalPriorityWithoutProviderLookup()
     {
         var subUserId = Guid.NewGuid();

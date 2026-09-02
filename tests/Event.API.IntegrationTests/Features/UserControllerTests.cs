@@ -150,7 +150,38 @@ public class UserControllerTests
 
     [Test]
     [Category(TestCategories.Fast)]
-    public async Task SyncUser_WithAtprotoEmailWithoutExplicitVerification_ShouldPersistEmailAsUnverified()
+    public async Task SyncUser_GuidSubjectFromDifferentIssuer_DoesNotSelectExistingInternalUser()
+    {
+        await using var factory = new AuthenticatedWebApplicationFactory();
+        using var client = factory.CreateClient();
+        Guid existingUserId = Guid.CreateVersion7();
+        string subject = existingUserId.ToString("D");
+        ProviderAccountKey issuerA = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            "https://issuer-a.example.test",
+            subject);
+        await SeedUserAndLoginAsync(
+            factory,
+            existingUserId,
+            "keycloak",
+            issuerA.Value,
+            "issuer-a@example.test");
+
+        using var request = CreateOidcSyncRequest(
+            subject,
+            "https://issuer-b.example.test",
+            "issuer-b@example.test");
+        using HttpResponseMessage response = await client.SendAsync(request);
+        BaseCommandResponse<Guid>? body = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(body).IsNotNull();
+        await Assert.That(body!.Id).IsNotEqualTo(existingUserId);
+        await Assert.That(body.Id.Version).IsEqualTo(7);
+    }
+
+    [Test]
+    [Category(TestCategories.Fast)]
+    public async Task SyncUser_WithAmbientAtprotoClaimsWithoutEmailVerification_ShouldReturnUnauthorized()
     {
         await using var factory = new AuthenticatedWebApplicationFactory();
         using var client = factory.CreateClient();
@@ -160,26 +191,13 @@ public class UserControllerTests
 
         using var syncRequest = CreateAtprotoSyncRequest(authUserId, did, "atproto-user@example.test");
         var syncResponse = await client.SendAsync(syncRequest);
-        var syncBody = await syncResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
 
-        await Assert.That(syncResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(syncBody).IsNotNull();
-        await Assert.That(syncBody!.IsSuccess).IsTrue();
-
-        using var currentUserRequest = CreateAtprotoRequest(HttpMethod.Get, BaseUrl, authUserId, did, "atproto-user@example.test");
-        var currentUserResponse = await client.SendAsync(currentUserRequest);
-        var currentUser = await currentUserResponse.Content.ReadFromJsonAsync<UserDto>();
-
-        await Assert.That(currentUserResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(currentUser).IsNotNull();
-        await Assert.That(currentUser!.AuthProvider).IsEqualTo("atproto");
-        await Assert.That(currentUser.AuthProviderId).IsEqualTo(did);
-        await Assert.That(currentUser.EmailVerified).IsFalse();
+        await Assert.That(syncResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
     [Category(TestCategories.Fast)]
-    public async Task SyncUser_WithAtprotoEmailAndExplicitVerification_ShouldPersistEmailAsVerified()
+    public async Task SyncUser_WithAmbientAtprotoClaimsAndEmailVerification_ShouldReturnUnauthorized()
     {
         await using var factory = new AuthenticatedWebApplicationFactory();
         using var client = factory.CreateClient();
@@ -189,21 +207,8 @@ public class UserControllerTests
 
         using var syncRequest = CreateAtprotoSyncRequest(authUserId, did, "verified-atproto-user@example.test", emailVerified: true);
         var syncResponse = await client.SendAsync(syncRequest);
-        var syncBody = await syncResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
 
-        await Assert.That(syncResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(syncBody).IsNotNull();
-        await Assert.That(syncBody!.IsSuccess).IsTrue();
-
-        using var currentUserRequest = CreateAtprotoRequest(HttpMethod.Get, BaseUrl, authUserId, did, "verified-atproto-user@example.test", emailVerified: true);
-        var currentUserResponse = await client.SendAsync(currentUserRequest);
-        var currentUser = await currentUserResponse.Content.ReadFromJsonAsync<UserDto>();
-
-        await Assert.That(currentUserResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        await Assert.That(currentUser).IsNotNull();
-        await Assert.That(currentUser!.AuthProvider).IsEqualTo("atproto");
-        await Assert.That(currentUser.AuthProviderId).IsEqualTo(did);
-        await Assert.That(currentUser.EmailVerified).IsTrue();
+        await Assert.That(syncResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     #endregion

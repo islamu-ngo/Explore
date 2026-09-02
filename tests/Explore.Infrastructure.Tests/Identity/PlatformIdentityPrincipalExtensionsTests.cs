@@ -92,12 +92,16 @@ public sealed class PlatformIdentityPrincipalExtensionsTests
         ClaimsPrincipal principal = Principal(
             "provider",
             new Claim("sub", subject),
+            new Claim("iss", "https://accounts.google.com"),
             new Claim("idp", "google"),
             new Claim("email", "provider@example.test"),
             new Claim("email_verified", bool.TrueString));
 
         await Assert.That(principal.GetProviderSubject()).IsEqualTo(subject);
-        await Assert.That(principal.GetProviderIdentity()?.ProviderId).IsEqualTo(subject);
+        await Assert.That(principal.GetProviderIdentity()?.ProviderId).IsEqualTo(
+            PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+                "https://accounts.google.com",
+                subject).Value);
     }
 
     [Test]

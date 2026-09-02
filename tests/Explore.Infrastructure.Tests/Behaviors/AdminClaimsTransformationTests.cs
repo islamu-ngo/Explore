@@ -8,6 +8,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Infrastructure.Identity;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -83,34 +84,50 @@ public class AdminClaimsTransformationTests
     }
 
     [Test]
-    public async Task TransformAsync_KeycloakGuidSubject_UsesCanonicalSubjectWithoutProviderLookup()
+    public async Task TransformAsync_KeycloakGuidSubject_UsesExactProviderLink()
     {
         // Arrange
         var keycloakSubject = Guid.NewGuid();
+        var localUserId = Guid.CreateVersion7();
+        const string issuer = "http://localhost/realms/ISLAMU";
         const string email = "admin@test.islamu.org";
         var identity = new ClaimsIdentity(new[]
         {
             new Claim("sub", keycloakSubject.ToString()),
-            new Claim("iss", "http://localhost/realms/ISLAMU"),
+            new Claim("iss", issuer),
             new Claim("email", email),
             new Claim("email_verified", "true")
         }, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
-        _adminContext.IsInstanceAdminAsync(keycloakSubject, Arg.Any<CancellationToken>()).Returns(true);
-        _adminContext.GetAdminTenantIdsAsync(keycloakSubject, Arg.Any<CancellationToken>())
+        ProviderAccountKey accountKey =
+            PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(issuer, keycloakSubject.ToString());
+        _userExternalLoginRepository.GetByProviderAndKey("keycloak", accountKey)
+            .Returns(new UserExternalLogin
+            {
+                Id = Guid.CreateVersion7(),
+                UserId = localUserId,
+                User = null!,
+                TenantId = PlatformDefaults.DefaultTenantId,
+                Tenant = null!,
+                Provider = "keycloak",
+                ProviderKey = accountKey.Value,
+                ProviderDisplayName = "Keycloak",
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = localUserId
+            });
+        _adminContext.IsInstanceAdminAsync(localUserId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminTenantIdsAsync(localUserId, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
-        _adminContext.GetAdminOrganizationIdsAsync(keycloakSubject, Arg.Any<CancellationToken>())
+        _adminContext.GetAdminOrganizationIdsAsync(localUserId, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<Guid>().ToList().AsReadOnly() as IReadOnlyList<Guid>);
 
         // Act
         var result = await _sut.TransformAsync(principal);
 
         // Assert
-        await Assert.That(result.HasClaim("internal_user_id", keycloakSubject.ToString())).IsTrue();
+        await Assert.That(result.HasClaim("internal_user_id", localUserId.ToString())).IsTrue();
+        await Assert.That(result.HasClaim("internal_user_id", keycloakSubject.ToString())).IsFalse();
         await Assert.That(result.HasClaim(AdminClaimTypes.InstanceAdmin, "true")).IsTrue();
-        await _adminContext.Received(1).IsInstanceAdminAsync(keycloakSubject, Arg.Any<CancellationToken>());
-        await _userExternalLoginRepository.DidNotReceive()
-            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<ProviderAccountKey>());
     }
 
     [Test]

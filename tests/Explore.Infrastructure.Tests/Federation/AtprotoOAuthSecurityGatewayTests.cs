@@ -118,6 +118,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             tokenIssuer,
             sender,
             externalLogins,
+            Substitute.For<IInstanceBootstrapStateRepository>(),
             users,
             actors,
             new AtprotoSubjectOnboardingOperation(

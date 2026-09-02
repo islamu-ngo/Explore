@@ -22,6 +22,7 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
     IAtprotoSessionTokenIssuer tokenIssuer,
     ISender sender,
     IUserExternalLoginRepository externalLoginRepository,
+    IInstanceBootstrapStateRepository bootstrapRepository,
     IUserRepository userRepository,
     IActorRepository actorRepository,
     AtprotoSubjectOnboardingOperation onboardingOperation,
@@ -64,13 +65,18 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
         ProviderAccountKey accountKey = PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(verified.Did);
         var login = await externalLoginRepository
             .GetByProviderAndKey("atproto", accountKey).ConfigureAwait(false);
-        if (!IsExactLinkedLogin(login, accountKey))
+        InstanceBootstrapState? bootstrap = await bootstrapRepository
+            .GetCurrent(cancellationToken).ConfigureAwait(false);
+        bool configuredAccount = bootstrap?.Mode == InstanceBootstrapMode.ConfiguredAdministrator;
+        if (configuredAccount)
         {
             var claim = await sender.Send(
                 new ClaimConfiguredInstanceAdministratorCommand
                 {
                     AuthenticatedAccount = accountKey,
-                    UserId = Guid.CreateVersion7(),
+                    UserId = IsExactLinkedLogin(login, accountKey)
+                        ? login!.UserId
+                        : Guid.CreateVersion7(),
                     Email = configuration["INSTANCE_BOOTSTRAP_ADMIN_EMAIL"],
                     FirstName = configuration["INSTANCE_BOOTSTRAP_ADMIN_FIRST_NAME"],
                     LastName = configuration["INSTANCE_BOOTSTRAP_ADMIN_LAST_NAME"],
@@ -78,15 +84,26 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
                 },
                 cancellationToken).ConfigureAwait(false);
 
+            if (!claim.IsSuccess)
+            {
+                if (bootstrap?.Status != InstanceBootstrapStatus.Completed
+                    || !IsExactLinkedLogin(login, accountKey)
+                    || bootstrap.CompletedByUserId != login!.UserId)
+                {
+                    return AtprotoSessionBootstrapResult.Failed("account_not_linked");
+                }
+            }
+
             login = await externalLoginRepository
                 .GetByProviderAndKey("atproto", accountKey).ConfigureAwait(false);
             if (!IsExactLinkedLogin(login, accountKey))
             {
-                return AtprotoSessionBootstrapResult.Failed(
-                    claim.IsSuccess
-                        ? "configured_claim_incomplete"
-                        : "account_not_linked");
+                return AtprotoSessionBootstrapResult.Failed("configured_claim_incomplete");
             }
+        }
+        else if (!IsExactLinkedLogin(login, accountKey))
+        {
+            return AtprotoSessionBootstrapResult.Failed("account_not_linked");
         }
 
         var preparedSession = await securityGateway.PreparePersistenceAsync(

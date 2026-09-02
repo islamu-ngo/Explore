@@ -7,9 +7,13 @@ using System.Text;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Authentication;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.User;
+using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Models;
+using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using Explore.Persistence;
@@ -18,6 +22,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using MediatR;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -58,6 +63,89 @@ public sealed class ConfiguredAdministratorBootstrapTests
         await Assert.That(state.Status).IsEqualTo(InstanceBootstrapStatus.Completed);
         await Assert.That(login.ProviderKey).IsEqualTo(expected.Value);
         await Assert.That(await db.PlatformUserRoles.CountAsync()).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task SyncUser_ExactConfiguredRetryAfterPostCommitFailure_ReplaysClaimEffects()
+    {
+        ProviderAccountKey expected = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            ExpectedIssuer,
+            ExpectedSubject);
+        var notifier = new FailFirstJwtAuthorityRefreshNotifier();
+        await using var factory = new ConfiguredClaimFactory(expected, notifier);
+        using var client = factory.CreateClient();
+        await SeedPendingAsync(factory);
+
+        using HttpResponseMessage first = await client.SendAsync(CreateSyncRequest(
+            ("sub", ExpectedSubject),
+            ("iss", ExpectedIssuer),
+            ("idp", "keycloak"),
+            ("email", "configured-admin@example.test")));
+        await using var scope = factory.Services.CreateAsyncScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        var retry = await mediator.Send(new SyncUserCommand
+        {
+            AccountKey = expected,
+            UserDto = new UserDto
+            {
+                Id = Guid.Empty,
+                Email = "configured-admin@example.test",
+                FirstName = "Configured",
+                LastName = "Administrator",
+                AuthProvider = "keycloak",
+                AuthProviderId = expected.Value,
+                EmailVerified = true
+            }
+        });
+
+        await Assert.That(first.IsSuccessStatusCode).IsFalse();
+        await Assert.That(retry.IsSuccess).IsTrue();
+        await Assert.That(notifier.CallCount).IsEqualTo(2);
+        var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        await Assert.That(await db.InstanceBootstrapStates.CountAsync(
+            state => state.Status == InstanceBootstrapStatus.Completed)).IsEqualTo(1);
+        await Assert.That(await db.UserExternalLogins.CountAsync()).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task SyncUser_CompletedExactLoginRemainsUsableWhenSelectorAuthorityIsRemoved()
+    {
+        ProviderAccountKey expected = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            ExpectedIssuer,
+            ExpectedSubject);
+        var provider = new OneShotConfiguredProvider(expected);
+        await using var factory = new ConfiguredClaimFactory(expected, configuredProvider: provider);
+        using var client = factory.CreateClient();
+        await SeedPendingAsync(factory);
+
+        using HttpRequestMessage firstRequest = CreateSyncRequest(
+            ("sub", ExpectedSubject),
+            ("iss", ExpectedIssuer),
+            ("idp", "keycloak"),
+            ("email", "configured-admin@example.test"));
+        using HttpResponseMessage first = await client.SendAsync(firstRequest);
+        await using AsyncServiceScope scope = factory.Services.CreateAsyncScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+        BaseCommandResponse<Guid> second = await mediator.Send(new SyncUserCommand
+        {
+            AccountKey = expected,
+            UserDto = new UserDto
+            {
+                Id = Guid.Empty,
+                Email = "configured-admin@example.test",
+                FirstName = "Configured",
+                LastName = "Administrator",
+                AuthProvider = "keycloak",
+                AuthProviderId = expected.Value,
+                EmailVerified = true
+            }
+        });
+
+        await Assert.That(first.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(second.IsSuccess).IsTrue();
+        await Assert.That(provider.CallCount).IsEqualTo(2);
+        DatabaseCounts counts = await ReadCountsAsync(factory);
+        await Assert.That(counts).IsEqualTo(new DatabaseCounts(1, 1, 1, 1));
     }
 
     [Test]
@@ -194,7 +282,10 @@ public sealed class ConfiguredAdministratorBootstrapTests
 
     private sealed record DatabaseCounts(int Users, int ExternalLogins, int PlatformRoles, int CompletedStates);
 
-    private sealed class ConfiguredClaimFactory(ProviderAccountKey expectedAccount)
+    private sealed class ConfiguredClaimFactory(
+        ProviderAccountKey expectedAccount,
+        IJwtAuthorityRefreshNotifier? notifier = null,
+        IConfiguredAdministratorBootstrapProvider? configuredProvider = null)
         : AuthenticatedWebApplicationFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -204,8 +295,26 @@ public sealed class ConfiguredAdministratorBootstrapTests
             {
                 services.RemoveAll<IConfiguredAdministratorBootstrapProvider>();
                 services.AddSingleton<IConfiguredAdministratorBootstrapProvider>(
-                    new ExactConfiguredProvider(expectedAccount));
+                    configuredProvider ?? new ExactConfiguredProvider(expectedAccount));
+                if (notifier is not null)
+                {
+                    services.RemoveAll<IJwtAuthorityRefreshNotifier>();
+                    services.AddSingleton(notifier);
+                }
             });
+        }
+    }
+
+    private sealed class FailFirstJwtAuthorityRefreshNotifier : IJwtAuthorityRefreshNotifier
+    {
+        public int CallCount { get; private set; }
+
+        public Task ReloadAsync(CancellationToken ct = default)
+        {
+            CallCount++;
+            return CallCount == 1
+                ? Task.FromException(new InvalidOperationException("Injected post-commit effect failure."))
+                : Task.CompletedTask;
         }
     }
 
@@ -234,6 +343,24 @@ public sealed class ConfiguredAdministratorBootstrapTests
                         "Administrator"))
                 : null;
             return Task.FromResult(binding);
+        }
+    }
+
+    private sealed class OneShotConfiguredProvider(ProviderAccountKey expectedAccount)
+        : IConfiguredAdministratorBootstrapProvider
+    {
+        private readonly ExactConfiguredProvider _inner = new(expectedAccount);
+
+        public int CallCount { get; private set; }
+
+        public Task<ConfiguredAdministratorBootstrapBinding?> GetVerifiedBindingAsync(
+            ProviderAccountKey authenticatedAccount,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return CallCount == 1
+                ? _inner.GetVerifiedBindingAsync(authenticatedAccount, cancellationToken)
+                : Task.FromResult<ConfiguredAdministratorBootstrapBinding?>(null);
         }
     }
 }

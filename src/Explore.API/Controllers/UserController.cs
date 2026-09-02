@@ -68,7 +68,6 @@ public class UserController : ExploreControllerBase
                 detail: "Could not resolve provider identity from authentication token.");
         }
 
-        var providerSubject = providerIdentity.Subject;
         var email = providerIdentity.Email;
         var firstName = User.GetFirstName() ?? string.Empty;
         var lastName = User.GetLastName() ?? string.Empty;
@@ -76,13 +75,9 @@ public class UserController : ExploreControllerBase
         var providerId = providerIdentity.ProviderId;
         var emailVerified = providerIdentity.EmailVerified;
 
-        var userIdGuid = Guid.TryParse(providerSubject, out var parsedGuid)
-            ? parsedGuid
-            : Guid.Empty;
-
         var userDto = new UserDto
         {
-            Id = userIdGuid,
+            Id = Guid.Empty,
             Email = email,
             FirstName = string.IsNullOrWhiteSpace(firstName) ? "User" : firstName,
             LastName = string.IsNullOrWhiteSpace(lastName) ? "" : lastName,

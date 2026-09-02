@@ -34,26 +34,21 @@ public static class CurrentUserResolutionExtensions
             return null;
         }
 
-        // A principal that already carries the local id needs no lookup; this is the common authenticated path.
-        if (principal.GetPlatformUserId() is { } platformUserId)
-        {
-            return platformUserId;
-        }
-
         var providerIdentity = principal.GetProviderIdentity();
-        if (providerIdentity is null)
+        if (providerIdentity is not null)
         {
-            return null;
+            Guid? linkedUserId = await mediator.Send(
+                new ResolveCurrentUserIdByIdentityRequest
+                {
+                    Provider = providerIdentity.Provider,
+                    ProviderId = providerIdentity.AccountKey.Value,
+                    Email = null,
+                    EmailVerified = false,
+                },
+                cancellationToken);
+            return linkedUserId;
         }
 
-        return await mediator.Send(
-            new ResolveCurrentUserIdByIdentityRequest
-            {
-                Provider = providerIdentity.Provider,
-                ProviderId = providerIdentity.AccountKey.Value,
-                Email = null,
-                EmailVerified = false,
-            },
-            cancellationToken);
+        return principal.GetPlatformUserId();
     }
 }

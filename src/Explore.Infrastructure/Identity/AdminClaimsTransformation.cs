@@ -112,16 +112,9 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
 
     private async Task<Guid?> ResolveInternalUserIdAsync(ClaimsPrincipal principal)
     {
-        if (principal.GetPlatformUserId() is { } platformUserId)
-        {
-            return platformUserId;
-        }
-
         var providerIdentity = principal.GetProviderIdentity();
         if (providerIdentity is null)
-        {
-            return null;
-        }
+            return principal.GetPlatformUserId();
 
         var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(
             providerIdentity.Provider,

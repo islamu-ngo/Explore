@@ -34,7 +34,16 @@ public sealed class ConfiguredAdministratorBootstrapProvider(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(authenticatedAccount);
-        ConfigurationSnapshot snapshot = ReadConfiguration();
+        ConfigurationSnapshot snapshot;
+        try
+        {
+            snapshot = ReadConfiguration();
+        }
+        catch (ConfiguredAdministratorBootstrapException)
+        {
+            return null;
+        }
+
         if (snapshot.Mode == InstanceBootstrapMode.Interactive
             || snapshot.AccountKey != authenticatedAccount)
         {
