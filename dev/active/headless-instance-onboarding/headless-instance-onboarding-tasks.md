@@ -25,9 +25,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ## Closure Reconciliation
 
-- The approved 28 implementation tasks are complete. The detailed unchecked
-  boxes below are retained as the immutable pre-execution contract; they are
-  superseded as live status by this closure record and the status summary.
+- The approved 28 implementation tasks are complete. The detailed boxes below
+  retain the immutable pre-execution contract and are checked against the
+  authoritative closure record and final verification evidence.
 - Phase 1 landed independently in
   `5896449f3ae7f78f302cc8f4d85e29574f74a2a5`.
 - Shared `develop` integration consolidated Phases 2–10 into the activated
@@ -204,7 +204,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - directly affected server/fixture tests recorded before staging
 - `docs/releases/changes/CHG-01M1ETX06HRETFBJTK6SCZGBZ6.yaml`
 
-- [ ] **2.1 Establish an AssuranceAudit-safe typed Red for Scenarios 3.4 and 3.5 and verify invalid transition, generation drift, duplicate completion, and post-completion transfer fail as assertion anchors**
+- [x] **2.1 Establish an AssuranceAudit-safe typed Red for Scenarios 3.4 and 3.5 and verify invalid transition, generation drift, duplicate completion, and post-completion transfer fail as assertion anchors**
   - **Files:** entity, three enums, and
     `tests/Event.Domain.UnitTests/InstanceOnboarding/InstanceBootstrapStateTests.cs`
   - **Acceptance:** direct strongly typed tests use worked literals and public
@@ -214,7 +214,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** Phase 1
 
-- [ ] **2.2 Implement the explicit bootstrap mode/status/provider lifecycle and verify every Domain Red turns Green with no public mutable transition logic**
+- [x] **2.2 Implement the explicit bootstrap mode/status/provider lifecycle and verify every Domain Red turns Green with no public mutable transition logic**
   - **Files:** existing `InstanceBootstrapState.cs`; new
     status/mode/provider enums; Task 2.1 tests
   - **Acceptance:** one generation may be prepared, superseded, or completed;
@@ -224,7 +224,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 2.1
 
-- [ ] **2.3 Cut active callers and persistence atomically to typed lifecycle and verify generated five-provider schema has no binary alias or dual reader**
+- [x] **2.3 Cut active callers and persistence atomically to typed lifecycle and verify generated five-provider schema has no binary alias or dual reader**
   - **Files:** active LSP-resolved server readers/writers, entity
     configuration, five generated migration/snapshot sets, direct fixtures,
     and `CHG-01M1ETX06HRETFBJTK6SCZGBZ6.yaml`
@@ -238,17 +238,17 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 2 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
-- [ ] Run `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet` once and verify all bootstrap state-machine invariants pass
-- [ ] Run `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` once and verify typed lifecycle callers pass
-- [ ] Run `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` once and verify admin/setup-secret/deployment-mode readers pass
-- [ ] Run `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify onboarding/filter/fixture flows pass
-- [ ] Run `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify typed schema and provider models pass
-- [ ] Run `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` once and verify wire projection consumers pass
-- [ ] Run `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify BFF projections pass
-- [ ] Run `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` once and verify layer/privacy contracts pass
-- [ ] Run AssuranceAudit over the Phase 2 changed tests and verify zero attributable diagnostics
-- [ ] Confirm the Phase 2 owned lane is green, Domain remains framework-free, and no phase-attributable failure remains
+- [x] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
+- [x] Run `dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet` once and verify all bootstrap state-machine invariants pass
+- [x] Run `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` once and verify typed lifecycle callers pass
+- [x] Run `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet` once and verify admin/setup-secret/deployment-mode readers pass
+- [x] Run `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify onboarding/filter/fixture flows pass
+- [x] Run `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify typed schema and provider models pass
+- [x] Run `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` once and verify wire projection consumers pass
+- [x] Run `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify BFF projections pass
+- [x] Run `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` once and verify layer/privacy contracts pass
+- [x] Run AssuranceAudit over the Phase 2 changed tests and verify zero attributable diagnostics
+- [x] Confirm the Phase 2 owned lane is green, Domain remains framework-free, and no phase-attributable failure remains
 
 ### Phase 2 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -281,9 +281,9 @@ Last Updated: 2026-09-01 Europe/Brussels
   Record the complete exact replacement path list and command after Task 2.3
   generation and ownership inspection, before any staging.
 
-- [ ] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 2 path/hunk is wholly phase-owned before staging and committing
-- [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
-- [ ] Run the post-commit command, verify the committed file list equals Phase 2 Commit paths, record the hash, and only then mark Phase 2 complete
+- [x] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 2 path/hunk is wholly phase-owned before staging and committing
+- [x] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
+- [x] Run the post-commit command, verify the committed file list equals Phase 2 Commit paths, record the hash, and only then mark Phase 2 complete
 
 ## Phase 3: Multi-Replica Locking And Convergence — COMPLETE
 
@@ -293,7 +293,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - `tests/Event.Persistence.IntegrationTests/Onboarding/InstanceBootstrapStatePersistenceTests.cs`
 - `tests/Event.Persistence.IntegrationTests/Onboarding/InstanceOnboardingConcurrencyTests.cs`
 
-- [ ] **3.1 Author failing real-relational persistence and race tests for Scenarios 3.4B–3.5B and verify same-generation mismatch, concurrent exact claim, exact-versus-attacker race, and rollback fail for the missing persisted model**
+- [x] **3.1 Author failing real-relational persistence and race tests for Scenarios 3.4B–3.5B and verify same-generation mismatch, concurrent exact claim, exact-versus-attacker race, and rollback fail for the missing persisted model**
   - **Files:** new
     `InstanceBootstrapStatePersistenceTests.cs` and
     `InstanceOnboardingConcurrencyTests.cs`
@@ -303,7 +303,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** Phase 2
 
-- [ ] **3.2 Implement provider-neutral row locking and serializable convergence, verifying the Phase 3 Red suite turns Green without schema changes**
+- [x] **3.2 Implement provider-neutral row locking and serializable convergence, verifying the Phase 3 Red suite turns Green without schema changes**
   - **Files:** existing bootstrap repository and Task 3.1 tests
   - **Acceptance:** concurrent exact completion converges; attacker/different
     identity loses deterministically; generation drift and rollback classify
@@ -313,9 +313,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 3 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
-- [ ] Run `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify provider-model, rollback, and deterministic race cases pass
-- [ ] Confirm the Phase 3 owned lane is green, no schema artifact changed, and no phase-attributable failure remains
+- [x] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
+- [x] Run `dotnet test --project tests/Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify provider-model, rollback, and deterministic race cases pass
+- [x] Confirm the Phase 3 owned lane is green, no schema artifact changed, and no phase-attributable failure remains
 
 ### Phase 3 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -355,9 +355,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
 
-- [ ] Without loading `conventional-commit`, run the exact inspection commands and verify every Phase 3 path/hunk and generated migration match is wholly phase-owned before staging and committing
-- [ ] Only if generated names or the outcome materially diverge, load `conventional-commit` and verify complete replacement contracts plus the exact divergence reason are recorded here before any commit
-- [ ] Run the post-commit command, verify the committed file list equals the resolved Phase 3 Commit paths, record the hash and generated filenames, and only then mark Phase 3 complete
+- [x] Without loading `conventional-commit`, run the exact inspection commands and verify every Phase 3 path/hunk and generated migration match is wholly phase-owned before staging and committing
+- [x] Only if generated names or the outcome materially diverge, load `conventional-commit` and verify complete replacement contracts plus the exact divergence reason are recorded here before any commit
+- [x] Run the post-commit command, verify the committed file list equals the resolved Phase 3 Commit paths, record the hash and generated filenames, and only then mark Phase 3 complete
 
 ## Phase 4: Provider-Neutral Claim Orchestrator — COMPLETE
 
@@ -374,7 +374,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - `tests/Event.Application.UnitTests/Features/InstanceOnboarding/ConfiguredAdministratorClaimInvariantTests.cs`
 - `tests/Event.Application.UnitTests/Features/InstanceOnboarding/InstanceOnboardingCompletionOperationTests.cs`
 
-- [ ] **4.1 Author failing exact-authority, rollback, replay, and zero-disclosure claim tests for Scenarios 3.2, 3.4, and 3.6 and verify they fail at the missing provider-neutral seam**
+- [x] **4.1 Author failing exact-authority, rollback, replay, and zero-disclosure claim tests for Scenarios 3.2, 3.4, and 3.6 and verify they fail at the missing provider-neutral seam**
   - **Files:** new
     `ConfiguredAdministratorClaimInvariantTests.cs` and
     `InstanceOnboardingCompletionOperationTests.cs`
@@ -384,7 +384,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** Phase 3
 
-- [ ] **4.2 Implement the configured claim command and deep completion operation, verifying one serializable transaction satisfies all Red invariants**
+- [x] **4.2 Implement the configured claim command and deep completion operation, verifying one serializable transaction satisfies all Red invariants**
   - **Files:** new configured provider contract/model/account-key,
     claim command/handler, and completion operation
   - **Acceptance:** trusted identity and generation are re-read inside the
@@ -393,7 +393,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** XL
   - **Dependencies:** 4.1
 
-- [ ] **4.3 Refactor interactive completion and DI onto the shared operation, verifying setup-secret authority and post-commit cache/audit behavior remain intact**
+- [x] **4.3 Refactor interactive completion and DI onto the shared operation, verifying setup-secret authority and post-commit cache/audit behavior remain intact**
   - **Files:** existing `CompleteInstanceOnboardingCommandHandler.cs`,
     `ApplicationServicesRegistration.cs`, new operation/handler/tests
   - **Acceptance:** interactive mode has no duplicated transaction logic;
@@ -404,9 +404,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 4 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
-- [ ] Run `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` once and verify claim, rollback, replay, and interactive-parity contracts pass
-- [ ] Confirm the Phase 4 owned lane is green, runtime provider is still disabled, and no phase-attributable failure remains
+- [x] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
+- [x] Run `dotnet test --project tests/Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet` once and verify claim, rollback, replay, and interactive-parity contracts pass
+- [x] Confirm the Phase 4 owned lane is green, runtime provider is still disabled, and no phase-attributable failure remains
 
 ### Phase 4 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -426,9 +426,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
 
-- [ ] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 4 path/hunk is wholly phase-owned before staging and committing
-- [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
-- [ ] Run the post-commit command, verify the committed file list equals Phase 4 Commit paths, record the hash, and only then mark Phase 4 complete
+- [x] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 4 path/hunk is wholly phase-owned before staging and committing
+- [x] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
+- [x] Run the post-commit command, verify the committed file list equals Phase 4 Commit paths, record the hash, and only then mark Phase 4 complete
 
 ## Phase 5: Verified Provider Adapters And API Status — COMPLETE
 
@@ -456,7 +456,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - `tests/Event.API.IntegrationTests/Features/UserExternalLoginIntegrationTests.cs`
 - `docs/releases/changes/CHG-01M1ETXMS84KS8ASDW4GR22Q3J.yaml`
 
-- [ ] **5.1 Author failing API security tests for exact Keycloak issuer/subject, wrong issuer, indirect identifier takeover, bounded status, and zero-PII output, verifying configured claims fail before adapter implementation**
+- [x] **5.1 Author failing API security tests for exact Keycloak issuer/subject, wrong issuer, indirect identifier takeover, bounded status, and zero-PII output, verifying configured claims fail before adapter implementation**
   - **Files:** new `ConfiguredAdministratorBootstrapTests.cs`; existing
     `UserControllerTests.cs` and `UserExternalLoginIntegrationTests.cs`
   - **Acceptance:** exact subject from wrong issuer, same email, username,
@@ -465,7 +465,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** Phase 4
 
-- [ ] **5.2 Replace raw provider keys with one authority-qualified account key across every caller, verifying exact global resolution and no dual legacy reader**
+- [x] **5.2 Replace raw provider keys with one authority-qualified account key across every caller, verifying exact global resolution and no dual legacy reader**
   - **Files:** principal/current-user identity, SyncUser,
     ResolveCurrentUserId, managed provisioning, federation publication,
     repository contract, AdminClaimsTransformation, AdminContext, and tests
@@ -475,7 +475,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** XL
   - **Dependencies:** 5.1
 
-- [ ] **5.3 Add the verified ATProto first-claim branch and verify only the gateway-returned exact DID may materialize identity before session persistence and token issuance**
+- [x] **5.3 Add the verified ATProto first-claim branch and verify only the gateway-returned exact DID may materialize identity before session persistence and token issuance**
   - **Files:** existing `BootstrapAtprotoSessionCommandHandler.cs`,
     `AtprotoSubjectOnboardingOperation.cs`, API/Application tests
   - **Acceptance:** branch occurs after cryptographic verification and before
@@ -484,7 +484,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 5.2
 
-- [ ] **5.4 Add bounded API bootstrap status and the fail-closed disabled runtime provider, verifying no new write route, identity request body, HAL relation, or provider management call appears**
+- [x] **5.4 Add bounded API bootstrap status and the fail-closed disabled runtime provider, verifying no new write route, identity request body, HAL relation, or provider management call appears**
   - **Files:** status DTO/query, disabled Infrastructure provider/registration,
     User controller and tests
   - **Acceptance:** configured mode cannot activate yet; status is additive and
@@ -492,7 +492,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 5.2, 5.3
 
-- [ ] **5.5 Create provider identity change fragment `CHG-01M1ETXMS84KS8ASDW4GR22Q3J` and verify its Breaking, Security, OpenAPI, and Operator impacts match the authority-qualified replacement**
+- [x] **5.5 Create provider identity change fragment `CHG-01M1ETXMS84KS8ASDW4GR22Q3J` and verify its Breaking, Security, OpenAPI, and Operator impacts match the authority-qualified replacement**
   - **Files:** new
     `docs/releases/changes/CHG-01M1ETXMS84KS8ASDW4GR22Q3J.yaml`
   - **Acceptance:** fragment is value-free, documents removal of raw
@@ -504,9 +504,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 5 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
-- [ ] Run `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify exact provider, ATProto, status, and zero-write adversarial cases pass
-- [ ] Confirm the Phase 5 owned lane is green, configured runtime remains disabled, and no phase-attributable failure remains
+- [x] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
+- [x] Run `dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify exact provider, ATProto, status, and zero-write adversarial cases pass
+- [x] Confirm the Phase 5 owned lane is green, configured runtime remains disabled, and no phase-attributable failure remains
 
 ### Phase 5 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -526,9 +526,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
 
-- [ ] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 5 path/hunk is wholly phase-owned before staging and committing
-- [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
-- [ ] Run the post-commit command, verify the committed file list equals Phase 5 Commit paths, record the hash, and only then mark Phase 5 complete
+- [x] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 5 path/hunk is wholly phase-owned before staging and committing
+- [x] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
+- [x] Run the post-commit command, verify the committed file list equals Phase 5 Commit paths, record the hash, and only then mark Phase 5 complete
 
 ## Phase 6: BFF Pending Authentication Routing — COMPLETE
 
@@ -544,7 +544,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - `tests/Explore.Blazor.IntegrationTests/Services/BffAdminClaimsTransformationTests.cs`
 - `tests/Explore.Blazor.IntegrationTests/Services/BffSessionRefreshServiceTests.cs`
 
-- [ ] **6.1 Author failing BFF route/session tests for Scenarios 3.1 and 3.8 and verify pending provider routing, wrong-provider denial, unknown-state failure, and post-claim refresh fail before implementation**
+- [x] **6.1 Author failing BFF route/session tests for Scenarios 3.1 and 3.8 and verify pending provider routing, wrong-provider denial, unknown-state failure, and post-claim refresh fail before implementation**
   - **Files:** new `ConfiguredAdministratorRoutingTests.cs`; existing ATProto,
     admin-claims, and session-refresh tests
   - **Acceptance:** exact route/status events are awaited without sleeps;
@@ -553,7 +553,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** Phase 5
 
-- [ ] **6.2 Implement the closed BFF onboarding state and provider-specific routing, verifying `/setup` is never rendered for configured pending mode**
+- [x] **6.2 Implement the closed BFF onboarding state and provider-specific routing, verifying `/setup` is never rendered for configured pending mode**
   - **Files:** status provider, startup middleware, auth endpoints, routing tests
   - **Acceptance:** interactive/configured/completed/invalid states are
     exhaustive; only configured provider challenge is reachable; unknown state
@@ -561,7 +561,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** 6.1
 
-- [ ] **6.3 Implement sign-in claim and authority refresh ordering, verifying sync/claim precedes status refresh and persisted admin-claim enrichment**
+- [x] **6.3 Implement sign-in claim and authority refresh ordering, verifying sync/claim precedes status refresh and persisted admin-claim enrichment**
   - **Files:** admin claims transformation, session refresh service, tests
   - **Acceptance:** pending configured sign-in no longer skips synchronization;
     failed/nonmatching claim signs out or denies without stale admin claims;
@@ -571,9 +571,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 6 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
-- [ ] Run `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify the full pending routing/session matrix passes
-- [ ] Confirm the Phase 6 owned lane is green, cookie/token/antiforgery invariants remain intact, and no phase-attributable failure remains
+- [x] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
+- [x] Run `dotnet test --project tests/Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify the full pending routing/session matrix passes
+- [x] Confirm the Phase 6 owned lane is green, cookie/token/antiforgery invariants remain intact, and no phase-attributable failure remains
 
 ### Phase 6 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -593,9 +593,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
 
-- [ ] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 6 path/hunk is wholly phase-owned before staging and committing
-- [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
-- [ ] Run the post-commit command, verify the committed file list equals Phase 6 Commit paths, record the hash, and only then mark Phase 6 complete
+- [x] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 6 path/hunk is wholly phase-owned before staging and committing
+- [x] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
+- [x] Run the post-commit command, verify the committed file list equals Phase 6 Commit paths, record the hash, and only then mark Phase 6 complete
 
 ## Phase 7: Generated Client And Startup Route Consumption — COMPLETE
 
@@ -613,7 +613,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - `tests/Explore.Blazor.Client.Tests/Services/StartupRoutingServiceTests.cs`
 - `tests/Explore.Blazor.Client.Tests/Pages/Onboarding/StartupGateTests.cs`
 
-- [ ] **7.1 Add additive API/status contract assertions and verify state/provider fields are value-free and operation IDs remain stable**
+- [x] **7.1 Add additive API/status contract assertions and verify state/provider fields are value-free and operation IDs remain stable**
   - **Files:** existing architecture/API contract tests plus generated source
     inputs; no prose/source scraping
   - **Acceptance:** machine-consumed OpenAPI/status semantics assert closed
@@ -621,7 +621,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** Phase 6
 
-- [ ] **7.2 Regenerate OpenAPI, API inventory, and Blazor client, verifying canonical generation produces no hand-authored generated diff**
+- [x] **7.2 Regenerate OpenAPI, API inventory, and Blazor client, verifying canonical generation produces no hand-authored generated diff**
   - **Files:** `schemas/openapi_islamu-event.json`,
     `docs/API_CONTRACT_INVENTORY.md`,
     `src/Explore.Blazor.Client/Clients/EventApiClient.g.cs`,
@@ -631,7 +631,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** 7.1
 
-- [ ] **7.3 Consume the closed state in client startup services and verify configured pending mode never navigates to or renders the onboarding wizard**
+- [x] **7.3 Consume the closed state in client startup services and verify configured pending mode never navigates to or renders the onboarding wizard**
   - **Files:** onboarding/startup services, HomeStart, StartupGate, and three
     focused Client test files
   - **Acceptance:** interactive, configured pending, completed, invalid, and
@@ -641,9 +641,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 7 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
-- [ ] Run `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` once and verify generated status mapping and startup route cases pass
-- [ ] Confirm the Phase 7 owned lane is green, generated artifacts are canonical, and no phase-attributable failure remains
+- [x] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
+- [x] Run `dotnet test --project tests/Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` once and verify generated status mapping and startup route cases pass
+- [x] Confirm the Phase 7 owned lane is green, generated artifacts are canonical, and no phase-attributable failure remains
 
 ### Phase 7 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -663,9 +663,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
 
-- [ ] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 7 path/hunk is wholly phase-owned before staging and committing
-- [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
-- [ ] Run the post-commit command, verify the committed file list equals Phase 7 Commit paths, record the hash, and only then mark Phase 7 complete
+- [x] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 7 path/hunk is wholly phase-owned before staging and committing
+- [x] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
+- [x] Run the post-commit command, verify the committed file list equals Phase 7 Commit paths, record the hash, and only then mark Phase 7 complete
 
 ## Phase 8: Environment-Backed Runtime Preparation — COMPLETE
 
@@ -675,7 +675,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - `src/Explore.Infrastructure/Services/ConfiguredAdministratorBootstrapStartupRunner.cs`
 - `tests/Explore.Infrastructure.Tests/Infrastructure/ConfiguredAdministratorBootstrapProviderTests.cs`
 
-- [ ] **8.1 Author failing Infrastructure tests for configuration parsing, generation convergence, recovery, finality, and zero-PII diagnostics, verifying the environment-backed authority is absent**
+- [x] **8.1 Author failing Infrastructure tests for configuration parsing, generation convergence, recovery, finality, and zero-PII diagnostics, verifying the environment-backed authority is absent**
   - **Files:** new
     `tests/Explore.Infrastructure.Tests/Infrastructure/ConfiguredAdministratorBootstrapProviderTests.cs`
   - **Acceptance:** tests cover same/different digest, generation correction,
@@ -684,7 +684,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** L
   - **Dependencies:** Phases 1–7
 
-- [ ] **8.2 Implement the unregistered provider and preparation runner, verifying every Phase 8 Red turns Green while DI still resolves the disabled provider**
+- [x] **8.2 Implement the unregistered provider and preparation runner, verifying every Phase 8 Red turns Green while DI still resolves the disabled provider**
   - **Files:** new configured provider/startup runner and Task 8.1 tests
   - **Acceptance:** valid pending is healthy/authentication-capable; invalid
     state fails closed; fingerprints and diagnostics are value-free; no
@@ -694,9 +694,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 8 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
-- [ ] Run `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1` once and verify configuration/recovery/redaction tests pass
-- [ ] Confirm the Phase 8 owned lane is green, the environment-backed provider remains unregistered, and no phase-attributable failure remains
+- [x] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
+- [x] Run `dotnet test --project tests/Explore.Infrastructure.Tests/Explore.Infrastructure.Tests.csproj --configuration Release --verbosity quiet -- --treenode-filter "/*/*/*/*[Category!=Runtime]" --minimum-expected-tests 1` once and verify configuration/recovery/redaction tests pass
+- [x] Confirm the Phase 8 owned lane is green, the environment-backed provider remains unregistered, and no phase-attributable failure remains
 
 ### Phase 8 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -716,9 +716,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
 
-- [ ] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 8 path/hunk is wholly phase-owned before staging and committing
-- [ ] Only if the activation outcome, breaking classification, change fragment, or atomic split materially changes, load `conventional-commit` and verify complete replacement contracts plus reason are recorded here before any commit
-- [ ] Run the post-commit command, verify the committed file list equals Phase 8 Commit paths and terminal trailers are exact, record the hash, and only then mark Phase 8 complete
+- [x] Without loading `conventional-commit`, run the exact inspection commands and verify every named Phase 8 path/hunk is wholly phase-owned before staging and committing
+- [x] Only if the activation outcome, breaking classification, change fragment, or atomic split materially changes, load `conventional-commit` and verify complete replacement contracts plus reason are recorded here before any commit
+- [x] Run the post-commit command, verify the committed file list equals Phase 8 Commit paths and terminal trailers are exact, record the hash, and only then mark Phase 8 complete
 
 ## Phase 9: Split And Standalone Startup Composition — COMPLETE
 
@@ -728,7 +728,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - `src/Event.Standalone/Program.cs`
 - `tests/Event.Standalone.IntegrationTests/ConfiguredAdministratorBootstrapStartupTests.cs`
 
-- [ ] **9.1 Author failing Standalone startup ordering tests and verify preparation is not yet called after migration/manifest completion**
+- [x] **9.1 Author failing Standalone startup ordering tests and verify preparation is not yet called after migration/manifest completion**
   - **Files:** new
     `tests/Event.Standalone.IntegrationTests/ConfiguredAdministratorBootstrapStartupTests.cs`
   - **Acceptance:** exact startup signals prove migration/seed then manifest
@@ -737,7 +737,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** Phase 8
 
-- [ ] **9.2 Wire Split and Standalone preparation calls, verifying the Phase 9 Red turns Green while disabled registration preserves runtime behavior**
+- [x] **9.2 Wire Split and Standalone preparation calls, verifying the Phase 9 Red turns Green while disabled registration preserves runtime behavior**
   - **Files:** existing API startup and Standalone Program plus Task 9.1 tests
   - **Acceptance:** both topologies share ordering and trust boundaries; no
     second manifest owner, scheduler, or background retry loop is introduced
@@ -746,9 +746,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 9 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
-- [ ] Run `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify startup ordering/topology parity passes
-- [ ] Confirm the Phase 9 owned lane is green, configured runtime remains disabled, and no phase-attributable failure remains
+- [x] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
+- [x] Run `dotnet test --project tests/Event.Standalone.IntegrationTests/Event.Standalone.IntegrationTests.csproj --configuration Release --verbosity quiet` once and verify startup ordering/topology parity passes
+- [x] Confirm the Phase 9 owned lane is green, configured runtime remains disabled, and no phase-attributable failure remains
 
 ### Phase 9 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -765,9 +765,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
 
-- [ ] Without loading `conventional-commit`, run the exact Phase 9 inspection commands and verify every named path/hunk is wholly phase-owned before committing
-- [ ] Only if the contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded before any commit
-- [ ] Run the post-commit command, verify the committed file list equals Phase 9 Commit paths, record the hash, and only then mark Phase 9 complete
+- [x] Without loading `conventional-commit`, run the exact Phase 9 inspection commands and verify every named path/hunk is wholly phase-owned before committing
+- [x] Only if the contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded before any commit
+- [x] Run the post-commit command, verify the committed file list equals Phase 9 Commit paths, record the hash, and only then mark Phase 9 complete
 
 ## Phase 10: Runtime Activation, Architecture, Operations, And Release Evidence — COMPLETE
 
@@ -785,7 +785,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - `schemas/islamu-event.md`
 - `docs/releases/changes/CHG-01M1EQWDAHHXQ3AD29B4Y0645B.yaml`
 
-- [ ] **10.1 Author failing architecture ratchets and verify runtime Setup dependency, outward Application coupling, duplicate identity authority, or generated ownership would be rejected**
+- [x] **10.1 Author failing architecture ratchets and verify runtime Setup dependency, outward Application coupling, duplicate identity authority, or generated ownership would be rejected**
   - **Files:** new
     `tests/Event.Architecture.Tests/ConfiguredAdministratorBootstrapArchitectureTests.cs`
   - **Acceptance:** executable compiled/project-reference contracts protect
@@ -794,7 +794,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** M
   - **Dependencies:** Phase 9
 
-- [ ] **10.2 Replace disabled DI registration with environment-backed authority, verifying architecture Red turns Green and valid configured mode is now the only activation path**
+- [x] **10.2 Replace disabled DI registration with environment-backed authority, verifying architecture Red turns Green and valid configured mode is now the only activation path**
   - **Files:** existing `InfrastructureServicesRegistration.cs` and Task 10.1
     tests
   - **Acceptance:** explicit Interactive and ConfiguredAdministrator modes
@@ -802,7 +802,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   - **Effort:** S
   - **Dependencies:** 10.1
 
-- [ ] **10.3 Update operator/schema/release contracts and verify activation fragment `CHG-01M1EQWDAHHXQ3AD29B4Y0645B` documents Security, Configuration, OpenAPI, and Operator impacts without identity values**
+- [x] **10.3 Update operator/schema/release contracts and verify activation fragment `CHG-01M1EQWDAHHXQ3AD29B4Y0645B` documents Security, Configuration, OpenAPI, and Operator impacts without identity values**
   - **Files:** seven exact docs, DBML, and activation fragment
   - **Acceptance:** docs cover valid matrices, first sign-in, correction,
     restart, completion, selector removal, backup/restore, troubleshooting,
@@ -813,10 +813,10 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 ### Phase 10 Verification — RUN ONCE AFTER ALL PHASE TASKS
 
-- [ ] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
-- [ ] Run `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` once and verify configured-bootstrap architecture/generator/offline boundaries pass
-- [ ] Confirm all ten phase lanes are green and capture value-free Tier 1 evidence under `.omo/evidence/20260901-headless-instance-onboarding/`
-- [ ] Run anonymized Epistemic MAD security/operations review and verify weighted approval with no unresolved critical or high finding
+- [x] Run `dotnet build --configuration Release --verbosity quiet` once and verify exit code 0 or record the exact proven unrelated shared-tree failure
+- [x] Run `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` once and verify configured-bootstrap architecture/generator/offline boundaries pass
+- [x] Confirm all ten phase lanes are green and capture value-free Tier 1 evidence under `.omo/evidence/20260901-headless-instance-onboarding/`
+- [x] Run anonymized Epistemic MAD security/operations review and verify weighted approval with no unresolved critical or high finding
 
 ### Phase 10 Commit — RUN IMMEDIATELY AFTER VERIFICATION
 
@@ -833,9 +833,9 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Post-commit verification command:** `git show --name-only --format=fuller HEAD`
 - **Message override:** Not overridden
 
-- [ ] Without loading `conventional-commit`, run exact Phase 10 inspection commands and verify every named path/hunk is wholly phase-owned before committing
-- [ ] Only if activation outcome or change classification materially changes, load `conventional-commit` and verify complete replacement contracts plus reason are recorded before commit
-- [ ] Run the post-commit command, verify file list/trailers equal Phase 10 contract, record hash, and only then mark Phase 10 and workstream complete
+- [x] Without loading `conventional-commit`, run exact Phase 10 inspection commands and verify every named path/hunk is wholly phase-owned before committing
+- [x] Only if activation outcome or change classification materially changes, load `conventional-commit` and verify complete replacement contracts plus reason are recorded before commit
+- [x] Run the post-commit command, verify file list/trailers equal Phase 10 contract, record hash, and only then mark Phase 10 and workstream complete
 
 ## Remaining / Deferred Work
 
