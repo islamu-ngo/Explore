@@ -606,7 +606,7 @@ migration and works on every supported primary provider, including SQLite.
 | PostgreSQL | `Explore.Persistence` | `Explore.Persistence` | Configured schema (default `islamu_event`) with separate histories |
 | SQLite | `Explore.Persistence.Migrations.Sqlite` | `Explore.Persistence.DataProtection.Migrations.Sqlite` | Fixed `ie_` table prefix and prefixed histories |
 | SQL Server | `Explore.Persistence.Migrations.SqlServer` | `Explore.Persistence.DataProtection.Migrations.SqlServer` | Configured schema (default `islamu_event`) with separate histories |
-| MariaDB | `Explore.Persistence.Migrations.MariaDb` | `Explore.Persistence.DataProtection.Migrations.MariaDb` | Fixed `ie_` table prefix and prefixed histories |
+| MariaDB | `Explore.Persistence.Migrations.MySql` (shared with MySQL) | `Explore.Persistence.DataProtection.Migrations.MySql` (shared with MySQL) | Fixed `ie_` table prefix and prefixed histories |
 | MySQL | `Explore.Persistence.Migrations.MySql` | `Explore.Persistence.DataProtection.Migrations.MySql` | Fixed `ie_` table prefix and prefixed histories |
 
 `EmbeddedSqlite` authority uses its dedicated local file and authority schema
@@ -625,8 +625,12 @@ project. Generate Data Protection and application migrations separately.
 
 Migration files and model snapshots are generated artifacts. Never patch them manually. If generated output is incorrect, fix the entity/configuration, `DbContext`, lookup seeding, or migration-generation extension; remove the unapplied development migration and run `dotnet ef migrations add` again. Applied or merged migrations remain immutable and require a newly generated corrective migration.
 
-PostgreSQL remains in `Explore.Persistence`; the other four providers use the
-projects listed above. Use the matching design-time factory, remove only an
+PostgreSQL remains in `Explore.Persistence`; SQLite, SQL Server, and MySQL use
+the dedicated projects listed above. MariaDB stays a distinct runtime provider
+with its own server-flavor and version dialect, but it owns no migration
+project: it resolves the MySQL application and Data Protection migration
+assemblies, so there is no MariaDB-specific migration project or migration
+command. Use the matching design-time factory, remove only an
 unapplied development migration with `dotnet ef migrations remove`, then
 regenerate with `dotnet ef migrations add`. Never patch generated migration,
 designer, or snapshot files.
@@ -636,8 +640,9 @@ designer, or snapshot files.
 Run these commands from the repository root. They use the current `src/`
 project paths and cover every generated catalog:
 
-- five `ExploreDbContext` application catalogs;
-- five `DataProtectionKeyContext` catalogs;
+- four `ExploreDbContext` application catalogs (PostgreSQL, SQLite, SQL Server,
+  and the MySQL catalog that MariaDB also uses);
+- four `DataProtectionKeyContext` catalogs on the same provider set;
 - external PostgreSQL, co-located PostgreSQL, and embedded SQLite
   privacy-erasure authority catalogs.
 
@@ -666,12 +671,10 @@ PERSISTENCE=src/Explore.Persistence/Explore.Persistence.csproj
 
 APP_SQLITE=src/Explore.Persistence.Migrations.Sqlite/Explore.Persistence.Migrations.Sqlite.csproj
 APP_SQLSERVER=src/Explore.Persistence.Migrations.SqlServer/Explore.Persistence.Migrations.SqlServer.csproj
-APP_MARIADB=src/Explore.Persistence.Migrations.MariaDb/Explore.Persistence.Migrations.MariaDb.csproj
 APP_MYSQL=src/Explore.Persistence.Migrations.MySql/Explore.Persistence.Migrations.MySql.csproj
 
 DP_SQLITE=src/Explore.Persistence.DataProtection.Migrations.Sqlite/Explore.Persistence.DataProtection.Migrations.Sqlite.csproj
 DP_SQLSERVER=src/Explore.Persistence.DataProtection.Migrations.SqlServer/Explore.Persistence.DataProtection.Migrations.SqlServer.csproj
-DP_MARIADB=src/Explore.Persistence.DataProtection.Migrations.MariaDb/Explore.Persistence.DataProtection.Migrations.MariaDb.csproj
 DP_MYSQL=src/Explore.Persistence.DataProtection.Migrations.MySql/Explore.Persistence.DataProtection.Migrations.MySql.csproj
 
 AUTHORITY_SQLITE=src/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite/Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.csproj
@@ -748,13 +751,6 @@ env Database__Provider=SqlServer Database__Port=1433 \
   --project "$APP_SQLSERVER" \
   --startup-project "$APP_SQLSERVER"
 
-env Database__Provider=MariaDb Database__Port=3306 \
-  Database__ServerFlavor=MariaDb Database__ServerVersion=11.4 \
-  dotnet ef migrations remove --force \
-  --context ExploreDbContext \
-  --project "$APP_MARIADB" \
-  --startup-project "$APP_MARIADB"
-
 env Database__Provider=MySql Database__Port=3306 \
   Database__ServerFlavor=MySql Database__ServerVersion=8.4 \
   dotnet ef migrations remove --force \
@@ -783,13 +779,6 @@ env Database__Provider=SqlServer Database__Port=1433 \
   --context DataProtectionKeyContext \
   --project "$DP_SQLSERVER" \
   --startup-project "$DP_SQLSERVER"
-
-env Database__Provider=MariaDb Database__Port=3306 \
-  Database__ServerFlavor=MariaDb Database__ServerVersion=11.4 \
-  dotnet ef migrations remove --force \
-  --context DataProtectionKeyContext \
-  --project "$DP_MARIADB" \
-  --startup-project "$DP_MARIADB"
 
 env Database__Provider=MySql Database__Port=3306 \
   Database__ServerFlavor=MySql Database__ServerVersion=8.4 \
@@ -835,11 +824,9 @@ dotnet clean "$PERSISTENCE" --configuration Debug --verbosity quiet
 MIGRATION_PROJECTS=(
   "$APP_SQLITE"
   "$APP_SQLSERVER"
-  "$APP_MARIADB"
   "$APP_MYSQL"
   "$DP_SQLITE"
   "$DP_SQLSERVER"
-  "$DP_MARIADB"
   "$DP_MYSQL"
   "$AUTHORITY_SQLITE"
 )
@@ -880,15 +867,6 @@ env Database__Provider=SqlServer Database__Port=1433 \
   --output-dir Migrations \
   --no-build
 
-env Database__Provider=MariaDb Database__Port=3306 \
-  Database__ServerFlavor=MariaDb Database__ServerVersion=11.4 \
-  dotnet ef migrations add Init \
-  --context ExploreDbContext \
-  --project "$APP_MARIADB" \
-  --startup-project "$PERSISTENCE" \
-  --output-dir Migrations \
-  --no-build
-
 env Database__Provider=MySql Database__Port=3306 \
   Database__ServerFlavor=MySql Database__ServerVersion=8.4 \
   dotnet ef migrations add Init \
@@ -922,15 +900,6 @@ env Database__Provider=SqlServer Database__Port=1433 \
   dotnet ef migrations add Init \
   --context DataProtectionKeyContext \
   --project "$DP_SQLSERVER" \
-  --startup-project "$PERSISTENCE" \
-  --output-dir Migrations \
-  --no-build
-
-env Database__Provider=MariaDb Database__Port=3306 \
-  Database__ServerFlavor=MariaDb Database__ServerVersion=11.4 \
-  dotnet ef migrations add Init \
-  --context DataProtectionKeyContext \
-  --project "$DP_MARIADB" \
   --startup-project "$PERSISTENCE" \
   --output-dir Migrations \
   --no-build

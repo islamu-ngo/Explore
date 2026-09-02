@@ -404,8 +404,10 @@ The following diagram describes the separate split topology:
 - **Browsers talk only to the Blazor BFF.** The BFF proxies API calls via YARP; clients should not need direct API access.
 - **The API is the API-host composition root** for Domain, Application, Persistence, and Infrastructure layers; `Event.Standalone` reuses that host module when Aspire selects the optional one-process topology.
 - **The primary datastore is selected explicitly.** PostgreSQL, SQLite, SQL
-  Server, MariaDB, and MySQL support the application and Data Protection models
-  but use separate generated migration sets.
+  Server, MariaDB, and MySQL support the application and Data Protection models.
+  PostgreSQL, SQLite, SQL Server, and MySQL each own a generated migration set;
+  MariaDB keeps its own runtime server-flavor dialect while reusing the MySQL
+  migration set.
 - **Privacy-erasure authority storage is configurable.**
   `EmbeddedSqlite` uses the dedicated local
   `/app/data/privacy_erasure_authority.db` file; `CoLocated` stores authority
@@ -1215,9 +1217,12 @@ bootstrap-only and is removed automatically when onboarding completes.
 ### Creating Migrations from Scratch
 
 Migration and snapshot files are generated artifacts. PostgreSQL uses the
-`Explore.Persistence` assembly; SQLite, SQL Server, MariaDB, and MySQL use the
+`Explore.Persistence` assembly; SQLite, SQL Server, and MySQL use the
 matching `Explore.Persistence.Migrations.{Provider}` and
-`Explore.Persistence.DataProtection.Migrations.{Provider}` projects. Generate
+`Explore.Persistence.DataProtection.Migrations.{Provider}` projects. MariaDB has
+no migration project of its own: it runs with the MariaDB server-version dialect
+and resolves the MySQL application and Data Protection migration assemblies, so
+never author or generate MariaDB-specific migrations. Generate
 or remove an unapplied migration only with `dotnet ef`; never edit its C# or
 snapshot output. See [OPERATIONS.md](OPERATIONS.md#api-startup-behavior) for the
 provider-specific ownership contract. Application and Data Protection

@@ -837,8 +837,12 @@ docker run --rm --name islamu-event-standalone --env-file .env \
 
 Provider-specific migrations are intentionally separate. PostgreSQL
 application and Data Protection migrations live in `Explore.Persistence`;
-other providers use `Explore.Persistence.Migrations.{Provider}` and
-`Explore.Persistence.DataProtection.Migrations.{Provider}`. The histories are
+SQLite, SQL Server, and MySQL use `Explore.Persistence.Migrations.{Provider}`
+and `Explore.Persistence.DataProtection.Migrations.{Provider}`. MariaDB remains
+a distinct runtime provider with its own server-flavor and version dialect, but
+it owns no migration assembly of its own: it resolves the MySQL application and
+Data Protection migration assemblies, so no MariaDB-specific migration project
+or migration command exists. The histories are
 `__EFMigrationsHistory` and `__EFDataProtectionMigrationsHistory` in the
 configured schema (default `islamu_event`), or the corresponding fixed
 `ie_`-prefixed tables where schemas are not supported. The prefix is deliberately

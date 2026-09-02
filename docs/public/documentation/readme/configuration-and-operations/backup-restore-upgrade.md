@@ -49,3 +49,9 @@ The project is pre-1.0 and the API is version `0.1`.
 8. Verify health, authentication, authorization, tenant resolution, reads/writes, outboxes, integrations, and erasure status.
 
 A schema migration may make binary rollback unsafe. Prefer the explicitly rehearsed recovery path rather than improvising after a partial upgrade.
+
+MariaDB deployments use the same procedure as every other provider: run the
+one-shot migration service and let it apply the schema. MariaDB remains a
+supported provider with its own server version setting, and it shares the MySQL
+migration path, so there is no MariaDB-specific migration step or command to
+run.
