@@ -89,7 +89,9 @@ public static class PrimaryDatabaseProviderComposition
             };
         }
 
-        var providerName = provider.ToString();
+        var providerName = provider == PrimaryDatabaseProvider.MariaDb
+            ? PrimaryDatabaseProvider.MySql.ToString()
+            : provider.ToString();
         return target switch
         {
             PrimaryDatabaseMigrationTarget.Application => $"Explore.Persistence.Migrations.{providerName}",

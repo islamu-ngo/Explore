@@ -672,7 +672,6 @@ public sealed class ExploreDbContextModelProviderTests
     [Test]
     [Arguments("src/Explore.Persistence.Migrations.Sqlite/Migrations")]
     [Arguments("src/Explore.Persistence.Migrations.SqlServer/Migrations")]
-    [Arguments("src/Explore.Persistence.Migrations.MariaDb/Migrations")]
     [Arguments("src/Explore.Persistence.Migrations.MySql/Migrations")]
     public async Task RebaselinedInitialContainsCurrentPromotionSnapshotsWithoutHistoricalBackfill(
         string migrationDirectory)

@@ -539,7 +539,7 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
                 builder.UseSqlServer("Server=localhost;Database=model;Integrated Security=True;TrustServerCertificate=True", options => options.MigrationsAssembly("Explore.Persistence.Migrations.SqlServer"));
                 break;
             case "MariaDb":
-                builder.UseMySql("Server=localhost;Database=model;User=model", new MariaDbServerVersion(new Version(11, 4, 12)), options => options.MigrationsAssembly("Explore.Persistence.Migrations.MariaDb"));
+                builder.UseMySql("Server=localhost;Database=model;User=model", new MariaDbServerVersion(new Version(11, 4, 12)), options => options.MigrationsAssembly("Explore.Persistence.Migrations.MySql"));
                 break;
             case "MySql":
                 builder.UseMySql("Server=localhost;Database=model;User=model", new MySqlServerVersion(new Version(8, 4, 6)), options => options.MigrationsAssembly("Explore.Persistence.Migrations.MySql"));

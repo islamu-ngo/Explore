@@ -1071,13 +1071,6 @@
           "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.12, )"
         }
       },
-      "explore.persistence.dataprotection.migrations.mariadb": {
-        "type": "Project",
-        "dependencies": {
-          "Explore.Persistence": "[1.0.0, )",
-          "Microting.EntityFrameworkCore.MySql": "[10.0.10, )"
-        }
-      },
       "explore.persistence.dataprotection.migrations.mysql": {
         "type": "Project",
         "dependencies": {
@@ -1097,13 +1090,6 @@
         "dependencies": {
           "Explore.Persistence": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[10.0.10, )"
-        }
-      },
-      "explore.persistence.migrations.mariadb": {
-        "type": "Project",
-        "dependencies": {
-          "Explore.Persistence": "[1.0.0, )",
-          "Microting.EntityFrameworkCore.MySql": "[10.0.10, )"
         }
       },
       "explore.persistence.migrations.mysql": {

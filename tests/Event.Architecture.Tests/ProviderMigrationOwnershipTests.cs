@@ -77,7 +77,7 @@ public sealed class ProviderMigrationOwnershipTests
     [Arguments(PrimaryDatabaseProvider.PostgreSql, "Explore.Persistence", "Explore.Persistence")]
     [Arguments(PrimaryDatabaseProvider.Sqlite, "Explore.Persistence.Migrations.Sqlite", "Explore.Persistence.DataProtection.Migrations.Sqlite")]
     [Arguments(PrimaryDatabaseProvider.SqlServer, "Explore.Persistence.Migrations.SqlServer", "Explore.Persistence.DataProtection.Migrations.SqlServer")]
-    [Arguments(PrimaryDatabaseProvider.MariaDb, "Explore.Persistence.Migrations.MariaDb", "Explore.Persistence.DataProtection.Migrations.MariaDb")]
+    [Arguments(PrimaryDatabaseProvider.MariaDb, "Explore.Persistence.Migrations.MySql", "Explore.Persistence.DataProtection.Migrations.MySql")]
     [Arguments(PrimaryDatabaseProvider.MySql, "Explore.Persistence.Migrations.MySql", "Explore.Persistence.DataProtection.Migrations.MySql")]
     public async Task ProviderCompositionAssignsExactMigrationOwners(
         PrimaryDatabaseProvider provider,

@@ -1284,8 +1284,6 @@ public sealed class SetupAssistantArchitectureTests
             "src/Explore.Persistence/RelationalSetupSecretBindingOperationCoordinator.cs",
             "src/Explore.Persistence/Migrations/*AddSetupLivePersistence*",
             "src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs",
-            "src/Explore.Persistence.Migrations.MariaDb/Migrations/*AddSetupLivePersistence*",
-            "src/Explore.Persistence.Migrations.MariaDb/Migrations/ExploreDbContextModelSnapshot.cs",
             "src/Explore.Persistence.Migrations.MySql/Migrations/*AddSetupLivePersistence*",
             "src/Explore.Persistence.Migrations.MySql/Migrations/ExploreDbContextModelSnapshot.cs",
             "src/Explore.Persistence.Migrations.SqlServer/Migrations/*AddSetupLivePersistence*",

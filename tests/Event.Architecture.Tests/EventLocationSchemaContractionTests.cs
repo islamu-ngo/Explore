@@ -20,7 +20,6 @@ public sealed class EventLocationSchemaContractionTests
         ("Explore.Persistence", "Migrations"),
         ("Explore.Persistence.Migrations.Sqlite", "Migrations"),
         ("Explore.Persistence.Migrations.SqlServer", "Migrations"),
-        ("Explore.Persistence.Migrations.MariaDb", "Migrations"),
         ("Explore.Persistence.Migrations.MySql", "Migrations")
     ];
 

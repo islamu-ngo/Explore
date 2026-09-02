@@ -569,7 +569,6 @@ scenarios:
       - "src/Explore.Persistence/Migrations/**/*.cs"
       - "src/Explore.Persistence.Migrations.Sqlite/Migrations/**/*.cs"
       - "src/Explore.Persistence.Migrations.SqlServer/Migrations/**/*.cs"
-      - "src/Explore.Persistence.Migrations.MariaDb/Migrations/**/*.cs"
       - "src/Explore.Persistence.Migrations.MySql/Migrations/**/*.cs"
       - "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs"
       - "src/Explore.Infrastructure/**/*Infisical*.cs"

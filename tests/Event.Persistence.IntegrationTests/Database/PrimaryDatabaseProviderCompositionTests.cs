@@ -218,14 +218,21 @@ public sealed class PrimaryDatabaseProviderCompositionTests
         foreach (var provider in Enum.GetValues<PrimaryDatabaseProvider>()
                      .Where(candidate => candidate != PrimaryDatabaseProvider.PostgreSql))
         {
+            string expectedApplicationAssembly = provider == PrimaryDatabaseProvider.MariaDb
+                ? "Explore.Persistence.Migrations.MySql"
+                : $"Explore.Persistence.Migrations.{provider}";
+            string expectedDataProtectionAssembly = provider == PrimaryDatabaseProvider.MariaDb
+                ? "Explore.Persistence.DataProtection.Migrations.MySql"
+                : $"Explore.Persistence.DataProtection.Migrations.{provider}";
+
             await Assert.That(PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                     provider,
                     PrimaryDatabaseMigrationTarget.Application)
-                ).IsEqualTo($"Explore.Persistence.Migrations.{provider}");
+                ).IsEqualTo(expectedApplicationAssembly);
             await Assert.That(PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                     provider,
                     PrimaryDatabaseMigrationTarget.DataProtection)
-                ).IsEqualTo($"Explore.Persistence.DataProtection.Migrations.{provider}");
+                ).IsEqualTo(expectedDataProtectionAssembly);
             await Assert.That(() => PrimaryDatabaseProviderComposition.GetMigrationsAssemblyName(
                 provider,
                 PrimaryDatabaseMigrationTarget.CoLocatedPrivacyErasureAuthority)).Throws<InvalidOperationException>();
