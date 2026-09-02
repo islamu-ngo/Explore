@@ -538,11 +538,19 @@ public sealed class SetupAssistantArchitectureTests
         string[] unsafeFixture = ValidateCiGovernance(
             "permissions:\n  contents: write\nsecrets: inherit\n",
             "permissions:\n  id-token: write\npersist-credentials: true\n--write\n");
+        string[] missingOwnerFixture = ValidateCiGovernance(
+            caller.Replace(
+                "src/Explore.Application/Contracts/Secrets/ISetupSecretBindingWriter.cs|",
+                string.Empty,
+                StringComparison.Ordinal),
+            reusable);
 
         await Assert.That(actual).IsEmpty()
             .Because("Setup CI must be read-only, always routed, and non-mutating: "
                 + string.Join("; ", actual));
         await Assert.That(unsafeFixture).IsNotEmpty();
+        await Assert.That(missingOwnerFixture)
+            .Contains("missing SetupLive route input: src/Explore.Application/Contracts/Secrets/ISetupSecretBindingWriter.cs");
     }
 
     [Test]
@@ -1260,10 +1268,38 @@ public sealed class SetupAssistantArchitectureTests
         [
             "src/Event.Wire.Contracts/SetupLive/*",
             "src/Explore.Domain/SetupLive/*",
+            "src/Explore.Application/ApplicationServicesRegistration.cs",
+            "src/Explore.Application/Contracts/SetupLive/*",
+            "src/Explore.Application/Contracts/Persistence/ISetupLiveRepository.cs",
+            "src/Explore.Application/Contracts/Infrastructure/ISetupSecretBindingReadinessReader.cs",
+            "src/Explore.Application/Contracts/Secrets/ISetupSecretBindingWriter.cs",
+            "src/Explore.Application/Contracts/Secrets/ISetupSecretBindingCommitBarrier.cs",
             "src/Explore.Application/Features/SetupLive/*",
+            "src/Explore.Application/Telemetry/SetupLiveTelemetry.cs",
+            "src/Explore.Persistence/PersistenceServicesRegistration.cs",
+            "src/Explore.Persistence/ExploreDbContext.DbSets.cs",
+            "src/Explore.Persistence/ExploreDbContext.QueryFilters.cs",
+            "src/Explore.Persistence/Configurations/Entities/SetupLiveConfigurations.cs",
             "src/Explore.Persistence/Repositories/SetupLiveRepository.cs",
+            "src/Explore.Persistence/RelationalSetupSecretBindingOperationCoordinator.cs",
+            "src/Explore.Persistence/Migrations/*AddSetupLivePersistence*",
+            "src/Explore.Persistence/Migrations/ExploreDbContextModelSnapshot.cs",
+            "src/Explore.Persistence.Migrations.MariaDb/Migrations/*AddSetupLivePersistence*",
+            "src/Explore.Persistence.Migrations.MariaDb/Migrations/ExploreDbContextModelSnapshot.cs",
+            "src/Explore.Persistence.Migrations.MySql/Migrations/*AddSetupLivePersistence*",
+            "src/Explore.Persistence.Migrations.MySql/Migrations/ExploreDbContextModelSnapshot.cs",
+            "src/Explore.Persistence.Migrations.SqlServer/Migrations/*AddSetupLivePersistence*",
+            "src/Explore.Persistence.Migrations.SqlServer/Migrations/ExploreDbContextModelSnapshot.cs",
+            "src/Explore.Persistence.Migrations.Sqlite/Migrations/*AddSetupLivePersistence*",
+            "src/Explore.Persistence.Migrations.Sqlite/Migrations/ExploreDbContextModelSnapshot.cs",
             "src/Explore.Secrets/Services/SetupSecretBindingAuthority.cs",
+            "src/Explore.Secrets/Extensions/SecretResolutionServiceCollectionExtensions.cs",
+            "src/Explore.Infrastructure/InfrastructureServicesRegistration.cs",
+            "src/Explore.Infrastructure/Services/SetupSecretProvider.cs",
             "src/Explore.API/Controllers/SetupTargetEnrollmentsController.cs",
+            "src/Explore.API/OpenApi/SetupLiveRequestBodyTransformer.cs",
+            "src/Explore.Blazor.Client/Clients/EventApiClient.cs",
+            "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs",
             "tests/Event.API.IntegrationTests/Features/SetupLive*"
         ];
         foreach (string routeInput in setupLiveRouteInputs)
@@ -1275,6 +1311,16 @@ public sealed class SetupAssistantArchitectureTests
         if (!reusable.Contains("run-setup-tests:", StringComparison.Ordinal)
             || !reusable.Contains("inputs.run-setup-tests", StringComparison.Ordinal))
             violations.Add("reusable Setup lane input is missing");
+        if (!reusable.Contains(
+                "/*/*/*SetupLiveAuthoritySecurityTests/*",
+                StringComparison.Ordinal)
+            || !reusable.Contains(
+                "--minimum-expected-tests 35 --maximum-parallel-tests 1",
+                StringComparison.Ordinal)
+            || !reusable.Contains(
+                "--report-trx-filename SetupLiveAuthoritySecurityTests.trx",
+                StringComparison.Ordinal))
+            violations.Add("SetupLive Tier 1 API gate is missing or not retained");
         if (!reusable.Contains(
                 "dotnet run eng/setup-assistant/GenerateSetupAssistantRatchets.cs -- --check",
                 StringComparison.Ordinal)

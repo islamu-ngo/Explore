@@ -336,11 +336,13 @@ approved CommunityToolkit graph; the disabled Browser/Desktop shells point
 through Assistant; the CLI points only to Core. The separate SetupLive outer
 adapter points to Core and the generated Blazor client while keeping network and
 ephemeral capability custody outside the shared presentation assembly. The Setup
-lane restores in locked mode, builds all five focused test projects in Release,
-then executes every project with a nonzero TUnit test-count safeguard. The main
-Assistant suite currently executes 52 tests. The Terminal suite independently
-guards canonical Core output, localization, and the secret boundary. Live release capabilities and
-browser runtime remain disabled.
+lane restores in locked mode, builds all six focused test projects in Release,
+then executes every project with a nonzero TUnit test-count safeguard. It also
+executes the isolated 35-test `SetupLiveAuthoritySecurityTests` Tier 1 class and
+retains its TRX report. The main Assistant suite currently executes 52 tests.
+The Terminal suite independently guards canonical Core output, localization,
+and the secret boundary. Live release capabilities and browser runtime remain
+disabled.
 
 All fourteen Setup lock files are tracked and discovered automatically by the
 recursive NuGet license-policy scan. Official `Terminal.Gui`, `TextMateSharp`,

@@ -3,13 +3,13 @@
 
 # Setup Assistant Security And Portability — Task Checklist
 
-Last Updated: 2026-09-01 Europe/Brussels
+Last Updated: 2026-09-02 Europe/Brussels
 
 ## Status Summary
 
-- **Overall status:** Successors A through C/Phase 8 were Green under the prior
-  presentation disposition. The Project Steward has re-opened successor B for
-  a Terminal.Gui-only replacement with no console fallback. Successor D
+- **Overall status:** Successors A through C/Phase 8 and the Terminal.Gui-only
+  Phase 5R replacement are Green. Terminal.Gui is the sole human terminal;
+  the custom console workflow is removed and the CLI is machine-only. Successor D
   D2-0b has a clean isolated 10/10 attributable API Red; corrected D2-1
   package-free strict Wire contracts and D2-2 Domain behavior are approved
   Green. Corrected D2-3 Application contracts are approved Green at 7/7, and
@@ -24,11 +24,11 @@ Last Updated: 2026-09-01 Europe/Brussels
   is active.
 - **Completed:** 35/52 implementation tasks; phase verification is tracked
   separately.
-- **Current priority:** Resume Phase 9 D2-11 with every SetupLive capability
-  still false until its own closure gates pass.
-- **Next recommended slice:** Re-run the D2-11 closure checklist against the
-  current Green Terminal.Gui boundary and unchanged fail-closed capability
-  manifest.
+- **Current priority:** D2-11 is blocked fail-closed by the required full API
+  phase-exit gate; every SetupLive capability remains false.
+- **Next recommended slice:** Repair or formally re-baseline the 28 non-
+  SetupLive API failures in their owning workstreams, then rerun the full API
+  project with a retained report before D2-11 review resumes.
 - **Upstream disposition:** ConfigurationManifest is active. SA-110 consumes
   only its frozen v1alpha2/schema/registry/import-preview/no-secret contract;
   upstream server work is not Setup implementation evidence.
@@ -82,19 +82,22 @@ Last Updated: 2026-09-01 Europe/Brussels
   [SecretResolver Green MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-6-green-mad-review.yaml).
 - **Current D2-9 review:**
   [Unix CLI protected-profile disposition MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-9-protected-profile-mad-review.yaml).
+- **Current D2-11 review:**
+  [Fail-closed closure MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-11-mad-review.yaml).
 - **Current user approval:**
   [D2-1 through D2-11 staged product sequence](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-phase9-d2-product-approval.md),
   `sha256:a5d01cb1d91a071c7885316edb3ec27f244d8f36e44687ebe6d4344dbeb6b97e`.
 
 ## Resume From Here
 
-1. Execute Phase 5R and keep the D2-11 capability manifest fail-closed.
+1. Keep every SetupLive release capability false. Phase 5R is Green and needs
+   no further implementation.
 2. D2-10 remains approved at a weighted 100/100 Tier 1 vote with 34/34 focused
    adapter tests; generated client methods remain the sole canonical route
    owner while HAL relation/method presence gates actions.
-3. After the sole Terminal.Gui target is Green and independently reviewed,
-   resume D2-11's canonical capability generation, docs, full relevant tests,
-   Release build, and weighted review.
+3. D2-11 remains open because the required full API phase-exit run produced
+   2,520 pass, 28 fail, 1 skip, and exit 137. Do not start Phase 10 until that
+   named repository-wide gate is Green and durably recorded.
 
 ## Successor Ownership Ledger
 
@@ -104,8 +107,8 @@ checkbox.
 
 | Successor | PR slices and SA ownership | State / entry gate |
 |---|---|---|
-| A foundation-offline | A1 SA-110-SA-130 and ten package-free project shells; A2 SA-210-SA-230; A3 SA-310-SA-340; A4 SA-410-SA-430 BCL CLI/terminal wizard | SA-110-SA-430 and Phase 1-4 verification Green |
-| B presentation-targets | B1 SA-510/SA-515/SA-518 shared presentation; B2 SA-520 shared Avalonia; B3 SA-525R-SA-527 patched Terminal.Gui/sole target; B4 SA-530R accessibility/localization/security; B5 SA-540R file-based legal; B6 SA-610-SA-640 browser; B7 SA-710-SA-730 desktop | B0 superseded; prior Phases 5-7 are historical Green. Phase 5R is open. Toolkit shared presentation and Unix protected output remain active; DI remains executable-root-only; Avalonia/browser/desktop stay `ApprovedDisabled`; Terminal.Gui becomes active only after the exact internal package and sole target pass every Phase 5R gate |
+| A foundation-offline | A1 SA-110-SA-130 and ten package-free project shells; A2 SA-210-SA-230; A3 SA-310-SA-340; A4 SA-410-SA-430 machine CLI plus the now-removed historical BCL wizard | SA-110-SA-430 and Phase 1-4 verification Green |
+| B presentation-targets | B1 SA-510/SA-515/SA-518 shared presentation; B2 SA-520 shared Avalonia; B3 SA-525R-SA-527 patched Terminal.Gui/sole target; B4 SA-530R accessibility/localization/security; B5 SA-540R file-based legal; B6 SA-610-SA-640 browser; B7 SA-710-SA-730 desktop | B0 superseded; Phase 5R Green. Toolkit shared presentation, patched Terminal.Gui, and Unix protected output are active; DI remains executable-root-only; Avalonia/browser/desktop stay `ApprovedDisabled`; no custom console fallback exists |
 | C composition-scale | C1 SA-810/SA-820; C2 SA-830 | SA-810-SA-830 and Phase 8 Green with bounded composition and measured-profile evidence |
 | D live-control-plane | D1 SA-910 Red/server contracts; D2 SA-920/SA-930 server/generated contracts; D3 SA-1010 Red plus SA-1020/SA-1030 adapters/UI | D2-1 through D2-10 are approved; the separately compiled ephemeral authenticated outer adapter passes 34/34 and no capability is active while D2-11 closure runs |
 | E application-data-migration | E1 SA-1110 privacy/tenant Red; E2 SA-1120; E3 SA-1130; E4 SA-1132 Setup UI activation | Inactive; D contracts plus fresh Tier 2 custody/erasure, Tier 1 tenant, I-VSD/CTO/user approval, and named privacy/provider evidence |
@@ -1249,7 +1252,7 @@ Plan reference: Phase 9 and Sections 3.14 and 5.11.
 | D2-8 | Green approved | Canonical OpenAPI/client regeneration, exact typed/media/header closure, behavioral generated-client proof, and byte-identical second pass; weighted 100/100 approval |
 | D2-9 | ApprovedDisabled approved | `unix-cli = ApprovedDisabled`: complete target/build-input ratchets prove no platform credential-store/protected-handle owner; no persistence fallback; weighted 100/100 approval |
 | D2-10 | Green approved | Separately compiled nested outer adapter implements adapter-owned nonredirecting TLS, fresh ephemeral bearer authentication, private capability custody, exact generation/expiry transitions, complete HAL/method gating including nested-cache invalidation, RFC UUIDv7 mutation fences, exact Ready binding writes, post-dispatch cancellation/timeout authority clearing, bounded failures, and no persistence/log/provider surface; `SetupLiveAdapterSecurityTests` pass 34/34; weighted 100/100 approval |
-| D2-11 | In progress | Capability manifest/generator, docs/change fragment, full relevant tests, Release build, weighted MAD, and flags false until closure |
+| D2-11 | Blocked fail-closed | Capability manifest/generator, docs/change fragment, CI routing, focused tests, and Release build are Green; the full API gate is 2,520 pass / 28 fail / 1 skip / exit 137 without a retained full-run report. Weighted MAD denies closure and keeps every flag false |
 
 Every stage requires its owning Red/review before behavior. Existing mixed-
 author files are narrow-hunk only. EF migrations/model snapshots and generated

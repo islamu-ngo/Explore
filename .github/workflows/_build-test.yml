@@ -149,6 +149,11 @@ jobs:
             dotnet build "$project" --configuration "$DOTNET_CONFIGURATION" --no-restore --verbosity minimal
             dotnet test --project "$project" --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- --minimum-expected-tests 1 --no-progress
           done
+          dotnet test --project tests/Event.API.IntegrationTests/Event.API.IntegrationTests.csproj \
+            --configuration "$DOTNET_CONFIGURATION" --no-build --verbosity minimal -- \
+            --treenode-filter "/*/*/*SetupLiveAuthoritySecurityTests/*" \
+            --minimum-expected-tests 35 --maximum-parallel-tests 1 --no-progress \
+            --report-trx --report-trx-filename SetupLiveAuthoritySecurityTests.trx
 
       - name: Unit Tests — Application
         if: ${{ inputs.run-fast-tests && inputs.run-app-tests }}

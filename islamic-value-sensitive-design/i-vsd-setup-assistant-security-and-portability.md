@@ -3984,8 +3984,10 @@ introduced.
   Application, Persistence, provider-write, API/OpenAPI/generated-client, and
   outer-adapter boundaries with focused invariant evidence. D2-11 adds only the
   exact generated disabled release manifest, CI execution/routing ratchets, and
-  operator documentation. The full API project remains a separate phase-exit
-  gate and no capability may activate while that gate is incomplete.
+  operator documentation. The full API project was executed on 2026-09-01:
+  2,520 passed, 28 failed, and 1 skipped; no SetupLive failure was observed,
+  but the repository-wide phase-exit gate is red. No capability may activate
+  and Phase 10 may not start while that gate remains incomplete.
 - **Approval boundary:** successors A, the selected/disabled B slices, and C
   are Green under their own historical exact approvals. The user explicitly
   approved the reviewed staged D sequence. This revalidation covers only the

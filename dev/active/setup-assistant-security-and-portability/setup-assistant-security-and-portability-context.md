@@ -3,7 +3,7 @@
 
 # Setup Assistant Security And Portability — Context
 
-Last Updated: 2026-09-01 Europe/Brussels
+Last Updated: 2026-09-02 Europe/Brussels
 
 ## Review State
 
@@ -33,14 +33,14 @@ pinned upstream source, 13/13 focused Terminal tests, 19/19 machine CLI tests,
 security 100/100, architecture 94/100, and quality/accessibility 94/100 votes.
 
 - **Planning status:** Successor A foundation-offline through Phase 4,
-  successor B through Phase 7, and successor C through Phase 8 are Green;
-  30/47 tasks are complete. B1 owns a
+  successor B through Phase 7 and Phase 5R, and successor C through Phase 8
+  are Green; 35/52 tasks are complete. B1 owns a
   CommunityToolkit-only shared model, target-root DI, independently gated
   Avalonia/Terminal.Gui adapters, and `Active`/`ApprovedDisabled` outcomes.
   SA-510-SA-518 are Green: the exact Toolkit graph is active in the shared
-  model, DI remains executable-root-only, 18 presentation tests and 14 Setup
-  architecture tests pass, and the Release build is error-free. SA-520,
-  SA-525, SA-530, and SA-540 resolved `ApprovedDisabled`; Phase 6 browser
+  model and DI remains executable-root-only. Historical SA-520/SA-525/SA-530/
+  SA-540 dispositions are superseded by Green SA-525R/SA-526/SA-527/SA-530R/
+  SA-540R and the sole Terminal.Gui target. Phase 6 browser
   runtime/secret/release slices also resolved `ApprovedDisabled`. Phase 7
   activated package-free Unix protected transactions with 9/9 real-filesystem
   invariants while Windows ACL output and desktop UI remain fail-closed. No
@@ -56,14 +56,15 @@ security 100/100, architecture 94/100, and quality/accessibility 94/100 votes.
   checks, exact constructor/property mappings, and borrowed-memory identity.
   D2-4 Persistence is approved Green with 5/5 provider models, 6/6 real
   PostgreSQL invariants, and five generator-owned migration/snapshot sets.
-  No outer owner, live enrollment, active capability, protected
-  profile, provider write, support, or release authority exists yet.
+  The separately compiled SetupLive outer owner, live enrollment contracts,
+  and provider-write boundary are implemented and focused Green. No active
+  release capability, protected profile, support, or shipping authority exists.
 - **I-VSD report:**
   [i-vsd-setup-assistant-security-and-portability.md](../../../islamic-value-sensitive-design/i-vsd-setup-assistant-security-and-portability.md)
 - **I-VSD review:** Current Terminal.Gui-only Steward revalidation; the report
   binds this re-baselined context and preserves the D2-11 fail-closed boundary.
-- **I-VSD status / disposition:** current and plan-aligned for the isolated
-  one-file Phase 9 absence Red; no product authority. `IVSD-F038`–`IVSD-F040`
+- **I-VSD status / disposition:** current and plan-aligned through the
+  implemented D2-10 fail-closed boundary; no release authority. `IVSD-F038`–`IVSD-F040`
   and matching mitigations bind tenant, replay/HAL, protected profile,
   provider-coordinate, and no-readback boundaries.
 - **Phase 9 D2 status:** D1/D2-0b corrected Red builds cleanly and remains
@@ -131,9 +132,14 @@ security 100/100, architecture 94/100, and quality/accessibility 94/100 votes.
   [ephemeral authenticated outer adapter](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-10-green.yaml).
 - **Current D2-10 Green review:**
   [weighted corrected adapter Green approval](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-10-green-mad-review.yaml).
-- **Current verification exception:** full architecture has 524 pass, 1
-  unrelated SetupAssistant lock-ratchet failure, and 1 pre-existing skip. The
-  D2-2-relevant Domain/naming architecture slices pass 17/17.
+- **Current D2-11 candidate:**
+  [fail-closed closure evidence](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-11-closure-candidate.yaml).
+- **Current D2-11 review:**
+  [weighted changes-required MAD review](../../../.omo/evidence/20260901-setup-assistant-security-and-portability/phase9-d2-11-mad-review.yaml).
+- **Current verification exception:** the Release build and Setup architecture
+  slice are Green, but the required full API phase-exit run produced 2,520
+  pass, 28 fail, 1 skip, and exit 137. D2-11 and Phase 10 therefore remain
+  fail-closed regardless of focused SetupLive results.
 - **Dependency evidence:**
   [setup-assistant-security-and-portability-dependency-evidence.md](../../zarchive/setup-assistant-security-and-portability/setup-assistant-security-and-portability-dependency-evidence.md)
 - **B1 review binding:**
@@ -149,9 +155,10 @@ superseded and non-executable. Foundation A
 SA-730 and Phase 1 through Phase 7 are Green. B owns the active shared
 CommunityToolkit human-presentation state plus independently gated Avalonia and
 Terminal.Gui adapters/runtime targets. The B0 SA-510 contract is historical;
-SA-518 and Unix protected output are Green, while Avalonia, Terminal.Gui,
-browser/desktop UI, rendered accessibility, Windows ACL output, and the legal
-editor remain `ApprovedDisabled` or fail-closed. C
+SA-518, the sole patched Terminal.Gui target, its rendered accessibility and
+localization boundary, file-based legal flow, and Unix protected output are
+Green. Avalonia/browser/desktop UI and Windows ACL output remain
+`ApprovedDisabled` or fail-closed. C
 `setup-assistant-composition-scale` is Green with bounded canonical
 composition and measured scale evidence. D
 `setup-assistant-live-control-plane` has a technically accepted isolated D2-0b
@@ -194,9 +201,10 @@ exact-revision user approval, and named evidence before implementation.
 2. D2-10 is approved at weighted 100/100 with 34/34 focused adapter tests.
    HAL relation presence and method gate each action; the generated public
    client remains the sole canonical route owner.
-3. Close D2-11's capability generation, documentation, full relevant tests,
-   Release build, and weighted review.
-4. Keep every live-control capability flag false until D2-11 closure.
+3. Keep D2-11 open: its full API phase-exit run is red at 2,520 pass, 28 fail,
+   1 skip, and exit 137; the result also lacks a durable retained report.
+4. Keep every live-control capability flag false and do not start Phase 10
+   until the exact full-project gate is Green and durably recorded.
 
 ## Historical Session Progress (Superseded; Non-Executable)
 
