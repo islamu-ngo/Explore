@@ -41,8 +41,7 @@ Sort dirty working trees using this priority order:
 2. **Technical/Resilience Fix**: Independent database execution strategies, retries, or middleware.
 3. **Test Suite Hardening**: Test fixtures, schema isolation (`current_schema()`), characterization models.
 4. **Build & Package Config**: Central props (`Directory.Build.props`), lockfiles, CI pipelines.
-5. **Governance & Legal Docs**: `CLA.md`, `CONTRIBUTING.md`, `README.md`, ADRs.
-6. **Active Task Tracking**: Task plans, progress logs (`dev/active/*`).
+5. **Governance & Legal Docs**: `CLA.md`, `CONTRIBUTING.md`, `README.md`, ADRs (`docs/internal/adr/*`), durable findings (`dev/_journal/*`). *(Note: Active task tracking in `dev/active/*` is gitignored local working memory and excluded from commits).*
 
 Then apply the atomicity gate:
 

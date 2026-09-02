@@ -223,6 +223,9 @@ Harness injection order does not change repository authority. Root [`AGENTS.md`]
 
 Substantial or multi-session development tasks are governed by the **Dev-Doc Triad** in `dev/active/<task>/`. This structure enforces strict separation of concerns between architecture, execution, and ephemeral session memory.
 
+> [!NOTE]
+> **Local Working Memory & Gitignore Isolation**: Active workstreams in `dev/active/*` are gitignored to eliminate commit churn, task-checkbox noise, and branch merge conflicts. Agents and developers access, create, and update these files directly using native harness file tools by deterministic path. Only durable architectural decisions graduate to `docs/internal/adr/`, durable findings to `dev/_journal/`, and research reports to `dev/report/`.
+
 ```mermaid
 stateDiagram-v2
     [*] --> Draft: Task Initiated

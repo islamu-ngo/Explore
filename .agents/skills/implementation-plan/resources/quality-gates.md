@@ -76,13 +76,9 @@
 
 ## Verification
 
-Run proportional repository checks for the planning artifact change:
+Planning artifacts in `dev/active/<task-name>` are gitignored local working memory; they are accessed and verified directly using native harness file tools by deterministic path.
 
-```bash
-git diff --check -- dev/active/<task-name>
-```
-
-If this workflow skill or other agent-context infrastructure changed, also run:
+If this workflow skill or other agent-context infrastructure changed, run:
 
 ```bash
 dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet

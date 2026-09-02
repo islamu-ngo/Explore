@@ -566,6 +566,10 @@ $RECYCLE.BIN/
 
 dev/archive/*
 
+# Active local implementation plans & working memory (ephemeral; not committed)
+dev/active/*
+!dev/active/README.md
+
 inbox
 
 # Blazor.Client lock file: Microsoft.NET.Sdk.WebAssembly.Pack version tracks the
