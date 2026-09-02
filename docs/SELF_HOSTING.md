@@ -27,8 +27,9 @@ provider claim. That sign-in completes onboarding, and completion is final. If
 you need to change the administrator afterwards, use normal admin governance.
 
 Once onboarding is complete, remove the selector keys from your deployment
-environment. They no longer do anything, and keeping them around invites
-confusing drift failures on the next restart.
+environment to reduce retained secret and configuration residue. Completed
+instances ignore later selector changes, so removal, retention, or drift
+cannot transfer authority or block restart.
 
 ## Required Operator Identity
 

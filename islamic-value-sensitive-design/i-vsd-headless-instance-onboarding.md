@@ -7,15 +7,19 @@ Last Updated: 2026-09-01
 
 ## Review Metadata
 
-- Mode: planning
+- Mode: implementation closure
 - Subject: configured-administrator headless instance onboarding
 - Workstream: `headless-instance-onboarding`
-- Report kind: provider-responsibility planning assessment
-- Report status: current
-- Disposition: plan-aligned
+- Report kind: provider-responsibility implementation assessment
+- Report status: implemented and verified
+- Disposition: implementation-aligned
 - Evidence cutoff: 2026-09-01
 - Reviewed input revision: `sha256:5c67de2a4b210f6d57239a6eb7f4c7ae38cf6bf4a0b9321e32c77410065a9ca9`
 - Reviewed plan triad revision: `sha256:bddece5056ffa97ae877d3ddf86055c3036d27a06e99d5bf32e9def07d91a2bd`
+- Implementation evidence:
+  `5896449f3ae7f78f302cc8f4d85e29574f74a2a5`,
+  `02e024a3e023a998209462610c48ed52f058d85b`, and
+  `584be9624aa5c5367fe3d918d24866fd297acb07`
 - Supersedes: none
 
 ## Scope

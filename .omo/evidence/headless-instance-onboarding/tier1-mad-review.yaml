@@ -1,0 +1,47 @@
+# ABOUTME: Anonymized weighted Tier 1 review evidence for headless configured-administrator onboarding.
+# ABOUTME: Records the decisive security, persistence, and operations votes after all reproduced findings were fixed.
+review: headless-instance-onboarding-tier1-mad
+date: 2026-09-01
+protocol:
+  response_anonymization: true
+  independent_argument_generation: true
+  deterministic_reproduction_required_for_failure: true
+  weights:
+    security: 0.60
+    persistence: 0.25
+    operations: 0.15
+votes:
+  security:
+    verdict: pass
+    confidence: 0.99
+    findings: []
+  persistence:
+    verdict: pass
+    confidence: 1.00
+    findings: []
+  operations:
+    verdict: pass
+    confidence: 0.99
+    findings: []
+weighted_result:
+  pass_weight: 1.00
+  fail_weight: 0.00
+  verdict: pass
+verification:
+  release_build:
+    errors: 0
+  assurance_audit:
+    diagnostics: 0
+  reproduced_findings_closed:
+    - generated-status typed-property consumption
+    - configured-pending cookie issuance
+    - internal BFF self-call validation
+    - exact completed replay reconciliation
+    - durable multi-replica setup-secret revocation
+    - OIDC GUID-subject authority isolation
+    - completed startup and selector-removal finality
+    - five-provider downgrade data preservation
+    - concurrent empty-table startup convergence
+residual_risks:
+  - Live upgrade-and-downgrade execution was not available for every server provider; provider-generated SQL ordering and backfill semantics are covered for all five providers.
+  - SQL Server empty-table startup convergence is covered by retry classification and architecture contracts rather than a live container test.

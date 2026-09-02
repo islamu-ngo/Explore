@@ -13,7 +13,7 @@ Last Updated: 2026-09-01 Europe/Brussels
   configured AT Protocol account or existing Keycloak realm user becomes the
   initial platform administrator only after authenticating successfully.
 - **Task directory:** `dev/active/headless-instance-onboarding/`
-- **Planning status:** Draft; ready for user review
+- **Planning status:** Implemented and verified
 - **Change classification:** Behavioral Delta
 - **Primary intent:** `external-infrastructure-bootstrap` — Tier 1 Security,
   system-level, exhaustive exploration, mandatory adversarial tests, and
@@ -51,7 +51,22 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **I-VSD status / disposition:** current and plan-aligned after triad
   revalidation
 - **CTO review:** Not reviewed
-- **User approval:** Awaiting approval for this exact workstream revision
+- **User approval:** Approved in full on 2026-09-01
+- **Implementation commits:**
+  - `5896449f3ae7f78f302cc8f4d85e29574f74a2a5` — offline configuration contract
+  - `02e024a3e023a998209462610c48ed52f058d85b` — typed lifecycle,
+    persistence, provider authority, BFF/client routing, runtime preparation,
+    activation, tests, operator contracts, and release evidence
+  - `584be9624aa5c5367fe3d918d24866fd297acb07` — startup/API hosting
+    composition plus canonical OpenAPI and generated contract integration
+- **Verification closure:** Release solution build passed with zero errors;
+  focused Domain, Application, Persistence, API, BFF, Client,
+  Infrastructure, Standalone, and Architecture suites passed; exact changed
+  test surface passed AssuranceAudit with zero diagnostics. Final Tier 1
+  hardening additionally proves all-surface durable setup revocation,
+  GUID-subject authority isolation, authentication-surface replay,
+  selector-removal login finality, generated downgrade preservation, and
+  concurrent empty-table convergence on SQLite, MariaDB, and MySQL.
 - **Grill-Me intake:** Resolved. Setup Assistant remains an offline generator
   only. ConfigurationManifest owns portable non-secret instance/tenant
   configuration. Deployment-local environment/secret authority names the

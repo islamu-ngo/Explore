@@ -46,6 +46,7 @@ Impacts:
     Disposition: documented
     Detail: >-
       Apply the generated migration for the selected provider before starting
-      the upgraded instance. Rolling back requires restoring the pre-migration
-      backup, because the removed columns cannot be reconstructed from the
-      typed lifecycle alone.
+      the upgraded instance. Generated provider downgrades recreate and
+      backfill the legacy completion and deployment-mode columns before
+      removing typed lifecycle columns. Keep a verified pre-migration backup
+      as the rollback safety prerequisite.

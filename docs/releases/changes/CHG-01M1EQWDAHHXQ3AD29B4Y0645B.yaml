@@ -28,9 +28,10 @@ Impacts:
     Disposition: documented
     Detail: >-
       Activation reads exactly seven keys and rejects unknown or partial
-      combinations. Split deployments evaluate the browser-facing front end
-      before the API; Standalone evaluates a single origin. Routing follows
-      the configured BFF and provider endpoints.
+      combinations. Split deployments complete migration and manifest work
+      before API preparation, and the browser-facing BFF waits for API
+      readiness. Standalone evaluates the same order within one origin.
+      Routing follows the configured BFF and provider endpoints.
   OpenAPI:
     Reference: docs/API_CHANGELOG.md
     Disposition: documented

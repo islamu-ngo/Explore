@@ -50,53 +50,52 @@ Last Updated: 2026-09-01 Europe/Brussels
   - canonical 353-definition JSON and generated configuration documentation
   - 72/72 Setup Core tests
   - atomic commit `5896449f3ae7f78f302cc8f4d85e29574f74a2a5`
+- Completed and activated Phases 2–10:
+  - typed bootstrap status/mode/provider lifecycle and generation finality
+  - five-provider generated migrations with deterministic legacy backfill
+  - provider-native row locks and serializable claim convergence
+  - shared provider-neutral completion transaction
+  - authority-qualified OIDC subject keys and canonical ATProto DIDs
+  - verified ATProto first claim and closed BFF provider routing
+  - generated status client and startup gate consumption
+  - environment-backed preparation in Split and Standalone topology
+  - operator, schema, release-fragment, and API contract evidence
+  - implementation commit `02e024a3e023a998209462610c48ed52f058d85b`
+  - host/API/generated integration commit
+    `584be9624aa5c5367fe3d918d24866fd297acb07`
+- Final verification:
+  - solution Release build passed with zero errors
+  - exact changed test surface passed AssuranceAudit with zero diagnostics
+  - focused Domain, Application, Persistence, API, BFF, Client,
+    Infrastructure, Standalone, and Architecture suites passed
+  - reproduced and fixed every Tier 1 MAD finding across generated status,
+    cookie/self-call trust boundaries, replay effects, durable setup-secret
+    revocation, provider-link isolation, selector-removal finality, migration
+    downgrade preservation, and empty-table replica convergence
+  - real provider convergence evidence includes PostgreSQL existing-row
+    races plus empty-table SQLite, MariaDB, and MySQL startup
 
 ### IN PROGRESS
 
-- Executing the approved plan directly on shared `develop`.
-- Phase 2 is re-baselined as the atomic typed lifecycle, schema, and active
-  server-caller cutover. Task 2.1 is replacing its rejected reflective Red
-  with an AssuranceAudit-safe strongly typed Red.
+- Final anonymized Tier 1 security/operations review and closure evidence only.
 
 ### NEXT
 
-1. Establish the strongly typed Task 2.1 Red with an uncommitted additive
-   compile seam.
-2. Implement the lifecycle in Task 2.2.
-3. Cut active callers, schema, generated migrations, and fixtures atomically
-   in Task 2.3, then verify every affected project.
+1. Record weighted MAD review disposition.
+2. Commit only the final verified identity/BFF corrections and synchronized
+   closure artifacts, excluding unrelated shared-tree changes.
+3. Close the active goal.
 
 ### BLOCKERS
 
-- **Shared-tree ownership:** the current `develop` checkout contains substantial
-  unrelated Setup Assistant, SetupLive, generated client/OpenAPI, Application
-  registration, Persistence DbContext/snapshot, migration, release, and
-  agent-context changes. Several planned paths are already modified or
-  untracked by other work. Any mixed-ownership path blocks that phase until
-  ownership is coordinated or the other work lands.
-- **Phase 2 scope correction:** the approved four-path Domain-only slice was
-  unsatisfiable because it omitted provider kind, removed active deployment
-  mode without a successor, broke callers outside phase ownership, and used
-  AssuranceAudit-rejected reflective dispatch. The corrected phase atomically
-  owns typed Domain state, schema, active server callers, generated migrations,
-  and direct fixtures; Phase 3 now owns locking/convergence only.
-- **Generator parity:** resolved for Phase 1 through an isolated clean compiled
-  authority; foreign registry work remained untouched.
-- **Knowledge graph availability:** the repository graph exists, but no
-  callable code-review-graph tool was exposed during planning. Source-backed
-  blast-radius evidence is recorded in plan Section 2.0.
+- None for the implemented capability. Unrelated Setup Assistant and workflow
+  changes remain in the shared worktree and are excluded from closure commits.
 
 ## Quick Resume
 
-1. Read this context and
-   `headless-instance-onboarding-tasks.md`.
-2. Read only the current phase and referenced decision/risk from
-   `headless-instance-onboarding-plan.md`.
-3. Resume Task 1.2 from the independently confirmed Task 1.1 Red.
-4. Preserve the external registry-parity ownership boundary.
-5. Keep `tasks.md` current during implementation. Update this context only
-   after a phase, decision, blocker, validation failure, material discovery, or
-   handoff. Update the plan only for strategy changes.
+The workstream is implemented. If closure is interrupted, resume from the
+latest MAD review result and the scoped uncommitted identity/BFF corrections;
+do not restart implementation or touch unrelated shared-tree paths.
 
 ## Key Files And Responsibilities
 
@@ -170,9 +169,8 @@ Last Updated: 2026-09-01 Europe/Brussels
 
 - **Planning verification:** Markdown/diff/link checks only, per repository
   docs-only policy.
-- **Product baseline:** Not run during planning. Before Task 1.1 edits product
-  code, run the repository-required baseline once and record exact command,
-  exit code, and any proven unrelated failures here.
+- **Product baseline:** established before Phase 1 and recorded in the
+  execution ledger.
 - **Per-phase implementation policy:** one Release build and the bounded
   affected test set once after all phase tasks, followed immediately by the
   exact phase-owned commit. Phase 2 is cross-layer and runs every affected
@@ -180,6 +178,8 @@ Last Updated: 2026-09-01 Europe/Brussels
 - **Phase 1:** Release build had one proven unrelated agent-workflow CS0122 and
   zero attributable errors; Setup Core tests passed 72/72; commit
   `5896449f3ae7f78f302cc8f4d85e29574f74a2a5`.
+- **Closure:** final solution Release build passed with zero errors; exact
+  changed test surface passed AssuranceAudit with zero diagnostics.
 - **Tier 1 evidence path:**
   `.omo/evidence/20260901-headless-instance-onboarding/`
 
@@ -198,6 +198,16 @@ Last Updated: 2026-09-01 Europe/Brussels
   implementation documentation must be explicit and value-free.
 
 ## Handoff Notes
+
+### Closure Handoff — 2026-09-01 Europe/Brussels
+
+- **Current state:** all ten phases implemented and verified.
+- **Implementation commits:** `5896449f3`, `02e024a3e`, `584be9624`.
+- **Remaining action:** record MAD disposition, commit final verified
+  identity/BFF corrections plus synchronized closure artifacts, then close the
+  active goal.
+- **Ownership:** unrelated Setup Assistant, workflow, and release-fragment
+  work remains outside this workstream and must not be staged.
 
 ### Handoff — 2026-09-01 Europe/Brussels
 

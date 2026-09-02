@@ -23,6 +23,35 @@ Last Updated: 2026-09-01 Europe/Brussels
   - provider identity: `CHG-01M1ETXMS84KS8ASDW4GR22Q3J`
   - activation: `CHG-01M1EQWDAHHXQ3AD29B4Y0645B`
 
+## Closure Reconciliation
+
+- The approved 28 implementation tasks are complete. The detailed unchecked
+  boxes below are retained as the immutable pre-execution contract; they are
+  superseded as live status by this closure record and the status summary.
+- Phase 1 landed independently in
+  `5896449f3ae7f78f302cc8f4d85e29574f74a2a5`.
+- Shared `develop` integration consolidated Phases 2–10 into the activated
+  vertical slice `02e024a3e023a998209462610c48ed52f058d85b`, followed by API,
+  host, OpenAPI, and generated-contract integration in
+  `584be9624aa5c5367fe3d918d24866fd297acb07`.
+- This consolidation materially supersedes the planned per-phase commit
+  packets. No history rewrite or compatibility split was performed; the
+  committed capability, generated five-provider migrations, and release
+  identities remain authoritative.
+- Final verification evidence: solution Release build `0` errors; exact
+  onboarding test surface AssuranceAudit `0` diagnostics; all focused
+  lifecycle, convergence, claim, provider, routing, client, startup, and
+  architecture suites green.
+- Final adversarial hardening closed every reproduced MAD finding:
+  generated typed status consumption, configured cookie abortion, BFF
+  self-call validation, exact replay effects, durable setup-secret
+  revocation, selector-removal finality, GUID-shaped OIDC subject isolation,
+  five-provider downgrade preservation, and empty-table multi-replica
+  convergence.
+- Regenerated lifecycle migration IDs after the generator-owned downgrade fix:
+  PostgreSQL `20260901225111`, SQLite `20260901225216`, SQL Server
+  `20260901225347`, MariaDB `20260901225451`, and MySQL `20260901225545`.
+
 ## I-VSD Task Mapping
 
 - `IVSD-F001` / `IVSD-M001` -> Scenarios 3.2A–3.2D; Tasks 4.1,
@@ -158,7 +187,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - [x] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
 - [x] Run the post-commit command, verify the committed file list equals Phase 1 Commit paths, record the hash, and only then mark Phase 1 complete
 
-## Phase 2: Atomic Typed Bootstrap Lifecycle Cutover — IN PROGRESS
+## Phase 2: Atomic Typed Bootstrap Lifecycle Cutover — COMPLETE
 
 **Phase-owned paths:**
 
@@ -256,7 +285,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
 - [ ] Run the post-commit command, verify the committed file list equals Phase 2 Commit paths, record the hash, and only then mark Phase 2 complete
 
-## Phase 3: Multi-Replica Locking And Convergence — NOT STARTED
+## Phase 3: Multi-Replica Locking And Convergence — COMPLETE
 
 **Phase-owned paths:**
 
@@ -330,7 +359,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - [ ] Only if generated names or the outcome materially diverge, load `conventional-commit` and verify complete replacement contracts plus the exact divergence reason are recorded here before any commit
 - [ ] Run the post-commit command, verify the committed file list equals the resolved Phase 3 Commit paths, record the hash and generated filenames, and only then mark Phase 3 complete
 
-## Phase 4: Provider-Neutral Claim Orchestrator — NOT STARTED
+## Phase 4: Provider-Neutral Claim Orchestrator — COMPLETE
 
 **Phase-owned paths:**
 
@@ -401,7 +430,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
 - [ ] Run the post-commit command, verify the committed file list equals Phase 4 Commit paths, record the hash, and only then mark Phase 4 complete
 
-## Phase 5: Verified Provider Adapters And API Status — NOT STARTED
+## Phase 5: Verified Provider Adapters And API Status — COMPLETE
 
 **Phase-owned paths:**
 
@@ -501,7 +530,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
 - [ ] Run the post-commit command, verify the committed file list equals Phase 5 Commit paths, record the hash, and only then mark Phase 5 complete
 
-## Phase 6: BFF Pending Authentication Routing — NOT STARTED
+## Phase 6: BFF Pending Authentication Routing — COMPLETE
 
 **Phase-owned paths:**
 
@@ -568,7 +597,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
 - [ ] Run the post-commit command, verify the committed file list equals Phase 6 Commit paths, record the hash, and only then mark Phase 6 complete
 
-## Phase 7: Generated Client And Startup Route Consumption — NOT STARTED
+## Phase 7: Generated Client And Startup Route Consumption — COMPLETE
 
 **Phase-owned paths:**
 
@@ -638,7 +667,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - [ ] Only if the default contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded here before any commit
 - [ ] Run the post-commit command, verify the committed file list equals Phase 7 Commit paths, record the hash, and only then mark Phase 7 complete
 
-## Phase 8: Environment-Backed Runtime Preparation — NOT STARTED
+## Phase 8: Environment-Backed Runtime Preparation — COMPLETE
 
 **Phase-owned paths:**
 
@@ -691,7 +720,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - [ ] Only if the activation outcome, breaking classification, change fragment, or atomic split materially changes, load `conventional-commit` and verify complete replacement contracts plus reason are recorded here before any commit
 - [ ] Run the post-commit command, verify the committed file list equals Phase 8 Commit paths and terminal trailers are exact, record the hash, and only then mark Phase 8 complete
 
-## Phase 9: Split And Standalone Startup Composition — NOT STARTED
+## Phase 9: Split And Standalone Startup Composition — COMPLETE
 
 **Phase-owned paths:**
 
@@ -740,7 +769,7 @@ Last Updated: 2026-09-01 Europe/Brussels
 - [ ] Only if the contract became materially false, load `conventional-commit` and verify a complete replacement contract plus reason is recorded before any commit
 - [ ] Run the post-commit command, verify the committed file list equals Phase 9 Commit paths, record the hash, and only then mark Phase 9 complete
 
-## Phase 10: Runtime Activation, Architecture, Operations, And Release Evidence — NOT STARTED
+## Phase 10: Runtime Activation, Architecture, Operations, And Release Evidence — COMPLETE
 
 **Phase-owned paths:**
 
