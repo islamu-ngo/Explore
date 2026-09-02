@@ -24,7 +24,7 @@ public sealed class DoctorRunner(IEnumerable<IDoctorCheck> checks)
                     check.Category,
                     "The check timed out before it could complete.",
                     "Increase --timeout-seconds or verify the dependency manually; doctor did not mutate state.",
-                    "docs/TROUBLESHOOTING.md"));
+                    "docs/internal/TROUBLESHOOTING.md"));
             }
             catch (Exception ex)
             {
@@ -33,7 +33,7 @@ public sealed class DoctorRunner(IEnumerable<IDoctorCheck> checks)
                     check.Category,
                     "The check failed unexpectedly before producing a result.",
                     "Review the redacted evidence and run the related manual remediation steps.",
-                    "docs/TROUBLESHOOTING.md",
+                    "docs/internal/TROUBLESHOOTING.md",
                     DoctorRedactor.Redact(ex.Message)));
             }
         }

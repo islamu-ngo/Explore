@@ -12,9 +12,9 @@ ISLAMU Event powers ISLAMU’s Islamic events instance, but the software itself 
 
 > Pre-1.0 notice: ISLAMU Event is still before v1. Breaking changes may happen between releases. We avoid data-loss-class breaks where possible, but configuration changes may be required.
 
-Operator references: [Self-hosting](docs/SELF_HOSTING.md) ·
-[Configuration](docs/CONFIGURATION.md) · [Configuration Manifest](docs/CONFIGURATION_MANIFEST.md) ·
-[Secrets](docs/SECRETS.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
+Operator references: [Official Docs][official-docs-link] · [Self-hosting](docs/internal/SELF_HOSTING.md) ·
+[Configuration](docs/internal/CONFIGURATION.md) · [Configuration Manifest](docs/internal/CONFIGURATION_MANIFEST.md) ·
+[Secrets](docs/internal/SECRETS.md) · [Troubleshooting](docs/internal/TROUBLESHOOTING.md)
 
 ![GitHub Workflow Status][github-workflow-status-shield]
 [![GitHub License][github-license-shield]][github-license-link]
@@ -23,8 +23,9 @@ Operator references: [Self-hosting](docs/SELF_HOSTING.md) ·
 [![Contributors][github-contributors-shield]][github-contributors-link]
 [![Discussions][github-discussions-shield]][github-discussions-link]
 [![Discord][discord-shield]][discord-link]
+[![Documentation][docs-shield]][official-docs-link]
 
-[**ISLAMU Islamic Events Instance**][islamu-platform] · [**Quick Start**](#quick-start) · [**Docs**](docs/index.md) · [**Roadmap**][roadmap-link]
+[**ISLAMU Islamic Events Instance**][islamu-platform] · [**Official Docs (GitBook)**][official-docs-link] · [**Quick Start**](#quick-start) · [**Docs Hub**](docs/README.md) · [**Internal Specs**](docs/internal/index.md) · [**Roadmap**][roadmap-link]
 
 </div>
 
@@ -40,50 +41,48 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 
 ### Event Seekers
 
-- **🔍 Advanced Discovery:** Event search with title, dates, location, categories, tags, and paging filters
-- **👨‍👩‍👧‍👦 Culturally-Aware Filters (opt-in modules):** Age ranges, gender segregation modes, madhab targeting, prayer-relative timing — only enabled by instances that choose them; never imposed on the software
-- **🌐 Multi-Language Sessions:** Event sessions with multiple language variants and localized content
-- **📱 PWA & Responsive Design:** Mobile-friendly Blazor UI with MudBlazor components; installable as a Progressive Web App
-- **✅ RSVP & Registration:** Waitlists, approval workflows, per-session registration limits, and capacity management
-- **🎟️ Ticketing:** Discover events with free or paid tickets; view published ticket types, price summaries, and availability directly in event discovery and detail pages
-- **💳 Seamless & Secure Checkout:** Pay for ticketed events with transparent pricing, zero card data stored on-platform, and guaranteed refund protections — see [Payments][payments-doc]
-- **🤖 AI Assistant (when enabled):** Chat with the assistant to discover events, ask questions in natural language, and let it draft registrations or RSVPs as confirmable proposed actions
+- **🔍 Intuitive Event Discovery:** Search effortlessly by keyword, date, location, category, and tags to find gatherings near you or online
+- **👨‍👩‍👧‍👦 Culturally-Aware Filters:** Filter events by age groups, family/gender arrangements, community traditions, or prayer-relative timings to find gatherings tailored to your preferences
+- **🌐 Multi-Language Sessions:** View event details and attend sessions in your preferred language with localized schedules
+- **📱 Mobile-First Experience:** Fast, responsive experience across mobile and desktop, installable directly to your home screen as an app (PWA)
+- **✅ Easy RSVP & Waitlists:** Reserve your spot in seconds, select specific sessions, and automatically join waitlists for sold-out events
+- **🎟️ Clear Ticket Options:** Browse free and paid events with upfront ticket tiers, live availability, and no hidden surprises
+- **💳 Secure Payments:** Pay for your event tickets safely directly on our platform with transparent pricing, secure checkout, and instant digital tickets — see [Payments][payments-doc]
+- **🤖 AI Event Assistant:** Ask questions in natural language, discover events tailored to your interests, and get quick help drafting your registrations
 
 ### Event Organizers
 
-- **📅 Single & Multi-Session Events:** Conferences, seminars, and recurring programs with speakers, agendas, and language variants
-- **📊 Flexible Publishing:** Manage registrations, waitlists, approval workflows, capacity limits, and event visibility
-- **👥 Member Management:** Invite members, assign roles (Owner, Admin, Editor, Viewer), and track permissions
-- **🎯 Modular Event Types:** Custom fields, event aspects, and event templates for any kind of program
-- **🧩 Custom Properties:** Per-event-type custom fields, single- and multi-select options, relations, and typed validation — see [Custom Properties][custom-properties-doc]
-- **🔔 Notifications, Email & Webhooks:** In-app notifications, built-in/Svix-compatible outgoing webhooks, and templated email pipelines — see [Notifications][notifications-doc], [Webhooks][webhooks-doc], and [Email Notifications][email-notifications-doc]
-- **📇 Contact Sharing:** Share contact information with explicit, revocable consent — see [Contact Sharing][contact-sharing-doc]
-- **🎟️ Ticketing & Pricing:** Create versioned ticket catalogs with multiple ticket types, capacity pools, and minor-unit pricing. Publish a catalog to attach structured pricing to an event; ticket price summaries appear in public discovery automatically. Draft, clone, and iterate before publishing
-- **💳 Direct Ticket Payments (OrganizerDirect):** Connect your own payment account (via Stripe Connect) with no platform intermediary holding your funds. Ticket proceeds flow directly to your linked bank account with transparent fee breakdowns and automated refund handling — see [Payments][payments-doc]
-- **📬 Mailing List Integration (Listmonk):** Optionally connect a self-hosted [Listmonk][listmonk-link] instance to automatically sync attendee registrations as newsletter subscribers, with pre-confirmation support and per-tenant configuration
-- **🤖 AI Assistant (when enabled):** Ask the assistant to draft event listings, suggest categories/tags, and propose schedule improvements; every AI-proposed change is reviewed and explicitly confirmed before any side effect
-- **🌍 Decentralization / Federation:** Depending on if event federation support is enabled, publish once and have your event appear on all the event platforms that support federation. Depending on if AT-Protocol Auth is enabled, store records directly on your personal data server (PDS) and be independent of ISLAMU Event data-wise.
+- **📅 Comprehensive Event Builder:** Organize single-day workshops, multi-day conferences, or recurring programs with multi-track agendas, speaker profiles, and multi-language support
+- **📊 Registration & Attendee Controls:** Set capacity limits, customize registration approval workflows, manage automated waitlists, and configure public or unlisted visibility
+- **👥 Team Collaboration:** Invite co-organizers, assign granular roles (Owner, Admin, Editor, Viewer), and manage organization permissions collaboratively
+- **🧩 Custom Registration Fields & Forms:** Collect attendee details with custom fields, single/multi-select questions, and reusable event templates — see [Custom Properties][custom-properties-doc]
+- **🔔 Attendee Communication & Webhooks:** Keep attendees informed with templated emails, in-app notifications, and outgoing webhooks to sync with external tools — see [Notifications][notifications-doc], [Webhooks][webhooks-doc], and [Email Notifications][email-notifications-doc]
+- **📇 Consensual Contact Sharing:** Help attendees network responsibly with explicit, opt-in contact sharing that attendees can revoke at any time — see [Contact Sharing][contact-sharing-doc]
+- **🎟️ Flexible Paid & Free Ticketing:** Create multiple ticket tiers, early-bird pricing, group rates, and shared capacity pools. Draft, clone, and preview your ticket catalog before publishing
+- **💳 Direct Payouts & Automated Financials:** Sell tickets with complete peace of mind. Connect your Stripe account to receive direct payouts into your bank account with no platform intermediary holding your funds. The platform handles all attendee transactions, receipts, fee calculations, and automated refund management — see [Payments][payments-doc]
+- **📬 Audience Growth:** Automatically sync registered attendees into your mailing list or newsletter (such as [Listmonk][listmonk-link]) to build lasting community engagement
+- **🤖 AI Event Co-Pilot:** Draft compelling event descriptions, generate relevant tags, and refine schedules using AI suggestions that you review and approve before publishing
+- **🌍 Broader Reach via Federation:** Publish once to broadcast your events across participating federated platforms, with optional support for owning your event data directly on your personal data server (PDS via AT Protocol)
 
 ### Platform Owners & Self-Hosters
 
-- **🆓 100% Free & Open Source:** No feature paywalls, telemetry traps, or enterprise tiers. Licensed under AGPL-3.0-or-later.
-- **🐳 Minimal Standalone Deployment:** All-in-one lightweight single-binary / single-container distribution. One `Event.Standalone` container combines the ISLAMU Event API and Blazor BFF/UI with embedded SQLite persistence — no external service or sidecar required for this minimum operational topology
-- **🐳 Deployment:** Standalone Docker image, split Docker Compose topology, and .NET Aspire for local development
-- **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes — the most important adoption decision for self-hosters
-- **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, and policies per tenant
-- **💳 Provider-Neutral Payments:** Enable paid ticketing with direct organizer payouts (via Stripe Connect), zero cardholder data liability (PCI DSS), and a hierarchical policy ceiling. Instance admins manage platform keys and global risk limits, while tenant admins govern policy narrowing without access to platform secrets or attendee funds — see [Payments][payments-doc]
+- **🆓 100% Free & Open Source:** No feature paywalls, telemetry traps, or enterprise tiers. Licensed under AGPL-3.0-or-later
+- **🛡️ Absolute Data Sovereignty:** Self-host on your own infrastructure (Docker, Coolify, Aspire, On-Prem) with total control over user and attendee data
+- **🐳 Flexible Deployment Topologies:** Deploy as a single lightweight container (`Event.Standalone`) with embedded SQLite, a split Docker Compose topology, or locally via .NET Aspire
+- **💼 Multi-Tenancy:** Run as a dedicated single-tenant instance or a multi-tenant SaaS platform with isolated domains and branding at runtime without code changes
+- **🛠️ White-Label Control:** Fully customizable branding, domains, logos, navigation links, and policies per tenant
+- **💳 Zero-Custody Payments & Legal Protection:** Stripe Connect handles all payment processing, compliance, and payouts directly between attendees and organizers. The legal transaction is strictly between attendee and organizer—the operator never touches card data (zero PCI liability) nor holds attendee funds. Operators simply supply platform legal terms (Terms of Service, privacy policy) and can disable paid ticketing entirely at any time — see [Payments][payments-doc]
 - **🔧 Admin Hierarchy:** Instance admins, tenant admins, and organization admins with cascading settings
 - **🛡️ Built-in Moderation & Verification:** Moderation queues, organizer verification workflows, and structured appeal paths — see [Governance][governance-doc] and [Authorization][authorization-doc]
-- **🔌 Model Context Protocol (MCP) Server:** The API hosts a stateless MCP adapter at `/mcp` so AI agents, IDEs (VS Code, Copilot, Inspector), and external integrations can discover public events and *propose* actions through the normal confirmation flow — mutations never bypass authorization. See [MCP Debugging][mcp-debugging-doc]
-- **🧠 AI-Ready Foundation:** Provider-neutral AI Assistant, RAG ingestion contracts, and proposal-first tooling are wired through the same Cerbos-authorized, HAL-affordance-driven surface as the rest of the platform
-- **🌍 Decentralization / Federation:** Optional AT-Protocol Authentication and event federation support !
-- **🗄️ Privacy Erasure Authority:** GDPR-compliant user data erasure with two topology options: **Co-located** (default — erasure authority shares the main database, simplest to operate) or **External Database** (a dedicated isolated PostgreSQL instance for stricter compliance separation). Operators choose topology at deployment time; the runtime erasure receipt flow and provider-work reconciliation behave identically in both modes.
-- **📬 Mailing List Integration (Listmonk):** Integrate with a self-hosted [Listmonk][listmonk-link] instance to sync attendee registrations as mailing-list subscribers. Connection, behavior, and privacy-erasure authority settings are independently configurable per tenant via grouped settings patches.
-- **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
-- **🔐 Enterprise Security:** BFF pattern, built-in local authorization, environment-first secrets, and HATEOAS REST API; Cerbos, Keycloak, and Infisical integrations remain optional
-- **🛡️ Absolute Data Sovereignty:** Self-host on your own infrastructure (Docker, Coolify, Aspire, On-Prem) with total control over user and attendee data.
-- **📜 Declarative Configuration Manifests & Portability:** Automated Day 0 bootstrap and preview-first Day 2 configuration portability via strict, schema-validated JSON artifacts (`ConfigurationManifest` for instance administrators and `TenantConfigurationPackage` for tenant administrators). Features dry-run validation, side-effect-free preview diffs with target mapping, transactional atomic application of selected sections, pre-apply snapshots, append-only receipts, forward rollback, and zero secret/PII/payment data leakage — see [Configuration Manifest][configuration-manifest-doc]
-- **🎛️ Multi-Instance & Fleet Orchestration Ready:** Complete programmatic management support via configuration manifests and built-in management APIs (`/api/management/*`). For operators and Official Partners running fleets of instances at scale, a separate standalone fleet-orchestrator—**ISLAMU Event Control Plane**—is in development to glue multiple instances with PaaS engines (such as Coolify) for automated provisioning, SLA monitoring, and cross-instance backups.
+- **🔌 Model Context Protocol (MCP) Server:** Built-in MCP adapter at `/mcp` enabling AI agents and IDEs to discover public events and propose actions through authorized confirmation flows — see [MCP Debugging][mcp-debugging-doc]
+- **🧠 AI-Ready Foundation:** Provider-neutral AI assistant, RAG ingestion contracts, and proposal-first tooling wired through the same authorization and HAL affordance layer as the rest of the platform
+- **🌍 Decentralization & Federation:** Optional event federation across remote platforms and AT-Protocol authentication for user-owned identities
+- **🗄️ Privacy Erasure Authority:** GDPR-compliant user data erasure with choice of topology: co-located inside the main database or an isolated external PostgreSQL instance
+- **📬 Mailing List Integration (Listmonk):** Connect a self-hosted [Listmonk][listmonk-link] instance to sync attendee registrations, with independent privacy-erasure authority per tenant
+- **📚 Comprehensive Docs:** [Official hosted documentation][official-docs-link] alongside extensive repository documentation covering architecture, deployment, configuration, and APIs
+- **🔐 Enterprise Security:** BFF architecture, local or Cerbos authorization, environment-first secrets (optional Infisical), and HATEOAS REST API
+- **📜 Declarative Configuration Manifests & Portability:** Automated Day 0 bootstrap and Day 2 configuration portability via schema-validated JSON manifests (`ConfigurationManifest` and `TenantConfigurationPackage`) with dry-run validation, preview diffs, and rollback — see [Configuration Manifest][configuration-manifest-doc]
+- **🎛️ Multi-Instance & Fleet Orchestration Ready:** Complete programmatic control via management APIs (`/api/management/*`) and integration readiness for the upcoming ISLAMU Event Control Plane fleet orchestrator
 
 ## Deployment & Hosting Options
 
@@ -175,8 +174,8 @@ docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-ev
 ```
 
 Start with [Contributing](CONTRIBUTING.md). Code contributors should also read
-[Getting Started](docs/GETTING_STARTED.md) for profile modes, optional Compose profiles, validation commands, and troubleshooting links,
-[Governance](docs/GOVERNANCE.md), [Quick Reference](docs/QUICK_REFERENCE.md), and [Architecture](docs/ARCHITECTURE.md).
+[Getting Started](docs/internal/GETTING_STARTED.md) for profile modes, optional Compose profiles, validation commands, and troubleshooting links,
+[Governance](docs/internal/GOVERNANCE.md), [Quick Reference](docs/internal/QUICK_REFERENCE.md), and [Architecture](docs/internal/ARCHITECTURE.md).
 
 AI-assisted contributors should follow [`AGENTS.md`](AGENTS.md).
 
@@ -193,19 +192,21 @@ All non-bot contributors must sign the [ISLAMU Contributor License Agreement][cl
 
 ## 📚 Documentation
 
-The README is the entrypoint for new readers. [docs/index.md](docs/index.md) is the full documentation map once you know the area you need.
+> 📖 **Official Hosted Documentation:** Visit our [**official documentation portal**][official-docs-link] for comprehensive operator guides, deployment walkthroughs, and platform architecture.
+
+The README is the entrypoint for new readers. [docs/internal/index.md](docs/internal/index.md) is the full repository documentation map once you know the area you need.
 
 | Reader | Best first page | Use when |
 |---|---|---|
-| Evaluator | [Project](docs/PROJECT.md), [Architecture](docs/ARCHITECTURE.md), [Security Model](docs/SECURITY-MODEL.md) | You want product scope, status, and architecture context. |
-| Local developer | [Getting Started](docs/GETTING_STARTED.md), [Testing](docs/TESTING.md), [Troubleshooting](docs/TROUBLESHOOTING.md) | You want to build, run, and validate the app locally. |
-| Self-hoster/operator | [Self-Hosting](docs/SELF_HOSTING.md), [Configuration](docs/CONFIGURATION.md), [Configuration Manifest](docs/CONFIGURATION_MANIFEST.md), [Operations](docs/OPERATIONS.md), [Backup/Restore/Upgrade](docs/BACKUP_RESTORE_UPGRADE.md), [ERP Integration](docs/ERP_INTEGRATION_GUIDE.md) | You want Docker Compose, infrastructure, secrets, configuration manifests/portability, health checks, upgrades, or ERP white-label embedding. |
-| Contributor | [First Contribution](docs/FIRST_CONTRIBUTION.md), [Contributing](docs/CONTRIBUTING.md), [Quick Reference](docs/QUICK_REFERENCE.md) | You want the shortest safe path to a docs-only or small-bug PR. |
-| API integrator | [API Cookbook](docs/API_COOKBOOK.md), [API Reference](docs/API.md), [API Changelog](docs/API_CHANGELOG.md) | You want task-first API examples before the full API reference. |
-| Frontend contributor | [Blazor](docs/BLAZOR.md) | You want client architecture, render policies, and UI conventions. |
-| AI-assisted contributor | [AGENTS.md](AGENTS.md), [Contract Intents](.agents/contract/intents.yaml), [Quick Reference](docs/QUICK_REFERENCE.md) | You need the repository contribution contract and required context-loading rules. |
+| General / Evaluator | [Official Docs][official-docs-link], [Project](docs/internal/PROJECT.md), [Architecture](docs/internal/ARCHITECTURE.md) | You want hosted platform documentation, product scope, and architecture context. |
+| Local developer | [Getting Started](docs/internal/GETTING_STARTED.md), [Testing](docs/internal/TESTING.md), [Troubleshooting](docs/internal/TROUBLESHOOTING.md) | You want to build, run, and validate the app locally. |
+| Self-hoster/operator | [Official Docs][official-docs-link], [Self-Hosting](docs/internal/SELF_HOSTING.md), [Configuration](docs/internal/CONFIGURATION.md), [Configuration Manifest](docs/internal/CONFIGURATION_MANIFEST.md), [Operations](docs/internal/OPERATIONS.md), [Backup/Restore/Upgrade](docs/internal/BACKUP_RESTORE_UPGRADE.md), [ERP Integration](docs/internal/ERP_INTEGRATION_GUIDE.md) | You want hosted guides or repository docs for Docker Compose, infrastructure, secrets, configuration manifests/portability, health checks, upgrades, or ERP white-label embedding. |
+| Contributor | [First Contribution](docs/internal/FIRST_CONTRIBUTION.md), [Contributing](docs/internal/CONTRIBUTING.md), [Quick Reference](docs/internal/QUICK_REFERENCE.md) | You want the shortest safe path to a docs-only or small-bug PR. |
+| API integrator | [API Cookbook](docs/internal/API_COOKBOOK.md), [API Reference](docs/internal/API.md), [API Changelog](docs/internal/API_CHANGELOG.md) | You want task-first API examples before the full API reference. |
+| Frontend contributor | [Blazor](docs/internal/BLAZOR.md) | You want client architecture, render policies, and UI conventions. |
+| AI-assisted contributor | [AGENTS.md](AGENTS.md), [Contract Intents](.agents/contract/intents.yaml), [Quick Reference](docs/internal/QUICK_REFERENCE.md) | You need the repository contribution contract and required context-loading rules. |
 
-For the complete documentation inventory, use [docs/index.md](docs/index.md). If a page gives task steps and another page gives exact keys/contracts, treat the task page as the workflow and the reference page as the source of truth.
+For the complete documentation inventory, use [docs/internal/index.md](docs/internal/index.md). If a page gives task steps and another page gives exact keys/contracts, treat the task page as the workflow and the reference page as the source of truth.
 
 ## 🏗️ Technology Stack (v0.1.0)
 
@@ -338,7 +339,7 @@ For the full ethical and strategic design analysis, see the [I-VSD Strategy Revi
 
 The minimum operational deployment is the single `Event.Standalone` image: the ISLAMU Event API and Blazor BFF/UI run in one process with SQLite persistence. Application, Data Protection, and embedded privacy-erasure migrations run in that process before it accepts traffic. PostgreSQL, SQL Server, MariaDB, MySQL, Redis, Keycloak, Cerbos, MinIO/S3, SMTP/Mailpit, Svix, Weblate, Formbricks, Coop, Osprey, AI providers, federation services, and external observability backends are optional capabilities, not requirements of the standalone core.
 
-The AGPL-3.0-or-later license and any alternative license offered by ISLAMU apply only to material that ISLAMU owns or is authorized to license. Third-party libraries, container images, services, datasets, fonts, and other assets retain their respective licenses, public-domain status, and other applicable terms. Including an optional integration or deployment manifest in this repository does not relicense that third-party material. See the [Self-Hosting Guide](docs/SELF_HOSTING.md#third-party-software-and-license-boundary) and [release dependency policy](docs/CI_CD_GOVERNANCE.md#standalone-and-optional-service-license-boundary).
+The AGPL-3.0-or-later license and any alternative license offered by ISLAMU apply only to material that ISLAMU owns or is authorized to license. Third-party libraries, container images, services, datasets, fonts, and other assets retain their respective licenses, public-domain status, and other applicable terms. Including an optional integration or deployment manifest in this repository does not relicense that third-party material. See the [Self-Hosting Guide](docs/internal/SELF_HOSTING.md#third-party-software-and-license-boundary) and [release dependency policy](docs/internal/CI_CD_GOVERNANCE.md#standalone-and-optional-service-license-boundary).
 <div align="right">
 
 [![][back-to-top]][back-to-top-link]
@@ -350,38 +351,39 @@ The AGPL-3.0-or-later license and any alternative license offered by ISLAMU appl
 [back-to-top]: https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square
 [back-to-top-link]: #readme-top
 [islamu-platform]: https://event.openislamu.org
+[official-docs-link]: https://islamu.gitbook.io/islamu-event
 [event-list-image]: assets/event-list-image.png
 [roadmap-link]: https://sites.plane.so/views/b8b7d9fced694f5a9d9a546e9d40d988
 [roadmap-image]: assets/islamu-event-roadmap-screenshot.png
 [code-of-conduct]: CODE_OF_CONDUCT.md
-[master-reference-doc]: docs/index.md
-[project-doc]: docs/PROJECT.md
-[architecture-doc]: docs/ARCHITECTURE.md
-[api-doc]: docs/API.md
-[domain-doc]: docs/DOMAIN.md
-[operations-doc]: docs/OPERATIONS.md
-[configuration-doc]: docs/CONFIGURATION.md
-[configuration-manifest-doc]: docs/CONFIGURATION_MANIFEST.md
-[troubleshooting-doc]: docs/TROUBLESHOOTING.md
-[governance-doc]: docs/GOVERNANCE.md
-[quick-reference-doc]: docs/QUICK_REFERENCE.md
-[multi-tenancy-doc]: docs/MULTI_TENANCY.md
-[admin-hierarchy-doc]: docs/ADMIN_HIERARCHY.md
-[security-doc]: docs/SECURITY-MODEL.md
-[deployment-modes-doc]: docs/DEPLOYMENT_MODES.md
-[extensibility-doc]: docs/EXTENSIBILITY.md
-[modular-events-doc]: docs/MODULAR_EVENTS.md
-[render-policies-doc]: docs/RENDER_POLICIES.md
-[custom-properties-doc]: docs/CUSTOM_PROPERTIES.md
-[notifications-doc]: docs/NOTIFICATIONS.md
-[email-notifications-doc]: docs/EMAIL_NOTIFICATIONS.md
-[contact-sharing-doc]: docs/CONTACT_SHARING.md
-[authorization-doc]: docs/AUTHORIZATION.md
-[mcp-debugging-doc]: docs/MCP_DEBUGGING.md
-[payments-doc]: docs/PAYMENTS.md
-[federation-doc]: docs/FEDERATION.md
-[ai-rag-doc]: docs/AI_RAG_FOUNDATION.md
-[erp-integration-doc]: docs/ERP_INTEGRATION_GUIDE.md
+[master-reference-doc]: docs/internal/index.md
+[project-doc]: docs/internal/PROJECT.md
+[architecture-doc]: docs/internal/ARCHITECTURE.md
+[api-doc]: docs/internal/API.md
+[domain-doc]: docs/internal/DOMAIN.md
+[operations-doc]: docs/internal/OPERATIONS.md
+[configuration-doc]: docs/internal/CONFIGURATION.md
+[configuration-manifest-doc]: docs/internal/CONFIGURATION_MANIFEST.md
+[troubleshooting-doc]: docs/internal/TROUBLESHOOTING.md
+[governance-doc]: docs/internal/GOVERNANCE.md
+[quick-reference-doc]: docs/internal/QUICK_REFERENCE.md
+[multi-tenancy-doc]: docs/internal/MULTI_TENANCY.md
+[admin-hierarchy-doc]: docs/internal/ADMIN_HIERARCHY.md
+[security-doc]: docs/internal/SECURITY-MODEL.md
+[deployment-modes-doc]: docs/internal/DEPLOYMENT_MODES.md
+[extensibility-doc]: docs/internal/EXTENSIBILITY.md
+[modular-events-doc]: docs/internal/MODULAR_EVENTS.md
+[render-policies-doc]: docs/internal/RENDER_POLICIES.md
+[custom-properties-doc]: docs/internal/CUSTOM_PROPERTIES.md
+[notifications-doc]: docs/internal/NOTIFICATIONS.md
+[email-notifications-doc]: docs/internal/EMAIL_NOTIFICATIONS.md
+[contact-sharing-doc]: docs/internal/CONTACT_SHARING.md
+[authorization-doc]: docs/internal/AUTHORIZATION.md
+[mcp-debugging-doc]: docs/internal/MCP_DEBUGGING.md
+[payments-doc]: docs/internal/PAYMENTS.md
+[federation-doc]: docs/internal/FEDERATION.md
+[ai-rag-doc]: docs/internal/AI_RAG_FOUNDATION.md
+[erp-integration-doc]: docs/internal/ERP_INTEGRATION_GUIDE.md
 [security-policy]: SECURITY.md
 [privacy-policy]: https://openislamu.org/privacy
 [license-link]: LICENSE
@@ -403,6 +405,7 @@ The AGPL-3.0-or-later license and any alternative license offered by ISLAMU appl
 [github-discussions-shield]: https://img.shields.io/github/discussions/islamu-ngo/Event?color=594ae2&logo=github&style=flat-square
 [discord-shield]: https://img.shields.io/discord/1357505436479131668?color=%237289da&label=Discord&logo=discord&logoColor=%237289da&style=flat-square
 [discord-link]: https://discord.gg/wrkY824Yv5
+[docs-shield]: https://img.shields.io/badge/Documentation-Official-594ae2?style=flat-square
 
 [repobeats-image]: https://repobeats.axiom.co/api/embed/a0f11a3d9b80342b5f5965127c2c45871c9d3397.svg
 [contributors-image]: https://contrib.rocks/image?repo=islamu-ngo/Event
@@ -410,7 +413,7 @@ The AGPL-3.0-or-later license and any alternative license offered by ISLAMU appl
 
 [keycloak-link]: https://www.keycloak.org/
 [cerbos-link]: https://www.cerbos.dev/
-[webhooks-doc]: docs/WEBHOOKS.md
+[webhooks-doc]: docs/internal/WEBHOOKS.md
 [infisical-link]: https://infisical.com/
 [roost-coop-link]: https://roost.tools/coop
 [roost-osprey-link]: https://roost.tools/osprey

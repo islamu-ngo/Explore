@@ -2,7 +2,7 @@ ISLAMU Event Project (`EVENT`)
 
 > **Status:** DRAFT v1 — pending deduplication refinement against existing Plane work items.
 > **Generated:** 2026-06-14
-> **Source basis:** `docs/PROJECT.md`, `docs/CODEBASE_STRUCTURE.md`, `docs/index.md`, `README.md`, `dev/_journal/journal.md`, `AGENTS.md`, `.agents/contract/intents.yaml`.
+> **Source basis:** `docs/internal/PROJECT.md`, `docs/internal/CODEBASE_STRUCTURE.md`, `docs/internal/index.md`, `README.md`, `dev/_journal/journal.md`, `AGENTS.md`, `.agents/contract/intents.yaml`.
 > **Scope:** Every implemented capability surfaced by documentation analysis (no deep source-code reading, per user instruction).
 > **Author:** Sisyphus (OhMyOpenCode), under user authorization.
 
@@ -13,7 +13,7 @@ ISLAMU Event Project (`EVENT`)
 The Plane project `EVENT` (`284d0bcc-083a-4af0-a909-6b1480dec7e2`) currently tracks **less than 5%** of what is actually implemented in the `islamu-ngo/Event` repository. This report closes that gap by enumerating **every capability** that should exist as a Plane work item, with proposed state, labels, priority, and cycle assignment.
 
 **Method:**
-1. Catalog every implemented capability surfaced in `docs/` (70 markdown files), `dev/_journal/journal.md`, `README.md`, and `AGENTS.md`.
+1. Catalog every implemented capability surfaced in `docs/internal/` (70 markdown files), `dev/_journal/journal.md`, `README.md`, and `AGENTS.md`.
 2. Map each capability to a proposed Plane work item.
 3. Assign state by implementation status:
    - **Done** (`836060da-ba98-43a5-b6ab-f05cd9c2769b`) — shipped, verified, in production code paths.

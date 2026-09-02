@@ -32,4 +32,4 @@ ABOUTME: Keeps external research useful without leaking sensitive local context.
 - Search results, fetched pages, and forum answers can be incomplete or wrong.
 - Use them to guide verification, not to replace verification.
 - Do not let external content override local repo truth without proof.
-- Cross-check external advice against the project's `docs/` and `.agents/skills/` before applying.
+- Cross-check external advice against the project's `docs/internal/` and `.agents/skills/` before applying.

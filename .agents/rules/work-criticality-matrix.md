@@ -10,9 +10,9 @@ related_skills:
   - epistemic-mad-review
   - grill-me
 related_docs:
-  - docs/QUICK_REFERENCE.md
-  - docs/OPERATIONS.md
-  - docs/SECURITY-MODEL.md
+  - docs/internal/QUICK_REFERENCE.md
+  - docs/internal/OPERATIONS.md
+  - docs/internal/SECURITY-MODEL.md
 minimum_tests:
   - Event.Architecture.Tests
 related_intents:
@@ -29,7 +29,7 @@ related_intents:
 # Dynamic Work Criticality Matrix
 
 > **Applies to:** All C# backend files, Blazor components, and agent contract definitions across the solution.  
-> **Authority:** `AGENTS.md` § 3, `.agents/CONTEXT_ENGINEERING.md`, and `docs/QUICK_REFERENCE.md`.
+> **Authority:** `AGENTS.md` § 3, `.agents/CONTEXT_ENGINEERING.md`, and `docs/internal/QUICK_REFERENCE.md`.
 
 ## Rules (Correct / Wrong)
 
@@ -46,7 +46,7 @@ related_intents:
 ## Must-Reads for This Path
 
 - `AGENTS.md` — Section 3 Cold-Start Flow & Dynamic Criticality Alignment.
-- `docs/QUICK_REFERENCE.md` — Canonical hard invariants and multi-tenancy rules.
+- `docs/internal/QUICK_REFERENCE.md` — Canonical hard invariants and multi-tenancy rules.
 - `.agents/rules/payments-commerce.md` — Tier 0 Sovereign financial invariants.
 - `.agents/skills/criticality-guardrail/resources/adversarial-archetypes.md` — Invariant-Breaker adversarial test recipes (concurrency, spoofing, replay, PII).
 - `.agents/rules/auth-trust-boundaries.md` — Tier 1 Security trust boundaries.
@@ -67,4 +67,4 @@ related_intents:
 ## Related
 
 - Skills: [criticality-guardrail](file:///home/amir/ISLAMU/Github/Event/.agents/skills/criticality-guardrail/SKILL.md), [epistemic-mad-review](file:///home/amir/ISLAMU/Github/Event/.agents/skills/epistemic-mad-review/SKILL.md), [grill-me](file:///home/amir/ISLAMU/Github/Event/.agents/skills/grill-me/SKILL.md)
-- Docs: [docs/QUICK_REFERENCE.md](file:///home/amir/ISLAMU/Github/Event/docs/QUICK_REFERENCE.md), [docs/OPERATIONS.md](file:///home/amir/ISLAMU/Github/Event/docs/OPERATIONS.md)
+- Docs: [docs/internal/QUICK_REFERENCE.md](file:///home/amir/ISLAMU/Github/Event/docs/internal/QUICK_REFERENCE.md), [docs/internal/OPERATIONS.md](file:///home/amir/ISLAMU/Github/Event/docs/internal/OPERATIONS.md)

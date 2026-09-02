@@ -9,11 +9,11 @@ public sealed class OperationsDocumentationDoctorCheck(IDoctorFileSystem fileSys
 {
     private static readonly string[] RequiredDocs =
     [
-        "docs/OPERATIONS.md",
-        "docs/TROUBLESHOOTING.md",
-        "docs/CONFIGURATION.md",
-        "docs/SELF_HOSTING.md",
-        "docs/SECRETS.md",
+        "docs/internal/OPERATIONS.md",
+        "docs/internal/TROUBLESHOOTING.md",
+        "docs/internal/CONFIGURATION.md",
+        "docs/internal/SELF_HOSTING.md",
+        "docs/internal/SECRETS.md",
     ];
 
     public string Code => "docs.remediation-links";
@@ -34,7 +34,7 @@ public sealed class OperationsDocumentationDoctorCheck(IDoctorFileSystem fileSys
                 Category,
                 "Some doctor remediation documents are missing.",
                 $"Restore or update remediation links for: {string.Join(", ", missing)}.",
-                "docs/OPERATIONS.md"));
+                "docs/internal/OPERATIONS.md"));
         }
 
         return Task.FromResult(DoctorCheckResult.Pass(
@@ -42,6 +42,6 @@ public sealed class OperationsDocumentationDoctorCheck(IDoctorFileSystem fileSys
             Category,
             "Required operator remediation documents exist.",
             "Keep docs links current whenever doctor checks are added or changed.",
-            "docs/OPERATIONS.md"));
+            "docs/internal/OPERATIONS.md"));
     }
 }

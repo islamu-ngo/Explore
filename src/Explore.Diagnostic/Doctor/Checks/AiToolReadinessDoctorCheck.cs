@@ -53,9 +53,9 @@ public sealed class AiToolReadinessDoctorCheck : IDoctorCheck
             }
         }
 
-        AddMissingPath(findings, "docs/AI_AGENT_CONTRACT_INVENTORY.md");
-        AddMissingPath(findings, "docs/AI_RAG_FOUNDATION.md");
-        AddMissingPath(findings, "docs/AI_AGENT_EXPERIENCE_HARDENING.md");
+        AddMissingPath(findings, "docs/internal/AI_AGENT_CONTRACT_INVENTORY.md");
+        AddMissingPath(findings, "docs/internal/AI_RAG_FOUNDATION.md");
+        AddMissingPath(findings, "docs/internal/AI_AGENT_EXPERIENCE_HARDENING.md");
         AddMissingPath(findings, "Event.Application.UnitTests/Features/AiAssistant/Context/AiSafeDataContextSummaryPolicyTests.cs");
         AddMissingPath(findings, "Event.Application.UnitTests/Features/AiAssistant/Plans/AiProposedPlanValidatorTests.cs");
         AddMissingPath(findings, "Event.Application.UnitTests/Features/AiAssistant/Tools/CreateEventDraftAiToolDefinitionTests.cs");
@@ -69,7 +69,7 @@ public sealed class AiToolReadinessDoctorCheck : IDoctorCheck
                 Category,
                 "AI tool readiness has review items.",
                 "Review missing registry schema, mapper, HAL rel, tests, generated inventory, docs, and OpenAPI/client regeneration evidence before exposing new tools.",
-                "docs/AI_AGENT_CONTRACT_INVENTORY.md",
+                "docs/internal/AI_AGENT_CONTRACT_INVENTORY.md",
                 string.Join(", ", findings.Order(StringComparer.Ordinal))));
         }
 
@@ -78,7 +78,7 @@ public sealed class AiToolReadinessDoctorCheck : IDoctorCheck
             Category,
             "AI tool readiness artifacts are present for registered tools.",
             "Keep readiness evidence current whenever registry tools, HAL rels, tests, docs, or generated inventories change.",
-            "docs/AI_AGENT_CONTRACT_INVENTORY.md"));
+            "docs/internal/AI_AGENT_CONTRACT_INVENTORY.md"));
     }
 
     private void AddMissingPath(List<string> findings, string relativePath)

@@ -109,7 +109,7 @@ git show --name-only --format=fuller HEAD
 
 ## Resources
 
-- [Release policy](../../../docs/RELEASE_POLICY.md)
+- [Release policy](../../../docs/internal/RELEASE_POLICY.md)
 - [Release policy schema](../../../eng/release/policy/release-policy.yaml)
 - [Scope registry](../../../eng/release/policy/scope-registry.yaml)
 - [Conventional Commits 1.0](https://www.conventionalcommits.org/en/v1.0.0/)

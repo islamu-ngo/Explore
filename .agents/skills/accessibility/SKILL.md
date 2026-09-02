@@ -9,7 +9,7 @@ priority: high
 <!-- ABOUTME: Routes agents to local WCAG 2.2 AA rules, implementation patterns, and verification evidence. -->
 
 ## Must-Read Docs
-- [Accessibility Standards](../../../docs/ACCESSIBILITY.md)
+- [Accessibility Standards](../../../docs/internal/ACCESSIBILITY.md)
 - [Accessibility Resources](resources/index.md)
 - [Blazor UI Conventions](../blazor-ui-conventions/SKILL.md)
 
@@ -18,7 +18,7 @@ priority: high
 2. Every routable page has a descriptive `PageTitle`, exactly one project-required `h1`, sequential headings, and logical DOM order while relying on `MainLayout` for skip navigation, landmarks, live regions, direction, and navigation focus.
 3. Every action is keyboard operable with its native or WAI-ARIA pattern, uses no positive `tabindex`, keeps focus visible and unobscured, and restores focus after dialogs or drawers through `IAccessibilityFocusService`.
 4. Every form control has a programmatic label and connected help/error text, while dynamic status is announced once with polite or assertive urgency only when focus does not already convey the change.
-5. Images, color, contrast, motion, pointer targets, dragging alternatives, reflow, zoom, forced colors, and RTL logical properties satisfy `docs/ACCESSIBILITY.md` and receive risk-proportionate rendered and manual verification.
+5. Images, color, contrast, motion, pointer targets, dragging alternatives, reflow, zoom, forced colors, and RTL logical properties satisfy `docs/internal/ACCESSIBILITY.md` and receive risk-proportionate rendered and manual verification.
 
 ## Top 5 Anti-Patterns
 1. **Simulated native control:** A clickable `div`, `span`, or card recreates button or link semantics and leaves keyboard behavior incomplete.

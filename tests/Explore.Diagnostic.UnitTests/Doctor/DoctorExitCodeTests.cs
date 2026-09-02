@@ -11,8 +11,8 @@ public class DoctorExitCodeTests
     public async Task FromReport_WithOnlyPassAndWarn_ReturnsSuccess()
     {
         var report = new DoctorReport([
-            DoctorCheckResult.Pass("pass", DoctorCheckCategory.Tooling, "ok", "none", "docs/OPERATIONS.md"),
-            DoctorCheckResult.Warn("warn", DoctorCheckCategory.Configuration, "warn", "fix", "docs/TROUBLESHOOTING.md"),
+            DoctorCheckResult.Pass("pass", DoctorCheckCategory.Tooling, "ok", "none", "docs/internal/OPERATIONS.md"),
+            DoctorCheckResult.Warn("warn", DoctorCheckCategory.Configuration, "warn", "fix", "docs/internal/TROUBLESHOOTING.md"),
         ]);
 
         await Assert.That(DoctorExitCodes.FromReport(report)).IsEqualTo(DoctorExitCodes.Success);
@@ -22,7 +22,7 @@ public class DoctorExitCodeTests
     public async Task FromReport_WithFail_ReturnsHardFailure()
     {
         var report = new DoctorReport([
-            DoctorCheckResult.Fail("fail", DoctorCheckCategory.Tooling, "failed", "fix", "docs/TROUBLESHOOTING.md"),
+            DoctorCheckResult.Fail("fail", DoctorCheckCategory.Tooling, "failed", "fix", "docs/internal/TROUBLESHOOTING.md"),
         ]);
 
         await Assert.That(DoctorExitCodes.FromReport(report)).IsEqualTo(DoctorExitCodes.HardFailure);

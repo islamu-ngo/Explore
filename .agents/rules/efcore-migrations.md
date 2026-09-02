@@ -4,7 +4,7 @@ description: Apply when editing Explore.Persistence migration files or model sna
 paths:
   - "src/Explore.Persistence/Migrations/**/*.cs"
 related_skills: [dotnet-efcore-guidelines]
-related_docs: [docs/CODEBASE_INSIGHTS.md, docs/QUICK_REFERENCE.md, docs/DOMAIN.md]
+related_docs: [docs/internal/CODEBASE_INSIGHTS.md, docs/internal/QUICK_REFERENCE.md, docs/internal/DOMAIN.md]
 minimum_tests: [Event.Persistence.IntegrationTests, Event.Architecture.Tests]
 related_intents: [add-ef-migration]
 ---
@@ -30,8 +30,8 @@ related_intents: [add-ef-migration]
 - **Snapshot Accuracy**: Ensure the `ModelSnapshot` is updated and reflects the final intended model state.
 
 ## Must Read
-- [docs/QUICK_REFERENCE.md#auditing-and-soft-delete](../../docs/QUICK_REFERENCE.md#auditing-and-soft-delete)
-- [docs/DOMAIN.md](../../docs/DOMAIN.md)
+- [docs/internal/QUICK_REFERENCE.md#auditing-and-soft-delete](../../docs/internal/QUICK_REFERENCE.md#auditing-and-soft-delete)
+- [docs/internal/DOMAIN.md](../../docs/internal/DOMAIN.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

@@ -19,10 +19,10 @@ The answer exists in this repository. Examples:
 | DI registration | `**/DependencyInjection.cs`, `Program.cs` |
 | Middleware pipeline order | `Event.API/Program.cs` |
 | Blazor component behavior | `Explore.Blazor.Client/` |
-| Domain entity rules | `Event.Domain/Entities/`, `docs/DOMAIN.md` |
-| Repo conventions | `AGENTS.md`, `docs/GOVERNANCE.md`, `docs/QUICK_REFERENCE.md` |
-| Test expectations | `Event.Architecture.Tests/`, `docs/TESTING.md` |
-| Config/settings | `docs/CONFIGURATION.md`, `appsettings*.json` |
+| Domain entity rules | `Event.Domain/Entities/`, `docs/internal/DOMAIN.md` |
+| Repo conventions | `AGENTS.md`, `docs/internal/GOVERNANCE.md`, `docs/internal/QUICK_REFERENCE.md` |
+| Test expectations | `Event.Architecture.Tests/`, `docs/internal/TESTING.md` |
+| Config/settings | `docs/internal/CONFIGURATION.md`, `appsettings*.json` |
 
 ## Escalate To Official Docs When
 

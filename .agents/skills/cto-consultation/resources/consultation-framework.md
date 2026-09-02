@@ -49,7 +49,7 @@ Use these lenses before recommending a feature shape.
 A complete consultation should include:
 
 1. Decision: one sentence naming the actual choice.
-2. Current facts: repo-grounded facts from docs/code, not generic architecture theory.
+2. Current facts: repo-grounded facts from docs/internal/code, not generic architecture theory.
 3. Options: usually 2-4 realistic options, including "defer" when valid.
 4. Recommendation: a clear default, not an endless list.
 5. Rationale: tradeoffs across product, architecture, security, operations, and UX.

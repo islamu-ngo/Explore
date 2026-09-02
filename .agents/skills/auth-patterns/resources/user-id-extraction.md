@@ -68,4 +68,4 @@ location, while principal-extension and controller behavior tests exercise the
 single canonical claim chain. Purpose-bound authentication schemes remain
 separate by protocol behavior rather than a source-file allowlist.
 
-**Related**: `auth-patterns` skill; `docs/CODEBASE_INSIGHTS.md` §15.
+**Related**: `auth-patterns` skill; `docs/internal/CODEBASE_INSIGHTS.md` §15.

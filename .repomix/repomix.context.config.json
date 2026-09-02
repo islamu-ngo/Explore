@@ -28,8 +28,8 @@
   },
   "ignore": {
     "customPatterns": [
-      "docs/semantic_versioning/**/*",
-      "docs/docs-website/**/*",
+      "docs/internal/semantic_versioning/**/*",
+      "docs/public/**/*",
       ".claude/hooks/**/*",
       ".claude/commands/",
       ".claude/build-cache/**",

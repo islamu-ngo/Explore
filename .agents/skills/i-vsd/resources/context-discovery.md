@@ -18,7 +18,7 @@ In planning mode, the explicit implementation-plan request satisfies this agreem
 Before deep analysis, quickly inventory context channels to choose evidence sources. Do not dump every visible file, tool, skill, command, MCP, or integration into the user-facing response.
 
 1. Workspace, repository, source package, or filesystem context: summarize as docs, text artifacts, policies, plans, code/config/tests, reports, and generated outputs.
-2. Project-context MCPs or hosted integrations: issue trackers, roadmaps, docs/knowledge bases, product docs, support, incidents, observability, analytics, or customer feedback systems.
+2. Project-context MCPs or hosted integrations: issue trackers, roadmaps, docs/internal/knowledge bases, product docs, support, incidents, observability, analytics, or customer feedback systems.
 3. Project-context CLIs: authenticated tools that expose tickets, docs, source-control discussions/PRs, cloud/runtime posture, incidents, support, or analytics.
 4. Retrieval skills or workflow helpers: only those that retrieve project context, review project commitments, or guide evidence collection.
 5. User-provided paths, exported documents, screenshots, URLs, or access instructions.
@@ -100,7 +100,7 @@ Also check external or non-workspace context sources when visible and relevant:
 ## Search Procedure
 
 1. Identify the requested I-VSD action and likely domains from [action-routing.md](action-routing.md).
-2. Inventory local docs/text artifacts, relevant context-retrieval skills, visible project-context MCPs/integrations, user-provided paths, and relevant authenticated CLIs before reading code-heavy areas.
+2. Inventory local docs/internal/text artifacts, relevant context-retrieval skills, visible project-context MCPs/integrations, user-provided paths, and relevant authenticated CLIs before reading code-heavy areas.
 3. Send the concise first response contract to the user, listing only relevant available context, material missing context, planned output files, and whether project-context MCP/CLI/filesystem context would improve the review.
 4. After user confirmation, run the standalone alignment gate and check whether the canonical subject report already exists so the work can update it instead of writing from scratch. For `guided-discovery`, run its interview with one material question per response before writing the report.
 5. Search for value-bearing terms such as privacy, consent, retention, telemetry, tracking, ads, pricing, billing, refund, cancellation, moderation, appeal, abuse, safety, accessibility, security, admin, partner, sponsor, AI, model, ranking, recommendation, policy, terms, rights, user data, deletion, export, lock-in, incident, and support.

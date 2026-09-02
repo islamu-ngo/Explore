@@ -42,4 +42,4 @@ Footer data resolution for the public config endpoint:
 
 - `resources/data-model.md` — settings keys
 - `resources/api-endpoints.md` — endpoints that enforce locks
-- `docs/MULTI_TENANCY.md` — broader multi-tenancy rules
+- `docs/internal/MULTI_TENANCY.md` — broader multi-tenancy rules

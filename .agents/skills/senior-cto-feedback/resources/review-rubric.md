@@ -163,7 +163,7 @@ Check:
 | Score | Meaning |
 |---|---|
 | 5 | Operators can deploy, configure, observe, recover, and upgrade |
-| 3 | Basic config exists but docs/health/recovery are incomplete |
+| 3 | Basic config exists but docs/internal/health/recovery are incomplete |
 | 1 | Works only for local dev or SaaS assumptions |
 
 Check:

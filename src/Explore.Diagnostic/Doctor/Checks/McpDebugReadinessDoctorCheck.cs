@@ -9,8 +9,8 @@ public sealed class McpDebugReadinessDoctorCheck(IDoctorFileSystem fileSystem, s
 {
     private static readonly string[] RequiredPaths =
     [
-        "docs/MCP_DEBUGGING.md",
-        "docs/adr/ADR-011-local-mcp-stdio-diagnostic-host.md",
+        "docs/internal/MCP_DEBUGGING.md",
+        "docs/internal/adr/ADR-011-local-mcp-stdio-diagnostic-host.md",
         "Event.API.IntegrationTests/Features/McpProtocolContractTests.cs",
         "Event.API.IntegrationTests/Features/McpProjectedToolTests.cs",
         "Explore.Diagnostic/AiReplay/AiReplayScenarioCodes.cs",
@@ -42,7 +42,7 @@ public sealed class McpDebugReadinessDoctorCheck(IDoctorFileSystem fileSystem, s
                 Category,
                 "MCP debug/test readiness has review items.",
                 "Review redacted MCP debug docs, protocol tests, deterministic replay/evaluation coverage, local-secret ignore rules, and the stdio decision ADR before changing MCP client behavior.",
-                "docs/MCP_DEBUGGING.md",
+                "docs/internal/MCP_DEBUGGING.md",
                 string.Join(", ", findings.Order(StringComparer.Ordinal))));
         }
 
@@ -51,12 +51,12 @@ public sealed class McpDebugReadinessDoctorCheck(IDoctorFileSystem fileSystem, s
             Category,
             "MCP debug/test readiness artifacts are present and review-first.",
             "Keep MCP debugging disabled-by-default, stateless, authenticated, redacted, proposal-first, and covered by protocol tests plus deterministic replay/evaluation evidence.",
-            "docs/MCP_DEBUGGING.md"));
+            "docs/internal/MCP_DEBUGGING.md"));
     }
 
     private void AddDocumentationFindings(List<string> findings)
     {
-        var docsPath = Path.Combine(repositoryRoot, "docs/MCP_DEBUGGING.md");
+        var docsPath = Path.Combine(repositoryRoot, "docs/internal/MCP_DEBUGGING.md");
         if (!fileSystem.FileExists(docsPath))
         {
             return;

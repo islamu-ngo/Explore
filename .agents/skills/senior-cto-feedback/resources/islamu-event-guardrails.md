@@ -83,7 +83,7 @@ Planning implications:
 Every implementation plan should tell future agents:
 
 1. what kind of change this is,
-2. which authoritative docs/rules apply,
+2. which authoritative docs/internal/rules apply,
 3. which files must be read first,
 4. which files are expected to change,
 5. which tests must run,
@@ -254,16 +254,16 @@ Plans should include docs updates when behavior changes.
 
 Likely docs:
 
-- `docs/API.md`
-- `docs/API_CHANGELOG.md`
-- `docs/CONFIGURATION.md`
-- `docs/SELF_HOSTING.md`
-- `docs/OPERATIONS.md`
-- `docs/SECURITY_OVERVIEW.md`
-- `docs/MULTI_TENANCY.md`
-- `docs/BLAZOR.md`
-- `docs/TESTING.md`
-- `docs/TROUBLESHOOTING.md`
+- `docs/internal/API.md`
+- `docs/internal/API_CHANGELOG.md`
+- `docs/internal/CONFIGURATION.md`
+- `docs/internal/SELF_HOSTING.md`
+- `docs/internal/OPERATIONS.md`
+- `docs/internal/SECURITY_OVERVIEW.md`
+- `docs/internal/MULTI_TENANCY.md`
+- `docs/internal/BLAZOR.md`
+- `docs/internal/TESTING.md`
+- `docs/internal/TROUBLESHOOTING.md`
 
 Docs should focus on non-inferable facts:
 

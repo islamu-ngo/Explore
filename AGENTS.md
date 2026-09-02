@@ -15,13 +15,13 @@ Every change must answer these eight questions **before editing any file**:
 | # | Question | Source of Truth |
 |---|---|---|
 | 1 | What kind of change is this? (the *intent*) | [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml) |
-| 2 | Which rules are authoritative? | [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md) + [`.agents/rules/*.md`](.agents/rules/) |
+| 2 | Which rules are authoritative? | [`docs/internal/QUICK_REFERENCE.md`](docs/internal/QUICK_REFERENCE.md) + [`.agents/rules/*.md`](.agents/rules/) |
 | 3 | Which files must be read first? | The intent's `must_read_docs` field |
 | 4 | Which files may be changed? | The intent's `paths_in_scope` field |
 | 5 | Which tests must run at minimum? | The intent's `minimum_tests` field |
 | 6 | Which docs must be updated? | The intent's `docs_to_update` field |
 | 7 | Which PR checklist applies? | The intent's `pr_checklist` field |
-| 8 | What is forbidden? | The intent's `forbidden_without_approval` + `QUICK_REFERENCE.md` |
+| 8 | What is forbidden? | The intent's `forbidden_without_approval` + `docs/internal/QUICK_REFERENCE.md` |
 
 ---
 
@@ -30,10 +30,10 @@ Every change must answer these eight questions **before editing any file**:
 | Concern | Canonical File | Purpose |
 |---|---|---|
 | AI agent contract | `AGENTS.md` (this) | Every agent starts here |
-| Invariant reference | `docs/QUICK_REFERENCE.md` | Global hard constraints |
-| Governance | `docs/GOVERNANCE.md` | Conventions, design patterns |
+| Invariant reference | `docs/internal/QUICK_REFERENCE.md` | Global hard constraints |
+| Governance | `docs/internal/GOVERNANCE.md` | Conventions, design patterns |
 | Intent registry | `.agents/contract/intents.yaml` | Machine-readable task mapping |
-| Operations | `docs/OPERATIONS.md` | Build/Test details, AI operational rules |
+| Operations | `docs/internal/OPERATIONS.md` | Build/Test details, AI operational rules |
 | Durable findings | `dev/_journal/journal.md` | Decisions, non-obvious patterns |
 
 ---
@@ -58,8 +58,8 @@ Every change must answer these eight questions **before editing any file**:
 ## 4. Rule Authority Order (Conflict Resolution)
 
 1. **CRITICAL RULES** (Section 5 below)
-2. **`docs/QUICK_REFERENCE.md`** — Global project invariants
-3. **`docs/GOVERNANCE.md`** — Coding conventions and patterns
+2. **`docs/internal/QUICK_REFERENCE.md`** — Global project invariants
+3. **`docs/internal/GOVERNANCE.md`** — Coding conventions and patterns
 4. **Matching `.agents/rules/*.md`** — Path-scoped deltas
 
 ---
@@ -75,13 +75,14 @@ Every change must answer these eight questions **before editing any file**:
 5. Every file must start with a two-line `ABOUTME:` comment summary.
 6. **HAL links are the single source of truth for UI**: Clients must gate action affordances (Edit/Delete) by checking `_links` presence, never local role/claim inspection.
 7. **EF Core migrations are generated artifacts**: Never hand-edit migration or model-snapshot files. Fix entities/configurations or the migration generator, then delete and regenerate an unapplied development migration with `dotnet ef migrations`.
-8. **IP, clean-room, and outbound-license protection**: Never ingest third-party copyleft, source-available, proprietary, or otherwise incompatible source code, snippets, ASTs, SQL, migrations, tests, comments, or assets into implementation context or copy them into this repository. Externally informed work must pass through a source-free functional specification and use independently designed project-native structure, sequence, and organization. A dependency is forbidden unless its terms preserve every intended ISLAMU outbound licensing path or the Project Steward has documented separate licensing and distribution approval. See [`docs/legal/IP_GOVERNANCE.md`](docs/legal/IP_GOVERNANCE.md).
+8. **IP, clean-room, and outbound-license protection**: Never ingest third-party copyleft, source-available, proprietary, or otherwise incompatible source code, snippets, ASTs, SQL, migrations, tests, comments, or assets into implementation context or copy them into this repository. Externally informed work must pass through a source-free functional specification and use independently designed project-native structure, sequence, and organization. A dependency is forbidden unless its terms preserve every intended ISLAMU outbound licensing path or the Project Steward has documented separate licensing and distribution approval. See [`docs/internal/legal/IP_GOVERNANCE.md`](docs/internal/legal/IP_GOVERNANCE.md).
 9. **Agent tooling and execution boundary (No Python/JS scripts)**: Agents must NEVER run or generate ad-hoc Python (`python`, `python3`, `python -c`) or JavaScript/Node (`node`, `npm`, `node -e`) helper scripts. File edits must use native agent editing tools (`apply_patch`, `replace_file_content`, `write_to_file`). Shell tasks must use standard POSIX Bash commands. Creating scripts is an absolute last resort (only when there is overwhelming, lasting ROI); any persistent repo tool belongs in `eng/` (e.g. `eng/scripts/` or `eng/tools/`) as a C# file-based script (`dotnet run eng/.../*.cs`) or Bash script. Never put dev tools in `.ci/scripts/` (strictly for CI/CD pipelines).
 10. **Secrets Isolation & Source of Truth**: Secrets, passwords, API tokens, connection strings, and encryption keys must NEVER be hard-coded, embedded, or defined in `Explore.AppHost` (`AppHost.cs`), test files/fixtures, controllers, appsettings, or anywhere in source code. Secrets originate strictly from **Infisical**, explicit environment injection documented by **`.env.example`**, or the explicitly selected shared **.NET User Secrets** authority in **Development/Testing only**. User Secrets are rejected in every other environment and never act as fallback. Tests and local hosting must bind dynamically via an approved authority or secret provider mocks—never inline plaintext credentials.
 11. **Greenfield Breaking Change Freedom (No Backward Compatibility Baggage)**: This repository is pre-release with 0 external adopters. Never preserve obsolete endpoints, bad DTO shapes, legacy columns, or adapter shims for backward compatibility. Breaking changes are encouraged whenever they simplify code or align with Clean Architecture.
 12. **Strict Test Quality Over Quantity (No Mock-Mirroring or Scraping)**: Tests MUST guard true business invariants, rich domain state machines, concurrency races, tenant isolation, and security fail-closed semantics. Prohibit tautological mock-mirroring (`Received(1)`), framework-testing boilerplate (testing EF Core cancellation), raw source-code / CSS text scraping, and ephemeral mutation test project sprawl.
+13. **Dual-Documentation Parity (Public vs Internal)**: Any change impacting external configuration (`.env.example`), deployment topologies (`docker-compose.yml`), public API endpoints, or self-hosting runbooks MUST update both the technical source anchor in `docs/internal/` and the public adopter guide in `docs/public/` (synced to GitBook) within the same PR. See `docs/internal/DOCUMENTATION_ARCHITECTURE.md`.
 
-**Full list:** [`docs/QUICK_REFERENCE.md`](docs/QUICK_REFERENCE.md)
+**Full list:** [`docs/internal/QUICK_REFERENCE.md`](docs/internal/QUICK_REFERENCE.md)
 
 ---
 
@@ -92,8 +93,8 @@ Every change must answer these eight questions **before editing any file**:
 | New request | [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml) — find `triggers` |
 | Known path | [`.agents/rules/`](.agents/rules/) — find matching `paths` |
 | Pattern/Skill | [`.agents/skills/`](.agents/skills/) — load relevant `SKILL.md` |
-| Build/Test | [`docs/OPERATIONS.md#verification-policy`](docs/OPERATIONS.md) |
-| UI Workflow | [`docs/BLAZOR_DEV_WORKFLOW.md`](docs/BLAZOR_DEV_WORKFLOW.md) |
+| Build/Test | [`docs/internal/OPERATIONS.md#verification-policy`](docs/internal/OPERATIONS.md#verification-policy) |
+| UI Workflow | [`docs/internal/BLAZOR_DEV_WORKFLOW.md`](docs/internal/BLAZOR_DEV_WORKFLOW.md) |
 | Agent Ops | [`.agents/CONTEXT_ENGINEERING.md`](.agents/CONTEXT_ENGINEERING.md) |
 | PR Review | [`.agents/skills/review-pr/SKILL.md`](.agents/skills/review-pr/SKILL.md) |
 | Log Finding | [`.agents/skills/finding/SKILL.md`](.agents/skills/finding/SKILL.md) |
@@ -107,11 +108,11 @@ When a task touches a topic covered by docs, skills, or rules, retrieve the **sm
 **Required context:**
 - Use this file from injected session context; do not reread it when it is already present.
 - Resolve only the matching entry from [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml); never load the full registry into task context.
-- Load only the required headings from relevant `docs/*.md`, the matching skill routers, and matching path rules.
+- Load only the required headings from relevant `docs/internal/*.md`, the matching skill routers, and matching path rules.
 - Prefer graph, outline, symbol, heading, and diff retrieval over full-file reads.
 - **Zero-Turn Blast Radius**: For multi-layer or high-criticality tasks, perform pre-flight impact analysis on Turn 1 via `code-review-graph` MCP tools (`get_impact_radius_tool`, `get_affected_flows_tool`) to inject a bounded structural context slice (Callers, Callees, Impacted Flows, Tests) into intake/planning before exploring files.
 - Reuse an in-session `path + heading/symbol + revision` ledger. Reread only after the source changes, a concrete decision lacks evidence, or contradictory evidence appears.
-- Before external functional research, third-party design analysis, or dependency selection, load the relevant sections of [`.agents/skills/ip-clean-room/SKILL.md`](.agents/skills/ip-clean-room/SKILL.md) and [`docs/legal/IP_GOVERNANCE.md`](docs/legal/IP_GOVERNANCE.md); do not load the full legal chain for ordinary official framework documentation.
+- Before external functional research, third-party design analysis, or dependency selection, load the relevant sections of [`.agents/skills/ip-clean-room/SKILL.md`](.agents/skills/ip-clean-room/SKILL.md) and [`docs/internal/legal/IP_GOVERNANCE.md`](docs/internal/legal/IP_GOVERNANCE.md); do not load the full legal chain for ordinary official framework documentation.
 
 ---
 
@@ -129,7 +130,7 @@ Before the first product edit, establish the green baseline once for code change
 dotnet build --configuration Release --verbosity quiet
 ```
 
-**Full Test List:** [`docs/OPERATIONS.md#full-project-test-list`](docs/OPERATIONS.md)
+**Full Test List:** [`docs/internal/OPERATIONS.md#full-project-test-list`](docs/internal/OPERATIONS.md#full-project-test-list)
 
 ---
 

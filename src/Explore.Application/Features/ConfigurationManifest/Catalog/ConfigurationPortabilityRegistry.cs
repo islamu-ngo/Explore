@@ -126,7 +126,7 @@ public static class ConfigurationPortabilityRegistry
                 false,
                 "configuration_portability_extension_pack_required",
                 "configuration_portability_extension_pack_required",
-                "docs/EXTENSIBILITY.md",
+                "docs/internal/EXTENSIBILITY.md",
                 "Extension registry"),
             Excluded(
                 "excluded.secrets",
@@ -206,7 +206,7 @@ public static class ConfigurationPortabilityRegistry
             false,
             "configuration_portability_section_not_serialized",
             "configuration_portability_section_not_serialized",
-            "docs/CONFIGURATION_MANIFEST.md#section-coverage",
+            "docs/internal/CONFIGURATION_MANIFEST.md#section-coverage",
             owner);
 
     private static ConfigurationPortabilitySectionDescriptor Portable(
@@ -234,7 +234,7 @@ public static class ConfigurationPortabilityRegistry
             false,
             string.Empty,
             string.Empty,
-            "docs/CONFIGURATION_MANIFEST.md",
+            "docs/internal/CONFIGURATION_MANIFEST.md",
             owner);
 
     private static ConfigurationPortabilitySectionDescriptor Excluded(
@@ -260,6 +260,6 @@ public static class ConfigurationPortabilityRegistry
             false,
             omissionReasonCode,
             omissionReasonCode,
-            "docs/CONFIGURATION_MANIFEST.md#excluded-authority",
+            "docs/internal/CONFIGURATION_MANIFEST.md#excluded-authority",
             owner);
 }

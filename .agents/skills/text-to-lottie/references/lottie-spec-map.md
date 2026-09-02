@@ -5,7 +5,7 @@ curated map of the upstream spec for this project, not a replacement for it.
 
 Upstream specs:
 
-- https://github.com/lottie/lottie-spec/tree/main/docs/specs
+- https://github.com/lottie/lottie-spec/tree/main/docs/internal/specs
 
 ## Core Structure
 

@@ -36,7 +36,7 @@ For each item in the intent's `pr_checklist`, collect evidence:
 | Docs updated | File paths + diff |
 | Rule adherence | Lint / architecture test output |
 | Authorization correct | `AuthorizationParityTests` output |
-| Contract unchanged (or CHANGELOG entry) | `ApiContractArchitectureTests` output + `docs/API_CHANGELOG.md` diff |
+| Contract unchanged (or CHANGELOG entry) | `ApiContractArchitectureTests` output + `docs/internal/API_CHANGELOG.md` diff |
 
 Any item without evidence is a blocker.
 
@@ -83,10 +83,10 @@ dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.cs
 
 ## Step 6 — Documentation Sanity
 
-- [ ] `docs/QUICK_REFERENCE.md` updated if a new invariant was introduced.
-- [ ] `docs/API_CHANGELOG.md` updated if a public contract changed.
+- [ ] `docs/internal/QUICK_REFERENCE.md` updated if a new invariant was introduced.
+- [ ] `docs/internal/API_CHANGELOG.md` updated if a public contract changed.
 - [ ] `dev/_journal/journal.md` appended if a non-obvious finding emerged.
-- [ ] `docs/index.md` cross-references still resolve; use [`AGENTS.md`](../../../AGENTS.md) and [`docs/OPERATIONS.md`](../../../docs/OPERATIONS.md) as the canonical verification entrypoints.
+- [ ] `docs/internal/index.md` cross-references still resolve; use [`AGENTS.md`](../../../AGENTS.md) and [`docs/internal/OPERATIONS.md`](../../../docs/internal/OPERATIONS.md) as the canonical verification entrypoints.
 
 ## Step 7 — Forbidden-Without-Approval Gate
 
@@ -117,5 +117,5 @@ Outstanding questions: <list or None>
 ## Related
 
 - [`AGENTS.md`](../../../AGENTS.md) — get to a valid PR state.
-- [`docs/OPERATIONS.md`](../../../docs/OPERATIONS.md) — run the repository verification commands.
-- [`docs/DOCUMENTATION_STYLE_GUIDE.md`](../../../docs/DOCUMENTATION_STYLE_GUIDE.md) — review documentation accuracy and links.
+- [`docs/internal/OPERATIONS.md`](../../../docs/internal/OPERATIONS.md) — run the repository verification commands.
+- [`docs/internal/DOCUMENTATION_STYLE_GUIDE.md`](../../../docs/internal/DOCUMENTATION_STYLE_GUIDE.md) — review documentation accuracy and links.

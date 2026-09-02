@@ -10,7 +10,7 @@ Claude Code auto-loads rule files in this folder when the file being edited matc
 | Principle | Meaning |
 |---|---|
 | Intent first | `intents.yaml` is primary; path rules refine it |
-| Canonical docs win | `docs/QUICK_REFERENCE.md` and `docs/GOVERNANCE.md` outrank every rule here |
+| Canonical docs win | `docs/internal/QUICK_REFERENCE.md` and `docs/internal/GOVERNANCE.md` outrank every rule here |
 | Cross-reference only | Rules point at canonical docs; they must not duplicate them |
 | Surgical context | Keep rules specific to file paths, not whole-project summaries |
 
@@ -30,7 +30,7 @@ See [`_schema.md`](_schema.md) before adding or editing any rule file.
 | `efcore-persistence.md` | `src/Explore.Persistence/**/*.cs`, except migrations | EF Core configs, repositories, filters |
 | `efcore-migrations.md` | `src/Explore.Persistence/Migrations/**/*.cs` | migration discipline and seed sync |
 | `tests.md` | `**/*Tests/*.cs`, `**/*UnitTests/*.cs`, `**/*IntegrationTests/*.cs`, `**/*.Tests/*.cs` | test execution and suite hygiene |
-| `ip-clean-room.md` | `src/**/*`, `docs/**/*`, `dev/active/**/*` | clean-room source isolation, SSO differentiation, provenance, and dependency-license compatibility |
+| `ip-clean-room.md` | `src/**/*`, `docs/internal/**/*`, `dev/active/**/*` | clean-room source isolation, SSO differentiation, provenance, and dependency-license compatibility |
 
 ## Layout Notes
 

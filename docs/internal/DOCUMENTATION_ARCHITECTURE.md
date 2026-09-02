@@ -6,10 +6,10 @@ ABOUTME: Keeps docs source-grounded, audience-oriented, and safe to evolve witho
 > **Audience:** Contributors | Operators | Admins | Integrators | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-06-12
+> **Last Verified:** 2026-09-02
 > **Source Anchors:** `README.md`, `docs/index.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`
 
-This repository uses Markdown-first documentation as the canonical operator, contributor, and agent knowledge base. A separately hosted public docs website is deferred until repository docs are accurate, validated, and release-ready.
+This repository uses Markdown-first documentation as the canonical operator, contributor, and agent knowledge base, complemented by our [official hosted public documentation portal](https://islamu.gitbook.io/islamu-event).
 
 ## Intent Model
 
@@ -97,6 +97,38 @@ Every non-trivial change must record one of these outcomes in the PR or dev hand
 
 API contract, operator, security, onboarding, and release changes should default to `Updated` unless proven otherwise.
 
-## Public Docs Website Boundary
+## Dual-Documentation Architecture (`docs/public/` vs `docs/internal/`)
 
-`docs/docs-website/` is parked for this phase. Repository Markdown remains the source of truth until the canonical docs, metadata, and release contract are stable. A future public site may mirror selected pages, but it must not become a second source of truth.
+To preserve clarity for all audiences, the documentation is strictly partitioned into two parallel tracks:
+
+```text
+docs/
+├── README.md               <-- The Grand Router
+├── public/                 <-- GitBook Hosted Portal (Adopters, Operators & Integrators)
+└── internal/               <-- Engineering Brain (Contributors & AI Coding Agents)
+```
+
+1. **`docs/public/` (Public GitBook Portal)**: Curated, task-oriented guides for community admins, operators deploying with Docker/Coolify, and external API consumers. Avoids internal CQRS or EF Core plumbing.
+2. **`docs/internal/` (Engineering Brain)**: Source of technical truth, Clean Architecture rules, invariants, MediatR request shapes, database locks, tenant filters, and context engineering contracts.
+
+### Documentation Twin Parity Matrix
+
+Every public guide in `docs/public/` projects technical facts from an authoritative technical anchor in `docs/internal/`. Whenever behavior changes, both twins must be updated in the same pull request:
+
+| Public Adopter Guide (`docs/public/`) | Technical Source Anchor (`docs/internal/`) | Synchronized Content |
+|---|---|---|
+| `documentation/readme/self-hosting/docker-compose.md` | `SELF_HOSTING.md` | Service topologies, compose variables, volume persistence, ports |
+| `documentation/readme/self-hosting/coolify-cerbos-traefik.md` | `CERBOS_COOLIFY.md` | Coolify deployment templates, Traefik reverse-proxy labels, Cerbos sidecar |
+| `documentation/readme/configuration-and-operations/environment-variables.md` | `CONFIGURATION.md` | Required/optional env vars, default values, fallback behaviors |
+| `documentation/readme/configuration-and-operations/secrets.md` | `SECRETS.md` | Keycloak secrets, database credentials, data protection key rings |
+| `documentation/readme/configuration-and-operations/backup-restore-upgrade.md` | `BACKUP_RESTORE_UPGRADE.md` | Backup routines, restore verification, database migration commands |
+| `documentation/readme/events-and-ticketing/custom-properties.md` | `CUSTOM_PROPERTIES.md` | Custom registration property types, schema rules, projection guarantees |
+| `documentation/readme/security-and-identity/authentication.md` | `AUTHORIZATION.md` & `SECURITY-MODEL.md` | Keycloak realm setup, OIDC client redirect URIs, tenant isolation |
+| `api-reference/readme/api-cookbook.md` | `API_COOKBOOK.md` & `API.md` | API integration workflows, authentication headers, error shapes |
+| `api-reference/readme/api-changelog.md` | `API_CHANGELOG.md` | Breaking changes, new endpoints, deprecated operations |
+
+### Dual-Documentation Parity Protocol
+
+1. **Adopter Projection Rule**: When updating a public doc in `docs/public/`, write instructions from the perspective of an operator or integrator. Do not mention internal C# classes, MediatR handlers, or EF Core entity configurations.
+2. **Technical Depth Rule**: When updating an internal doc in `docs/internal/`, document the full architectural reality: class names, invariants, concurrency behaviors, tenant filters, and rollback mechanics.
+3. **Intent Enforcement**: Every intent in `.agents/contract/intents.yaml` affecting external contracts declares both internal and public twins in `docs_to_update`.

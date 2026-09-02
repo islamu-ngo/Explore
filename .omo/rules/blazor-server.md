@@ -5,7 +5,7 @@ paths:
   - "src/Explore.Blazor/**/*.cs"
   - "src/Explore.Blazor/**/*.razor"
 related_skills: [blazor-bff-patterns, auth-patterns]
-related_docs: [docs/BLAZOR.md, docs/SECURITY-MODEL.md, docs/ARCHITECTURE.md]
+related_docs: [docs/internal/BLAZOR.md, docs/internal/SECURITY-MODEL.md, docs/internal/ARCHITECTURE.md]
 minimum_tests: [Explore.Blazor.IntegrationTests, Event.Architecture.Tests]
 related_intents: [bff-auth-bug]
 ---
@@ -27,9 +27,9 @@ related_intents: [bff-auth-bug]
 - **Dynamic Schemes & OAuth**: Manage OIDC/OAuth schemes via `IDynamicAuthSchemeManager`. Expose AT Protocol client metadata (`/oauth/client-metadata.json`) and JWKS (`/oauth/jwks.json`) via `AtprotoOAuthEndpointExtensions`.
 
 ## Must Read
-- [docs/QUICK_REFERENCE.md#multi-tenancy-reminder](../../docs/QUICK_REFERENCE.md#multi-tenancy-reminder)
-- [docs/BLAZOR.md](../../docs/BLAZOR.md)
-- [docs/SECURITY-MODEL.md](../../docs/SECURITY-MODEL.md)
+- [docs/internal/QUICK_REFERENCE.md#multi-tenancy-reminder](../../docs/internal/QUICK_REFERENCE.md#multi-tenancy-reminder)
+- [docs/internal/BLAZOR.md](../../docs/internal/BLAZOR.md)
+- [docs/internal/SECURITY-MODEL.md](../../docs/internal/SECURITY-MODEL.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

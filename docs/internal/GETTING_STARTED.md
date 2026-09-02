@@ -9,7 +9,7 @@ ABOUTME: Links deeper docs instead of duplicating self-hosting, testing, and con
 > **Last Verified:** 2026-08-09
 > **Source Anchors:** `global.json`, `Explore.AppHost/AppHost.cs`, `docker-compose.yml`, `docs/SELF_HOSTING.md`, `docs/TESTING.md`
 
-Use this page for the shortest safe local path. For production-style hosting, start with [SELF_HOSTING.md](SELF_HOSTING.md) instead.
+Use this page for the shortest safe local path. For production-style hosting, start with [SELF_HOSTING.md](SELF_HOSTING.md) instead. For hosted guides and platform tutorials, visit the [Official Documentation](https://islamu.gitbook.io/islamu-event).
 
 ## Prerequisites
 

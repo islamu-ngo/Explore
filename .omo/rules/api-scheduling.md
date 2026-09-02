@@ -6,7 +6,7 @@ paths:
   - "src/Explore.API/BackgroundServices/**/*.cs"
   - "src/Explore.API/Extensions/QuartzSchedulerExtensions.cs"
 related_skills: [outbox-pattern, clean-architecture-rules]
-related_docs: [docs/OPERATIONS.md, docs/ARCHITECTURE.md, docs/OUTBOX_PATTERN.md, docs/CONFIGURATION.md]
+related_docs: [docs/internal/OPERATIONS.md, docs/internal/ARCHITECTURE.md, docs/internal/OUTBOX_PATTERN.md, docs/internal/CONFIGURATION.md]
 minimum_tests: [Event.API.IntegrationTests, Event.Persistence.IntegrationTests]
 related_intents: [schedule-background-work, add-cqrs-handler, external-infrastructure-bootstrap]
 ---
@@ -46,12 +46,12 @@ runtime composition; owning outbox and bootstrap tests prove the listed
 non-periodic services keep their distinct behavior.
 
 ## Operator Impact
-Any change to a job's identifier, log event name, health-check name, metric name, or configuration key is an operator-visible change and must be documented in `docs/OPERATIONS.md` in the same slice. Self-hosters alert on these.
+Any change to a job's identifier, log event name, health-check name, metric name, or configuration key is an operator-visible change and must be documented in `docs/internal/OPERATIONS.md` in the same slice. Self-hosters alert on these.
 
 ## Must Read
-- [docs/OPERATIONS.md](../../docs/OPERATIONS.md) — scheduled job catalog and the maintenance-sweep upgrade note
-- [docs/QUICK_REFERENCE.md#critical-rules](../../docs/QUICK_REFERENCE.md#critical-rules) (Rule #27)
-- [docs/OUTBOX_PATTERN.md](../../docs/OUTBOX_PATTERN.md)
+- [docs/internal/OPERATIONS.md](../../docs/internal/OPERATIONS.md) — scheduled job catalog and the maintenance-sweep upgrade note
+- [docs/internal/QUICK_REFERENCE.md#critical-rules](../../docs/internal/QUICK_REFERENCE.md#critical-rules) (Rule #27)
+- [docs/internal/OUTBOX_PATTERN.md](../../docs/internal/OUTBOX_PATTERN.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

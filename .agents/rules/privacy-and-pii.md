@@ -8,7 +8,7 @@ paths:
   - "src/**/*Consent*.cs"
   - "src/**/*Erasure*.cs"
 related_skills: [clean-architecture-rules, dotnet-efcore-guidelines, error-tracking, auth-patterns]
-related_docs: [docs/PRIVACY_ERASURE.md, docs/AI_CONTEXT_SECURITY.md, docs/SECURITY-MODEL.md, docs/SECRETS.md]
+related_docs: [docs/internal/PRIVACY_ERASURE.md, docs/internal/AI_CONTEXT_SECURITY.md, docs/internal/SECURITY-MODEL.md, docs/internal/SECRETS.md]
 minimum_tests: [Event.Persistence.IntegrationTests, Event.Architecture.Tests, Event.Application.UnitTests]
 related_intents: [platform-privacy-erasure, update-ai-context-disclosure]
 ---
@@ -33,9 +33,9 @@ related_intents: [platform-privacy-erasure, update-ai-context-disclosure]
 | 6 | **Zero PII in Observability** | Export counts, stage codes, and hashed identifiers in metrics, ProblemDetails, and health checks. | Emitting subject IDs, plaintext emails, or provider payload bodies in error logs or Prometheus metrics. |
 
 ## Must Read
-- [docs/PRIVACY_ERASURE.md](../../docs/PRIVACY_ERASURE.md)
-- [docs/AI_CONTEXT_SECURITY.md](../../docs/AI_CONTEXT_SECURITY.md)
-- [docs/SECURITY-MODEL.md](../../docs/SECURITY-MODEL.md)
+- [docs/internal/PRIVACY_ERASURE.md](../../docs/internal/PRIVACY_ERASURE.md)
+- [docs/internal/AI_CONTEXT_SECURITY.md](../../docs/internal/AI_CONTEXT_SECURITY.md)
+- [docs/internal/SECURITY-MODEL.md](../../docs/internal/SECURITY-MODEL.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

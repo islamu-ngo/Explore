@@ -4,7 +4,7 @@ description: Apply when editing Explore.Application CQRS handlers, requests, DTO
 paths:
   - "src/Explore.Application/**/*.cs"
 related_skills: [cqrs-mediatr-guidelines, clean-architecture-rules]
-related_docs: [docs/ARCHITECTURE.md, docs/GOVERNANCE.md, docs/QUICK_REFERENCE.md]
+related_docs: [docs/internal/ARCHITECTURE.md, docs/internal/GOVERNANCE.md, docs/internal/QUICK_REFERENCE.md]
 minimum_tests: [Event.Application.UnitTests, Event.Architecture.Tests]
 related_intents: [add-cqrs-handler, add-get-endpoint, add-write-endpoint, update-repository-query]
 ---
@@ -24,12 +24,12 @@ related_intents: [add-cqrs-handler, add-get-endpoint, add-write-endpoint, update
 - **Cancellation**: Always pass `CancellationToken` through to all async calls (repository, cache, etc.).
 - **Domain Rules Belong Here**: a rule that validates or normalizes command input must run in the handler, not at a transport boundary. A rule enforced only in a controller is bypassed by MCP tools and internal callers. Report the outcome as a `FailureCode` on the response; the API layer decides its HTTP shape.
 - **Identity Semantics**: `Explore.Application.Authentication.PlatformIdentityPrincipalExtensions` owns the `sub -> nameidentifier -> sid -> internal_user_id` chain and provider-account reconstruction. `IUserContext` delegates to it. Add identity semantics there, never in a second place — three divergent chains previously coexisted and disagreed.
-- **Record Requests And Results**: Follow the [canonical record-selection policy](../../docs/GOVERNANCE.md#canonical-record-selection-policy). Concrete handwritten MediatR requests default to sealed records; choose positional versus nominal form for construction safety. `BaseCommandResponse<T>` and its concrete result descendants are immutable records created through valid-state factories. Current `UserId`/`TenantId` never comes from a body; a legitimate target ID still requires server authorization.
+- **Record Requests And Results**: Follow the [canonical record-selection policy](../../docs/internal/GOVERNANCE.md#canonical-record-selection-policy). Concrete handwritten MediatR requests default to sealed records; choose positional versus nominal form for construction safety. `BaseCommandResponse<T>` and its concrete result descendants are immutable records created through valid-state factories. Current `UserId`/`TenantId` never comes from a body; a legitimate target ID still requires server authorization.
 - **Published Collections**: Every collection-bearing record exposes a serializer-compatible read-only/immutable shape and snapshots mutable input. Preserve JSON arrays/objects, PATCH presence, HAL extension data, and base64 bytes; do not relabel a mutable `List`, array, dictionary, or set as immutable.
 
 ## Must Read
-- [docs/QUICK_REFERENCE.md#critical-rules](../../docs/QUICK_REFERENCE.md#critical-rules) (Rules #1, #2, #5, #11)
-- [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)
+- [docs/internal/QUICK_REFERENCE.md#critical-rules](../../docs/internal/QUICK_REFERENCE.md#critical-rules) (Rules #1, #2, #5, #11)
+- [docs/internal/ARCHITECTURE.md](../../docs/internal/ARCHITECTURE.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

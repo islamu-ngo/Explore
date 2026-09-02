@@ -3,6 +3,8 @@ ABOUTME: Covers minimum viable stack, optional services, setup, migrations, heal
 
 # Self-Hosting Guide
 
+> 💡 **Official Docs:** For hosted guides, deployment walkthroughs, and architecture overviews, visit the [Official Documentation Portal](https://islamu.gitbook.io/islamu-event).
+
 ## Headless Instance Onboarding
 
 You can bring an instance up without touching the interactive setup screens.

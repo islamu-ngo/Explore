@@ -10,4 +10,4 @@ Load only the resource needed for the current decision:
 3. [Verification](verification.md) — automated commands, rendered-DOM assertions, and the risk-based manual test matrix.
 4. [Research Sources](research-sources.md) — authority tiers, source register, evidence limits, and refresh points.
 
-Start with `docs/ACCESSIBILITY.md`; it is the repository authority. External sources explain framework or standard behavior but do not override local code, package pins, tests, or stricter project rules.
+Start with `docs/internal/ACCESSIBILITY.md`; it is the repository authority. External sources explain framework or standard behavior but do not override local code, package pins, tests, or stricter project rules.

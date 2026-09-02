@@ -174,7 +174,7 @@ Incomplete bug reports or reports generated purely with generic AI output may be
 ---
 
 ## 3. Documentation & Translation Contributions
-- **Docs:** Documentation lives in `docs/`. When editing or creating docs, follow [`docs/DOCUMENTATION_ARCHITECTURE.md`](docs/DOCUMENTATION_ARCHITECTURE.md) and include source anchors.
+- **Docs:** Repository documentation lives in `docs/`, with our [official hosted guides](https://islamu.gitbook.io/islamu-event) available online. When editing or creating repository docs, follow [`docs/DOCUMENTATION_ARCHITECTURE.md`](docs/DOCUMENTATION_ARCHITECTURE.md) and include source anchors.
 - **Translations:** UI translations are managed via Weblate. Contributions to language packs are warmly welcomed.
 
 ---

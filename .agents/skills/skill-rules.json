@@ -569,7 +569,7 @@
         "intentPatterns": []
       },
       "fileTriggers": {
-        "pathPatterns": ["**/docs/releases/changes/*.yaml", "**/eng/release/**"],
+        "pathPatterns": ["**/docs/internal/releases/changes/*.yaml", "**/eng/release/**"],
         "contentPatterns": []
       }
     },
@@ -681,7 +681,7 @@
         "intentPatterns": []
       },
       "fileTriggers": {
-        "pathPatterns": ["**/Directory.Packages.props", "**/docs/legal/**", "**/.agents/skills/ip-clean-room/**"],
+        "pathPatterns": ["**/Directory.Packages.props", "**/docs/internal/legal/**", "**/.agents/skills/ip-clean-room/**"],
         "contentPatterns": []
       }
     },

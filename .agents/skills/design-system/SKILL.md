@@ -31,6 +31,6 @@ ABOUTME: Enforces layer ordering, token usage, and MudBlazor wrapper patterns.
 
 ## Related
 
-- `docs/DESIGN_SYSTEM.md`
+- `docs/internal/DESIGN_SYSTEM.md`
 - `.agents/skills/blazor-ui-conventions/SKILL.md`
 - `.agents/skills/blazor-css-isolation/SKILL.md`

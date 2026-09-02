@@ -4,7 +4,7 @@ description: Apply when editing Explore.API controller actions and route contrac
 paths:
   - "src/Explore.API/Controllers/**/*.cs"
 related_skills: [cqrs-mediatr-guidelines, auth-patterns]
-related_docs: [docs/API.md, docs/GOVERNANCE.md, docs/AUTHORIZATION.md, docs/QUICK_REFERENCE.md]
+related_docs: [docs/internal/API.md, docs/internal/GOVERNANCE.md, docs/internal/AUTHORIZATION.md, docs/internal/QUICK_REFERENCE.md]
 minimum_tests: [Event.API.IntegrationTests, Event.Architecture.Tests]
 related_intents: [add-get-endpoint, add-write-endpoint, openapi-contract-change, add-hal-link]
 ---
@@ -29,8 +29,8 @@ related_intents: [add-get-endpoint, add-write-endpoint, openapi-contract-change,
 - **Immutable Collection Adapters**: Nested record contracts snapshot collection input. Controllers replace immutable extension data through `SetItem`, record copies, or a new snapshot rather than mutating an indexer; convert read-only binary memory only at the framework file-result boundary.
 
 ## Must Read
-- [docs/QUICK_REFERENCE.md#controller-authoring-standard-forward-policy](../../docs/QUICK_REFERENCE.md#controller-authoring-standard-forward-policy)
-- [docs/API.md](../../docs/API.md)
+- [docs/internal/QUICK_REFERENCE.md#controller-authoring-standard-forward-policy](../../docs/internal/QUICK_REFERENCE.md#controller-authoring-standard-forward-policy)
+- [docs/internal/API.md](../../docs/internal/API.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

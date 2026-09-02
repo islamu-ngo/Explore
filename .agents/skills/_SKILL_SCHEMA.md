@@ -77,9 +77,9 @@ Section names beyond these are allowed when they communicate the domain more dir
 
 - Activation sections or trigger lists already represented in `description`.
 - Stack/tech-overview paragraphs (reference `AGENTS.md`).
-- Duplicated invariants from `docs/QUICK_REFERENCE.md` (link, don't copy).
+- Duplicated invariants from `docs/internal/QUICK_REFERENCE.md` (link, don't copy).
 - Fixed-count lists created to satisfy a shape rather than the skill's real decisions.
-- ASCII diagrams (per `docs/DOCUMENTATION_STYLE_GUIDE.md`).
+- ASCII diagrams (per `docs/internal/DOCUMENTATION_STYLE_GUIDE.md`).
 - "Why clean architecture matters" prose or similar meta-content.
 - Unconditional resource cascades that require every linked document before the task has identified a decision that needs it.
 
@@ -97,4 +97,4 @@ Existing nonconforming skills are migration debt and must not grow. New or chang
 
 - Agent schema → [`.agents/agents/_AGENT_SCHEMA.md`](../agents/_AGENT_SCHEMA.md)
 - Intent registry → [`.agents/contract/intents.yaml`](../contract/intents.yaml)
-- Documentation style → [`docs/DOCUMENTATION_STYLE_GUIDE.md`](../../docs/DOCUMENTATION_STYLE_GUIDE.md)
+- Documentation style → [`docs/internal/DOCUMENTATION_STYLE_GUIDE.md`](../../docs/internal/DOCUMENTATION_STYLE_GUIDE.md)

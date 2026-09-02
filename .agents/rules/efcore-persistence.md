@@ -5,7 +5,7 @@ paths:
   - "src/Explore.Persistence/**/*.cs"
   - "!src/Explore.Persistence/Migrations/**/*.cs"
 related_skills: [dotnet-efcore-guidelines, clean-architecture-rules]
-related_docs: [docs/MULTI_TENANCY.md, docs/CODEBASE_INSIGHTS.md, docs/ARCHITECTURE.md, docs/QUICK_REFERENCE.md]
+related_docs: [docs/internal/MULTI_TENANCY.md, docs/internal/CODEBASE_INSIGHTS.md, docs/internal/ARCHITECTURE.md, docs/internal/QUICK_REFERENCE.md]
 minimum_tests: [Event.Persistence.IntegrationTests, Event.Architecture.Tests]
 related_intents: [update-repository-query, add-ef-migration, add-cqrs-handler]
 ---
@@ -25,8 +25,8 @@ related_intents: [update-repository-query, add-ef-migration, add-cqrs-handler]
 - **Specification Pattern**: Use the `EventQuerySpecification` builder for all complex queries; avoid ad-hoc LINQ in repositories.
 
 ## Must Read
-- [docs/QUICK_REFERENCE.md#critical-rules](../../docs/QUICK_REFERENCE.md#critical-rules) (Rules #1, #12, #17)
-- [docs/MULTI_TENANCY.md](../../docs/MULTI_TENANCY.md)
+- [docs/internal/QUICK_REFERENCE.md#critical-rules](../../docs/internal/QUICK_REFERENCE.md#critical-rules) (Rules #1, #12, #17)
+- [docs/internal/MULTI_TENANCY.md](../../docs/internal/MULTI_TENANCY.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

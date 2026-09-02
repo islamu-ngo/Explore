@@ -56,7 +56,7 @@ priority: high
 Review flow:
 1. Read plan/context/tasks
 2. Compare against the implementation-plan skill and its quality gates
-3. Verify referenced files/docs/rules
+3. Verify referenced files/docs/internal/rules
 4. Verify every phase has an exact Conventional Commit contract and closes as implementation -> verification disposition -> planned phase-owned commit
 5. Decide: approve, approve with required changes, split, reject, or defer
 6. Return ranked risks, concrete required changes, and a recommended plan rewrite

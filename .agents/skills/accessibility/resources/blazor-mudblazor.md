@@ -5,7 +5,7 @@
 
 ## Evidence Order
 
-1. Apply `docs/ACCESSIBILITY.md` and inspect the current component, service contract, rendered tests, and package pin.
+1. Apply `docs/internal/ACCESSIBILITY.md` and inspect the current component, service contract, rendered tests, and package pin.
 2. Use Microsoft Blazor documentation for framework behavior and MudBlazor documentation for the pinned component API.
 3. Use WCAG 2.2 for normative success criteria and WAI-ARIA APG for custom-widget behavior.
 4. Verify the rendered DOM and browser accessibility tree; a Razor parameter alone is not evidence of the final accessible name, role, state, or relationship.

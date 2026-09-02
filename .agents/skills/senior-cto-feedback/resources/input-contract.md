@@ -78,7 +78,7 @@ Recommended wording:
 When the plan claims to follow `implementation-plan`, verify these concrete things:
 
 - `Last Updated: YYYY-MM-DD Europe/Brussels` exists in each file;
-- `plan.md` includes current state, future state, constraints, decisions, phases, testing, docs/ops/security/multi-tenancy/risk/success sections;
+- `plan.md` includes current state, future state, constraints, decisions, phases, testing, docs/internal/ops/security/multi-tenancy/risk/success sections;
 - `context.md` includes session progress, quick resume, key files, decisions, constraints, validation baseline, risks, and handoff notes;
 - `tasks.md` includes implementation-maintenance rules, phase breakdown, one build plus at most one selected project test at each phase end, and remaining/deferred work;
 - plan/context/tasks agree on current status and next step.

@@ -13,7 +13,7 @@ ABOUTME: Read referenced resources before applying.
 
 > **Project-Agnostic BFF Patterns for Blazor Web Apps (InteractiveAuto)**
 >
-> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
+> Placeholders use `{Placeholder}` syntax - see [docs/internal/TEMPLATE_GLOSSARY.md](../../../docs/internal/TEMPLATE_GLOSSARY.md).
 
 ## Non‑Inferable Rules (Must Follow)
 - **BFF boundary**: Browser never sees tokens; BFF uses HttpOnly cookies.
@@ -34,6 +34,6 @@ ABOUTME: Read referenced resources before applying.
 - [interactiveauto-yarp-security.md](resources/interactiveauto-yarp-security.md)
 
 ## Related Documentation
-- [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md)
-- [`docs/BLAZOR.md`](../../../docs/BLAZOR.md)
+- [`docs/internal/ARCHITECTURE.md`](../../../docs/internal/ARCHITECTURE.md)
+- [`docs/internal/BLAZOR.md`](../../../docs/internal/BLAZOR.md)
 - [`auth-patterns`](../auth-patterns/SKILL.md)

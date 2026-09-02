@@ -10,12 +10,12 @@ priority: critical
 
 ## Must-Read Docs
 - [../../../AGENTS.md](../../../AGENTS.md)
-- [../../../docs/QUICK_REFERENCE.md](../../../docs/QUICK_REFERENCE.md)
-- [../../../docs/legal/IP_GOVERNANCE.md](../../../docs/legal/IP_GOVERNANCE.md)
+- [../../../docs/internal/QUICK_REFERENCE.md](../../../docs/internal/QUICK_REFERENCE.md)
+- [../../../docs/internal/legal/IP_GOVERNANCE.md](../../../docs/internal/legal/IP_GOVERNANCE.md)
 - [../../../legal/CLA.md](../../../legal/CLA.md)
-- [../../../docs/legal/CONTRIBUTION_GOVERNANCE.md](../../../docs/legal/CONTRIBUTION_GOVERNANCE.md)
-- [../../../docs/DUAL_VERSIONING.md](../../../docs/DUAL_VERSIONING.md)
-- [../../../docs/CI_CD_GOVERNANCE.md](../../../docs/CI_CD_GOVERNANCE.md)
+- [../../../docs/internal/legal/CONTRIBUTION_GOVERNANCE.md](../../../docs/internal/legal/CONTRIBUTION_GOVERNANCE.md)
+- [../../../docs/internal/DUAL_VERSIONING.md](../../../docs/internal/DUAL_VERSIONING.md)
+- [../../../docs/internal/CI_CD_GOVERNANCE.md](../../../docs/internal/CI_CD_GOVERNANCE.md)
 - [resources/index.md](resources/index.md)
 
 ## Top 5 Invariants
@@ -52,7 +52,7 @@ Dependency decision:
 ## Verification Hooks
 - `dotnet run .ci/scripts/validate-dependency-license-policy.cs -- .`
 - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
-- `git diff --check -- AGENTS.md docs/legal docs/QUICK_REFERENCE.md .agents/skills/ip-clean-room .agents/rules/ip-clean-room.md .agents/contract/intents.yaml .agents/skills/review-pr/SKILL.md .github/PULL_REQUEST_TEMPLATE.md dev/_journal/journal.md`
+- `git diff --check -- AGENTS.md docs/internal/legal docs/internal/QUICK_REFERENCE.md .agents/skills/ip-clean-room .agents/rules/ip-clean-room.md .agents/contract/intents.yaml .agents/skills/review-pr/SKILL.md .github/PULL_REQUEST_TEMPLATE.md dev/_journal/journal.md`
 - Manual: complete [SSO And Provenance Review](resources/sso-and-provenance-review.md) and link the evidence in the PR.
 
 ## Related Skills

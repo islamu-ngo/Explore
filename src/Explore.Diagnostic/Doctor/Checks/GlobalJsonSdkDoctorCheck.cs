@@ -23,8 +23,8 @@ public sealed class GlobalJsonSdkDoctorCheck(
                 Code,
                 Category,
                 "global.json is missing, so the expected .NET SDK cannot be pinned.",
-                "Restore global.json or document the supported SDK version in docs/CONFIGURATION.md.",
-                "docs/CONFIGURATION.md");
+                "Restore global.json or document the supported SDK version in docs/internal/CONFIGURATION.md.",
+                "docs/internal/CONFIGURATION.md");
         }
 
         var expected = ReadExpectedSdkVersion(fileSystem.ReadAllText(globalJsonPath));
@@ -35,7 +35,7 @@ public sealed class GlobalJsonSdkDoctorCheck(
                 Category,
                 "global.json does not contain sdk.version.",
                 "Add sdk.version to global.json so contributors and CI use a deterministic SDK.",
-                "docs/CONFIGURATION.md");
+                "docs/internal/CONFIGURATION.md");
         }
 
         var dotnet = await processRunner.RunAsync("dotnet", "--version", cancellationToken);
@@ -46,7 +46,7 @@ public sealed class GlobalJsonSdkDoctorCheck(
                 Category,
                 "dotnet CLI is unavailable or failed to report a version.",
                 $"Install the .NET SDK pinned in global.json ({expected}).",
-                "docs/CONFIGURATION.md",
+                "docs/internal/CONFIGURATION.md",
                 DoctorRedactor.Redact(string.IsNullOrWhiteSpace(dotnet.StandardError) ? dotnet.StandardOutput : dotnet.StandardError));
         }
 
@@ -58,7 +58,7 @@ public sealed class GlobalJsonSdkDoctorCheck(
                 Category,
                 $"Installed .NET SDK matches global.json ({expected}).",
                 "No action required.",
-                "docs/CONFIGURATION.md",
+                "docs/internal/CONFIGURATION.md",
                 $"dotnet --version: {DoctorRedactor.Redact(actual)}");
         }
 
@@ -67,7 +67,7 @@ public sealed class GlobalJsonSdkDoctorCheck(
             Category,
             $"Installed .NET SDK ({actual}) differs from global.json ({expected}).",
             "Install the pinned SDK or confirm the installed SDK roll-forward behavior before building.",
-            "docs/CONFIGURATION.md",
+            "docs/internal/CONFIGURATION.md",
             $"expected={DoctorRedactor.Redact(expected)} actual={DoctorRedactor.Redact(actual)}");
     }
 

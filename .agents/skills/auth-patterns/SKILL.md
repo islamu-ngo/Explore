@@ -9,11 +9,11 @@ priority: critical
 <!-- ABOUTME: Keeps tokens out of the browser, preserves claim extraction order, and aligns API, handler, and client authorization behavior. -->
 
 ## Must-Read Docs
-- [../../../docs/SECURITY-MODEL.md](../../../docs/SECURITY-MODEL.md)
-- [../../../docs/API.md](../../../docs/API.md)
-- [../../../docs/AUTHORIZATION.md](../../../docs/AUTHORIZATION.md)
-- [../../../docs/AUTHORIZATION_PATTERNS.md](../../../docs/AUTHORIZATION_PATTERNS.md)
-- [../../../docs/QUICK_REFERENCE.md](../../../docs/QUICK_REFERENCE.md)
+- [../../../docs/internal/SECURITY-MODEL.md](../../../docs/internal/SECURITY-MODEL.md)
+- [../../../docs/internal/API.md](../../../docs/internal/API.md)
+- [../../../docs/internal/AUTHORIZATION.md](../../../docs/internal/AUTHORIZATION.md)
+- [../../../docs/internal/AUTHORIZATION_PATTERNS.md](../../../docs/internal/AUTHORIZATION_PATTERNS.md)
+- [../../../docs/internal/QUICK_REFERENCE.md](../../../docs/internal/QUICK_REFERENCE.md)
 - [resources/local-authorization-provider.md](resources/local-authorization-provider.md)
 
 ## Top 5 Invariants

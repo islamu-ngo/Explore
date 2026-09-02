@@ -254,7 +254,7 @@ Prefer splitting by risk boundary:
    - components/pages,
    - BFF endpoints,
    - component/BFF tests.
-4. PR 4 — operations/docs/cleanup
+4. PR 4 — operations/docs/internal/cleanup
    - configuration docs,
    - self-hosting docs,
    - operations docs,

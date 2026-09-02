@@ -9,10 +9,10 @@ priority: high
 <!-- ABOUTME: Keeps persistence entity-first, tenant-safe, soft-delete-aware, and consistent with lookup seeding and migration discipline. -->
 
 ## Resources
-- [Domain model](../../../docs/DOMAIN.md) — load for entity ownership and persisted invariants.
-- [Record contracts](../../../docs/RECORD_CONTRACTS.md) — load for semantic value leaves, portable checks, generated-provider ownership, and migration preflight.
-- [Architecture](../../../docs/ARCHITECTURE.md) — load for repository and layer boundaries.
-- [Codebase insights](../../../docs/CODEBASE_INSIGHTS.md) — load for non-obvious EF conventions.
+- [Domain model](../../../docs/internal/DOMAIN.md) — load for entity ownership and persisted invariants.
+- [Record contracts](../../../docs/internal/RECORD_CONTRACTS.md) — load for semantic value leaves, portable checks, generated-provider ownership, and migration preflight.
+- [Architecture](../../../docs/internal/ARCHITECTURE.md) — load for repository and layer boundaries.
+- [Codebase insights](../../../docs/internal/CODEBASE_INSIGHTS.md) — load for non-obvious EF conventions.
 - [Lookup seeder](../../../src/Explore.Persistence/Seed/LookupTableSeeder.cs) — load only for lookup-row changes.
 
 ## Rules

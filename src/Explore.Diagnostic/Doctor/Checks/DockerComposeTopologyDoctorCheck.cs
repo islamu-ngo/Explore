@@ -31,7 +31,7 @@ public sealed class DockerComposeTopologyDoctorCheck(IDoctorFileSystem fileSyste
                 Category,
                 "docker-compose.yml is missing, so self-hosting service topology cannot be checked.",
                 "Restore docker-compose.yml or run doctor from the repository root.",
-                "docs/SELF_HOSTING.md"));
+                "docs/internal/SELF_HOSTING.md"));
         }
 
         var compose = fileSystem.ReadAllText(composePath);
@@ -43,7 +43,7 @@ public sealed class DockerComposeTopologyDoctorCheck(IDoctorFileSystem fileSyste
                 Category,
                 "Docker Compose is missing required platform services.",
                 $"Restore service definitions for: {string.Join(", ", missing.Select(service => service.TrimEnd(':')))}.",
-                "docs/SELF_HOSTING.md"));
+                "docs/internal/SELF_HOSTING.md"));
         }
 
         if (compose.Contains("API_ENDPOINT: ${API_ENDPOINT:-http://eventapi:8080/}", StringComparison.Ordinal) ||
@@ -54,7 +54,7 @@ public sealed class DockerComposeTopologyDoctorCheck(IDoctorFileSystem fileSyste
                 Category,
                 "Compose default API_ENDPOINT points at a stale API service name.",
                 "Set API_ENDPOINT explicitly or change the default to http://islamu-event-api:8080/ before relying on Compose-only BFF routing.",
-                "docs/SELF_HOSTING.md",
+                "docs/internal/SELF_HOSTING.md",
                 "API_ENDPOINT default uses a stale service name; service is islamu-event-api."));
         }
 
@@ -63,6 +63,6 @@ public sealed class DockerComposeTopologyDoctorCheck(IDoctorFileSystem fileSyste
             Category,
             "Docker Compose contains the required core services and no known service-name drift was detected.",
             "Run `docker compose config` manually before production rollout if Compose files are overridden.",
-            "docs/SELF_HOSTING.md"));
+            "docs/internal/SELF_HOSTING.md"));
     }
 }

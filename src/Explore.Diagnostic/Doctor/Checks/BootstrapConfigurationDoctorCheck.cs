@@ -34,7 +34,7 @@ public sealed class BootstrapConfigurationDoctorCheck(IDoctorFileSystem fileSyst
                 Category,
                 "docker-compose.yml is missing, so bootstrap environment variables cannot be verified.",
                 "Restore docker-compose.yml or run doctor from the repository root.",
-                "docs/SELF_HOSTING.md"));
+                "docs/internal/SELF_HOSTING.md"));
         }
 
         var compose = fileSystem.ReadAllText(composePath);
@@ -52,7 +52,7 @@ public sealed class BootstrapConfigurationDoctorCheck(IDoctorFileSystem fileSyst
                 Category,
                 "Compose database configuration is missing required structured runtime or migrator variables.",
                 $"Add the missing variables to the database environment block: {string.Join(", ", missing)}.",
-                "docs/SECRETS.md"));
+                "docs/internal/SECRETS.md"));
         }
 
         if (activeComposeLines.Contains("ConnectionStrings__DefaultConnection", StringComparison.Ordinal))
@@ -62,7 +62,7 @@ public sealed class BootstrapConfigurationDoctorCheck(IDoctorFileSystem fileSyst
                 Category,
                 "Compose configures raw ConnectionStrings__DefaultConnection instead of structured database settings.",
                 "Remove the raw connection string and provide the Database__* runtime and migrator fields.",
-                "docs/SECRETS.md"));
+                "docs/internal/SECRETS.md"));
         }
 
         return Task.FromResult(DoctorCheckResult.Pass(
@@ -70,6 +70,6 @@ public sealed class BootstrapConfigurationDoctorCheck(IDoctorFileSystem fileSyst
             Category,
             "Compose uses the structured database contract expected by runtime and migration composition.",
             "Keep Database__* values structured and never print credentials or derived connection strings in diagnostics.",
-            "docs/SECRETS.md"));
+            "docs/internal/SECRETS.md"));
     }
 }

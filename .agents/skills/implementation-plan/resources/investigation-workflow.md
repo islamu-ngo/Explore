@@ -28,7 +28,7 @@ Identify major technology selections, external libraries, and competing architec
 
 ## 4. Resolve The Contract Before Feature Sources
 
-Reuse injected `AGENTS.md`, resolve only the matching entry from `.agents/contract/intents.yaml`, and retrieve the relevant headings from `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, and `.agents/CONTEXT_ENGINEERING.md`. Record them in the context ledger and do not reread unchanged evidence.
+Reuse injected `AGENTS.md`, resolve only the matching entry from `.agents/contract/intents.yaml`, and retrieve the relevant headings from `docs/internal/QUICK_REFERENCE.md`, `docs/internal/GOVERNANCE.md`, and `.agents/CONTEXT_ENGINEERING.md`. Record them in the context ledger and do not reread unchanged evidence.
 
 Treat platform descriptions as orientation only. Verify every feature-specific claim from current repository files.
 

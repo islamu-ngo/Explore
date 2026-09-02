@@ -9,10 +9,10 @@ priority: high
 <!-- ABOUTME: Keeps Explore.Application handlers thin, entity-first, cancellation-aware, and aligned with repository and response contracts. -->
 
 ## Resources
-- [Record contracts](../../../docs/RECORD_CONTRACTS.md) — load for request/result record selection, factories, collection ownership, and trusted authority.
-- [Architecture](../../../docs/ARCHITECTURE.md) — load for Application boundaries and CQRS flow.
-- [API](../../../docs/API.md) — load when result mapping or the public HTTP contract changes.
-- [Quick reference](../../../docs/QUICK_REFERENCE.md) — load for repository-wide CQRS invariants.
+- [Record contracts](../../../docs/internal/RECORD_CONTRACTS.md) — load for request/result record selection, factories, collection ownership, and trusted authority.
+- [Architecture](../../../docs/internal/ARCHITECTURE.md) — load for Application boundaries and CQRS flow.
+- [API](../../../docs/internal/API.md) — load when result mapping or the public HTTP contract changes.
+- [Quick reference](../../../docs/internal/QUICK_REFERENCE.md) — load for repository-wide CQRS invariants.
 
 ## Rules
 

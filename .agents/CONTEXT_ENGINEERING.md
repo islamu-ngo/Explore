@@ -228,6 +228,25 @@ When agents operate through OmO with `hashline_edit` enabled, every file-read op
 
 Hashline is an OmO-specific feature. Agents running through Claude Code, Cursor, Copilot, or Gemini/Antigravity use their native edit tools and are unaffected. The twin rules, intent registry, and verification policies apply identically regardless of whether hashline is active.
 
+## Dual-Documentation Parity Protocol (Internal vs Public Website)
+
+The repository maintains two strictly separated documentation tracks:
+1. `docs/internal/`: Canonical engineering brain for Developers & AI Agents.
+2. `docs/public/`: Curated public guides for Adopters, Operators & Integrators (synced with GitBook).
+
+### The Parity Rule
+Whenever a change modifies:
+- An environment variable or configuration option (`ConfigurationExtensions.cs`, `.env.example`)
+- A deployment manifest or service topology (`docker-compose.yml`, `Coolify`, `Dockerfile`)
+- An API endpoint or public request/response contract (`Controllers`, `OpenAPI`)
+- An administrative workflow or self-hosting runbook
+
+The agent **MUST update both documentation tracks in the same PR/turn**:
+1. Update the **Technical Anchor** in `docs/internal/` with complete invariants, types, and defaults.
+2. Update the **Public Projection** in `docs/public/` with adopter-focused instructions (avoiding internal framework/C# class details).
+
+Consult the **Documentation Twin Parity Matrix** in `docs/internal/DOCUMENTATION_ARCHITECTURE.md` to resolve the corresponding twin document. Failure to update both documentation experiences constitutes a broken acceptance contract.
+
 ## Measurement
 
 Cold-start benchmarks record first-turn input tokens, maximum live context, cumulative input/cache-read tokens, tool-result bytes, duplicate bytes by content hash, full-file reads, and scout result size. Correctness is required, but a scenario that exceeds its context budget is not a pass.

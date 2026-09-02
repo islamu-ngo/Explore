@@ -8,7 +8,7 @@ paths:
   - "src/Explore.Application/Authentication/**/*.cs"
   - "cerbos/**/*.yaml"
 related_skills: [auth-patterns, blazor-bff-patterns, clean-architecture-rules]
-related_docs: [docs/AUTHORIZATION.md, docs/SECURITY-MODEL.md, docs/MULTI_TENANCY.md, docs/QUICK_REFERENCE.md]
+related_docs: [docs/internal/AUTHORIZATION.md, docs/internal/SECURITY-MODEL.md, docs/internal/MULTI_TENANCY.md, docs/internal/QUICK_REFERENCE.md]
 minimum_tests: [Event.API.IntegrationTests, Event.Architecture.Tests, Explore.Blazor.IntegrationTests]
 related_intents: [bff-auth-bug, cerbos-policy-change, add-write-endpoint]
 ---
@@ -34,9 +34,9 @@ related_intents: [bff-auth-bug, cerbos-policy-change, add-write-endpoint]
 | 7 | **Secrets Source of Truth** | Sourced strictly from Infisical or `.env` (documented in `.env.example`). | Hard-coding credentials/keys in `AppHost.cs`, test fixtures, or code. |
 
 ## Must Read
-- [docs/AUTHORIZATION.md](../../docs/AUTHORIZATION.md)
-- [docs/SECURITY-MODEL.md](../../docs/SECURITY-MODEL.md)
-- [docs/MULTI_TENANCY.md](../../docs/MULTI_TENANCY.md)
+- [docs/internal/AUTHORIZATION.md](../../docs/internal/AUTHORIZATION.md)
+- [docs/internal/SECURITY-MODEL.md](../../docs/internal/SECURITY-MODEL.md)
+- [docs/internal/MULTI_TENANCY.md](../../docs/internal/MULTI_TENANCY.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

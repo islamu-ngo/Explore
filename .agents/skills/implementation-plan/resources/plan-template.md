@@ -230,7 +230,7 @@ Every implementation plan MUST classify its procedural changelog approach across
    - Use public capability scopes from `eng/release/policy/scope-registry.yaml` (e.g. `feat(event): ...`, `fix(auth): ...`).
    - The release engine automatically aggregates these into `What's Changed` at release time.
 2. **Tier 2 — High-Impact / Breaking / Migration / Security / Operator Impact (Change Fragment):**
-   - The owning phase MUST include a task creating an append-only change fragment under `docs/releases/changes/CHG-YYYY-NNNN.yaml`.
+   - The owning phase MUST include a task creating an append-only change fragment under `docs/internal/releases/changes/CHG-YYYY-NNNN.yaml`.
    - The task acceptance criteria must enforce valid YAML structure, `ReleaseInputPolicy` validation, and terminal commit footer `Change-Id: CHG-YYYY-NNNN` (plus `BREAKING CHANGE:` where applicable).
 3. **Tier 3 — Internal Architecture / DevOps / Refactoring (Explicit Skip):**
    - The plan must specify terminal trailers: `Changelog: skip` and `Changelog-Reason: <clear-reason>` to prevent internal plumbing noise from leaking into public release notes.

@@ -12,8 +12,8 @@ intents:
       - "expose a new read endpoint"
       - "new query endpoint"
     must_read_docs:
-      - docs/API.md
-      - docs/QUICK_REFERENCE.md
+      - docs/internal/API.md
+      - docs/internal/QUICK_REFERENCE.md
     load_skills:
       - cqrs-mediatr-guidelines
     load_rules:
@@ -25,7 +25,7 @@ intents:
       - Event.API.IntegrationTests
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/API_CHANGELOG.md
+      - docs/internal/API_CHANGELOG.md
     unique_acceptance:
       - "Output cache policy applied if appropriate"
       - "HAL link policy updated if response is a resource"
@@ -61,9 +61,9 @@ intents:
       - "add an update endpoint"
       - "add a delete endpoint"
     must_read_docs:
-      - docs/API.md
-      - docs/QUICK_REFERENCE.md
-      - docs/SECURITY-MODEL.md
+      - docs/internal/API.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/SECURITY-MODEL.md
     load_skills:
       - cqrs-mediatr-guidelines
       - auth-patterns
@@ -76,7 +76,7 @@ intents:
       - Event.API.IntegrationTests
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/API_CHANGELOG.md
+      - docs/internal/API_CHANGELOG.md
     unique_acceptance:
       - "Rate limiter policy applied"
       - "Idempotency considered"
@@ -116,8 +116,8 @@ intents:
       - "expose edit affordance"
       - "add hateoas link"
     must_read_docs:
-      - docs/API.md
-      - docs/QUICK_REFERENCE.md
+      - docs/internal/API.md
+      - docs/internal/QUICK_REFERENCE.md
     load_skills: []
     load_rules:
       - .agents/rules/api-hateoas.md
@@ -161,8 +161,8 @@ intents:
       - "add a new handler"
       - "new CQRS handler"
     must_read_docs:
-      - docs/ARCHITECTURE.md
-      - docs/QUICK_REFERENCE.md
+      - docs/internal/ARCHITECTURE.md
+      - docs/internal/QUICK_REFERENCE.md
     load_skills:
       - cqrs-mediatr-guidelines
     load_rules:
@@ -205,8 +205,8 @@ intents:
       - "add an EF migration"
       - "schema change"
     must_read_docs:
-      - docs/QUICK_REFERENCE.md
-      - docs/DOMAIN.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/DOMAIN.md
     load_skills:
       - dotnet-efcore-guidelines
     load_rules:
@@ -257,7 +257,7 @@ intents:
       - "update repository query"
       - "change specification"
     must_read_docs:
-      - docs/QUICK_REFERENCE.md
+      - docs/internal/QUICK_REFERENCE.md
     load_skills:
       - dotnet-efcore-guidelines
     load_rules:
@@ -305,10 +305,10 @@ intents:
       - "test suite rationalization"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/GOVERNANCE.md
-      - docs/TESTING.md
-      - docs/OPERATIONS.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/GOVERNANCE.md
+      - docs/internal/TESTING.md
+      - docs/internal/OPERATIONS.md
     load_skills:
       - refactor-safely
       - criticality-guardrail
@@ -326,11 +326,11 @@ intents:
       - ".agents/rules/tests.md"
       - ".omo/rules/tests.md"
       - ".agents/agents/quality-verifier-agent.md"
-      - "docs/TESTING.md"
-      - "docs/OPERATIONS.md"
-      - "docs/GOVERNANCE.md"
-      - "docs/AGENTIC_CONTEXT_ENGINEERING.md"
-      - "docs/QUICK_REFERENCE.md"
+      - "docs/internal/TESTING.md"
+      - "docs/internal/OPERATIONS.md"
+      - "docs/internal/GOVERNANCE.md"
+      - "docs/internal/AGENTIC_CONTEXT_ENGINEERING.md"
+      - "docs/internal/QUICK_REFERENCE.md"
       - "dev/active/**"
     paths_forbidden:
       - "src/**"
@@ -354,11 +354,11 @@ intents:
       - Event.Standalone.IntegrationTests
       - ISLAMU.ReleaseEngineering.Tests
     docs_to_update:
-      - docs/TESTING.md
-      - docs/OPERATIONS.md
-      - docs/GOVERNANCE.md
-      - docs/AGENTIC_CONTEXT_ENGINEERING.md
-      - docs/QUICK_REFERENCE.md
+      - docs/internal/TESTING.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/GOVERNANCE.md
+      - docs/internal/AGENTIC_CONTEXT_ENGINEERING.md
+      - docs/internal/QUICK_REFERENCE.md
     unique_acceptance:
       - "Every test cohort is retained, semantically replaced, or deleted with an explicit invariant disposition"
       - "Critical money, state-machine, concurrency, tenant, security, privacy, HAL, BFF, provider, migration, and protocol coverage fails closed until stronger replacement evidence passes"
@@ -410,8 +410,8 @@ intents:
       - "show edit button when"
       - "hide delete button"
     must_read_docs:
-      - docs/BLAZOR.md
-      - docs/QUICK_REFERENCE.md
+      - docs/internal/BLAZOR.md
+      - docs/internal/QUICK_REFERENCE.md
     load_skills:
       - blazor-ui-conventions
     load_rules:
@@ -452,8 +452,8 @@ intents:
       - "auth not working"
       - "BFF auth bug"
     must_read_docs:
-      - docs/SECURITY-MODEL.md
-      - docs/BLAZOR.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/BLAZOR.md
     load_skills:
       - blazor-bff-patterns
     load_rules:
@@ -497,8 +497,8 @@ intents:
       - "cerbos policy"
       - "update permission"
     must_read_docs:
-      - docs/SECURITY-MODEL.md
-      - docs/AUTHORIZATION.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/AUTHORIZATION.md
     load_skills: []
     load_rules: []
     paths_in_scope:
@@ -507,7 +507,7 @@ intents:
       - Event.API.IntegrationTests
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/AUTHORIZATION.md
+      - docs/internal/AUTHORIZATION.md
     unique_acceptance:
       - "Cerbos policy-check workflow passes"
       - "AuthorizationParityTests passes"
@@ -541,19 +541,19 @@ intents:
       - "api contract change"
       - "openapi change"
     must_read_docs:
-      - docs/API.md
-      - docs/QUICK_REFERENCE.md
+      - docs/internal/API.md
+      - docs/internal/QUICK_REFERENCE.md
     load_skills: []
     load_rules:
       - .agents/rules/api-controllers.md
     paths_in_scope:
       - "src/Explore.API/Controllers/**/*.cs"
-      - "docs/API_CHANGELOG.md"
+      - "docs/internal/API_CHANGELOG.md"
     minimum_tests:
       - Event.API.IntegrationTests
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/API_CHANGELOG.md
+      - docs/internal/API_CHANGELOG.md
     unique_acceptance:
       - "Operation IDs follow naming convention"
     forbidden_without_approval:
@@ -588,13 +588,13 @@ intents:
       - "harden deployment workflow"
       - "change release governance"
     must_read_docs:
-      - docs/CI_CD_GOVERNANCE.md
-      - docs/OPERATIONS.md
-      - docs/TESTING.md
-      - docs/RELEASE_CHECKLIST.md
-      - docs/QUICK_REFERENCE.md
-      - docs/legal/IP_GOVERNANCE.md
-      - docs/DUAL_VERSIONING.md
+      - docs/internal/CI_CD_GOVERNANCE.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/TESTING.md
+      - docs/internal/RELEASE_CHECKLIST.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/legal/IP_GOVERNANCE.md
+      - docs/internal/DUAL_VERSIONING.md
     load_skills:
       - ip-clean-room
     load_rules:
@@ -616,28 +616,28 @@ intents:
       - "global.json"
       - "Explore.slnx"
       - "eng/release/**"
-      - "docs/CI_CD_GOVERNANCE.md"
-      - "docs/OPERATIONS.md"
-      - "docs/TESTING.md"
-      - "docs/RELEASE_CHECKLIST.md"
-      - "docs/CONTRIBUTING.md"
-      - "docs/index.md"
-      - "docs/RELEASE_POLICY.md"
-      - "docs/RELEASE_RUNBOOK.md"
-      - "docs/adr/ADR-025-provider-neutral-release-governance.md"
-      - "docs/legal/dependencies/git-cliff.md"
-      - "docs/releases/**"
-      - "docs/semantic_versioning/**"
+      - "docs/internal/CI_CD_GOVERNANCE.md"
+      - "docs/internal/OPERATIONS.md"
+      - "docs/internal/TESTING.md"
+      - "docs/internal/RELEASE_CHECKLIST.md"
+      - "docs/internal/CONTRIBUTING.md"
+      - "docs/internal/index.md"
+      - "docs/internal/RELEASE_POLICY.md"
+      - "docs/internal/RELEASE_RUNBOOK.md"
+      - "docs/internal/adr/ADR-025-provider-neutral-release-governance.md"
+      - "docs/internal/legal/dependencies/git-cliff.md"
+      - "docs/internal/releases/**"
+      - "docs/internal/semantic_versioning/**"
       - "dev/report/git-cliff-changelog-automation-report.md"
       - "dev/active/git-cliff-release-engineering/git-cliff-dependency-handoff.md"
       - "tests/Event.Architecture.Tests/**"
     minimum_tests: []
     docs_to_update:
-      - docs/CI_CD_GOVERNANCE.md
-      - docs/OPERATIONS.md
-      - docs/RELEASE_CHECKLIST.md
-      - docs/RELEASE_POLICY.md
-      - docs/RELEASE_RUNBOOK.md
+      - docs/internal/CI_CD_GOVERNANCE.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/RELEASE_CHECKLIST.md
+      - docs/internal/RELEASE_POLICY.md
+      - docs/internal/RELEASE_RUNBOOK.md
     unique_acceptance:
       - "External GitHub Actions remain pinned to full commit SHAs with same-line version comments"
       - "Required checks are always-present or explicitly documented as path-conditional"
@@ -693,14 +693,14 @@ intents:
       - "whole-instance configuration bootstrap"
       - "configuration manifest export"
     must_read_docs:
-      - docs/QUICK_REFERENCE.md
-      - docs/GOVERNANCE.md
-      - docs/SECURITY-MODEL.md
-      - docs/SECRETS.md
-      - docs/CONFIGURATION.md
-      - docs/SELF_HOSTING.md
-      - docs/TESTING.md
-      - docs/legal/IP_GOVERNANCE.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/GOVERNANCE.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/SECRETS.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/SELF_HOSTING.md
+      - docs/internal/TESTING.md
+      - docs/internal/legal/IP_GOVERNANCE.md
     load_skills:
       - auth-patterns
       - blazor-bff-patterns
@@ -758,12 +758,12 @@ intents:
       - "src/Explore.Blazor.Client/Services/**/*.cs"
       - "Event.*Tests/**/*.cs"
       - "Explore.*Tests/**/*.cs"
-      - "docs/CONFIGURATION.md"
-      - "docs/CI_CD_GOVERNANCE.md"
-      - "docs/RELEASE_CHECKLIST.md"
-      - "docs/SECRETS.md"
-      - "docs/SELF_HOSTING.md"
-      - "docs/TROUBLESHOOTING.md"
+      - "docs/internal/CONFIGURATION.md"
+      - "docs/internal/CI_CD_GOVERNANCE.md"
+      - "docs/internal/RELEASE_CHECKLIST.md"
+      - "docs/internal/SECRETS.md"
+      - "docs/internal/SELF_HOSTING.md"
+      - "docs/internal/TROUBLESHOOTING.md"
       - "dev/active/**"
     minimum_tests:
       - Event.Domain.UnitTests
@@ -774,10 +774,10 @@ intents:
       - Explore.Blazor.Client.Tests
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/CONFIGURATION.md
-      - docs/SECRETS.md
-      - docs/SELF_HOSTING.md
-      - docs/TROUBLESHOOTING.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/SECRETS.md
+      - docs/internal/SELF_HOSTING.md
+      - docs/internal/TROUBLESHOOTING.md
     unique_acceptance:
       - "Bootstrap credentials are request-scoped or job-scoped and never persisted as runtime application secrets"
       - "Browser-controlled privileged headers are stripped and replaced only from trusted BFF/server sources"
@@ -831,12 +831,12 @@ intents:
       - "schedule a deadline"
       - "wake work at a future time"
     must_read_docs:
-      - docs/OPERATIONS.md
-      - docs/ARCHITECTURE.md
-      - docs/QUICK_REFERENCE.md
-      - docs/CONFIGURATION.md
-      - docs/TESTING.md
-      - docs/OUTBOX_PATTERN.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/ARCHITECTURE.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/TESTING.md
+      - docs/internal/OUTBOX_PATTERN.md
     load_skills:
       - outbox-pattern
       - clean-architecture-rules
@@ -853,15 +853,15 @@ intents:
       - "src/Explore.Application/Contracts/Scheduling/**/*.cs"
       - "src/Explore.API/Resources/Quartz/**"
       - "src/Explore.API/appsettings*.json"
-      - "docs/OPERATIONS.md"
-      - "docs/CONFIGURATION.md"
+      - "docs/internal/OPERATIONS.md"
+      - "docs/internal/CONFIGURATION.md"
     minimum_tests:
       - Event.Persistence.IntegrationTests
       - Event.API.IntegrationTests
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/OPERATIONS.md
-      - docs/CONFIGURATION.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/CONFIGURATION.md
     unique_acceptance:
       - "Quartz is the only scheduler; no bespoke timer loop or second scheduling package is introduced"
       - "The job body is a single pass — enablement, interval, cancellation, exception containment, and DI scope belong to the scheduler"
@@ -917,11 +917,11 @@ intents:
       - "audit readiness"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/legal/IP_GOVERNANCE.md
-      - docs/legal/CONTRIBUTION_GOVERNANCE.md
-      - docs/DUAL_VERSIONING.md
-      - docs/CI_CD_GOVERNANCE.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/legal/IP_GOVERNANCE.md
+      - docs/internal/legal/CONTRIBUTION_GOVERNANCE.md
+      - docs/internal/DUAL_VERSIONING.md
+      - docs/internal/CI_CD_GOVERNANCE.md
       - .agents/skills/_SKILL_SCHEMA.md
     load_skills:
       - ip-clean-room
@@ -931,9 +931,9 @@ intents:
       - .agents/rules/ip-clean-room.md
     paths_in_scope:
       - "AGENTS.md"
-      - "docs/QUICK_REFERENCE.md"
-      - "docs/index.md"
-      - "docs/legal/IP_GOVERNANCE.md"
+      - "docs/internal/QUICK_REFERENCE.md"
+      - "docs/internal/index.md"
+      - "docs/internal/legal/IP_GOVERNANCE.md"
       - ".agents/skills/ip-clean-room/**"
       - ".agents/rules/ip-clean-room.md"
       - ".agents/rules/README.md"
@@ -945,9 +945,9 @@ intents:
     minimum_tests:
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/QUICK_REFERENCE.md
-      - docs/legal/IP_GOVERNANCE.md
-      - docs/index.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/legal/IP_GOVERNANCE.md
+      - docs/internal/index.md
       - .agents/contract/intents.yaml
     unique_acceptance:
       - "Implementation contexts receive source-free functional handoffs and never third-party source or source-derived representations"
@@ -1001,11 +1001,11 @@ intents:
       - "context engineering"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/DOCUMENTATION_STYLE_GUIDE.md
-      - docs/OPERATIONS.md
-      - docs/TESTING.md
-      - docs/legal/IP_GOVERNANCE.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/DOCUMENTATION_STYLE_GUIDE.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/TESTING.md
+      - docs/internal/legal/IP_GOVERNANCE.md
       - .agents/skills/_SKILL_SCHEMA.md
     load_skills:
       - skill-authoring
@@ -1020,7 +1020,7 @@ intents:
       - ".agents/benchmarks/**"
       - "tests/Event.Architecture.Tests/**"
       - "dev/active/**"
-      - "docs/GOVERNANCE.md"
+      - "docs/internal/GOVERNANCE.md"
       - "eng/agent-context/**"
     minimum_tests:
       - Event.Architecture.Tests
@@ -1070,10 +1070,10 @@ intents:
       - "validate literal git commit paths"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/AGENTIC_CONTEXT_ENGINEERING.md
-      - docs/OPERATIONS.md
-      - docs/TESTING.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/AGENTIC_CONTEXT_ENGINEERING.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/TESTING.md
       - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md
     load_skills: []
     load_rules:
@@ -1091,9 +1091,9 @@ intents:
       - "eng/agent-workflow/src/ISLAMU.AgentWorkflow/**"
       - "eng/agent-workflow/tests/ISLAMU.AgentWorkflow.Tests/**"
       - "eng/agent-context/**"
-      - "docs/AGENTIC_CONTEXT_ENGINEERING.md"
-      - "docs/OPERATIONS.md"
-      - "docs/TESTING.md"
+      - "docs/internal/AGENTIC_CONTEXT_ENGINEERING.md"
+      - "docs/internal/OPERATIONS.md"
+      - "docs/internal/TESTING.md"
       - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md"
     paths_forbidden:
       - "src/**"
@@ -1109,9 +1109,9 @@ intents:
     minimum_tests:
       - ISLAMU.AgentWorkflow.Tests
     docs_to_update:
-      - docs/AGENTIC_CONTEXT_ENGINEERING.md
-      - docs/OPERATIONS.md
-      - docs/TESTING.md
+      - docs/internal/AGENTIC_CONTEXT_ENGINEERING.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/TESTING.md
       - .agents/contract/intents.yaml
       - .agents/contract/README.md
       - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md
@@ -1166,11 +1166,11 @@ intents:
       - "ai.*redaction"
       - "ai.*consent"
     must_read_docs:
-      - docs/AI_CONTEXT_SECURITY.md
-      - docs/adr/ADR-012-ai-context-disclosure-policy.md
+      - docs/internal/AI_CONTEXT_SECURITY.md
+      - docs/internal/adr/ADR-012-ai-context-disclosure-policy.md
       - AGENTS.md
-      - docs/SECURITY-MODEL.md
-      - docs/AUTHORIZATION.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/AUTHORIZATION.md
     load_skills:
       - clean-architecture-rules
       - cqrs-mediatr-guidelines
@@ -1197,12 +1197,12 @@ intents:
       - src/Explore.API/Mcp/McpAdapterTelemetry.cs
       - tests/Event.Architecture.Tests/AiContextDisclosureSchemaTests.cs
       - tests/Event.Architecture.Tests/AiContextGatewayBypassTests.cs
-      - docs/AI_CONTEXT_SECURITY.md
-      - docs/adr/ADR-012-ai-context-disclosure-policy.md
+      - docs/internal/AI_CONTEXT_SECURITY.md
+      - docs/internal/adr/ADR-012-ai-context-disclosure-policy.md
     minimum_tests:
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/AI_CONTEXT_SECURITY.md
+      - docs/internal/AI_CONTEXT_SECURITY.md
     unique_acceptance:
       - "AiContextDisclosureRegistry.CreateDefault() covers every public persisted property on every *Pii entity (reflection test passes)"
       - "IAiContextGateway is the only path to disclose entity fields to the AI prompt (bypass test passes)"
@@ -1249,21 +1249,21 @@ intents:
       - "branding legal identity"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/GOVERNANCE.md
-      - docs/ARCHITECTURE.md
-      - docs/DOMAIN.md
-      - docs/API.md
-      - docs/AUTHORIZATION.md
-      - docs/SECURITY-MODEL.md
-      - docs/MULTI_TENANCY.md
-      - docs/PAYMENTS.md
-      - docs/FOOTER_MANAGEMENT.md
-      - docs/CONFIGURATION.md
-      - docs/OPERATIONS.md
-      - docs/TESTING.md
-      - docs/legal/IP_GOVERNANCE.md
-      - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/GOVERNANCE.md
+      - docs/internal/ARCHITECTURE.md
+      - docs/internal/DOMAIN.md
+      - docs/internal/API.md
+      - docs/internal/AUTHORIZATION.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/MULTI_TENANCY.md
+      - docs/internal/PAYMENTS.md
+      - docs/internal/FOOTER_MANAGEMENT.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/TESTING.md
+      - docs/internal/legal/IP_GOVERNANCE.md
+      - docs/internal/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
     load_skills:
       - clean-architecture-rules
       - cqrs-mediatr-guidelines
@@ -1315,21 +1315,21 @@ intents:
       - "schemas/openapi_islamu-event.json"
       - "schemas/islamu-event.md"
       - ".env.example"
-      - "docs/MULTI_TENANCY.md"
-      - "docs/PAYMENTS.md"
-      - "docs/FOOTER_MANAGEMENT.md"
-      - "docs/CONFIGURATION.md"
-      - "docs/OPERATIONS.md"
-      - "docs/DOMAIN.md"
-      - "docs/API.md"
-      - "docs/API_CHANGELOG.md"
-      - "docs/API_CONTRACT_INVENTORY.md"
-      - "docs/AUTHORIZATION.md"
-      - "docs/SECURITY-MODEL.md"
-      - "docs/SELF_HOSTING.md"
-      - "docs/TROUBLESHOOTING.md"
-      - "docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md"
-      - "docs/releases/changes/CHG-*.yaml"
+      - "docs/internal/MULTI_TENANCY.md"
+      - "docs/internal/PAYMENTS.md"
+      - "docs/internal/FOOTER_MANAGEMENT.md"
+      - "docs/internal/CONFIGURATION.md"
+      - "docs/internal/OPERATIONS.md"
+      - "docs/internal/DOMAIN.md"
+      - "docs/internal/API.md"
+      - "docs/internal/API_CHANGELOG.md"
+      - "docs/internal/API_CONTRACT_INVENTORY.md"
+      - "docs/internal/AUTHORIZATION.md"
+      - "docs/internal/SECURITY-MODEL.md"
+      - "docs/internal/SELF_HOSTING.md"
+      - "docs/internal/TROUBLESHOOTING.md"
+      - "docs/internal/adr/ADR-022-paid-event-commerce-and-stripe-connect.md"
+      - "docs/internal/releases/changes/CHG-*.yaml"
       - "islamic-value-sensitive-design/i-vsd-branding-legal-identity-authority.md"
       - "dev/zarchive/branding-legal-identity-authority/**"
     paths_forbidden:
@@ -1350,20 +1350,20 @@ intents:
       - Explore.Secrets.UnitTests
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/MULTI_TENANCY.md
-      - docs/PAYMENTS.md
-      - docs/FOOTER_MANAGEMENT.md
-      - docs/CONFIGURATION.md
-      - docs/OPERATIONS.md
-      - docs/DOMAIN.md
-      - docs/API.md
-      - docs/API_CHANGELOG.md
-      - docs/API_CONTRACT_INVENTORY.md
-      - docs/AUTHORIZATION.md
-      - docs/SECURITY-MODEL.md
-      - docs/SELF_HOSTING.md
-      - docs/TROUBLESHOOTING.md
-      - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
+      - docs/internal/MULTI_TENANCY.md
+      - docs/internal/PAYMENTS.md
+      - docs/internal/FOOTER_MANAGEMENT.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/DOMAIN.md
+      - docs/internal/API.md
+      - docs/internal/API_CHANGELOG.md
+      - docs/internal/API_CONTRACT_INVENTORY.md
+      - docs/internal/AUTHORIZATION.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/SELF_HOSTING.md
+      - docs/internal/TROUBLESHOOTING.md
+      - docs/internal/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
       - schemas/islamu-event.md
     unique_acceptance:
       - "Cosmetic branding, tenant directory operator, instance operator, and organizer merchant remain independent authoritative roles"
@@ -1448,26 +1448,26 @@ intents:
       - "event participation platform"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/GOVERNANCE.md
-      - docs/ARCHITECTURE.md
-      - docs/DOMAIN.md
-      - docs/API.md
-      - docs/AUTHORIZATION.md
-      - docs/SECURITY-MODEL.md
-      - docs/WEBHOOKS.md
-      - docs/CONTACT_SHARING.md
-      - docs/MULTI_TENANCY.md
-      - docs/OUTBOX_PATTERN.md
-      - docs/BLAZOR.md
-      - docs/TESTING.md
-      - docs/legal/IP_GOVERNANCE.md
-      - docs/adr/ADR-016-registration-data-collection-context.md
-      - docs/adr/ADR-017-event-participation-authority-model.md
-      - docs/adr/ADR-018-registration-order-ticketing-aggregate.md
-      - docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
-      - docs/adr/ADR-023-admission-credential-check-in-transfer-recovery.md
-      - docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/GOVERNANCE.md
+      - docs/internal/ARCHITECTURE.md
+      - docs/internal/DOMAIN.md
+      - docs/internal/API.md
+      - docs/internal/AUTHORIZATION.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/WEBHOOKS.md
+      - docs/internal/CONTACT_SHARING.md
+      - docs/internal/MULTI_TENANCY.md
+      - docs/internal/OUTBOX_PATTERN.md
+      - docs/internal/BLAZOR.md
+      - docs/internal/TESTING.md
+      - docs/internal/legal/IP_GOVERNANCE.md
+      - docs/internal/adr/ADR-016-registration-data-collection-context.md
+      - docs/internal/adr/ADR-017-event-participation-authority-model.md
+      - docs/internal/adr/ADR-018-registration-order-ticketing-aggregate.md
+      - docs/internal/adr/ADR-022-paid-event-commerce-and-stripe-connect.md
+      - docs/internal/adr/ADR-023-admission-credential-check-in-transfer-recovery.md
+      - docs/internal/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md
       - islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md
       - dev/zarchive/registration-data-collection/registration-data-collection-plan.md
       - dev/zarchive/registration-data-collection/registration-data-collection-context.md
@@ -1653,31 +1653,31 @@ intents:
       - "docker-compose.yml"
       - "src/Explore.AppHost/AppHost.cs"
       - "src/Event.Standalone/appsettings.json"
-      - "docs/adr/ADR-016-registration-data-collection-context.md"
-      - "docs/adr/ADR-017-event-participation-authority-model.md"
-      - "docs/adr/ADR-018-registration-order-ticketing-aggregate.md"
-      - "docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md"
-      - "docs/adr/ADR-023-admission-credential-check-in-transfer-recovery.md"
-      - "docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md"
+      - "docs/internal/adr/ADR-016-registration-data-collection-context.md"
+      - "docs/internal/adr/ADR-017-event-participation-authority-model.md"
+      - "docs/internal/adr/ADR-018-registration-order-ticketing-aggregate.md"
+      - "docs/internal/adr/ADR-022-paid-event-commerce-and-stripe-connect.md"
+      - "docs/internal/adr/ADR-023-admission-credential-check-in-transfer-recovery.md"
+      - "docs/internal/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md"
       - "islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md"
-      - "docs/API.md"
-      - "docs/API_CHANGELOG.md"
-      - "docs/API_CONTRACT_INVENTORY.md"
-      - "docs/AUTHORIZATION.md"
-      - "docs/BLAZOR.md"
-      - "docs/CONFIGURATION.md"
-      - "docs/CONTACT_SHARING.md"
-      - "docs/CUSTOM_PROPERTIES.md"
-      - "docs/DOMAIN.md"
-      - "docs/INTEGRATIONS.md"
-      - "docs/OPERATIONS.md"
-      - "docs/LEXICONS.md"
-      - "docs/SECURITY-MODEL.md"
-      - "docs/SECRETS.md"
-      - "docs/SELF_HOSTING.md"
-      - "docs/TROUBLESHOOTING.md"
-      - "docs/WEBHOOKS.md"
-      - "docs/releases/changes/CHG-*.yaml"
+      - "docs/internal/API.md"
+      - "docs/internal/API_CHANGELOG.md"
+      - "docs/internal/API_CONTRACT_INVENTORY.md"
+      - "docs/internal/AUTHORIZATION.md"
+      - "docs/internal/BLAZOR.md"
+      - "docs/internal/CONFIGURATION.md"
+      - "docs/internal/CONTACT_SHARING.md"
+      - "docs/internal/CUSTOM_PROPERTIES.md"
+      - "docs/internal/DOMAIN.md"
+      - "docs/internal/INTEGRATIONS.md"
+      - "docs/internal/OPERATIONS.md"
+      - "docs/internal/LEXICONS.md"
+      - "docs/internal/SECURITY-MODEL.md"
+      - "docs/internal/SECRETS.md"
+      - "docs/internal/SELF_HOSTING.md"
+      - "docs/internal/TROUBLESHOOTING.md"
+      - "docs/internal/WEBHOOKS.md"
+      - "docs/internal/releases/changes/CHG-*.yaml"
       - "dev/zarchive/registration-data-collection/**"
     paths_forbidden:
       - ".claude/settings*.json"
@@ -1695,19 +1695,19 @@ intents:
       - Explore.Blazor.Client.Tests
       - Explore.Secrets.UnitTests
     docs_to_update:
-      - docs/DOMAIN.md
-      - docs/API.md
-      - docs/API_CHANGELOG.md
-      - docs/AUTHORIZATION.md
-      - docs/SECURITY-MODEL.md
-      - docs/CONTACT_SHARING.md
-      - docs/WEBHOOKS.md
-      - docs/CUSTOM_PROPERTIES.md
-      - docs/CONFIGURATION.md
-      - docs/SECRETS.md
-      - docs/SELF_HOSTING.md
-      - docs/INTEGRATIONS.md
-      - docs/BLAZOR.md
+      - docs/internal/DOMAIN.md
+      - docs/internal/API.md
+      - docs/internal/API_CHANGELOG.md
+      - docs/internal/AUTHORIZATION.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/CONTACT_SHARING.md
+      - docs/internal/WEBHOOKS.md
+      - docs/internal/CUSTOM_PROPERTIES.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/SECRETS.md
+      - docs/internal/SELF_HOSTING.md
+      - docs/internal/INTEGRATIONS.md
+      - docs/internal/BLAZOR.md
       - schemas/islamu-event.md
       - dev/zarchive/registration-data-collection/registration-data-collection-plan.md
       - dev/zarchive/registration-data-collection/registration-data-collection-context.md
@@ -1811,19 +1811,19 @@ intents:
       - "replace the webhook delivery architecture"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/ARCHITECTURE.md
-      - docs/WEBHOOKS.md
-      - docs/SECURITY-MODEL.md
-      - docs/AUTHORIZATION.md
-      - docs/API.md
-      - docs/BLAZOR.md
-      - docs/MULTI_TENANCY.md
-      - docs/OUTBOX_PATTERN.md
-      - docs/OPERATIONS.md
-      - docs/TESTING.md
-      - docs/legal/IP_GOVERNANCE.md
-      - docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/ARCHITECTURE.md
+      - docs/internal/WEBHOOKS.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/AUTHORIZATION.md
+      - docs/internal/API.md
+      - docs/internal/BLAZOR.md
+      - docs/internal/MULTI_TENANCY.md
+      - docs/internal/OUTBOX_PATTERN.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/TESTING.md
+      - docs/internal/legal/IP_GOVERNANCE.md
+      - docs/internal/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md
       - islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md
     load_skills:
       - clean-architecture-rules
@@ -1892,23 +1892,23 @@ intents:
       - "schemas/islamu-event.md"
       - ".env.example"
       - "docker-compose.yml"
-      - "docs/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md"
+      - "docs/internal/adr/ADR-024-external-business-integrations-and-protected-payout-boundaries.md"
       - "islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md"
-      - "docs/API.md"
-      - "docs/API_CHANGELOG.md"
-      - "docs/API_CONTRACT_INVENTORY.md"
-      - "docs/AUTHORIZATION.md"
-      - "docs/BLAZOR.md"
-      - "docs/CONFIGURATION.md"
-      - "docs/DOMAIN.md"
-      - "docs/INTEGRATIONS.md"
-      - "docs/OPERATIONS.md"
-      - "docs/SECURITY-MODEL.md"
-      - "docs/SECRETS.md"
-      - "docs/SELF_HOSTING.md"
-      - "docs/BACKUP_RESTORE_UPGRADE.md"
-      - "docs/TROUBLESHOOTING.md"
-      - "docs/WEBHOOKS.md"
+      - "docs/internal/API.md"
+      - "docs/internal/API_CHANGELOG.md"
+      - "docs/internal/API_CONTRACT_INVENTORY.md"
+      - "docs/internal/AUTHORIZATION.md"
+      - "docs/internal/BLAZOR.md"
+      - "docs/internal/CONFIGURATION.md"
+      - "docs/internal/DOMAIN.md"
+      - "docs/internal/INTEGRATIONS.md"
+      - "docs/internal/OPERATIONS.md"
+      - "docs/internal/SECURITY-MODEL.md"
+      - "docs/internal/SECRETS.md"
+      - "docs/internal/SELF_HOSTING.md"
+      - "docs/internal/BACKUP_RESTORE_UPGRADE.md"
+      - "docs/internal/TROUBLESHOOTING.md"
+      - "docs/internal/WEBHOOKS.md"
       - "dev/zarchive/webhook-delivery-redesign/**"
     paths_forbidden:
       - ".claude/settings*.json"
@@ -1929,17 +1929,17 @@ intents:
       - Explore.Blazor.Client.Tests
       - Explore.Secrets.UnitTests
     docs_to_update:
-      - docs/DOMAIN.md
-      - docs/API.md
-      - docs/API_CHANGELOG.md
-      - docs/WEBHOOKS.md
-      - docs/INTEGRATIONS.md
-      - docs/CONFIGURATION.md
-      - docs/SECRETS.md
-      - docs/SELF_HOSTING.md
-      - docs/BACKUP_RESTORE_UPGRADE.md
-      - docs/OPERATIONS.md
-      - docs/TROUBLESHOOTING.md
+      - docs/internal/DOMAIN.md
+      - docs/internal/API.md
+      - docs/internal/API_CHANGELOG.md
+      - docs/internal/WEBHOOKS.md
+      - docs/internal/INTEGRATIONS.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/SECRETS.md
+      - docs/internal/SELF_HOSTING.md
+      - docs/internal/BACKUP_RESTORE_UPGRADE.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/TROUBLESHOOTING.md
       - schemas/islamu-event.md
     unique_acceptance:
       - "PostgreSQL exact bytes, SHA-256, and provenance are the sole payload, signing, idempotency, and transmission authority; parsed JSON is never authoritative"
@@ -2024,15 +2024,15 @@ intents:
       - "secret provider topology"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/GOVERNANCE.md
-      - docs/SECURITY-MODEL.md
-      - docs/SECRETS.md
-      - docs/CONFIGURATION.md
-      - docs/SELF_HOSTING.md
-      - docs/BACKUP_RESTORE_UPGRADE.md
-      - docs/TROUBLESHOOTING.md
-      - docs/TESTING.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/GOVERNANCE.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/SECRETS.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/SELF_HOSTING.md
+      - docs/internal/BACKUP_RESTORE_UPGRADE.md
+      - docs/internal/TROUBLESHOOTING.md
+      - docs/internal/TESTING.md
     load_skills:
       - criticality-guardrail
       - grill-me
@@ -2122,17 +2122,17 @@ intents:
       - "deploy/bootstrap/**"
       - "schemas/islamu-event.md"
       - "schemas/openapi_islamu-event.json"
-      - "docs/SECRETS.md"
-      - "docs/CONFIGURATION.md"
-      - "docs/SECURITY-MODEL.md"
-      - "docs/SELF_HOSTING.md"
-      - "docs/OPERATIONS.md"
-      - "docs/BACKUP_RESTORE_UPGRADE.md"
-      - "docs/TROUBLESHOOTING.md"
-      - "docs/API.md"
-      - "docs/API_CHANGELOG.md"
-      - "docs/API_CONTRACT_INVENTORY.md"
-      - "docs/BLAZOR.md"
+      - "docs/internal/SECRETS.md"
+      - "docs/internal/CONFIGURATION.md"
+      - "docs/internal/SECURITY-MODEL.md"
+      - "docs/internal/SELF_HOSTING.md"
+      - "docs/internal/OPERATIONS.md"
+      - "docs/internal/BACKUP_RESTORE_UPGRADE.md"
+      - "docs/internal/TROUBLESHOOTING.md"
+      - "docs/internal/API.md"
+      - "docs/internal/API_CHANGELOG.md"
+      - "docs/internal/API_CONTRACT_INVENTORY.md"
+      - "docs/internal/BLAZOR.md"
       - "README.md"
       - "dev/zarchive/secrets-refactor-control-plane/**"
       - "islamic-value-sensitive-design/i-vsd-secrets-refactor-control-plane.md"
@@ -2149,13 +2149,13 @@ intents:
       - Event.Standalone.IntegrationTests
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/SECRETS.md
-      - docs/CONFIGURATION.md
-      - docs/SECURITY-MODEL.md
-      - docs/SELF_HOSTING.md
-      - docs/OPERATIONS.md
-      - docs/BACKUP_RESTORE_UPGRADE.md
-      - docs/TROUBLESHOOTING.md
+      - docs/internal/SECRETS.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/SELF_HOSTING.md
+      - docs/internal/OPERATIONS.md
+      - docs/internal/BACKUP_RESTORE_UPGRADE.md
+      - docs/internal/TROUBLESHOOTING.md
       - schemas/islamu-event.md
     unique_acceptance:
       - "Environment and Infisical are explicit deployment-owned authority modes; UserSecrets is an explicit Development/Testing-only local authority; the selected authority never falls back to a lower source and application databases never hold secret values or reversible ciphertext"
@@ -2254,9 +2254,9 @@ intents:
             - "src/Explore.API/Controllers/**/*Settings*.cs"
             - "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"
             - "schemas/openapi_islamu-event.json"
-            - "docs/API.md"
-            - "docs/API_CHANGELOG.md"
-            - "docs/API_CONTRACT_INVENTORY.md"
+            - "docs/internal/API.md"
+            - "docs/internal/API_CHANGELOG.md"
+            - "docs/internal/API_CONTRACT_INVENTORY.md"
         - intent: blazor-component-affordance
           when_paths:
             - "src/Explore.Blazor.Client/Pages/Admin/Instance/**"
@@ -2299,14 +2299,14 @@ intents:
       - "provider migration ownership"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/GOVERNANCE.md
-      - docs/PRIVACY_ERASURE.md
-      - docs/CONFIGURATION.md
-      - docs/SELF_HOSTING.md
-      - docs/BACKUP_RESTORE_UPGRADE.md
-      - docs/TROUBLESHOOTING.md
-      - docs/TESTING.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/GOVERNANCE.md
+      - docs/internal/PRIVACY_ERASURE.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/SELF_HOSTING.md
+      - docs/internal/BACKUP_RESTORE_UPGRADE.md
+      - docs/internal/TROUBLESHOOTING.md
+      - docs/internal/TESTING.md
     load_skills:
       - clean-architecture-rules
       - dotnet-efcore-guidelines
@@ -2327,12 +2327,12 @@ intents:
       - "tests/Event.Architecture.Tests/ProviderMigrationOwnershipTests.cs"
       - "tests/Event.Architecture.Tests/PrimaryDatabaseMigrationCompositionTests.cs"
       - ".github/workflows/_build-test.yml"
-      - "docs/PRIVACY_ERASURE.md"
-      - "docs/CONFIGURATION.md"
-      - "docs/SELF_HOSTING.md"
-      - "docs/BACKUP_RESTORE_UPGRADE.md"
-      - "docs/TROUBLESHOOTING.md"
-      - "docs/TESTING.md"
+      - "docs/internal/PRIVACY_ERASURE.md"
+      - "docs/internal/CONFIGURATION.md"
+      - "docs/internal/SELF_HOSTING.md"
+      - "docs/internal/BACKUP_RESTORE_UPGRADE.md"
+      - "docs/internal/TROUBLESHOOTING.md"
+      - "docs/internal/TESTING.md"
       - "dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-plan.md"
       - "dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-context.md"
       - "dev/zarchive/multi-database-persistence-unification/multi-database-persistence-unification-tasks.md"
@@ -2344,12 +2344,12 @@ intents:
       - Event.Persistence.IntegrationTests
       - Event.Architecture.Tests
     docs_to_update:
-      - docs/PRIVACY_ERASURE.md
-      - docs/CONFIGURATION.md
-      - docs/SELF_HOSTING.md
-      - docs/BACKUP_RESTORE_UPGRADE.md
-      - docs/TROUBLESHOOTING.md
-      - docs/TESTING.md
+      - docs/internal/PRIVACY_ERASURE.md
+      - docs/internal/CONFIGURATION.md
+      - docs/internal/SELF_HOSTING.md
+      - docs/internal/BACKUP_RESTORE_UPGRADE.md
+      - docs/internal/TROUBLESHOOTING.md
+      - docs/internal/TESTING.md
     unique_acceptance:
       - "Primary application and Data Protection persistence retain PostgreSQL, SQLite, SQL Server, MariaDB, and MySQL provider composition without collapsing provider migration owners or history tables"
       - "PrivacyErasure:Authority:Topology keeps EmbeddedSqlite with any primary provider, CoLocated only for PostgreSQL or SQLite, and ExternalDatabase only for separate PostgreSQL"
@@ -2417,12 +2417,12 @@ intents:
       - "typed assurance refactor"
     must_read_docs:
       - AGENTS.md
-      - docs/QUICK_REFERENCE.md
-      - docs/GOVERNANCE.md
-      - docs/TESTING.md
-      - docs/SECURITY-MODEL.md
-      - docs/DOMAIN.md
-      - docs/RECORD_CONTRACTS.md
+      - docs/internal/QUICK_REFERENCE.md
+      - docs/internal/GOVERNANCE.md
+      - docs/internal/TESTING.md
+      - docs/internal/SECURITY-MODEL.md
+      - docs/internal/DOMAIN.md
+      - docs/internal/RECORD_CONTRACTS.md
       - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-plan.md
       - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-context.md
       - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-tasks.md
@@ -2460,13 +2460,13 @@ intents:
       - "eng/tools/Explore.AssuranceAudit/**"
       - "eng/tools/Explore.ApiContractInventory/**"
       - "tests/**/*.cs"
-      - "docs/TESTING.md"
-      - "docs/GOVERNANCE.md"
-      - "docs/QUICK_REFERENCE.md"
-      - "docs/RECORD_CONTRACTS.md"
-      - "docs/SECURITY-MODEL.md"
-      - "docs/DOMAIN.md"
-      - "docs/BLAZOR.md"
+      - "docs/internal/TESTING.md"
+      - "docs/internal/GOVERNANCE.md"
+      - "docs/internal/QUICK_REFERENCE.md"
+      - "docs/internal/RECORD_CONTRACTS.md"
+      - "docs/internal/SECURITY-MODEL.md"
+      - "docs/internal/DOMAIN.md"
+      - "docs/internal/BLAZOR.md"
       - "dev/active/strong-typing-reflection-remediation/**"
     paths_forbidden:
       - "src/**/Migrations/**"
@@ -2485,9 +2485,9 @@ intents:
       - Explore.Secrets.UnitTests
       - Explore.GeneratedContracts.Tests
     docs_to_update:
-      - docs/TESTING.md
-      - docs/GOVERNANCE.md
-      - docs/RECORD_CONTRACTS.md
+      - docs/internal/TESTING.md
+      - docs/internal/GOVERNANCE.md
+      - docs/internal/RECORD_CONTRACTS.md
       - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-context.md
       - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-tasks.md
     unique_acceptance:

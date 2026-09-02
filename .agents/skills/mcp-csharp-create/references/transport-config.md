@@ -138,4 +138,4 @@ builder.Services.AddOpenTelemetry()
 ```
 
 Trace context propagated via `_meta.traceparent` across client/server boundaries.
-Metrics follow [MCP semantic conventions](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/mcp.md#metrics).
+Metrics follow [MCP semantic conventions](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/internal/gen-ai/mcp.md#metrics).

@@ -3,10 +3,10 @@ name: ip-clean-room
 description: Apply when source, documentation, or active planning may be externally informed or change dependency licensing.
 paths:
   - "src/**/*"
-  - "docs/**/*"
+  - "docs/internal/**/*"
   - "dev/active/**/*"
 related_skills: [ip-clean-room, agentic-research]
-related_docs: [docs/legal/IP_GOVERNANCE.md, docs/QUICK_REFERENCE.md, docs/DUAL_VERSIONING.md, legal/CLA.md]
+related_docs: [docs/internal/legal/IP_GOVERNANCE.md, docs/internal/QUICK_REFERENCE.md, docs/internal/DUAL_VERSIONING.md, legal/CLA.md]
 minimum_tests: [Event.Architecture.Tests]
 related_intents: [add-get-endpoint, add-write-endpoint, add-hal-link, add-cqrs-handler, add-ef-migration, update-repository-query, blazor-component-affordance, bff-auth-bug, openapi-contract-change, ci-cd-change, external-infrastructure-bootstrap, ip-clean-room-governance, create-agent-context-skill, update-ai-context-disclosure, registration-data-collection, webhook-delivery-redesign, platform-privacy-erasure]
 ---
@@ -17,7 +17,7 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-hal-link, add-cqrs-h
 # IP Clean-Room And Outbound-License Protection
 
 > **Applies to:** implementation source, documentation, and active feature/design workstreams.
-> **Authority:** [`docs/legal/IP_GOVERNANCE.md`](../../docs/legal/IP_GOVERNANCE.md), [`AGENTS.md`](../../AGENTS.md) §5, and [`docs/QUICK_REFERENCE.md`](../../docs/QUICK_REFERENCE.md).
+> **Authority:** [`docs/internal/legal/IP_GOVERNANCE.md`](../../docs/internal/legal/IP_GOVERNANCE.md), [`AGENTS.md`](../../AGENTS.md) §5, and [`docs/internal/QUICK_REFERENCE.md`](../../docs/internal/QUICK_REFERENCE.md).
 
 ## Rules (Correct / Wrong)
 
@@ -32,8 +32,8 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-hal-link, add-cqrs-h
 
 ## Must-Reads for This Path
 
-- [IP Governance](../../docs/legal/IP_GOVERNANCE.md)
-- [Quick Reference](../../docs/QUICK_REFERENCE.md#critical-rules)
+- [IP Governance](../../docs/internal/legal/IP_GOVERNANCE.md)
+- [Quick Reference](../../docs/internal/QUICK_REFERENCE.md#critical-rules)
 - [IP Clean-Room Skill](../../.agents/skills/ip-clean-room/SKILL.md)
 
 ## Anti-Patterns (Forbidden on These Paths)
@@ -53,5 +53,5 @@ related_intents: [add-get-endpoint, add-write-endpoint, add-hal-link, add-cqrs-h
 ## Related
 
 - [CLA](../../legal/CLA.md)
-- [Dual-Versioning Strategy](../../docs/DUAL_VERSIONING.md)
-- [CI/CD Governance](../../docs/CI_CD_GOVERNANCE.md)
+- [Dual-Versioning Strategy](../../docs/internal/DUAL_VERSIONING.md)
+- [CI/CD Governance](../../docs/internal/CI_CD_GOVERNANCE.md)

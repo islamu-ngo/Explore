@@ -7,14 +7,17 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 > **Status:** Implemented
 > **Owner:** Contributor Experience
 > **Last Verified:** 2026-08-29
-> **Source Anchors:** `README.md`, `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/DOCUMENTATION_STYLE_GUIDE.md`
+> **Source Anchors:** `../../README.md`, `DOCUMENTATION_ARCHITECTURE.md`, `DOCUMENTATION_STYLE_GUIDE.md`
 
-Start with [README.md](../README.md) if you are new to the project. Use this page when you already know your task or need the complete documentation inventory.
+Start with [Repository README](../../README.md) or the [Documentation Hub](../README.md) if you are new to the project. Use this page when you already know your task or need the complete internal engineering documentation inventory.
+
+> 📖 **Official Hosted Documentation:** Looking for online guides, tutorials, and hosted manuals? Visit the **[Official Documentation Portal](https://islamu.gitbook.io/islamu-event)** or browse [`docs/public/`](../public/).
 
 ## Task Paths
 
 | I need to... | Start Here | Then Read |
 |---|---|---|
+| Browse hosted platform guides & tutorials | [Official Documentation](https://islamu.gitbook.io/islamu-event) | [Docs Hub](../README.md), [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) |
 | Understand the whole codebase & mental model | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md), [REQUEST_FLOWS.md](REQUEST_FLOWS.md) |
 | Follow step-by-step feature recipes | [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md) | [QUICK_REFERENCE.md](QUICK_REFERENCE.md), [TESTING.md](TESTING.md) |
 | Understand the product and current scope | [PROJECT.md](PROJECT.md) | [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md), [SECURITY-MODEL.md](SECURITY-MODEL.md) |
@@ -30,9 +33,9 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 | Change authorization or Cerbos behavior | [AUTHORIZATION.md](AUTHORIZATION.md) | [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md), [SECURITY-MODEL.md](SECURITY-MODEL.md), [OPERATIONS.md](OPERATIONS.md) |
 | Contribute code or docs | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md), [CONTRIBUTING.md](CONTRIBUTING.md), [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 | Choose records, classes, or generated contract shapes | [RECORD_CONTRACTS.md](RECORD_CONTRACTS.md) | [GOVERNANCE.md](GOVERNANCE.md), [ARCHITECTURE.md](ARCHITECTURE.md), [TESTING.md](TESTING.md) |
-| Research external behavior or assess a dependency license | [IP Governance](legal/IP_GOVERNANCE.md) | [CLA](../legal/CLA.md), [Dual Versioning](DUAL_VERSIONING.md), [CI/CD Governance](CI_CD_GOVERNANCE.md) |
+| Research external behavior or assess a dependency license | [IP Governance](legal/IP_GOVERNANCE.md) | [CLA](../../legal/CLA.md), [Dual Versioning](DUAL_VERSIONING.md), [CI/CD Governance](CI_CD_GOVERNANCE.md) |
 | Work on Blazor UI | [BLAZOR.md](BLAZOR.md) | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md), [ACCESSIBILITY.md](ACCESSIBILITY.md), [RENDER_POLICIES.md](RENDER_POLICIES.md) |
-| Use an AI coding agent or understand context engineering | [AGENTIC_CONTEXT_ENGINEERING.md](AGENTIC_CONTEXT_ENGINEERING.md) | [../AGENTS.md](../AGENTS.md), [../.agents/contract/intents.yaml](../.agents/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
+| Use an AI coding agent or understand context engineering | [AGENTIC_CONTEXT_ENGINEERING.md](AGENTIC_CONTEXT_ENGINEERING.md) | [../../AGENTS.md](../../AGENTS.md), [../../.agents/contract/intents.yaml](../../.agents/contract/intents.yaml), [QUICK_REFERENCE.md](QUICK_REFERENCE.md) |
 
 ## How To Use This Index
 
@@ -42,14 +45,16 @@ Start with [README.md](../README.md) if you are new to the project. Use this pag
 
 ## Read First
 
-- [README.md](../README.md) - product overview and top-level route into the docs.
+- [Official Documentation](https://islamu.gitbook.io/islamu-event) - official hosted documentation portal for operators, evaluators, and platform users.
+- [Docs Hub](../README.md) - router separating public GitBook docs and internal engineering specs.
+- [Repository README](../../README.md) - product overview and repository entrance.
 - [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) - orientation, 5-minute mental model, and invariant survival guide.
 - [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) - high-level visual architecture, C4 container map, and component interactions.
 - [REQUEST_FLOWS.md](REQUEST_FLOWS.md) - end-to-end execution flows with detailed sequence diagrams.
 - [CONTRIBUTOR_RECIPES.md](CONTRIBUTOR_RECIPES.md) - practical blueprints for adding entities, CQRS slices, APIs, and pages.
 - [GETTING_STARTED.md](GETTING_STARTED.md) - shortest local build, run, and first-contribution path.
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - implementation constraints that are easy to violate.
-- [AGENTS.md](../AGENTS.md) - contribution contract used by contributors and AI agents.
+- [AGENTS.md](../../AGENTS.md) - contribution contract used by contributors and AI agents.
 
 ## Core Architecture
 - [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) - high-level visual architecture, C4 diagrams, and component interactions.

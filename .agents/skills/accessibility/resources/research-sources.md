@@ -5,7 +5,7 @@
 
 ## Authority Order
 
-1. Repository facts: `docs/ACCESSIBILITY.md`, current Blazor code and service contracts, rendered tests, and `Directory.Packages.props`.
+1. Repository facts: `docs/internal/ACCESSIBILITY.md`, current Blazor code and service contracts, rendered tests, and `Directory.Packages.props`.
 2. Normative web standards: WCAG and ARIA specifications from W3C.
 3. Framework documentation: Microsoft Learn for the repository's .NET version.
 4. Component documentation: MudBlazor documentation for the repository's pinned version.

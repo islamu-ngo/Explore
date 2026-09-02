@@ -13,7 +13,7 @@ ABOUTME: Read referenced resources before applying.
 
 > **Project-Agnostic Observability Patterns for .NET**
 >
-> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
+> Placeholders use `{Placeholder}` syntax - see [docs/internal/TEMPLATE_GLOSSARY.md](../../../docs/internal/TEMPLATE_GLOSSARY.md).
 
 ## Non‑Inferable Rules (Must Follow)
 - **Do not swallow exceptions.**
@@ -39,6 +39,6 @@ ABOUTME: Read referenced resources before applying.
 - [observability-stack.md](resources/observability-stack.md)
 
 ## Related Documentation
-- [`docs/CONFIGURATION.md`](../../../docs/CONFIGURATION.md)
-- [`docs/API.md`](../../../docs/API.md) — Middleware pipeline, exception handling chain, rate limiting
-- [`docs/OPERATIONS.md`](../../../docs/OPERATIONS.md) — Business metrics, correlation ID, security headers
+- [`docs/internal/CONFIGURATION.md`](../../../docs/internal/CONFIGURATION.md)
+- [`docs/internal/API.md`](../../../docs/internal/API.md) — Middleware pipeline, exception handling chain, rate limiting
+- [`docs/internal/OPERATIONS.md`](../../../docs/internal/OPERATIONS.md) — Business metrics, correlation ID, security headers

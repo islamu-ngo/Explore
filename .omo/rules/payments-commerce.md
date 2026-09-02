@@ -11,7 +11,7 @@ paths:
   - "src/**/*PlatformMonetization*.cs"
   - "src/**/*Promotion*.cs"
 related_skills: [clean-architecture-rules, dotnet-efcore-guidelines, outbox-pattern, auth-patterns]
-related_docs: [docs/PAYMENTS.md, docs/QUICK_REFERENCE.md, docs/SECURITY-MODEL.md, docs/CONFIGURATION.md]
+related_docs: [docs/internal/PAYMENTS.md, docs/internal/QUICK_REFERENCE.md, docs/internal/SECURITY-MODEL.md, docs/internal/CONFIGURATION.md]
 minimum_tests: [Event.Domain.UnitTests, Event.Application.UnitTests, Explore.Infrastructure.Tests, Event.API.IntegrationTests, Event.Architecture.Tests]
 related_intents: [registration-data-collection, webhook-delivery-redesign]
 ---
@@ -37,9 +37,9 @@ related_intents: [registration-data-collection, webhook-delivery-redesign]
 | 7 | **Multi-Tenant Account Fencing** | Create ticket charges as direct charges in the organizer's connected merchant account context (`StripeAccount: acct_...`). | Mixing organizer payouts or routing payments to instance-level administrator accounts. |
 
 ## Must Read
-- [docs/PAYMENTS.md](../../docs/PAYMENTS.md)
-- [docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md](../../docs/adr/ADR-022-paid-event-commerce-and-stripe-connect.md)
-- [docs/QUICK_REFERENCE.md#critical-rules](../../docs/QUICK_REFERENCE.md#critical-rules)
+- [docs/internal/PAYMENTS.md](../../docs/internal/PAYMENTS.md)
+- [docs/internal/adr/ADR-022-paid-event-commerce-and-stripe-connect.md](../../docs/internal/adr/ADR-022-paid-event-commerce-and-stripe-connect.md)
+- [docs/internal/QUICK_REFERENCE.md#critical-rules](../../docs/internal/QUICK_REFERENCE.md#critical-rules)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

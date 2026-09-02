@@ -31,7 +31,7 @@ ABOUTME: Covers OutboxMessage entity, OutboxProcessor, retry/dead-letter, and sp
 
 ## Related
 
-- `docs/OUTBOX_PATTERN.md`
-- `docs/ARCHITECTURE.md` (Background Services section)
+- `docs/internal/OUTBOX_PATTERN.md`
+- `docs/internal/ARCHITECTURE.md` (Background Services section)
 - `.agents/skills/dotnet-efcore-guidelines/SKILL.md`
 - `.agents/skills/clean-architecture-rules/SKILL.md`

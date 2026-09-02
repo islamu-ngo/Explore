@@ -194,4 +194,4 @@ For `/dev-docs` workstreams, make sure operational impact appears in the right f
 
 - `plan.md`: architecture, migration, rollout, observability, recovery, and docs impact;
 - `context.md`: current operator-related risks or blockers;
-- `tasks.md`: explicit docs/config/runbook update tasks and verification commands.
+- `tasks.md`: explicit docs/internal/config/runbook update tasks and verification commands.

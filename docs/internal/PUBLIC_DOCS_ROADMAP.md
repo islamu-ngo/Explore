@@ -4,12 +4,12 @@ ABOUTME: Keeps public-site planning separate from the current repository Markdow
 # Public Documentation Roadmap
 
 > **Audience:** Contributors | Operators | AI agents
-> **Status:** Planned
+> **Status:** Active (Hosted Docs Live)
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-05-06
+> **Last Verified:** 2026-09-02
 > **Source Anchors:** `docs/DOCUMENTATION_ARCHITECTURE.md`, `docs/index.md`, `docs/docs-website/README.md`
 
-The current documentation implementation keeps repository Markdown as the source of truth. A future public documentation website may mirror selected pages, but it must not become a competing source of operational truth.
+The [official public documentation portal](https://islamu.gitbook.io/islamu-event) is live. The repository Markdown documentation remains the canonical engineering source of truth for technical constraints and implementation details.
 
 ## Deferred Until Repository Docs Are Stable
 

@@ -20,7 +20,7 @@ public sealed class DockerDoctorCheck(IDoctorProcessRunner processRunner) : IDoc
                 Category,
                 "Docker CLI is unavailable, so Compose-based self-hosting cannot be diagnosed.",
                 "Install Docker and verify `docker --version` before running the stack.",
-                "docs/SELF_HOSTING.md",
+                "docs/internal/SELF_HOSTING.md",
                 DoctorRedactor.Redact(string.IsNullOrWhiteSpace(docker.StandardError) ? docker.StandardOutput : docker.StandardError));
         }
 
@@ -32,7 +32,7 @@ public sealed class DockerDoctorCheck(IDoctorProcessRunner processRunner) : IDoc
                 Category,
                 "Docker is available but `docker compose` is unavailable.",
                 "Install the Docker Compose plugin and verify `docker compose version`.",
-                "docs/SELF_HOSTING.md",
+                "docs/internal/SELF_HOSTING.md",
                 DoctorRedactor.Redact(string.IsNullOrWhiteSpace(compose.StandardError) ? compose.StandardOutput : compose.StandardError));
         }
 
@@ -41,7 +41,7 @@ public sealed class DockerDoctorCheck(IDoctorProcessRunner processRunner) : IDoc
             Category,
             "Docker and Docker Compose are available for self-hosting diagnostics.",
             "Use `docker compose config` manually for full Compose interpolation checks; doctor does not start containers.",
-            "docs/SELF_HOSTING.md",
+            "docs/internal/SELF_HOSTING.md",
             DoctorRedactor.Redact($"{docker.StandardOutput.Trim()} | {compose.StandardOutput.Trim()}"));
     }
 }

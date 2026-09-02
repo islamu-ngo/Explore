@@ -20,7 +20,7 @@ public sealed class AspireDoctorCheck(IDoctorProcessRunner processRunner) : IDoc
                 Category,
                 "Aspire CLI is available for local orchestration diagnostics.",
                 "Use `aspire start --isolated` only when intentionally running the stack; doctor does not start Aspire.",
-                "docs/OPERATIONS.md#local-startup-topology-aspire",
+                "docs/internal/OPERATIONS.md#local-startup-topology-aspire",
                 DoctorRedactor.Redact(result.StandardOutput.Trim()));
         }
 
@@ -29,7 +29,7 @@ public sealed class AspireDoctorCheck(IDoctorProcessRunner processRunner) : IDoc
             Category,
             "Aspire CLI was not found or did not return a version.",
             "Install/configure the Aspire CLI before using AppHost diagnostics, or use Docker Compose for self-hosting checks.",
-            "docs/OPERATIONS.md#local-startup-topology-aspire",
+            "docs/internal/OPERATIONS.md#local-startup-topology-aspire",
             DoctorRedactor.Redact(string.IsNullOrWhiteSpace(result.StandardError) ? result.StandardOutput : result.StandardError));
     }
 }

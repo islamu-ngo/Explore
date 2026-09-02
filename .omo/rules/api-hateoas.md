@@ -4,7 +4,7 @@ description: Apply when editing Explore.API HAL assemblers, link policies, or re
 paths:
   - "src/Explore.API/Hateoas/**/*.cs"
 related_skills: [clean-architecture-rules, auth-patterns]
-related_docs: [docs/API.md, docs/AUTHORIZATION.md, docs/QUICK_REFERENCE.md]
+related_docs: [docs/internal/API.md, docs/internal/AUTHORIZATION.md, docs/internal/QUICK_REFERENCE.md]
 minimum_tests: [Event.API.IntegrationTests, Explore.Blazor.Client.Tests, Event.Architecture.Tests]
 related_intents: [add-hal-link, add-get-endpoint, add-write-endpoint, blazor-component-affordance]
 ---
@@ -27,8 +27,8 @@ related_intents: [add-hal-link, add-get-endpoint, add-write-endpoint, blazor-com
 - **Typed Facts Over Attribute Bags**: when a `ResourceDescriptor` publishes `IAuthorizationFacts`, `RequirePermission` deliberately omits the stringly-typed `PermissionResourceAttributes`, and `HateoasAuthorizationEvaluator` applies the same precedence. Assert and reason against the typed facts record (`EventAuthorizationFacts` and siblings), not the attribute dictionary.
 
 ## Must Read
-- [docs/QUICK_REFERENCE.md#critical-rules](../../docs/QUICK_REFERENCE.md#critical-rules) (Rules #16, #20, #21)
-- [docs/API.md](../../docs/API.md)
+- [docs/internal/QUICK_REFERENCE.md#critical-rules](../../docs/internal/QUICK_REFERENCE.md#critical-rules) (Rules #16, #20, #21)
+- [docs/internal/API.md](../../docs/internal/API.md)
 
 ## Verification
 - Build: `dotnet build --configuration Release --verbosity quiet`

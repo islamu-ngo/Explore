@@ -9,10 +9,10 @@ priority: critical
 <!-- ABOUTME: Blocks upward dependencies, misplaced validation, and layer leakage that would violate the repository contract. -->
 
 ## Resources
-- [Architecture](../../../docs/ARCHITECTURE.md) — load for project/layer ownership and runtime composition.
-- [Record contracts](../../../docs/RECORD_CONTRACTS.md) — load for record/class selection, immutable collections, semantic values, persistence leaves, or generated-client ownership.
-- [Codebase structure](../../../docs/CODEBASE_STRUCTURE.md) — load when the destination project or folder is unresolved.
-- [Quick reference](../../../docs/QUICK_REFERENCE.md) — load for global repository invariants.
+- [Architecture](../../../docs/internal/ARCHITECTURE.md) — load for project/layer ownership and runtime composition.
+- [Record contracts](../../../docs/internal/RECORD_CONTRACTS.md) — load for record/class selection, immutable collections, semantic values, persistence leaves, or generated-client ownership.
+- [Codebase structure](../../../docs/internal/CODEBASE_STRUCTURE.md) — load when the destination project or folder is unresolved.
+- [Quick reference](../../../docs/internal/QUICK_REFERENCE.md) — load for global repository invariants.
 
 ## Rules
 

@@ -9,8 +9,8 @@ priority: high
 <!-- ABOUTME: Requires preview, impact, affected-flow, and post-change verification. -->
 
 ## Resources
-- [Record contracts](../../../docs/RECORD_CONTRACTS.md) — load for record/class conversion, immutable collections/results, semantic values, generated contracts, and focused ratchets.
-- [Architecture](../../../docs/ARCHITECTURE.md) — load when the refactor crosses projects or layers.
+- [Record contracts](../../../docs/internal/RECORD_CONTRACTS.md) — load for record/class conversion, immutable collections/results, semantic values, generated contracts, and focused ratchets.
+- [Architecture](../../../docs/internal/ARCHITECTURE.md) — load when the refactor crosses projects or layers.
 
 ## Rules
 
@@ -37,6 +37,6 @@ priority: high
 
 ## Verification
 
-- For record migrations, run the focused commands in [RECORD_CONTRACTS.md](../../../docs/RECORD_CONTRACTS.md#focused-verification).
+- For record migrations, run the focused commands in [RECORD_CONTRACTS.md](../../../docs/internal/RECORD_CONTRACTS.md#focused-verification).
 - Run LSP diagnostics on every changed source file.
 - Run the changed domain's tests and project build once, then inspect `detect_changes_tool` for unexpected flows.

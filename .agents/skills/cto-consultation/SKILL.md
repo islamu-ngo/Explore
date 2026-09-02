@@ -10,16 +10,16 @@ priority: high
 
 ## Must-Read Docs
 - [../../../AGENTS.md](../../../AGENTS.md)
-- [../../../docs/PROJECT.md](../../../docs/PROJECT.md)
-- [../../../docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
-- [../../../docs/DOMAIN.md](../../../docs/DOMAIN.md)
-- [../../../docs/API.md](../../../docs/API.md)
-- [../../../docs/BLAZOR.md](../../../docs/BLAZOR.md)
-- [../../../docs/SECURITY-MODEL.md](../../../docs/SECURITY-MODEL.md)
-- [../../../docs/MULTI_TENANCY.md](../../../docs/MULTI_TENANCY.md)
-- [../../../docs/SELF_HOSTING.md](../../../docs/SELF_HOSTING.md)
-- [../../../docs/DEPLOYMENT_TIERS.md](../../../docs/DEPLOYMENT_TIERS.md)
-- [../../../docs/CONFIGURATION.md](../../../docs/CONFIGURATION.md)
+- [../../../docs/internal/PROJECT.md](../../../docs/internal/PROJECT.md)
+- [../../../docs/internal/ARCHITECTURE.md](../../../docs/internal/ARCHITECTURE.md)
+- [../../../docs/internal/DOMAIN.md](../../../docs/internal/DOMAIN.md)
+- [../../../docs/internal/API.md](../../../docs/internal/API.md)
+- [../../../docs/internal/BLAZOR.md](../../../docs/internal/BLAZOR.md)
+- [../../../docs/internal/SECURITY-MODEL.md](../../../docs/internal/SECURITY-MODEL.md)
+- [../../../docs/internal/MULTI_TENANCY.md](../../../docs/internal/MULTI_TENANCY.md)
+- [../../../docs/internal/SELF_HOSTING.md](../../../docs/internal/SELF_HOSTING.md)
+- [../../../docs/internal/DEPLOYMENT_TIERS.md](../../../docs/internal/DEPLOYMENT_TIERS.md)
+- [../../../docs/internal/CONFIGURATION.md](../../../docs/internal/CONFIGURATION.md)
 - [resources/consultation-framework.md](resources/consultation-framework.md)
 
 ## Top 5 Invariants

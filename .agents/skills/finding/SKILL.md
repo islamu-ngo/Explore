@@ -32,7 +32,7 @@ Do NOT record:
 - Run-of-the-mill refactoring notes.
 - Step-by-step implementation logs.
 - Personal opinions.
-- Anything already in `docs/QUICK_REFERENCE.md`, `docs/GOVERNANCE.md`, a skill, or a rule (link instead).
+- Anything already in `docs/internal/QUICK_REFERENCE.md`, `docs/internal/GOVERNANCE.md`, a skill, or a rule (link instead).
 
 ## Workflow
 
