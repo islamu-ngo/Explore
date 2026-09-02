@@ -162,6 +162,14 @@ The final summary must be medium-sized and technically specific. Include the arc
 
 > **Twin Rules Policy**: Path-scoped rules are maintained as identical copies in both `.agents/rules/*.md` (for the canonical ISLAMU contract system) and `.omo/rules/*.md` (for OmO's native `rules-injector` hook). When editing a rule, update both twin files — each twin's `ABOUTME:` header documents its counterpart path. This dual presence ensures that agents running through **any** harness receive automatic path-scoped rule injection without manual loading.
 
+---
+
+## Local Configuration Overrides
+
+If an `AGENTS.local.md` file exists in the repository root, inspect and follow all instructions, environment overrides, and system-specific constraints defined in it. Treat rules in `AGENTS.local.md` as overriding or extending the guidelines in this document.
+
+---
+
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
 

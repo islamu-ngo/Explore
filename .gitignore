@@ -76,6 +76,9 @@ storage-data/
 !.omo/rules/
 !.omo/rules/**
 
+# Local agent configuration overrides
+AGENTS.local.md
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
