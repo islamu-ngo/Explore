@@ -3,7 +3,7 @@
 
 # EventResource I-VSD Consultancy Report
 
-Last Updated: 2026-09-01
+Last Updated: 2026-09-02
 
 ## Review Metadata
 
@@ -13,7 +13,7 @@ Last Updated: 2026-09-01
 - Report kind: consultancy-report
 - Report status: current
 - Disposition: ready-for-planning
-- Evidence cutoff: 2026-09-01
+- Evidence cutoff: 2026-09-02
 - Reviewed input revision: sha256 `ebf1709b01eaf980a305a0802f572d84d7ce125d2b9e144dbb3f6a3c1a89cb48`
 - Supersedes: none
 
@@ -311,7 +311,12 @@ bucket object.
 
 An `IsPublished` boolean plus two timestamps is not sufficient for relative
 rules such as "30 minutes before this session." Persisting only a calculated
-timestamp can become stale when the schedule changes.
+timestamp can become stale when the schedule changes. Crucially, the parent
+Event's lifecycle, publication, and visibility state strictly gate child
+resource accessibility: an EventResource must fail closed (inaccessible and
+hidden) whenever its parent Event is soft-deleted, in Draft, Cancelled,
+Archived, or unpublished, regardless of the child resource's individual
+publication or timing state.
 
 ### IVSD-F010 - Organizer choice requires Instance and Tenant guardrails
 
@@ -390,9 +395,13 @@ record.
 
 Enterprise controls should strengthen the same resource model through optional
 providers, not create a separate feature that small deployments cannot use.
-The present standalone container can preserve resource metadata while losing
-local file bytes on container replacement, so EventResource file delivery
-cannot treat the current default as durable.
+Importantly, the storage path mismatch in `LocalFileStorageOptions.cs` is an
+existing platform-level infrastructure defect affecting all file storage in
+Event.Standalone, not merely EventResource: the container mounts `/app/data`
+while file bytes default to `/app/storage-data/local`, meaning any container
+recreation destroys uploaded files while leaving SQLite database records
+dangling. Event.Standalone requires a platform-wide configuration baseline
+fix (`Storage:Local:RootPath = "/app/data/storage"`) to guarantee durability.
 
 ### IVSD-F013 - Accessibility, content governance, federation, and templates can leak responsibility
 
@@ -452,7 +461,13 @@ remote instance can enforce local attendee entitlements.
 
 Protected response-time disclosure is insufficient if database mapping,
 change tracking, diagnostics, backups, templates, or exports can materialize a
-raw meeting or streaming credential.
+raw meeting or streaming credential. Furthermore, relying on default ASP.NET
+Core Data Protection creates severe operational risk: default keys expire after
+90 days and reside in ephemeral container storage. Without explicitly
+configuring a persistent keyring under the durable volume (`/app/data/keyring`)
+for Standalone or database/blob key storage in enterprise multi-node clusters,
+any container recreation or key expiration renders all encrypted meeting
+destinations permanently unreadable (`CryptographicException`).
 
 ### IVSD-F015 - Revocation guarantees must account for issued bearer artifacts
 
@@ -476,7 +491,12 @@ raw meeting or streaming credential.
 
 Current entitlement state can deny the next access request, but it cannot
 recall a presigned URL or third-party destination already disclosed to a
-recipient.
+recipient. This vulnerability is exacerbated by session schedule drift: if an
+organizer delays or shifts a session while attendees hold active 30-to-60-minute
+presigned URLs or meeting redirects, attendees retain premature or out-of-schedule
+access until the bearer token expires. Bearer TTLs must be strictly bounded and
+clamped to the remaining session window (5–15 minutes maximum) to mitigate
+schedule drift exposure.
 
 ## Recommendations
 
@@ -506,7 +526,11 @@ protected envelopes.
 
 Use a `Guid` EventResource ID, mandatory Tenant and Event IDs, and an optional
 EventSession ID. Keep Event as ownership and management authority without
-forcing every resource mutation through the Event concurrency token.
+forcing every resource mutation through the Event concurrency token. However,
+enforce the domain invariant that child EventResource access is strictly bounded
+by parent Event lifecycle: if an Event is soft-deleted, in Draft, Cancelled,
+Archived, or unpublished, all child resources are fail-closed inaccessible
+regardless of their own publication or availability policies.
 
 Recommended core state:
 
@@ -591,7 +615,11 @@ entitlement resolver for registration, participant eligibility, ticket,
 check-in, and speaker state. Endpoint and HAL checks must consume those trusted
 resolvers rather than DTO-authored, client-authored, claim-cached, or
 link-cached facts. Missing, unknown, stale, cross-tenant, or ambiguous facts
-deny.
+deny. Standardize on the Specification/Query-Filter pattern for public discovery
+(analogous to `PublicEventEligibilityQueryExtensions.cs`) before invoking
+authorization behaviors, keeping Cerbos policies focused strictly on
+authenticated subject entitlements and role assignments to prevent dual-engine
+drift.
 
 Recommended actions:
 
@@ -660,15 +688,23 @@ Domain invariants reject Public mixed with restricted alternatives and any
 session/target predicate without its required scope. Selected-user allowlists,
 arbitrary groups, and custom expressions remain deferred.
 
+To preserve dual-database parity between PostgreSQL (multi-tenant) and SQLite
+(Standalone) without breaking EF Core query translation, model audience
+variants either as a normalized relational child table
+(`EventResourceAudienceRule` with a discriminator and nullable scope keys) or
+as a strongly-typed Value Object whose predicates are evaluated
+in-memory/application-space after batch-loading subject entitlement facts.
+Prohibit PostgreSQL-only `jsonb` queries that break SQLite translation.
+
 Resolve all facts from current tenant-scoped data during authorization. Do not
 trust client facts or broad identity-provider claims. Batch-resolve facts for
 HAL collections to avoid N+1 queries, but re-evaluate at content access.
 
 The current Cerbos service requires a user or machine principal. Public
 EventResource eligibility should therefore use a separate server-owned
-anonymous eligibility predicate, analogous to public Event eligibility, unless
-the authorization architecture deliberately adds an anonymous principal with
-Cerbos/local parity. Public metadata or content must never depend on a
+specification query pre-filter, analogous to public Event eligibility in
+`PublicEventEligibilityQueryExtensions.cs`, filtering public resources before
+invoking Cerbos policies. Public metadata or content must never depend on a
 synthetic authenticated user.
 
 Guest registrations, unclaimed participants, and dependent attendees need a
@@ -792,7 +828,9 @@ Store the relative rule as source of truth. A projected UTC instant may support
 queries, but it must be recomputed transactionally when the authoritative
 event/session schedule changes or checked live before access. A scheduler is
 not required merely to make time pass; request-time evaluation remains the
-security boundary.
+security boundary. In all cases, parent Event lifecycle strictly dominates: if
+the parent Event is not in an active, published, and eligible state, child
+resources must immediately evaluate to unavailable and hidden.
 
 ### IVSD-M010 - Apply hierarchical governance
 
@@ -842,7 +880,10 @@ permit. Provider-generated destinations and secrets are not portable content.
 
 Standalone local bytes must live under the durable mounted data root, for
 example `/app/data/storage`, not the current relative default outside the
-volume. Container-recreation and backup/restore verification must prove that
+volume. To resolve the platform-level defect in `LocalFileStorageOptions`,
+the deployment baseline in `src/Event.Standalone/appsettings.json` must be
+explicitly configured with `Storage:Local:RootPath = "/app/data/storage"`.
+Container-recreation and backup/restore verification must prove that
 SQLite metadata and referenced bytes survive and remain consistent together.
 
 ### IVSD-M013 - Add accessibility, content, federation, and template safeguards
@@ -887,7 +928,12 @@ Do not reuse admission or registration protectors because their purpose,
 validation, and lifecycle are intentionally domain-specific. Exclude raw
 destinations from ordinary DTOs, change/audit payloads, logs, traces,
 ProblemDetails, configuration export, templates, federation, and generic
-resource export. Document key-ring backup and rotation consequences.
+resource export. Furthermore, the Data Protection keyring must be explicitly
+configured for durable persistence: store keys under `/app/data/keyring` for
+Event.Standalone (within the mounted `/app/data` volume) and use database or
+blob-backed keyring storage in enterprise multi-node deployments. Document
+key-ring backup and rotation consequences to prevent unrecoverable decryption
+failures.
 
 ### IVSD-M015 - Define revocation as a measurable delivery contract
 
@@ -895,7 +941,10 @@ For same-origin streaming, current entitlement denial stops the next byte
 request. For presigned, redirected, or third-party bearer destinations,
 document:
 
-- fixed maximum TTL and maximum stale-grant interval;
+- fixed maximum TTL (clamped to 5–15 minutes, never exceeding the remaining
+  session window) and maximum stale-grant interval;
+- mitigation of session schedule drift: dynamic re-check of session timing
+  before issuing new grants;
 - which resources are forbidden from bearer delivery;
 - whether provider-side rotation or revocation exists;
 - cache-control and CDN behavior;
@@ -910,22 +959,44 @@ revocation SLA.
 
 ### Planning inputs
 
-The implementation plan should convert the mitigations into bounded slices:
+#### "The Worst Break" Adversarial Scenario & Invariant-Breaker Test
 
-1. threat model, resource identity, aggregate, lookups, lifecycle, exact
-   entitlement variants, and governance vocabulary;
-2. durable standalone storage plus dedicated private StoredFile delivery;
-3. classified and encrypted ExternalLink persistence and delivery;
-4. live registration/eligibility/ticket/check-in/session-speaker resolution,
-   public eligibility, guest-capability decision, and Cerbos/local parity;
-5. HAL/API/Blazor metadata and affordance projections with request-time
-   reauthorization;
-6. revocation SLA, audit, retention, accessibility, support, export, backup,
-   restore, and operator runbooks;
-7. optional generated-link providers, templates, and federation only after the
-   core evidence gates pass.
+- **Adversarial Scenario:** Silent leakage of confidential gathering
+  coordinates or pre-release materials to cancelled/unapproved attendees or
+  public search indexers via stale client caching or premature HAL affordance
+  emission.
+- **Mandatory Red-Phase Invariant Test:** Author an adversarial integration test
+  where an attendee's registration order is cancelled concurrently with an
+  active access request for a restricted resource. The API must fail closed
+  with RFC 7807 ProblemDetails 403, emit zero presigned tokens or destination
+  redirects, and record a zero-PII audit event.
 
-These are planning inputs, not an approved implementation sequence.
+#### The 4-Point Right-Sizing Rule & 4-PR Decoupled Sequence
+
+To avoid monolithic PR failure, planning must decouple implementation into four
+discrete, reviewable PR slices:
+
+1. **PR 1: Platform Storage Durability & Core Domain Aggregate**
+   - Fix `src/Event.Standalone/appsettings.json` to set
+     `Storage:Local:RootPath = "/app/data/storage"`.
+   - Implement `EventResource` aggregate, normalized lookups (`EventResourceKind`,
+     `EventResourceDeliveryType`), and `StoredFile` linking to `StorageObject`.
+2. **PR 2: Authorization, Entitlement Resolvers & Private File Delivery API**
+   - Implement `IEventResourceAuthorizationResolver` (resolving registration,
+     order, ticket, check-in, and speaker assignments).
+   - Cerbos policy (`cerbos/policies/islamuevent_event_resource.yaml`) and
+     local fallback evaluator with 100% parity tests.
+   - Dedicated private content streaming service bypassing generic reader
+     limitations.
+3. **PR 3: Protected External Destinations & Keyring Durability**
+   - Implement `IEventResourceDestinationProtector` backed by ASP.NET Core Data
+     Protection with durable keyring under `/app/data/keyring`.
+   - Normalized URL classification, validation, and authorized redirect
+     endpoints.
+4. **PR 4: HAL Hypermedia Policies, Blazor UI & Governance**
+   - Implement `EventResourceLinkPolicy` for HAL affordance emission.
+   - Blazor UI components gating user actions strictly via `_links` presence.
+   - Instance/Tenant hierarchical governance locking.
 
 ## Common Overlooked Failures And Outcomes
 
@@ -957,8 +1028,16 @@ Common overlooked failures:
 - storing individual access history indefinitely because it might be useful;
 - storing bearer-like meeting destinations as plain mapped strings or exporting
   them as ordinary resource metadata;
+- relying on default ephemeral ASP.NET Core Data Protection keys, causing
+  permanent loss of encrypted destinations on container reboot;
+- allowing a published child resource to remain accessible when the parent
+  event is unpublished, cancelled, or soft-deleted;
+- issuing long-lived presigned URLs that remain valid after an event or session
+  schedule delay or cancellation;
 - promising immediate revocation after issuing a reusable presigned or
   third-party bearer destination;
+- combining domain aggregate, storage bugfixes, crypto protection, Cerbos
+  policies, and UI into a single unreviewable monolithic PR;
 - offering inaccessible PDFs, presentations, recordings, or external tools
   without alternatives;
 - promising that access controls prevent legitimate recipients from
@@ -1310,6 +1389,7 @@ tests/Event.Standalone.IntegrationTests/StandaloneProviderCompositionTests.cs
 | Date | Previous status | New status | Trigger | Evidence/replacement |
 | --- | --- | --- | --- | --- |
 | 2026-09-01 | none | current | Standalone EventResource consultancy requested and governed-preset baseline accepted through continuation | Evidence digest `ebf1709b01eaf980a305a0802f572d84d7ce125d2b9e144dbb3f6a3c1a89cb48` |
+| 2026-09-02 | current | current | Senior CTO review and architecture hardening (hierarchical state invariants, storage durability, keyring persistence, Cerbos/anonymous strategy, Worst-Break adversarial check, 4-PR decoupling sequence) | Updated consultancy report with platform durability fixes, Data Protection keyring guarantees, and decoupled 4-PR delivery plan |
 
 Refresh this report when resource scope, audience predicates, metadata
 disclosure, destination handling, scanner policy, access-audit retention,
