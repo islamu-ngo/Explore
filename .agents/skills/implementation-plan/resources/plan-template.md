@@ -209,6 +209,8 @@ An override is exceptional and allowed only when explicit user feedback changed 
 
 Create any required changelog fragment, generated artifact, schema, runbook, or documentation in the phase that owns that outcome, before that phase's verification and commit. There is no final-phase-only catch-all commit.
 
+Every workstream MUST conclude with a **Knowledge Graduation & Workstream Close** step: promote any explicitly deferred scope or follow-ups to standalone backlog items in `dev/backlog/<slug>.md`, durable architectural decisions to `docs/internal/adr/`, and non-obvious lessons/quirks to `dev/_journal/domains/`. Stage and commit these persistent artifacts alongside production code before closing the workstream.
+
 ## 7. Testing Strategy
 
 Keep this section short and high-leverage (strict **Quality over Quantity**):

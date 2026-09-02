@@ -657,6 +657,24 @@
         "contentPatterns": []
       }
     },
+    "implement-tasks": {
+      "type": "workflow",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Load when executing, running, or implementing an approved task plan from `dev/active/<task>/`; orchestrates phase execution, optional worktree isolation (`git worktree` + plan `mv`), Red/Green/Refactor task loops, phase commits, and final knowledge graduation to `dev/backlog/`.",
+      "promptTriggers": {
+        "keywords": ["implement tasks", "execute plan", "run tasks", "start implementation", "execute phase", "worktree"],
+        "intentPatterns": [
+          "(implement|execute|run).*?(task|plan|phase)",
+          "(start|begin).*?implementation",
+          "(worktree).*?(implement|task)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": ["**/dev/active/**/*-tasks.md"],
+        "contentPatterns": []
+      }
+    },
     "implementation-plan": {
       "type": "workflow",
       "enforcement": "block",

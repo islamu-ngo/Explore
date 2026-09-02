@@ -160,8 +160,11 @@ The completed workstream MUST replace every placeholder above with concrete path
 - [ ] Only when the default will not be used, load `conventional-commit` and record `Message override: Yes`, `Reason`, and complete `Actual commit contracts` containing every metadata, path, and command field above.
 - [ ] Run the exact post-commit verification command, confirm the resulting file list equals `Commit paths`, and record the hash before completing Phase 1.
 
-## Remaining / Deferred Work
-- Explicit deferral, reason, trigger, and owner.
+## Remaining / Deferred Work & Knowledge Graduation
+- **Deferred Work:** Explicit deferral, reason, trigger, and target backlog item (`dev/backlog/<slug>.md`).
+- **Durable Findings:** Non-obvious quirks or bug root causes promoted to `dev/_journal/domains/<domain>.md`.
+- **Architectural Decisions:** Permanent system invariants promoted to `docs/internal/adr/ADR-XXX-<name>.md`.
+*(Note: These persistent files must be committed on the feature branch before workstream close so they merge into develop).*
 ```
 
 Repeat phase sections for every phase in the plan. Task ids, names, status, dependencies, acceptance criteria, and the single selected test project must match the plan exactly.

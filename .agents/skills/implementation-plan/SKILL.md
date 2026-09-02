@@ -32,8 +32,9 @@ priority: high
    - `*-plan.md`: Canonical architectural design, current state, design decisions, and phase-level exit criteria (no granular execution tasks, checkboxes, dynamic status, or session handoffs).
    - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes with atomic verification criteria, dynamic status, phase verification gates, and immediate phase-commit tasks).
    - `*-context.md`: The sole active working memory (session progress, quick resume, blockers, validation baseline results, and dated session handoffs).
-9. **Planned Phase Commit Contract**: Every phase ends with a commit task immediately after verification. While authoring/updating `tasks.md`, planning loads `conventional-commit` and writes the exact title, description, changelog treatment, trailers, commit paths, inspection commands, `git add`, path-limited `git commit`, and post-commit verification command. That packet is self-sufficient: when truthful, implementation executes it without loading the skill. Only material divergence authorizes loading the skill and recording complete replacement packets for every resulting commit. Parallel tasks use native Git branches/worktrees; phase failures block and unrelated work remains untouched.
+9. **Planned Phase Commit Contract**: Every phase ends with a commit task immediately after verification. While authoring/updating `tasks.md`, planning loads `conventional-commit` and writes the exact title, description, changelog treatment, trailers, commit paths, inspection commands, `git add`, path-limited `git commit`, and post-commit verification command. That packet is self-sufficient: when truthful, implementation executes it without loading the skill. Only material divergence authorizes loading the skill and recording complete replacement packets for every resulting commit. Parallel tasks use dedicated feature branches; phase failures block and unrelated work remains untouched.
 10. **Local Working Memory & Native Harness Tooling**: `dev/active/<task>/` is gitignored local working memory to prevent commit log churn, task checkbox noise, and branch merge conflicts. Agents and developers must read, create, and edit these files directly using native harness file tools by deterministic path. Do not use ad-hoc bash script hacks for file manipulation (Critical Rule #9). Phase commits stage and commit product/test code only, never `dev/active/*`.
+11. **Knowledge Graduation Gate**: Active implementation plans in `dev/active/` are ephemeral working memory and disappear upon workstream completion. Every plan MUST include a final phase task for **Knowledge Graduation**: promoting deferred scope into actionable standalone items in `dev/backlog/<slug>.md`, durable architectural decisions into `docs/internal/adr/`, and non-obvious lessons into `dev/_journal/domains/`. These persistent artifacts are staged and committed alongside code.
 
 ## Top Anti-Patterns
 1. Memory-based planning, which turns assumptions about the repository into false implementation facts.
@@ -72,7 +73,7 @@ Phase-end verification only:
 dotnet build --configuration Release --verbosity quiet
 dotnet test --project <one-relevant-project>.csproj --configuration Release --verbosity quiet
 
-Immediate phase close on the task branch/worktree:
+Immediate phase close on the task branch:
 classify any failures as phase-attributable or proven unrelated
 inspect the dirty tree and existing index
 use the exact planned title and description by default
@@ -108,6 +109,7 @@ This synergy combines Prometheus's structured interview capability (Metis gap an
 - `git diff --check -- .agents/skills/implementation-plan`
 
 ## Related Skills
+- [../implement-tasks/SKILL.md](../implement-tasks/SKILL.md)
 - [../i-vsd/SKILL.md](../i-vsd/SKILL.md)
 - [../grill-me/SKILL.md](../grill-me/SKILL.md)
 - [../robin-neutral/SKILL.md](../robin-neutral/SKILL.md)

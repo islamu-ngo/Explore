@@ -38,7 +38,8 @@ priority: high
 7. **Greenfield Breaking Change Posture**: ISLAMU Event is pre-v1 with 0 external adopters. The CTO rejects backward-compatibility shims, deprecated route aliases, and adapter baggage. Approve clean breaking changes and structural simplifications over legacy preservation.
 8. **4-Point "Right-Sizing" Rule**: Mandate a PR split ("Split before approval") when 2+ symptoms match: (1) Scope contains multi-intent "and also" clauses, (2) Plan exceeds reviewable task capacity (< 8-10 major tasks), (3) Migration, API contract churn, and UI enablement combined in one big-bang phase, (4) Backend CQRS slice could ship independently of Blazor UI.
 9. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
-10. **Per-Phase Planned Commit Readiness**: Block approval unless every phase has a self-sufficient packet: exact metadata, commit paths, inspection commands, `git add`, path-limited `git commit`, and verification command. Planning/CTO load `conventional-commit` to validate command-message-path parity. Normal implementation does not reload it; overrides load it and repeat the full packet for every resulting commit. Use task branches/worktrees for parallel work and preserve failure ownership, file-list proof, and in-session authorization.
+10. **Per-Phase Planned Commit Readiness**: Block approval unless every phase has a self-sufficient packet: exact metadata, commit paths, inspection commands, `git add`, path-limited `git commit`, and verification command. Planning/CTO load `conventional-commit` to validate command-message-path parity. Normal implementation does not reload it; overrides load it and repeat the full packet for every resulting commit. Use dedicated feature branches for parallel work and preserve failure ownership, file-list proof, and in-session authorization.
+11. **Knowledge Graduation & Persistence Gating**: Verify that out-of-scope, follow-up, or deferred items are not left to rot as un-actionable text in an ephemeral implementation plan. Mandate that deferred scope is explicitly assigned to a planned graduation task into `dev/backlog/<slug>.md`, durable architectural decisions to `docs/internal/adr/`, and lessons to `dev/_journal/` before workstream close.
 
 ## Top Anti-Patterns
 1. Reviewing only the narrative architecture while ignoring stale or vague `context.md` and `tasks.md`, or allowing `plan.md` to be polluted with granular task checklists (`- [ ]`) and session handoffs.
@@ -72,6 +73,7 @@ The target architecture is reasonable, but I would not approve this as one works
 - `dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`
 
 ## Related Skills
+- [../implement-tasks/SKILL.md](../implement-tasks/SKILL.md)
 - [../i-vsd/SKILL.md](../i-vsd/SKILL.md)
 - [../grill-me/SKILL.md](../grill-me/SKILL.md)
 - [../robin-neutral/SKILL.md](../robin-neutral/SKILL.md)

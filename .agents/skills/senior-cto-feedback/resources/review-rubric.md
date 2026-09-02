@@ -224,7 +224,7 @@ Check:
 - The approved tasks file authorizes the implementing agent to commit in the same session; no final commit-only session or repeat user invocation is required.
 - The implementation agent must use the planned contract unchanged while truthful. Only an allowed override loads `conventional-commit`; triggers are explicit user-driven outcome changes, atomic phase splits, material implementation divergence, changed breaking/change-fragment classification, or factual invalidity.
 - Any override must be recorded before commit with the reason and a complete metadata/path/command packet for every resulting commit; stylistic preference is rejected.
-- Task branch/worktree staging is explicit-path only. The plan forbids blind staging, modifying or unstaging another contributor's work, and absorbing unrelated dirty or pre-staged files.
+- Task branch staging is explicit-path only. The plan forbids blind staging, modifying or unstaging another contributor's work, and absorbing unrelated dirty or pre-staged files.
 - Path-limited commit guidance applies only to wholly phase-owned files; a file containing another contributor's hunks blocks phase closure until ownership is separated or coordinated.
 - Phase-attributable failures block the commit. Proven unrelated shared-tree failures name exact external evidence, remain untouched, and never become a false green claim.
 - The phase records the resulting commit hash and verifies its file list before completion; atomicity may require more than one commit rather than an umbrella phase commit.
@@ -244,6 +244,7 @@ Check:
 - `tasks.md` maps cleanly to phases and contains the hot execution ledger (Red/Green task sequence, phase-owned paths, verification disposition, concrete planned commit contracts, tightly governed overrides, and immediate commit checkboxes).
 - Status across all three files agrees.
 - Another implementation agent could resume without re-asking the user for core context.
+- Knowledge Graduation: Out-of-scope, follow-up, or deferred items are explicitly identified for promotion to `dev/backlog/<slug>.md` (and durable architecture to `docs/internal/adr/`), rather than being left as dead text in an ephemeral plan.
 
 ## CTO Decision Labels
 
