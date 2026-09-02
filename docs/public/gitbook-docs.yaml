@@ -1,0 +1,70 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+site:
+  title: ISLAMU Event
+  structure:
+    - type: section
+      key: section-1
+      title: Home
+      path: home
+      icon: house
+      default: true
+      children:
+        - type: space
+          key: space-1
+          title: ISLAMU Event Home
+          path: home
+          default: true
+          content:
+            directory: ./home
+    - type: section
+      key: section-2
+      title: Documentation
+      path: documentation
+      icon: book-blank
+      children:
+        - type: space
+          key: space-2
+          title: ISLAMU Event Documentation
+          path: documentation
+          default: true
+          content:
+            directory: ./documentation
+    - type: section
+      key: section-3
+      title: API Reference
+      path: api-reference
+      icon: terminal
+      children:
+        - type: space
+          key: space-3
+          title: API Reference
+          path: api-reference
+          default: true
+          content:
+            directory: ./api-reference
+    - type: section
+      key: section-4
+      title: Changelog
+      path: changelog
+      icon: clock-rotate-left
+      children:
+        - type: space
+          key: space-4
+          title: ISLAMU Event Release Notes
+          path: changelog
+          default: true
+          content:
+            directory: ./changelog
+    - type: section
+      key: section-5
+      title: Help Center
+      path: help-center
+      icon: life-ring
+      children:
+        - type: space
+          key: space-5
+          title: ISLAMU Event Help Center
+          path: help-center
+          default: true
+          content:
+            directory: ./help-center
