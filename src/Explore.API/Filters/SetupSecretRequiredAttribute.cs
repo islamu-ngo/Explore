@@ -2,10 +2,8 @@
 // ABOUTME: Uses TypeFilterAttribute pattern for DI-aware filtering with ISetupSecretProvider validation.
 
 using Explore.API.ExceptionHandling;
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Onboarding;
-using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -19,31 +17,28 @@ public class SetupSecretRequiredAttribute : TypeFilterAttribute
         Arguments = [requireIncomplete];
     }
 
-    private class SetupSecretRequiredFilter : IAsyncActionFilter
+    internal sealed class SetupSecretRequiredFilter : IAsyncActionFilter
     {
         private readonly ISetupSecretProvider _setupSecretProvider;
-        private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
         private readonly IInstanceBootstrapAuditLogger _bootstrapAuditLogger;
-        private readonly bool _requireIncomplete;
 
         public SetupSecretRequiredFilter(
             ISetupSecretProvider setupSecretProvider,
-            IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
             IInstanceBootstrapAuditLogger bootstrapAuditLogger,
             bool requireIncomplete)
         {
             _setupSecretProvider = setupSecretProvider;
-            _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
             _bootstrapAuditLogger = bootstrapAuditLogger;
-            _requireIncomplete = requireIncomplete;
+            _ = requireIncomplete;
         }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            var isCompleted = _requireIncomplete
-                && (await _instanceBootstrapStateRepository.GetCurrent(context.HttpContext.RequestAborted))?.Status
-                    == InstanceBootstrapStatus.Completed;
-            if (isCompleted || !_setupSecretProvider.IsSetupModeActive)
+            var secret = context.HttpContext.Request.Headers["X-Setup-Secret"].FirstOrDefault();
+            SetupSecretValidationOutcome validation = await _setupSecretProvider.ValidateSecretAsync(
+                secret,
+                context.HttpContext.RequestAborted);
+            if (validation == SetupSecretValidationOutcome.SetupCompleted)
             {
                 LogAudit(
                     context,
@@ -60,8 +55,7 @@ public class SetupSecretRequiredAttribute : TypeFilterAttribute
                 return;
             }
 
-            var secret = context.HttpContext.Request.Headers["X-Setup-Secret"].FirstOrDefault();
-            if (!_setupSecretProvider.ValidateSecret(secret))
+            if (validation != SetupSecretValidationOutcome.Accepted)
             {
                 LogAudit(
                     context,

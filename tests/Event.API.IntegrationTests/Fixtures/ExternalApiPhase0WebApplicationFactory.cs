@@ -59,6 +59,8 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
     public int? GlobalRateLimitReplenishPeriodSeconds { get; init; }
 
     public bool CustomDomainEnabled { get; init; }
+    public IAuthProviderConfigurationService? AuthProviderConfigurationServiceOverride { get; init; }
+
 
     public bool AllowTenantCustomDomains { get; init; } = true;
 
@@ -223,6 +225,12 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
             if (SetupSecretProviderOverride is not null)
             {
                 services.RemoveAll<ISetupSecretProvider>();
+            if (AuthProviderConfigurationServiceOverride is not null)
+            {
+                services.RemoveAll<IAuthProviderConfigurationService>();
+                services.AddSingleton(AuthProviderConfigurationServiceOverride);
+            }
+
                 services.AddSingleton(SetupSecretProviderOverride);
             }
 

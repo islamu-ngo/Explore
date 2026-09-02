@@ -47,7 +47,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandler :
         UpdateAuthorizationProviderConfigurationDuringSetupCommand request,
         CancellationToken cancellationToken)
     {
-        if (!_setupSecretProvider.IsSetupModeActive)
+        if (!await _setupSecretProvider.IsSetupModeActiveAsync(cancellationToken))
         {
             const string message = "Setup mode is no longer active.";
             return BaseCommandResponse.Validation<Guid>([message], message);

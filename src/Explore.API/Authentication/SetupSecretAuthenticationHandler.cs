@@ -29,34 +29,37 @@ public sealed class SetupSecretAuthenticationHandler(
            && (string.Equals(request.Path.Value, AuthProviderPath, StringComparison.OrdinalIgnoreCase)
                || string.Equals(request.Path.Value, AuthorizationProviderPath, StringComparison.OrdinalIgnoreCase));
 
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!SupportsRequest(Request))
         {
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return AuthenticateResult.NoResult();
         }
 
         if (!Request.Headers.TryGetValue(HeaderName, out var values)
             || values.Count != 1)
         {
-            return Task.FromResult(AuthenticateResult.Fail("Setup-secret authentication failed."));
+            return AuthenticateResult.Fail("Setup-secret authentication failed.");
         }
 
-        if (!setupSecretProvider.IsSetupModeActive)
+        SetupSecretValidationOutcome validation = await setupSecretProvider.ValidateSecretAsync(
+            values[0],
+            Context.RequestAborted);
+        if (validation == SetupSecretValidationOutcome.SetupCompleted)
         {
             _setupModeInactive = true;
-            return Task.FromResult(AuthenticateResult.Fail("Setup-secret authentication failed."));
+            return AuthenticateResult.Fail("Setup-secret authentication failed.");
         }
 
-        if (!setupSecretProvider.ValidateSecret(values[0]))
+        if (validation != SetupSecretValidationOutcome.Accepted)
         {
-            return Task.FromResult(AuthenticateResult.Fail("Setup-secret authentication failed."));
+            return AuthenticateResult.Fail("Setup-secret authentication failed.");
         }
 
         var principal = new ClaimsPrincipal(
             new ClaimsIdentity(authenticationType: ApiAuthenticationSchemeNames.SetupSecret));
-        return Task.FromResult(AuthenticateResult.Success(
-            new AuthenticationTicket(principal, Scheme.Name)));
+        return AuthenticateResult.Success(
+            new AuthenticationTicket(principal, Scheme.Name));
     }
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)

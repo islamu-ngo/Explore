@@ -3,6 +3,13 @@
 
 namespace Explore.Application.Contracts.Services;
 
+public enum SetupSecretValidationOutcome
+{
+    Rejected,
+    Accepted,
+    SetupCompleted
+}
+
 /// <summary>
 /// Manages the setup secret lifecycle for instance onboarding.
 /// Registered as a singleton — the secret is resolved once at startup and locked after onboarding completion.
@@ -42,8 +49,28 @@ public interface ISetupSecretProvider
     bool ValidateSecret(string? secret);
 
     /// <summary>
+    /// Consults the durable bootstrap state before comparing a presented secret. Acceptance
+    /// surfaces must use this method rather than the process-local snapshot above.
+    /// </summary>
+    Task<SetupSecretValidationOutcome> ValidateSecretAsync(
+        string? secret,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(!IsSetupModeActive
+            ? SetupSecretValidationOutcome.SetupCompleted
+            : ValidateSecret(secret)
+                ? SetupSecretValidationOutcome.Accepted
+                : SetupSecretValidationOutcome.Rejected);
+
+    /// <summary>
+    /// Consults durable bootstrap state before setup-only work that has already authenticated
+    /// the caller and therefore no longer has access to the raw secret.
+    /// </summary>
+    Task<bool> IsSetupModeActiveAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(IsSetupModeActive);
+
+    /// <summary>
     /// Transitions the provider to locked mode after onboarding completion.
-    /// Once locked, IsSetupModeActive returns false and ValidateSecret always returns false.
+    /// The lock is a process-local optimization; durable validation remains authoritative.
     /// </summary>
     void Lock();
 

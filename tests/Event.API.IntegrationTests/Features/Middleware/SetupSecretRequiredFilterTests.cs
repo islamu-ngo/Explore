@@ -2,7 +2,6 @@
 // ABOUTME: Verifies setup-mode checks, header secret validation, and action execution gating outcomes.
 
 using Explore.API.Filters;
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Onboarding;
 using Microsoft.AspNetCore.Http;
@@ -18,10 +17,33 @@ namespace Event.Api.IntegrationTests.Features.Middleware;
 public class SetupSecretRequiredFilterTests
 {
     [Test]
+    public async Task OnActionExecutionAsync_DurableCompletionRejectsStaleActiveProvider()
+    {
+        var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
+        setupSecretProvider.ValidateSecretAsync("valid-secret", Arg.Any<CancellationToken>())
+            .Returns(SetupSecretValidationOutcome.SetupCompleted);
+        var auditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
+        var filter = new SetupSecretRequiredAttribute.SetupSecretRequiredFilter(
+            setupSecretProvider,
+            auditLogger,
+            false);
+        var context = CreateExecutingContext("valid-secret");
+        var nextCalled = false;
+
+        await filter.OnActionExecutionAsync(context, CreateNext(context, () => nextCalled = true));
+
+        await Assert.That(nextCalled).IsFalse();
+        var result = context.Result as ObjectResult;
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.StatusCode).IsEqualTo(StatusCodes.Status410Gone);
+    }
+
+    [Test]
     public async Task OnActionExecutionAsync_SetupNotActive_ReturnsGone()
     {
         var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
-        setupSecretProvider.IsSetupModeActive.Returns(false);
+        setupSecretProvider.ValidateSecretAsync("valid-secret", Arg.Any<CancellationToken>())
+            .Returns(SetupSecretValidationOutcome.SetupCompleted);
         var auditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
 
         var filter = CreateFilter(setupSecretProvider, auditLogger);
@@ -52,7 +74,8 @@ public class SetupSecretRequiredFilterTests
     {
         var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
         setupSecretProvider.IsSetupModeActive.Returns(true);
-        setupSecretProvider.ValidateSecret("wrong-secret").Returns(false);
+        setupSecretProvider.ValidateSecretAsync("wrong-secret", Arg.Any<CancellationToken>())
+            .Returns(SetupSecretValidationOutcome.Rejected);
         var auditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
 
         var filter = CreateFilter(setupSecretProvider, auditLogger);
@@ -83,7 +106,8 @@ public class SetupSecretRequiredFilterTests
     {
         var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
         setupSecretProvider.IsSetupModeActive.Returns(true);
-        setupSecretProvider.ValidateSecret("valid-secret").Returns(true);
+        setupSecretProvider.ValidateSecretAsync("valid-secret", Arg.Any<CancellationToken>())
+            .Returns(SetupSecretValidationOutcome.Accepted);
         var auditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
 
         var filter = CreateFilter(setupSecretProvider, auditLogger);
@@ -106,7 +130,8 @@ public class SetupSecretRequiredFilterTests
         var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
         setupSecretProvider.IsSetupModeActive.Returns(true);
         setupSecretProvider.IsSetupSecretRequired.Returns(true);
-        setupSecretProvider.ValidateSecret(null).Returns(false);
+        setupSecretProvider.ValidateSecretAsync(null, Arg.Any<CancellationToken>())
+            .Returns(SetupSecretValidationOutcome.Rejected);
         var auditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
 
         var filter = CreateFilter(setupSecretProvider, auditLogger);
@@ -133,7 +158,8 @@ public class SetupSecretRequiredFilterTests
         var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
         setupSecretProvider.IsSetupModeActive.Returns(true);
         setupSecretProvider.IsSetupSecretRequired.Returns(false);
-        setupSecretProvider.ValidateSecret(null).Returns(false);
+        setupSecretProvider.ValidateSecretAsync(null, Arg.Any<CancellationToken>())
+            .Returns(SetupSecretValidationOutcome.Rejected);
         var auditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
 
         var filter = CreateFilter(setupSecretProvider, auditLogger);
@@ -159,7 +185,8 @@ public class SetupSecretRequiredFilterTests
     {
         var setupSecretProvider = Substitute.For<ISetupSecretProvider>();
         setupSecretProvider.IsSetupModeActive.Returns(true);
-        setupSecretProvider.ValidateSecret(string.Empty).Returns(false);
+        setupSecretProvider.ValidateSecretAsync(string.Empty, Arg.Any<CancellationToken>())
+            .Returns(SetupSecretValidationOutcome.Rejected);
         var auditLogger = Substitute.For<IInstanceBootstrapAuditLogger>();
 
         var filter = CreateFilter(setupSecretProvider, auditLogger);
@@ -184,14 +211,10 @@ public class SetupSecretRequiredFilterTests
         ISetupSecretProvider setupSecretProvider,
         IInstanceBootstrapAuditLogger auditLogger)
     {
-        var attribute = new SetupSecretRequiredAttribute();
-        var filterType = attribute.ImplementationType;
-        return (IAsyncActionFilter)Activator.CreateInstance(
-            filterType,
+        return new SetupSecretRequiredAttribute.SetupSecretRequiredFilter(
             setupSecretProvider,
-            Substitute.For<IInstanceBootstrapStateRepository>(),
             auditLogger,
-            false)!;
+            false);
     }
 
     private static ActionExecutingContext CreateExecutingContext(string? setupSecretHeader = null)

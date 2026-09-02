@@ -80,19 +80,43 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
 
     public bool ValidateSecret(string? secret)
     {
-        if (!IsSetupSecretRequired)
+        if (!IsSetupSecretRequired || _isLocked || string.IsNullOrEmpty(secret))
             return false;
 
+        return FixedTimeEquals(secret);
+    }
+
+    public async Task<SetupSecretValidationOutcome> ValidateSecretAsync(
+        string? secret,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await IsSetupModeActiveAsync(cancellationToken))
+            return SetupSecretValidationOutcome.SetupCompleted;
+
+        if (!IsSetupSecretRequired || string.IsNullOrEmpty(secret))
+            return SetupSecretValidationOutcome.Rejected;
+
+        return FixedTimeEquals(secret)
+            ? SetupSecretValidationOutcome.Accepted
+            : SetupSecretValidationOutcome.Rejected;
+    }
+
+    public async Task<bool> IsSetupModeActiveAsync(CancellationToken cancellationToken = default)
+    {
         if (_isLocked)
             return false;
 
-        if (string.IsNullOrEmpty(secret))
-            return false;
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IInstanceBootstrapStateRepository>();
+        var bootstrapState = await repository.GetCurrent(cancellationToken);
+        var isCompleted = bootstrapState?.Status == InstanceBootstrapStatus.Completed;
+        _isBootstrapComplete = isCompleted;
+        if (isCompleted)
+        {
+            DeleteGeneratedSecretFile();
+        }
 
-        var expected = Encoding.UTF8.GetBytes(_secret);
-        var actual = Encoding.UTF8.GetBytes(secret);
-
-        return CryptographicOperations.FixedTimeEquals(expected, actual);
+        return !isCompleted;
     }
 
     public void Lock()
@@ -136,6 +160,13 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     public void Dispose()
     {
         _bootstrapCheckSemaphore.Dispose();
+    }
+
+    private bool FixedTimeEquals(string secret)
+    {
+        var expected = Encoding.UTF8.GetBytes(_secret);
+        var actual = Encoding.UTF8.GetBytes(secret);
+        return CryptographicOperations.FixedTimeEquals(expected, actual);
     }
 
     private static string GenerateCryptoRandomSecret()

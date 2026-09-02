@@ -26,7 +26,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
         _adminContext = Substitute.For<IAdminContext>();
         _configurationService = Substitute.For<IAuthorizationProviderConfigurationService>();
         _setupSecretProvider = Substitute.For<ISetupSecretProvider>();
-        _setupSecretProvider.IsSetupModeActive.Returns(true);
+        _setupSecretProvider.IsSetupModeActiveAsync(Arg.Any<CancellationToken>()).Returns(true);
         _configurationService.ReadConfigurationAsync().Returns(new AuthorizationProviderConfigurationDto());
 
         _handler = new UpdateAuthorizationProviderConfigurationCommandHandler(
@@ -72,7 +72,7 @@ public class UpdateAuthorizationProviderConfigurationCommandHandlerTests
     [Test]
     public async Task HandleSetup_WhenSetupModeBecomesInactive_DeniesMutation()
     {
-        _setupSecretProvider.IsSetupModeActive.Returns(false);
+        _setupSecretProvider.IsSetupModeActiveAsync(Arg.Any<CancellationToken>()).Returns(false);
         var command = new UpdateAuthorizationProviderConfigurationDuringSetupCommand
         {
             Patch = CreateCommand(new AuthorizationProviderConfigurationDto

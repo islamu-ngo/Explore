@@ -196,9 +196,13 @@ public class InstanceOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(SetupSecretValidationResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status410Gone)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public ActionResult<SetupSecretValidationResultDto> ValidateSecret([FromBody] ValidateSetupSecretRequest request)
+    public async Task<ActionResult<SetupSecretValidationResultDto>> ValidateSecret(
+        [FromBody] ValidateSetupSecretRequest request,
+        CancellationToken cancellationToken = default)
     {
-        if (!_setupSecretProvider.IsSetupModeActive)
+        SetupSecretValidationOutcome validation =
+            await _setupSecretProvider.ValidateSecretAsync(request.Secret, cancellationToken);
+        if (validation == SetupSecretValidationOutcome.SetupCompleted)
         {
             LogSetupSecretValidationAudit(
                 InstanceBootstrapAuditEventType.SetupModeInactive,
@@ -210,7 +214,7 @@ public class InstanceOnboardingController : ExploreControllerBase
                 ApiProblemCodes.SetupAlreadyCompleted);
         }
 
-        var isValid = _setupSecretProvider.ValidateSecret(request.Secret);
+        var isValid = validation == SetupSecretValidationOutcome.Accepted;
         LogSetupSecretValidationAudit(
             isValid
                 ? InstanceBootstrapAuditEventType.SetupSecretAccepted

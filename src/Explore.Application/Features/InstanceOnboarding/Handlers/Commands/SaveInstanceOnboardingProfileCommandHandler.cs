@@ -27,7 +27,7 @@ public sealed class SaveInstanceOnboardingProfileCommandHandler(
         CancellationToken cancellationToken)
     {
         var bootstrap = await instanceBootstrapStateRepository.GetCurrent(cancellationToken);
-        if (bootstrap?.Status == InstanceBootstrapStatus.Completed || !setupSecretProvider.IsSetupModeActive)
+        if (!await setupSecretProvider.IsSetupModeActiveAsync(cancellationToken))
         {
             const string message = "Setup mode is no longer active.";
             return BaseCommandResponse.Validation(

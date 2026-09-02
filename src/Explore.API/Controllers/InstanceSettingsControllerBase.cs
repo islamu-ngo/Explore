@@ -46,16 +46,12 @@ public abstract class InstanceSettingsControllerBase(
             return true;
         }
 
-        if (!setupSecretProvider.IsSetupModeActive)
-        {
-            return false;
-        }
-
         var setupSecret = Request.Headers.TryGetValue(SetupSecretHeader, out var value)
             ? value.ToString()
             : null;
-
-        return !string.IsNullOrEmpty(setupSecret) && setupSecretProvider.ValidateSecret(setupSecret);
+        SetupSecretValidationOutcome validation =
+            await setupSecretProvider.ValidateSecretAsync(setupSecret, cancellationToken);
+        return validation == SetupSecretValidationOutcome.Accepted;
     }
 
     /// <summary>True when the request authenticated through the setup-secret scheme itself.</summary>
