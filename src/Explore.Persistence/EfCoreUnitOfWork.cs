@@ -5,13 +5,18 @@ using System.Data;
 using System.Data.Common;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
+using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using MySqlConnector;
+using Npgsql;
 
 namespace Explore.Persistence;
 
 public sealed class EfCoreUnitOfWork : IUnitOfWork
 {
+    private const int BootstrapConvergenceAttemptLimit = 4;
     private readonly ExploreDbContext _dbContext;
     private readonly Func<IExecutionStrategy> _createExecutionStrategy;
     private readonly Func<CancellationToken, Task<IDbContextTransaction>> _beginTransaction;
@@ -52,6 +57,25 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         CancellationToken ct = default)
     {
         return await ExecuteCoreAsync(operation, IsolationLevel.Serializable, ct);
+    }
+
+    public async Task<T> ExecuteBootstrapConvergenceAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken ct = default)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await ExecuteCoreAsync(operation, IsolationLevel.Serializable, ct);
+            }
+            catch (Exception exception) when (
+                attempt < BootstrapConvergenceAttemptLimit
+                && IsBootstrapConvergenceConflict(exception))
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(25 * attempt), ct);
+            }
+        }
     }
 
     private async Task<T> ExecuteCoreAsync<T>(
@@ -152,5 +176,26 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             entityType,
             entityId,
             ex);
+    }
+
+    private static bool IsBootstrapConvergenceConflict(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is SqliteException { SqliteErrorCode: 5 or 6 or 19 }
+                || current is PostgresException
+                {
+                    SqlState: PostgresErrorCodes.SerializationFailure
+                        or PostgresErrorCodes.DeadlockDetected
+                        or PostgresErrorCodes.UniqueViolation
+                }
+                || current is MySqlException { Number: 1062 or 1205 or 1213 }
+                || current is SqlException { Number: 1205 or 2601 or 2627 })
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

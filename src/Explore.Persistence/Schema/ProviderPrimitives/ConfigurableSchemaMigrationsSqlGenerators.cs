@@ -109,11 +109,13 @@ internal sealed class ConfigurableMySqlMigrationsSqlGenerator(
 internal static class ConfigurableSchemaMigrationOperations
 {
     private const string BootstrapBackfillMarker = "headless-instance-bootstrap-backfill";
+    private const string BootstrapDowngradeBackfillMarker = "headless-instance-bootstrap-downgrade-backfill";
 
     public static IReadOnlyList<MigrationOperation> PrepareInstanceBootstrapLifecycleBackfill(
         IReadOnlyList<MigrationOperation> operations,
         Microsoft.EntityFrameworkCore.DbContext context)
     {
+        operations = PrepareInstanceBootstrapLifecycleDowngradeBackfill(operations, context);
         DropColumnOperation[] legacyDrops = operations
             .OfType<DropColumnOperation>()
             .Where(IsLegacyBootstrapColumnDrop)
@@ -143,6 +145,50 @@ internal static class ConfigurableSchemaMigrationOperations
             SuppressTransaction = false,
         });
         prepared.InsertRange(lastBootstrapColumn + 2, legacyDrops);
+        return prepared;
+    }
+
+    private static IReadOnlyList<MigrationOperation> PrepareInstanceBootstrapLifecycleDowngradeBackfill(
+        IReadOnlyList<MigrationOperation> operations,
+        Microsoft.EntityFrameworkCore.DbContext context)
+    {
+        AddColumnOperation[] legacyAdds = operations
+            .OfType<AddColumnOperation>()
+            .Where(IsLegacyBootstrapColumnAdd)
+            .ToArray();
+        DropColumnOperation[] lifecycleDrops = operations
+            .OfType<DropColumnOperation>()
+            .Where(IsBootstrapLifecycleColumn)
+            .ToArray();
+        if (legacyAdds.Length != 2
+            || !lifecycleDrops.Any(operation => operation.Name == "status")
+            || !lifecycleDrops.Any(operation => operation.Name == "deployment_mode")
+            || operations.OfType<SqlOperation>().Any(operation =>
+                operation.Sql.Contains(BootstrapDowngradeBackfillMarker, StringComparison.Ordinal)))
+        {
+            return operations;
+        }
+
+        int firstLifecycleDrop = operations
+            .Select((operation, index) => (operation, index))
+            .First(item => item.operation is DropColumnOperation drop
+                && IsBootstrapLifecycleColumn(drop))
+            .index;
+        int insertionIndex = operations.Take(firstLifecycleDrop).Count(operation =>
+            operation is not AddColumnOperation add || !IsLegacyBootstrapColumnAdd(add));
+        var prepared = operations
+            .Where(operation => operation is not AddColumnOperation add
+                    || !IsLegacyBootstrapColumnAdd(add))
+            .Where(operation => operation is not DropColumnOperation drop
+                    || !IsBootstrapLifecycleColumn(drop))
+            .ToList();
+        prepared.InsertRange(insertionIndex, legacyAdds);
+        prepared.Insert(insertionIndex + legacyAdds.Length, new SqlOperation
+        {
+            Sql = BuildInstanceBootstrapDowngradeBackfillSql(context),
+            SuppressTransaction = false,
+        });
+        prepared.InsertRange(insertionIndex + legacyAdds.Length + 1, lifecycleDrops);
         return prepared;
     }
 
@@ -327,11 +373,28 @@ internal static class ConfigurableSchemaMigrationOperations
         IsInstanceBootstrapTable(operation.Table)
         && operation.Name is "is_completed" or "selected_deployment_mode";
 
+    private static bool IsLegacyBootstrapColumnAdd(AddColumnOperation operation) =>
+        IsInstanceBootstrapTable(operation.Table)
+        && operation.Name is "is_completed" or "selected_deployment_mode";
+
     private static bool IsBootstrapStatusColumn(AddColumnOperation operation) =>
         IsInstanceBootstrapTable(operation.Table)
         && StringComparer.Ordinal.Equals(operation.Name, "status");
 
     private static bool IsBootstrapLifecycleColumn(AddColumnOperation operation) =>
+        IsInstanceBootstrapTable(operation.Table)
+        && operation.Name is
+            "completed_identity_fingerprint"
+            or "configuration_fingerprint"
+            or "deployment_mode"
+            or "generation"
+            or "mode"
+            or "provider_kind"
+            or "selector_fingerprint"
+            or "status"
+            or "superseded_at";
+
+    private static bool IsBootstrapLifecycleColumn(DropColumnOperation operation) =>
         IsInstanceBootstrapTable(operation.Table)
         && operation.Name is
             "completed_identity_fingerprint"
@@ -437,6 +500,29 @@ internal static class ConfigurableSchemaMigrationOperations
                     ),
                     {completedAt} = CASE WHEN {completedPredicate} THEN {completedAt} ELSE NULL END,
                     {completedByUserId} = CASE WHEN {completedPredicate} THEN {completedByUserId} ELSE NULL END;
+                """;
+    }
+
+    private static string BuildInstanceBootstrapDowngradeBackfillSql(
+        Microsoft.EntityFrameworkCore.DbContext context)
+    {
+        string provider = context.Database.ProviderName ?? string.Empty;
+        string prefix = UsesPrefixedTables(provider) ? RelationalModelNamespace.Prefix : string.Empty;
+        string? schema = UsesSchemas(provider) ? GetConfiguredSchema(context) : null;
+        string quote = QuoteStyle(provider);
+        string table = Table(schema, prefix + "instance_bootstrap_states", quote);
+        string isCompleted = Identifier("is_completed", quote);
+        string selectedDeploymentMode = Identifier("selected_deployment_mode", quote);
+        string status = Identifier("status", quote);
+        string deploymentMode = Identifier("deployment_mode", quote);
+        string trueValue = provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ? "TRUE" : "1";
+        string falseValue = provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ? "FALSE" : "0";
+
+        return $"""
+                /* {BootstrapDowngradeBackfillMarker} */
+                UPDATE {table}
+                SET {isCompleted} = CASE WHEN {status} = 3 THEN {trueValue} ELSE {falseValue} END,
+                    {selectedDeploymentMode} = CASE WHEN {deploymentMode} = 2 THEN 'MultiTenant' ELSE 'SingleTenant' END;
                 """;
     }
 

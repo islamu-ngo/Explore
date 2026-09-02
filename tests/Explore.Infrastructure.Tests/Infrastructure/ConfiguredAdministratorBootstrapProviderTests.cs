@@ -388,6 +388,53 @@ public sealed class ConfiguredAdministratorBootstrapProviderTests
     }
 
     [Test]
+    public async Task CompletedGeneration_IsFinalWhenDeploymentConfigurationIsNoLongerParseable()
+    {
+        foreach (Action<IConfigurationRoot> invalidate in new Action<IConfigurationRoot>[]
+                 {
+                     configuration =>
+                     {
+                         configuration["INSTANCE_BOOTSTRAP_ADMIN_PROVIDER"] = null;
+                         configuration["INSTANCE_BOOTSTRAP_ADMIN_SUBJECT"] = null;
+                     },
+                     configuration =>
+                     {
+                         configuration["INSTANCE_BOOTSTRAP_MODE"] = "configured-administrator";
+                     },
+                     configuration =>
+                     {
+                         configuration["Deployment:Mode"] = "invalid";
+                     }
+                 })
+        {
+            await using var database = await BootstrapDatabase.CreateAsync();
+            IConfigurationRoot configuration = ConfiguredConfiguration();
+            ConfiguredAdministratorBootstrapProvider provider = CreateProvider(database.Repository, configuration);
+            var runner = new ConfiguredAdministratorBootstrapStartupRunner(
+                provider, database.Repository, database.UnitOfWork, new FixedTimeProvider(PreparedAt));
+            await runner.PrepareAsync();
+            InstanceBootstrapState current = (await database.Repository.GetCurrentForUpdate())!;
+            _ = current.CompleteConfiguredAdministrator(
+                InstanceBootstrapProviderKind.Keycloak,
+                1,
+                current.SelectorFingerprint!,
+                Guid.Parse("01991f00-0000-7000-8000-000000000099"),
+                PreparedAt.AddMinutes(1));
+            await database.Context.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF;");
+            await database.Repository.Update(current);
+            BootstrapEvidence completed = Evidence(current);
+
+            invalidate(configuration);
+
+            await runner.PrepareAsync();
+            database.Context.ChangeTracker.Clear();
+            IReadOnlyList<InstanceBootstrapState> states = await database.Repository.GetAll();
+            await Assert.That(states).Count().IsEqualTo(1);
+            await Assert.That(Evidence(states[0])).IsEqualTo(completed);
+        }
+    }
+
+    [Test]
     public async Task InteractivePreparation_ConvergesOnlyWithMatchingInteractiveState()
     {
         await using var database = await BootstrapDatabase.CreateAsync();

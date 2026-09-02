@@ -70,7 +70,7 @@ public sealed class ConfiguredAdministratorClaimInvariantTests
     }
 
     [Test]
-    public async Task ExactCompletedReplayReturnsOriginalBootstrapWithoutWritesOrEffects()
+    public async Task ExactCompletedReplayReturnsOriginalBootstrapWithoutWritesAndReconcilesEffects()
     {
         var scenario = new OnboardingCompletionScenario();
         scenario.CompleteBootstrap();
@@ -81,7 +81,8 @@ public sealed class ConfiguredAdministratorClaimInvariantTests
         await Assert.That(response.IsSuccess).IsTrue();
         await Assert.That(response.Id).IsEqualTo(bootstrapId);
         await Assert.That(scenario.CommittedWrites).IsEmpty();
-        await Assert.That(scenario.PostCommitEffects).IsEmpty();
+        await Assert.That(scenario.PostCommitEffects)
+            .IsEquivalentTo(["secret-lock", "admin-cache", "deployment-cache", "jwt-reload", "audit"]);
     }
 
     [Test]

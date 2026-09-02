@@ -78,6 +78,36 @@ public sealed class InstanceOnboardingCompletionOperationTests
     }
 
     [Test]
+    public async Task ExactCompletedConfiguredReplay_ReconcilesMandatoryPostCommitEffectsOnce()
+    {
+        var scenario = new OnboardingCompletionScenario();
+        BaseCommandResponse<Guid> first = await scenario.ClaimAsync();
+        scenario.EventSequence.Clear();
+
+        BaseCommandResponse<Guid> replay = await scenario.ClaimAsync();
+
+        await Assert.That(first.IsSuccess).IsTrue();
+        await Assert.That(replay.IsSuccess).IsTrue();
+        await Assert.That(replay.Id).IsEqualTo(first.Id);
+        await Assert.That(scenario.CommittedWrites).IsEmpty();
+        await Assert.That(scenario.PostCommitEffects)
+            .IsEquivalentTo(["secret-lock", "admin-cache", "deployment-cache", "jwt-reload", "audit"]);
+    }
+
+    [Test]
+    public async Task PostCommitReconciliation_DoesNotUseCanceledRequestToken()
+    {
+        var scenario = new OnboardingCompletionScenario();
+        using var cancellation = new CancellationTokenSource();
+        scenario.BeforeCommit = cancellation.Cancel;
+
+        BaseCommandResponse<Guid> response = await scenario.ClaimAsync(cancellationToken: cancellation.Token);
+
+        await Assert.That(response.IsSuccess).IsTrue();
+        await Assert.That(scenario.JwtCancellationWasRequested).IsFalse();
+    }
+
+    [Test]
     public async Task InteractiveAndConfiguredCommands_ReachTheSameAtomicCompletionOperation()
     {
         var configured = new OnboardingCompletionScenario();
@@ -272,7 +302,7 @@ internal sealed class OnboardingCompletionScenario
         var setupSecret = new EffectSetupSecret(EventSequence);
         var cache = new EffectAdminCache(EventSequence);
         DeploymentModeProvider = new EffectDeploymentModeProvider(EventSequence);
-        var jwt = new EffectJwtNotifier(EventSequence);
+        var jwt = new EffectJwtNotifier(this, EventSequence);
         var audit = new EffectAuditLogger(EventSequence);
 
         Operation = new InstanceOnboardingCompletionOperation(
@@ -316,6 +346,7 @@ internal sealed class OnboardingCompletionScenario
     public string BindingFingerprint { get => _provider.Fingerprint; set => _provider.Fingerprint = value; }
     public ProviderAccountKey BindingAccount { get => _provider.BindingAccount; set => _provider.BindingAccount = value; }
     public bool ProviderAvailable { get => _provider.Available; set => _provider.Available = value; }
+    public bool JwtCancellationWasRequested { get; private set; }
 
     public ClaimConfiguredInstanceAdministratorCommand Command(Guid? userId = null, ProviderAccountKey? account = null) => new()
     {
@@ -327,9 +358,12 @@ internal sealed class OnboardingCompletionScenario
         EmailVerified = true
     };
 
-    public Task<BaseCommandResponse<Guid>> ClaimAsync(Guid? userId = null, ProviderAccountKey? account = null) =>
+    public Task<BaseCommandResponse<Guid>> ClaimAsync(
+        Guid? userId = null,
+        ProviderAccountKey? account = null,
+        CancellationToken cancellationToken = default) =>
         new ClaimConfiguredInstanceAdministratorCommandHandler(Operation)
-            .Handle(Command(userId, account), CancellationToken.None);
+            .Handle(Command(userId, account), cancellationToken);
 
     public CompleteInstanceOnboardingCommand InteractiveCommand() => new()
     {
@@ -525,9 +559,14 @@ internal sealed class OnboardingCompletionScenario
         public Task InvalidateCacheAsync() { events.Add("deployment-cache"); return Task.CompletedTask; }
     }
 
-    private sealed class EffectJwtNotifier(List<string> events) : IJwtAuthorityRefreshNotifier
+    private sealed class EffectJwtNotifier(OnboardingCompletionScenario owner, List<string> events) : IJwtAuthorityRefreshNotifier
     {
-        public Task ReloadAsync(CancellationToken ct = default) { events.Add("jwt-reload"); return Task.CompletedTask; }
+        public Task ReloadAsync(CancellationToken ct = default)
+        {
+            owner.JwtCancellationWasRequested = ct.IsCancellationRequested;
+            events.Add("jwt-reload");
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class EffectAuditLogger(List<string> events) : IInstanceBootstrapAuditLogger

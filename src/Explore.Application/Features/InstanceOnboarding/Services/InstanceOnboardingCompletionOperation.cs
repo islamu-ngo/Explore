@@ -84,7 +84,7 @@ public sealed class InstanceOnboardingCompletionOperation(
                 exception.ReasonCodes);
         }
 
-        if (!outcome.CompletedNow)
+        if (!outcome.RequiresPostCommitReconciliation)
         {
             return outcome.Response;
         }
@@ -92,7 +92,7 @@ public sealed class InstanceOnboardingCompletionOperation(
         setupSecretProvider.Lock();
         cacheInvalidator.InvalidateUser(input.UserId);
         await deploymentModeProvider.InvalidateCacheAsync();
-        await jwtRefreshNotifier.ReloadAsync(cancellationToken);
+        await jwtRefreshNotifier.ReloadAsync(CancellationToken.None);
         auditLogger.Log(new InstanceBootstrapAuditEvent(
             InstanceBootstrapAuditEventType.SetupModeDisabled,
             Operation: outcome.AuditOperation,
@@ -114,7 +114,11 @@ public sealed class InstanceOnboardingCompletionOperation(
 
         if (admission.Response is not null)
         {
-            return new(admission.Response, false, admission.DeploymentMode, admission.AuditOperation);
+            return new(
+                admission.Response,
+                admission.ReconcilePostCommit,
+                admission.DeploymentMode,
+                admission.AuditOperation);
         }
 
         ConfiguredAdministratorProfile? administratorProfile =
@@ -272,7 +276,8 @@ public sealed class InstanceOnboardingCompletionOperation(
                         bootstrap.Id,
                         "Configured instance administrator already claimed."),
                     binding.Settings.DeploymentMode,
-                    "configured_instance_administrator_claim")
+                    "configured_instance_administrator_claim",
+                    reconcilePostCommit: true)
                 : ConfiguredTerminal(
                     "configured_administrator_claim_conflict",
                     "Configured administrator claim conflicts with completed onboarding.");
@@ -775,7 +780,8 @@ public sealed class InstanceOnboardingCompletionOperation(
         DeploymentMode DeploymentMode,
         string AuditOperation,
         ConfiguredAdministratorBootstrapBinding? Binding,
-        BaseCommandResponse<Guid>? Response)
+        BaseCommandResponse<Guid>? Response,
+        bool ReconcilePostCommit)
     {
         public static Admission Allow(
             CompleteInstanceOnboardingRequest settings,
@@ -783,18 +789,19 @@ public sealed class InstanceOnboardingCompletionOperation(
             DeploymentMode mode,
             string operation,
             ConfiguredAdministratorBootstrapBinding? binding = null) =>
-            new(settings, profile, mode, operation, binding, null);
+            new(settings, profile, mode, operation, binding, null, false);
 
         public static Admission Terminal(
             BaseCommandResponse<Guid> response,
             DeploymentMode mode,
-            string operation) =>
-            new(null, null, mode, operation, null, response);
+            string operation,
+            bool reconcilePostCommit = false) =>
+            new(null, null, mode, operation, null, response, reconcilePostCommit);
     }
 
     private sealed record PersistenceOutcome(
         BaseCommandResponse<Guid> Response,
-        bool CompletedNow,
+        bool RequiresPostCommitReconciliation,
         DeploymentMode DeploymentMode,
         string AuditOperation);
 }

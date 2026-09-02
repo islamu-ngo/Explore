@@ -139,10 +139,10 @@ public sealed class ConfiguredAdministratorBootstrapStartupTests
         await Assert.That(failure).IsNotNull();
         await Assert.That(FlattenMessages(failure!)).Contains("instance_bootstrap_mode_invalid");
         await Assert.That(timeline.Events).IsEquivalentTo(
-            ["migration-seed", "manifest"],
+            ["migration-seed", "manifest", "preparation"],
             TUnit.Assertions.Enums.CollectionOrdering.Matching);
         await Assert.That(timeline.Count("manifest")).IsEqualTo(1);
-        await Assert.That(timeline.Count("preparation")).IsEqualTo(0);
+        await Assert.That(timeline.Count("preparation")).IsEqualTo(1);
         await Assert.That(timeline.Count("setup-authority")).IsEqualTo(0);
         await Assert.That(timeline.Count("token-authority")).IsEqualTo(0);
         await Assert.That(timeline.Count("cookie-authority")).IsEqualTo(0);

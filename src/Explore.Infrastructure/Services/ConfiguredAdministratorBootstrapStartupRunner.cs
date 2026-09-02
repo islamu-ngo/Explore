@@ -15,12 +15,7 @@ public sealed class ConfiguredAdministratorBootstrapStartupRunner(
 {
     public async Task PrepareAsync(CancellationToken cancellationToken = default)
     {
-        ConfiguredAdministratorBootstrapProvider.ConfigurationSnapshot snapshot =
-            provider.ReadConfiguration();
-        DateTime preparedAt = timeProvider.GetUtcNow().UtcDateTime;
-        Guid replacementId = Guid.CreateVersion7(new DateTimeOffset(preparedAt));
-
-        _ = await unitOfWork.ExecuteSerializableAsync(
+        _ = await unitOfWork.ExecuteBootstrapConvergenceAsync(
             async token =>
             {
                 InstanceBootstrapState? current =
@@ -29,6 +24,11 @@ public sealed class ConfiguredAdministratorBootstrapStartupRunner(
                 {
                     return PreparationOutcome.CompletedFinal;
                 }
+
+                ConfiguredAdministratorBootstrapProvider.ConfigurationSnapshot snapshot =
+                    provider.ReadConfiguration();
+                DateTime preparedAt = timeProvider.GetUtcNow().UtcDateTime;
+                Guid replacementId = Guid.CreateVersion7(new DateTimeOffset(preparedAt));
 
                 if (snapshot.Mode == InstanceBootstrapMode.Interactive)
                 {

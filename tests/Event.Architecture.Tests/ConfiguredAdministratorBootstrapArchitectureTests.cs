@@ -388,6 +388,85 @@ public sealed class ConfiguredAdministratorBootstrapArchitectureTests
             && method.Name == "PrepareInstanceBootstrapLifecycleBackfill");
     }
 
+    [Test]
+    [Arguments(PrimaryDatabaseProvider.PostgreSql)]
+    [Arguments(PrimaryDatabaseProvider.Sqlite)]
+    [Arguments(PrimaryDatabaseProvider.SqlServer)]
+    [Arguments(PrimaryDatabaseProvider.MariaDb)]
+    [Arguments(PrimaryDatabaseProvider.MySql)]
+    public async Task ConfiguredAdministratorBootstrapDowngradePreservesLegacyValuesBeforeDroppingTypedColumns(
+        PrimaryDatabaseProvider provider)
+    {
+        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureApplication(
+            builder,
+            CreateDatabaseOptions(provider));
+        await using var context = new ExploreDbContext(builder.Options);
+        string[] migrations = context.Database.GetMigrations().ToArray();
+        string migration = migrations.Single(candidate =>
+            candidate.EndsWith("_AddConfiguredAdministratorBootstrapState", StringComparison.Ordinal));
+        int migrationIndex = Array.IndexOf(migrations, migration);
+        string previousMigration = migrations[migrationIndex - 1];
+        string script = context.GetService<IMigrator>().GenerateScript(migration, previousMigration);
+        string forwardScript = context.GetService<IMigrator>().GenerateScript(previousMigration, migration);
+        string quote = provider switch
+        {
+            PrimaryDatabaseProvider.SqlServer => "[]",
+            PrimaryDatabaseProvider.MariaDb or PrimaryDatabaseProvider.MySql => "`",
+            _ => "\""
+        };
+        string isCompleted = QuotedIdentifier("is_completed", quote);
+        string selectedDeploymentMode = QuotedIdentifier("selected_deployment_mode", quote);
+        string status = QuotedIdentifier("status", quote);
+        string deploymentMode = QuotedIdentifier("deployment_mode", quote);
+        string completedValue = provider == PrimaryDatabaseProvider.PostgreSql ? "TRUE" : "1";
+        string incompleteValue = provider == PrimaryDatabaseProvider.PostgreSql ? "FALSE" : "0";
+        int addLegacyPosition = SqlStatementPosition(script, "ADD", "is_completed", 0);
+        int addSelectedDeploymentModePosition = SqlStatementPosition(script, "ADD", "selected_deployment_mode", 0);
+        int backfillPosition = script.IndexOf("headless-instance-bootstrap-downgrade-backfill", StringComparison.Ordinal);
+        int dropTypedPosition = provider == PrimaryDatabaseProvider.Sqlite
+            ? script.IndexOf("CREATE TABLE \"ef_temp_ie_instance_bootstrap_states\"", backfillPosition, StringComparison.Ordinal)
+            : SqlStatementPosition(script, "DROP", "status", backfillPosition);
+        int dropTypedDeploymentModePosition = provider == PrimaryDatabaseProvider.Sqlite
+            ? dropTypedPosition
+            : SqlStatementPosition(script, "DROP", "deployment_mode", backfillPosition);
+        int addTypedPosition = SqlStatementPosition(forwardScript, "ADD", "status", 0);
+        int addTypedDeploymentModePosition = SqlStatementPosition(forwardScript, "ADD", "deployment_mode", 0);
+        int forwardBackfillPosition = forwardScript.IndexOf("headless-instance-bootstrap-backfill", StringComparison.Ordinal);
+        int dropLegacyPosition = provider == PrimaryDatabaseProvider.Sqlite
+            ? forwardScript.IndexOf("CREATE TABLE \"ef_temp_ie_instance_bootstrap_states\"", forwardBackfillPosition, StringComparison.Ordinal)
+            : SqlStatementPosition(forwardScript, "DROP", "is_completed", forwardBackfillPosition);
+        int dropSelectedDeploymentModePosition = provider == PrimaryDatabaseProvider.Sqlite
+            ? dropLegacyPosition
+            : SqlStatementPosition(forwardScript, "DROP", "selected_deployment_mode", forwardBackfillPosition);
+
+        await Assert.That(addLegacyPosition).IsGreaterThanOrEqualTo(0);
+        await Assert.That(addSelectedDeploymentModePosition).IsGreaterThanOrEqualTo(0);
+        await Assert.That(backfillPosition).IsGreaterThan(addLegacyPosition);
+        await Assert.That(backfillPosition).IsGreaterThan(addSelectedDeploymentModePosition);
+        await Assert.That(dropTypedPosition).IsGreaterThan(backfillPosition);
+        await Assert.That(dropTypedDeploymentModePosition).IsGreaterThan(backfillPosition);
+        await Assert.That(script).Contains(
+            $"{isCompleted} = CASE WHEN {status} = 3 THEN {completedValue} ELSE {incompleteValue} END");
+        await Assert.That(script).Contains(
+            $"{selectedDeploymentMode} = CASE WHEN {deploymentMode} = 2 THEN 'MultiTenant' ELSE 'SingleTenant' END");
+        await Assert.That(addTypedPosition).IsGreaterThanOrEqualTo(0);
+        await Assert.That(addTypedDeploymentModePosition).IsGreaterThanOrEqualTo(0);
+        await Assert.That(forwardBackfillPosition).IsGreaterThan(addTypedPosition);
+        await Assert.That(forwardBackfillPosition).IsGreaterThan(addTypedDeploymentModePosition);
+        await Assert.That(dropLegacyPosition).IsGreaterThan(forwardBackfillPosition);
+        await Assert.That(dropSelectedDeploymentModePosition).IsGreaterThan(forwardBackfillPosition);
+        if (provider == PrimaryDatabaseProvider.Sqlite)
+        {
+            string rebuiltTableDefinition = script[dropTypedPosition..script.IndexOf(");", dropTypedPosition, StringComparison.Ordinal)];
+            string forwardRebuiltTableDefinition = forwardScript[dropLegacyPosition..forwardScript.IndexOf(");", dropLegacyPosition, StringComparison.Ordinal)];
+            await Assert.That(rebuiltTableDefinition).DoesNotContain("\"status\"");
+            await Assert.That(rebuiltTableDefinition).DoesNotContain("\"deployment_mode\"");
+            await Assert.That(forwardRebuiltTableDefinition).DoesNotContain("\"is_completed\"");
+            await Assert.That(forwardRebuiltTableDefinition).DoesNotContain("\"selected_deployment_mode\"");
+        }
+    }
+
     private static ConfigurationManifestV1Alpha2 CreateEmptyManifest() => new()
     {
         Schema = ConfigurationManifestContractMetadata.SchemaId,
@@ -607,5 +686,30 @@ public sealed class ConfiguredAdministratorBootstrapArchitectureTests
             ServerFlavor = flavor,
             ServerVersion = flavor is null ? null : new Version(11, 4)
         };
+    }
+
+    private static string QuotedIdentifier(string identifier, string quote) => quote == "[]"
+        ? $"[{identifier}]"
+        : $"{quote}{identifier}{quote}";
+
+    private static int SqlStatementPosition(
+        string script,
+        string operation,
+        string identifier,
+        int startIndex)
+    {
+        int offset = startIndex;
+        foreach (string statement in script[startIndex..].Split(';'))
+        {
+            if (statement.Contains(operation, StringComparison.OrdinalIgnoreCase)
+                && statement.Contains(identifier, StringComparison.Ordinal))
+            {
+                return offset;
+            }
+
+            offset += statement.Length + 1;
+        }
+
+        return -1;
     }
 }
