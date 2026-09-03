@@ -1,57 +1,161 @@
 ---
-description: Run the combined single-container topology with durable SQLite storage.
+description: Deploy and operate the single-container standalone distribution with durable SQLite storage.
 ---
 
-# Docker Standalone
+# Docker Standalone Self-Hosting
 
-The standalone image is the smallest supported operational topology. It combines the application into one non-root container and persists application, Data Protection, and privacy-erasure authority state in one named volume.
+The standalone image (`Event.Standalone`) is the simplest and lowest-overhead operational topology for ISLAMU Event. It packages the API, background workers, Blazor WebAssembly BFF/UI, health endpoints, and in-process database migrations into **a single non-root container process**.
 
-## Constraints
+---
 
-* One application replica.
-* SQLite for application and privacy-erasure authority data.
-* Local durable storage under `/app/data`.
-* Initial image target: `linux/amd64`.
-* No Kubernetes, Helm, or initial `linux/arm64` packaging.
+## 1. When to Choose Standalone
 
-## Build and run
+| Advantage | Consideration |
+|---|---|
+| **Zero External Infrastructure**: Runs on built-in SQLite persistence; no PostgreSQL server or Redis required. | **Single Replica**: SQLite requires exactly one running container instance (no horizontal multi-container scaling). |
+| **Lowest Resource Footprint**: Runs comfortably on 1 vCPU and 1 GB RAM. | **Local-First Storage**: Media and database files live in a mounted Docker volume. |
+| **Instant Onboarding**: In-process migrations apply automatically before the HTTP port opens. | **Initial Platform Target**: Built for `linux/amd64`. |
+
+---
+
+## 2. Quick Run & Production Deployment
+
+### Step 1: Create a Persistent Volume
+
+ISLAMU Event Standalone requires persistent storage mounted at `/app/data` to retain the primary database, privacy-erasure authority, Data Protection keys, and uploaded media:
 
 ```bash
-docker build -t islamu/event-standalone -f src/Event.Standalone/Dockerfile .
 docker volume create event_standalone_data
-docker run --rm --name islamu-event-standalone \
+```
+
+### Step 2: Prepare Configuration (`.env`)
+
+Create a minimal `.env` file containing your production settings:
+
+```env
+ASPNETCORE_ENVIRONMENT=Production
+DATABASE_PROVIDER=sqlite
+
+# Base Application URLs
+PUBLIC_URL=https://events.example.org
+
+# Authentication (Keycloak)
+KEYCLOAK_URL=https://auth.example.org
+KEYCLOAK_REALM=islamu
+KEYCLOAK_BLAZOR_CLIENT_ID=event-blazor
+KEYCLOAK_BLAZOR_CLIENT_SECRET=your-secure-32-byte-hex-secret
+
+# Operator Legal Identity (Required for Production startup)
+INSTANCE__OPERATORIDENTITY__OPERATORID=01912a7e-1234-7000-8000-000000000001
+INSTANCE__OPERATORIDENTITY__PUBLICNAME=Community Events Foundation
+INSTANCE__OPERATORIDENTITY__LEGALNAME=Community Events Foundation Non-Profit
+INSTANCE__OPERATORIDENTITY__OFFICIALINSTANCE=false
+INSTANCE__OPERATORIDENTITY__OPERATORKIND=community
+INSTANCE__OPERATORIDENTITY__JURISDICTION=US-CA
+INSTANCE__OPERATORIDENTITY__PUBLICCONTACTEMAIL=contact@example.org
+INSTANCE__OPERATORIDENTITY__WEBSITEURL=https://example.org
+INSTANCE__OPERATORIDENTITY__LEGALNOTICEURL=https://example.org/legal
+INSTANCE__OPERATORIDENTITY__TERMSURL=https://example.org/terms
+INSTANCE__OPERATORIDENTITY__PRIVACYURL=https://example.org/privacy
+```
+
+### Step 3: Run the Container
+
+```bash
+docker run -d \
+  --name islamu-event-standalone \
+  --restart unless-stopped \
   --env-file .env \
   --mount source=event_standalone_data,target=/app/data \
   -p 8080:8080 \
-  islamu/event-standalone
+  ghcr.io/islamu-ngo/event-standalone:latest
 ```
 
-Review the environment file for this topology. Do not pass the split deployment example unchanged and assume every value applies.
+*(Alternatively, build from source: `docker build -t islamu/event-standalone -f src/Event.Standalone/Dockerfile .`)*
 
-The container applies application, Data Protection, and privacy-authority migrations before binding port `8080`. Default durable files are:
+---
 
-* `/app/data/islamu_event.db`;
-* `/app/data/privacy_erasure_authority.db`.
+## 3. Container Startup & File Layout
 
-## First-run setup
+When the container launches:
+1. It applies migrations and seeding for the primary SQLite database (`/app/data/islamu_event.db`).
+2. It initializes the separate GDPR Privacy-Erasure authority store (`/app/data/privacy_erasure_authority.db`).
+3. It initializes the ASP.NET Core Data Protection keyring (`/app/data/dataprotection-keys/`).
+4. It starts the internal Kestrel web server and binds port `8080`.
 
-Check readiness:
+Verify container startup logs:
 
 ```bash
-curl --fail http://localhost:8080/health
+docker logs -f islamu-event-standalone
 ```
 
-If `SETUP_SECRET` was not supplied, retrieve the generated file without printing the secret:
+---
+
+## 4. First-Run Setup Wizard
+
+Once the container is healthy:
+
+1. Retrieve the single-use setup secret generated inside the persistent volume:
+   ```bash
+   docker cp islamu-event-standalone:/app/data/setup-secret ./setup-secret
+   cat ./setup-secret
+   # Permanently delete the local copy after use:
+   rm -f ./setup-secret
+   ```
+2. Navigate to `http://localhost:8080/setup` (or `https://events.example.org/setup` behind your reverse proxy).
+3. Paste the setup secret and finalize your instance details.
+4. Once completed, the setup flow is permanently locked.
+
+---
+
+## 5. Reverse Proxy Configuration
+
+In production, place the standalone container behind a TLS-terminating reverse proxy on port `8080`.
+
+### Caddy Example
+```caddy
+events.example.org {
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+### Nginx Example
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name events.example.org;
+
+    ssl_certificate /etc/letsencrypt/live/events.example.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/events.example.org/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+---
+
+## 6. Backup and Recovery
+
+To back up the standalone deployment, take an atomic snapshot of the SQLite database files and the volume:
 
 ```bash
-docker cp islamu-event-standalone:/app/data/setup-secret ./setup-secret
-chmod 600 ./setup-secret
+# Safely vacuum/backup SQLite files
+docker exec islamu-event-standalone sqlite3 /app/data/islamu_event.db ".backup '/app/data/backup_app.db'"
+docker exec islamu-event-standalone sqlite3 /app/data/privacy_erasure_authority.db ".backup '/app/data/backup_erasure.db'"
+
+# Copy out of container to secure backup storage
+docker cp islamu-event-standalone:/app/data/backup_app.db ./backup_app.db
+docker cp islamu-event-standalone:/app/data/backup_erasure.db ./backup_erasure.db
 ```
 
-Complete onboarding at `http://localhost:8080/setup`, then remove the host copy. Never persist the setup secret in shell history, source control, screenshots, or support bundles.
-
-## Backup and recovery
-
-Back up the named volume and prove it can be restored into an isolated container. Preserve both SQLite files: restoring only the primary application database can resurrect data that the separate privacy-erasure authority fenced.
-
-A standalone deployment is not ready until restart preserves data, migrations complete, Keycloak authentication and authorization work, and `/health` remains free of private paths and credentials.
+> [!CAUTION]
+> **Privacy-Erasure Isolation**: Always restore *both* `islamu_event.db` and `privacy_erasure_authority.db` together. Restoring an old primary application database without the erasure authority database can accidentally resurrect erased user data that was legally deleted under GDPR!

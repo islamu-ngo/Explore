@@ -1,49 +1,69 @@
 ---
-description: >-
-  Set up the .NET, Docker, and Aspire development environment and verify the
-  local stack.
+description: Set up your local developer workstation to contribute code to ISLAMU Event.
 ---
 
-# Local Development
+# Local Development Guide
 
-Run the complete development topology through .NET Aspire so service discovery, dependencies, health checks, and local infrastructure match the repository's supported workflow.
+This guide helps developers set up a local development workstation to contribute to ISLAMU Event.
 
-## Prerequisites
+---
 
-Install:
+## 1. Prerequisites
 
-* .NET 10 SDK
-* Docker with Compose support
-* .NET Aspire CLI
-* Git
+To build and run the complete solution from source, install:
 
-## Start the stack
+- **.NET 10 SDK** (v10.0.302 or compatible)
+- **Docker Engine / Docker Desktop** (v24+ with Compose v2)
+- **.NET Aspire CLI**:
+  ```bash
+  dotnet tool install -g Aspire.Cli
+  ```
+- **Git**
+
+---
+
+## 2. Clone & Run with .NET Aspire
+
+We use .NET Aspire for local orchestration, automatically launching PostgreSQL, Keycloak, Mailpit, `Explore.API`, and `Explore.Blazor`:
 
 ```bash
-git clone <repository-url>
+# 1. Clone repository
+git clone https://github.com/islamu-ngo/Event.git
 cd Event
+
+# 2. Copy configuration
 cp .env.example .env
+
+# 3. Launch with Aspire AppHost
 aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
 ```
 
-Treat `.env.example` as the configuration schema. Replace development placeholders through the approved local secret authority; never commit populated `.env` files or credentials.
+Open the **Aspire Dashboard** URL displayed in your terminal (typically `http://localhost:18888`) to view running resources, inspect logs, and navigate to the application UI.
 
-## Development flow
+---
 
-1. Wait for Aspire to report required resources as healthy.
-2. Open the BFF user interface from the Aspire dashboard.
-3. Verify API `/alive` and `/health` endpoints.
-4. Use Mailpit for local SMTP inspection where email resources are enabled.
-5. Make changes in the owning architectural layer, then run the smallest relevant build and test slice.
+## 3. Building and Testing
 
-## Generated artifacts
+Build the solution in Release configuration:
 
-OpenAPI contracts, generated clients, EF Core migrations, and model snapshots are generated outputs. Change their source definitions and regenerate them; do not hand-edit generated files.
+```bash
+dotnet build --configuration Release --verbosity quiet
+```
 
-## Before opening a pull request
+Run tests using TUnit:
 
-* Build the affected projects in Release configuration.
-* Run the relevant TUnit project and exact test-class slice.
-* Confirm configuration and secret changes are documented without secret values.
-* Update API change records when a public contract changes.
-* Perform the repository's intent-specific review checklist.
+```bash
+# Run unit tests for Application layer
+dotnet test tests/Explore.Application.Tests/Explore.Application.Tests.csproj
+```
+
+---
+
+## 4. Where to Learn More
+
+For full engineering specifications, invariants, and coding conventions, refer to the internal documentation in GitHub:
+
+- 📖 **[Developer Guide](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/DEVELOPER_GUIDE.md)**: 5-minute mental model, invariants, and coding style.
+- 📖 **[Architecture Overview](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/ARCHITECTURE_OVERVIEW.md)**: C4 container diagrams and component interactions.
+- 📖 **[Contributor Recipes](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/CONTRIBUTOR_RECIPES.md)**: Blueprints for adding entities, CQRS slices, and endpoints.
+- 📖 **[Testing Guide](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/TESTING.md)**: TUnit conventions and Testcontainers test lanes.

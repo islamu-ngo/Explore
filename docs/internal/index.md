@@ -128,9 +128,9 @@ Start with [Repository README](../../README.md) or the [Documentation Hub](../RE
 - [AI_RAG_FOUNDATION.md](AI_RAG_FOUNDATION.md) - tenant-safe summary-only boundary for future AI vector/RAG support.
 - [AI_AGENT_CONTRACT_INVENTORY.md](AI_AGENT_CONTRACT_INVENTORY.md) - generated inventory of registry-governed AI agent tool contracts.
 - [AI_AGENT_EXPERIENCE_HARDENING.md](AI_AGENT_EXPERIENCE_HARDENING.md) - guarded context summaries, proposal-only plan previews, and fake/replay AI usability reports.
-- [MCP_DEBUGGING.md](MCP_DEBUGGING.md) - redacted local MCP debugging, Inspector/Copilot smoke, JSON-RPC tests, and compatibility gates.
-- [SELF_HOSTING.md](SELF_HOSTING.md) - Docker Compose, Keycloak, local storage volume, optional MinIO, reverse proxy.
-- [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) - Coolify deployment runbook for external Cerbos PDP, PostgreSQL storage, gRPC routing, and policy upload.
+- [HOSTING_ARCHITECTURE.md](HOSTING_ARCHITECTURE.md) - composition roots (Explore.API, Explore.Blazor, Event.Standalone, Event.MigrationService), startup lifecycle phases, and provider abstraction.
+- [SELF_HOSTING.md](SELF_HOSTING.md) - internal hosting specification, headless onboarding, and operator identity gates (for operator runbooks, see [public docs](../public/documentation/readme/self-hosting/)).
+- [CERBOS_COOLIFY.md](CERBOS_COOLIFY.md) - Coolify deployment specification for external Cerbos PDP and PostgreSQL storage schema.
 - [BACKUP_RESTORE_UPGRADE.md](BACKUP_RESTORE_UPGRADE.md) - backup, restore, upgrade, and rollback runbook.
 - [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) - release readiness and documentation contract.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - practical issue resolution.

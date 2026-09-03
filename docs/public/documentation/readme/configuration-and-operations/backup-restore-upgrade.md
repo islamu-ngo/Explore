@@ -1,57 +1,152 @@
 ---
-description: >-
-  Protect every durable authority and upgrade pre-1.0 deployments with rehearsed
-  recovery.
+description: Operator runbook for automated backups, disaster recovery restores, and safe upgrades.
 ---
 
-# Backup, Restore & Upgrade
+# Backup, Restore & Upgrade Runbook
 
-A backup is complete only when every durable authority is included and the result has been restored successfully in isolation.
+A backup is only as good as its last verified restore. In ISLAMU Event, database upgrades and data persistence involve multiple durable authorities that must remain synchronized to prevent data corruption or resurrection of erased user accounts.
 
-## Inventory durable state
+---
 
-Protect:
+## 1. What Must Be Backed Up
 
-1. the primary application database;
-2. Data Protection keys/state;
-3. the privacy-erasure authority store;
-4. local files or the selected S3-compatible bucket plus storage metadata;
-5. separately hosted provider, queue, webhook, or outbox state;
-6. non-secret configuration needed to reconnect services.
+To guarantee a complete recovery point, your backup routine must capture all six durable authorities:
 
-Encrypt backups, restrict access, define retention, and record version and integrity evidence.
+| Asset | Storage Location | Why It Matters |
+|---|---|---|
+| **Primary Application Database** | PostgreSQL DB or `/app/data/islamu_event.db` | Events, orders, registrations, tenants, settings, and outbox queues. |
+| **Privacy Erasure Authority** | PostgreSQL schema or `/app/data/privacy_erasure_authority.db` | Typed immutable erasure records and monotonic counter driving GDPR compliance. |
+| **Identity Provider (Keycloak)** | PostgreSQL database `keycloak` | User accounts, realms, client definitions, and password hashes. |
+| **ASP.NET Data Protection Keys** | Named volume `data_protection_keys` | Encryption keyring preserving active browser sessions and auth cookies. |
+| **Object Storage Media** | Local volume `local_storage_data` or S3 bucket | Event banners, attendee avatars, and uploaded attachments. |
+| **Environment Configuration** | Root `.env` or Infisical vault | Secret keys, client secrets, and runtime parameters. |
 
-## Privacy-erasure topology
+> [!CAUTION]
+> **Anti-Resurrection Rule**: Never restore an older backup of the Primary Application Database without also restoring the corresponding Privacy Erasure Authority store. Restoring an old database alone will resurrect deleted attendee profiles and personal records!
 
-| Topology           | Backup consequence                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| `EmbeddedSqlite`   | Preserve the dedicated authority file separately from the primary DB; use one writer/API replica. |
-| `CoLocated`        | PostgreSQL or SQLite only; simpler operations but no independent stale-primary protection.        |
-| `ExternalDatabase` | Preserve the separate PostgreSQL authority and its runtime/migrator roles.                        |
+---
 
-Restoring the application DB without the independent erasure authority can resurrect erased state. Startup replay must restore the anti-resurrection fence before traffic is served.
+## 2. Backup Procedures
 
-## Restore rehearsal
+### PostgreSQL Deployments (Docker Compose Split Topology)
 
-Restore into an isolated network, apply the matching application version, verify migrations and integrity, and exercise identity, authorization, tenancy, representative data, storage, outboxes, and erasure status. Do not contact real recipients/providers during a rehearsal unless the environment is deliberately isolated and approved.
+Automate this script via a daily cron job:
 
-## Upgrade procedure
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-The project is pre-1.0 and the API is version `0.1`.
+BACKUP_DIR="/var/backups/islamu-event/$(date +%Y-%m-%d_%H%M%S)"
+mkdir -p "$BACKUP_DIR"
 
-1. Pin target application versions and image digests.
-2. Read release notes and `docs/API_CHANGELOG.md`.
-3. Record current non-secret configuration.
-4. Back up every authority and prove the restore.
-5. Rehearse migrations in staging or an isolated restore.
-6. Decide rollback versus forward recovery before starting.
-7. Run the migration service before API/UI in split deployments.
-8. Verify health, authentication, authorization, tenant resolution, reads/writes, outboxes, integrations, and erasure status.
+echo "Backing up Primary Application Database..."
+docker compose exec -T postgres pg_dump -U postgres -d islamu_event -F c -b -v -f /tmp/app_db.dump
+docker cp "$(docker compose ps -q postgres)":/tmp/app_db.dump "$BACKUP_DIR/app_db.dump"
 
-A schema migration may make binary rollback unsafe. Prefer the explicitly rehearsed recovery path rather than improvising after a partial upgrade.
+echo "Backing up Keycloak Database..."
+docker compose exec -T keycloak-db pg_dump -U postgres -d keycloak -F c -b -v -f /tmp/keycloak_db.dump
+docker cp "$(docker compose ps -q keycloak-db)":/tmp/keycloak_db.dump "$BACKUP_DIR/keycloak_db.dump"
 
-MariaDB deployments use the same procedure as every other provider: run the
-one-shot migration service and let it apply the schema. MariaDB remains a
-supported provider with its own server version setting, and it shares the MySQL
-migration path, so there is no MariaDB-specific migration step or command to
-run.
+echo "Backing up Data Protection Keys and Local Media..."
+tar -czf "$BACKUP_DIR/data_protection_keys.tar.gz" -C /var/lib/docker/volumes/event_data_protection_keys/_data .
+tar -czf "$BACKUP_DIR/local_storage.tar.gz" -C /var/lib/docker/volumes/event_local_storage_data/_data .
+
+echo "Backing up Environment Configuration..."
+cp .env "$BACKUP_DIR/.env.backup"
+
+echo "Backup completed successfully at $BACKUP_DIR"
+```
+
+### SQLite Deployments (Docker Standalone Topology)
+
+For single-container SQLite deployments, use the safe `.backup` command:
+
+```bash
+BACKUP_DIR="./backups/$(date +%Y-%m-%d_%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+
+# Perform online atomic backup inside container
+docker exec islamu-event-standalone sqlite3 /app/data/islamu_event.db ".backup '/app/data/app_backup.db'"
+docker exec islamu-event-standalone sqlite3 /app/data/privacy_erasure_authority.db ".backup '/app/data/erasure_backup.db'"
+
+# Copy out to backup directory
+docker cp islamu-event-standalone:/app/data/app_backup.db "$BACKUP_DIR/islamu_event.db"
+docker cp islamu-event-standalone:/app/data/erasure_backup.db "$BACKUP_DIR/privacy_erasure_authority.db"
+docker cp islamu-event-standalone:/app/data/dataprotection-keys "$BACKUP_DIR/dataprotection-keys"
+
+# Clean up temporary files inside container
+docker exec islamu-event-standalone rm -f /app/data/app_backup.db /app/data/erasure_backup.db
+```
+
+---
+
+## 3. Disaster Recovery & Restore Procedure
+
+### Step 1: Prepare Clean Target Environment
+Stop running application containers to prevent active writes during restore:
+
+```bash
+docker compose down
+```
+
+### Step 2: Restore Relational Databases
+
+```bash
+# Start only the database containers
+docker compose up -d postgres keycloak-db
+
+# Restore primary application database
+docker cp ./app_db.dump "$(docker compose ps -q postgres)":/tmp/app_db.dump
+docker compose exec -T postgres dropdb -U postgres --if-exists islamu_event
+docker compose exec -T postgres createdb -U postgres islamu_event
+docker compose exec -T postgres pg_restore -U postgres -d islamu_event -v /tmp/app_db.dump
+
+# Restore Keycloak database
+docker cp ./keycloak_db.dump "$(docker compose ps -q keycloak-db)":/tmp/keycloak_db.dump
+docker compose exec -T keycloak-db dropdb -U postgres --if-exists keycloak
+docker compose exec -T keycloak-db createdb -U postgres keycloak
+docker compose exec -T keycloak-db pg_restore -U postgres -d keycloak -v /tmp/keycloak_db.dump
+```
+
+### Step 3: Restore Data Protection Keys & Media
+
+Extract the keys into their respective persistent volumes:
+
+```bash
+tar -xzf data_protection_keys.tar.gz -C /var/lib/docker/volumes/event_data_protection_keys/_data
+tar -xzf local_storage.tar.gz -C /var/lib/docker/volumes/event_local_storage_data/_data
+```
+
+### Step 4: Run Migrations & Start Services
+
+```bash
+docker compose run --rm event-migrationservice
+docker compose up -d
+```
+
+---
+
+## 4. Upgrade Runbook (Pre-1.0 Releases)
+
+Because the project is pre-1.0 and in active development, breaking schema changes may occur between minor versions. Follow this strict procedure when updating your instance:
+
+1. **Review Release Notes**: Check the latest release notes and `API_CHANGELOG.md` for breaking changes or new required environment variables.
+2. **Take a Full Backup**: Execute the backup script described above before pulling new images.
+3. **Pull Pinned Images**: Update image tags in your `docker-compose.yml` (avoid using `latest` in production):
+   ```bash
+   docker compose pull
+   ```
+4. **Run Migrations First**:
+   ```bash
+   docker compose run --rm event-migrationservice
+   ```
+   Confirm that migrations complete with exit code `0`.
+5. **Restart Application Services**:
+   ```bash
+   docker compose up -d --remove-orphans
+   ```
+6. **Verify Health**:
+   ```bash
+   curl --fail http://localhost:7039/alive
+   curl --fail http://localhost:7039/health
+   ```

@@ -1,48 +1,78 @@
 ---
-description: Start the complete local development topology with .NET Aspire.
+description: Evaluate ISLAMU Event locally in under five minutes using Docker.
 ---
 
 # 5-Minute Quickstart
 
-This path is for a local evaluation workstation, not a production deployment.
+The fastest way to evaluate ISLAMU Event on your local machine or testing server is using Docker. You do not need to install the .NET SDK or any compilers.
+
+---
 
 ## Prerequisites
 
-Install:
+You only need:
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine (v24+)
+- A web browser
 
-* .NET 10 SDK;
-* Docker;
-* the .NET Aspire CLI.
+---
 
-## Start the platform
+## Option 1: Instant Single-Container Standalone (Fastest)
 
-From a clean checkout:
+Run the all-in-one standalone image with an ephemeral or persistent volume:
 
 ```bash
-git clone <repository-url>
-cd Event
-cp .env.example .env
-aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
+docker run -d \
+  --name islamu-event-quickstart \
+  -p 8080:8080 \
+  ghcr.io/islamu-ngo/event-standalone:latest
 ```
 
-Treat `.env.example` as a documented configuration schema, not production values. Secrets must come from approved external authorities and must never be committed.
+Wait a few seconds for database initialization, then open your browser:
+- **URL**: [http://localhost:8080](http://localhost:8080)
+- **Setup Wizard**: [http://localhost:8080/setup](http://localhost:8080/setup)
 
-Aspire starts declared infrastructure, injects service discovery and configuration, runs the migration service before the API and Blazor application, and exposes dynamic endpoints in its dashboard. Do not assume Aspire ports match Docker Compose ports.
+Retrieve the generated setup secret to begin the setup wizard:
+```bash
+docker cp islamu-event-quickstart:/app/data/setup-secret ./setup-secret
+cat ./setup-secret
+```
 
-## Acceptance checks
+Enter the secret in the setup wizard, create your test organization, and explore the platform!
 
-Before evaluating features, confirm that:
+---
 
-1. the migration resource exits successfully;
-2. API and browser resources report healthy;
-3. the setup flow is reachable from the dashboard endpoint;
-4. Keycloak authentication completes;
-5. a public read succeeds;
-6. an authenticated write shows only actions present in HAL `_links`;
-7. health responses and logs contain no secrets, connection strings, private storage paths, or PII.
+## Option 2: Full Split Topology with Docker Compose
 
-Use `/alive` for process liveness, `/health` for readiness, and `/metrics` for bounded operational measurements. These surfaces must remain free of credentials and tenant/user data.
+If you want to evaluate the full stack with independent PostgreSQL and Keycloak services:
 
-## Next step
+```bash
+# 1. Clone the repository
+git clone https://github.com/islamu-ngo/Event.git
+cd Event
 
-Read [Architecture & Request Flows](architecture-and-request-flows.md), then choose a deployment under [Self-Hosting](../self-hosting/).
+# 2. Copy the pre-configured environment template
+cp .env.example .env
+
+# 3. Apply database migrations
+docker compose run --rm event-migrationservice
+
+# 4. Start all services
+docker compose up -d
+```
+
+### Accessing Endpoints
+
+| Service | Endpoint |
+|---|---|
+| **Web Interface (BFF/UI)** | [http://localhost:7002](http://localhost:7002) |
+| **REST API** | [http://localhost:7039](http://localhost:7039) |
+| **Keycloak Administration** | [http://localhost:8080](http://localhost:8080) |
+| **Mailpit (Local Email Capture)** | [http://localhost:8025](http://localhost:8025) |
+
+---
+
+## Next Steps
+
+- Learn about platform architecture in [Architecture & Request Flows](architecture-and-request-flows.md).
+- Plan your production deployment under [Self-Hosting](../self-hosting/).
+- Understand platform roles and administrative controls in [Admin Hierarchy](../administration-and-branding/admin-hierarchy.md).

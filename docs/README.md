@@ -57,12 +57,13 @@ This directory is the engineering brain for core maintainers and AI coding agent
 
 ---
 
-## 🔄 Dual-Documentation Parity Protocol
+## 🔄 Dual-Documentation Parity & Separation Protocol
 
-To prevent public docs and internal technical truth from drifting apart, this repository enforces a **Dual-Documentation Parity Rule**:
+To prevent public docs and internal technical truth from drifting apart, this repository enforces a **Dual-Documentation Parity & Separation Rule**:
 
 > **Rule:** Any change impacting external behavior (environment variables, docker-compose services, public API endpoints, authentication flows, or self-hosting runbooks) **MUST update both tracks in the same pull request**:
-> 1. Update the **Technical Anchor** in `docs/internal/` (exhaustive specification, code bindings, invariants).
-> 2. Update the **Public Projection** in `docs/public/` (adopter-friendly guide, configuration example, no internal framework classes).
+> 1. Update the **Public Guide** in `docs/public/` (adopter-friendly operational guide, copy-pasteable configurations, no internal C# classes).
+> 2. Update the **Technical Anchor** in `docs/internal/` (exhaustive architectural specification, C# code bindings, DDD invariants).
+> Both tracks fulfill distinct responsibilities without duplicating content or cluttering each other's audience.
 
 See [`docs/internal/DOCUMENTATION_ARCHITECTURE.md`](internal/DOCUMENTATION_ARCHITECTURE.md) for the complete Documentation Twin Parity Matrix and verification instructions.
