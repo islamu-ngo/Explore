@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Explore.Persistence.PrivacyErasureAuthority.Migrations.Sqlite.Migrations
 {
     [DbContext(typeof(EmbeddedPrivacyErasureAuthorityDbContext))]
-    [Migration("20260903000007_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260903091254_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

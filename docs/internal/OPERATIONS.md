@@ -723,7 +723,7 @@ SQLITE_DESIGN_TIME_ENV=(
 #### Remove the current generated histories
 
 `dotnet ef migrations remove --force` removes only the latest migration and
-updates its snapshot. The clean development baseline has one `InitialCreate` migration
+updates its snapshot. The clean development baseline has one `Init` migration
 per catalog, so run each command once. A dedicated provider project must be its
 own startup project while its existing snapshot is removed; otherwise EF can
 load the context but fail to discover that provider's snapshot. Stop
@@ -844,7 +844,7 @@ Application catalogs:
 
 ```bash
 env Database__Provider=PostgreSql \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context ExploreDbContext \
   --project "$PERSISTENCE" \
   --startup-project "$PERSISTENCE" \
@@ -852,7 +852,7 @@ env Database__Provider=PostgreSql \
   --no-build
 
 env "${SQLITE_DESIGN_TIME_ENV[@]}" \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context ExploreDbContext \
   --project "$APP_SQLITE" \
   --startup-project "$PERSISTENCE" \
@@ -860,7 +860,7 @@ env "${SQLITE_DESIGN_TIME_ENV[@]}" \
   --no-build
 
 env Database__Provider=SqlServer Database__Port=1433 \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context ExploreDbContext \
   --project "$APP_SQLSERVER" \
   --startup-project "$PERSISTENCE" \
@@ -869,7 +869,7 @@ env Database__Provider=SqlServer Database__Port=1433 \
 
 env Database__Provider=MySql Database__Port=3306 \
   Database__ServerFlavor=MySql Database__ServerVersion=8.4 \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context ExploreDbContext \
   --project "$APP_MYSQL" \
   --startup-project "$PERSISTENCE" \
@@ -881,7 +881,7 @@ Data Protection catalogs:
 
 ```bash
 env Database__Provider=PostgreSql \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context DataProtectionKeyContext \
   --project "$PERSISTENCE" \
   --startup-project "$PERSISTENCE" \
@@ -889,7 +889,7 @@ env Database__Provider=PostgreSql \
   --no-build
 
 env "${SQLITE_DESIGN_TIME_ENV[@]}" \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context DataProtectionKeyContext \
   --project "$DP_SQLITE" \
   --startup-project "$PERSISTENCE" \
@@ -897,7 +897,7 @@ env "${SQLITE_DESIGN_TIME_ENV[@]}" \
   --no-build
 
 env Database__Provider=SqlServer Database__Port=1433 \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context DataProtectionKeyContext \
   --project "$DP_SQLSERVER" \
   --startup-project "$PERSISTENCE" \
@@ -906,7 +906,7 @@ env Database__Provider=SqlServer Database__Port=1433 \
 
 env Database__Provider=MySql Database__Port=3306 \
   Database__ServerFlavor=MySql Database__ServerVersion=8.4 \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context DataProtectionKeyContext \
   --project "$DP_MYSQL" \
   --startup-project "$PERSISTENCE" \
@@ -917,7 +917,7 @@ env Database__Provider=MySql Database__Port=3306 \
 Retained privacy-erasure authority catalogs:
 
 ```bash
-dotnet ef migrations add InitialCreate \
+dotnet ef migrations add Init \
   --context PrivacyErasureAuthorityDbContext \
   --project "$PERSISTENCE" \
   --startup-project "$PERSISTENCE" \
@@ -925,7 +925,7 @@ dotnet ef migrations add InitialCreate \
   --no-build
 
 env Database__Provider=PostgreSql \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context CoLocatedPrivacyErasureAuthorityDbContext \
   --project "$PERSISTENCE" \
   --startup-project "$PERSISTENCE" \
@@ -933,7 +933,7 @@ env Database__Provider=PostgreSql \
   --no-build
 
 env PrivacyErasureAuthorityEmbedded__Path="$PWD/.artifacts/privacy-erasure-authority-migrations.db" \
-  dotnet ef migrations add InitialCreate \
+  dotnet ef migrations add Init \
   --context EmbeddedPrivacyErasureAuthorityDbContext \
   --project "$AUTHORITY_SQLITE" \
   --startup-project "$PERSISTENCE" \

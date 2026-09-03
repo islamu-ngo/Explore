@@ -9,18 +9,18 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Explore.Persistence.Migrations.PrivacyErasureAuthority
+namespace Explore.Persistence.Migrations.CoLocatedPrivacyErasureAuthority
 {
-    [DbContext(typeof(PrivacyErasureAuthorityDbContext))]
-    [Migration("20260902235932_InitialCreate")]
-    partial class InitialCreate
+    [DbContext(typeof(CoLocatedPrivacyErasureAuthorityDbContext))]
+    [Migration("20260903091220_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("privacy_erasure_authority")
+                .HasDefaultSchema("islamu_event")
                 .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -45,7 +45,7 @@ namespace Explore.Persistence.Migrations.PrivacyErasureAuthority
                     b.HasKey("Singleton")
                         .HasName("pk_authority_counter");
 
-                    b.ToTable("authority_counter", "privacy_erasure_authority", t =>
+                    b.ToTable("authority_counter", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_authority_counter_nonnegative", "last_sequence >= 0");
 
@@ -108,7 +108,7 @@ namespace Explore.Persistence.Migrations.PrivacyErasureAuthority
                         .IsUnique()
                         .HasDatabaseName("ix_erasure_intents_intent_id_subject_kind_policy_version");
 
-                    b.ToTable("erasure_intents", "privacy_erasure_authority", t =>
+                    b.ToTable("erasure_intents", "islamu_event", t =>
                         {
                             t.HasCheckConstraint("ck_privacy_erasure_intents_intent_rfc4122_variant", "substring(intent_id::text, 20, 1) IN ('8', '9', 'a', 'b')");
 

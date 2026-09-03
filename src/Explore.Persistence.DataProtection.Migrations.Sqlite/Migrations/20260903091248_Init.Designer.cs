@@ -4,48 +4,40 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Explore.Persistence.Migrations.DataProtection
+namespace Explore.Persistence.DataProtection.Migrations.Sqlite.Migrations
 {
     [DbContext(typeof(DataProtectionKeyContext))]
-    [Migration("20260902235752_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260903091248_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasDefaultSchema("islamu_event")
-                .HasAnnotation("ProductVersion", "10.0.10")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
-
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
                     b.Property<string>("FriendlyName")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("friendly_name");
 
                     b.Property<string>("Xml")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("xml");
 
                     b.HasKey("Id")
-                        .HasName("pk_data_protection_keys");
+                        .HasName("pk_ie_data_protection_keys");
 
-                    b.ToTable("data_protection_keys", "islamu_event");
+                    b.ToTable("ie_data_protection_keys", (string)null);
                 });
 #pragma warning restore 612, 618
         }
