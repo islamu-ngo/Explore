@@ -187,6 +187,95 @@ public sealed class GeneratedContractTransformerTests
                 StringComparison.Ordinal);
     }
 
+    [Test]
+    public async Task ClassificationUnionsProtocolInputsAcrossEveryGeneratedClient()
+    {
+        GeneratedContractClassification classification =
+            GeneratedContractTransformer.Classify(
+                MultipleClientGeneratedSource,
+                new HashSet<string>(StringComparer.Ordinal));
+
+        await Assert.That(classification.ProtocolInputTypeNames)
+            .IsEquivalentTo(
+            [
+                "EventRequestDto",
+                "NestedInputDto",
+                "RegistrationRequestDto",
+            ]);
+        await Assert.That(classification.RecordTypeNames)
+            .IsEquivalentTo(["SharedResponseDto"]);
+    }
+
+    [Test]
+    public async Task ClassificationRejectsSourceWithoutAnyGeneratedClient()
+    {
+        await Assert.That(() =>
+                GeneratedContractTransformer.Classify(
+                    ClientlessGeneratedSource,
+                    new HashSet<string>(StringComparer.Ordinal)))
+            .Throws<InvalidOperationException>();
+    }
+
+    private const string MultipleClientGeneratedSource =
+        """
+        #nullable enable
+
+        namespace Generated
+        {
+        [System.CodeDom.Compiler.GeneratedCode("NSwag", "test")]
+        public partial interface IEventClient
+        {
+            void CreateEvent(EventRequestDto body);
+
+            SharedResponseDto GetEvent(int id);
+        }
+
+        [System.CodeDom.Compiler.GeneratedCode("NSwag", "test")]
+        public partial interface IRegistrationFormsClient
+        {
+            void CreateRegistrationForm(RegistrationRequestDto body);
+        }
+
+        [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "test")]
+        public partial class EventRequestDto
+        {
+            public NestedInputDto? Nested { get; set; }
+        }
+
+        [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "test")]
+        public partial class RegistrationRequestDto
+        {
+            public string? Value { get; set; }
+        }
+
+        [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "test")]
+        public partial class NestedInputDto
+        {
+            public string? Value { get; set; }
+        }
+
+        [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "test")]
+        public partial class SharedResponseDto
+        {
+            public string? Value { get; set; }
+        }
+        }
+        """;
+
+    private const string ClientlessGeneratedSource =
+        """
+        #nullable enable
+
+        namespace Generated
+        {
+        [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "test")]
+        public partial class OrphanDto
+        {
+            public string? Value { get; set; }
+        }
+        }
+        """;
+
     private const string GeneratedSource =
         """
         #nullable enable
