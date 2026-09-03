@@ -23,10 +23,15 @@ internal static class GeneratedContractPolicy
     public static HashSet<string> DiscoverProtocolInputTypes(
         CompilationUnitSyntax root)
     {
-        InterfaceDeclarationSyntax apiClient = root.DescendantNodes()
+        InterfaceDeclarationSyntax[] apiClients = root.DescendantNodes()
             .OfType<InterfaceDeclarationSyntax>()
-            .Single(declaration =>
-                declaration.Identifier.ValueText == "IEventApiClient");
+            .Where(IsNSwagGenerated)
+            .ToArray();
+        if (apiClients.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Generated contract source declares no NSwag client interface.");
+        }
 
         HashSet<string> generatedNames = root.DescendantNodes()
             .OfType<TypeDeclarationSyntax>()
@@ -48,8 +53,9 @@ internal static class GeneratedContractPolicy
                     .Distinct(StringComparer.Ordinal)
                     .ToArray(),
                 StringComparer.Ordinal);
-        HashSet<string> protocolInputs = apiClient.Members
-            .OfType<MethodDeclarationSyntax>()
+        HashSet<string> protocolInputs = apiClients
+            .SelectMany(apiClient => apiClient.Members
+                .OfType<MethodDeclarationSyntax>())
             .SelectMany(method => method.ParameterList.Parameters)
             .Where(parameter => parameter.Type is not null)
             .SelectMany(parameter => parameter.Type!
@@ -162,6 +168,15 @@ internal static class GeneratedContractPolicy
 
     public static bool IsNJsonSchemaGenerated(
         TypeDeclarationSyntax declaration) =>
+        IsGeneratedByTool(declaration, "NJsonSchema");
+
+    public static bool IsNSwagGenerated(
+        TypeDeclarationSyntax declaration) =>
+        IsGeneratedByTool(declaration, "NSwag");
+
+    private static bool IsGeneratedByTool(
+        TypeDeclarationSyntax declaration,
+        string tool) =>
         declaration.AttributeLists
             .SelectMany(list => list.Attributes)
             .Where(attribute =>
@@ -178,7 +193,7 @@ internal static class GeneratedContractPolicy
             .Any(literal =>
                 string.Equals(
                     literal.Token.ValueText,
-                    "NJsonSchema",
+                    tool,
                     StringComparison.Ordinal));
 }
 
