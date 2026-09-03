@@ -79,3 +79,6 @@ ISLAMU Event is architected to scale from a single lightweight VM to a distribut
 | **RAM** | 2 GB | 8 GB | 16 – 32 GB |
 | **Disk Type** | NVMe / SSD | NVMe SSD with IOPS guarantees | Dedicated Managed Storage |
 | **Network** | 100 Mbps | 1 Gbps | 10 Gbps |
+
+> [!NOTE]
+> Sizing figures are baseline guidelines based on typical community workloads. Actual memory and CPU requirements depend on active concurrent attendees, background outbox workers, media upload traffic, and whether services run on a single host or across independent container nodes.

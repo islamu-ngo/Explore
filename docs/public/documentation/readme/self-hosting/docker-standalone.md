@@ -13,7 +13,7 @@ The standalone image (`Event.Standalone`) is the simplest and lowest-overhead op
 | Advantage | Consideration |
 |---|---|
 | **Zero External Infrastructure**: Runs on built-in SQLite persistence; no PostgreSQL server or Redis required. | **Single Replica**: SQLite requires exactly one running container instance (no horizontal multi-container scaling). |
-| **Lowest Resource Footprint**: Runs comfortably on 1 vCPU and 1 GB RAM. | **Local-First Storage**: Media and database files live in a mounted Docker volume. |
+| **Single-Process Footprint**: Runs API, BFF/UI, and SQLite in one container without auxiliary database servers. | **Local-First Storage**: Media and database files live in a mounted Docker volume. |
 | **Instant Onboarding**: In-process migrations apply automatically before the HTTP port opens. | **Initial Platform Target**: Built for `linux/amd64`. |
 
 ---
