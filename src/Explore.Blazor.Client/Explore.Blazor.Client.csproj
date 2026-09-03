@@ -16,6 +16,7 @@
          making static lock files non-portable across dev and CI runners. -->
     <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
     <GeneratedApiClientFile>$(MSBuildProjectDirectory)\Clients\EventApiClient.g.cs</GeneratedApiClientFile>
+    <GeneratedApiTagClientsFile>$(MSBuildProjectDirectory)\Clients\EventApiTagClients.g.cs</GeneratedApiTagClientsFile>
     <DotNetToolManifest>$(MSBuildProjectDirectory)\..\..\dotnet-tools.json</DotNetToolManifest>
     <GeneratedRecordTransformerProject>$(MSBuildProjectDirectory)\..\..\eng\tools\Explore.GeneratedContracts\Explore.GeneratedContracts.csproj</GeneratedRecordTransformerProject>
     <GeneratedRecordMutablePolicy>$(MSBuildProjectDirectory)\..\..\eng\tools\Explore.GeneratedContracts\mutable-generated-contracts.txt</GeneratedRecordMutablePolicy>
@@ -92,21 +93,29 @@
     <GeneratedRecordTransformerInput Include="$(GeneratedRecordMutablePolicy)" />
   </ItemGroup>
 
-  <!-- NSwag emits the canonical raw client before repository-owned policy is applied. -->
-  <Target Name="GenerateApiClientSource" Inputs="..\..\schemas\openapi_islamu-event.json;nswag.json;$(DotNetToolManifest)" Outputs="$(GeneratedApiClientFile)" Condition="Exists('..\..\schemas\openapi_islamu-event.json')">
-    <Message Importance="high" Text="NSwag: Regenerating API client from openapi_islamu-event.json..." />
+  <!-- NSwag emits the canonical DTO-owning client and DTO-free per-tag clients before repository-owned policy is applied. -->
+  <Target Name="GenerateApiClientSource" Inputs="..\..\schemas\openapi_islamu-event.json;nswag.json;nswag.pertag.json;$(DotNetToolManifest)" Outputs="$(GeneratedApiClientFile);$(GeneratedApiTagClientsFile)" Condition="Exists('..\..\schemas\openapi_islamu-event.json')">
+    <Message Importance="high" Text="NSwag: Regenerating API clients from openapi_islamu-event.json..." />
     <Exec Command="dotnet nswag run nswag.json" WorkingDirectory="$(ProjectDir)" ConsoleToMSBuild="true" />
+    <Exec Command="dotnet nswag run nswag.pertag.json" WorkingDirectory="$(ProjectDir)" ConsoleToMSBuild="true" />
     <Error Condition="!Exists('$(GeneratedApiClientFile)')" Text="NSwag completed without producing $(GeneratedApiClientFile)." />
+    <Error Condition="!Exists('$(GeneratedApiTagClientsFile)')" Text="NSwag completed without producing $(GeneratedApiTagClientsFile)." />
   </Target>
 
-  <!-- Fix the NSwag 204-response bug before syntax-aware record transformation. -->
+  <!-- Fix the NSwag 204-response bug in both generated client surfaces. -->
   <Target Name="FixNSwagVoidReturns" DependsOnTargets="GenerateApiClientSource">
     <ReplaceFileText InputFilename="$(GeneratedApiClientFile)" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
+    <ReplaceFileText InputFilename="$(GeneratedApiTagClientsFile)" MatchExpression="return default\(void\)!;" ReplacementText="return;" />
   </Target>
 
-  <!-- Convert only structurally eligible generated contracts through the owned Roslyn tool. -->
+  <!-- The DTO-free config still emits shared file/response/exception infrastructure; retain the canonical owner's declarations. -->
+  <Target Name="RemoveDuplicateApiClientInfrastructure" DependsOnTargets="FixNSwagVoidReturns">
+    <ReplaceFileText InputFilename="$(GeneratedApiTagClientsFile)" MatchExpression="(?s)\r?\n    \[System\.CodeDom\.Compiler\.GeneratedCode\(&quot;NSwag&quot;,[^\r\n]*\)\]\r?\n    public partial class FileParameter.*?(?=\r?\n}\r?\n\r?\n#pragma warning restore)" ReplacementText="&#xA;" />
+  </Target>
+
+  <!-- Convert structurally eligible contracts in the canonical DTO owner. The per-tag file intentionally declares no DTOs. -->
   <Target Name="TransformGeneratedApiClientRecords"
-          DependsOnTargets="FixNSwagVoidReturns"
+          DependsOnTargets="RemoveDuplicateApiClientInfrastructure"
           Inputs="$(GeneratedApiClientFile);@(GeneratedRecordTransformerInput)"
           Outputs="$(GeneratedRecordTransformerStamp)">
     <Exec Command="dotnet run --project &quot;$(GeneratedRecordTransformerProject)&quot; --configuration Release --no-launch-profile -- &quot;$(GeneratedApiClientFile)&quot; &quot;$(GeneratedRecordMutablePolicy)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" />
@@ -117,6 +126,7 @@
   <Target Name="NormalizeGeneratedApiClient"
           DependsOnTargets="TransformGeneratedApiClientRecords">
     <ReplaceFileText InputFilename="$(GeneratedApiClientFile)" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
+    <ReplaceFileText InputFilename="$(GeneratedApiTagClientsFile)" MatchExpression="[ \t]+(\r?\n)" ReplacementText="$1" />
   </Target>
 
   <!-- Canonical client preparation - runs before every compilation and remains incremental. -->
@@ -124,14 +134,18 @@
           BeforeTargets="CoreCompile"
           DependsOnTargets="NormalizeGeneratedApiClient"
           Condition="Exists('..\..\schemas\openapi_islamu-event.json')">
-    <Message Importance="high" Text="NSwag: API client generated, record-transformed, and normalized successfully." />
+    <Message Importance="high" Text="NSwag: API clients generated, record-transformed where applicable, and normalized successfully." />
   </Target>
 
-  <!-- Exclude generated file from source analysis (it's auto-generated) -->
+  <!-- Exclude generated files from source analysis (they're auto-generated). -->
   <ItemGroup>
     <Compile Update="Clients\EventApiClient.g.cs">
       <AutoGen>true</AutoGen>
       <DependentUpon>nswag.json</DependentUpon>
+    </Compile>
+    <Compile Update="Clients\EventApiTagClients.g.cs">
+      <AutoGen>true</AutoGen>
+      <DependentUpon>nswag.pertag.json</DependentUpon>
     </Compile>
   </ItemGroup>
 
