@@ -23,7 +23,7 @@ priority: high
 ## Top Invariants
 1. Investigate and plan only; do not edit runtime code or claim implementation has started.
 2. Follow I-VSD `planning` mode: reuse one shared repository evidence packet, create the draft `islamic-value-sensitive-design/i-vsd-<task-name>.md`, resolve material branches through `grill-me`, draft the triad, then revalidate its `IVSD-*` mappings before declaring it plan-aligned. The plan request satisfies the normal I-VSD agreement prompt but never suppresses necessary user questions.
-3. Verify every claimed path, symbol, test, contract, and configuration key from repository evidence, then classify the work against every relevant intent and carry its docs, skills, rules, scope, tests, acceptance criteria, forbidden moves, and **Release, Changelog, And Phase Commit Strategy** into the plan.
+3. **Upstream Freshness & Repository Evidence**: Before investigating, ensure local tracking reflects upstream reality (`git checkout develop && git pull --ff-only`). Verify every claimed path, symbol, test, contract, and configuration key from repository evidence, then classify the work against every relevant intent and carry its docs, skills, rules, scope, tests, acceptance criteria, forbidden moves, and **Release, Changelog, And Phase Commit Strategy** into the plan.
 4. **Behavior vs. Code Separation & Scenario Contract**: In `plan.md`, define externally observable behavior contracts using RFC 2119 keywords (`SHALL`/`MUST`) and concrete `WHEN`/`THEN` scenarios before designing code. Implementation details (classes, handlers, migrations) belong strictly in Section 5 Architecture. Classify changes as `Behavioral Delta` (requiring scenarios) vs `Non-Behavioral Delta` (pure refactor/tooling).
 5. **Invariant-First Slicing & Quality Over Quantity**: Sequence failing invariant/specification tests (Red Phase) *before* production code (Green Phase) specifically for **Core Domain Invariants, Concurrency Races, State Machines, and Security Boundaries**. Standard CQRS commands/queries, API endpoints, and UI components do NOT require dogmatic Red/Green micro-task decomposition; implement them directly and verify via targeted contract/integration tests without boilerplate mock-mirroring (`NSubstitute.Received(1)`).
 6. **Greenfield Breaking Change Freedom**: This platform is pre-release (0 users, 0 external adopters). Never plan backward-compatibility shims, deprecated route aliases, or legacy compatibility layers. Break and replace cleanly to achieve optimal architecture.
@@ -59,10 +59,11 @@ dev/active/event-rsvp/event-rsvp-tasks.md
 
 ```text
 Planning sequence:
-classify intents -> load rules/skills/docs -> inspect related work and verify
-current code/tests/contracts -> run I-VSD planning intake from the shared evidence
-packet -> grill-me unresolved branches -> (if architectural fork: robin-neutral) ->
-design and write plan/context/tasks -> revalidate I-VSD mappings -> cross-check
+sync upstream (git checkout develop && git pull --ff-only) -> classify intents ->
+load rules/skills/docs -> inspect related work and verify current code/tests/contracts ->
+run I-VSD planning intake from the shared evidence packet -> grill-me unresolved branches ->
+(if architectural fork: robin-neutral) -> design and write plan/context/tasks ->
+revalidate I-VSD mappings -> cross-check
 ```
 
 ```text

@@ -129,6 +129,7 @@ Every public guide in `docs/public/` projects technical facts from an authoritat
 
 ### Dual-Documentation Parity Protocol
 
-1. **Adopter Projection Rule**: When updating a public doc in `docs/public/`, write instructions from the perspective of an operator or integrator. Do not mention internal C# classes, MediatR handlers, or EF Core entity configurations.
-2. **Technical Depth Rule**: When updating an internal doc in `docs/internal/`, document the full architectural reality: class names, invariants, concurrency behaviors, tenant filters, and rollback mechanics.
-3. **Intent Enforcement**: Every intent in `.agents/contract/intents.yaml` affecting external contracts declares both internal and public twins in `docs_to_update`.
+1. **GitBook Freshness Gate (Pull-Before-Edit)**: Because GitBook pushes web-edited documentation commits directly to `develop` via the GitHub App bypass list, agents and developers MUST execute `git checkout develop && git pull --ff-only` before authoring local edits to either `docs/public/` or `docs/internal/` twins. This prevents stale base drift and merge conflicts.
+2. **Adopter Projection Rule**: When updating a public doc in `docs/public/`, write instructions from the perspective of an operator or integrator. Do not mention internal C# classes, MediatR handlers, or EF Core entity configurations.
+3. **Technical Depth Rule**: When updating an internal doc in `docs/internal/`, document the full architectural reality: class names, invariants, concurrency behaviors, tenant filters, and rollback mechanics.
+4. **Intent Enforcement**: Every intent in `.agents/contract/intents.yaml` affecting external contracts declares both internal and public twins in `docs_to_update`.

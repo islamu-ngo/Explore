@@ -22,6 +22,14 @@ priority: high
 - **Self-review** — before opening a PR.
 - **Review mode** — when asked to review someone else's PR.
 
+## Step 0 — Upstream Freshness Gate
+
+Fetch latest upstream to ensure diffs and merge-bases reflect current `develop`:
+```bash
+git fetch origin develop
+```
+Ensure the PR branch is cleanly mergeable with `origin/develop` with zero stale base drift.
+
 ## Step 1 — Re-Identify the Intent
 
 Which matching entry in [`intents.yaml`](../../contract/intents.yaml) does this PR implement? If the PR spans multiple intents, review each in turn and merge the checklists without loading the full registry into task context.

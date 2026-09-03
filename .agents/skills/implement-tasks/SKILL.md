@@ -17,10 +17,11 @@ priority: high
 
 1. **Execute Only Approved Plans**: Never implement without an approved task plan (`tasks.md`, `context.md`, `plan.md`). Verify approval state before modifying runtime code.
 2. **Execution Strategy Decoupling**: The implementation plan does not dictate execution topology. The developer or agent chooses the execution mode based on concurrency needs:
-   - **Mode A: In-Tree Execution** (Default) — Work directly on the current branch in the existing repository checkout. Best for solo execution or non-conflicting tasks.
-   - **Mode B: Worktree Isolation** — Isolate work in a separate git worktree (e.g. `../Event-<task-name>`). Best when multiple agents or contributors are working in parallel to prevent dirty-tree conflicts.
-3. **Worktree Transition Protocol (When Worktree Mode is Selected)**:
-   - Create worktree: `git worktree add -b feat/<task-name> ../Event-<task-name> <start-point>`
+   - **Mode A: In-Tree Execution** (Default) — Work directly in the current repository checkout. Before branching, ensure base freshness: `git checkout develop && git pull --ff-only`, then `git checkout -b feat/<task-name> develop`.
+   - **Mode B: Worktree Isolation** — Isolate work in a separate git worktree (e.g. `../Event-<task-name>`). Best when multiple agents or contributors work in parallel to prevent dirty-tree conflicts.
+3. **Upstream Freshness & Worktree Transition Protocol**:
+   - Always ensure upstream freshness first: `git fetch origin develop`
+   - Create worktree from latest upstream: `git worktree add -b feat/<task-name> ../Event-<task-name> origin/develop`
    - Move active plan: `mkdir -p ../Event-<task-name>/dev/active && mv dev/active/<task-name> ../Event-<task-name>/dev/active/`
    - Switch context: Continue all implementation, testing, and task updates inside `../Event-<task-name>`.
    - Untracked by default: The new worktree inherits `.gitignore` (`dev/active/*`).
@@ -46,9 +47,9 @@ priority: high
 
 ```text
 1. Inspect approved dev/active/<task>/ (tasks.md, context.md, plan.md)
-2. Choose topology:
-   - In-Tree: checkout/pull feature branch in current repo
-   - Worktree: git worktree add ../Event-<task> + mv dev/active/<task> into worktree
+2. Choose topology (with upstream freshness gate):
+   - In-Tree: git checkout develop && git pull --ff-only && git checkout -b feat/<task> develop
+   - Worktree: git fetch origin develop && git worktree add -b feat/<task> ../Event-<task> origin/develop + mv dev/active/<task> into worktree
 3. Loop through Phases:
    a. Red: failing invariant test
    b. Green: implementation code

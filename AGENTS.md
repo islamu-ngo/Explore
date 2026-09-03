@@ -118,7 +118,7 @@ When a task touches a topic covered by docs, skills, or rules, retrieve the **sm
 
 ## 8. Verification Baseline
 
-Before the first product edit, establish the green baseline once for code changes. Do not rerun an unchanged baseline; every PR touching product code must still leave the build and minimum tests green.
+Before the first product edit, ensure local tracking is fresh against upstream (`git checkout develop && git pull --ff-only`), then establish the green baseline once for code changes. Do not rerun an unchanged baseline; every PR touching product code must still leave the build and minimum tests green.
 
 **Scope & Layer Discipline:**
 - **Tier 4 (Docs / Agent Context):** For documentation, agent context, markdown-only, or comment changes, DO NOT run `dotnet build` or .NET test suites. Verification is strictly scoped to markdown formatting, link integrity, and schema checks.
@@ -208,26 +208,3 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 2. Use `detect_changes_tool` for code review.
 3. Use `get_affected_flows_tool` to understand impact.
 4. Use `query_graph_tool` pattern="tests_for" to check coverage.
-
-
-<!-- gitbook-agent-instructions:start -->
-
-## GitBook Documentation Editing
-
-This repository contains documentation synced with GitBook via Git Sync.
-
-Before editing GitBook-synced Markdown, YAML, or asset files, make sure the GitBook skill is available and up to date in your local agent environment. Prefer installing or updating it with:
-
-```bash
-npx skills add gitbookio/gitbook-skills
-```
-
-This command may add or update local agent skill files. Use them only as local agent instructions; do not commit those installed skill files or any tool-generated agent configuration unless the user explicitly asks for it.
-
-If `npx` is unavailable, load the skill from:
-
-https://gitbook.com/docs/skill.md
-
-When making changes, preserve GitBook sync metadata such as frontmatter, `SUMMARY.md`, `gitbook-docs.yaml`, `.gitbook/`, and asset links unless the requested edit explicitly requires changing them.
-
-<!-- gitbook-agent-instructions:end -->
