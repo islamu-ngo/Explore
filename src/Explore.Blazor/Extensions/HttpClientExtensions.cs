@@ -5,6 +5,7 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Http;
 using Explore.Blazor.HealthChecks;
 using Explore.Blazor.Hosting;
 using Explore.Blazor.Services;
@@ -40,6 +41,7 @@ public static class HttpClientExtensions
             ? InProcessEventApiDispatcher.InternalBaseAddress.AbsoluteUri
             : ResolveApiBaseUrl(configuration);
 
+        services.AddTransient<EventApiBehaviorMessageHandler>();
         services.AddTransient<AccessTokenForwardingHandler>();
         services.AddTransient<TenantHeaderForwardingHandler>();
         services.AddTransient<SetupSecretForwardingHandler>();
@@ -60,6 +62,12 @@ public static class HttpClientExtensions
         // Typed NSwag-generated API client
         services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment, profile)
             .AddInteractiveResilience();
+
+        foreach (var (interfaceType, implementationType) in GeneratedEventApiClients.ClientTypes)
+        {
+            services.AddTypedApiClient(interfaceType, implementationType, apiBaseUrl, environment, profile)
+                .AddInteractiveResilience();
+        }
 
         services.AddScoped<ILocalizationAdminService, LocalizationAdminService>();
 
@@ -86,12 +94,28 @@ public static class HttpClientExtensions
         IWebHostEnvironment environment,
         BlazorHostProfile profile)
         where TInterface : class
-        where TImplementation : class, TInterface
+        where TImplementation : class, TInterface =>
+        services.AddTypedApiClient(
+            typeof(TInterface),
+            typeof(TImplementation),
+            baseUrl,
+            environment,
+            profile);
+
+    private static IHttpClientBuilder AddTypedApiClient(
+        this IServiceCollection services,
+        Type interfaceType,
+        Type implementationType,
+        string baseUrl,
+        IWebHostEnvironment environment,
+        BlazorHostProfile profile)
     {
-        return services.AddHttpClient<TInterface, TImplementation>(client =>
-        {
-            client.BaseAddress = new Uri(baseUrl);
-        })
+        return GeneratedEventApiClients.AddTypedApiClient(
+            services,
+            interfaceType,
+            implementationType,
+            client => client.BaseAddress = new Uri(baseUrl))
+        .AddHttpMessageHandler<EventApiBehaviorMessageHandler>()
         .AddHttpMessageHandler<AccessTokenForwardingHandler>()
         .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
         .AddHttpMessageHandler<SetupSecretForwardingHandler>()

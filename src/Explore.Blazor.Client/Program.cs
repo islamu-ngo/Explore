@@ -47,6 +47,9 @@ builder.Services.AddTransient<BrowserCredentialsMessageHandler>();
 // Register the message handler that adds anti-forgery tokens to mutating requests
 builder.Services.AddTransient<BffAntiforgeryMessageHandler>();
 
+// Register shared NSwag operation behavior for monolithic and per-tag clients
+builder.Services.AddTransient<EventApiBehaviorMessageHandler>();
+
 // Register handler for 401 responses that triggers a server-side login
 builder.Services.AddTransient<BffUnauthorizedHandler>();
 
@@ -76,9 +79,22 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
     // Use base address pointing to self - BFF will proxy to API
     client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
 })
+.AddHttpMessageHandler<EventApiBehaviorMessageHandler>()
 .AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
 .AddHttpMessageHandler<BffAntiforgeryMessageHandler>()
 .AddHttpMessageHandler<BffUnauthorizedHandler>();
+
+foreach (var (interfaceType, implementationType) in GeneratedEventApiClients.ClientTypes)
+{
+    builder.Services.AddTypedApiClient(
+        interfaceType,
+        implementationType,
+        client => client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
+        .AddHttpMessageHandler<EventApiBehaviorMessageHandler>()
+        .AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
+        .AddHttpMessageHandler<BffAntiforgeryMessageHandler>()
+        .AddHttpMessageHandler<BffUnauthorizedHandler>();
+}
 
 // Register TenantConfiguration for single-tenant mode (default)
 // In WASM, configuration section may not be available, so defaults from TenantConfiguration class are used

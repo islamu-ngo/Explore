@@ -75,7 +75,7 @@
       "handleReferences": false,
       "generateImmutableArrayProperties": false,
       "generateImmutableDictionaryProperties": false,
-      "jsonSerializerSettingsTransformationMethod": null,
+      "jsonSerializerSettingsTransformationMethod": "Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure",
       "inlineNamedArrays": false,
       "inlineNamedDictionaries": false,
       "inlineNamedTuples": true,

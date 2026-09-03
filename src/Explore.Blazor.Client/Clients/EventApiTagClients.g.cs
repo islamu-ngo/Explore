@@ -148,7 +148,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -1519,7 +1519,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -2340,7 +2340,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -2723,7 +2723,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -3800,7 +3800,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -4418,7 +4418,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -5195,7 +5195,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -5807,7 +5807,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -6379,7 +6379,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -6886,7 +6886,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -8600,7 +8600,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -8875,7 +8875,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -9150,7 +9150,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -9525,7 +9525,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -10043,7 +10043,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -12583,7 +12583,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -12997,7 +12997,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -14094,7 +14094,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -14864,7 +14864,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -15341,7 +15341,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -17651,7 +17651,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -18705,7 +18705,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -20235,7 +20235,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -20949,7 +20949,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -21617,7 +21617,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -22724,7 +22724,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -23205,7 +23205,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -24491,7 +24491,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -25920,7 +25920,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -26815,7 +26815,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -27142,7 +27142,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -28326,7 +28326,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -28739,7 +28739,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -30415,7 +30415,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -30768,7 +30768,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -31059,7 +31059,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -31785,7 +31785,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -33020,7 +33020,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -35218,7 +35218,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -35685,7 +35685,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -37042,7 +37042,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -38344,7 +38344,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -39211,7 +39211,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -39641,7 +39641,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -40771,7 +40771,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -41761,7 +41761,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -42569,7 +42569,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -43548,7 +43548,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -44308,7 +44308,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -45467,7 +45467,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -46380,7 +46380,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -46721,7 +46721,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -47993,7 +47993,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -48854,7 +48854,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -49938,7 +49938,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -51990,7 +51990,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -53336,7 +53336,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -54664,7 +54664,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -54972,7 +54972,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -55766,7 +55766,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -56482,7 +56482,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -56884,7 +56884,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -57637,7 +57637,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -58260,7 +58260,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -58668,7 +58668,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -59401,7 +59401,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -60174,7 +60174,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -60853,7 +60853,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -63154,7 +63154,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -63473,7 +63473,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -64387,7 +64387,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -65170,7 +65170,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -65439,7 +65439,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -65864,7 +65864,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -67221,7 +67221,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -67631,7 +67631,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -69009,7 +69009,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -69664,7 +69664,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -70189,7 +70189,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -72760,7 +72760,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -73525,7 +73525,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -73979,7 +73979,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -74487,7 +74487,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -75457,7 +75457,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -76415,7 +76415,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -78309,7 +78309,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -78992,7 +78992,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -79403,7 +79403,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -81030,7 +81030,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -82286,7 +82286,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -82878,7 +82878,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -83232,7 +83232,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -83563,7 +83563,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -84221,7 +84221,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -85200,7 +85200,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -86461,7 +86461,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -87208,7 +87208,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -87572,7 +87572,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -87986,7 +87986,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -89648,7 +89648,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -90181,7 +90181,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -91297,7 +91297,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -91880,7 +91880,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -92842,7 +92842,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -94940,7 +94940,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -96333,7 +96333,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -97250,7 +97250,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -97623,7 +97623,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -98150,7 +98150,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -98942,7 +98942,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -99980,7 +99980,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -100414,7 +100414,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -100883,7 +100883,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -101640,7 +101640,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -102069,7 +102069,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -102359,7 +102359,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -102837,7 +102837,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -103363,7 +103363,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -103931,7 +103931,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -108734,7 +108734,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -109110,7 +109110,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -109710,7 +109710,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -110104,7 +110104,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -113543,7 +113543,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -113818,7 +113818,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -114186,7 +114186,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -114538,7 +114538,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -116057,7 +116057,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -118026,7 +118026,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -119389,7 +119389,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -119747,7 +119747,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -121158,7 +121158,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -121450,7 +121450,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -122054,7 +122054,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -122963,7 +122963,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -123357,7 +123357,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -124104,7 +124104,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -124566,7 +124566,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -126191,7 +126191,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -127464,7 +127464,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -127781,7 +127781,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -128388,7 +128388,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -128848,7 +128848,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -129546,7 +129546,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -130093,7 +130093,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -130689,7 +130689,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -130958,7 +130958,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -131446,7 +131446,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -132274,7 +132274,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -132638,7 +132638,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -132956,7 +132956,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -133833,7 +133833,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -135321,7 +135321,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -135888,7 +135888,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -136875,7 +136875,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -137283,7 +137283,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -138053,7 +138053,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -138593,7 +138593,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -139764,7 +139764,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -140890,7 +140890,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }
@@ -141612,7 +141612,7 @@ namespace Explore.Blazor.Client.Clients
 
         private static System.Text.Json.JsonSerializerOptions CreateSerializerSettings()
         {
-            var settings = new System.Text.Json.JsonSerializerOptions();
+            var settings = Explore.Blazor.Client.Clients.EventApiJsonSerializerSettings.Configure(new System.Text.Json.JsonSerializerOptions());
             UpdateJsonSerializerSettings(settings);
             return settings;
         }

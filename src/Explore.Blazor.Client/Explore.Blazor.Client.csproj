@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Event.Wire.Contracts\Event.Wire.Contracts.csproj" />
+    <TrimmerRootDescriptor Include="EventApiClients.TrimmerRoots.xml" />
   </ItemGroup>
 
   <ItemGroup>

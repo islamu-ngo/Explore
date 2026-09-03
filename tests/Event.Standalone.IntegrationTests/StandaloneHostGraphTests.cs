@@ -10,6 +10,7 @@ using Event.Web.BffHosting.Options;
 using Explore.API.Configuration;
 using Explore.API.Hosting;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
 using Event.Standalone.IntegrationTests.Fixtures;
@@ -228,6 +229,31 @@ public sealed class StandaloneHostGraphTests
         await Assert.That(atproto.BaseAddress).IsEqualTo(InProcessEventApiDispatcher.InternalBaseAddress);
         await Assert.That(adminResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         await Assert.That(atprotoResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task CombinedHostResolvesEveryPerTagClientWithTheSharedInProcessTransport()
+    {
+        await using var factory = new StandaloneWebApplicationFactory();
+        using var publicClient = factory.CreateClient();
+        await using var scope = factory.Services.CreateAsyncScope();
+
+        var registrations = GeneratedEventApiClients.ClientTypes;
+        var resolvedClients = registrations
+            .Select(pair => scope.ServiceProvider.GetRequiredService(pair.InterfaceType))
+            .ToArray();
+        var eventTypeClient = scope.ServiceProvider.GetRequiredService<IEventTypeClient>();
+        var eventTypes = await eventTypeClient.GetEventTypesAsync(cancellationToken: CancellationToken.None);
+        using var configuredHttpClient = scope.ServiceProvider
+            .GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(IEventTypeClient));
+
+        await Assert.That(registrations).Count().IsEqualTo(161);
+        await Assert.That(resolvedClients).Count().IsEqualTo(161);
+        await Assert.That(resolvedClients.Zip(registrations)
+            .All(pair => pair.Second.ImplementationType.IsInstanceOfType(pair.First))).IsTrue();
+        await Assert.That(configuredHttpClient.BaseAddress).IsEqualTo(InProcessEventApiDispatcher.InternalBaseAddress);
+        await Assert.That(eventTypes).IsNotNull();
     }
 
     [Test]

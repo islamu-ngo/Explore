@@ -287,13 +287,18 @@ public sealed class EventApiClientSerializationTests
         {
             BaseAddress = new Uri("https://example.test/")
         };
-        var client = new EventApiClient(httpClient);
+        var monolithicClient = new EventApiClient(httpClient);
+        var perTagClient = new PublicExperienceClient(httpClient);
 
-        var result = await client.GetHomeDiscoveryAsync();
+        var monolithicResult = await monolithicClient.GetHomeDiscoveryAsync();
+        var perTagResult = await perTagClient.GetHomeDiscoveryAsync();
 
-        await Assert.That(result.SectionStatuses).IsNotNull();
-        await Assert.That(result.SectionStatuses!["hero"]).IsEqualTo(HomeDiscoverySectionStatus.Available);
-        await Assert.That(result.Context?.Mode).IsEqualTo(HomeDiscoveryMode.All);
+        await Assert.That(monolithicResult.SectionStatuses).IsNotNull();
+        await Assert.That(monolithicResult.SectionStatuses!["hero"]).IsEqualTo(HomeDiscoverySectionStatus.Available);
+        await Assert.That(monolithicResult.Context?.Mode).IsEqualTo(HomeDiscoveryMode.All);
+        await Assert.That(perTagResult.SectionStatuses).IsNotNull();
+        await Assert.That(perTagResult.SectionStatuses!["hero"]).IsEqualTo(HomeDiscoverySectionStatus.Available);
+        await Assert.That(perTagResult.Context?.Mode).IsEqualTo(HomeDiscoveryMode.All);
     }
 
     [Test]

@@ -1,11 +1,8 @@
-// ABOUTME: Partial class extending NSwag-generated EventApiClient with request preparation hooks.
-// ABOUTME: Tenant context is resolved server-side from the forwarded host header.
+// ABOUTME: Extends the monolithic NSwag client and centralizes hooks shared by all generated clients.
+// ABOUTME: Preserves idempotency, capability capture, and consistent System.Text.Json enum behavior.
 
-using System;
-using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading;
 
 namespace Explore.Blazor.Client.Clients;
 
@@ -30,22 +27,29 @@ public partial interface IEventApiClient
         CancellationToken cancellationToken = default);
 }
 
+public partial interface IEventLifecycleClient
+{
+    Task<BaseCommandResponseOfGuid> CreateEventWithIdempotencyKeyAsync(
+        CreateEventDraftRequestDto body,
+        string idempotencyKey,
+        string? apiVersion = null,
+        string? xApiVersion = null,
+        CancellationToken cancellationToken = default);
+}
+
+public partial interface IGuestRegistrationOrderClient
+{
+    Task<GuestRegistrationOrderStartResult> StartGuestRegistrationOrderWithCapabilityAsync(
+        Guid eventId,
+        StartRegistrationOrderRequest body,
+        CancellationToken cancellationToken = default);
+}
+
 /// <summary>
-/// Partial class extending NSwag-generated EventApiClient.
-/// Tenant context is resolved server-side from forwarded host or explicit X-Tenant-Id when provided.
+/// Partial class extending the monolithic NSwag client during the per-tag expand phase.
 /// </summary>
 public partial class EventApiClient
 {
-    private static readonly AsyncLocal<string?> CreateEventIdempotencyKey = new();
-    private static readonly AsyncLocal<string?> GuestRegistrationOrderIdempotencyKey = new();
-    private static readonly AsyncLocal<GuestRegistrationOrderCapabilityCapture?> guestRegistrationOrderCapabilityCapture = new();
-
-    static partial void UpdateJsonSerializerSettings(JsonSerializerOptions settings)
-    {
-        settings.Converters.Add(new SetupEnrollmentScopeJsonConverter());
-        settings.Converters.Add(new JsonStringEnumConverter());
-    }
-
     public async Task<BaseCommandResponseOfGuid> CreateEventWithIdempotencyKeyAsync(
         CreateEventDraftRequestDto body,
         string idempotencyKey,
@@ -53,17 +57,8 @@ public partial class EventApiClient
         string? xApiVersion = null,
         CancellationToken cancellationToken = default)
     {
-        var previousKey = CreateEventIdempotencyKey.Value;
-        CreateEventIdempotencyKey.Value = idempotencyKey;
-
-        try
-        {
-            return await CreateEventAsync(body, apiVersion, xApiVersion, cancellationToken);
-        }
-        finally
-        {
-            CreateEventIdempotencyKey.Value = previousKey;
-        }
+        using var operation = EventApiTransportBehavior.BeginCreateEvent(idempotencyKey);
+        return await CreateEventAsync(body, apiVersion, xApiVersion, cancellationToken);
     }
 
     public async Task<GuestRegistrationOrderStartResult> StartGuestRegistrationOrderWithCapabilityAsync(
@@ -71,93 +66,73 @@ public partial class EventApiClient
         StartRegistrationOrderRequest body,
         CancellationToken cancellationToken = default)
     {
-        var previousCapture = guestRegistrationOrderCapabilityCapture.Value;
-        var previousKey = GuestRegistrationOrderIdempotencyKey.Value;
-        var capture = new GuestRegistrationOrderCapabilityCapture();
-        guestRegistrationOrderCapabilityCapture.Value = capture;
-        GuestRegistrationOrderIdempotencyKey.Value = Guid.CreateVersion7().ToString("N");
-
-        try
+        using var operation = EventApiTransportBehavior.BeginGuestRegistrationOrder();
+        var response = await StartGuestRegistrationOrderAsync(
+            eventId,
+            operation.IdempotencyKey,
+            body: body,
+            cancellationToken: cancellationToken);
+        if (string.IsNullOrWhiteSpace(operation.Capability))
         {
-            var response = await StartGuestRegistrationOrderAsync(
-                eventId,
-                GuestRegistrationOrderIdempotencyKey.Value!,
-                body: body,
-                cancellationToken: cancellationToken);
-            if (string.IsNullOrWhiteSpace(capture.Value))
-            {
-                throw new InvalidOperationException("Guest registration capability was not returned.");
-            }
+            throw new InvalidOperationException("Guest registration capability was not returned.");
+        }
 
-            return new GuestRegistrationOrderStartResult(response, capture.Value);
-        }
-        finally
-        {
-            guestRegistrationOrderCapabilityCapture.Value = previousCapture;
-            GuestRegistrationOrderIdempotencyKey.Value = previousKey;
-        }
+        return new GuestRegistrationOrderStartResult(response, operation.Capability);
     }
 
-    /// <summary>
-    /// Called before each request.
-    /// </summary>
-    partial void PrepareRequest(System.Net.Http.HttpClient client, System.Net.Http.HttpRequestMessage request, string url)
+    partial void PrepareRequest(HttpClient client, HttpRequestMessage request, string url) =>
+        EventApiTransportBehavior.PrepareRequest(request, url);
+
+    partial void ProcessResponse(HttpClient client, HttpResponseMessage response) =>
+        EventApiTransportBehavior.ProcessResponse(response.RequestMessage, response);
+}
+
+public partial class EventLifecycleClient
+{
+    public async Task<BaseCommandResponseOfGuid> CreateEventWithIdempotencyKeyAsync(
+        CreateEventDraftRequestDto body,
+        string idempotencyKey,
+        string? apiVersion = null,
+        string? xApiVersion = null,
+        CancellationToken cancellationToken = default)
     {
-        if (request.Method == HttpMethod.Post
-            && IsCreateEventRequest(url)
-            && !string.IsNullOrWhiteSpace(CreateEventIdempotencyKey.Value))
-        {
-            request.Headers.TryAddWithoutValidation("Idempotency-Key", CreateEventIdempotencyKey.Value);
-        }
-
-        if (request.Method != HttpMethod.Get
-            && IsGuestRegistrationOrderRequest(url)
-            && !request.Headers.Contains("Idempotency-Key"))
-        {
-            request.Headers.TryAddWithoutValidation(
-                "Idempotency-Key",
-                GuestRegistrationOrderIdempotencyKey.Value ?? Guid.CreateVersion7().ToString("N"));
-        }
-
-        if (request.Method == HttpMethod.Post && IsRegistrationProviderAttemptRequest(url))
-        {
-            request.Headers.TryAddWithoutValidation("Idempotency-Key", Guid.CreateVersion7().ToString("N"));
-        }
+        using var operation = EventApiTransportBehavior.BeginCreateEvent(idempotencyKey);
+        return await CreateEventAsync(body, apiVersion, xApiVersion, cancellationToken);
     }
+}
 
-    partial void ProcessResponse(HttpClient client, HttpResponseMessage response)
+public partial class GuestRegistrationOrderClient
+{
+    public async Task<GuestRegistrationOrderStartResult> StartGuestRegistrationOrderWithCapabilityAsync(
+        Guid eventId,
+        StartRegistrationOrderRequest body,
+        CancellationToken cancellationToken = default)
     {
-        var capture = guestRegistrationOrderCapabilityCapture.Value;
-        if (capture is null
-            || response.RequestMessage?.Method != HttpMethod.Post
-            || response.RequestMessage.RequestUri?.AbsolutePath.EndsWith("/guest", StringComparison.OrdinalIgnoreCase) != true
-            || !response.Headers.TryGetValues("X-Registration-Order-Capability", out var values))
+        using var operation = EventApiTransportBehavior.BeginGuestRegistrationOrder();
+        var response = await StartGuestRegistrationOrderAsync(
+            eventId,
+            operation.IdempotencyKey,
+            body: body,
+            cancellationToken: cancellationToken);
+        if (string.IsNullOrWhiteSpace(operation.Capability))
         {
-            return;
+            throw new InvalidOperationException("Guest registration capability was not returned.");
         }
 
-        capture.Value = values.FirstOrDefault();
+        return new GuestRegistrationOrderStartResult(response, operation.Capability);
     }
+}
 
-    private static bool IsCreateEventRequest(string url)
+public static class EventApiJsonSerializerSettings
+{
+    public static JsonSerializerOptions Configure(JsonSerializerOptions settings)
     {
-        var path = url.Split('?', 2)[0].TrimStart('/');
-        return string.Equals(path, "api/event", StringComparison.OrdinalIgnoreCase);
+        settings.Converters.Add(new SetupEnrollmentScopeJsonConverter());
+        settings.Converters.Add(new JsonStringEnumConverter());
+        return settings;
     }
 
-    private static bool IsGuestRegistrationOrderRequest(string url) =>
-        url.Split('?', 2)[0].Contains("/registration-orders/guest", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsRegistrationProviderAttemptRequest(string url) =>
-        url.Split('?', 2)[0].EndsWith("/provider-attempts", StringComparison.OrdinalIgnoreCase);
-
-    private sealed class GuestRegistrationOrderCapabilityCapture
-    {
-        public string? Value { get; set; }
-    }
-
-    private sealed class SetupEnrollmentScopeJsonConverter
-        : JsonConverter<SetupEnrollmentScope>
+    private sealed class SetupEnrollmentScopeJsonConverter : JsonConverter<SetupEnrollmentScope>
     {
         public override SetupEnrollmentScope Read(
             ref Utf8JsonReader reader,
@@ -180,5 +155,97 @@ public partial class EventApiClient
             SetupEnrollmentScope.Secret_binding_write => "secret_binding.write",
             _ => throw new JsonException("Invalid Setup enrollment scope.")
         });
+    }
+}
+
+internal static class EventApiTransportBehavior
+{
+    private static readonly AsyncLocal<OperationContext?> CurrentOperation = new();
+
+    internal static OperationScope BeginCreateEvent(string idempotencyKey) =>
+        Begin(new OperationContext(idempotencyKey, captureCapability: false));
+
+    internal static OperationScope BeginGuestRegistrationOrder() =>
+        Begin(new OperationContext(Guid.CreateVersion7().ToString("N"), captureCapability: true));
+
+    internal static void PrepareRequest(HttpRequestMessage request, string? generatedUrl = null)
+    {
+        var operation = CurrentOperation.Value;
+        if (request.Method == HttpMethod.Post
+            && operation is { CaptureCapability: false }
+            && !request.Headers.Contains("Idempotency-Key"))
+        {
+            request.Headers.TryAddWithoutValidation("Idempotency-Key", operation.IdempotencyKey);
+        }
+
+        if (request.Method != HttpMethod.Get
+            && IsGuestRegistrationOrderRequest(request, generatedUrl)
+            && !request.Headers.Contains("Idempotency-Key"))
+        {
+            request.Headers.TryAddWithoutValidation(
+                "Idempotency-Key",
+                operation?.IdempotencyKey ?? Guid.CreateVersion7().ToString("N"));
+        }
+
+        if (request.Method == HttpMethod.Post
+            && IsRegistrationProviderAttemptRequest(request, generatedUrl)
+            && !request.Headers.Contains("Idempotency-Key"))
+        {
+            request.Headers.TryAddWithoutValidation("Idempotency-Key", Guid.CreateVersion7().ToString("N"));
+        }
+    }
+
+    internal static void ProcessResponse(HttpRequestMessage? request, HttpResponseMessage response)
+    {
+        var operation = CurrentOperation.Value;
+        if (operation is not { CaptureCapability: true }
+            || request?.Method != HttpMethod.Post
+            || !response.Headers.TryGetValues("X-Registration-Order-Capability", out var values))
+        {
+            return;
+        }
+
+        operation.Capability = values.FirstOrDefault();
+    }
+
+    private static OperationScope Begin(OperationContext operation)
+    {
+        var previous = CurrentOperation.Value;
+        CurrentOperation.Value = operation;
+        return new OperationScope(operation, previous);
+    }
+
+    private static bool IsGuestRegistrationOrderRequest(HttpRequestMessage request, string? generatedUrl) =>
+        GetPathSegments(request, generatedUrl)
+            .Zip(GetPathSegments(request, generatedUrl).Skip(1))
+            .Any(pair => pair.First.Equals("registration-orders", StringComparison.OrdinalIgnoreCase)
+                && pair.Second.Equals("guest", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsRegistrationProviderAttemptRequest(HttpRequestMessage request, string? generatedUrl) =>
+        GetPathSegments(request, generatedUrl).LastOrDefault()
+            ?.Equals("provider-attempts", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static string[] GetPathSegments(HttpRequestMessage request, string? generatedUrl)
+    {
+        var path = request.RequestUri?.IsAbsoluteUri == true
+            ? request.RequestUri.AbsolutePath
+            : request.RequestUri?.OriginalString ?? generatedUrl ?? string.Empty;
+        return path.Split('?', 2)[0]
+            .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    internal sealed class OperationContext(string idempotencyKey, bool captureCapability)
+    {
+        public string IdempotencyKey { get; } = idempotencyKey;
+        public bool CaptureCapability { get; } = captureCapability;
+        public string? Capability { get; set; }
+    }
+
+    internal sealed class OperationScope(OperationContext operation, OperationContext? previous) : IDisposable
+    {
+        public string IdempotencyKey => operation.IdempotencyKey;
+        public string? Capability => operation.Capability;
+
+        public void Dispose() => CurrentOperation.Value = previous;
     }
 }
