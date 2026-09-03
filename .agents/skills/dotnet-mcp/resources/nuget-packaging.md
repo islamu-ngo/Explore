@@ -1,3 +1,6 @@
+<!-- ABOUTME: Guide for packaging and publishing C# stdio MCP servers as .NET tools via NuGet. -->
+<!-- ABOUTME: Covers csproj packaging properties, local verification, trusted signing, and nuget push. -->
+
 # NuGet Packaging
 
 Detailed guide for publishing stdio MCP servers as NuGet tool packages.

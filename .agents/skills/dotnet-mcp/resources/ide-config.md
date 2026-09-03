@@ -1,3 +1,6 @@
+<!-- ABOUTME: Configuration reference for debugging C# MCP servers in development environments. -->
+<!-- ABOUTME: Covers VS Code launch.json, Visual Studio launchSettings, Claude Desktop, and Copilot configs. -->
+
 # IDE Configuration
 
 Complete configuration for debugging C# MCP servers in VS Code and Visual Studio.

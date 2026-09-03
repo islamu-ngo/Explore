@@ -48,7 +48,7 @@ Turn runtime and delivery changes into an operable system with explicit configur
 - External package/service research: [agentic-research](../skills/agentic-research/SKILL.md) plus [ip-clean-room](../skills/ip-clean-room/SKILL.md).
 - Durable messaging: [outbox-pattern](../skills/outbox-pattern/SKILL.md).
 - Secrets/auth trust changes: [auth-patterns](../skills/auth-patterns/SKILL.md) with Security & Privacy ownership.
-- MCP packaging/deployment: [mcp-csharp-publish](../skills/mcp-csharp-publish/SKILL.md).
+- MCP packaging/deployment: [dotnet-mcp](../skills/dotnet-mcp/SKILL.md).
 - Commit workflow only when requested: use `git` and follow [conventional-commit](../skills/conventional-commit/SKILL.md).
 
 ## Operating Workflow

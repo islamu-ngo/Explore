@@ -1,3 +1,6 @@
+<!-- ABOUTME: Reference guide for C# MCP SDK server implementation patterns. -->
+<!-- ABOUTME: Covers tools, attributes, parameter types, ContentBlocks, DI, dynamic tools, and Native AOT. -->
+
 # C# MCP SDK API Patterns
 
 Complete reference for MCP server implementation patterns using the C# SDK.

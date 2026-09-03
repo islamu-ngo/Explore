@@ -51,7 +51,7 @@ Protect confidentiality, integrity, tenant isolation, least privilege, and truth
 - Multi-agent adversarial review: [epistemic-mad-review](../skills/epistemic-mad-review/SKILL.md).
 - External research or dependency terms: [agentic-research](../skills/agentic-research/SKILL.md) plus [ip-clean-room](../skills/ip-clean-room/SKILL.md).
 - AI/ML technology or local-model boundary: [technology-selection](../skills/technology-selection/SKILL.md).
-- MCP surface: relevant `mcp-csharp-*` skill for create, test, debug, or publish.
+- MCP server surface: [dotnet-mcp](../skills/dotnet-mcp/SKILL.md).
 
 ## Operating Workflow
 

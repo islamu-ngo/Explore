@@ -44,7 +44,7 @@ Prove what works, what fails, and why using reproducible evidence. Keep verifica
 - Runtime defect trace: [debug-issue](../skills/debug-issue/SKILL.md).
 - Diff-aware affected-flow and test selection: [review-changes](../skills/review-changes/SKILL.md).
 - Aspire resource startup/logs/traces: [aspire](../skills/aspire/SKILL.md).
-- MCP server verification: [mcp-csharp-debug](../skills/mcp-csharp-debug/SKILL.md) and [mcp-csharp-test](../skills/mcp-csharp-test/SKILL.md).
+- MCP server verification: [dotnet-mcp](../skills/dotnet-mcp/SKILL.md).
 - Observability evidence: [error-tracking](../skills/error-tracking/SKILL.md).
 - Criticality verification & guardrails: [criticality-guardrail](../skills/criticality-guardrail/SKILL.md).
 - Multi-agent verification review: [epistemic-mad-review](../skills/epistemic-mad-review/SKILL.md).

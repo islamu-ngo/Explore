@@ -703,60 +703,47 @@
         "contentPatterns": []
       }
     },
-    "mcp-csharp-create": {
+    "dotnet-mcp": {
       "type": "workflow",
       "enforcement": "suggest",
-      "priority": "medium",
-      "description": "Load when creating or scaffolding a C#/.NET MCP server, adding MCP tools/prompts/resources, choosing stdio versus HTTP transport, configuring Program.cs, or mapping ASP.NET Core MCP endpoints; not for debugging, tests, publishing, MCP clients, or non-.NET servers.",
+      "priority": "high",
+      "description": "Load when creating, scaffolding, configuring, debugging, testing, containerizing, or publishing a C#/.NET Model Context Protocol (MCP) server using the official Microsoft ModelContextProtocol SDK; not for non-.NET MCP servers, general ASP.NET Core APIs without MCP, or consuming external MCP tools as a client.",
       "promptTriggers": {
-        "keywords": ["create MCP server", "C# MCP", "MCP tool", "MCP resource", "MCP endpoint"],
-        "intentPatterns": []
+        "keywords": [
+          "C# MCP",
+          ".NET MCP",
+          "dotnet-mcp",
+          "ModelContextProtocol",
+          "create MCP server",
+          "debug MCP server",
+          "test MCP server",
+          "publish MCP server",
+          "MCP Inspector",
+          "McpClient",
+          "mcp.json",
+          "server.json"
+        ],
+        "intentPatterns": [
+          "(create|scaffold|build|implement).*?(mcp server|mcp tool)",
+          "(debug|inspect|trace).*?(mcp server)",
+          "(test|evaluate).*?(mcp server|mcp tool)",
+          "(publish|package|deploy).*?(mcp server)"
+        ]
       },
       "fileTriggers": {
-        "pathPatterns": ["**/*Mcp*.cs", "**/mcp.json"],
-        "contentPatterns": []
-      }
-    },
-    "mcp-csharp-debug": {
-      "type": "workflow",
-      "enforcement": "suggest",
-      "priority": "medium",
-      "description": "Load when running or diagnosing a C# MCP server locally: tool registration, protocol messages, stdio/HTTP transport, mcp.json, logging, IDE launch configuration, MCP Inspector, or Copilot Agent Mode; not for server creation, automated tests, or publishing.",
-      "promptTriggers": {
-        "keywords": ["debug MCP server", "MCP Inspector", "mcp.json", "MCP transport", "MCP protocol"],
-        "intentPatterns": []
-      },
-      "fileTriggers": {
-        "pathPatterns": ["**/*Mcp*.cs", "**/mcp.json"],
-        "contentPatterns": []
-      }
-    },
-    "mcp-csharp-publish": {
-      "type": "workflow",
-      "enforcement": "suggest",
-      "priority": "medium",
-      "description": "Load when packaging or deploying a C# MCP server as a NuGet tool or HTTP container, writing MCP-specific Docker/CI, deploying to Azure Container Apps/App Service, configuring server.json, or publishing to the MCP Registry; not for general NuGet/Docker, creation, debugging, or tests.",
-      "promptTriggers": {
-        "keywords": ["publish MCP server", "MCP Registry", "MCP NuGet", "MCP container", "server.json"],
-        "intentPatterns": []
-      },
-      "fileTriggers": {
-        "pathPatterns": ["**/server.json", "**/*Mcp*/Dockerfile"],
-        "contentPatterns": []
-      }
-    },
-    "mcp-csharp-test": {
-      "type": "workflow",
-      "enforcement": "suggest",
-      "priority": "medium",
-      "description": "Load when writing unit, integration, protocol, WebApplicationFactory, evaluation, or tool-quality tests for a C# MCP server with the MCP client SDK; not for MCP clients, load/performance tests, non-.NET servers, or debugging runtime failures.",
-      "promptTriggers": {
-        "keywords": ["test MCP server", "MCP client SDK", "MCP evaluation", "MCP protocol test", "WebApplicationFactory"],
-        "intentPatterns": []
-      },
-      "fileTriggers": {
-        "pathPatterns": ["**/*Mcp*Tests.cs", "**/*Mcp*.Tests/**/*.cs"],
-        "contentPatterns": []
+        "pathPatterns": [
+          "**/*Mcp*.cs",
+          "**/mcp.json",
+          "**/server.json",
+          ".agents/skills/dotnet-mcp/**"
+        ],
+        "contentPatterns": [
+          "AddMcpServer",
+          "WithStdioServerTransport",
+          "WithHttpServerTransport",
+          "McpServerToolType",
+          "McpServerTool"
+        ]
       }
     },
     "optimize-ef-core-queries": {

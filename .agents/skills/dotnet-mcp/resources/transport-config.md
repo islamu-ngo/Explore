@@ -1,3 +1,6 @@
+<!-- ABOUTME: Configuration reference for stdio and ASP.NET Core HTTP transports in C# MCP servers. -->
+<!-- ABOUTME: Covers StdioServerTransport, MapMcp stream endpoints, auth, HttpContext, and session management. -->
+
 # Transport Configuration
 
 Detailed configuration for stdio and HTTP transports in C# MCP servers.

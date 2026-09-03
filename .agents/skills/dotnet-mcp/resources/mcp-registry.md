@@ -1,3 +1,6 @@
+<!-- ABOUTME: Guide for publishing C# MCP servers to the official MCP Registry. -->
+<!-- ABOUTME: Covers server.json schema, namespace verification, and registry publishing commands. -->
+
 # MCP Registry
 
 Publish your MCP server to the official registry at [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io) for discoverability.

@@ -47,7 +47,7 @@ Keep repository knowledge accurate, navigable, source-anchored, and reusable fro
 - New or revised agent-context guidance: [skill-authoring](../skills/skill-authoring/SKILL.md).
 - Durable journal entry: [finding](../skills/finding/SKILL.md).
 - PR documentation evidence: [review-pr](../skills/review-pr/SKILL.md).
-- MCP documentation lifecycle: [mcp-csharp-create](../skills/mcp-csharp-create/SKILL.md), [mcp-csharp-debug](../skills/mcp-csharp-debug/SKILL.md), or [mcp-csharp-publish](../skills/mcp-csharp-publish/SKILL.md) as applicable.
+- MCP documentation lifecycle: [dotnet-mcp](../skills/dotnet-mcp/SKILL.md).
 
 ## Operating Workflow
 

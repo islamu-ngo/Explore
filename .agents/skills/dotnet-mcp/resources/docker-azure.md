@@ -1,3 +1,6 @@
+<!-- ABOUTME: Deployment guide for containerizing and hosting C# HTTP MCP servers. -->
+<!-- ABOUTME: Covers chiseled/distroless multi-stage Dockerfiles, Azure Container Apps, and App Service. -->
+
 # Docker and Azure Deployment
 
 Production deployment patterns for HTTP MCP servers.

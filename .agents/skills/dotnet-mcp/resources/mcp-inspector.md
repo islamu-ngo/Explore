@@ -1,3 +1,6 @@
+<!-- ABOUTME: Protocol debugging guide using the official Model Context Protocol Inspector. -->
+<!-- ABOUTME: Explains stdio and HTTP inspection, tool invocation testing, and JSON-RPC message tracing. -->
+
 # MCP Inspector
 
 Interactive debugging tool for testing MCP servers. Provides a web UI for listing tools, calling them with custom parameters, and inspecting protocol messages.

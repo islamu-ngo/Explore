@@ -1,3 +1,6 @@
+<!-- ABOUTME: Guide for authoring LLM tool evaluation suites for C# MCP servers. -->
+<!-- ABOUTME: Covers deterministic, non-destructive question design, scoring criteria, and quality metrics. -->
+
 # Evaluations
 
 Evaluations measure how well an LLM uses your MCP server's tools to answer questions.
