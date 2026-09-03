@@ -150,3 +150,12 @@ Because the project is pre-1.0 and in active development, breaking schema change
    curl --fail http://localhost:7039/alive
    curl --fail http://localhost:7039/health
    ```
+
+---
+
+## Related Guides & Next Steps
+
+* **[Privacy Erasure & Anti-Resurrection](../security-and-identity/privacy-erasure.md)** — Understand why primary database restores must replay against the erasure authority.
+* **[Docker Compose Runbook](../self-hosting/docker-compose.md)** — Production deployment and container lifecycle commands.
+* **[Docker Standalone Runbook](../self-hosting/docker-standalone.md)** — Backup and vacuum mechanics for SQLite databases.
+* **[Troubleshooting & Operational Health](troubleshooting-and-health.md)** — Diagnose migration lock timeouts and database connection errors.

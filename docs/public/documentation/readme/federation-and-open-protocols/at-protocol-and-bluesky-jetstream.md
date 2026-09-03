@@ -1,46 +1,45 @@
 ---
-description: >-
-  Operate linked-user OAuth, governed publication, exact-collection ingestion,
-  and tenant-gated discovery.
+description: Operate linked-user OAuth, governed publication, exact-collection ingestion, and tenant-gated discovery.
 ---
 
 # AT Protocol & Bluesky Jetstream
 
-ISLAMU Event implements a selective AT Protocol integration. It is not an ActivityPub server, PDS, AppView, bridge, or general-purpose social protocol host.
+ISLAMU Event implements a selective **AT Protocol (Bluesky)** federation integration. It is designed specifically for cross-platform event syndication and calendar interoperability, rather than operating as a general-purpose social network host.
 
-## Current capability
+---
 
-Implemented behavior includes:
+## 1. Linked-User Authentication & Publication
 
-* AT Protocol OAuth for users already linked locally;
-* governed outbound event and RSVP publication;
-* exact-collection CarpaNet Jetstream ingestion;
-* tenant-gated discovery;
-* safe HAL source links;
-* database-first outbox delivery;
-* administrator and user capability controls.
+* **OAuth Account Linking**: Authenticated users can link their Bluesky Decentralized Identifier (DID) to an existing local account (see [Authentication Architecture](../security-and-identity/authentication.md#linked-at-protocol-sign-in)).
+* **Outbox-Backed Publication**: Outbound event publication is queued strictly via the transactional outbox after the primary database commit succeeds (see [Architecture & Request Flows](../getting-started/architecture-and-request-flows.md#2-write-command-flow)).
+* **Supported Records**:
+  * Calendar Events: Published to the user's repository under `community.lexicon.calendar.event`.
+  * Attendance Intent: Published under `community.lexicon.calendar.rsvp` with status `#going`.
 
-Authentication and federation are independent. AT Protocol sign-in does not create a local account through email matching, enable ingestion, or grant publication consent.
+---
 
-## Outbound publication
+## 2. CarpaNet Jetstream Ingestion & Cursor Settlement
 
-Local lifecycle state is authoritative. Publication is queued only after durable local state commits, then delivered from the outbox.
+External community events are ingested via the Bluesky Jetstream firehose:
+* **Exact Collections**: Subscriptions ingest only recognized [Lexicons](lexicons.md):
+  * `community.lexicon.calendar.event`
+  * `community.lexicon.calendar.rsvp`
+* **Atomic Cursor Settlement**: Inbound event records and the stream playback cursor commit atomically in a single transaction. A cursor never advances without durable local record creation, preventing dropped events during worker restarts.
+* **No Echo Loops**: Ingested records are never re-broadcast to the outbound outbox.
 
-One event record carries native protocol fields plus deterministic description coverage for supported local fields. Publication is rejected rather than enqueued when a required field cannot be represented, privacy policy fails, a URI/value is invalid, or the payload exceeds the limit. Data is not silently truncated.
+---
 
-Outbound RSVP is deliberately narrower and currently emits only `#going`.
+## 3. Multi-Tenant Governance
 
-## Jetstream ingestion
+Ingested external events are subject to tenant federation policies (see [Multi-Tenancy](../security-and-identity/multi-tenancy.md)):
+* Tenant administrators control whether external federated events appear in local community search listings.
+* Federated records display clear attribution links back to their origin Bluesky post.
 
-Subscriptions use exact collections:
+---
 
-* `community.lexicon.calendar.event`;
-* `community.lexicon.calendar.rsvp`.
+## Related Guides & Next Steps
 
-The canonical inbound record, tenant-local event/session materialization, and cursor settlement commit atomically. A cursor cannot advance without corresponding local state, and an inbound record does not trigger an outbound echo.
-
-Network visibility does not automatically make a record visible or actionable in every tenant.
-
-## Acceptance
-
-Verify user linking and consent, one valid and rejected outbound event, cursor restart, duplicate inbound delivery, tenant discovery policy, no outbound echo, and HAL source-link privacy. Document queue recovery and the exact enabled collections.
+* **[Lexicons Reference](lexicons.md)** — Review JSON schemas and field definitions for calendar records.
+* **[Authentication Architecture](../security-and-identity/authentication.md#linked-at-protocol-sign-in)** — Connect AT Protocol DIDs with Keycloak accounts.
+* **[Multi-Tenancy Architecture](../security-and-identity/multi-tenancy.md)** — Tenant boundaries and discovery policies.
+* **[Architecture & Request Flows](../getting-started/architecture-and-request-flows.md)** — Transactional outbox pattern for event delivery.

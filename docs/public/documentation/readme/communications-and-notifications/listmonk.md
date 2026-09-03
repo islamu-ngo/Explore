@@ -1,42 +1,46 @@
 ---
-description: >-
-  Synchronize registration subscribers to an optional external Listmonk
-  instance.
+description: Synchronize registration subscribers to an optional external Listmonk instance.
 ---
 
-# Listmonk
+# Listmonk Integration
 
-Listmonk integration is optional and disabled by default. ISLAMU Event does not bundle a Listmonk server in its local Docker Compose topology; the operator supplies and secures an external instance.
+The Listmonk integration synchronizes eligible attendee registration subscribers into configured mailing lists within a self-hosted [Listmonk](https://listmonk.app) newsletter server. It is strictly an opt-in outbound subscriber synchronization bridge, not the primary notification store or [Email SMTP](email-smtp.md) dispatch worker.
 
-## Purpose
+---
 
-The integration synchronizes eligible registration subscribers to configured Listmonk lists. It is an external subscriber-synchronization destination, not the authoritative notification inbox or SMTP dispatch system.
+## 1. Configuration & Secret Binding
 
-## Configuration surface
+Operators configure Listmonk parameters via [Environment Variables](../configuration-and-operations/environment-variables.md#listmonk-newsletter--subscriber-sync):
 
-Relevant deployment settings include:
+| Setting | Purpose |
+|---|---|
+| `LISTMONK_ENABLED` | Set `true` to activate the subscriber synchronization worker. |
+| `LISTMONK_INSTANCE_URL` | Base URL of the external Listmonk instance (e.g. `https://newsletter.example.org`). |
+| `LISTMONK_DEFAULT_LIST_ID` | Numerical ID of the default attendee mailing list in Listmonk. |
+| `LISTMONK_PRECONFIRM_SUBSCRIPTIONS` | Set `true` if opt-in consent is pre-verified during event checkout. |
+| `LISTMONK_SYNC_ON_REGISTRATION` | Automatically sync subscriber details upon successful ticket registration. |
+| `LISTMONK_API_USERNAME` | Listmonk API username. |
+| `LISTMONK_API_KEY` | Listmonk API token (bound via [Secrets Management](../configuration-and-operations/secrets.md)). |
 
-* `LISTMONK_ENABLED`;
-* `LISTMONK_INSTANCE_URL`;
-* default list ID and preconfirmation choice;
-* registration-sync enablement;
-* username and API key secret bindings.
+---
 
-The administrative API exposes sanitized settings, grouped non-secret updates, dedicated credential rotation, and connection testing. Credentials remain in the selected secret authority.
+## 2. Synchronization & Dead-Letter Recovery
 
-## Delivery and recovery
+* **Asynchronous Processing**: Attendee synchronization executes in the background without blocking ticket checkout latency.
+* **Health Probes**: The worker registers a dedicated readiness check at `/health` to verify connectivity to the Listmonk API without echoing authentication tokens (see [Health Check Endpoints](../configuration-and-operations/troubleshooting-and-health.md#health-check-endpoints-reference)).
+* **Dead-Letter Handling**: If Listmonk is temporarily unreachable, sync tasks enter a bounded retry queue with exponential backoff before landing in dead-letter storage for manual operator review.
 
-Synchronization uses the native client/worker path with bounded retry and dead-letter recovery. A dedicated `listmonk-integration` readiness check reports whether the enabled destination is usable.
+---
 
-When a sync fails:
+## 3. Privacy & Consent Governance
 
-1. verify the instance URL, DNS/TLS, secret binding, and remote list;
-2. run the supported connection test;
-3. restore readiness;
-4. inspect bounded retry/dead-letter metadata;
-5. drain or replay through the supported operation;
-6. verify one subscriber result without exposing address or profile data.
+Enabling Listmonk does not automatically subscribe all users. The platform requires explicit attendee consent during event checkout. When an attendee exercises their Right-to-Erasure, the outbox automatically triggers a deletion request to Listmonk to scrub their email address (see [Privacy Erasure & GDPR Compliance](../security-and-identity/privacy-erasure.md)).
 
-## Boundaries
+---
 
-Enabling Listmonk does not enable universal email marketing, create a bundled server, copy every user, or make Listmonk the source of consent or notification truth. Operators must define their own lawful basis, subscription policy, retention, recipient support, and provider security.
+## Related Guides & Next Steps
+
+* **[Email SMTP Delivery](email-smtp.md)** — Configure transactional ticket delivery emails.
+* **[In-App Notifications](in-app-notifications.md)** — Authoritative platform inbox for user alerts.
+* **[Environment Variables Reference](../configuration-and-operations/environment-variables.md#listmonk-newsletter--subscriber-sync)** — Full reference for Listmonk environment settings.
+* **[Privacy Erasure & GDPR](../security-and-identity/privacy-erasure.md)** — Learn how external newsletter subscribers are handled during account deletion.

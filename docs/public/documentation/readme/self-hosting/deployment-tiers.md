@@ -96,3 +96,12 @@ ISLAMU Event is architected to scale from a single lightweight VM to a distribut
 
 > [!NOTE]
 > Sizing figures are baseline guidelines based on typical community workloads. Actual memory and CPU requirements depend on active concurrent attendees, background outbox workers, media upload traffic, and whether services run on a single host or across independent container nodes.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Docker Standalone Runbook](docker-standalone.md)** — Deploy Tier 1 single-container setup with SQLite.
+* **[Docker Compose Runbook](docker-compose.md)** — Deploy Tier 2 production split stack with PostgreSQL and Keycloak.
+* **[Environment Variables Reference](../configuration-and-operations/environment-variables.md)** — Review all baseline and advanced configuration dials.
+* **[Backup, Restore & Upgrade](../configuration-and-operations/backup-restore-upgrade.md)** — Operational runbook for database dumps, restore rehearsal, and version migrations.

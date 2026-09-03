@@ -1,37 +1,53 @@
 ---
-description: >-
-  Operate incoming callbacks and outgoing product webhooks as separate trust
-  boundaries.
+description: Operate incoming callbacks and outgoing product webhooks as separate trust boundaries.
 ---
 
-# Webhooks
+# Webhooks & Callbacks
 
-Incoming provider callbacks and outgoing product webhooks are separate systems. They use different authentication, delivery, replay, and recovery contracts. Changing the outgoing mode never enables or disables incoming intake.
+Incoming provider callbacks and outgoing product webhooks represent completely separate trust boundaries in ISLAMU Event. They use different authentication, replay windows, delivery engines, and recovery runbooks.
 
-## Outgoing modes
+---
 
-| Mode        | Purpose                                                   |
-| ----------- | --------------------------------------------------------- |
-| `Disabled`  | No outgoing delivery                                      |
-| `Local`     | Smallest self-hosted signed-delivery path                 |
-| `Svix`      | Self-hosted Svix v1.96.1 with PostgreSQL and shared Redis |
-| `Composite` | Explicit multi-provider routing                           |
-| `DryRun`    | Evaluate without external delivery                        |
+## 1. Outgoing Delivery Modes
 
-Managed Svix SaaS is not a supported selectable conformance profile.
+Configured via `WEBHOOKS_PROVIDER` in [Environment Variables](../configuration-and-operations/environment-variables.md#11-advanced-outgoing-webhooks-svix-infrastructure):
 
-## Local delivery
+| Mode | Engine / Architecture | Best Fit |
+|---|---|---|
+| `Disabled` | Outgoing webhooks disabled entirely. | Small local deployments with no external subscribers. |
+| `Local` | Built-in in-process dispatcher signing Svix-compatible HMAC envelopes. | Single-container Standalone or lightweight Compose setups. |
+| `Svix` | Self-hosted [Svix v1.96.1](https://svix.com) with PostgreSQL and Redis. | High-throughput multi-tenant production clusters. |
+| `Composite` | Explicit routing between Local and Svix per event type. | Hybrid enterprise migrations. |
+| `DryRun` | Validates payloads and records outbox work without contacting endpoints. | Staging and test verification. |
 
-Local mode signs Svix-compatible HMAC envelopes, performs eight bounded attempts, and treats redirects, timeouts, and non-2xx responses as failures. Redirects remain disabled. Private, loopback, link-local, and cloud-metadata targets are blocked by default to reduce SSRF risk.
+> [!NOTE]
+> To run self-hosted Svix, start Compose with the `webhooks` profile: `docker compose --profile webhooks up -d` (see [Docker Compose Profiles](../self-hosting/docker-compose.md#optional-service-profiles)).
 
-The local dispatcher is intentionally not a complete Svix clone. ISLAMU Event retains the canonical event catalog and delivery ledger. Provider changes apply to new messages and do not rewrite historical authority.
+---
 
-## Incoming callbacks
+## 2. Local Dispatcher Security & SSRF Protection
 
-Incoming routes include payments, registration providers, Coop, Osprey-related processing, and Svix operational callbacks. Each has its own signature or identity check, replay window, idempotency key, correlation, durable intake, and effect application.
+When running in `Local` mode:
+* Signs outgoing payloads using standard HMAC-SHA-256 signatures (`webhook-signature` headers).
+* Applies an eight-step exponential retry policy with jitter.
+* Enforces strict Server-Side Request Forgery (SSRF) protections: private IP ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), loopback (`127.0.0.1`), link-local (`169.254.0.0/16`), and cloud metadata endpoints (`169.254.169.254`) are blocked by default.
 
-Do not treat a browser redirect, arbitrary callback body, or correlation value as identity or terminal business truth unless the specific provider contract makes it authoritative.
+---
 
-## Operations
+## 3. Incoming Provider Callbacks
 
-Use `/health/webhooks/local`, `/health/webhooks/svix`, and bounded `/metrics`. For every endpoint, record owner, authentication authority, event types, idempotency/replay behavior, secret binding, disable path, and dead-letter/recovery procedure. Exercise one valid delivery and one rejected or replayed delivery before production.
+Incoming routes include:
+* **Payment Webhooks**: Stripe Connect payment intents and refund receipts (see [Paid Events & Payouts](../events-and-ticketing/paid-events-and-payouts.md)).
+* **Moderation Webhooks**: Signal evaluation callbacks from [Coop & Osprey](coop-and-osprey.md).
+* **Operational Intake**: Svix endpoint status events.
+
+Every incoming callback verifies HMAC signatures, evaluates idempotency keys, and records intake to the database before executing any business transitions.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Docker Compose Runbook](../self-hosting/docker-compose.md#optional-service-profiles)** — Launch the Svix webhook container profile.
+* **[Paid Events & Payouts](../events-and-ticketing/paid-events-and-payouts.md)** — Learn how Stripe webhooks settle ticket sales.
+* **[Environment Variables Reference](../configuration-and-operations/environment-variables.md#11-advanced-outgoing-webhooks-svix-infrastructure)** — Configure Svix Redis, DSN, and JWT signing keys.
+* **[Secrets Management](../configuration-and-operations/secrets.md)** — Safely bind webhook signing secrets.

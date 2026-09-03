@@ -1,34 +1,41 @@
 ---
-description: >-
-  Integrate durable moderation case intake and advisory AI signals without
-  delegating local decisions.
+description: Integrate durable moderation case intake and advisory AI signals without delegating local decisions.
 ---
 
-# Coop & Osprey
+# Coop & Osprey Moderation Integrations
 
-Coop and Osprey support moderation workflows, but neither replaces local policy, human authority, or auditable system state.
+ISLAMU Event integrates with **Coop** (distributed review queue) and **Osprey** (AI-assisted signal evaluation coordinator) to support community moderation workflows. Neither external system ever replaces local tenant policy, human administrative authority, or auditable database state.
 
-## Coop
+---
 
-The Coop integration mirrors metadata-first moderation cases and accepts timestamped HMAC callbacks through durable, idempotent intake and effect processing.
+## 1. Coop Review Queue Mirroring
 
-Local decision execution remains canonical. Provider callbacks must pass their authentication, timestamp/replay, correlation, and idempotency checks before any local effect. Keep payloads bounded and avoid transmitting unnecessary subject or reporter data.
+* **Architecture**: When an attendee reports an event or user profile, the platform generates a metadata-first moderation ticket. If the `moderation` profile is enabled (see [Docker Compose Profiles](../self-hosting/docker-compose.md#optional-service-profiles)), the ticket is mirrored to Coop via authenticated HMAC envelopes (see [Webhooks](webhooks.md)).
+* **Local Decision Finality**: Moderators can review tickets in Coop, but the ultimate execution of decisions (suspending an event, issuing warnings, or banning users) commits exclusively within ISLAMU Event via signed callback verification.
 
-## Osprey
+---
 
-Osprey is advisory and signal-only. It may add bounded signals or prioritization to support human review. It cannot:
+## 2. Osprey Advisory AI Signals
 
-* execute moderation decisions;
-* complete a moderation case;
-* create reporter-outcome notifications;
-* override configured policy or local authorization.
+Osprey acts strictly as an **advisory, signal-only evaluation coordinator**:
+* Analyzes event text for policy violations and assigns priority scores to assist human moderators.
+* **Hard Limitations**: Osprey cannot execute enforcement decisions, cannot close moderation tickets, cannot dispatch attendee notifications, and cannot override [Authorization Policies](../security-and-identity/authorization.md).
+* Model outputs are never presented as religious rulings, ethical certifications, or automated bans.
 
-A native Osprey policy-management UI is product direction, not a current operator surface.
+---
 
-## AI responsibility boundary
+## 3. Configuration & Startup Flags
 
-AI-assisted signals remain subordinate to configured policy, human review, privacy limits, and auditable local state. Do not present model output as a religious ruling, ethical certification, or guaranteed moderation outcome. Operators must assess provider data handling, retention, model limitations, appeals, false positives/negatives, and disable/recovery paths.
+Configured via environment variables (see [Environment Variables Reference](../configuration-and-operations/environment-variables.md#external-moderation-coop--osprey)):
+* `REPORTING_MODE`: `LocalOnly` (default), `Coop`, `Osprey`, or `Composite`.
+* `REPORTING_COOP_ENDPOINT_URL`, `REPORTING_COOP_API_KEY`.
+* `REPORTING_OSPREY_ENDPOINT_URL`, `REPORTING_OSPREY_API_KEY`.
 
-## Acceptance
+---
 
-Test one authenticated callback, one invalid signature, one replay, one duplicate, and one advisory signal that a reviewer rejects. Verify no provider can directly settle the case and that telemetry contains no report narrative, PII, secret, or unbounded model output.
+## Related Guides & Next Steps
+
+* **[Environment Variables Reference](../configuration-and-operations/environment-variables.md#external-moderation-coop--osprey)** — Configure moderation endpoints and API keys.
+* **[Docker Compose Optional Profiles](../self-hosting/docker-compose.md#optional-service-profiles)** — Launch the moderation container profile.
+* **[Authorization & Access Control](../security-and-identity/authorization.md)** — Understand role permissions for incident moderators.
+* **[In-App Notifications](../communications-and-notifications/in-app-notifications.md)** — Alert moderators and users about ticket updates.

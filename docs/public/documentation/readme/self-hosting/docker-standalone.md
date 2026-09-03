@@ -40,12 +40,14 @@ DATABASE_PROVIDER=sqlite
 PUBLIC_URL=https://events.example.org
 
 # Authentication (Keycloak)
+# See: ../security-and-identity/authentication.md
 KEYCLOAK_URL=https://auth.example.org
 KEYCLOAK_REALM=islamu
 KEYCLOAK_BLAZOR_CLIENT_ID=event-blazor
 KEYCLOAK_BLAZOR_CLIENT_SECRET=your-secure-32-byte-hex-secret
 
 # Operator Legal Identity (Required for Production startup)
+# See: ../configuration-and-operations/environment-variables.md#9-operator-legal-identity-production-gate
 INSTANCE__OPERATORIDENTITY__OPERATORID=01912a7e-1234-7000-8000-000000000001
 INSTANCE__OPERATORIDENTITY__PUBLICNAME=Community Events Foundation
 INSTANCE__OPERATORIDENTITY__LEGALNAME=Community Events Foundation Non-Profit
@@ -79,7 +81,7 @@ docker run -d \
 
 When the container launches:
 1. It applies migrations and seeding for the primary SQLite database (`/app/data/islamu_event.db`).
-2. It initializes the separate GDPR Privacy-Erasure authority store (`/app/data/privacy_erasure_authority.db`).
+2. It initializes the separate [GDPR Privacy-Erasure authority store](../security-and-identity/privacy-erasure.md) (`/app/data/privacy_erasure_authority.db`).
 3. It initializes the ASP.NET Core Data Protection keyring (`/app/data/dataprotection-keys/`).
 4. It starts the internal Kestrel web server and binds port `8080`.
 
@@ -103,7 +105,7 @@ Once the container is healthy:
    rm -f ./setup-secret
    ```
 2. Navigate to `http://localhost:8080/setup` (or `https://events.example.org/setup` behind your reverse proxy).
-3. Paste the setup secret and finalize your instance details.
+3. Paste the setup secret and finalize your instance details (see [Administration Guide](../administration-and-branding/admin-guide.md)).
 4. Once completed, the setup flow is permanently locked.
 
 ---
@@ -145,7 +147,7 @@ server {
 
 ## 6. Backup and Recovery
 
-To back up the standalone deployment, take an atomic snapshot of the SQLite database files and the volume:
+To back up the standalone deployment, take an atomic snapshot of the SQLite database files and the volume (see [Backup, Restore & Upgrade Guide](../configuration-and-operations/backup-restore-upgrade.md)):
 
 ```bash
 # Safely vacuum/backup SQLite files
@@ -158,4 +160,13 @@ docker cp islamu-event-standalone:/app/data/backup_erasure.db ./backup_erasure.d
 ```
 
 > [!CAUTION]
-> **Privacy-Erasure Isolation**: Always restore *both* `islamu_event.db` and `privacy_erasure_authority.db` together. Restoring an old primary application database without the erasure authority database can accidentally resurrect erased user data that was legally deleted under GDPR!
+> **Privacy-Erasure Isolation**: Always restore *both* `islamu_event.db` and `privacy_erasure_authority.db` together. Restoring an old primary application database without the erasure authority database can accidentally resurrect erased user data that was legally deleted under GDPR! (See [Privacy Erasure](../security-and-identity/privacy-erasure.md)).
+
+---
+
+## Related Guides & Next Steps
+
+* **[First-Run Administration Guide](../administration-and-branding/admin-guide.md)** — Complete the web onboarding wizard at `/setup`.
+* **[Deployment Tiers & Sizing](deployment-tiers.md)** — Review capacity benchmarks and hardware sizing.
+* **[Docker Compose Runbook](docker-compose.md)** — Scale up to split PostgreSQL and Keycloak containers when ready.
+* **[Troubleshooting & Operational Health](../configuration-and-operations/troubleshooting-and-health.md)** — Fast solutions for setup secret retrieval, TLS issues, and container errors.

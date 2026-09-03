@@ -2,35 +2,39 @@
 description: Govern long-tail event and session data with explicit exposure and use grants.
 ---
 
-# Custom Properties
+# Custom Properties Governance
 
-Custom properties support legitimate long-tail fields on events and sessions. They are not a user-defined entity system, rules engine, or replacement for typed policy concepts.
+Custom properties allow organizers and tenant administrators to capture legitimate long-tail fields on events, sessions, and attendee registrations. They provide flexible data collection without polluting the core relational schema or weakening domain invariants (see [Modular Event Aspects](modular-event-aspects.md)).
 
-## Definition controls
+---
 
-Each definition governs:
+## Governance & Exposure Ceilings
 
-* value type and allowed input;
-* exposure ceiling;
-* search, filter, export, moderation, and analytics grants;
-* system-owned status;
-* template relationship;
-* retirement and purge behavior.
+Each property definition enforces strict access and privacy controls:
 
-`ExposureLevel` is a hard ceiling. Purpose flags grant narrower use inside that ceiling. Clients, queries, exports, and analytics must not broaden either rule locally.
+* **Value Type**: Text, Number, Boolean, Single-Select, Multi-Select, or File Attachment.
+* **Exposure Ceilings**:
+  * `Public`: Visible on public event listings and marketing pages.
+  * `Private`: Visible strictly to authenticated organizers and event staff.
+  * `System`: Restricted to platform background processes and administrative tooling.
+* **Purpose Grants**: Explicit permission flags determine whether an answer may be used in search indexes, CSV attendee exports, or moderation reviews.
 
-## Authority and projection
+> [!IMPORTANT]
+> The configured `ExposureLevel` is a strict ceiling. Client UI code and analytics jobs can never widen access beyond what the server authorizes.
 
-Raw custom-property values remain authoritative. Projection rows are rebuildable read optimizations. Core fields and typed module aspects remain policy truth when a concept belongs there.
+---
 
-Template updates do not silently rewrite existing events or sessions. This protects historical meaning and prevents an administrator from retroactively changing participant-facing records.
+## Lifecycle: Retirement vs. Hard Purge
 
-## Removal
+1. **Normal Deletion (Retirement)**: Soft-deletes the field definition. Existing event registrations preserve their historical answers for auditability and financial reporting, but no new events can select the retired question.
+2. **Hard Purge**: An audited, administrator-confirmed operation that permanently deletes field definitions and scrubs all collected answers from database storage (see [Privacy Erasure & GDPR Compliance](../security-and-identity/privacy-erasure.md)).
+3. **Template Immutability**: Editing a registration template never retroactively alters published events or past tickets.
 
-Normal deletion retires a definition and preserves history. Hard purge is an explicit, audited, reason-bearing operation and is blocked while dependencies remain.
+---
 
-Current calendar export includes core fields only. Do not promise that custom properties automatically appear in calendars, feeds, moderation tools, or every export.
+## Related Guides & Next Steps
 
-## Operator checklist
-
-Before enabling a property, document its purpose, type, exposure ceiling, permitted uses, retention, migration behavior, and owner. Test public, authenticated, organizer, export, and analytics views independently. If the value becomes widely shared or policy-bearing, migrate it to a core or typed aspect instead of adding more flags.
+* **[Modular Event Aspects](modular-event-aspects.md)** — When to use typed relational aspects vs. custom properties.
+* **[Ticketing & Check-In](ticketing-and-check-in.md)** — How custom registration questions integrate into ticket checkout.
+* **[Google & Microsoft Forms](../integrations-and-ai/google-and-microsoft-forms.md)** — Map external survey responses into native custom properties.
+* **[Privacy Erasure & GDPR](../security-and-identity/privacy-erasure.md)** — Learn how custom property responses are purged upon user account deletion.

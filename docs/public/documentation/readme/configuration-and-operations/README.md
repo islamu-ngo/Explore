@@ -4,14 +4,32 @@ description: Configuration, secrets, backup, upgrade, health, and recovery runbo
 
 # Configuration & Operations
 
-This section covers the operating contract after you select a deployment topology. Keep configuration, secret values, application data, and privacy-erasure authority distinct; each has a different backup and trust boundary.
+This section covers the operational contract after selecting a deployment topology. Keep configuration parameters, secret values, application relational data, and privacy-erasure authority distinct: each possesses a different backup mechanism and trust boundary.
 
-## In this section
+---
 
-* [Environment Variables](environment-variables.md) — render topology-specific settings from the repository schema.
-* [Configuration Manifests](configuration-manifests.md) — move governed settings without secrets, PII, or application data.
-* [Secrets](secrets.md) — select fail-closed authorities and rotate credentials safely.
-* [Backup, Restore & Upgrade](backup-restore-upgrade.md) — protect every durable authority and rehearse recovery.
-* [Troubleshooting & Health](troubleshooting-and-health.md) — diagnose startup, identity, policy, tenancy, and provider failures safely.
+## In this Section
 
-Start with environment rendering before migrations. Complete backup and restore rehearsal before every topology change or pre-1.0 upgrade.
+* **[Environment Variables](environment-variables.md)** — Master reference for baseline settings (`.env.example`) and advanced built-in defaults.
+* **[Configuration Manifests](configuration-manifests.md)** — Version and export governed tenant settings without secrets, PII, or application data.
+* **[Secrets Management](secrets.md)** — Select fail-closed secret authorities (Environment or Infisical) and rotate credentials safely.
+* **[Backup, Restore & Upgrade](backup-restore-upgrade.md)** — Protect every durable authority and rehearse recovery procedures.
+* **[Troubleshooting & Operational Health](troubleshooting-and-health.md)** — Step-by-step diagnostic recipes for startup, identity, policy, and provider issues.
+
+---
+
+## Operational Lifecycle
+
+1. Start by reviewing **[Environment Variables](environment-variables.md)** and configuring your `.env` file from the baseline template.
+2. Store passwords and API keys securely according to **[Secrets Management](secrets.md)**.
+3. Establish automated backup scripts as detailed in **[Backup, Restore & Upgrade](backup-restore-upgrade.md)**.
+4. Consult **[Troubleshooting & Health](troubleshooting-and-health.md)** if containers fail startup health probes.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Docker Compose Runbook](../self-hosting/docker-compose.md)** — Production split container deployment.
+* **[Docker Standalone Runbook](../self-hosting/docker-standalone.md)** — Single-container deployment with SQLite.
+* **[Authentication Setup](../security-and-identity/authentication.md)** — Configure Keycloak OIDC integration.
+* **[First-Run Administration Guide](../administration-and-branding/admin-guide.md)** — Complete instance onboarding in the browser.

@@ -6,12 +6,27 @@ description: Evaluation path, local quickstart, architecture, and request-flow g
 
 Use this section to decide whether ISLAMU Event fits your organization, run a local evaluation, and understand the authority and durability model before choosing infrastructure.
 
-## In this section
+---
 
-* [Why ISLAMU Event?](why-islamu-event.md) explains product scope, adopter value, pre-1.0 maturity, and operator responsibility.
-* [5-Minute Quickstart](5-minute-quickstart.md) starts the complete development topology with .NET Aspire and defines acceptance checks.
-* [Architecture & Request Flows](architecture-and-request-flows.md) traces browser, write, callback, and operational paths through the BFF, API, MediatR, persistence, and provider boundaries.
+## In this Section
 
-## Recommended path
+* **[Why ISLAMU Event?](why-islamu-event.md)** — Explains product scope, adopter value, pre-1.0 maturity, and operator responsibility.
+* **[5-Minute Quickstart](5-minute-quickstart.md)** — Launch the complete platform locally in under 5 minutes using Docker.
+* **[Architecture & Request Flows](architecture-and-request-flows.md)** — Traces browser, write, callback, and operational paths through the BFF, API, MediatR, persistence, and provider boundaries.
 
-Evaluators should read these pages in order. Production operators should then continue to [Self-Hosting](../self-hosting/), [Configuration & Operations](../configuration-and-operations/), and [Security & Identity](../security-and-identity/).
+---
+
+## Recommended Path
+
+1. Begin with **[Why ISLAMU Event?](why-islamu-event.md)** to evaluate core platform philosophy and governance.
+2. Spin up a local test instance with the **[5-Minute Quickstart](5-minute-quickstart.md)**.
+3. Review **[Architecture & Request Flows](architecture-and-request-flows.md)** to understand how authentication, database transactions, and background outboxes interact.
+4. Continue to **[Self-Hosting Guide](../self-hosting/README.md)** to select between Docker Standalone and Docker Compose for production.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Self-Hosting Guide](../self-hosting/README.md)** — Compare deployment topologies and review sizing tiers.
+* **[Configuration & Operations](../configuration-and-operations/README.md)** — Master environment variables, secrets, and disaster recovery.
+* **[Security & Identity](../security-and-identity/README.md)** — Configure Keycloak authentication and Cerbos or Local RBAC.

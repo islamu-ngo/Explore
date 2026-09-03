@@ -4,38 +4,37 @@ description: Contribute under the AGPL, CLA, provenance, and dependency-review b
 
 # Clean-Room IP & Licensing
 
-ISLAMU Event is publicly licensed under AGPL-3.0-or-later. Non-bot contributors sign the project CLA, which can grant alternative licensing rights only for material the contributor has the right to license. The CLA never transfers rights in third-party material.
+ISLAMU Event is publicly licensed under **GNU AGPL-3.0-or-later**. Non-bot contributors sign the project Contributor License Agreement (CLA), which grants the project steward rights to distribute and preserve the platform.
 
-This page summarizes repository engineering policy, not legal advice.
+> [!NOTE]
+> This page summarizes engineering policy, not formal legal advice.
 
-## Clean-room contribution rule
+---
 
-Do not copy third-party code, SQL, migrations, tests, comments, documentation prose, expressive schemas, images, fonts, or other assets into the repository.
+## Clean-Room Contribution Invariants
 
-When external research is necessary:
+To safeguard the sovereign open-source nature of the project and protect outbound licensing paths:
 
-1. Record source titles, URLs, access dates, and the factual behavior being studied.
-2. Produce a source-free functional specification containing inputs, outputs, constraints, and standards-required identifiers.
-3. Design naming, decomposition, data relationships, control flow, tests, and prose independently using repository-native patterns.
-4. Record provenance and abstraction/structure/sequence/organization review evidence.
+* **No Ingestion of Copyleft / Proprietary Source**: Never copy code, SQL, migrations, tests, comments, documentation prose, or assets from third-party proprietary software or incompatible copyleft platforms.
+* **Independent Creation**: When studying external features or public protocols:
+  1. Record source URLs, access dates, and factual protocol behavior.
+  2. Produce a source-free functional specification containing inputs, outputs, and wire contracts.
+  3. Author the implementation independently using repository-native Clean Architecture conventions (see [Clean Architecture Conventions](clean-architecture.md)).
+  4. Ensure all public standard identifiers (e.g. AT Protocol [Lexicons](../federation-and-open-protocols/lexicons.md)) match wire requirements while surrounding expression remains original.
 
-Exact public standards identifiers and wire values may be used when interoperability requires them; surrounding expression must still be independently authored.
+---
 
-## Dependency changes
+## Dependency & License Review
 
-Before adding or upgrading a dependency, record its exact version, role, license, material obligations, and effect on every intended outbound licensing path. Run the repository policy validator:
+Before introducing a new NuGet package or external library:
+* Verify the package uses an approved permissive open-source license (MIT, Apache 2.0, BSD).
+* Incompatible licenses (GPLv2-only, SSPL, BSL) are strictly forbidden.
 
-```bash
-dotnet run .ci/scripts/validate-dependency-license-policy.cs -- .
-```
+---
 
-A passing scanner is minimum engineering evidence, not a legal opinion. Terms that block an intended distribution path require documented approval or rejection of the dependency.
+## Related Guides & Next Steps
 
-## Contribution checklist
-
-* Confirm every submitted artifact is original, repository-native, or permitted by an identified public standard.
-* Keep third-party source and source-derived implementation representations out of implementation context.
-* Sign the CLA where required.
-* Link the source register and provenance review when external research informed the change.
-* Keep secrets, private tenant data, and PII out of issues, commits, tests, screenshots, and research tools.
-* Update licensing or governance documentation when obligations change.
+* **[Contributing Overview](README.md)** — Community guidelines and contribution channels.
+* **[Local Development Guide](local-development.md)** — Setting up your workstation with .NET 10.
+* **[Clean Architecture Conventions](clean-architecture.md)** — Architectural patterns and code structure.
+* **[Lexicons Reference](../federation-and-open-protocols/lexicons.md)** — Open standard protocol schemas and identifiers.

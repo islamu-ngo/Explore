@@ -71,8 +71,10 @@ docker compose up -d
 
 ---
 
-## Next Steps
+## Related Guides & Next Steps
 
-- Learn about platform architecture in [Architecture & Request Flows](architecture-and-request-flows.md).
-- Plan your production deployment under [Self-Hosting](../self-hosting/).
-- Understand platform roles and administrative controls in [Admin Hierarchy](../administration-and-branding/admin-hierarchy.md).
+* **[First-Run Administration Guide](../administration-and-branding/admin-guide.md)** — Walk through the setup wizard and manage organizations.
+* **[Docker Standalone Runbook](../self-hosting/docker-standalone.md)** — Deploy the single-container image with SQLite volume persistence.
+* **[Docker Compose Runbook](../self-hosting/docker-compose.md)** — Deploy the production split stack with PostgreSQL and Keycloak.
+* **[Architecture & Request Flows](architecture-and-request-flows.md)** — Understand browser BFF routing, MediatR CQRS, and persistence.
+* **[Troubleshooting & Health](../configuration-and-operations/troubleshooting-and-health.md)** — Fast solutions for setup secret recovery and container issues.

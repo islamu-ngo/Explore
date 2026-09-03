@@ -1,47 +1,66 @@
 ---
-description: >-
-  Understand the BFF, API, MediatR, authority, tenancy, and durable effect
-  paths.
+description: Understand the BFF, API, MediatR, authority, tenancy, and durable effect paths.
 ---
 
 # Architecture & Request Flows
 
-ISLAMU Event follows Clean Architecture. The Domain and Application layers own business rules; Persistence and Infrastructure implement data/provider concerns; the API composes the runtime; the Blazor BFF owns the browser session.
+ISLAMU Event follows [Clean Architecture](../contributing/clean-architecture.md). The Domain and Application layers own business rules; Persistence and Infrastructure implement data and provider concerns; `Explore.API` composes the runtime; and `Explore.Blazor` (Backend-for-Frontend / BFF) manages the browser session.
 
-## Browser request
+---
 
-1. The browser connects to the Blazor BFF.
-2. The BFF owns the cookie session and obtains or refreshes access tokens.
-3. The BFF forwards a bearer token and trusted tenant context to the API.
-4. The API resolves tenant and caller authority, dispatches through MediatR, and uses repositories for entities.
-5. The response includes HAL links for actions allowed now.
+## 1. Browser Request Flow
 
-The browser does not inspect roles or claims to invent resource actions.
+1. The browser connects over HTTPS to the Blazor BFF (`Explore.Blazor`).
+2. The BFF owns the encrypted session cookie and obtains or refreshes access tokens via [Keycloak Authentication](../security-and-identity/authentication.md).
+3. The BFF proxies requests to `Explore.API`, forwarding the bearer JWT and resolved [Multi-Tenant Context](../security-and-identity/multi-tenancy.md).
+4. `Explore.API` evaluates caller permissions, dispatches commands and queries through MediatR, and interacts with the database via entities.
+5. The API response embeds dynamic [HAL Links](../security-and-identity/authorization.md#the-golden-rule-of-client-ui-affordances) indicating which follow-up actions the user is authorized to perform right now.
 
-## Write request
+> [!NOTE]
+> The browser client never inspects user roles or JWT claims to invent action buttons. Action affordances are strictly driven by server-issued HAL links.
 
-1. Authentication and endpoint authorization run first.
-2. MediatR resource authorization evaluates the actual target and tenant.
-3. The application command validates domain invariants.
-4. One authoritative state transition is persisted.
-5. Reliable external effects are represented as durable outbox work.
-6. The response communicates current state and allowed follow-up actions through HAL.
+---
 
-Caller and tenant identity come from authenticated and resolved runtime context, never request-body identity fields.
+## 2. Write (Command) Flow
 
-## External callback
+1. **Endpoint Boundary**: Authentication and high-level route policies run first.
+2. **MediatR Resource Authorization**: Evaluates the caller, tenant boundary, and target entity state via [Authorization (Local RBAC or Cerbos)](../security-and-identity/authorization.md).
+3. **Domain Validation**: The MediatR command handler validates domain invariants.
+4. **Atomic Settlement**: A single serializable transaction commits state changes to PostgreSQL or SQLite.
+5. **Transactional Outbox**: Side effects (such as [Transactional Emails](../communications-and-notifications/email-smtp.md), [Outgoing Webhooks](../integrations-and-ai/webhooks.md), or [AT Protocol Federation](../federation-and-open-protocols/at-protocol-and-bluesky-jetstream.md)) are written to outbox tables within the same database transaction.
+6. **HAL Affordance**: The response returns the updated resource with freshly computed `_links`.
 
-Provider callbacks use provider-specific authentication, replay, idempotency, and correlation contracts. Intake is recorded before effects are applied. A browser return URL, callback correlation token, or advisory moderation signal is not terminal business authority unless the integration contract explicitly says so.
+---
 
-## Operational request
+## 3. External Callback Flow
 
-`/alive` answers whether the process runs. `/health` answers whether required dependencies are ready. `/metrics` provides bounded measurements. Keep these endpoints private or deliberately exposed and ensure their payloads contain no credentials, private paths, object keys, connection strings, or PII.
+Incoming provider callbacks (such as Stripe payment confirmations, registration webhooks, or moderation events) use dedicated signature verification:
+* The payload signature is verified before processing (see [Webhooks & Callbacks](../integrations-and-ai/webhooks.md)).
+* Intake is idempotently recorded before effects are applied to domain state.
+* Browser return URLs or client redirects are **never** treated as payment truth (see [Paid Events & Payouts](../events-and-ticketing/paid-events-and-payouts.md)).
 
-## Durable authority examples
+---
 
-* The notification inbox remains authoritative when SSE or Web Push only asks the client to refresh.
-* Signed payment events and reconciliation establish payment/refund state, not a success page.
-* Local lifecycle state governs outbound federation; inbound materialization and cursor settlement commit atomically.
-* Privacy erasure establishes an anti-resurrection fence before asynchronous provider work.
+## 4. Operational Probes & Health
 
-Continue with [Self-Hosting](../self-hosting/) to choose a topology.
+* **`/alive`**: Confirms that the Kestrel web host process is executing.
+* **`/health`**: Evaluates active connections to PostgreSQL, Keycloak, storage, and policy engines (see [Troubleshooting & Health](../configuration-and-operations/troubleshooting-and-health.md#health-check-endpoints-reference)).
+* **`/metrics`**: Exposes Prometheus-compatible operational measurements.
+
+---
+
+## 5. Durable Authority Patterns
+
+* **Notifications**: The [In-App Notification Inbox](../communications-and-notifications/in-app-notifications.md) remains the authoritative state; Web Push and SSE merely notify the client to pull updates.
+* **Commercial Truth**: Signed webhook events and ledger reconciliation establish payment state (see [Paid Events & Payouts](../events-and-ticketing/paid-events-and-payouts.md)).
+* **Federation**: Local lifecycle state strictly governs outbound publication; cursor settlements commit atomically (see [AT Protocol Federation](../federation-and-open-protocols/at-protocol-and-bluesky-jetstream.md)).
+* **Privacy Erasure**: Account deletion establishes an immutable anti-resurrection fence before triggering external background deletions (see [Privacy Erasure & GDPR Compliance](../security-and-identity/privacy-erasure.md)).
+
+---
+
+## Related Guides & Next Steps
+
+* **[Self-Hosting Overview](../self-hosting/README.md)** — Select the optimal deployment topology for your organization.
+* **[Authentication Architecture](../security-and-identity/authentication.md)** — Learn how OIDC tokens, cookies, and Keycloak realms interact.
+* **[Authorization & Access Control](../security-and-identity/authorization.md)** — Understand Local RBAC vs. Cerbos PDP and HAL affordance gating.
+* **[Clean Architecture Guide](../contributing/clean-architecture.md)** — Deep dive into Domain, Application, and Persistence boundaries.

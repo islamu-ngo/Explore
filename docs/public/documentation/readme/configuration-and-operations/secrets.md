@@ -2,46 +2,60 @@
 description: Select, bind, rotate, and recover secrets through fail-closed authorities.
 ---
 
-# Secrets
+# Secrets Management
 
-Secrets are external authority bindings, not application configuration values to copy between files.
+Secrets are external authority bindings, not application configuration values to copy between repositories or plaintext files.
 
-## Approved authorities
+---
 
-* **Infisical** for centrally managed secret delivery.
-* **Explicit environment injection** documented by `.env.example`.
-* **Shared .NET User Secrets** only when deliberately selected in Development/Testing.
+## Approved Secret Authorities
 
-User Secrets are not a production fallback. Azure Key Vault and AWS Secrets Manager are not shipped as native supported adapters.
+The platform resolves sensitive credentials through one of three approved authorities (configured via `SECRET_PROVIDER`):
 
-## Prohibited locations
+* **Environment** (`SECRET_PROVIDER=Environment`): Direct injection of variables from an uncommitted `.env` file or container orchestrator secrets. See [Environment Variables Reference](environment-variables.md).
+* **Infisical** (`SECRET_PROVIDER=Infisical`): Centrally managed secret delivery using Infisical Universal Auth. See [Infisical Configuration](environment-variables.md#4-secret-authority-management).
+* **Shared .NET User Secrets** (`SECRET_PROVIDER=UserSecrets`): Available **strictly in Development and Testing environments** for local developer isolation (see [Local Development](../contributing/local-development.md)).
 
-Never store credentials, tokens, connection strings, encryption keys, or setup secrets in:
+> [!WARNING]
+> User Secrets are strictly prohibited in production and will cause startup failure if selected when `ASPNETCORE_ENVIRONMENT=Production`.
 
-* source code or AppHost code;
-* committed settings or `.env` files;
-* configuration manifests;
-* tests and fixtures;
-* container images;
-* logs, screenshots, traces, health payloads, or support tickets.
+---
 
-## Fail-closed status
+## Prohibited Locations
 
-A selected secret provider reports distinct states such as unconfigured, unavailable, unauthorized, or invalid. It does not silently downgrade one of those failures to “missing” and resolve the value from a weaker source.
+Never store passwords, tokens, connection strings, encryption keys, or setup secrets in:
 
-Generated setup secrets use controlled files and are locked after onboarding. Retrieve them without printing, apply restrictive permissions, use them once, and remove unnecessary host copies.
+* Git source code or repository commits.
+* [Configuration Manifests](configuration-manifests.md).
+* Public container images or Docker build args.
+* Application logs, OpenTelemetry traces, or health payloads.
+* Public issue trackers or support tickets.
 
-## Rotation
+---
 
-Plan rotation as restart or redeploy based. The current platform does not promise universal live in-process credential refresh.
+## Fail-Closed Authority Status
 
-1. Create the replacement in the selected authority.
-2. Coordinate provider-side and consumer-side validity windows.
-3. Restart/redeploy the affected resources.
-4. verify readiness and one bounded real operation;
-5. revoke the old credential;
-6. record only identifiers, timestamps, and outcome, never values.
+The selected secret provider reports distinct operational states: `Unconfigured`, `Unavailable`, `Unauthorized`, or `Invalid`. If a provider cannot supply a credential, ISLAMU Event **fails closed**: it will never silently downgrade to a weaker fallback source or run with empty security keys.
 
-## Recovery
+First-run setup secrets generated in volumes must be retrieved securely and purged after onboarding (see [Setup Secret Recovery](troubleshooting-and-health.md#recipe-6-lost-setup-secret-recovery)).
 
-Encrypt secret-provider backups, restrict access, audit retrieval, and test break-glass recovery. Recovery evidence should prove that the authority can be restored without exporting raw values into tickets or shared documents.
+---
+
+## Secret Rotation Procedure
+
+Plan secret rotations as rolling service restarts. The platform requires process reload to rebind database and encryption credentials:
+
+1. Generate the replacement secret in your selected authority (Environment or Infisical).
+2. For database credentials, grant the new password concurrently before rotating.
+3. Restart or redeploy the target containers (`event-api`, `event-ui`).
+4. Verify `/health` reports all services as `Healthy` (see [Health Check Endpoints](troubleshooting-and-health.md#health-check-endpoints-reference)).
+5. Revoke the retired credential in the backing authority.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Environment Variables Reference](environment-variables.md)** — Master catalog of all baseline and secret environment variables.
+* **[Docker Compose Runbook](../self-hosting/docker-compose.md)** — Inject secrets into production split containers.
+* **[Keycloak Authentication](../security-and-identity/authentication.md)** — Securely bind Keycloak client secrets and database passwords.
+* **[Troubleshooting & Operational Health](troubleshooting-and-health.md)** — Diagnose secret provider startup failures.

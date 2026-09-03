@@ -1,41 +1,67 @@
 ---
-description: >-
-  Select deployment mode, resolve tenants, and preserve fail-closed data
-  isolation.
+description: Select deployment mode, resolve tenants, and preserve fail-closed data isolation.
 ---
 
-# Multi-Tenancy
+# Multi-Tenancy Architecture
 
-Single-tenant is the default. Set `DEPLOYMENT_MODE=multi_tenant` before first-run onboarding to operate multiple tenant experiences. Normal administration does not casually convert deployment mode later.
+ISLAMU Event defaults to single-tenant operation. To operate multiple independent community centers or organizational chapters from a single deployment, set `DEPLOYMENT_MODE=multi_tenant` in your environment (see [Environment Variables Reference](../configuration-and-operations/environment-variables.md#1-core-deployment--networking)) before initial onboarding.
 
-## Tenant resolution
+---
 
-Multi-tenant requests resolve in this order:
+## Tenant Resolution Hierarchy
 
-1. trusted BFF tenant context;
-2. admin-host exclusion;
-3. custom domain;
-4. subdomain;
-5. fail closed with `404`.
+Multi-tenant HTTP requests resolve tenant context through a strict, fail-closed sequence:
 
-An unknown host must never select an arbitrary/default tenant. The API does not trust tenant or caller identity submitted in request bodies.
+```mermaid
+graph TD
+    A[Incoming Request] --> B{BFF Tenant Context Present?}
+    B -- Yes --> C[Apply Tenant Boundary]
+    B -- No --> D{Admin Host Exclusion?}
+    D -- Yes --> E[Route to Instance Admin Console]
+    D -- No --> F{Match Custom Domain?}
+    F -- Yes --> C
+    F -- No --> G{Match Subdomain?}
+    G -- Yes --> C
+    G -- No --> H[404 Not Found - Fail Closed]
+```
 
-## Persistence isolation
+1. **Trusted BFF Tenant Context**: Passed via authenticated secure session headers (see [Architecture & Request Flows](../getting-started/architecture-and-request-flows.md#1-browser-request-flow)).
+2. **Admin-Host Exclusion**: Dedicated administrative hostnames (e.g. `admin.example.org`) route exclusively to the [Instance Administration Console](../administration-and-branding/admin-guide.md).
+3. **Custom Domain Matching**: Resolves tenants mapped to external domains (see [Custom Domains & SEO](../administration-and-branding/custom-domains-and-seo.md)).
+4. **Subdomain Matching**: Maps `tenant.events.example.org` to the registered tenant identifier.
+5. **Fail Closed**: If no matching tenant is found, the server immediately returns `404 Not Found`. An unknown host will **never** silently fall back to an arbitrary default tenant.
 
-EF Core named tenant filters fail closed when ambient tenant context is absent. Explicit system or cross-tenant work must opt into a bypass and apply bounded tenant predicates.
+---
 
-PostgreSQL row-level security is not enabled on current production tables. Do not describe RLS as the platform's present isolation mechanism.
+## Database & Query Filter Isolation
 
-## Identity and participation
+Every multi-tenant entity implements `ITenantScoped`. EF Core applies global query filters automatically:
+* If ambient tenant context is absent, queries evaluate to `false` and return empty sets rather than leaking cross-tenant data.
+* System workers and background dispatchers must explicitly opt into cross-tenant processing using bounded tenant predicates.
 
-Global User, Actor, Organization, and Group identities are distinct from tenant participation. Tenant administrators can govern local participation and delegated settings without authority to mutate global identities.
+---
 
-Settings cascade through instance, tenant, organization, group, and user scopes, with locks and delegation controlling who may override each value.
+## Governance & Settings Cascade
 
-## Custom domains
+Settings flow downward through a five-tier hierarchy:
+$$\text{Instance} \longrightarrow \text{Tenant} \longrightarrow \text{Organization} \longrightarrow \text{Group} \longrightarrow \text{User}$$
 
-Before binding a tenant domain, prove ownership, DNS, TLS, reverse-proxy host forwarding, canonical host policy, and isolation from the instance administration host. Test the exact host against public, authenticated, and rejected tenant requests.
+Instance administrators can lock specific governance properties (such as footer links, legal notices, or payment gateways) to prevent tenants from modifying them (see [White-Labeling & Branding](../administration-and-branding/white-labeling.md)).
 
-## Acceptance
+---
 
-Use at least two tenants and an unknown host. Verify that reads, writes, API keys, HAL links, settings, storage, callbacks, and background work never cross the resolved boundary, and that missing ambient context denies access rather than widening a query.
+## Acceptance Testing
+
+1. Configure at least two test tenants (`tenant-a.events.local` and `tenant-b.events.local`).
+2. Verify that creating an event under Tenant A is invisible to attendees on Tenant B.
+3. Access the application using an unmapped hostname and confirm it returns `404 Not Found`.
+4. Verify that background outbox workers process messages with the correct tenant context.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Custom Domains & SEO](../administration-and-branding/custom-domains-and-seo.md)** — Bind custom vanity domains to individual tenants.
+* **[White-Labeling & Branding](../administration-and-branding/white-labeling.md)** — Configure tenant-specific logos, themes, and CSS tokens.
+* **[Admin Hierarchy & Scopes](../administration-and-branding/admin-hierarchy.md)** — Understand permissions for Instance Admins vs. Tenant Admins.
+* **[Deployment Tiers & Sizing](../self-hosting/deployment-tiers.md)** — Review hardware requirements for multi-tenant deployments.

@@ -18,7 +18,7 @@ The standard production Compose stack includes:
 | **`event-api`** | `islamu/event-api` | `http://localhost:7039` | Core REST API, CQRS handlers, background workers, and business logic. |
 | **`event-migrationservice`** | `islamu/event-migrationservice` | One-shot worker | Applies database migrations, Data Protection keys, and default seeds before API/UI start. |
 | **`postgres`** | `postgres:16-alpine` | `localhost:5432` (internal) | Primary application relational database. |
-| **`keycloak`** | `quay.io/keycloak/keycloak:24.0` | `http://localhost:8080` | Identity Provider (IdP) for user authentication and OIDC tokens. |
+| **`keycloak`** | `quay.io/keycloak/keycloak:24.0` | `http://localhost:8080` | [Keycloak IdP](../security-and-identity/authentication.md) for user authentication and OIDC tokens. |
 | **`keycloak-db`** | `postgres:16-alpine` | Internal only | Dedicated database for Keycloak state. |
 
 ### Optional Service Profiles
@@ -27,10 +27,10 @@ Additional capabilities can be enabled dynamically via Docker Compose profiles:
 
 | Profile | Services Included | Purpose |
 |---|---|---|
-| `storage` | `minio` (`:9000`, console `:9001`) | S3-compatible local object storage for avatars and event media. |
-| `authz` | `cerbos` (`:3592`, gRPC `:3593`) | External Policy Decision Point (PDP) for fine-grained authorization. |
-| `webhooks` | `svix` (`:8071`) | Scalable outbound webhook delivery engine. |
-| `mail` | `mailpit` (`:8025`, SMTP `:1025`) | Local email testing capture inbox (for staging/evaluation). |
+| `storage` | `minio` (`:9000`, console `:9001`) | S3-compatible local object storage (see [Storage Guide](../integrations-and-ai/storage.md)). |
+| `authz` | `cerbos` (`:3592`, gRPC `:3593`) | External Policy Decision Point (see [Authorization Guide](../security-and-identity/authorization.md)). |
+| `webhooks` | `svix` (`:8071`) | Scalable outbound webhook delivery engine (see [Webhooks Guide](../integrations-and-ai/webhooks.md)). |
+| `mail` | `mailpit` (`:8025`, SMTP `:1025`) | Local email testing capture inbox (see [Email SMTP Guide](../communications-and-notifications/email-smtp.md)). |
 
 ---
 
@@ -243,3 +243,12 @@ Before opening your instance to users, verify:
 - [ ] Authenticated write action displays HAL affordances in the UI.
 - [ ] Test email delivery passes via configured SMTP server.
 - [ ] Database backups are automated and verified in an isolated test restore.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Environment Variables Reference](../configuration-and-operations/environment-variables.md)** — Comprehensive catalog of all baseline and advanced configuration keys.
+* **[Backup, Restore & Upgrade Guide](../configuration-and-operations/backup-restore-upgrade.md)** — Production PostgreSQL dump scripts and recovery rehearsal.
+* **[Troubleshooting & Operational Health](../configuration-and-operations/troubleshooting-and-health.md)** — Step-by-step recipes for Keycloak, database lock, and migration issues.
+* **[First-Run Administration Guide](../administration-and-branding/admin-guide.md)** — Initialize your organization and customize branding.

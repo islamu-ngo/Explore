@@ -80,3 +80,12 @@ When `AUTHORIZATION_PROVIDER=cerbos` is set:
 > }
 > ```
 > If an event is locked, past due, or the user lacks permission, the server omits the link and the button disappears automatically.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Authentication Architecture](authentication.md)** — Understand how Keycloak tokens and BFF sessions validate identity.
+* **[Coolify with Cerbos & Traefik](../self-hosting/coolify-cerbos-traefik.md)** — Production deployment of the Cerbos PDP.
+* **[Admin Hierarchy & Roles](../administration-and-branding/admin-hierarchy.md)** — Review permission sets across Instance, Tenant, and Event scopes.
+* **[Troubleshooting Cerbos Denials](../configuration-and-operations/troubleshooting-and-health.md#recipe-5-all-authenticated-actions-return-403-forbidden-cerbos-fail-closed)** — Diagnose policy missing errors or gRPC network timeouts.

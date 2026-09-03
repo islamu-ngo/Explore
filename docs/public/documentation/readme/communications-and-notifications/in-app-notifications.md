@@ -2,37 +2,43 @@
 description: Operate the durable tenant-scoped inbox, fanout, SSE, and Web Push hints.
 ---
 
-# In-App Notifications
+# In-App Notifications Architecture
 
-The in-app inbox is the durable source of truth for user-visible notifications. Realtime transports only tell clients that state may have changed.
+The in-app inbox is the authoritative, durable source of truth for user-visible notifications. Realtime transports (SSE and Web Push) act as lightweight hints informing browser clients to refresh their inbox state.
 
-## Record model and actions
+---
 
-Notifications are authenticated, user-owned, and tenant-scoped. Supported operations are:
+## 1. Notification Model & Available Actions
 
-* list and detail reads;
-* unread count;
-* mark one or all as read;
-* archive and unarchive;
-* snooze and unsnooze;
-* soft delete.
+Notifications are authenticated, user-owned, and strictly [tenant-scoped](../security-and-identity/multi-tenancy.md). Supported operations include:
 
-There is no mark-unread or permanent-delete endpoint.
+* **Read**: Retrieve unread counts, paginated lists, and message details.
+* **Status Updates**: Mark individual messages or all as read.
+* **Lifecycle Management**: Archive/unarchive, snooze/unsnooze, and soft delete.
+* *Note*: The platform does not implement mark-as-unread or permanent hard deletion through the user API.
 
-## Fanout and deduplication
+---
 
-Publication and moderation fanout uses transactional outbox work and deterministic deduplication. This separates the business transition from delivery and allows safe replay after a worker or provider interruption.
+## 2. Outbox Fanout & Deduplication
 
-Server-Sent Events are refresh hints. Browser Web Push carries generic refresh or navigation hints. Neither transport contains or replaces authoritative inbox state; clients reload the inbox before presenting final status.
+Event publication, ticket confirmations, and moderation alerts utilize the **Transactional Outbox Pattern** (see [Architecture & Request Flows](../getting-started/architecture-and-request-flows.md#2-write-command-flow)):
+* Business transactions commit the domain state change and the notification outbox entry in a single atomic database transaction.
+* Background workers process fanout with deterministic deduplication keys, ensuring idempotent processing even during network interruptions.
+* **Server-Sent Events (SSE)** and **Browser Web Push** deliver non-authoritative wake-up signals; the client always fetches the canonical message from the API.
 
-## Channel boundaries
+---
 
-An in-app record becomes an email only when the originating notification intent explicitly creates both channels. The platform does not convert every inbox row to email.
+## 3. Multi-Channel Boundaries
 
-Actor-subscription and light-moderation fanout are in-app only. Required heavy-moderation availability tracks explicit in-app and email delivery state.
+An in-app notification triggers an external email only when the originating intent explicitly mandates external delivery (see [Email SMTP](email-smtp.md)):
+* General activity and subscription alerts remain strictly in-app.
+* Critical flows (such as ticket delivery, password recovery, or heavy moderation decisions via [Coop & Osprey](../integrations-and-ai/coop-and-osprey.md)) explicitly track both in-app and SMTP delivery states.
 
-## Operations
+---
 
-Monitor outbox/backlog, dedupe results, inbox state, and transport health separately. Recovery should restore the dependency, replay supported work, and verify the durable record rather than injecting a second notification manually.
+## Related Guides & Next Steps
 
-Keep message bodies, recipient identity, device endpoints, tenant-private data, and push subscription material out of metrics and public support evidence.
+* **[Email SMTP Configuration](email-smtp.md)** — Configure MailKit transactional email dispatch.
+* **[Listmonk Integration](listmonk.md)** — Synchronize attendee newsletters with self-hosted Listmonk.
+* **[Architecture & Request Flows](../getting-started/architecture-and-request-flows.md)** — Learn how outboxes ensure zero message loss.
+* **[Ticketing & Check-In](../events-and-ticketing/ticketing-and-check-in.md)** — Attendee confirmation and lost-ticket notifications.

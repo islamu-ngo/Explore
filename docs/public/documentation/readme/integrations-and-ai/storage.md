@@ -1,34 +1,47 @@
 ---
-description: >-
-  Choose local or S3-compatible object storage and preserve metadata-backed
-  authorization and recovery.
+description: Choose local or S3-compatible object storage and preserve metadata-backed authorization and recovery.
 ---
 
-# Storage
+# Storage Providers Architecture
 
-Storage is local-first and provider-neutral. An optional S3-compatible provider is available when explicitly selected and configured.
+ISLAMU Event implements a clean storage abstraction supporting both **Local Mounted Filesystem** storage and **S3-Compatible Cloud Object Storage** (such as self-hosted MinIO, Cloudflare R2, or AWS S3).
 
-## Object authority
+---
 
-New storage flows use metadata-backed storage objects and the established provider abstraction. The application database owns the metadata needed to authorize and locate an object; the provider owns its bytes.
+## 1. Object Authority & Presigned Security
 
-Public reads are bound to a storage-object ID and the current resource policy. S3-compatible presigned downloads are generated only after ID-based authorization. They are not an upload path and should be short-lived according to deployment policy.
+* **Metadata-Backed Storage**: The primary PostgreSQL database owns the metadata record (UUID, owning tenant, mime-type, byte size, authorization rules); the storage provider stores the raw binary bytes.
+* **ID-Based Retrieval**: Files are accessed via authorized storage-object IDs (`/api/storage/{id}`), never via raw filesystem paths or raw S3 bucket URLs submitted by users.
+* **Presigned Download URLs**: For S3-compatible storage, the API generates short-lived, cryptographically signed presigned download URLs only after verifying caller authorization (see [Authorization Guide](../security-and-identity/authorization.md)).
 
-Never construct public object URLs from a bucket/key submitted by a caller or expose provider access credentials to the browser.
+---
 
-## Provider selection
+## 2. Choosing Your Storage Provider
 
-* **Local:** keep data on a durable mounted filesystem and include it in backup/restore.
-* **S3-compatible:** configure endpoint/bucket/policy/credentials through supported settings and secret authorities; assess TLS, residency, retention, versioning, and provider recovery.
+Configured via `STORAGE_PROVIDER` in [Environment Variables](../configuration-and-operations/environment-variables.md#5-storage-providers-local--cloud-s3):
 
-Health and logs must not disclose private filesystem paths, object keys, bucket names, endpoints, access keys, or presigned URLs.
+| Storage Provider | Configuration | Best Fit | Operational Considerations |
+|---|---|---|---|
+| **`local`** (Default) | `STORAGE_LOCAL_ROOTPATH=/app/storage-data/local` | Single-node Docker Compose or [Standalone](../self-hosting/docker-standalone.md) | Requires mounting a persistent Docker volume on the host. |
+| **`s3`** | `STORAGE_S3_ENDPOINT`, `STORAGE_S3_BUCKET_NAME`, `STORAGE_S3_ACCESS_KEY_ID`, `STORAGE_S3_SECRET_ACCESS_KEY` | Multi-replica clusters and high-traffic event media | Decouples media storage from application compute nodes. |
 
-## Backup and restore
+> [!TIP]
+> To evaluate self-hosted S3 locally, launch Docker Compose with the `storage` profile (`docker compose --profile storage up -d`) to start a co-located **MinIO** container (see [Docker Compose Profiles](../self-hosting/docker-compose.md#optional-service-profiles)).
 
-Back up object bytes together with database metadata and the application version that understands it. A bucket backup without metadata, or database restore without the corresponding objects, is incomplete.
+---
 
-Restore in isolation, verify representative private/public access, missing-object behavior, tenant boundaries, and presigned download expiry. Do not use a configuration-manifest export as an object-data backup.
+## 3. Disaster Recovery & Backup Integrity
 
-## Acceptance
+Always back up storage bytes concurrently with the primary database snapshot (see [Backup, Restore & Upgrade](../configuration-and-operations/backup-restore-upgrade.md)):
+* Restoring a database without the corresponding storage volume causes broken image links.
+* Restoring a storage volume without the database leaves orphaned, unreferenced files.
+* [Configuration Manifests](../configuration-and-operations/configuration-manifests.md) deliberately exclude binary media and do not replace storage volume backups.
 
-Upload through an implemented application workflow, read through authorized object ID, deny another tenant/principal, verify restart persistence, restore both metadata and bytes, and confirm provider failures produce bounded errors without leaking location or credentials.
+---
+
+## Related Guides & Next Steps
+
+* **[Environment Variables Reference](../configuration-and-operations/environment-variables.md#5-storage-providers-local--cloud-s3)** — Configure S3 endpoints, credentials, and bucket settings.
+* **[Docker Compose Optional Profiles](../self-hosting/docker-compose.md#optional-service-profiles)** — Run local MinIO S3 object storage.
+* **[Backup, Restore & Upgrade Guide](../configuration-and-operations/backup-restore-upgrade.md)** — Automated volume snapshot routines.
+* **[Secrets Management](../configuration-and-operations/secrets.md)** — Securely bind S3 access keys.

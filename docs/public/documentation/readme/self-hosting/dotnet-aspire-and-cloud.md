@@ -1,39 +1,55 @@
 ---
-description: >-
-  Use Aspire locally and adapt declared resources to adopter-owned cloud
-  infrastructure.
+description: Use Aspire locally and adapt declared resources to adopter-owned cloud infrastructure.
 ---
 
-# .NET Aspire & Cloud
+# .NET Aspire & Cloud Deployment
 
-.NET Aspire is the repository's development orchestrator and a foundation adopters can adapt. ISLAMU Event does not ship turnkey supported Azure or AWS production templates.
+[.NET Aspire](../contributing/local-development.md) is the repository's development orchestrator and an architectural foundation adopters can adapt for custom cloud infrastructure. Note that ISLAMU Event intentionally does not ship turnkey supported Azure or AWS production cloud templates.
 
-## Local orchestration
+---
+
+## Local Development Orchestration
+
+To run the complete platform orchestrator during local development:
 
 ```bash
 aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
 ```
 
-The AppHost declares resources, dependency ordering, service discovery, configuration injection, health checks, and restart relationships. Use the Aspire dashboard and resource logs to diagnose startup. Endpoints are dynamic; do not substitute Docker Compose port assumptions.
+The AppHost declares resources, dependency ordering, service discovery, configuration injection, health checks, and restart relationships (see [Local Development Guide](../contributing/local-development.md)). Use the Aspire dashboard and resource logs to inspect startup. Ports in Aspire are assigned dynamically; do not assume static Docker Compose port numbers.
 
-## Cloud adaptation
+---
 
-Aspire can target environments such as Azure Container Apps when an adopter supplies the deployment target and configuration. The repository does not provide a universal cloud responsibility model or native managed-secret adapters for Azure Key Vault or AWS Secrets Manager.
+## Cloud Adaptation Considerations
 
-A production adaptation must define:
+Aspire can output deployment manifests targeting cloud container environments such as Azure Container Apps (ACA) or AWS ECS when an adopter supplies the hosting infrastructure. The repository does not provide native managed-secret adapters for Azure Key Vault or AWS Secrets Manager; operators must use the approved [Secret Providers (Environment or Infisical)](../configuration-and-operations/secrets.md).
 
-1. durable application and privacy-erasure databases;
-2. object storage and metadata recovery;
-3. Keycloak and authorization endpoints;
-4. one-shot migration execution before serving traffic;
-5. approved secret delivery through Environment or Infisical;
-6. DNS, TLS, reverse-proxy, and trusted-forwarder policy;
-7. health, logs, metrics, and alert ownership;
-8. scaling constraints for SQLite/standalone versus server databases;
-9. backup, restore rehearsal, upgrade, and rollback procedures.
+A production cloud adaptation must explicitly define:
 
-## Acceptance
+1. **Durable Relational Data**: Primary application database and isolated [Privacy-Erasure Authority](../security-and-identity/privacy-erasure.md).
+2. **Object Storage**: [S3-compatible Object Storage](../integrations-and-ai/storage.md) for media and attachments.
+3. **Identity & Authorization**: [Keycloak OIDC Authentication](../security-and-identity/authentication.md) and [Authorization (Local RBAC or Cerbos)](../security-and-identity/authorization.md).
+4. **Migration Service**: One-shot execution of `Event.MigrationService` before opening web traffic.
+5. **Secrets Delivery**: Safe binding via [Secrets Management (Infisical or Environment)](../configuration-and-operations/secrets.md).
+6. **Networking & TLS**: Ingress reverse proxy with trusted forwarder headers (`X-Forwarded-Proto`).
+7. **Observability**: Centralized logs, metrics, and health probes (see [Troubleshooting & Health](../configuration-and-operations/troubleshooting-and-health.md)).
+8. **Disaster Recovery**: Automated snapshots and restore rehearsals (see [Backup, Restore & Upgrade](../configuration-and-operations/backup-restore-upgrade.md)).
 
-Do not call a cloud deployment supported merely because its containers start. Prove migrations, identity, authorization, tenant resolution, durable storage, privacy-erasure replay, representative reads/writes, configured provider delivery, and recovery from a restored backup.
+---
 
-Document every cloud service substitution and its owner. Framework capability is not the same as repository-supported infrastructure.
+## Acceptance Criteria
+
+Do not deem a cloud deployment operational merely because containers boot:
+* Prove migrations execute cleanly.
+* Confirm that Keycloak OIDC redirects back to the Blazor BFF over HTTPS.
+* Verify that privacy-erasure replay runs during startup without errors.
+* Rehearse a complete restore from database backup.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Local Development with .NET Aspire](../contributing/local-development.md)** — Step-by-step developer setup instructions.
+* **[Docker Compose Runbook](docker-compose.md)** — Recommended split container deployment guide.
+* **[Deployment Tiers & Sizing](deployment-tiers.md)** — Infrastructure sizing matrix for small to large deployments.
+* **[Backup, Restore & Upgrade](../configuration-and-operations/backup-restore-upgrade.md)** — Production backup routines and disaster recovery.

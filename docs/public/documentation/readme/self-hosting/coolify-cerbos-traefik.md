@@ -266,7 +266,7 @@ docker run --rm -it \
 
 ## 10. Connecting ISLAMU Event to Cerbos
 
-In your ISLAMU Event `.env` configuration file, configure the Cerbos PDP connection:
+In your ISLAMU Event `.env` configuration file (see [Environment Variables Reference](../configuration-and-operations/environment-variables.md#10-advanced-authorization-cerbos-pdp)), configure the Cerbos PDP connection:
 
 ```env
 AUTHORIZATION_PROVIDER=cerbos
@@ -279,4 +279,13 @@ Restart `event-api` and check `/health`:
 ```bash
 curl http://localhost:7039/health
 ```
-Verify that the `cerbos` health check reports `Healthy`.
+Verify that the `cerbos` health check reports `Healthy` (see [Health Check Endpoints](../configuration-and-operations/troubleshooting-and-health.md#health-check-endpoints-reference)).
+
+---
+
+## Related Guides & Next Steps
+
+* **[Authorization Architecture & Policies](../security-and-identity/authorization.md)** — Understand how MediatR requests evaluate policies and generate HAL affordances.
+* **[Docker Compose Runbook](docker-compose.md)** — Deploy the core application stack behind Traefik or Caddy.
+* **[Troubleshooting Recipe: Cerbos 403 Forbidden](../configuration-and-operations/troubleshooting-and-health.md#recipe-5-all-authenticated-actions-return-403-forbidden-cerbos-fail-closed)** — Diagnose missing policies or network timeouts.
+* **[Secrets Management](../configuration-and-operations/secrets.md)** — Securely store your `CERBOS_ADMIN_PASSWORD_HASH`.

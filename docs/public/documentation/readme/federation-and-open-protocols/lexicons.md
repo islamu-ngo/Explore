@@ -1,42 +1,38 @@
 ---
-description: >-
-  Govern vendored AT Protocol schemas, exact identifiers, version changes, and
-  privacy limits.
+description: Govern vendored AT Protocol schemas, exact identifiers, version changes, and privacy limits.
 ---
 
-# Lexicons
+# Lexicons Reference & Governance
 
-Lexicons are executable interoperability contracts. ISLAMU Event vendors and reviews the exact schemas it supports instead of discovering arbitrary schemas at runtime.
+In the AT Protocol ecosystem, **Lexicons** are formal, versioned JSON schemas defining RPC methods and repository record formats. ISLAMU Event explicitly vendors and tests each supported lexicon schema, guaranteeing reliable type mapping and strict security boundaries.
 
-## Supported collections
+---
 
-Inbound handling is limited to:
+## Supported Lexicon Collections
 
-* `community.lexicon.calendar.event`;
-* `community.lexicon.calendar.rsvp`.
+The platform limits ingestion and publication strictly to reviewed collections (see [AT Protocol & Bluesky Jetstream](at-protocol-and-bluesky-jetstream.md)):
 
-Wildcard collection subscriptions and runtime lexicon discovery are disabled. Outbound RSVP support is narrower than inbound understanding and emits only `#going`.
+| Lexicon Identifier | Supported Operations | Local Entity Mapping |
+|---|---|---|
+| `community.lexicon.calendar.event` | Inbound Ingestion & Outbound Publication | Core Event Aggregate & [Modular Aspects](../events-and-ticketing/modular-event-aspects.md) |
+| `community.lexicon.calendar.rsvp` | Inbound Ingestion & Outbound (`#going`) | Event RSVP & Attendance Intent |
 
-## Governance
+> [!IMPORTANT]
+> Wildcard schema discovery is permanently disabled. Inbound records matching unvetted collections are silently ignored at the network layer.
 
-A lexicon change must preserve exact public standard identifiers where interoperability requires them while keeping application design, implementation, tests, and documentation independently authored.
+---
 
-Review together:
+## Fail-Closed Record Serialization
 
-1. field type, cardinality, format, and size limits;
-2. URI and reference semantics;
-3. privacy/exposure rules for every outbound field;
-4. inbound materialization and duplicate behavior;
-5. cursor and restart compatibility;
-6. application API and generated contract changes;
-7. pre-1.0 migration and rollback impact.
+* If an event title, description, or venue location cannot be serialized without exceeding lexicon size limits or violating character formatting, outbound publication fails closed (the outbox job logs an error and aborts).
+* The platform **never** silently truncates text or drops required fields to produce superficially valid records.
+* Outbound fields strictly respect attendee privacy ceilings: private registration data and custom attendee answers are excluded from public lexicon records (see [Privacy Erasure & GDPR Compliance](../security-and-identity/privacy-erasure.md)).
 
-Pin the application version and test ingest and publish paths before enabling a new protocol revision.
+---
 
-## Fail-closed representation
+## Related Guides & Next Steps
 
-If supported local data cannot be represented without violating the schema, size limit, URI rules, or privacy policy, outbound publication is not enqueued. The platform does not drop or truncate fields to create a superficially valid record.
-
-## Current limits
-
-Vendored lexicons do not make ISLAMU Event a PDS, AppView, ActivityPub endpoint, bridge, unrestricted social collection host, or runtime schema registry. Public deployment claims should name the exact enabled collections and actions.
+* **[AT Protocol & Bluesky Jetstream](at-protocol-and-bluesky-jetstream.md)** — Ingest firehose events and publish calendar records.
+* **[Modular Event Aspects](../events-and-ticketing/modular-event-aspects.md)** — Understand relational sector fields and how they map to lexicons.
+* **[Privacy Erasure & GDPR](../security-and-identity/privacy-erasure.md)** — Account deletion and federated record removal.
+* **[Local Development](../contributing/local-development.md)** — Work with CarpaNet source generators in .NET.

@@ -12,9 +12,9 @@ This guide walks administrators through the web consoles in the Blazor managemen
 
 | Administration Scope | Typical Role | UI Entry Points | Capabilities |
 |---|---|---|---|
-| **Instance Control Plane** | Instance Administrator | `/admin/instance`<br>`/admin/instance/tenants`<br>`/admin/instance/domains` | Multi-tenant governance, provisioning tenants, domain approvals, global quotas, platform settings. |
-| **Instance Settings** | Instance Administrator | `/settings/instance` | Default system policies, storage configurations, SMTP defaults, platform monetization policies. |
-| **Tenant Administration** | Tenant Administrator | `/settings/admin` | Tenant branding, lookups, navigation, custom footers, event templates, and custom registration properties. |
+| **Instance Control Plane** | Instance Administrator | `/admin/instance`<br>`/admin/instance/tenants`<br>`/admin/instance/domains` | [Multi-Tenant Governance](../security-and-identity/multi-tenancy.md), provisioning tenants, domain approvals, global quotas, platform settings. |
+| **Instance Settings** | Instance Administrator | `/settings/instance` | Default system policies, storage configurations, SMTP defaults, [platform monetization policies](../events-and-ticketing/paid-events-and-payouts.md). |
+| **Tenant Administration** | Tenant Administrator | `/settings/admin` | [Tenant Branding](white-labeling.md), lookups, navigation, custom footers, event templates, and [custom registration properties](../events-and-ticketing/custom-properties.md). |
 | **Organization Management**| Organization Admin | `/settings/organization/{id}` | Organization profile, membership approvals, verified organizer status, and API keys. |
 | **Group Management** | Group Admin | `/settings/group/{id}` | Group profile, public event listings, group branding, and members. |
 
@@ -22,7 +22,7 @@ This guide walks administrators through the web consoles in the Blazor managemen
 
 ## 2. Instance Administration (Multi-Tenant Deployments)
 
-The **Instance Console** (`/admin/instance`) is the operational command center for platform owners.
+The **Instance Console** (`/admin/instance`) is the operational command center for platform owners:
 
 ### Tenant Lifecycle Management
 - **Create Tenant**: Provision a new community tenant with a unique slug and primary administrator.
@@ -33,7 +33,7 @@ The **Instance Console** (`/admin/instance`) is the operational command center f
 - **Destructive Purge**: Scheduling a tenant purge requires explicit reason confirmation and typing the tenant slug.
 
 ### Platform Monetization
-Navigate to `/settings/instance` $\to$ **Monetization**:
+Navigate to `/settings/instance` $\to$ **Monetization** (see [Paid Events & Payouts](../events-and-ticketing/paid-events-and-payouts.md)):
 - **Platform Fee Policy**: Set platform fees across paid ticket sales (configured in basis points and optional fixed charges per currency).
 - **Platform Contribution**: Enable optional voluntary contributions during checkout with customizable heading and body text.
 - *Note*: Changes use optimistic concurrency revisions; concurrent edits fail safely to prevent accidental overwrites.
@@ -45,16 +45,16 @@ Navigate to `/settings/instance` $\to$ **Monetization**:
 Tenant administrators manage their community experience via `/settings/admin`:
 
 ### Branding & Appearance
-- **Themes & Colors**: Configure brand primary and secondary colors.
+- **Themes & Colors**: Configure brand primary and secondary colors (see [White-Labeling](white-labeling.md)).
 - **Logos & Favicons**: Upload high-resolution community assets.
 - **Navigation & Links**: Customize top navigation links and header menus.
 
 ### Custom Footers
 - Choose footer layouts, social links, and copyright notices.
-- Built-in governance locks prevent tenants from removing legally required disclosures.
+- Built-in governance locks prevent tenants from removing legally required disclosures (such as Terms of Service and Privacy Policy).
 
 ### Custom Registration Properties
-- Define custom questions and fields for events and attendee registrations.
+- Define custom questions and fields for events and attendee registrations (see [Custom Properties Governance](../events-and-ticketing/custom-properties.md)).
 - Set exposure levels: `Public` (visible on listing), `Private` (visible to organizers only), or `System`.
 
 ---
@@ -63,5 +63,14 @@ Tenant administrators manage their community experience via `/settings/admin`:
 
 Organizers create Organizations and Groups to co-host events:
 - **Verification Badges**: Instance and tenant admins can mark verified organizations to give attendees trust.
-- **Membership Management**: Assign Owner, Admin, and Member roles within an organization.
-- **Payment Connections**: Organizers onboard their own Stripe Connect accounts directly through organization settings to receive ticket payouts.
+- **Membership Management**: Assign Owner, Admin, and Member roles within an organization (see [Admin Hierarchy](admin-hierarchy.md)).
+- **Payment Connections**: Organizers onboard their own [Stripe Connect](../events-and-ticketing/paid-events-and-payouts.md) accounts directly through organization settings to receive ticket payouts.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Admin Hierarchy & Scopes](admin-hierarchy.md)** — Review permission sets across Instance, Tenant, and Event roles.
+* **[White-Labeling & Branding](white-labeling.md)** — Detailed token customization and design tokens.
+* **[Custom Domains & SEO](custom-domains-and-seo.md)** — Route custom domains to tenant storefronts.
+* **[Configuration Manifests](../configuration-and-operations/configuration-manifests.md)** — Export and import declarative tenant settings.

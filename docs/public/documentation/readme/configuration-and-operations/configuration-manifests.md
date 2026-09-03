@@ -1,44 +1,59 @@
 ---
-description: >-
-  Bootstrap and export governed configuration without secrets, PII, or
-  application data.
+description: Bootstrap and export governed configuration without secrets, PII, or application data.
 ---
 
 # Configuration Manifests
 
-Configuration manifests move governed settings and typed configuration documents. They are not database dumps, secret bundles, subject-data exports, or topology snapshots.
+Configuration manifests move governed tenant settings and typed configuration documents across environments. They are specifically **not** database dumps, secret bundles, subject-data exports, or infrastructure snapshots.
 
-## What belongs in a manifest
+---
 
-Only allowlisted instance/tenant settings and approved typed documents belong in the contract. Typical uses include reproducible policy, presentation, template, and feature configuration that the application explicitly recognizes.
+## What Belongs in a Manifest
 
-## What is excluded
+Only allowlisted instance/tenant settings and approved typed documents belong in the manifest contract. Typical uses include reproducible policy, [white-labeling presentation tokens](../administration-and-branding/white-labeling.md), email templates, and feature flags that the application explicitly recognizes through the [Administration Console](../administration-and-branding/admin-guide.md).
 
-Manifests exclude:
+---
 
-* users and identity records;
-* registrations, admissions, orders, payments, and refunds;
-* attendee or subject PII;
-* operational/outbox state;
-* provider runtime bindings and connection strings;
-* database or privacy-authority topology;
-* credentials and secret values.
+## What is Strictly Excluded
 
-Whole-instance export preserves governed configuration only. It does not satisfy application-data backup or privacy-erasure export obligations.
+Manifests deliberately exclude:
 
-## Safe application
+* Users, credentials, and identity claims (see [Authentication](../security-and-identity/authentication.md)).
+* [Registrations, admissions, orders, and payments](../events-and-ticketing/paid-events-and-payouts.md).
+* Attendee and data subject PII.
+* Operational queues and transactional outbox state.
+* Provider runtime bindings, endpoints, and connection strings.
+* Database or [Privacy-Erasure Authority topology](../security-and-identity/privacy-erasure.md).
+* Passwords, tokens, and secret values (see [Secrets Management](secrets.md)).
 
-Manifest file ingestion is a trust boundary. Restrict paths, ownership, permissions, and the principal allowed to apply a document. Validate schema, version, authority, and every included section before committing.
+> [!NOTE]
+> Whole-instance export preserves governed configuration only. It does not replace full database backups (see [Backup, Restore & Upgrade](backup-restore-upgrade.md)) or privacy-erasure compliance obligations.
 
-Apply outcomes are explicit. A failed contract, permission check, or section update must not be silently skipped into a partially trusted configuration. Preserve atomicity and report bounded problem details without echoing sensitive content.
+---
 
-## Operating procedure
+## Safe Ingestion & Trust Boundary
+
+Manifest file ingestion represents an administrative trust boundary:
+1. Restrict file access, ownership, and write permissions to the application service user.
+2. Validate schema version, authority signatures, and every included section before committing.
+3. Apply outcomes are strictly atomic: if a single section fails validation, the entire manifest is rejected rather than leaving the system in a partially trusted state.
+
+---
+
+## Standard Operating Procedure
 
 1. Export or author an allowlisted manifest without secrets.
-2. Review the diff and intended scope.
-3. Back up the affected authoritative stores.
-4. Apply in an isolated or staging environment first.
-5. Verify settings, HAL affordances, public disclosures, and provider behavior.
-6. Promote the same reviewed artifact and retain its version/checksum as operational evidence.
+2. Review the diff and intended tenant scope.
+3. Back up the affected database stores (see [Backup, Restore & Upgrade](backup-restore-upgrade.md)).
+4. Apply in an isolated staging environment first.
+5. Verify updated settings, HAL affordances, public branding, and provider behavior.
+6. Promote the reviewed artifact and record its SHA-256 checksum in operational logs.
 
-Use [Secrets](secrets.md) for credentials and [Backup, Restore & Upgrade](backup-restore-upgrade.md) for durable application state.
+---
+
+## Related Guides & Next Steps
+
+* **[White-Labeling & Branding](../administration-and-branding/white-labeling.md)** — Customize colors, logos, and typography via manifests.
+* **[First-Run Administration Guide](../administration-and-branding/admin-guide.md)** — Manage instance and tenant configuration through the web UI.
+* **[Secrets Management](secrets.md)** — Separate credentials from declarative configuration manifests.
+* **[Backup, Restore & Upgrade](backup-restore-upgrade.md)** — Create complete database snapshots before importing manifests.

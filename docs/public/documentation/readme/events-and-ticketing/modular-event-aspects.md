@@ -4,26 +4,41 @@ description: Use typed Islamic and technology event data without weakening the c
 
 # Modular Event Aspects
 
-ISLAMU Event separates universally shared event/session fields from optional typed sector aspects. This preserves a stable core model while allowing explicit module-specific behavior.
+ISLAMU Event separates universally shared event/session fields from optional typed sector aspects. This preserves a clean, lean core domain model while allowing rich, first-class relational extensions.
 
-## Model layers
+---
 
-1. **Core fields:** title, schedule, venue, lifecycle, organizer, and other shared concepts.
-2. **Typed aspects:** relational models for sector-specific event and session data.
-3. **Governed custom properties:** controlled long-tail fields that do not belong in the core or a typed module.
+## Three-Tier Event Model Layers
 
-Current typed areas include Islamic-event and technology-event data, including session-level Islamic details. They are first-class relational contracts rather than opaque JSON property bags.
+1. **Core Domain Fields**: Universally shared concepts: title, description, schedule, venue location, organizer ownership, capacity, and publication lifecycle state.
+2. **Typed Sector Aspects**: Relational models for sector-specific event and session data (e.g. Islamic event details, prayer accommodations, speaker credentials, technology workshop requirements).
+3. **[Governed Custom Properties](custom-properties.md)**: Controlled long-tail fields and attendee registration questionnaires that do not belong in the core relational schema.
 
-## Module gating
+> [!NOTE]
+> Typed aspects are structured database entities with strongly typed foreign keys and indices, not unstructured, opaque JSON property bags.
 
-Filters and behavior are active only when the corresponding module, such as `Mod_Islamic` or `Mod_Tech`, is enabled. A disabled module's filters are ignored instead of being partially applied.
+---
 
-Technology-event data exists in the model, but its event-creation strategy is not active. Adopters must verify the deployed capability rather than infer it from schema presence.
+## Feature Module Gating
 
-## Design boundary
+Sector capabilities are governed by tenant feature flags (e.g. `Mod_Islamic` or `Mod_Tech`):
+* When a module is enabled, its sector-specific fields, filters, and UI editors become active.
+* If a module is disabled for a tenant, its filters and validation rules are cleanly bypassed rather than partially applied.
+* Public API responses omit disabled module attributes, keeping responses compact.
 
-Use a typed aspect when the concept has shared meaning, validation, query semantics, policy, or lifecycle behavior. Use a governed custom property only for legitimate tenant/event-specific long-tail data. Neither mechanism may replace authorization, payment truth, admission, moderation, ranking, or lifecycle state.
+---
 
-## Acceptance
+## Architectural Design Boundary
 
-Test creation and reads with the module enabled and disabled, verify module-specific filters do not affect disabled deployments, and confirm outward contracts omit or constrain unavailable behavior. Document the exact modules enabled for each tenant.
+* Use a **Typed Aspect** when the concept possesses universal community semantics, dedicated validation, query indices, or lifecycle hooks (e.g. prayer times, halal catering, tech tracks).
+* Use a **[Governed Custom Property](custom-properties.md)** for organizer-specific, one-off questions (e.g. "T-shirt size", "Dietary allergies", "Emergency contact").
+* Neither mechanism may ever be used to bypass [Authorization](../security-and-identity/authorization.md), [Payment Truth](paid-events-and-payouts.md), or [Admission Issuance](ticketing-and-check-in.md).
+
+---
+
+## Related Guides & Next Steps
+
+* **[Custom Properties Governance](custom-properties.md)** — Design custom attendee registration forms.
+* **[Ticketing & Check-In](ticketing-and-check-in.md)** — Manage capacity, admission tickets, and QR validation.
+* **[Paid Events & Payouts](paid-events-and-payouts.md)** — Connect Stripe accounts and manage paid tickets.
+* **[Administration Guide](../administration-and-branding/admin-guide.md)** — Enable and disable sector modules in the admin console.

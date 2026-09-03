@@ -1,46 +1,59 @@
 ---
-description: >-
-  Operate Keycloak, BFF browser sessions, API credentials, and optional linked
-  AT Protocol sign-in.
+description: Operate Keycloak, BFF browser sessions, API credentials, and optional linked AT Protocol sign-in.
 ---
 
-# Authentication
+# Authentication Architecture
 
-Keycloak is the required browser identity authority. The Blazor BFF owns cookie sessions, obtains or refreshes access tokens, and forwards bearer authentication to the API.
+Keycloak is the authoritative identity provider for user authentication. The Blazor Backend-for-Frontend (BFF) owns secure, encrypted cookie sessions, obtains and refreshes OIDC tokens, and proxies authenticated requests to `Explore.API` (see [Architecture & Request Flows](../getting-started/architecture-and-request-flows.md#1-browser-request-flow)).
 
-## Browser authentication
+---
 
-The browser talks to the BFF rather than storing API tokens. Production operators own:
+## Browser Authentication Flow
 
-* TLS and trusted reverse-proxy configuration;
-* public Keycloak and application URLs;
-* redirect URI correctness;
-* Keycloak realm/client hardening;
-* browser client-secret delivery and rotation;
-* administrative access and recovery.
+The browser communicates strictly with `Explore.Blazor` over HTTPS:
+* The client never stores raw JWT access tokens in browser `localStorage` or `sessionStorage` (mitigating XSS token theft).
+* Authentication state is tracked via an encrypted `SameSite=Lax` session cookie managed by the BFF.
+* Production operators must ensure:
+  * Proper TLS termination and reverse-proxy header forwarding (`X-Forwarded-Proto: https`).
+  * Explicit registration of valid redirect URIs in the Keycloak Admin Console (see [Troubleshooting Redirect Errors](../configuration-and-operations/troubleshooting-and-health.md#recipe-1-keycloak-invalid-parameter-redirect_uri-or-infinite-login-loop)).
+  * Secure client secret storage via [Secrets Management](../configuration-and-operations/secrets.md).
 
-Re-test a complete login and token refresh after any DNS, proxy, callback, or client-secret change.
+---
 
-## Direct API authentication
+## Direct API Authentication
 
-Integrations use either:
+External programmatic clients and integration workers authenticate using either:
 
-* `Authorization: Bearer <token>`; or
-* `X-API-Key: <key>`.
+* **Bearer Token**: `Authorization: Bearer <jwt_access_token>` (issued by Keycloak).
+* **API Key**: `X-API-Key: <key>` (hashed with SHA-256 in the database).
 
-Do not send both. Authentication identifies the caller; authorization and tenant binding still apply independently. API keys can carry bounded scopes and may finalize tenant context, but they do not bypass resource policy.
+> [!NOTE]
+> Do not supply both headers simultaneously. Authentication establishes *who* the caller is; [Authorization](authorization.md) and [Multi-Tenancy](multi-tenancy.md) boundaries still evaluate independently on every request.
 
-## AT Protocol sign-in
+---
 
-Optional AT Protocol authentication links only to an existing local user. It does not:
+## Linked AT Protocol Sign-In
 
-* create users through email matching;
-* enable federation or Jetstream ingestion;
-* grant publication consent;
-* create a second authorization model.
+Optional [AT Protocol Authentication](../federation-and-open-protocols/at-protocol-and-bluesky-jetstream.md) enables users to sign in using their Bluesky handle (`@handle.bsky.social`) or Decentralized Identifier (DID):
+* Links strictly to an existing, verified local account.
+* Does not automatically create accounts via opportunistic email matching.
+* Does not implicitly grant event publication or federation consent.
+* Operates under the same unified [Authorization](authorization.md) rules as standard Keycloak users.
 
-Treat account linking and federation enablement as separate governed actions.
+---
 
-## Acceptance
+## Acceptance Testing Checklist
 
-Verify one successful and one rejected browser login, token refresh, logout/session invalidation, one valid and invalid API key, tenant binding, and safe failure responses. Keep tokens, cookies, client secrets, and provider diagnostics out of logs and support artifacts.
+1. Verify successful login through Keycloak redirects back to the Blazor application.
+2. Confirm that expired tokens refresh automatically without user disruption.
+3. Verify that logging out invalidates both the local cookie and the Keycloak SSO session.
+4. Verify that an invalid API key returns `401 Unauthorized` with ProblemDetails.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Authorization & Access Control](authorization.md)** — Learn how MediatR handlers evaluate Local RBAC or Cerbos policies.
+* **[Docker Compose Runbook](../self-hosting/docker-compose.md)** — Deploy Keycloak and configure the `event-blazor` client.
+* **[Troubleshooting Keycloak Errors](../configuration-and-operations/troubleshooting-and-health.md#recipe-1-keycloak-invalid-parameter-redirect_uri-or-infinite-login-loop)** — Resolve redirect URI mismatches and login loops.
+* **[Admin Hierarchy & Roles](../administration-and-branding/admin-hierarchy.md)** — Map Keycloak users to Instance, Tenant, and Event roles.

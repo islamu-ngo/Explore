@@ -255,3 +255,12 @@ These variables configure optional third-party integrations enabled via Docker C
 | `LISTMONK_DEFAULT_LIST_ID` | Advanced | `0` | Default mailing list ID for event attendees. |
 | `LISTMONK_API_USERNAME` | Advanced | None | Listmonk API username. |
 | `LISTMONK_API_KEY` | Advanced (Secret) | None | Listmonk API token. |
+
+---
+
+## Related Guides & Next Steps
+
+* **[Secrets Management](secrets.md)** — Securely bind passwords, API keys, and certificates via Environment or Infisical.
+* **[Docker Compose Runbook](../self-hosting/docker-compose.md)** — Apply your `.env` configuration in a production split-container stack.
+* **[Backup, Restore & Upgrade](backup-restore-upgrade.md)** — Production backup scripts and version migration procedures.
+* **[Troubleshooting & Operational Health](troubleshooting-and-health.md)** — Practical solutions for configuration mismatches and startup errors.

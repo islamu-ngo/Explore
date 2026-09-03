@@ -24,7 +24,7 @@ To build and run the complete solution from source, install:
 
 ## 2. Clone & Run with .NET Aspire
 
-We use .NET Aspire for local orchestration, automatically launching PostgreSQL, Keycloak, Mailpit, `Explore.API`, and `Explore.Blazor`:
+We use [.NET Aspire](../self-hosting/dotnet-aspire-and-cloud.md) for local orchestration, automatically launching PostgreSQL, Keycloak, Mailpit, `Explore.API`, and `Explore.Blazor`:
 
 ```bash
 # 1. Clone repository
@@ -50,20 +50,34 @@ Build the solution in Release configuration:
 dotnet build --configuration Release --verbosity quiet
 ```
 
-Run tests using TUnit:
+Run tests using [TUnit](tunit.md):
 
 ```bash
 # Run unit tests for Application layer
-dotnet test tests/Explore.Application.Tests/Explore.Application.Tests.csproj
+dotnet test tests/Explore.Application.Tests/Explore.Application.Tests.csproj \
+  --configuration Release \
+  --treenode-filter "/*/*/*<TestClass>/*"
 ```
 
 ---
 
-## 4. Where to Learn More
+## 4. Architectural Rules & Specifications
 
-For full engineering specifications, invariants, and coding conventions, refer to the internal documentation in GitHub:
+Before authoring code, review our core architecture and clean-room policies:
 
-- 📖 **[Developer Guide](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/DEVELOPER_GUIDE.md)**: 5-minute mental model, invariants, and coding style.
-- 📖 **[Architecture Overview](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/ARCHITECTURE_OVERVIEW.md)**: C4 container diagrams and component interactions.
-- 📖 **[Contributor Recipes](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/CONTRIBUTOR_RECIPES.md)**: Blueprints for adding entities, CQRS slices, and endpoints.
-- 📖 **[Testing Guide](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/TESTING.md)**: TUnit conventions and Testcontainers test lanes.
+* **[Clean Architecture Conventions](clean-architecture.md)** — Inward dependency rules and MediatR slice patterns.
+* **[TUnit Testing Conventions](tunit.md)** — Writing invariant-breaker tests instead of tautological mocks.
+* **[Clean-Room IP & Licensing](clean-room-ip-and-licensing.md)** — Independent design and outbound AGPLv3 protection.
+
+For complete internal developer specifications in GitHub:
+* 📖 [`docs/internal/DEVELOPER_GUIDE.md`](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/DEVELOPER_GUIDE.md) — 5-minute mental model and invariants.
+* 📖 [`docs/internal/ARCHITECTURE_OVERVIEW.md`](https://github.com/islamu-ngo/Event/blob/develop/docs/internal/ARCHITECTURE_OVERVIEW.md) — C4 diagrams and component interactions.
+
+---
+
+## Related Guides & Next Steps
+
+* **[Clean Architecture Conventions](clean-architecture.md)** — Layer boundaries and CQRS handlers.
+* **[TUnit Testing Conventions](tunit.md)** — Test slicing and execution.
+* **[.NET Aspire & Cloud Deployment](../self-hosting/dotnet-aspire-and-cloud.md)** — Aspire AppHost orchestration details.
+* **[Docker Compose Runbook](../self-hosting/docker-compose.md)** — Run the split container topology locally.

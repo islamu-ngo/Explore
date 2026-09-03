@@ -1,40 +1,45 @@
 ---
-description: >-
-  Operate organizer-direct Stripe Connect payments, reconciliation, refunds, and
-  payout boundaries.
+description: Operate organizer-direct Stripe Connect payments, reconciliation, refunds, and payout boundaries.
 ---
 
 # Paid Events & Payouts
 
-Stripe Connect is the initial payment adapter. The implemented commercial model is organizer-direct rather than platform escrow.
+ISLAMU Event utilizes **Stripe Connect** as its primary payment adapter. The commercial model is **organizer-direct**: attendees pay the event organizer’s connected Stripe account directly, rather than funds pooling into platform escrow.
 
-## Organizer-direct flow
+---
 
-1. The organizer completes provider-hosted onboarding.
-2. Checkout is created in the organizer's provider context.
-3. Signed provider events and reconciliation establish payment truth.
-4. Provider-managed schedules govern payout timing.
+## 1. Organizer-Direct Commerce Flow
 
-A browser success or cancellation page is navigation only. It never establishes terminal payment state. Paid publication and checkout fail closed until required instance/tenant/operator identity, payment governance, provider connection, and policy facts are complete.
+1. **Provider Onboarding**: The organizer completes Stripe-hosted Express/Standard onboarding via organization settings (see [Administration Guide](../administration-and-branding/admin-guide.md#4-organization--group-governance)).
+2. **Checkout Session**: When an attendee registers for a paid ticket (see [Ticketing & Check-In](ticketing-and-check-in.md)), a Stripe Checkout session is created in the connected account's context.
+3. **Webhook Reconciliation**: Payment truth is established strictly by signed Stripe webhook events (see [Webhooks & Callbacks](../integrations-and-ai/webhooks.md)). A browser redirect back to the app is never treated as financial settlement.
+4. **Admission Issuance**: Cryptographic admission tickets are generated only after signed webhook reconciliation succeeds.
 
-## Refunds
+> [!IMPORTANT]
+> **Operator Legal Identity Prerequisite:**  
+> Paid checkout and ticket publication fail closed until the operator's legal identity parameters are configured in `.env` (see [Operator Legal Identity Reference](../configuration-and-operations/environment-variables.md#9-operator-legal-identity-production-gate)).
 
-Durable provider-backed workflows cover:
+---
 
-* buyer refund requests;
-* material-change responses;
-* organizer create/retry actions;
-* campaign reads and bounded resumption;
-* reconciliation with provider evidence.
+## 2. Refund Workflows
 
-A refund is complete only when provider-confirmed evidence says so. Pending allocation or an accepted request must not be presented as refunded.
+The platform implements durable, provider-backed refund state machines:
+* **Attendee Requests**: Attendees can request refunds through their self-service order portal.
+* **Organizer Approval**: Organizers evaluate refund requests and approve or reject them directly in the management console.
+* **Partial Refunds**: Support for partial line-item refunds or full order cancellations.
+* **Finality Guarantee**: An order is marked "Refunded" only after Stripe delivers signed webhook confirmation of fund return.
 
-## Payout boundary
+---
 
-Provider-managed schedules determine payout timing. ISLAMU Event does not claim escrow, accounting, tax calculation, invoice issuance, banking, universal provider liability, or guaranteed settlement dates. `ProtectedDelayedPayout` is deferred; do not present it as an active protection model.
+## 3. Payout Boundaries & Operator Responsibility
 
-Deployment operators and organizers must define legal identity, merchant/provider agreements, fee/refund policy, support ownership, tax/invoice responsibility, and incident recovery for their jurisdiction.
+Provider-managed schedules determine payout timing directly to the organizer's bank account. ISLAMU Event does not act as an escrow agent, banking institution, or tax accounting authority. Operators must ensure their public terms and refund policies comply with local e-commerce laws.
 
-## Acceptance
+---
 
-Exercise provider onboarding, checkout, signed webhook validation, reconciliation after a missing/delayed callback, failed and successful payment, buyer refund request, organizer action, retry, and provider-confirmed completion. Keep provider IDs, raw errors, idempotency material, and PII out of public responses and operational evidence.
+## Related Guides & Next Steps
+
+* **[Ticketing & Check-In](ticketing-and-check-in.md)** — Manage ticket capacity, admissions, and gate check-in.
+* **[Webhooks & Callbacks](../integrations-and-ai/webhooks.md)** — Verify signed Stripe webhook intake and replay windows.
+* **[Platform Monetization Policy](../administration-and-branding/admin-guide.md#platform-monetization)** — Configure platform application fees on ticket sales.
+* **[Operator Legal Identity Reference](../configuration-and-operations/environment-variables.md#9-operator-legal-identity-production-gate)** — Mandatory production legal disclosures.

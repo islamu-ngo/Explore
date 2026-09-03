@@ -1,44 +1,47 @@
 ---
-description: >-
-  Bind tenant domains safely and operate the focused public-discovery SEO
-  surface.
+description: Bind tenant domains safely and operate the focused public-discovery SEO surface.
 ---
 
 # Custom Domains & SEO
 
-Custom domains are tenant-routing and public-accountability boundaries, not only branding aliases.
+Custom vanity domains in ISLAMU Event are tenant routing and public accountability boundaries, not merely cosmetic branding aliases.
 
-## Domain setup
+---
 
-Before enabling a domain:
+## Domain Setup & Tenant Routing
 
-1. prove tenant ownership or authorization;
-2. configure DNS and valid TLS;
-3. forward the original host through the trusted reverse proxy;
-4. establish the canonical host policy;
-5. exclude the instance administration host;
-6. verify mandatory public disclosures;
-7. test unknown-host failure.
+Before enabling an external domain for a community tenant:
 
-Multi-tenant resolution checks trusted BFF context, admin-host exclusion, custom domain, then subdomain. An unknown host fails with `404` and must never select an arbitrary tenant.
+1. **Verify Tenant Ownership**: Ensure the domain binding is requested by an authorized Tenant Administrator (see [Admin Hierarchy](admin-hierarchy.md)).
+2. **DNS & TLS Provisioning**: Point DNS A/AAAA or CNAME records to your server and verify valid TLS certificate issuance.
+3. **Reverse-Proxy Header Forwarding**: Ensure your reverse proxy (Caddy, Traefik, or Nginx) forwards the client `Host` and `X-Forwarded-Proto` headers (see [Docker Compose Reverse Proxy](../self-hosting/docker-compose.md#5-reverse-proxy-configuration)).
+4. **Tenant Resolution Order**: In [Multi-Tenant Mode](../security-and-identity/multi-tenancy.md), requests evaluate:
+   $$\text{Trusted BFF Context} \longrightarrow \text{Admin-Host Exclusion} \longrightarrow \text{Custom Domain} \longrightarrow \text{Subdomain} \longrightarrow 404$$
+5. **Fail-Closed Verification**: An unmapped or unknown domain must immediately return `404 Not Found`. It will never route to a random tenant.
 
-## Implemented SEO surface
+---
 
-SEO support is intentionally focused on public event discovery:
+## Implemented Public SEO Surface
 
-* public `/sitemap.xml`;
-* environment-aware `/robots.txt`;
-* canonical, Open Graph, and Twitter metadata for crawlable public event details;
-* schema.org Event JSON-LD for eligible public events;
-* `noindex` for non-public or non-crawlable states;
-* a minimal web manifest.
+Search engine optimization is intentionally focused on driving organic discovery of public community events:
 
-## Current limits
+* **Automated `/sitemap.xml`**: Dynamically renders indexable URLs for active public events and organizations.
+* **Environment-Aware `/robots.txt`**: Automatically disables indexing (`Disallow: /`) in `Development` or `Staging` environments while permitting indexing in `Production`.
+* **Social Sharing Cards**: Server-rendered Open Graph (`og:image`, `og:title`) and Twitter Cards for public event detail pages.
+* **Structured Data (Schema.org JSON-LD)**: Injects rich `Event` schema markup (start/end time, venue location, organizer, ticket availability) to qualify for Google Event Search cards.
+* **Anti-Crawl Protections**: Administrative consoles, checkout sessions, and non-public event drafts automatically emit `<meta name="robots" content="noindex, nofollow">`.
 
-The platform does not promise site-wide metadata automation, a dedicated SEO administration console, Search Console integration, global ranking optimization, or indexing outcomes.
+---
 
-Operators remain responsible for domain reputation, content quality, consent requirements, indexing policy, legal notices, search-engine verification, and measurement.
+## Operational Scope & Limits
 
-## Acceptance
+The platform automates structured metadata and search cards, but does not provide search engine ranking guarantees or Google Search Console API synchronizers. Operators remain responsible for domain reputation, DNS health, content quality, and search engine ownership verification.
 
-Fetch sitemap and robots output in production and non-production, inspect canonical and social metadata for a public event, verify non-public states are not indexable, validate JSON-LD, and confirm each tenant domain resolves only its own public content and disclosures.
+---
+
+## Related Guides & Next Steps
+
+* **[Multi-Tenancy Architecture](../security-and-identity/multi-tenancy.md)** — Learn how host headers resolve tenant boundaries.
+* **[White-Labeling & Branding](white-labeling.md)** — Customize storefront appearance while preserving governance locks.
+* **[Docker Compose Reverse Proxy Setup](../self-hosting/docker-compose.md#5-reverse-proxy-configuration)** — Configure Caddy, Traefik, or Nginx for custom domains.
+* **[Troubleshooting Tenant Routing](../configuration-and-operations/troubleshooting-and-health.md)** — Diagnose 404 unknown host and redirect issues.

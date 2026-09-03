@@ -1,42 +1,42 @@
 ---
-description: >-
-  Integrate Google Workspace and Microsoft 365 Forms through their bounded
-  supported contracts.
+description: Integrate Google Workspace and Microsoft 365 Forms through their bounded supported contracts.
 ---
 
-# Google & Microsoft Forms
+# Google & Microsoft Forms Integration
 
-The two integrations intentionally use different provider contracts. Neither treats a callback correlation value as proof of identity.
+Organizers can map external survey tools (Google Forms and Microsoft Forms) directly into event attendee records. The platform ingests external form responses and projects them into native [Custom Properties](../events-and-ticketing/custom-properties.md) without compromising attendee identity truth.
 
-## Google Forms
+---
 
-Google support targets Google Workspace and uses:
+## 1. Google Forms (Google Workspace)
 
-* tenant-owned OAuth;
-* Forms API schema, provisioning, and response reads;
-* OIDC-authenticated Pub/Sub notifications;
-* watch renewal and recovery sweeps;
-* strict response/correlation mapping.
+The Google Forms integration is designed for Google Workspace organizations:
+* **Authentication**: Uses tenant-owned Google OAuth 2.0 and Google Forms REST API.
+* **Notification Flow**: Employs OIDC-authenticated Google Cloud Pub/Sub topics. Pub/Sub messages act as notify-only triggers: the platform queues an authenticated fetch back to the Google Forms API to read the authoritative responses.
+* **Limitations**: File-upload questions and live submission writebacks are not supported.
 
-Pub/Sub bodies are notify-only. They queue a source read and are not trusted as submitted answers. Drive/file-upload questions, response submission writes, and automatic finalization are not supported. Google callbacks do not use a shared webhook secret.
+---
 
-## Microsoft Forms
+## 2. Microsoft Forms (Microsoft 365)
 
-Microsoft support targets Microsoft 365 organizational accounts through an organizer-owned `POWER_AUTOMATE_V1` flow. Personal forms use link, embed, or manual reconciliation.
+Microsoft Forms integration targets Microsoft 365 organizational tenants using an organizer-owned Power Automate connector flow (`POWER_AUTOMATE_V1`):
+* **Activation**: Requires a dedicated binding callback key and field mapping configuration.
+* **Delivery**: Power Automate pushes response envelopes to the platform's incoming callback route.
+* **Payload Verification**: Payloads are idempotently ingested and matched against registered attendee tickets (see [Ticketing & Check-In](../events-and-ticketing/ticketing-and-check-in.md)).
 
-Activation requires:
+---
 
-1. a bounded completion envelope;
-2. a binding-scoped callback key;
-3. required field mapping and correlation;
-4. at least one successfully processed callback.
+## 3. Data Reconciliation & Privacy Boundaries
 
-The platform does not provision Microsoft Forms, read its schema, call a Graph Forms response API, claim a first-party Forms webhook, or ship a fabricated importable Power Platform solution.
+External form correlation connects questionnaire answers to existing event registrations:
+* It never manufactures new user accounts or bypasses [Keycloak Authentication](../security-and-identity/authentication.md).
+* Answers are subject to the same privacy ceilings and GDPR purge rules as native questions (see [Privacy Erasure & GDPR Compliance](../security-and-identity/privacy-erasure.md)).
 
-## Reconciliation
+---
 
-CSV reconciliation is bounded and idempotent for supported workflows. Correlation connects provider responses to local records; it does not authenticate the participant.
+## Related Guides & Next Steps
 
-## Acceptance
-
-Use provider-owned test forms and non-production data. Verify OAuth/key scope, callback authentication, replay handling, mapping failures, watch or flow recovery, duplicate delivery, and a source read before activation. Document unsupported question types and the operator-owned provider configuration.
+* **[Custom Properties Governance](../events-and-ticketing/custom-properties.md)** — Learn how long-tail attendee data is governed and purged.
+* **[Ticketing & Check-In](../events-and-ticketing/ticketing-and-check-in.md)** — Map questionnaire responses to admission tickets.
+* **[Webhooks & Callbacks](webhooks.md)** — Understand incoming webhook signatures and idempotency.
+* **[Privacy Erasure & GDPR](../security-and-identity/privacy-erasure.md)** — Scrubbing attendee responses upon account deletion.

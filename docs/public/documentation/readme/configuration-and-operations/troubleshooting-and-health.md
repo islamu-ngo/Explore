@@ -201,3 +201,13 @@ Example healthy response from `/health`:
 }
 ```
 *Note: Health responses never disclose passwords, connection strings, or PII.*
+
+---
+
+## Related Guides & Next Steps
+
+* **[Environment Variables Reference](environment-variables.md)** — Fix missing legal identity keys or secret provider errors.
+* **[Docker Compose Runbook](../self-hosting/docker-compose.md)** — Production container restart and migration lifecycle.
+* **[Keycloak Authentication](../security-and-identity/authentication.md)** — Configure reverse-proxy redirect URIs and client origins.
+* **[Authorization Guide](../security-and-identity/authorization.md)** — Understand Cerbos fail-closed behavior vs. Local RBAC.
+* **[First-Run Administration Guide](../administration-and-branding/admin-guide.md)** — Complete initial setup wizard with the recovered setup secret.
