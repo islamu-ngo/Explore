@@ -898,6 +898,53 @@
         "pathPatterns": ["**/*lottie*.json", "**/animations/**/*.json"],
         "contentPatterns": []
       }
+    },
+    "gitbook": {
+      "type": "workflow",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Load when configuring GitBook documentation sites, authoring GitBook-flavored markdown pages and custom blocks, integrating OpenAPI/Swagger specs, driving GitBook Change Request workflows (create, review, comment, resolve), or building GitBook platform integrations. Do not use for general repository code reviews, general .NET OpenAPI schema generation, or non-GitBook markdown.",
+      "promptTriggers": {
+        "keywords": [
+          "gitbook",
+          "git sync",
+          "gitbook-docs",
+          "gitbook block",
+          "gitbook space",
+          "gitbook change request",
+          "gitbook cr",
+          "gitbook integration",
+          "contentkit",
+          "gitbook openapi",
+          "gitbook preview link"
+        ],
+        "intentPatterns": [
+          "(configure|setup|scaffold|update).*?gitbook",
+          "(gitbook).*?(change request|review|diff|preview)",
+          "(gitbook).*?(block|stepper|hint|tabs|cards table)",
+          "(publish|sync).*?(gitbook)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "docs/public/**",
+          "**/.gitbook/**",
+          "**/gitbook-docs.yaml",
+          "**/.gitbook.yaml",
+          "**/gitbook-manifest.yaml",
+          ".agents/skills/gitbook/**"
+        ],
+        "contentPatterns": [
+          "builtin:openapi",
+          "gitbook-docs.yaml",
+          "https://api.gitbook.com",
+          "{% openapi",
+          "{% stepper",
+          "{% tabs",
+          "{% hint",
+          "{% updates"
+        ]
+      }
     }
   },
   "architectureLayers": {
