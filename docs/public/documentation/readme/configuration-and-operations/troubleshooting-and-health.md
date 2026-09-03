@@ -1,110 +1,198 @@
 ---
-description: Practical troubleshooting guide and operational symptom matrix for self-hosters.
+description: Practical troubleshooting guide, symptom matrix, and step-by-step recovery recipes.
 ---
 
 # Troubleshooting & Operational Health
 
-This guide provides practical resolutions for common issues encountered during deployment, first-run onboarding, database migrations, and authentication.
+This guide provides fast diagnostic procedures and step-by-step recovery recipes for common issues encountered during deployment, authentication, database migrations, and runtime operations.
 
 ---
 
-## 1. Quick Diagnostic Checklist
+## Quick Diagnostic Flow
 
-When diagnosing a failure, proceed in this order:
+When diagnosing an unexpected failure, follow this four-step sequence:
+
+```mermaid
+graph LR
+    A[1. Check Containers<br>docker compose ps] --> B[2. Check Logs<br>docker compose logs]
+    B --> C[3. Probe Health Endpoints<br>curl /alive and /health]
+    C --> D[4. Validate Config<br>docker compose config]
+```
 
 1. **Check Container Status**:
    ```bash
    docker compose ps
    ```
-2. **Inspect Process Logs**:
+2. **Inspect Container Logs**:
    ```bash
    docker compose logs --tail=100 -f event-api
    docker compose logs --tail=100 -f event-ui
+   docker compose logs --tail=100 -f keycloak
    ```
-3. **Verify Liveness and Health Endpoints**:
+3. **Query Health Endpoints**:
    ```bash
    curl -i http://localhost:7039/alive
    curl -i http://localhost:7039/health
    ```
-4. **Validate Rendered Configuration**:
+4. **Verify Configuration Syntax**:
    ```bash
    docker compose config --quiet
    ```
 
 ---
 
-## 2. Common Symptoms & Repairs
+## Common Issues & Recovery Recipes
 
-### A. Startup & Configuration Failures
+### Recipe 1: Keycloak "Invalid Parameter: redirect_uri" or Infinite Login Loop
 
-| Symptom | Probable Cause | Repair Action |
-|---|---|---|
-| **API stops with `Instance:OperatorIdentity validation failure`** | Required legal identity fields in `.env` are missing or empty. | Ensure all `INSTANCE__OPERATORIDENTITY__*` variables are populated (e.g., `PUBLICNAME`, `LEGALNAME`, `PUBLICCONTACTEMAIL`, `TERMSURL`, `PRIVACYURL`). |
-| **API exits immediately with `SecretProvider configuration invalid`** | Selected secret provider cannot be loaded or is misconfigured. | If using `.env`, set `SECRET_PROVIDER=Environment`. If using Infisical, verify `INFISICAL_CLIENT_ID` and `INFISICAL_CLIENT_SECRET`. |
-| **BFF routes to `/setup` instead of the application** | The instance is not yet onboarded or onboarding is still pending. | Complete setup at `/setup` with the setup secret, or sign in as the configured administrator. |
+#### Why this happens
+Keycloak validates the redirect URI sent by the browser against its client whitelist. If your reverse proxy terminates TLS but does not forward `X-Forwarded-Proto: https` and `X-Forwarded-Host`, Keycloak believes the request came over unencrypted HTTP or an internal container IP and rejects the callback.
 
----
-
-### B. Headless Onboarding & Bootstrap Issues
-
-| Symptom | Probable Cause | Repair Action |
-|---|---|---|
-| **Startup fails with `Bootstrap reason code: GenerationDrift`** | `INSTANCE_BOOTSTRAP_BINDING_GENERATION` was edited to a lower or unchanged value while configuration changed. | Increment `INSTANCE_BOOTSTRAP_BINDING_GENERATION` to a strictly higher positive integer (e.g., from `1` to `2`). |
-| **Admin signs in but receives no administrative privileges** | The user ID / subject claim issued by Keycloak does not match `INSTANCE_BOOTSTRAP_ADMIN_SUBJECT`. | Check the Keycloak admin console for the user's exact UUID (`sub` claim) and update `INSTANCE_BOOTSTRAP_ADMIN_SUBJECT` in `.env`. |
-| **Onboarding remains in "Pending" status** | Expected behavior. Pending is a healthy state until the configured admin signs in for the first time. | Sign in through the web UI using the designated admin account to finalize onboarding. |
-
----
-
-### C. Authentication & Keycloak Redirect Errors
-
-| Symptom | Probable Cause | Repair Action |
-|---|---|---|
-| **Keycloak reports `Invalid parameter: redirect_uri`** | The public URL of the Blazor UI is not allowed in Keycloak client settings. | In Keycloak Admin $\to$ Clients $\to$ `event-blazor`, ensure **Valid Redirect URIs** contains `https://events.example.org/*` and **Web Origins** contains `https://events.example.org`. |
-| **Infinite redirect loop between UI and Keycloak** | Reverse proxy is not forwarding `X-Forwarded-Proto: https` or `X-Forwarded-Host`. | In your reverse proxy (Caddy/Traefik/Nginx), ensure headers `X-Forwarded-Proto: https` and `X-Forwarded-Host: $host` are passed to Keycloak. |
-| **Login succeeds but API returns `401 Unauthorized`** | Keycloak client secret mismatch between UI and Keycloak server. | Ensure `KEYCLOAK_BLAZOR_CLIENT_SECRET` in `.env` exactly matches the secret generated in Keycloak client credentials. |
-
----
-
-### D. Database & Migration Failures
-
-| Symptom | Probable Cause | Repair Action |
-|---|---|---|
-| **`event-migrationservice` exits with connection refused** | PostgreSQL is not ready or database credentials are incorrect. | Check PostgreSQL logs (`docker compose logs postgres`). Verify `DATABASE_HOST`, `DATABASE_NAME`, and `DATABASE_MIGRATOR_PASSWORD`. |
-| **API logs `PendingModelChangesWarning` or migration lock** | The API started before migrations completed. | Always run `docker compose run --rm event-migrationservice` before launching `event-api`. |
-| **PostgreSQL reports `password authentication failed`** | Mismatch between `.env` password and the initial PostgreSQL volume password. | If changing passwords after initial volume creation, update the user password directly via `ALTER USER postgres WITH PASSWORD 'newpass';` inside PostgreSQL. |
+#### Step-by-Step Fix:
+1. **Fix Reverse Proxy Headers**: Ensure your reverse proxy (Caddy, Traefik, or Nginx) forwards the client headers to Keycloak:
+   - *Nginx*:
+     ```nginx
+     proxy_set_header Host $host;
+     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     proxy_set_header X-Forwarded-Proto https;
+     ```
+   - *Caddy*:
+     ```caddy
+     reverse_proxy keycloak:8080 {
+         header_up X-Forwarded-Proto {scheme}
+         header_up X-Forwarded-Host {host}
+     }
+     ```
+2. **Configure Keycloak Client Allowed URIs**:
+   - Log into Keycloak Admin Console at `https://auth.example.org/admin`.
+   - Navigate to **Clients** $\to$ **`event-blazor`**.
+   - Under **Valid Redirect URIs**, enter: `https://events.example.org/*`
+   - Under **Web Origins**, enter: `https://events.example.org`
+   - Click **Save** and test logging in again.
 
 ---
 
-### E. Multi-Tenancy & Custom Domains
+### Recipe 2: API Fails at Startup with `Instance:OperatorIdentity Validation Failure`
 
-| Symptom | Probable Cause | Repair Action |
-|---|---|---|
-| **Request returns `404 Not Found` with `tenant_not_found`** | The incoming hostname does not match any registered tenant subdomain or custom domain. | Ensure the tenant exists in the Instance Console (`/admin/instance/tenants`) and that the custom domain is mapped and verified. |
-| **Admin Console cannot be reached** | Instance is running in single-tenant mode or admin hostname is not recognized. | Multi-tenant console requires `DEPLOYMENT_MODE=multi_tenant`. If using dedicated admin hosts, ensure `BFF_ADMIN_HOSTS` matches your domain. |
+#### Why this happens
+In production (`ASPNETCORE_ENVIRONMENT=Production`), ISLAMU Event implements a fail-closed legal compliance check. An instance will refuse to open HTTP ports if the operator legal identity variables are blank.
+
+#### Step-by-Step Fix:
+1. Open your `.env` file.
+2. Ensure the following six legal identity keys are populated with real values:
+   ```env
+   INSTANCE__OPERATORIDENTITY__OPERATORID=01912a7e-1234-7000-8000-000000000001
+   INSTANCE__OPERATORIDENTITY__PUBLICNAME=Community Events Foundation
+   INSTANCE__OPERATORIDENTITY__LEGALNAME=Community Events Foundation Non-Profit
+   INSTANCE__OPERATORIDENTITY__PUBLICCONTACTEMAIL=contact@example.org
+   INSTANCE__OPERATORIDENTITY__TERMSURL=https://events.example.org/terms
+   INSTANCE__OPERATORIDENTITY__PRIVACYURL=https://events.example.org/privacy
+   ```
+3. Restart the stack:
+   ```bash
+   docker compose restart event-api
+   ```
 
 ---
 
-### F. Authorization & Cerbos Denials
+### Recipe 3: Headless Onboarding Fails with `GenerationDrift`
 
-| Symptom | Probable Cause | Repair Action |
-|---|---|---|
-| **All authenticated actions return `403 Forbidden`** | Cerbos PDP is unreachable or policies have not been uploaded. | Verify Cerbos status via `curl http://cerbos:3592/_cerbos/health`. Run policy upload via `cerbosctl`. Note that Cerbos **fails closed** during outages. |
-| **`grpcurl` or API cannot connect to Cerbos on port 3593** | Traefik is not configured for HTTP/2 cleartext (`h2c`). | Ensure Traefik loadbalancer scheme is set to `h2c` for the gRPC service port `3593`. |
+#### Why this happens
+When using headless automated onboarding (`INSTANCE_BOOTSTRAP_MODE=ConfiguredAdministrator`), the platform guards against configuration replay attacks using a monotonic generation counter. If you edit bootstrap parameters without incrementing the generation counter, startup halts immediately.
+
+#### Step-by-Step Fix:
+1. Inspect the current generation number in `.env`:
+   ```env
+   INSTANCE_BOOTSTRAP_BINDING_GENERATION=1
+   ```
+2. Increment the value to a strictly higher integer (e.g., from `1` to `2`).
+3. Confirm that `INSTANCE_BOOTSTRAP_ADMIN_SUBJECT` exactly matches the user's UUID (`sub` claim) from Keycloak.
+4. Restart `event-api`:
+   ```bash
+   docker compose restart event-api
+   ```
 
 ---
 
-## 3. Safe Health Checks & Telemetry
+### Recipe 4: Database Migration Lock or Connection Refused
 
-The API provides sanitized health endpoints that never leak passwords, connection strings, or PII:
+#### Why this happens
+If `event-api` starts before PostgreSQL is ready or before `event-migrationservice` completes, the API may timeout or log database lock errors.
 
-- **Liveness**: `GET /alive` $\to$ Returns `200 OK` if the process is running.
-- **Readiness**: `GET /health` $\to$ Evaluates database, Keycloak, storage, and Cerbos connections.
+#### Step-by-Step Fix:
+1. Check PostgreSQL container health:
+   ```bash
+   docker compose ps postgres
+   docker compose logs --tail=50 postgres
+   ```
+2. Manually run the one-shot migration service and confirm it exits with code `0`:
+   ```bash
+   docker compose run --rm event-migrationservice
+   ```
+3. Once migrations succeed, start the API:
+   ```bash
+   docker compose up -d event-api event-ui
+   ```
 
-Example Healthy Response:
+---
+
+### Recipe 5: All Authenticated Actions Return `403 Forbidden` (Cerbos Fail-Closed)
+
+#### Why this happens
+When `AUTHORIZATION_PROVIDER=cerbos` is selected, ISLAMU Event enforces **fail-closed security**. If the Cerbos PDP container is unreachable, unhealthy, or has not loaded policies, all actions are denied immediately. It does not fall back to local RBAC.
+
+#### Step-by-Step Fix:
+1. Check Cerbos PDP health endpoint:
+   ```bash
+   curl http://localhost:3592/_cerbos/health
+   ```
+2. If Cerbos is running but policies are missing, upload policies via `cerbosctl`:
+   ```bash
+   docker run --rm -v "$PWD/cerbos/policies:/policies:ro" \
+     ghcr.io/cerbos/cerbosctl:0.51.0 \
+     --server=localhost:3593 --plaintext \
+     put policy -R /policies
+   ```
+3. If Cerbos is experiencing an extended outage and you need immediate emergency access, switch to local RBAC in `.env`:
+   ```env
+   AUTHORIZATION_PROVIDER=local
+   ```
+   Then restart `event-api`:
+   ```bash
+   docker compose restart event-api
+   ```
+
+---
+
+### Recipe 6: Lost Setup Secret Recovery
+
+#### Why this happens
+If you left `SETUP_SECRET=` blank in `.env`, the container generated an ephemeral single-use secret inside the volume upon first boot.
+
+#### Step-by-Step Fix:
+1. Copy the setup secret out of the container to your local terminal:
+   ```bash
+   docker compose exec event-api cat /app/data/setup-secret
+   ```
+2. Open `http://localhost:7002/setup` in your browser and paste the secret.
+3. Once onboarding completes, the setup secret file is permanently deleted automatically.
+
+---
+
+## Health Check Endpoints Reference
+
+The platform exposes standardized, sanitized health endpoints:
+
+| Endpoint | Method | Purpose | Healthy Response |
+|---|---|---|---|
+| `/alive` | `GET` | **Liveness Probe**: Confirms the process is running. | `200 OK` (plain text) |
+| `/health` | `GET` | **Readiness Probe**: Evaluates DB, Keycloak, storage, and Cerbos connections. | `200 OK` with sanitized JSON status |
+
+Example healthy response from `/health`:
 ```json
 {
   "status": "Healthy",
-  "totalDuration": "00:00:00.024",
+  "totalDuration": "00:00:00.018",
   "entries": {
     "database": { "status": "Healthy" },
     "keycloak": { "status": "Healthy" },
@@ -112,3 +200,4 @@ Example Healthy Response:
   }
 }
 ```
+*Note: Health responses never disclose passwords, connection strings, or PII.*

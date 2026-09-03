@@ -1,30 +1,82 @@
 ---
-description: Choose Cerbos or local RBAC and enforce resource actions through HAL links.
+description: Choose between Cerbos and local RBAC, and enforce resource actions through server-issued HAL links.
 ---
 
-# Authorization
+# Authorization & Access Control
 
-Authorization is separate from authentication and is a runtime-explicit choice between Cerbos and local database-backed RBAC.
+Authorization in ISLAMU Event determines *what* an authenticated identity is permitted to do. The platform provides a runtime choice between **Local Database-Backed RBAC** and an external **Cerbos Policy Decision Point (PDP)**.
 
-## Decision flow
+---
 
-1. Endpoint authorization establishes the broad access boundary.
-2. MediatR resource authorization evaluates the actual tenant, resource, action, and current state.
-3. The handler performs the domain transition only after authorization succeeds.
-4. The response exposes currently allowed follow-up actions in HAL `_links`.
+## Authorization Pipeline Flow
 
-Clients must not infer edit, delete, refund, check-in, or administration actions from local roles, claims, provider type, or cached state. Broad checks may guard a whole page or route, but resource mutation affordances come from the server response.
+Every mutation and sensitive query passes through a multi-stage, fail-closed authorization pipeline before reaching business logic:
 
-## Cerbos
+```mermaid
+graph TD
+    A[Incoming HTTP Request] --> B{Endpoint Policy Check}
+    B -- Denied --> X[401 Unauthorized / 403 Forbidden]
+    B -- Allowed --> C[MediatR Request Pipeline]
+    C --> D{Authorization Provider<br>Local RBAC vs. Cerbos}
+    D -- Denied / Unreachable --> X
+    D -- Allowed --> E[Handler Executes Domain Logic]
+    E --> F[Resource Assembler Computes HAL Links]
+    F --> G[Client Receives Resource + Affordance Links]
+```
 
-Cerbos runtime decisions use the gRPC PDP. Policy synchronization and administration are separate operational paths. When Cerbos is selected, PDP outage, missing policy, or tenant BYO-PDP failure denies access. ISLAMU Event does not silently fall back to local RBAC.
+1. **Endpoint Boundary**: Broad policy checks verify caller identity and minimum claims.
+2. **MediatR Pipeline**: The request evaluates the caller, tenant context, resource state, and requested action against policy rules.
+3. **Execution Gate**: Handlers only execute if authorization explicitly returns `Allow`.
+4. **HATEOAS Affordance Gating**: The response dynamically attaches allowed actions in HAL `_links` (e.g., `_links.edit`, `_links.refund`). The client renders UI buttons strictly based on the presence of these links.
 
-Verify `/_cerbos/health`, policy availability, the application authorization readiness check, and a real allow/deny resource decision. Switching to local RBAC is an explicit operator change, not an outage shortcut.
+---
 
-## Local RBAC
+## Choosing Your Authorization Provider
 
-Local RBAC uses the application's persisted role and resource model. It remains subject to tenant resolution, endpoint policy, current resource state, concurrency, and domain invariants. Selecting it does not authorize clients to manufacture actions absent from HAL.
+| Decision Factor | Local RBAC (`AUTHORIZATION_PROVIDER=local`) | Cerbos PDP (`AUTHORIZATION_PROVIDER=cerbos`) |
+|---|---|---|
+| **Ideal For** | Single-tenant communities, standard organizations, minimal resource footprint | Enterprise operators, dynamic policy authoring, audit-heavy deployments |
+| **Infrastructure** | **Zero extra containers**; runs in-process using primary database | Dedicated Cerbos container or external PDP cluster over gRPC |
+| **Latency** | Sub-millisecond (in-memory & direct database query) | 1–3 ms network round-trip via HTTP/2 cleartext (`h2c`) |
+| **Policy Updates** | Governed via software releases and database migrations | Decoupled policy file uploads via `cerbosctl` without rebuilding the app |
+| **Failure Mode** | Database down = app down | PDP down = **fails closed** (access strictly denied; no silent fallback) |
 
-## Failure handling
+> [!TIP]
+> **Our Recommendation:**
+> - **We recommend Local RBAC** for the vast majority of self-hosters. It has zero external dependencies, minimal RAM overhead, and satisfies standard community and multi-tenant security boundaries out of the box.
+> - **We recommend Cerbos** if you have dedicated security teams who write and version YAML policies independently of application code, or need centralized authorization across multiple external systems.
 
-Authorization failures use bounded ProblemDetails and do not disclose policy internals. Missing links and denied operations should be investigated through caller, tenant, target state, provider intent, and policy health. Never “fix” a denial by adding only a frontend role check.
+---
+
+## Local RBAC Overview
+
+When `AUTHORIZATION_PROVIDER=local` is set:
+- Evaluates permissions against user roles (`InstanceAdmin`, `TenantAdmin`, `OrganizationOwner`, `Member`, `Attendee`).
+- Automatically enforces multi-tenant boundaries via EF Core global query filters.
+- Fast, lightweight, and requires no external network calls or gRPC configuration.
+
+---
+
+## Cerbos PDP Overview
+
+When `AUTHORIZATION_PROVIDER=cerbos` is set:
+- Evaluates policies via high-performance gRPC requests to Cerbos port `3593`.
+- Requires Cerbos policies and schemas to be uploaded via `cerbosctl` (see [Coolify with Cerbos & Traefik](../self-hosting/coolify-cerbos-traefik.md)).
+- **Fail-Closed Guarantee**: If Cerbos becomes unreachable or returns an error, ISLAMU Event denies access immediately. It will **never** silently fall back to local RBAC, preventing accidental security elevation during infrastructure outages.
+
+---
+
+## The Golden Rule of Client UI Affordances
+
+> [!IMPORTANT]
+> **Never Check Roles in Frontend Code!**  
+> Clients (Blazor WebAssembly or third-party mobile apps) must never inspect user roles or JWT claims to decide whether to show an "Edit", "Delete", or "Refund" button.
+> 
+> The UI checks **only** if the action link exists in the server's response:
+> ```csharp
+> @if (Model.Links.ContainsKey("edit"))
+> {
+>     <MudButton Href="@Model.Links["edit"].Href">Edit Event</MudButton>
+> }
+> ```
+> If an event is locked, past due, or the user lacks permission, the server omits the link and the button disappears automatically.

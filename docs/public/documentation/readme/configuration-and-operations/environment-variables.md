@@ -1,154 +1,257 @@
 ---
-description: Comprehensive reference for all deployment and runtime environment variables.
+description: Comprehensive reference for all baseline, advanced, and profile-specific environment variables.
 ---
 
 # Environment Variables Reference
 
-ISLAMU Event is configured via standard POSIX environment variables, typically populated through a root `.env` file or injected securely via container orchestration. 
+ISLAMU Event follows **Convention over Configuration**. The platform includes sensible defaults for all advanced operational dials so that everyday self-hosters can launch a production instance with minimal friction.
 
-Use `.env.example` in the repository root as your baseline template. This document categorizes all available environment variables, default values, sensitivity levels, and operational impacts.
+> [!TIP]
+> **Baseline vs. Advanced Configuration:**
+> - **`.env.example` (Baseline):** Contains only the essential configuration keys needed to run a standard instance (URLs, database credentials, Keycloak secrets, legal identity, and local storage).
+> - **This Document (Exhaustive Reference):** Catalogs every supported environment variable across core services, advanced performance dials, and auxiliary service profiles. If a variable is marked `Advanced`, it is omitted from `.env.example` and uses its built-in default unless you explicitly override it.
 
 ---
 
 ## 1. Core Deployment & Networking
 
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `ASPNETCORE_ENVIRONMENT` | **Required** | `Production` | Runtime mode: `Production`, `Staging`, `Development`, or `Testing`. |
-| `API_HTTP_PORT` | Optional | `7039` | Internal HTTP port for `Explore.API`. |
-| `UI_HTTP_PORT` | Optional | `7002` | Internal HTTP port for `Explore.Blazor` (BFF). |
-| `PUBLIC_URL` | **Required** | None | Fully-qualified public HTTPS URL of your application (e.g., `https://events.example.org`). |
-| `DEPLOYMENT_MODE` | Optional | `SingleTenant` | Multi-tenancy mode: `SingleTenant` or `multi_tenant`. Must be set before first-run onboarding. |
-| `BFF_ADMIN_HOSTS` | Optional | None | Comma-separated list of dedicated admin hostnames (e.g., `admin.example.org`) to render the Instance Console. |
+| `ASPNETCORE_ENVIRONMENT` | **Baseline** | `Production` | Runtime mode: `Production`, `Staging`, `Development`, or `Testing`. |
+| `PUBLIC_URL` | **Baseline** | `http://localhost:7002` | Fully-qualified public HTTPS URL of your application (e.g., `https://events.example.org`). |
+| `API_HTTP_PORT` | **Baseline** | `7039` | Internal HTTP port for `Explore.API`. |
+| `UI_HTTP_PORT` | **Baseline** | `7002` | Internal HTTP port for `Explore.Blazor` (BFF). |
+| `KEYCLOAK_HTTP_PORT` | **Baseline** | `8080` | Internal HTTP port binding for Keycloak container. |
+| `MAILPIT_SMTP_PORT` | **Baseline** | `1025` | SMTP port binding for local Mailpit container. |
+| `MAILPIT_UI_PORT` | **Baseline** | `8025` | Webmail UI port binding for local Mailpit container. |
+| `DEPLOYMENT_MODE` | **Baseline** | `SingleTenant` | Multi-tenancy mode: `SingleTenant` or `multi_tenant`. Must be set before first-run onboarding. |
+| `BFF_ADMIN_HOSTS` | Advanced | None | Comma-separated list of dedicated admin hostnames (e.g., `admin.example.org`) to render the Instance Console. |
+
+> [!NOTE]
+> **We recommend:** Keep `DEPLOYMENT_MODE=SingleTenant` for individual community centers, mosques, and local non-profits. Use `multi_tenant` only if operating a multi-chapter umbrella organization hosting independent community spaces.
 
 ---
 
 ## 2. Database & Relational Persistence
 
-The platform supports PostgreSQL, SQLite, SQL Server, and MySQL/MariaDB through structured settings:
-
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `DATABASE_PROVIDER` | **Required** | `postgres` | Selected provider: `postgres`, `sqlite`, `sqlserver`, or `mysql`. |
-| `DATABASE_HOST` | Required (Split) | None | Hostname or IP of the database server. |
-| `DATABASE_PORT` | Optional | `5432` | Database port (`5432` for PostgreSQL, `1433` for SQL Server, `3306` for MySQL). |
-| `DATABASE_NAME` | Required | `islamu_event` | Target database name. |
-| `DATABASE_SCHEMA` | Optional | `public` | Schema namespace for PostgreSQL/SQL Server (clean table names inside it). |
-| `DATABASE_TLS_MODE` | Optional | `Prefer` | TLS verification mode: `Disable`, `Prefer`, or `Require`. |
-| `DATABASE_RUNTIME_USERNAME` | Required | None | Least-privilege credentials used by `Explore.API` for runtime queries. |
-| `DATABASE_RUNTIME_PASSWORD` | **Secret** | None | Password for runtime database user. |
-| `DATABASE_MIGRATOR_USERNAME` | Required | None | DDL-capable credentials used by `Event.MigrationService` to apply migrations. |
-| `DATABASE_MIGRATOR_PASSWORD` | **Secret** | None | Password for migration service database user. |
+| `DATABASE_PROVIDER` | **Baseline** | `PostgreSql` | Selected provider: `PostgreSql`, `Sqlite`, `SqlServer`, `MariaDb`, or `MySql`. |
+| `DATABASE_HOST` | **Baseline** | `postgres` | Hostname or IP of the database server. |
+| `DATABASE_PORT` | **Baseline** | `5432` | Database port (`5432` for PostgreSQL, `1433` for SQL Server, `3306` for MySQL). |
+| `DATABASE_NAME` | **Baseline** | `islamu_event_db` | Target database name. |
+| `DATABASE_SCHEMA` | **Baseline** | `islamu_event` | Schema namespace for PostgreSQL/SQL Server (clean table names inside it). |
+| `DATABASE_RUNTIME_USERNAME` | **Baseline** | None | Least-privilege credentials used by `Explore.API` for runtime queries. |
+| `DATABASE_RUNTIME_PASSWORD` | **Baseline (Secret)** | None | Password for runtime database user. |
+| `DATABASE_MIGRATOR_USERNAME` | **Baseline** | None | DDL-capable credentials used by `Event.MigrationService` to apply migrations. |
+| `DATABASE_MIGRATOR_PASSWORD` | **Baseline (Secret)** | None | Password for migration service database user. |
+| `DATABASE_TLS_MODE` | **Baseline** | `Prefer` | TLS verification mode: `Disable`, `Prefer`, or `Require`. |
+| `DATABASE_TRUST_SERVER_CERTIFICATE` | Advanced | `false` | Set `true` only in local development to trust self-signed TLS certificates. |
+
+> [!NOTE]
+> **We recommend:** Use PostgreSQL for multi-container production deployments. For lightweight, single-server setups with zero external infrastructure, use `DATABASE_PROVIDER=Sqlite` with the Standalone Docker image.
 
 ---
 
 ## 3. Identity Provider (Keycloak)
 
-Keycloak is the mandatory identity authority for user authentication:
+Keycloak is the authoritative identity provider for user authentication:
 
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `KEYCLOAK_URL` | **Required** | None | Public or reverse-proxied base URL of Keycloak (e.g., `https://auth.example.org`). |
-| `KEYCLOAK_REALM` | **Required** | `islamu` | Keycloak realm name. |
-| `KEYCLOAK_BLAZOR_CLIENT_ID` | **Required** | `event-blazor` | OIDC Confidential Client ID configured for the Blazor BFF. |
-| `KEYCLOAK_BLAZOR_CLIENT_SECRET` | **Secret** | None | 32-byte hex client secret generated for the BFF client. |
-| `KEYCLOAK_REQUIRE_HTTPS_METADATA`| Optional | `true` | Enforce HTTPS metadata validation for OIDC endpoints. |
+| `KEYCLOAK_URL` | **Baseline** | `http://localhost:8080` | Public or reverse-proxied base URL of Keycloak (e.g., `https://auth.example.org`). |
+| `KEYCLOAK_REALM` | **Baseline** | `islamu` | Keycloak realm name. |
+| `KEYCLOAK_BLAZOR_CLIENT_ID` | **Baseline** | `event-blazor` | OIDC Confidential Client ID configured for the Blazor BFF. |
+| `KEYCLOAK_BLAZOR_CLIENT_SECRET` | **Baseline (Secret)** | None | 32-byte hex client secret generated for the BFF client. |
+| `KEYCLOAK_DB_DATABASE` | **Baseline** | `keycloak` | Database name used by the Keycloak database container. |
+| `KEYCLOAK_DB_USERNAME` | **Baseline** | `keycloak` | Database username for Keycloak. |
+| `KEYCLOAK_DB_PASSWORD` | **Baseline (Secret)** | None | Password for Keycloak database user. |
+| `KEYCLOAK_ADMIN` | **Baseline** | `admin` | Initial Keycloak administrative user. |
+| `KEYCLOAK_ADMIN_PASSWORD` | **Baseline (Secret)** | None | Password for initial Keycloak administrative user. |
+| `KEYCLOAK_REQUIRE_HTTPS_METADATA` | Advanced | `true` | Enforce HTTPS metadata validation for OIDC endpoints. Set `false` only in local dev without TLS. |
+| `KEYCLOAK_BLAZOR_REDIRECT_URIS` | Advanced | None | Comma-separated list of allowed redirect URIs if overriding default discovery. |
+| `KEYCLOAK_BLAZOR_WEB_ORIGINS` | Advanced | None | Allowed CORS web origins for Keycloak client. |
 
 ---
 
 ## 4. Secret Authority Management
 
-The platform supports pluggable secret resolution via `Explore.Secrets`:
-
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `SECRET_PROVIDER` | **Required** | `Environment` | Provider authority: `Environment` (direct `.env` injection), `Infisical`, or `UserSecrets` (dev only). |
-| `INFISICAL_URL` | Optional | `https://app.infisical.com` | Infisical server URL if using Infisical. |
-| `INFISICAL_PROJECT_ID` | Optional | None | Target Infisical project UUID. |
-| `INFISICAL_CLIENT_ID` | Optional | None | Universal Auth Machine Client ID. |
-| `INFISICAL_CLIENT_SECRET` | **Secret** | None | Universal Auth Client Secret. |
-| `INFISICAL_ENV` | Optional | `prod` | Infisical environment slug (`prod`, `staging`, `dev`). |
+| `SECRET_PROVIDER` | **Baseline** | `Environment` | Provider authority: `Environment` (direct `.env` injection), `Infisical`, or `UserSecrets` (dev only). |
+| `INFISICAL_URL` | Advanced | `https://app.infisical.com` | Infisical server URL if using Infisical. |
+| `INFISICAL_PROJECT_ID` | Advanced | None | Target Infisical project UUID. |
+| `INFISICAL_CLIENT_ID` | Advanced | None | Universal Auth Machine Client ID. |
+| `INFISICAL_CLIENT_SECRET` | Advanced (Secret) | None | Universal Auth Client Secret. |
+| `INFISICAL_ENV` | Advanced | `prod` | Infisical environment slug (`prod`, `staging`, `dev`). |
+
+> [!NOTE]
+> **We recommend:** Stick with `SECRET_PROVIDER=Environment` for straightforward self-hosting. Use `Infisical` only if you manage organizational secrets centrally across multiple servers.
 
 ---
 
-## 5. Storage Providers (Media & Avatars)
+## 5. Storage Providers (Local & Cloud S3)
 
-Configure local filesystem storage or S3-compatible cloud storage:
-
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `STORAGE_PROVIDER` | Optional | `local` | Storage provider: `local` or `s3`. |
-| `STORAGE_LOCAL_ROOTPATH` | Optional | `/app/storage-data/local` | Filesystem directory used when `STORAGE_PROVIDER=local`. |
-| `STORAGE_S3_ENDPOINT` | Optional | None | S3 API endpoint (e.g., `https://s3.amazonaws.com` or MinIO URL). |
-| `STORAGE_S3_BUCKET_NAME` | Optional | None | Dedicated bucket name for platform uploads. |
-| `STORAGE_S3_ACCESS_KEY_ID` | **Secret** | None | S3 Access Key ID. |
-| `STORAGE_S3_SECRET_ACCESS_KEY` | **Secret** | None | S3 Secret Access Key. |
-| `STORAGE_S3_REGION` | Optional | `us-east-1` | S3 Region identifier. |
-| `STORAGE_S3_FORCE_PATH_STYLE` | Optional | `true` | Set `true` for MinIO / self-hosted S3; `false` for AWS S3. |
+| `STORAGE_PROVIDER` | **Baseline** | `local` | Storage provider: `local` or `s3`. |
+| `STORAGE_LOCAL_ROOTPATH` | **Baseline** | `/app/storage-data/local` | Filesystem directory used when `STORAGE_PROVIDER=local`. |
+| `STORAGE_S3_ENDPOINT` | Advanced | None | S3 API endpoint (e.g., `https://s3.amazonaws.com` or MinIO URL). |
+| `STORAGE_S3_BUCKET_NAME` | Advanced | None | Dedicated bucket name for platform uploads. |
+| `STORAGE_S3_ACCESS_KEY_ID` | Advanced (Secret) | None | S3 Access Key ID. |
+| `STORAGE_S3_SECRET_ACCESS_KEY` | Advanced (Secret) | None | S3 Secret Access Key. |
+| `STORAGE_S3_REGION` | Advanced | `us-east-1` | S3 Region identifier. |
+| `STORAGE_S3_FORCE_PATH_STYLE` | Advanced | `true` | Set `true` for MinIO / self-hosted S3; `false` for AWS S3. |
+
+> [!NOTE]
+> **We recommend:** Use `local` storage with a mounted volume for single-node deployments. Use `s3` with Cloudflare R2 or MinIO for multi-replica or high-traffic event media hosting.
 
 ---
 
-## 6. Email (SMTP & Notifications)
+## 6. Email (SMTP & Outbox)
 
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `EMAIL_SMTP_HOST` | **Required** | None | Outgoing SMTP server hostname. |
-| `EMAIL_SMTP_PORT` | **Required** | `587` | SMTP port (`587` for STARTTLS, `465` for SSL, `1025` for local Mailpit). |
-| `EMAIL_FROM_ADDRESS` | **Required** | None | Default sender email address (e.g., `events@example.org`). |
-| `EMAIL_FROM_NAME` | Optional | `ISLAMU Event` | Default sender display name. |
-| `SMTP_USERNAME` | **Secret** | None | SMTP authentication username. |
-| `SMTP_PASSWORD` | **Secret** | None | SMTP authentication password. |
-| `EMAIL_SMTP_SECURITY` | Optional | `StartTls` | Security mode: `None`, `Auto`, `SslOnConnect`, `StartTls`, `StartTlsWhenAvailable`. |
+| `EMAIL_SMTP_HOST` | **Baseline** | `mailpit` | Outgoing SMTP server hostname (`mailpit` in local Compose). |
+| `EMAIL_SMTP_PORT` | **Baseline** | `1025` | SMTP port (`587` for STARTTLS, `465` for SSL, `1025` for Mailpit). |
+| `EMAIL_FROM_ADDRESS` | **Baseline** | `noreply@example.org` | Default sender email address. |
+| `EMAIL_FROM_NAME` | **Baseline** | `ISLAMU Event` | Default sender display name. |
+| `SMTP_USERNAME` | **Baseline (Secret)** | None | SMTP authentication username. |
+| `SMTP_PASSWORD` | **Baseline (Secret)** | None | SMTP authentication password. |
+| `EMAIL_SMTP_SECURITY` | **Baseline** | `None` | Security mode: `None`, `Auto`, `SslOnConnect`, `StartTls`, `StartTlsWhenAvailable`. |
 
 ---
 
-## 7. Outgoing Webhooks & Svix
+## 7. Privacy Erasure Authority (GDPR & Anti-Resurrection)
 
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `WEBHOOKS_PROVIDER` | Optional | `Local` | Outgoing delivery engine: `Disabled`, `Local`, `Svix`, `Composite`, or `DryRun`. |
-| `SVIX_SERVER_URL` | Optional | `http://svix:8071` | URL of self-hosted Svix instance when `WEBHOOKS_PROVIDER=Svix`. |
-| `SVIX_AUTH_TOKEN` | **Secret** | None | Administrative auth token for Svix API. |
+| `ERASURE_TOPOLOGY` | **Baseline** | `EmbeddedSqlite` | Storage topology: `EmbeddedSqlite` (dedicated local file), `CoLocated`, or `ExternalDatabase`. |
+| `ERASURE_EMBEDDED_PATH` | **Baseline** | `/app/data/privacy_erasure_authority.db` | File path when `ERASURE_TOPOLOGY=EmbeddedSqlite`. |
+| `ERASURE_WRITER_REPLICA_COUNT` | Advanced | `1` | Maximum write concurrency for the embedded authority database. |
+| `ERASURE_BUSY_TIMEOUT_SECONDS` | Advanced | `30` | SQLite busy timeout before serializable retry. |
+| `DATABASE_ERASURE_HOST` | Advanced | None | Hostname if using `ExternalDatabase` topology. |
+| `DATABASE_ERASURE_PORT` | Advanced | `5432` | Port for external erasure authority database. |
+| `DATABASE_ERASURE_NAME` | Advanced | None | Database name for external erasure authority. |
+| `DATABASE_ERASURE_RUNTIME_USERNAME` | Advanced | None | Least-privilege runtime user for external erasure DB. |
+| `DATABASE_ERASURE_RUNTIME_PASSWORD` | Advanced (Secret) | None | Password for runtime user on external erasure DB. |
+
+> [!NOTE]
+> **We recommend:** Keep `EmbeddedSqlite`. It runs with zero operational overhead and guarantees strict GDPR anti-resurrection isolation without requiring a second database server.
 
 ---
 
-## 8. Authorization & Cerbos PDP
+## 8. First-Run Setup & Administrator Bootstrap
 
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `AUTHORIZATION_PROVIDER` | Optional | `local` | Authorization mode: `local` (in-database RBAC) or `cerbos`. |
-| `CERBOS_GRPC_ENDPOINT` | Optional | `http://cerbos:3593` | gRPC endpoint of the external Cerbos Policy Decision Point. |
-| `CERBOS_USE_TLS` | Optional | `false` | Enable TLS when communicating with external Cerbos PDP over gRPC. |
-| `CERBOS_PLAINTEXT_MODE` | Optional | `true` | Set `true` for internal container networks (`h2c`); `false` when TLS is active. |
+| `SETUP_SECRET` | **Baseline** | None | Pre-shared secret to unlock `/setup`. If left blank, generated automatically in volume. |
+| `INSTANCE_BOOTSTRAP_MODE` | **Baseline** | `Interactive` | Mode: `Interactive` (web wizard at `/setup`) or `ConfiguredAdministrator` (headless). |
+| `INSTANCE_BOOTSTRAP_ADMIN_PROVIDER` | Advanced | None | Required if headless: `keycloak` or `atproto`. |
+| `INSTANCE_BOOTSTRAP_ADMIN_SUBJECT` | Advanced | None | Required if headless: exact user ID subject claim issued by Keycloak (`sub` claim). |
+| `INSTANCE_BOOTSTRAP_BINDING_GENERATION` | Advanced | None | Required if headless: positive integer generation counter. |
+| `INSTANCE_BOOTSTRAP_ADMIN_EMAIL` | Advanced | None | Administrator email address for headless provisioning. |
 
 ---
 
-## 9. Privacy Erasure Authority Topology
+## 9. Operator Legal Identity (Production Gate)
 
-Enforces GDPR right-to-erasure and anti-resurrection fences:
+Mandatory legal identity fields required before production traffic can be served:
 
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `PRIVACY_ERASURE__AUTHORITY__TOPOLOGY` | **Required** | `EmbeddedSqlite` | Storage mode: `EmbeddedSqlite` (dedicated local SQLite file), `CoLocated` (in primary DB), or `ExternalDatabase`. |
-| `PRIVACY_ERASURE__AUTHORITY__CONNECTIONSTRING` | Optional | None | Connection string if using `ExternalDatabase` topology. |
+| `INSTANCE__OPERATORIDENTITY__OPERATORID` | **Baseline** | None | UUIDv7 unique identifier for the operating legal entity. |
+| `INSTANCE__OPERATORIDENTITY__PUBLICNAME` | **Baseline** | None | Public brand name of the deploying organization. |
+| `INSTANCE__OPERATORIDENTITY__LEGALNAME` | **Baseline** | None | Full legal registered entity name. |
+| `INSTANCE__OPERATORIDENTITY__OFFICIALINSTANCE` | **Baseline** | `false` | True only for the canonical upstream project deployment. |
+| `INSTANCE__OPERATORIDENTITY__OPERATORKIND` | **Baseline** | `community` | Operator kind: `community`, `regional`, or `commercial`. |
+| `INSTANCE__OPERATORIDENTITY__JURISDICTION` | **Baseline** | `US-CA` | Legal jurisdiction code (e.g. `US-CA`, `GB`, `FR`). |
+| `INSTANCE__OPERATORIDENTITY__PUBLICCONTACTEMAIL` | **Baseline** | None | Public contact email for legal and privacy inquiries. |
+| `INSTANCE__OPERATORIDENTITY__WEBSITEURL` | **Baseline** | None | Public website URL of the operating organization. |
+| `INSTANCE__OPERATORIDENTITY__LEGALNOTICEURL` | **Baseline** | None | Public URL for legal notice / imprint. |
+| `INSTANCE__OPERATORIDENTITY__TERMSURL` | **Baseline** | None | Public URL for Terms of Service. |
+| `INSTANCE__OPERATORIDENTITY__PRIVACYURL` | **Baseline** | None | Public URL for Privacy Policy. |
 
 ---
 
-## 10. Headless Onboarding & Legal Identity
+## 10. Advanced Authorization (Cerbos PDP)
 
-Required for non-interactive administrative bootstrapping and legal compliance:
+These variables are optional and apply when using external Cerbos authorization instead of built-in Local RBAC:
 
-| Variable | Requirement | Default | Description |
+| Variable | Status | Default | Description |
 |---|---|---|---|
-| `SETUP_SECRET` | Optional | None | Pre-shared secret to unlock `/setup`. If omitted, generated automatically in volume. |
-| `INSTANCE_BOOTSTRAP_MODE` | Optional | `Interactive` | Mode: `Interactive` (web wizard) or `ConfiguredAdministrator` (headless). |
-| `INSTANCE_BOOTSTRAP_ADMIN_PROVIDER` | Optional | None | Required if headless: `keycloak` or `atproto`. |
-| `INSTANCE_BOOTSTRAP_ADMIN_SUBJECT` | Optional | None | Required if headless: exact user ID subject claim issued by Keycloak or ATProto DID. |
-| `INSTANCE_BOOTSTRAP_BINDING_GENERATION` | Optional | None | Required if headless: positive integer generation counter. |
-| `INSTANCE_BOOTSTRAP_ADMIN_EMAIL` | Optional | None | Administrator email address. |
-| `INSTANCE__OPERATORIDENTITY__OPERATORID` | **Required** | None | UUIDv7 unique identifier for the operating legal entity. |
-| `INSTANCE__OPERATORIDENTITY__PUBLICNAME` | **Required** | None | Public brand name of the deploying organization. |
-| `INSTANCE__OPERATORIDENTITY__LEGALNAME` | **Required** | None | Full legal registered entity name. |
-| `INSTANCE__OPERATORIDENTITY__PUBLICCONTACTEMAIL` | **Required** | None | Public contact email for legal and compliance inquiries. |
-| `INSTANCE__OPERATORIDENTITY__TERMSURL` | **Required** | None | Public URL for terms of service. |
-| `INSTANCE__OPERATORIDENTITY__PRIVACYURL` | **Required** | None | Public URL for privacy policy. |
+| `AUTHORIZATION_PROVIDER` | Advanced | `local` | Authorization mode: `local` (built-in RBAC) or `cerbos`. |
+| `CERBOS_GRPC_ENDPOINT` | Advanced | `http://cerbos:3593` | gRPC endpoint of the external Cerbos Policy Decision Point. |
+| `CERBOS_USE_TLS` | Advanced | `false` | Enable TLS when communicating with external Cerbos over gRPC. |
+| `CERBOS_PLAINTEXT_MODE` | Advanced | `true` | Set `true` for internal container networks (`h2c`); `false` when TLS is active. |
+
+> [!NOTE]
+> **We recommend:** Use `AUTHORIZATION_PROVIDER=local` for simplicity and lowest resource overhead. Use `cerbos` only for large multi-tenant deployments requiring dynamic runtime policy overrides.
+
+---
+
+## 11. Advanced Outgoing Webhooks (Svix Infrastructure)
+
+Optional dials when operating the `webhooks` Compose profile with self-hosted Svix:
+
+| Variable | Status | Default | Description |
+|---|---|---|---|
+| `WEBHOOKS_PROVIDER` | Advanced | `Disabled` | Webhook delivery mode: `Disabled`, `Local`, `Svix`, `Composite`, or `DryRun`. |
+| `SVIX_SERVER_URL` | Advanced | `http://svix:8071` | URL of the Svix instance when `WEBHOOKS_PROVIDER=Svix`. |
+| `SVIX_AUTH_TOKEN` | Advanced (Secret) | None | Administrative auth token for Svix API. |
+| `SVIX_QUEUE_TYPE` | Advanced | `redis` | Svix internal queue: `redis` or `memory`. |
+| `SVIX_CACHE_TYPE` | Advanced | `redis` | Svix internal cache: `redis` or `memory`. |
+| `SVIX_REDIS_DSN` | Advanced | `redis://redis:6379` | Redis connection URL for Svix workers. |
+| `SVIX_JWT_SECRET` | Advanced (Secret) | None | JWT signing secret for Svix tokens. |
+
+---
+
+## 12. Auxiliary Service Profiles (Optional Extensions)
+
+These variables configure optional third-party integrations enabled via Docker Compose profiles:
+
+### Formbricks (Feedback & Survey Mirror Stack)
+*Enabled via `docker compose --profile formbricks up -d`*:
+
+| Variable | Status | Default | Description |
+|---|---|---|---|
+| `FORMBRICKS_HTTP_PORT` | Advanced | `3005` | Formbricks web application port. |
+| `FORMBRICKS_WEBAPP_URL` | Advanced | `http://localhost:3005` | Public URL for Formbricks app. |
+| `FORMBRICKS_DATABASE_NAME` | Advanced | `formbricks` | Database name for Formbricks state. |
+| `FORMBRICKS_DATABASE_PASSWORD` | Advanced (Secret) | None | Database password for Formbricks. |
+| `FORMBRICKS_NEXTAUTH_SECRET` | Advanced (Secret) | None | NextAuth encryption secret (`openssl rand -hex 32`). |
+| `FORMBRICKS_ENCRYPTION_KEY` | Advanced (Secret) | None | Formbricks data encryption key (`openssl rand -hex 32`). |
+| `FORMBRICKS_CRON_SECRET` | Advanced (Secret) | None | Internal cron secret for periodic survey triggers. |
+
+### Weblate (Crowdsourced Translation Server)
+*Enabled via `docker compose --profile localization up -d`*:
+
+| Variable | Status | Default | Description |
+|---|---|---|---|
+| `WEBLATE_HTTP_PORT` | Advanced | `8083` | Weblate web interface port. |
+| `WEBLATE_SITE_DOMAIN` | Advanced | `localhost:8083` | Domain name for Weblate. |
+| `WEBLATE_ADMIN_NAME` | Advanced | `Admin` | Initial Weblate administrator username. |
+| `WEBLATE_ADMIN_EMAIL` | Advanced | `admin@example.org` | Initial Weblate administrator email. |
+| `WEBLATE_ADMIN_PASSWORD` | Advanced (Secret) | None | Initial Weblate administrator password. |
+| `WEBLATE_POSTGRES_PASSWORD` | Advanced (Secret) | None | Database password for Weblate database container. |
+
+### External Moderation (Coop & Osprey)
+*Enabled via `docker compose --profile moderation up -d`*:
+
+| Variable | Status | Default | Description |
+|---|---|---|---|
+| `REPORTING_MODE` | Advanced | `LocalOnly` | Mode: `LocalOnly` (built-in in-database moderation), `Coop`, `Osprey`, or `Composite`. |
+| `REPORTING_COOP_ENDPOINT_URL` | Advanced | `http://coop:8080` | Endpoint URL of Coop server. |
+| `REPORTING_COOP_API_KEY` | Advanced (Secret) | None | API key for Coop authentication. |
+| `REPORTING_OSPREY_ENDPOINT_URL` | Advanced | None | Endpoint URL of Osprey coordinator. |
+| `REPORTING_OSPREY_API_KEY` | Advanced (Secret) | None | API key for Osprey coordinator. |
+
+### Listmonk (Newsletter & Subscriber Sync)
+
+| Variable | Status | Default | Description |
+|---|---|---|---|
+| `LISTMONK_ENABLED` | Advanced | `false` | Enable automatic subscriber synchronization on registration. |
+| `LISTMONK_INSTANCE_URL` | Advanced | None | URL of the external Listmonk instance. |
+| `LISTMONK_DEFAULT_LIST_ID` | Advanced | `0` | Default mailing list ID for event attendees. |
+| `LISTMONK_API_USERNAME` | Advanced | None | Listmonk API username. |
+| `LISTMONK_API_KEY` | Advanced (Secret) | None | Listmonk API token. |

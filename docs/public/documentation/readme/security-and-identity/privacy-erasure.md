@@ -1,39 +1,66 @@
 ---
-description: >-
-  Operate the anti-resurrection authority, receipt flow, provider work, and
-  recovery topology.
+description: Understand the GDPR Right-to-Erasure workflow, anti-resurrection fences, and authority storage topologies.
 ---
 
-# Privacy Erasure
+# Privacy Erasure & GDPR Compliance
 
-Privacy erasure is an authority-first durable workflow designed to prevent deleted subject data from returning after retries or a stale-primary restore.
+Under data privacy regulations such as the GDPR, when an attendee or user requests account deletion, the platform must guarantee that their personal identifiable information (PII) is completely destroyed and **cannot be accidentally resurrected** by database restore operations or distributed retries.
 
-## State flow
+ISLAMU Event implements an **Authority-First, Anti-Resurrection Architecture** to enforce this guarantee.
 
-1. Establish a durable user anti-resurrection fence.
-2. Settle local erasure state in one serializable transaction.
-3. Continue external provider cleanup asynchronously.
-4. Return `202 Accepted` with a one-time receipt.
-5. Replay authority state during startup before serving traffic.
+---
 
-The API uses `DELETE /api/user` with a UUIDv7 `Idempotency-Key`. The response supplies `Location: /api/privacy-erasure/status` and `Retry-After: 5`. Status requests use `Authorization: ErasureReceipt <receipt>`.
+## The Anti-Resurrection Workflow
 
-Receipts are private, no-store capabilities. Missing, invalid, expired, or wrong receipts collapse to the same unauthorized response and must not reveal whether a subject exists.
+The erasure process follows a strict sequence to prevent data leaks or partial deletions:
 
-## Authority topologies
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User / Data Subject
+    participant API as Explore.API
+    participant Fence as Memory/Redis Fence
+    participant AuthStore as Privacy Erasure Authority
+    participant AppDB as Primary Application DB
+    participant Outbox as Provider Cleanup Outbox
 
-| Topology           | Store                        | Operational boundary                                      |
-| ------------------ | ---------------------------- | --------------------------------------------------------- |
-| `EmbeddedSqlite`   | Dedicated local SQLite file  | Smallest path; back up separately; one writer/API replica |
-| `CoLocated`        | Primary PostgreSQL or SQLite | Simpler, without independent stale-primary protection     |
-| `ExternalDatabase` | Separate PostgreSQL          | Multi-replica/HA and independent recovery                 |
+    User->>API: DELETE /api/user (Idempotency-Key: UUIDv7)
+    API->>Fence: Establish Anti-Resurrection Fence (blocks new logins/writes)
+    API->>AuthStore: Record Typed Immutable Erasure Fact (Monotonic Counter)
+    API->>AppDB: Serializable Settlement (Purge PII, anonymize foreign keys)
+    API->>Outbox: Enqueue async cleanup (Keycloak user, avatars in S3, Stripe customer)
+    API-->>User: 202 Accepted (Location: /api/privacy-erasure/status + ErasureReceipt)
+```
 
-Unsupported combinations fail before sockets or database I/O and do not reveal connection details.
+1. **Anti-Resurrection Fence**: An immediate barrier is established in distributed cache. Any concurrent or subsequent requests with this user ID are blocked instantly.
+2. **Authority Fact**: The erasure event is recorded in a dedicated, isolated authority store *before* local data disposal begins.
+3. **Serializable Settlement**: In one atomic transaction, the user’s personal data is scrubbed, registrations are anonymized, and foreign keys are safely unlinked.
+4. **Asynchronous External Cleanup**: Background outbox workers delete the user from Keycloak, purge media from S3/local storage, and notify external payment gateways.
+5. **Single-Use Receipt**: The user receives a `202 Accepted` response with an opaque `ErasureReceipt` capability token. The receipt can be used to query `/api/privacy-erasure/status` until completion, after which all trace of the receipt is destroyed.
 
-## Recovery
+---
 
-The erasure authority is not ordinary application data. Preserve it according to topology, restore it before opening traffic, and verify startup replay re-establishes fences. Configuration manifests exclude subject data, erasure data, users, payments, operational state, and secrets; they do not replace this backup.
+## Choosing an Authority Storage Topology
 
-## Acceptance
+The Privacy Erasure Authority store must be configured in your environment via `PRIVACY_ERASURE__AUTHORITY__TOPOLOGY`:
 
-Test idempotent repeated requests, indistinguishable invalid receipts, restart replay, pending provider work, and a stale-primary restore against the preserved authority. Keep receipts, subject identifiers, provider payloads, and PII out of telemetry and support evidence.
+| Topology | Storage Mechanism | Best Fit | Primary Constraint |
+|---|---|---|---|
+| **`EmbeddedSqlite`** | Dedicated SQLite database at `/app/data/privacy_erasure_authority.db` | Single-server Compose and Standalone | Single API container writer; requires volume persistence |
+| **`CoLocated`** | Shared table schema within primary PostgreSQL DB | Minimal dev environments | No independent protection if primary DB is restored from stale backup |
+| **`ExternalDatabase`** | Completely isolated external PostgreSQL instance | High-availability enterprise clusters | Requires managing a secondary PostgreSQL database |
+
+> [!TIP]
+> **Our Recommendation:**
+> - **We recommend `EmbeddedSqlite`** for standard self-hosters. It runs with zero operational overhead, uses dedicated storage, and guarantees that even if your primary PostgreSQL database is restored to a state from last week, the SQLite erasure store will prevent previously deleted users from being resurrected!
+> - **We recommend `ExternalDatabase`** only for enterprise multi-node clusters running multiple API replicas that cannot share a local SQLite file.
+
+---
+
+## The Golden Rule of Disaster Recovery
+
+> [!CAUTION]
+> **Never Restore the Primary Database Without the Erasure Store!**  
+> If you restore an older database snapshot (e.g., from 3 days ago) to recover from corruption, any user who requested account deletion yesterday would normally be restored ("resurrected") into the database.
+> 
+> When ISLAMU Event starts, the **`PrivacyErasureStartupGate`** automatically replays all facts from the Privacy Erasure Authority against the application database before HTTP traffic is allowed. If an erased user is found in the restored database, the gate immediately re-purges their records and re-establishes the anti-resurrection fence!

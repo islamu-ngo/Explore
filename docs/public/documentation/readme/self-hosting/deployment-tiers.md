@@ -19,6 +19,20 @@ ISLAMU Event is architected to scale from a single lightweight VM to a distribut
 | **Storage** | Local volume mount | S3-Compatible (MinIO / R2 / S3) | Distributed S3 with Multi-Region CDN |
 | **Minimum Hardware** | 1 vCPU, 2 GB RAM | 4 vCPUs, 8 GB RAM | 8+ vCPUs, 16+ GB RAM (per node) |
 
+> [!TIP]
+> **⚙️ Real-World Reference Setup:**
+> Our baseline community reference deployment runs comfortably on an entry-level **Hetzner CX22 cloud server** (~$4.50/month):
+> - **Hardware:** 2 vCPUs, 4 GB RAM, 40 GB NVMe SSD
+> - **Average Resource Usage:** ~1.4 GB RAM, 10–25% CPU utilization
+> - **Stack Running Comfortably:**
+>   - `event-api` (ASP.NET Core REST API & Background Workers)
+>   - `event-ui` (Blazor WebAssembly BFF)
+>   - `postgres` (Primary PostgreSQL 16 database)
+>   - `keycloak` (Identity Provider OIDC container)
+>   - SQLite Privacy Erasure Authority store
+>   - Caddy Reverse Proxy (Auto-HTTPS)
+> - **Workload Handled:** Comfortably supports 2,500+ monthly attendees, 500 peak ticket check-ins per event weekend, and continuous background outbox email delivery with sub-45ms API responses.
+
 ---
 
 ## Tier 1: Humble (Single VM / Self-Hosted)
