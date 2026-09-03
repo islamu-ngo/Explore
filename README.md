@@ -12,9 +12,7 @@ ISLAMU Event powers ISLAMU’s Islamic events instance, but the software itself 
 
 > Pre-1.0 notice: ISLAMU Event is still before v1. Breaking changes may happen between releases. We avoid data-loss-class breaks where possible, but configuration changes may be required.
 
-Operator references: [Official Docs][official-docs-link] · [Self-hosting](docs/internal/SELF_HOSTING.md) ·
-[Configuration](docs/internal/CONFIGURATION.md) · [Configuration Manifest](docs/internal/CONFIGURATION_MANIFEST.md) ·
-[Secrets](docs/internal/SECRETS.md) · [Troubleshooting](docs/internal/TROUBLESHOOTING.md)
+Operator references: [Official Docs](https://islamu.gitbook.io/islamu-event) · [5-Min Quickstart](https://islamu.gitbook.io/islamu-event/documentation/readme/getting-started/5-minute-quickstart) · [Self-Hosting](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting) · [Deployment Tiers](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/deployment-tiers) · [Docker Compose](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/docker-compose) · [Configuration](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/environment-variables) · [Secrets](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/secrets) · [Troubleshooting](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/troubleshooting-and-health)
 
 ![GitHub Workflow Status][github-workflow-status-shield]
 [![GitHub License][github-license-shield]][github-license-link]
@@ -25,7 +23,7 @@ Operator references: [Official Docs][official-docs-link] · [Self-hosting](docs/
 [![Discord][discord-shield]][discord-link]
 [![Documentation][docs-shield]][official-docs-link]
 
-[**ISLAMU Islamic Events Instance**][islamu-platform] · [**Official Docs (GitBook)**][official-docs-link] · [**Quick Start**](#quick-start) · [**Docs Hub**](docs/README.md) · [**Internal Specs**](docs/internal/index.md) · [**Roadmap**][roadmap-link]
+[**ISLAMU Live Instance**][islamu-platform] · [**Official Docs (GitBook)**](https://islamu.gitbook.io/islamu-event) · [**5-Minute Quickstart**](https://islamu.gitbook.io/islamu-event/documentation/readme/getting-started/5-minute-quickstart) · [**Self-Hosting**](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting) · [**Roadmap**][roadmap-link] · [**Developer Guide**](#-documentation-for-developers--contributors)
 
 </div>
 
@@ -47,7 +45,7 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **📱 Mobile-First Experience:** Fast, responsive experience across mobile and desktop, installable directly to your home screen as an app (PWA)
 - **✅ Easy RSVP & Waitlists:** Reserve your spot in seconds, select specific sessions, and automatically join waitlists for sold-out events
 - **🎟️ Clear Ticket Options:** Browse free and paid events with upfront ticket tiers, live availability, and no hidden surprises
-- **💳 Secure Payments:** Pay for your event tickets safely directly on our platform with transparent pricing, secure checkout, and instant digital tickets — see [Payments][payments-doc]
+- **💳 Secure Payments:** Pay for your event tickets safely directly on our platform with transparent pricing, secure checkout, and instant digital tickets — see [Payments](https://islamu.gitbook.io/islamu-event/documentation/readme/events-and-ticketing/paid-events-and-payouts)
 - **🤖 AI Event Assistant:** Ask questions in natural language, discover events tailored to your interests, and get quick help drafting your registrations
 
 ### Event Organizers
@@ -55,69 +53,74 @@ The public ISLAMU instance is Islamic-focused, but the software itself is **purp
 - **📅 Comprehensive Event Builder:** Organize single-day workshops, multi-day conferences, or recurring programs with multi-track agendas, speaker profiles, and multi-language support
 - **📊 Registration & Attendee Controls:** Set capacity limits, customize registration approval workflows, manage automated waitlists, and configure public or unlisted visibility
 - **👥 Team Collaboration:** Invite co-organizers, assign granular roles (Owner, Admin, Editor, Viewer), and manage organization permissions collaboratively
-- **🧩 Custom Registration Fields & Forms:** Collect attendee details with custom fields, single/multi-select questions, and reusable event templates — see [Custom Properties][custom-properties-doc]
-- **🔔 Attendee Communication & Webhooks:** Keep attendees informed with templated emails, in-app notifications, and outgoing webhooks to sync with external tools — see [Notifications][notifications-doc], [Webhooks][webhooks-doc], and [Email Notifications][email-notifications-doc]
-- **📇 Consensual Contact Sharing:** Help attendees network responsibly with explicit, opt-in contact sharing that attendees can revoke at any time — see [Contact Sharing][contact-sharing-doc]
-- **🎟️ Flexible Paid & Free Ticketing:** Create multiple ticket tiers, early-bird pricing, group rates, and shared capacity pools. Draft, clone, and preview your ticket catalog before publishing
-- **💳 Direct Payouts & Automated Financials:** Sell tickets with complete peace of mind. Connect your Stripe account to receive direct payouts into your bank account with no platform intermediary holding your funds. The platform handles all attendee transactions, receipts, fee calculations, and automated refund management — see [Payments][payments-doc]
-- **📬 Audience Growth:** Automatically sync registered attendees into your mailing list or newsletter (such as [Listmonk][listmonk-link]) to build lasting community engagement
+- **🧩 Custom Registration Fields & Forms:** Collect attendee details with custom fields, single/multi-select questions, and reusable event templates — see [Custom Properties](https://islamu.gitbook.io/islamu-event/documentation/readme/events-and-ticketing/custom-properties)
+- **🔔 Attendee Communication & Webhooks:** Keep attendees informed with templated emails, in-app notifications, and outgoing webhooks to sync with external tools — see [In-App Notifications](https://islamu.gitbook.io/islamu-event/documentation/readme/communications-and-notifications/in-app-notifications), [Webhooks](https://islamu.gitbook.io/islamu-event/documentation/readme/integrations-and-ai/webhooks), and [Email SMTP](https://islamu.gitbook.io/islamu-event/documentation/readme/communications-and-notifications/email-smtp)
+- **📇 Consensual Contact Sharing:** Help attendees network responsibly with explicit, opt-in contact sharing that attendees can revoke at any time — see [Ticketing & Check-In](https://islamu.gitbook.io/islamu-event/documentation/readme/events-and-ticketing/ticketing-and-check-in)
+- **🎟️ Flexible Paid & Free Ticketing:** Create multiple ticket tiers, early-bird pricing, group rates, and shared capacity pools. Draft, clone, and preview your ticket catalog before publishing — see [Ticketing & Check-In](https://islamu.gitbook.io/islamu-event/documentation/readme/events-and-ticketing/ticketing-and-check-in)
+- **💳 Direct Payouts & Automated Financials:** Sell tickets with complete peace of mind. Connect your Stripe account to receive direct payouts into your bank account with no platform intermediary holding your funds. The platform handles all attendee transactions, receipts, fee calculations, and automated refund management — see [Paid Events & Payouts](https://islamu.gitbook.io/islamu-event/documentation/readme/events-and-ticketing/paid-events-and-payouts)
+- **📬 Audience Growth:** Automatically sync registered attendees into your mailing list or newsletter (such as [Listmonk](https://islamu.gitbook.io/islamu-event/documentation/readme/communications-and-notifications/listmonk)) to build lasting community engagement
 - **🤖 AI Event Co-Pilot:** Draft compelling event descriptions, generate relevant tags, and refine schedules using AI suggestions that you review and approve before publishing
-- **🌍 Broader Reach via Federation:** Publish once to broadcast your events across participating federated platforms, with optional support for owning your event data directly on your personal data server (PDS via AT Protocol)
+- **🌍 Broader Reach via Federation:** Publish once to broadcast your events across participating federated platforms, with optional support for owning your event data directly on your personal data server (PDS via [AT Protocol & Bluesky Jetstream](https://islamu.gitbook.io/islamu-event/documentation/readme/federation-and-open-protocols/at-protocol-and-bluesky-jetstream))
 
 ### Platform Owners & Self-Hosters
 
 - **🆓 100% Free & Open Source:** No feature paywalls, telemetry traps, or enterprise tiers. Licensed under AGPL-3.0-or-later
-- **🛡️ Absolute Data Sovereignty:** Self-host on your own infrastructure (Docker, Coolify, Aspire, On-Prem) with total control over user and attendee data
-- **🐳 Flexible Deployment Topologies:** Deploy as a single lightweight container (`Event.Standalone`) with embedded SQLite, a split Docker Compose topology, or locally via .NET Aspire
-- **💼 Multi-Tenancy:** Run as a dedicated single-tenant instance or a multi-tenant SaaS platform with isolated domains and branding at runtime without code changes
-- **🛠️ White-Label Control:** Fully customizable branding, domains, logos, navigation links, and policies per tenant
-- **💳 Zero-Custody Payments & Legal Protection:** Stripe Connect handles all payment processing, compliance, and payouts directly between attendees and organizers. The legal transaction is strictly between attendee and organizer—the operator never touches card data (zero PCI liability) nor holds attendee funds. Operators simply supply platform legal terms (Terms of Service, privacy policy) and can disable paid ticketing entirely at any time — see [Payments][payments-doc]
-- **🔧 Admin Hierarchy:** Instance admins, tenant admins, and organization admins with cascading settings
-- **🛡️ Built-in Moderation & Verification:** Moderation queues, organizer verification workflows, and structured appeal paths — see [Governance][governance-doc] and [Authorization][authorization-doc]
-- **🔌 Model Context Protocol (MCP) Server:** Built-in MCP adapter at `/mcp` enabling AI agents and IDEs to discover public events and propose actions through authorized confirmation flows — see [MCP Debugging][mcp-debugging-doc]
+- **🛡️ Absolute Data Sovereignty:** Self-host on your own infrastructure (Docker, Coolify, Aspire, On-Prem) with total control over user and attendee data — see [Self-Hosting Overview](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting)
+- **🐳 Flexible Deployment Topologies:** Deploy as a single lightweight container ([Docker Standalone](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/docker-standalone)) with embedded SQLite, a split [Docker Compose](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/docker-compose) topology, or across [Deployment Tiers](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/deployment-tiers)
+- **💼 Multi-Tenancy:** Run as a dedicated single-tenant instance or a multi-tenant platform with isolated domains and branding at runtime without code changes — see [Multi-Tenancy](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity/multi-tenancy)
+- **🛠️ White-Label Control:** Fully customizable branding, domains, logos, navigation links, and policies per tenant — see [White-Labeling & Branding](https://islamu.gitbook.io/islamu-event/documentation/readme/administration-and-branding/white-labeling)
+- **💳 Zero-Custody Payments & Legal Protection:** Stripe Connect handles all payment processing, compliance, and payouts directly between attendees and organizers. The legal transaction is strictly between attendee and organizer—the operator never touches card data (zero PCI liability) nor holds attendee funds. Operators simply supply platform legal terms (Terms of Service, privacy policy) and can disable paid ticketing entirely at any time — see [Paid Events & Payouts](https://islamu.gitbook.io/islamu-event/documentation/readme/events-and-ticketing/paid-events-and-payouts)
+- **🔧 Admin Hierarchy:** Instance admins, tenant admins, and organization admins with cascading settings — see [Admin Hierarchy](https://islamu.gitbook.io/islamu-event/documentation/readme/administration-and-branding/admin-hierarchy) and [Admin Guide](https://islamu.gitbook.io/islamu-event/documentation/readme/administration-and-branding/admin-guide)
+- **🛡️ Built-in Moderation & Verification:** Moderation queues, organizer verification workflows, and structured appeal paths — see [Coop & Osprey Moderation](https://islamu.gitbook.io/islamu-event/documentation/readme/integrations-and-ai/coop-and-osprey) and [Authorization](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity/authorization)
+- **🔌 Model Context Protocol (MCP) Server:** Built-in MCP adapter at `/mcp` enabling AI agents and IDEs to discover public events and propose actions through authorized confirmation flows — see [Model Context Protocol (MCP)](https://islamu.gitbook.io/islamu-event/documentation/readme/integrations-and-ai/mcp)
 - **🧠 AI-Ready Foundation:** Provider-neutral AI assistant, RAG ingestion contracts, and proposal-first tooling wired through the same authorization and HAL affordance layer as the rest of the platform
-- **🌍 Decentralization & Federation:** Optional event federation across remote platforms and AT-Protocol authentication for user-owned identities
-- **🗄️ Privacy Erasure Authority:** GDPR-compliant user data erasure with choice of topology: co-located inside the main database or an isolated external PostgreSQL instance
-- **📬 Mailing List Integration (Listmonk):** Connect a self-hosted [Listmonk][listmonk-link] instance to sync attendee registrations, with independent privacy-erasure authority per tenant
-- **📚 Comprehensive Docs:** [Official hosted documentation][official-docs-link] alongside extensive repository documentation covering architecture, deployment, configuration, and APIs
-- **🔐 Enterprise Security:** BFF architecture, local or Cerbos authorization, environment-first secrets (optional Infisical), and HATEOAS REST API
-- **📜 Declarative Configuration Manifests & Portability:** Automated Day 0 bootstrap and Day 2 configuration portability via schema-validated JSON manifests (`ConfigurationManifest` and `TenantConfigurationPackage`) with dry-run validation, preview diffs, and rollback — see [Configuration Manifest][configuration-manifest-doc]
+- **🌍 Decentralization & Federation:** Optional event federation across remote platforms and AT-Protocol authentication for user-owned identities — see [AT Protocol & Bluesky Jetstream](https://islamu.gitbook.io/islamu-event/documentation/readme/federation-and-open-protocols/at-protocol-and-bluesky-jetstream)
+- **🗄️ Privacy Erasure Authority:** GDPR-compliant user data erasure with choice of topology: co-located inside the main database, an isolated external PostgreSQL instance, or embedded SQLite — see [Privacy Erasure & Anti-Resurrection](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity/privacy-erasure)
+- **📬 Mailing List Integration (Listmonk):** Connect a self-hosted [Listmonk](https://islamu.gitbook.io/islamu-event/documentation/readme/communications-and-notifications/listmonk) instance to sync attendee registrations, with independent privacy-erasure authority per tenant
+- **📚 Comprehensive Docs:** [Official hosted documentation](https://islamu.gitbook.io/islamu-event) alongside in-repository specifications covering architecture, deployment, configuration, and APIs
+- **🔐 Enterprise Security:** BFF architecture, local or Cerbos authorization, environment-first secrets (optional Infisical), and HATEOAS REST API — see [Authentication](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity/authentication), [Authorization](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity/authorization), and [Secrets Management](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/secrets)
+- **📜 Declarative Configuration Manifests & Portability:** Automated Day 0 bootstrap and Day 2 configuration portability via schema-validated JSON manifests with dry-run validation, preview diffs, and rollback — see [Configuration Manifests](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/configuration-manifests)
 - **🎛️ Multi-Instance & Fleet Orchestration Ready:** Complete programmatic control via management APIs (`/api/management/*`) and integration readiness for the upcoming ISLAMU Event Control Plane fleet orchestrator
 
-## Deployment & Hosting Options
+---
 
-This platform is designed to be flexible and self-hostable for any organization.
+## 🚀 Deployment & Hosting Options
 
-- **Single-Tenant Mode**: One organization or community per deployment
-- **Multi-Tenant SaaS Mode**: Multiple isolated tenants with custom domains and branding
+ISLAMU Event is architected for sovereign self-hosting across diverse hardware requirements and scales:
 
-See [Operations Guide][operations-doc] for full deployment details and examples.
+| Topology Mode | Target Use Case | Step-by-Step Documentation |
+|---|---|---|
+| **[Tier 1: Standalone / Masjid](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/deployment-tiers#tier-1-standalone--masjid-community)** | Single container with embedded SQLite; ideal for 1 vCPU / 2 GB RAM servers. | 📖 **[Docker Standalone Runbook](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/docker-standalone)** |
+| **[Tier 2: Production Multi-Service Split](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/deployment-tiers#tier-2-production-split-docker-compose)** | High-reliability split topology: API, Blazor UI, PostgreSQL, Keycloak, and Redis. | 📖 **[Docker Compose Runbook](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/docker-compose)** |
+| **[PaaS Deployment (Coolify)](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/coolify-cerbos-traefik)** | Self-hosted PaaS deployment behind Traefik with an external Cerbos PDP container. | 📖 **[Coolify with Cerbos & Traefik](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/coolify-cerbos-traefik)** |
+| **[Developer Orchestration](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/dotnet-aspire-and-cloud)** | Local development and cloud-native adaptation via .NET Aspire AppHost. | 📖 **[.NET Aspire & Cloud](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/dotnet-aspire-and-cloud)** |
+
+For hardware sizing benchmarks, real-world Hetzner CX22 performance metrics, and capacity planning, consult the **[Deployment Tiers & Sizing Guide](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/deployment-tiers)** and the master **[Environment Variables Reference](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/environment-variables)**.
+
+---
 
 ## 🎨 Branding & Customization
 
-ISLAMU Event is built for white-label use:
+ISLAMU Event is built from the ground up for sovereign white-label community use:
 
-- **Change instance name and domain**
-- **Customize logos, colors, and UI**
-- **Define your own categories, tags, and policies**
-- **Decide who can publish events and how verification works**
+- **Instance Name & Domain:** Configure custom instance naming, base URLs, and canonical hosts.
+- **Logos, Favicons & UI Themes:** Customize brand primary/secondary colors and typography — see [White-Labeling & Branding](https://islamu.gitbook.io/islamu-event/documentation/readme/administration-and-branding/white-labeling).
+- **Custom Vanity Domains:** Map external domains to specific tenants with automatic TLS and routing — see [Custom Domains & SEO](https://islamu.gitbook.io/islamu-event/documentation/readme/administration-and-branding/custom-domains-and-seo).
+- **Administrative Governance:** Manage organizations, verification badges, and event categories — see [Administration Guide](https://islamu.gitbook.io/islamu-event/documentation/readme/administration-and-branding/admin-guide).
 
-See [Configuration Guide][configuration-doc] for full customization options.
+---
 
 ## 🛡️ Enterprise Security & Compliance
 
-We treat security as a first-class citizen, not an afterthought.
+Security and privacy fail closed at every layer:
 
-- **🔐 Authentication:** OAuth 2.0/OIDC via **Keycloak**
-- **🛡️ Authorization:** Runtime provider switching via system setting (Cerbos PDP or local DB-backed provider), with optional tenant BYO Cerbos
-- **Tenant Isolation:** API-authoritative tenant resolution with EF Core global query filters for tenant-scoped data
-- **🔍 Input Validation:** FluentValidation + ASP.NET Core model binding
-- **🚫 Data Integrity:** Parameterized EF Core queries to eliminate SQL injection
-- **🗝️ Secret Management:** Environment-first secret loading with optional Infisical compatibility
-- **Observability:** OpenTelemetry + structured logging with Serilog
-- **🔒 HTTPS Hardening:** HTTPS redirection and production HSTS support
-- **🌐 CORS:** Configurable origin whitelist
-- **⏱️ Rate Limiting:** ASP.NET Core middleware
+- **🔐 Authentication:** OAuth 2.0 / OIDC user authentication powered by Keycloak — see [Keycloak Authentication](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity/authentication).
+- **🛡️ Authorization:** Fine-grained policy evaluation with runtime switching between Local RBAC and Cerbos PDP — see [Authorization Architecture](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity/authorization).
+- **🏢 Multi-Tenancy:** Fail-closed ambient query filters guaranteeing zero cross-tenant data leakage — see [Multi-Tenancy Architecture](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity/multi-tenancy).
+- **🗄️ Privacy Erasure & GDPR:** Anti-resurrection tombstones preventing erased users from being restored from stale backups — see [Privacy Erasure Authority](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity/privacy-erasure).
+- **🗝️ Secrets Management:** Centralized secret delivery via Environment or Infisical — see [Secrets Management](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/secrets).
+
+---
 
 ## Used in production
 
@@ -131,9 +134,11 @@ Using ISLAMU Event and want to add your project/organization to this list? [Open
 
 ## Roadmap
 
-The roadmap is tracked publicly in the [Roadmap Kanban View][roadmap-link]. Use it to follow planned work, vote, comment,
+The roadmap is tracked publicly in the [Roadmap Kanban View][roadmap-link]. Use it to follow planned work, vote, and comment:
 
 ![Roadmap Kanban View][roadmap-image]
+
+---
 
 ## 🤝 Contributing
 
@@ -142,30 +147,33 @@ There are many ways you can contribute to ISLAMU Event:
 **Non-Technical:**
 - 🐛 [Report bugs][github-issues-link]
 - 💡 [Suggest features][github-issues-link]
-- 📖 Improve documentation
-- 🌐 Translate UI/docs
-- 📣 Spread the word
+- 📖 [Improve Public Documentation](https://islamu.gitbook.io/islamu-event/documentation/readme/contributing)
+- 🌐 [Translate UI/docs via Weblate](https://hosted.weblate.org/)
+- 📣 Spread the word in your community
 
 **Technical:**
-- 💻 Fix bugs
-- ✨ Implement features
-- 🧪 Write tests
-- 📊 Improve performance
-- 🎨 Enhance UI/UX
+- 💻 Fix bugs & implement features
+- 🧪 Author invariant-breaker test suites
+- 📊 Profile & optimize EF Core queries
+- 🎨 Enhance Blazor WebAssembly UI components
 
-## Quick Start
+---
 
-For local contribution, use the local-default Aspire loop:
+## Quick Start (For Developers & Contributors)
+
+For local development and code contribution, launch the .NET Aspire developer loop:
 
 ```bash
 git clone https://github.com/islamu-ngo/Event.git
 cd Event
 cp .env.example .env
-curl -sSL https://aspire.dev/install.sh | bash # only needed when aspire is not installed
-aspire run
+curl -sSL https://aspire.dev/install.sh | bash # only needed when aspire CLI is not installed
+aspire run --apphost Explore.AppHost/Explore.AppHost.csproj
 ```
 
-This starts local infrastructure, migrations, API, Blazor, and the Aspire dashboard. For Docker-only development:
+This automatically orchestrates PostgreSQL, Keycloak, Mailpit, `Explore.API`, `Explore.Blazor`, and the Aspire dashboard (`http://localhost:18888`).
+
+For Docker-only local development:
 
 ```bash
 cp .env.example .env
@@ -173,13 +181,11 @@ docker compose config
 docker compose up -d postgres redis keycloak-db keycloak keycloak-init islamu-event-api islamu-event-ui
 ```
 
-Start with [Contributing](CONTRIBUTING.md). Code contributors should also read
-[Getting Started](docs/internal/GETTING_STARTED.md) for profile modes, optional Compose profiles, validation commands, and troubleshooting links,
-[Governance](docs/internal/GOVERNANCE.md), [Quick Reference](docs/internal/QUICK_REFERENCE.md), and [Architecture](docs/internal/ARCHITECTURE.md).
-
-AI-assisted contributors should follow [`AGENTS.md`](AGENTS.md).
-
-Please read [Contribution Guidelines][contribution-guidelines] for details on the process for submitting pull requests to us.
+### Contributor Onboarding Path
+1. Review our [Contribution Guidelines](CONTRIBUTING.md) and [Local Getting Started](docs/internal/GETTING_STARTED.md).
+2. Read the [Developer Guide](docs/internal/DEVELOPER_GUIDE.md) for the 5-minute mental model and coding patterns.
+3. Check the authoritative [Quick Reference (Invariants)](docs/internal/QUICK_REFERENCE.md), [Clean Architecture Invariants](docs/internal/ARCHITECTURE.md), and [Governance Standards](docs/internal/GOVERNANCE.md).
+4. AI-assisted coding agents must strictly follow [`AGENTS.md`](AGENTS.md) and [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml).
 
 ### ✍️ Contributor License Agreement & Community Protection
 
@@ -190,23 +196,50 @@ All non-bot contributors must sign the [ISLAMU Contributor License Agreement][cl
 > * **The Anti-SaaS Covenant:** ISLAMU is bound by a strict governance commitment **never to grant an alternative license permitting a third party to operate a closed-source, proprietary SaaS or cloud service**. 
 > * **Universal Parity:** Any company offering ISLAMU Event as a public SaaS must do so under `AGPL-3.0-or-later`, guaranteeing that all SaaS improvements are shared back with the community. Your contributions will never be locked behind a proprietary vendor wall.
 
-## 📚 Documentation
+---
 
-> 📖 **Official Hosted Documentation:** Visit our [**official documentation portal**][official-docs-link] for comprehensive operator guides, deployment walkthroughs, and platform architecture.
+## 📚 Documentation: Public Guides vs. Internal Specifications
 
-The README is the entrypoint for new readers. [docs/internal/index.md](docs/internal/index.md) is the full repository documentation map once you know the area you need.
+ISLAMU Event maintains a deliberate separation between **Public Adopter Documentation** (operator/adopter perspective on GitBook) and **Internal Engineering Specifications** (developer/contributor perspective in GitHub Markdown):
 
-| Reader | Best first page | Use when |
+### 🌐 1. Public Operator & Adopter Documentation (GitBook)
+
+> 📖 **Official Hosted Portal:** Visit **[https://islamu.gitbook.io/islamu-event](https://islamu.gitbook.io/islamu-event)** for our complete public guides:
+
+* **[Getting Started](https://islamu.gitbook.io/islamu-event/documentation/readme/getting-started/5-minute-quickstart)** — 5-minute quickstart and request flow sequence diagrams.
+* **[Self-Hosting & Operations](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting)** — Deployment tiers, Docker Standalone, Docker Compose, and Coolify.
+* **[Configuration & Secrets](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations)** — Environment variables reference, secret authorities, and backups.
+* **[Security & Identity](https://islamu.gitbook.io/islamu-event/documentation/readme/security-and-identity)** — Keycloak OIDC, Cerbos authorization, multi-tenancy, and privacy erasure.
+* **[Administration & Branding](https://islamu.gitbook.io/islamu-event/documentation/readme/administration-and-branding)** — Web management consoles, white-labeling tokens, and custom domains.
+* **[Events, Ticketing & Payments](https://islamu.gitbook.io/islamu-event/documentation/readme/events-and-ticketing)** — Modular aspects, custom properties, admissions, and Stripe Connect.
+* **[Communications](https://islamu.gitbook.io/islamu-event/documentation/readme/communications-and-notifications)** — In-app notifications inbox, SMTP outbox delivery, and Listmonk sync.
+* **[Integrations & AI](https://islamu.gitbook.io/islamu-event/documentation/readme/integrations-and-ai)** — Outgoing/incoming webhooks, Model Context Protocol (MCP), and S3 storage.
+* **[Federation & Open Protocols](https://islamu.gitbook.io/islamu-event/documentation/readme/federation-and-open-protocols)** — AT Protocol event syndication and calendar lexicons.
+* **[Contributing Guide](https://islamu.gitbook.io/islamu-event/documentation/readme/contributing)** — Public contributor guide and clean-room IP policies.
+
+---
+
+### 🛠️ 2. Internal Engineering Specifications (For Developers & Contributors)
+
+For developers contributing code, architecture reviewers, and AI agents, use the authoritative in-repository specifications in [`docs/internal/`](docs/internal/index.md):
+
+| Engineering Concern | Canonical In-Repository Markdown File | What You Will Learn |
 |---|---|---|
-| General / Evaluator | [Official Docs][official-docs-link], [Project](docs/internal/PROJECT.md), [Architecture](docs/internal/ARCHITECTURE.md) | You want hosted platform documentation, product scope, and architecture context. |
-| Local developer | [Getting Started](docs/internal/GETTING_STARTED.md), [Testing](docs/internal/TESTING.md), [Troubleshooting](docs/internal/TROUBLESHOOTING.md) | You want to build, run, and validate the app locally. |
-| Self-hoster/operator | [Official Docs][official-docs-link], [Self-Hosting](docs/internal/SELF_HOSTING.md), [Configuration](docs/internal/CONFIGURATION.md), [Configuration Manifest](docs/internal/CONFIGURATION_MANIFEST.md), [Operations](docs/internal/OPERATIONS.md), [Backup/Restore/Upgrade](docs/internal/BACKUP_RESTORE_UPGRADE.md), [ERP Integration](docs/internal/ERP_INTEGRATION_GUIDE.md) | You want hosted guides or repository docs for Docker Compose, infrastructure, secrets, configuration manifests/portability, health checks, upgrades, or ERP white-label embedding. |
-| Contributor | [First Contribution](docs/internal/FIRST_CONTRIBUTION.md), [Contributing](docs/internal/CONTRIBUTING.md), [Quick Reference](docs/internal/QUICK_REFERENCE.md) | You want the shortest safe path to a docs-only or small-bug PR. |
-| API integrator | [API Cookbook](docs/internal/API_COOKBOOK.md), [API Reference](docs/internal/API.md), [API Changelog](docs/internal/API_CHANGELOG.md) | You want task-first API examples before the full API reference. |
-| Frontend contributor | [Blazor](docs/internal/BLAZOR.md) | You want client architecture, render policies, and UI conventions. |
-| AI-assisted contributor | [AGENTS.md](AGENTS.md), [Contract Intents](.agents/contract/intents.yaml), [Quick Reference](docs/internal/QUICK_REFERENCE.md) | You need the repository contribution contract and required context-loading rules. |
+| **Developer Mental Model** | [`docs/internal/DEVELOPER_GUIDE.md`](docs/internal/DEVELOPER_GUIDE.md) | 5-minute onboarding, project structure, and local dev loop. |
+| **Global Project Invariants** | [`docs/internal/QUICK_REFERENCE.md`](docs/internal/QUICK_REFERENCE.md) | Single source of truth for architectural constraints and forbidden patterns. |
+| **Clean Architecture** | [`docs/internal/ARCHITECTURE.md`](docs/internal/ARCHITECTURE.md) | Domain $\to$ Application $\to$ Persistence/Infrastructure $\to$ API boundaries. |
+| **System Architecture Diagrams** | [`docs/internal/ARCHITECTURE_OVERVIEW.md`](docs/internal/ARCHITECTURE_OVERVIEW.md) | C4 container diagrams, component relationships, and data flows. |
+| **Coding Patterns & Conventions** | [`docs/internal/GOVERNANCE.md`](docs/internal/GOVERNANCE.md) | MediatR slice patterns, manual validator instantiation, and HAL affordances. |
+| **Testing Strategy** | [`docs/internal/TESTING.md`](docs/internal/TESTING.md) | TUnit conventions, test slicing (`--treenode-filter`), and Testcontainers lanes. |
+| **Operations & Build Verification** | [`docs/internal/OPERATIONS.md`](docs/internal/OPERATIONS.md) | Verification policies, release gating, and build commands. |
+| **REST & HAL API Contracts** | [`docs/internal/API.md`](docs/internal/API.md) & [`API_COOKBOOK.md`](docs/internal/API_COOKBOOK.md) | Endpoint contracts, ProblemDetails error formats, and curl examples. |
+| **Blazor WebAssembly Frontend** | [`docs/internal/BLAZOR.md`](docs/internal/BLAZOR.md) & [`BLAZOR_DEV_WORKFLOW.md`](docs/internal/BLAZOR_DEV_WORKFLOW.md) | MudBlazor UI conventions, BFF session cookie proxying, and CSS isolation. |
+| **Security & Threat Model** | [`docs/internal/SECURITY-MODEL.md`](docs/internal/SECURITY-MODEL.md) | Fail-closed auth boundaries, token handling, and multi-tenant isolation. |
+| **Self-Hosting Technical Specs** | [`docs/internal/SELF_HOSTING.md`](docs/internal/SELF_HOSTING.md) | Low-level container wiring, ports, volume configurations, and profiles. |
+| **AI Agent Canonical Contract** | [`AGENTS.md`](AGENTS.md) & [`.agents/contract/intents.yaml`](.agents/contract/intents.yaml) | Contribution contract, task intents, and strict agent execution guardrails. |
+| **Full Internal Specs Index** | [`docs/internal/index.md`](docs/internal/index.md) | Master sitemap cataloging all 140+ internal technical specifications. |
 
-For the complete documentation inventory, use [docs/internal/index.md](docs/internal/index.md). If a page gives task steps and another page gives exact keys/contracts, treat the task page as the workflow and the reference page as the source of truth.
+---
 
 ## 🏗️ Technology Stack (v0.1.0)
 
@@ -214,14 +247,14 @@ For the complete documentation inventory, use [docs/internal/index.md](docs/inte
 |---|---|
 | Runtime | .NET 10 |
 | Architecture | Clean Architecture, CQRS, MediatR |
-| UI | Blazor, MudBlazor |
+| UI | Blazor WebAssembly, MudBlazor |
 | API | ASP.NET Core, REST/HAL, OpenAPI, Swagger, Scalar |
-| Data | PostgreSQL, EF Core |
+| Data | PostgreSQL, SQLite, EF Core |
 | Auth | Keycloak OIDC/OAuth2 |
-| Authorization | Cerbos or local provider |
-| Secrets | Environment variables and Infisical-compatible provider abstraction |
+| Authorization | Cerbos PDP or local database-backed provider |
+| Secrets | Environment variables and Infisical provider abstraction |
 | Observability | Serilog, OpenTelemetry |
-| Deployment | Docker Compose, .NET Aspire for development |
+| Deployment | Docker Compose, Docker Standalone, .NET Aspire |
 | Tests | TUnit, bUnit, integration and architecture tests |
 
 ## Community
@@ -339,7 +372,8 @@ For the full ethical and strategic design analysis, see the [I-VSD Strategy Revi
 
 The minimum operational deployment is the single `Event.Standalone` image: the ISLAMU Event API and Blazor BFF/UI run in one process with SQLite persistence. Application, Data Protection, and embedded privacy-erasure migrations run in that process before it accepts traffic. PostgreSQL, SQL Server, MariaDB, MySQL, Redis, Keycloak, Cerbos, MinIO/S3, SMTP/Mailpit, Svix, Weblate, Formbricks, Coop, Osprey, AI providers, federation services, and external observability backends are optional capabilities, not requirements of the standalone core.
 
-The AGPL-3.0-or-later license and any alternative license offered by ISLAMU apply only to material that ISLAMU owns or is authorized to license. Third-party libraries, container images, services, datasets, fonts, and other assets retain their respective licenses, public-domain status, and other applicable terms. Including an optional integration or deployment manifest in this repository does not relicense that third-party material. See the [Self-Hosting Guide](docs/internal/SELF_HOSTING.md#third-party-software-and-license-boundary) and [release dependency policy](docs/internal/CI_CD_GOVERNANCE.md#standalone-and-optional-service-license-boundary).
+The AGPL-3.0-or-later license and any alternative license offered by ISLAMU apply only to material that ISLAMU owns or is authorized to license. Third-party libraries, container images, services, datasets, fonts, and other assets retain their respective licenses, public-domain status, and other applicable terms. Including an optional integration or deployment manifest in this repository does not relicense that third-party material. See the [Self-Hosting Technical Specs](docs/internal/SELF_HOSTING.md#third-party-software-and-license-boundary) and [release dependency policy](docs/internal/CI_CD_GOVERNANCE.md#standalone-and-optional-service-license-boundary).
+
 <div align="right">
 
 [![][back-to-top]][back-to-top-link]
@@ -356,34 +390,6 @@ The AGPL-3.0-or-later license and any alternative license offered by ISLAMU appl
 [roadmap-link]: https://sites.plane.so/views/b8b7d9fced694f5a9d9a546e9d40d988
 [roadmap-image]: assets/islamu-event-roadmap-screenshot.png
 [code-of-conduct]: CODE_OF_CONDUCT.md
-[master-reference-doc]: docs/internal/index.md
-[project-doc]: docs/internal/PROJECT.md
-[architecture-doc]: docs/internal/ARCHITECTURE.md
-[api-doc]: docs/internal/API.md
-[domain-doc]: docs/internal/DOMAIN.md
-[operations-doc]: docs/internal/OPERATIONS.md
-[configuration-doc]: docs/internal/CONFIGURATION.md
-[configuration-manifest-doc]: docs/internal/CONFIGURATION_MANIFEST.md
-[troubleshooting-doc]: docs/internal/TROUBLESHOOTING.md
-[governance-doc]: docs/internal/GOVERNANCE.md
-[quick-reference-doc]: docs/internal/QUICK_REFERENCE.md
-[multi-tenancy-doc]: docs/internal/MULTI_TENANCY.md
-[admin-hierarchy-doc]: docs/internal/ADMIN_HIERARCHY.md
-[security-doc]: docs/internal/SECURITY-MODEL.md
-[deployment-modes-doc]: docs/internal/DEPLOYMENT_MODES.md
-[extensibility-doc]: docs/internal/EXTENSIBILITY.md
-[modular-events-doc]: docs/internal/MODULAR_EVENTS.md
-[render-policies-doc]: docs/internal/RENDER_POLICIES.md
-[custom-properties-doc]: docs/internal/CUSTOM_PROPERTIES.md
-[notifications-doc]: docs/internal/NOTIFICATIONS.md
-[email-notifications-doc]: docs/internal/EMAIL_NOTIFICATIONS.md
-[contact-sharing-doc]: docs/internal/CONTACT_SHARING.md
-[authorization-doc]: docs/internal/AUTHORIZATION.md
-[mcp-debugging-doc]: docs/internal/MCP_DEBUGGING.md
-[payments-doc]: docs/internal/PAYMENTS.md
-[federation-doc]: docs/internal/FEDERATION.md
-[ai-rag-doc]: docs/internal/AI_RAG_FOUNDATION.md
-[erp-integration-doc]: docs/internal/ERP_INTEGRATION_GUIDE.md
 [security-policy]: SECURITY.md
 [privacy-policy]: https://openislamu.org/privacy
 [license-link]: LICENSE
@@ -413,7 +419,6 @@ The AGPL-3.0-or-later license and any alternative license offered by ISLAMU appl
 
 [keycloak-link]: https://www.keycloak.org/
 [cerbos-link]: https://www.cerbos.dev/
-[webhooks-doc]: docs/internal/WEBHOOKS.md
 [infisical-link]: https://infisical.com/
 [roost-coop-link]: https://roost.tools/coop
 [roost-osprey-link]: https://roost.tools/osprey
@@ -432,5 +437,4 @@ The AGPL-3.0-or-later license and any alternative license offered by ISLAMU appl
 
 [ivsd-github-repo-link]: https://github.com/islamu-ngo/Islamic-Value-Sensitive-Design
 
-[contribution-guidelines]: CONTRIBUTING.md
 [cla-link]: legal/CLA.md
