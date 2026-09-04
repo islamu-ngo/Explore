@@ -70,12 +70,14 @@ passwordless authority.
 | `AUTHENTICATION_LOCAL_LOCKOUT_DURATION_MINUTES` | Advanced | `15` | Local Identity lockout duration. |
 | `ATPROTO_LOGIN_ENABLED` | Baseline | `false` | Enables AT Protocol login. It must be `true` when `AUTHENTICATION_PROVIDER=atproto`. |
 | `IDENTITY_DATABASE_TOPOLOGY` | **Baseline** | `colocated` | Local credential storage: `colocated` with the application database or `external`. |
-| `IDENTITY_DATABASE_PROVIDER` | External topology | None | External credential provider: PostgreSQL, SQLite, SQL Server, or MySQL. |
+| `IDENTITY_DATABASE_PROVIDER` | External topology | None | External credential provider: PostgreSQL, SQLite, SQL Server, MariaDB, or MySQL. |
 | `IDENTITY_DATABASE_CONNECTION_STRING` | External topology (Secret) | None | Complete operator-managed connection string. Prefer the discrete runtime/migrator settings below. |
 | `IDENTITY_DATABASE_HOST` | External topology | None | External credential database host. |
 | `IDENTITY_DATABASE_PORT` | External topology | Provider default | External credential database port. |
 | `IDENTITY_DATABASE_NAME` | External topology | None | External credential database name or persisted SQLite path. |
 | `IDENTITY_DATABASE_SCHEMA` | External topology | Provider default | Provider namespace/schema for Local Identity objects. |
+| `IDENTITY_DATABASE_TLS_MODE` | External topology | Provider default | TLS verification mode: `Prefer`, `Required`, or `Disabled`. |
+| `IDENTITY_DATABASE_TRUST_SERVER_CERTIFICATE` | External topology | `false` | Set `true` only in local development to trust self-signed TLS certificates. |
 | `IDENTITY_DATABASE_RUNTIME_USERNAME` | External topology | None | Least-privilege runtime credential username. |
 | `IDENTITY_DATABASE_RUNTIME_PASSWORD` | External topology (Secret) | None | Least-privilege runtime credential password. |
 | `IDENTITY_DATABASE_MIGRATOR_USERNAME` | External topology | None | Schema-owner/migrator credential username. |
