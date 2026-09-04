@@ -30,7 +30,7 @@ ISLAMU Event supports three authentication providers, configurable at the **Inst
 
 | Provider | Configuration | Identity Ownership |
 |---|---|---|
-| **Keycloak OIDC** | `KeycloakEnabled`, `KeycloakAuthority`, `KeycloakClientId` | Keycloak realm owner (could be ISLAMU Org or a self-hosting ERP org) |
+| **Keycloak OIDC** | `PrimaryProviderId` (Keycloak), `KeycloakAuthority`, `KeycloakClientId` | Keycloak realm owner (could be ISLAMU Org or a self-hosting ERP org) |
 | **AT Protocol** | `AtprotoLoginEnabled`, `AtprotoPublicUrl` | PDS provider (could be ISLAMU's self-hosted PDS or any external PDS) |
 | **Google SSO** | `GoogleSsoEnabled`, `GoogleClientId` | Google (external, no deletion authority) |
 

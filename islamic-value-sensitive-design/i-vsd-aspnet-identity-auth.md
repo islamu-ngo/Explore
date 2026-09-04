@@ -3,7 +3,7 @@
 
 # ASP.NET Core Identity Authentication Provider — I-VSD Planning Assessment
 
-Last Updated: 2026-09-03 Europe/Brussels
+Last Updated: 2026-09-04 Europe/Brussels
 
 ## Review Metadata
 
@@ -11,22 +11,18 @@ Last Updated: 2026-09-03 Europe/Brussels
 - Subject: ASP.NET Core Identity embedded JWT authentication provider
 - Workstream: `aspnet-identity-auth`
 - Report kind: provider-responsibility implementation assessment
-- Report status: **stale — pending revalidation after CTO-mandated architectural rewrite**
-- Disposition: **stale — revalidation required**
-- Evidence cutoff: 2026-09-03
-- Reviewed input revision: `local-working-tree` (pre-CTO-rewrite revision)
-- Reviewed plan triad revision: `local-working-tree` (pre-CTO-rewrite revision — plan has been materially rewritten)
+- Report status: current
+- Disposition: plan-aligned
+- Evidence cutoff: 2026-09-04
+- Reviewed input revision: plan `cc5c3c4f408f13e18f1fd4b2a464f728986b519d599089a5e352dad9401dd3a8`; context `625b57fa4d6d2463d27788500d9162b2041731c03889dd75bd62265b6c5e414d`; tasks `ec08e4f2653263a442a851fc61fa0ce88b9c64dd396f8ac9ebefb7a697b1b46d`
+- Reviewed plan triad revision: the three SHA-256 digests above, representing the CTO-revised pre-approval content
 - Implementation evidence: pending implementation
 - Supersedes: none
-- **Revalidation triggers fired:**
+- **Revalidation triggers evaluated:**
   1. Runtime provider switching changes provider authority (operator can change without restart)
   2. Two-axis multi-provider coexistence changes user defaults/consent model (ATProto independently toggleable)
   3. Session continuity during transitions changes failure behavior
-- **Required revalidation actions:**
-  1. Add `IVSD-F005` — Runtime Provider Transition Safety (operator switching must not orphan sessions or lock out administrators)
-  2. Update `IVSD-F004` — Cover two-axis provider model and mutual exclusion enforcement
-  3. Re-verify all existing finding-to-scenario/task mappings against revised plan
-  4. Set disposition to `plan-aligned` after revalidation against revised plan triad
+- **Revalidation outcome:** `IVSD-F005` and `IVSD-M005` were added, `IVSD-F004` was expanded for the two-axis provider model, and all finding-to-scenario/task mappings were checked against the revised plan.
 
 ## Scope
 
@@ -77,18 +73,82 @@ This is provider-responsibility design reasoning, not a fatwa, Sharia certificat
 - **Mitigation (IVSD-M003):** Apply ASP.NET Core Identity's built-in lockout mechanism (`LockoutOnFailure` with configurable attempts and duration). Apply ASP.NET Core fixed/sliding window rate limiting policies (`write` rate limiter) to all local auth endpoints. Return uniform error messages (RFC 7807 ProblemDetails) that do not leak whether an email exists or whether only the password was incorrect.
 - **Rejected alternatives:** Unlimited retry attempts (vulnerable to dictionary attack); verbose account enumeration error messages (exposes user existence).
 
-### IVSD-F004 — Transparent Provider Selection & Domain Synchronization Integrity
+### IVSD-F004 — Transparent Two-Axis Provider Selection & Domain Synchronization Integrity
 
 - **Lifecycle:** accepted
 - **Severity:** medium
 - **Claim type:** provider-controlled transparency and architectural correctness
 - **Principle/domain:** sidq (truthfulness), amanah (consistency)
 - **Stakeholders:** instance administrators, onboarding operators, authenticated users
-- **Provider-controlled decision:** deployment configuration precedence, onboarding UI presentation, and synchronization into the domain `User` aggregate
-- **Context:** When multiple authentication providers exist, user identity accounts must synchronize deterministically into domain `User`, `UserPii`, and `Actor` aggregates without collision.
-- **Risk:** Ambiguous configuration, accidental provider takeover, or orphan identity records disconnected from domain permissions.
-- **Mitigation (IVSD-M004):** Make `AUTHENTICATION_PROVIDER` explicit in `Event.Setup.Core` with clear precedence (deployment-managed environment variable vs. application onboarding choice). Synchronize local authenticated users into the core domain using `SyncUserCommandHandler` with `AuthProvider = "local"` and `AuthProviderId = user.Id.ToString()`, ensuring consistent tenant and actor mapping.
-- **Rejected alternatives:** Implicitly falling back between providers on error (violates fail-closed security invariants); maintaining divergent user models for local vs external users (violates Clean Architecture and tenant isolation).
+- **Provider-controlled decision:** deployment configuration precedence, independent ATProto availability, onboarding UI presentation, and synchronization into the domain `User` aggregate
+- **Context:** The revised architecture has two axes: exactly one primary credential provider (`local` XOR `keycloak`) plus an independent ATProto login toggle. Every authenticated identity must synchronize deterministically into domain `User`, `UserPii`, and `Actor` aggregates without collision.
+- **Risk:** Presenting ATProto as mutually exclusive, allowing both primary credential providers to appear active, silently falling back between providers, or creating orphan identity records would misrepresent operator configuration and user authority.
+- **Mitigation (IVSD-M004):** Model `AUTHENTICATION_PROVIDER` as `local` or `keycloak`, model `ATPROTO_LOGIN_ENABLED` independently, reject contradictory primary-provider state, disclose every available login path in onboarding and login UI, and synchronize local users through `SyncUserCommandHandler` with `AuthProvider = "local"` and an authority-qualified account key.
+- **Rejected alternatives:** A single enum containing ATProto (cannot express coexistence); implicit provider fallback (violates fail-closed security invariants); divergent domain user models (violates Clean Architecture and tenant isolation).
+
+### IVSD-F005 — Runtime Provider Transition Safety
+
+- **Lifecycle:** accepted
+- **Severity:** critical
+- **Claim type:** provider-controlled continuity, recoverability, and access stewardship
+- **Principle/domain:** amanah (entrusted access), raf' al-haraj (prevention of avoidable harm), sidq (truthful transition state)
+- **Stakeholders:** instance administrators, currently authenticated users, self-hosting operators
+- **Provider-controlled decision:** whether provider switching invalidates sessions, permits administrator self-lockout, or requires a restart-based recovery path
+- **Context:** The revised plan allows an administrator to switch the primary provider at runtime while Keycloak- or Local Identity-issued sessions remain active.
+- **Risk:** Disabling the previous bearer scheme or switching before the administrator has target-provider credentials could invalidate all active sessions and leave the instance administratively inaccessible.
+- **Mitigation (IVSD-M005):** Always register both bearer validation schemes; make the runtime setting control only new-login discovery; require verified target-provider administrator credentials before switching; preserve old-provider sessions until natural expiry; invalidate only the provider-selection cache; and document deployment-environment rollback as an operator recovery path.
+- **Rejected alternatives:** Removing the inactive validation scheme (breaks continuity); automatic cross-provider credential linking (creates takeover risk); unconditional switching with restart-only recovery (avoidable operator harm).
+
+## Recommendations
+
+1. Implement all five accepted mitigations as mandatory acceptance criteria, with `IVSD-M005` treated as a release-blocking security invariant.
+2. Keep local credential storage instance-scoped and tenant authorization separate through the existing synchronized domain user and tenant-grant model.
+3. Document HMAC key rotation and emergency provider override without presenting operational guidance as proof of ethical or security sufficiency.
+
+## Stakeholders
+
+- Self-hosters and small community organizations needing a low-resource deployment.
+- Users entrusting credentials and relying on stable authenticated sessions.
+- Instance administrators responsible for provider selection and recovery.
+- Enterprise operators using Keycloak or a separately hosted Identity database.
+
+## I-VSD Principles And Domains
+
+- **Amanah:** credential custody, signing-key custody, and continuity of entrusted access.
+- **'Adl:** equitable access for resource-constrained communities and consistent treatment across providers.
+- **Sidq:** truthful provider presentation and unambiguous authentication authority.
+- **Raf' al-haraj:** avoidance of preventable lockout, session loss, and abuse harm.
+
+## Validation Gaps
+
+- Implementation evidence is pending for real lockout behavior, scheme isolation, cache invalidation, and provider-switch session continuity.
+- Operational usability evidence is pending for the onboarding and emergency rollback flows.
+- No stakeholder usability study has yet validated that the two-axis model is understood without assistance.
+
+## Escalation Needed
+
+No scholarly or religious-legal escalation is required for the current technical scope. Legal and security review remain required for any future third-party identity dependency or externally sourced implementation material.
+
+## Evidence Reviewed
+
+- CTO-revised `aspnet-identity-auth-plan.md`, digest recorded in Review Metadata.
+- CTO-revised `aspnet-identity-auth-context.md`, digest recorded in Review Metadata.
+- CTO-revised `aspnet-identity-auth-tasks.md`, digest recorded in Review Metadata.
+- `aspnet-identity-auth-cto-review.md`, including the transition-safety failure analysis.
+- Repository authentication, BFF, configuration, persistence, and security invariants cited by the plan.
+
+## Missing Evidence
+
+- Runtime test results and Tier 1 invariant-breaker evidence.
+- Rendered accessibility and provider-disclosure evidence from the Blazor flows.
+- Operator recovery exercise demonstrating environment override and cache behavior.
+
+## Context Inventory
+
+- Provider-mediated capability: embedded credentials, JWT issuance, provider discovery, switching, and persistence topology.
+- Provider authority: deployment operator and authenticated instance administrator.
+- Data in scope: password hashes, identity metadata, JWT signing keys, domain user links, and role claims.
+- Out of scope: religious rulings, claims of Sharia compliance, and full parity features deferred to backlog.
 
 ## Planning Handoff
 
@@ -98,3 +158,18 @@ This is provider-responsibility design reasoning, not a fatwa, Sharia certificat
 | `IVSD-F002` | `IVSD-M002` | Scenario 3.2A, Scenario 3.2B | Tasks 2.1, 2.3, 4.1 | Plan-aligned |
 | `IVSD-F003` | `IVSD-M003` | Scenario 3.3A, Scenario 3.3B | Tasks 4.2, 5.1 | Plan-aligned |
 | `IVSD-F004` | `IVSD-M004` | Scenario 3.4A, Scenario 3.4B | Tasks 1.3, 3.2, 6.1, 7.1 | Plan-aligned |
+| `IVSD-F005` | `IVSD-M005` | Scenario 3.5A, Scenario 3.5B, Scenario 3.7A | Tasks 4.5, 4.6, 5.5 | Plan-aligned |
+
+## Common Overlooked Failures And Outcomes
+
+- A provider switch that changes token validation rather than login discovery can evict every active user and the initiating administrator.
+- A local JWT routed by issuer but validated without an issuer-specific audience and signing key can create token confusion across schemes.
+- Treating ATProto as a primary-provider enum value hides valid coexistence and misstates user choice.
+- Co-located credentials omitted from normal backup guidance can create an unexpected account-loss boundary for standalone operators.
+
+## Review Lifecycle
+
+| Date | Previous status | New status | Trigger | Evidence/replacement |
+|---|---|---|---|---|
+| 2026-09-03 | draft | stale | CTO materially rewrote provider authority, coexistence, and transition behavior | CTO review and revised plan triad |
+| 2026-09-04 | stale | current | Revalidated affected findings and mappings against the revised triad | SHA-256 revisions in Review Metadata |
