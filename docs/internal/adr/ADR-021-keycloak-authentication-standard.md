@@ -3,7 +3,7 @@
 
 # ADR-021: Standardizing Platform Authentication on Keycloak and Authorization on Cerbos
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-027](ADR-027-first-class-authentication-provider-matrix.md)
 - **Date:** 2026-08-10
 - **Deciders:** CTO, Architecture Board, Security & Platform Engineering
 

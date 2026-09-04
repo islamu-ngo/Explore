@@ -11,6 +11,39 @@ x-keycloak-env: &keycloak-env
   KEYCLOAK_INTERNAL_URL: http://keycloak:8080
   Keycloak__RequireHttpsMetadata: ${KEYCLOAK_REQUIRE_HTTPS_METADATA:-false}
 
+x-authentication-selection-env: &authentication-selection-env
+  Authentication__Provider: ${AUTHENTICATION_PROVIDER:-}
+  Authentication__AtprotoLoginEnabled: ${ATPROTO_LOGIN_ENABLED:-false}
+
+x-local-identity-runtime-env: &local-identity-runtime-env
+  Authentication__Local__JwtKey: ${AUTHENTICATION_LOCAL_JWT_KEY:-}
+  Authentication__Local__LockoutThreshold: ${AUTHENTICATION_LOCAL_LOCKOUT_THRESHOLD:-5}
+  Authentication__Local__LockoutDurationMinutes: ${AUTHENTICATION_LOCAL_LOCKOUT_DURATION_MINUTES:-15}
+  IdentityDatabase__Topology: ${IDENTITY_DATABASE_TOPOLOGY:-colocated}
+  IdentityDatabase__Provider: ${IDENTITY_DATABASE_PROVIDER:-}
+  IdentityDatabase__ConnectionString: ${IDENTITY_DATABASE_CONNECTION_STRING:-}
+  IdentityDatabase__Host: ${IDENTITY_DATABASE_HOST:-}
+  IdentityDatabase__Port: ${IDENTITY_DATABASE_PORT:-}
+  IdentityDatabase__Name: ${IDENTITY_DATABASE_NAME:-}
+  IdentityDatabase__Schema: ${IDENTITY_DATABASE_SCHEMA:-}
+  IdentityDatabase__TlsMode: ${IDENTITY_DATABASE_TLS_MODE:-}
+  IdentityDatabase__TrustServerCertificate: ${IDENTITY_DATABASE_TRUST_SERVER_CERTIFICATE:-false}
+  IdentityDatabase__Runtime__Username: ${IDENTITY_DATABASE_RUNTIME_USERNAME:-}
+  IdentityDatabase__Runtime__Password: ${IDENTITY_DATABASE_RUNTIME_PASSWORD:-}
+
+x-local-identity-migrator-env: &local-identity-migrator-env
+  IdentityDatabase__Topology: ${IDENTITY_DATABASE_TOPOLOGY:-colocated}
+  IdentityDatabase__Provider: ${IDENTITY_DATABASE_PROVIDER:-}
+  IdentityDatabase__ConnectionString: ${IDENTITY_DATABASE_CONNECTION_STRING:-}
+  IdentityDatabase__Host: ${IDENTITY_DATABASE_HOST:-}
+  IdentityDatabase__Port: ${IDENTITY_DATABASE_PORT:-}
+  IdentityDatabase__Name: ${IDENTITY_DATABASE_NAME:-}
+  IdentityDatabase__Schema: ${IDENTITY_DATABASE_SCHEMA:-}
+  IdentityDatabase__TlsMode: ${IDENTITY_DATABASE_TLS_MODE:-}
+  IdentityDatabase__TrustServerCertificate: ${IDENTITY_DATABASE_TRUST_SERVER_CERTIFICATE:-false}
+  IdentityDatabase__Migrator__Username: ${IDENTITY_DATABASE_MIGRATOR_USERNAME:-}
+  IdentityDatabase__Migrator__Password: ${IDENTITY_DATABASE_MIGRATOR_PASSWORD:-}
+
 # One explicit deployment-owned secret authority. Environment never contacts Infisical;
 # Infisical never falls back to the lower environment values below.
 x-secrets-env: &secrets-env
@@ -309,7 +342,7 @@ services:
       context: .
       dockerfile: src/Event.MigrationService/Dockerfile
     environment:
-      <<: [*secrets-env, *database-env, *database-migrator-env, *privacy-erasure-migrator-env]
+      <<: [*secrets-env, *database-env, *database-migrator-env, *privacy-erasure-migrator-env, *local-identity-migrator-env]
       CONFIGURATION_MANIFEST_MODE: ${CONFIGURATION_MANIFEST_MODE:-Off}
       CONFIGURATION_MANIFEST_PATH: ${CONFIGURATION_MANIFEST_PATH:-/etc/islamu-event/bootstrap/configuration-manifest.json}
     volumes:
@@ -445,7 +478,7 @@ services:
       context: .
       dockerfile: src/Explore.API/Dockerfile
     environment:
-      <<: [*keycloak-env, *s3-env, *local-storage-env, *secrets-env, *database-env, *database-runtime-env, *privacy-erasure-runtime-env, *api-runtime-env, *instance-operator-identity-env, *payment-operations-env, *payment-api-env, *ai-env, *geocoding-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
+      <<: [*keycloak-env, *authentication-selection-env, *local-identity-runtime-env, *s3-env, *local-storage-env, *secrets-env, *database-env, *database-runtime-env, *privacy-erasure-runtime-env, *api-runtime-env, *instance-operator-identity-env, *payment-operations-env, *payment-api-env, *ai-env, *geocoding-env, *mcp-env, *smtp-env, *email-dispatch-rabbitmq-env, *web-push-env, *reporting-env, *webhooks-env, *listmonk-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
@@ -517,7 +550,7 @@ services:
       context: .
       dockerfile: src/Explore.Blazor/Dockerfile
     environment:
-      <<: [*keycloak-env, *secrets-env, *database-env, *database-runtime-env]
+      <<: [*keycloak-env, *authentication-selection-env, *secrets-env, *database-env, *database-runtime-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       API_ENDPOINT: ${API_ENDPOINT:-http://islamu-event-api:8080/}

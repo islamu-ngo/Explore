@@ -35,6 +35,20 @@ Select a topology by operational needs, then follow its dedicated runbook. The p
 > - **We recommend Docker Standalone** if you are deploying for a single community, university club, or mosque, and want near-zero DevOps maintenance.
 > - **We recommend Docker Compose** if you plan to host multiple independent communities (`multi_tenant`), expect high concurrent ticket check-ins, or want to decouple your database from your application processes.
 
+For authentication, use this order unless your requirements say otherwise:
+
+1. **Local Identity** for the default standalone experience, localhost, and the
+   lowest operational burden.
+2. **AT Protocol** for an average public-HTTPS self-hosted instance that wants
+   users to authenticate through AT Protocol/Bluesky instead of the host
+   managing passwords. It ranks second only because it cannot complete OAuth on
+   localhost.
+3. **Keycloak** for serious hosting teams and SaaS operators that need the most
+   advanced SSO/federation, 2FA/MFA, and centralized identity administration.
+
+See [Authentication Providers](../configuration-and-operations/authentication-providers.md)
+for the exact runtime matrix and safe switching procedure.
+
 Kubernetes, Helm, ActivityPub infrastructure, first-party PDS/AppView hosting, and initial `linux/arm64` packaging are not implemented deployment options.
 
 ## Shared production gate

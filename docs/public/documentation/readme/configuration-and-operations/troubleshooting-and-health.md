@@ -179,6 +179,47 @@ If you left `SETUP_SECRET=` blank in `.env`, the container generated an ephemera
 
 ---
 
+### Recipe 7: Lost Instance Administrator Access
+
+Use this break-glass procedure only when an existing platform account is
+already linked to the exact AT Protocol DID that should regain instance
+administration. It cannot create or link an account.
+
+1. Back up the application database.
+2. Stop API, UI, worker, and migration replicas while keeping the database
+   reachable.
+3. Check out the exact source revision deployed to the instance.
+4. Export the same structured migrator secret authority used by the deployment.
+   Do not place a connection string or password on the command line.
+5. Run:
+   ```bash
+   dotnet run --file eng/tools/EmergencyAdminProvisioner.cs -- \
+     --grant-did 'did:plc:replace-with-the-exact-linked-did' \
+     --apply
+   ```
+6. Run the same command a second time. The expected result is
+   `instance-administrator-recovery: already-present`.
+7. Restart every replica, sign out, and sign in again so cached authority and
+   session claims are refreshed.
+
+Exit codes are `0` for granted/already present, `64` for invalid command input,
+`65` for an unknown/ineligible DID, invalid role authority, or pending
+migrations, `70` for configuration/database failure, and `130` for
+operator cancellation.
+
+The tool does not create users, resolve handles, modify onboarding state, grant
+tenant authority, or contact a personal data server. Its output intentionally
+contains no DID, user/tenant ID, database locator, secret, or exception text.
+Production container images do not carry this source/SDK tool; run it from the
+matching checkout on a trusted host with database access.
+
+If the previous platform administrator is compromised, add `--reassign` to the
+command. This verifies and grants the replacement first, then removes every
+other platform-administrator grant in the same serializable transaction.
+Without `--reassign`, the operation is additive.
+
+---
+
 ## Health Check Endpoints Reference
 
 The platform exposes standardized, sanitized health endpoints:

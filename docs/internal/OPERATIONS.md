@@ -1,5 +1,5 @@
-ABOUTME: Operational runbook for startup, health, shutdown, and runtime safeguards.
-ABOUTME: Captures current behavior implemented in API, Blazor BFF, migration service, and service defaults.
+<!-- ABOUTME: Operational runbook for startup, health, shutdown, and runtime safeguards. -->
+<!-- ABOUTME: Captures API, BFF, migration, recovery, and service-default behavior. -->
 
 # Operations
 
@@ -29,6 +29,51 @@ not complete yet.
 Status and reason codes are value-free by design. Logs, health endpoints, and
 support evidence never carry the configured subject, DID, email, names, or any
 fingerprint.
+
+## Instance Administrator Direct-Database Recovery
+
+`eng/tools/EmergencyAdminProvisioner.cs` is the offline break-glass surface for
+an existing exact AT Protocol account binding:
+
+```bash
+dotnet run --file eng/tools/EmergencyAdminProvisioner.cs -- \
+  --grant-did 'did:plc:replace-with-the-exact-linked-did' \
+  --apply
+```
+
+Add `--reassign` only when the old platform-administrator grants must be
+revoked as part of the same serializable transaction. Without it, recovery is
+additive.
+
+The file app resolves the selected structured database secret authority,
+configures `ExploreDbContext` through `PrimaryDatabaseConfiguration` and
+`PrimaryDatabaseProviderComposition`, and refuses a database with pending
+migrations. It uses migrator credentials to reach the schema while selecting
+the runtime model role so PostgreSQL/SQL Server schema namespaces and flat
+SQLite/MySQL names remain correct.
+
+`EmergencyAdminProvisioningOperation` resolves one global
+`UserExternalLogin` by exact AT Protocol provider ID and ordinal DID, verifies
+the linked user is active, and verifies all canonical role invariants:
+`RoleEnum.Admin`, `platform.admin`, and platform scope. It then converges a
+single `PlatformUserRole` under serializable isolation. Optional reassignment
+removes every other `platform.admin` grant only after the replacement binding
+and canonical role have been verified. The unique
+`(UserId, RoleId)` index makes retries and concurrent execution idempotent.
+`GrantedBy = null` records that no authenticated actor performed the offline
+grant.
+
+Run only while application writers are stopped, from source matching the
+deployed revision, after a verified backup. Restart all replicas and establish
+a fresh sign-in afterward. Stable output is limited to `granted`,
+`reassigned`, `already-present`, `target-not-found`, `role-authority-invalid`,
+`database-not-current`, `cancelled`, or `failed`. Exit codes are `0`, `64`,
+`65`, `70`, and `130`.
+
+The operation never creates an identity, resolves a handle, grants tenant
+authority, mutates `InstanceBootstrapState`, applies migrations, contacts a
+PDS, prints database coordinates, or emits IDs, DIDs, PII, secrets, arguments,
+or exception text.
 
 ## Legal-Identity Readiness And Repair
 
@@ -2567,3 +2612,61 @@ Troubleshooting must inspect stable operation IDs, outcome codes, and counts.
 Never log capability headers, buyer identity, item descriptions, fulfillment
 notes, refund payloads, or whole HAL resources. No add-on row, endpoint, job,
 or recovery path has authority over admission tables.
+
+---
+
+## Local Identity Operations
+
+The architecture and trust boundaries are defined in
+[Authentication](AUTHENTICATION.md).
+
+### Secret and topology preflight
+
+For Local Identity, verify that:
+
+* `AUTHENTICATION_PROVIDER=local`, or no deployment override is present;
+* `AUTHENTICATION_LOCAL_JWT_KEY` resolves through the selected secret authority
+  and Base64-decodes to at least 256 bits;
+* `IDENTITY_DATABASE_TOPOLOGY` is `colocated` or `external`;
+* external topology has distinct runtime and migrator credentials and the
+  provider-specific connection settings resolve successfully.
+
+Never print the JWT key, passwords, connection strings, Local credential
+requests, or whole token claims.
+
+### External Identity migration verification
+
+Generate migrations only through EF tooling. Never edit a migration or snapshot
+by hand. For each provider, select `ExternalIdentityDbContext`, the matching
+migration project, and its provider-specific design-time startup project. The
+generated migration must carry
+`[DbContext(typeof(ExternalIdentityDbContext))]`.
+
+Before deployment, run `dotnet ef migrations has-pending-model-changes` for:
+
+* `Explore.Persistence` (PostgreSQL);
+* `Explore.Persistence.Migrations.Sqlite`;
+* `Explore.Persistence.Migrations.SqlServer`;
+* `Explore.Persistence.Migrations.MySql`.
+
+`Event.MigrationService` loads `/database/identity`, registers the external
+context only when external topology is selected, applies its migrations first,
+then runs the normal application post-migration sequence. A Local Identity
+migration failure fails startup; it is never downgraded to colocated storage.
+`Event.Standalone` invokes the same provider composition through a short-lived
+migrator context before its in-process application migration and continues to
+use separately registered runtime credentials for Identity stores.
+
+### Runtime diagnosis
+
+Use stable codes and bounded metadata:
+
+* missing or invalid Local JWT material must fail startup or token issuance;
+* invalid primary-provider IDs and configuration read failures block login;
+* repeated password failures increment Identity access-failure state and
+  eventually return a generic locked/unavailable result;
+* registration synchronization failure returns no browser session;
+* browser responses and logs must never contain the raw access token or
+  password;
+* provider switching must hide the previous provider from new-login discovery
+  while old sessions continue through their original scheme.

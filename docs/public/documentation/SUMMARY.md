@@ -12,6 +12,7 @@
     * [Coolify with Cerbos & Traefik](readme/self-hosting/coolify-cerbos-traefik.md)
     * [.NET Aspire & Cloud](readme/self-hosting/dotnet-aspire-and-cloud.md)
   * [Configuration & Operations](readme/configuration-and-operations/README.md)
+    * [Authentication Providers](readme/configuration-and-operations/authentication-providers.md)
     * [Environment Variables](readme/configuration-and-operations/environment-variables.md)
     * [Configuration Manifests](readme/configuration-and-operations/configuration-manifests.md)
     * [Secrets](readme/configuration-and-operations/secrets.md)

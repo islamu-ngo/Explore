@@ -1,5 +1,5 @@
-ABOUTME: Consolidated authorization architecture, provider routing, and CQRS request patterns.
-ABOUTME: Covers server-side enforcement, Cerbos/fallback behavior, and claim-related authorization notes.
+<!-- ABOUTME: Consolidated authorization architecture, provider routing, and CQRS request patterns. -->
+<!-- ABOUTME: Covers server enforcement, Cerbos/fallback behavior, and identity-provider separation. -->
 
 # Authorization
 
@@ -52,13 +52,13 @@ The platform employs a multi-layered authorization strategy to ensure robust and
 
 ## 2. Authentication vs. Authorization
 
-Per [ADR-021](adr/ADR-021-keycloak-authentication-standard.md) and [ADR-001](adr/ADR-001-authorization-provider-architecture.md), the platform enforces a strict separation of concerns between authentication and authorization:
+Per [ADR-027](adr/ADR-027-first-class-authentication-provider-matrix.md) and [ADR-001](adr/ADR-001-authorization-provider-architecture.md), the platform enforces a strict separation of concerns between authentication and authorization:
 
--   **Authentication** (Keycloak): The process of verifying who a user is. Per ADR-021, Keycloak is the mandatory identity authority across all SaaS, BYOC, and on-premise deployments. Browser sign-in is handled by the Blazor BFF (`Event.Web.BffHosting`) through Keycloak OIDC Code Flow + PKCE (`S256`). Keycloak access tokens remain provider-issued; a verified ATProtocol login receives a short-lived first-party API session JWT.
+-   **Authentication** (Local Identity / Keycloak / AT Protocol): The process of verifying who a user is. Exactly one provider is primary for new sign-ins. The Blazor BFF owns browser challenges and HttpOnly cookies; raw provider and platform tokens remain server-side.
 -   **Authorization** (Cerbos / Fallback): The process of determining whether an authenticated user has the permission to perform a specific action on a specific resource. Cerbos acts as the policy decision point (PDP), evaluating fine-grained business resource policies against principal, resource, action, and tenant context.
 
 
-ATProto does not introduce a second authorization model. The API first independently restores the submitted CarpaNet OAuth session and verifies `com.atproto.server.getSession` against the expected DID, PDS, tenant, and an exact pre-existing `UserExternalLogin`. It then issues a purpose-separated ES256 session JWT whose `sub` is the existing platform user `Guid`. Existing MediatR authorization, tenant isolation, Cerbos/local fallback policies, and HAL affordance filtering therefore operate unchanged. An ATProto DID, handle, or PDS response can never create a local user or authorize a resource by itself.
+ATProto does not introduce a second authorization model. The API independently restores the submitted CarpaNet OAuth session and verifies `com.atproto.server.getSession` against the expected DID and PDS. When AT Protocol is primary, the verified DID may JIT-create one passwordless platform `User`, personal `Actor`, and global `UserExternalLogin`; the subsequent purpose-separated ES256 session JWT uses that internal user `Guid` as `sub`. Existing MediatR authorization, tenant isolation, Cerbos/local fallback policies, and HAL affordance filtering operate unchanged. A DID, handle, or PDS response never authorizes a resource or grants a role by itself.
 
 ATProto credential operations remain server-private. The bootstrap/current-session/delete bridge is excluded from API discovery and generated browser contracts; generic raw-token, `UserExternalLogin`, and `IndexedDid` CRUD routes do not exist. Public session reads return only the current user's safe metadata (`id`, `provider`, `pdsHost`, `expiresAt`), and deletion is authorized, self-scoped, and idempotent. Direct `AtprotoRecord` mutations are likewise absent: verified authentication, lifecycle-owned outboxes, and canonical Jetstream ingress are the only identity and record-write authorities. If a client renders a resource action, it must use the returned HAL relation rather than infer authority from the ATProto provider, DID, roles, or claims.
 
@@ -394,4 +394,4 @@ Participation requirement writes use `[AuthorizeResource(ResourceKinds.Registrat
 -   [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md): Details the roles and responsibilities of different administrative levels.
 -   [API.md](API.md): Describes the MediatR pipeline and how authorization fits into the request flow.
 -   [adr/ADR-001-authorization-provider-architecture.md](adr/ADR-001-authorization-provider-architecture.md): The architectural decision record for Cerbos PDP authorization provider integration.
--   [adr/ADR-021-keycloak-authentication-standard.md](adr/ADR-021-keycloak-authentication-standard.md): The architectural decision record standardizing Keycloak as the mandatory identity plane.
+-   [adr/ADR-027-first-class-authentication-provider-matrix.md](adr/ADR-027-first-class-authentication-provider-matrix.md): The architectural decision record for Local Identity, Keycloak, and AT Protocol primary authorities.

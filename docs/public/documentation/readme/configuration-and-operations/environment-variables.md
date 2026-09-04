@@ -1,6 +1,8 @@
 ---
 description: Comprehensive reference for all baseline, advanced, and profile-specific environment variables.
 ---
+<!-- ABOUTME: Public operator reference for supported environment-backed configuration. -->
+<!-- ABOUTME: Distinguishes baseline settings, secret values, and optional deployment profiles. -->
 
 # Environment Variables Reference
 
@@ -8,7 +10,7 @@ ISLAMU Event follows **Convention over Configuration**. The platform includes se
 
 > [!TIP]
 > **Baseline vs. Advanced Configuration:**
-> - **`.env.example` (Baseline):** Contains only the essential configuration keys needed to run a standard instance (URLs, database credentials, Keycloak secrets, legal identity, and local storage).
+> - **`.env.example` (Baseline):** Contains the essential configuration keys needed to run a standard instance (URLs, database credentials, authentication secrets, legal identity, and local storage).
 > - **This Document (Exhaustive Reference):** Catalogs every supported environment variable across core services, advanced performance dials, and auxiliary service profiles. If a variable is marked `Advanced`, it is omitted from `.env.example` and uses its built-in default unless you explicitly override it.
 
 ---
@@ -53,9 +55,39 @@ ISLAMU Event follows **Convention over Configuration**. The platform includes se
 
 ---
 
-## 3. Identity Provider (Keycloak)
+## 3. Authentication Providers and Local Identity
 
-Keycloak is the authoritative identity provider for user authentication:
+Select exactly one primary authentication provider. Local Identity is the
+runtime default when no provider is explicitly selected. AT Protocol can be
+independent while Local Identity or Keycloak is primary, or it can be the sole
+passwordless authority.
+
+| Variable | Status | Default | Description |
+|---|---|---|---|
+| `AUTHENTICATION_PROVIDER` | **Baseline** | `local` | Primary provider: `local`, `keycloak`, or `atproto`. |
+| `AUTHENTICATION_LOCAL_JWT_KEY` | **Baseline (Secret)** | None | Base64-encoded Local JWT signing key of at least 256 bits; required when Local Identity is primary. |
+| `AUTHENTICATION_LOCAL_LOCKOUT_THRESHOLD` | Advanced | `5` | Consecutive failed Local Identity attempts before lockout. |
+| `AUTHENTICATION_LOCAL_LOCKOUT_DURATION_MINUTES` | Advanced | `15` | Local Identity lockout duration. |
+| `ATPROTO_LOGIN_ENABLED` | Baseline | `false` | Enables AT Protocol login. It must be `true` when `AUTHENTICATION_PROVIDER=atproto`. |
+| `IDENTITY_DATABASE_TOPOLOGY` | **Baseline** | `colocated` | Local credential storage: `colocated` with the application database or `external`. |
+| `IDENTITY_DATABASE_PROVIDER` | External topology | None | External credential provider: PostgreSQL, SQLite, SQL Server, or MySQL. |
+| `IDENTITY_DATABASE_CONNECTION_STRING` | External topology (Secret) | None | Complete operator-managed connection string. Prefer the discrete runtime/migrator settings below. |
+| `IDENTITY_DATABASE_HOST` | External topology | None | External credential database host. |
+| `IDENTITY_DATABASE_PORT` | External topology | Provider default | External credential database port. |
+| `IDENTITY_DATABASE_NAME` | External topology | None | External credential database name or persisted SQLite path. |
+| `IDENTITY_DATABASE_SCHEMA` | External topology | Provider default | Provider namespace/schema for Local Identity objects. |
+| `IDENTITY_DATABASE_RUNTIME_USERNAME` | External topology | None | Least-privilege runtime credential username. |
+| `IDENTITY_DATABASE_RUNTIME_PASSWORD` | External topology (Secret) | None | Least-privilege runtime credential password. |
+| `IDENTITY_DATABASE_MIGRATOR_USERNAME` | External topology | None | Schema-owner/migrator credential username. |
+| `IDENTITY_DATABASE_MIGRATOR_PASSWORD` | External topology (Secret) | None | Schema-owner/migrator credential password. |
+
+Keycloak variables are required only when `AUTHENTICATION_PROVIDER=keycloak`:
+
+The supported primary/AT Protocol combinations are `local/false`,
+`local/true`, `keycloak/false`, `keycloak/true`, and `atproto/true`.
+`atproto/false` is rejected, and Google SSO is disabled while AT Protocol is
+primary. See [Authentication Providers](authentication-providers.md) for
+onboarding and switching behavior.
 
 | Variable | Status | Default | Description |
 |---|---|---|---|

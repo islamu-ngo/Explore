@@ -1,5 +1,5 @@
-ABOUTME: Describes authentication, authorization, and trust boundaries for the platform.
-ABOUTME: Focuses on enforced behavior in code (BFF, MediatR authorization, and fallback modes).
+<!-- ABOUTME: Describes authentication, authorization, and trust boundaries for the platform. -->
+<!-- ABOUTME: Focuses on enforced BFF, MediatR, provider, tenancy, and fallback behavior. -->
 
 # Security
 
@@ -51,16 +51,24 @@ The persistence boundary stores immutable policy lineage, cumulative authority u
 
 ## Security Model
 
-Per [ADR-021](adr/ADR-021-keycloak-authentication-standard.md), the platform standardizes on **Keycloak** as its single, mandatory identity and authentication plane across all deployment modes (SaaS, BYOC, On-Premise), while delegating fine-grained resource authorization to **Cerbos**:
+Per [ADR-027](adr/ADR-027-first-class-authentication-provider-matrix.md),
+Local Identity, Keycloak, and AT Protocol are first-class primary
+authentication authorities, while fine-grained resource authorization remains
+provider-neutral:
 
-- `Keycloak` acts as the single authentication authority, issuing OpenID Connect / OAuth 2.0 tokens, managing sessions, MFA, and enterprise IdP federation (OIDC/SAML/LDAP).
-- `Explore.Blazor` (BFF server) handles OIDC Code Flow + PKCE (`S256`) and session cookies.
+- Local Identity issues embedded platform JWTs without external identity infrastructure.
+- Keycloak provides OIDC, centralized sessions, MFA, and enterprise federation.
+- AT Protocol may be an optional linked login or the sole passwordless primary authority.
+- `Explore.Blazor` (BFF server) handles OIDC/OAuth challenges and session cookies.
 - Dedicated admin hosts use the embedded control-plane shell inside `Explore.Blazor` and the same server-owned OIDC session boundary.
 - `Explore.Blazor.Client` (WASM) does not directly manage access tokens.
-- `Explore.API` authorizes bearer-token requests using dynamic JWKS prefetching (`DynamicJwtConfigurationService`) and applies resource-level policy checks via Cerbos.
+- `Explore.API` isolates Local/Keycloak bearer validation and AT Protocol bootstrap/session schemes before applying resource-level authorization.
 - `ISLAMU Event Domain` remains authoritative for tenant memberships, legal entities, and event access control.
 
-
+When AT Protocol is primary, a verified DID may JIT-create a passwordless
+`User`, personal `Actor`, and global `UserExternalLogin`. This creates no role.
+Interactive administrator authority remains setup-secret-bound and configured
+administrator authority remains exact-DID, generation, and fingerprint bound.
 
 ## BFF/API Topology and Trust Boundary
 

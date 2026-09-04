@@ -114,6 +114,8 @@ storage:
 
 Before starting Cerbos, execute this bootstrap script in your PostgreSQL database to create the required schema, audit triggers, and database user permissions:
 
+Update the placeholders 'your_cerbos_password', then optionally also the databas name thats defaultt "cerbos" if you want to.
+
 ```sql
 CREATE SCHEMA IF NOT EXISTS cerbos;
 SET search_path TO cerbos;

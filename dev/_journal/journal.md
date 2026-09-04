@@ -141,6 +141,51 @@
 
 ---
 
+[2026-09-04 Europe/Brussels] — External provider identity must not be tenant-owned
+
+**Context**: While implementing Tier 1 AT Protocol sole-provider JIT
+authentication, an independently verified DID needed to create a passwordless
+platform account before interactive onboarding had created a tenant.
+
+**Symptom / Observation**: `UserExternalLogin` was queried as globally unique
+identity authority, but implemented `ITenantEntity` and required a `TenantId`
+foreign key. A fresh AT Protocol OAuth return therefore could not persist its
+verified provider binding without inventing tenant state.
+
+**Root Cause**: Provider account identity and tenant participation were
+represented on the same row even though they have different lifecycles and
+authority. Authentication answers which global user owns a provider account;
+`TenantUser` answers whether that user participates in a tenant.
+
+**Resolution**: Made `UserExternalLogin` instance-global, kept exact
+provider/key uniqueness, and left tenant participation exclusively in
+`TenantUser`. JIT account, actor, provider identity, and encrypted OAuth session
+now converge transactionally before token issuance. Regenerated PostgreSQL,
+SQLite, SQL Server, and MySQL development migrations and verified all four
+report no pending model changes.
+
+**Why This Matters for Future Work**: Never add tenant ownership to an external
+identity binding merely because the current request has tenant context. Keep
+authentication identity global and require a separate, explicitly authorized
+tenant participation aggregate.
+
+**References**:
+- `src/Explore.Domain/UserExternalLogin.cs`
+- `src/Explore.Application/Features/Authentication/Atproto/Services/AtprotoJitAccountProvisioningOperation.cs`
+- `src/Explore.Domain/TenantUser.cs`
+- `docs/internal/adr/ADR-027-first-class-authentication-provider-matrix.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [x] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `auth-patterns`
+- [x] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+
 [2026-09-01 Europe/Brussels] — Assurance audits must bind framework symbols, not receiver text
 
 **Context**: The strong-typing recurrence guard initially recognized reflection and raw source reads from syntax shapes such as `File.ReadAllText`, `Activator.CreateInstance`, and variables initialized from `GetMethod`.
@@ -1434,6 +1479,85 @@ closed phase manifests manufactures evidence that pass never produced.
 - [x] Candidate for `docs/QUICK_REFERENCE.md` (promoted)
 - [x] Candidate for new `.agents/rules/*.md` entry (promoted)
 - [ ] Candidate for skill update: `blazor-ui-conventions`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+[2026-09-04 Europe/Brussels] — Provider selection and session validation are separate
+
+**Context**: While implementing runtime Local Identity and Keycloak switching,
+the BFF needed to stop offering the inactive provider without breaking cookies
+created before the switch.
+
+**Symptom / Observation**: Removing the Keycloak scheme when Local became
+primary prevented old Keycloak cookie refresh. Keeping the scheme without a
+separate admission check allowed new Keycloak challenges after the switch.
+
+**Root Cause**: Scheme registration serves token validation and refresh, while
+provider discovery/challenge admission serves new session creation. Treating
+registration as the primary-provider flag coupled two different lifecycles.
+
+**Resolution**: `DynamicAuthSchemeManager` retains configured Keycloak metadata,
+while `BffAuthEndpoints` gates discovery and completed-onboarding challenges
+against the active primary provider. Full BFF integration verification passed.
+
+**Why This Matters for Future Work**: Runtime provider switching must change
+new-login admission without deleting validation state still required by issued
+sessions. Apply the same separation to future authentication providers.
+
+**References**:
+- `src/Explore.Blazor/Services/DynamicAuthSchemeManager.cs`
+- `src/Explore.Blazor/Extensions/BffAuthEndpoints.cs`
+- `docs/internal/AUTHENTICATION.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.agents/rules/*.md` entry
+- [ ] Candidate for skill update: `auth-patterns`
+- [x] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [ ] Stays in journal only (one-off debugging lesson)
+
+---
+
+[2026-09-04 Europe/Brussels] — Every EF context needs owned migrations and execution
+
+**Context**: While adding optional external Local Identity storage, runtime DI
+successfully selected `ExternalIdentityDbContext`, but deployment initialization
+still covered only `ExploreDbContext`.
+
+**Symptom / Observation**: Provider migration assemblies existed, yet every
+generated migration carried `[DbContext(typeof(ExploreDbContext))]`.
+`Event.MigrationService` neither registered nor migrated
+`ExternalIdentityDbContext`.
+
+**Root Cause**: A migration assembly can contain multiple contexts, but EF
+filters migrations by their generated `DbContextAttribute`. Reusing an assembly
+does not give a new context migration ownership, and runtime registration does
+not make the migration worker execute it.
+
+**Resolution**: Generated context-owned external Identity migrations for
+PostgreSQL, SQLite, SQL Server, and MySQL; added provider-startup design
+factories; registered migrator credentials conditionally; and migrated the
+external context before the application sequence. All four pending-model checks
+and a real idempotent SQLite migration passed.
+
+**Why This Matters for Future Work**: Every optional EF context needs both a
+context-attributed migration set and an explicit deployment execution path.
+Checking only runtime service registration leaves fresh deployments
+uninitializable.
+
+**References**:
+- `src/Explore.Persistence/Identity/ExternalIdentityDbContext.cs`
+- `src/Explore.Persistence/Identity/ExternalIdentityDbContextFactory.cs`
+- `src/Event.MigrationService/Worker.cs`
+- `docs/internal/AUTHENTICATION.md`
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [x] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [x] Candidate for new `.agents/rules/*.md` entry
+- [x] Candidate for skill update: `dotnet-efcore-guidelines`
 - [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
 - [ ] Stays in journal only (one-off debugging lesson)
 

@@ -1,6 +1,8 @@
 ---
 description: Deploy and operate the single-container standalone distribution with durable SQLite storage.
 ---
+<!-- ABOUTME: Operator runbook for the single-process ISLAMU Event distribution. -->
+<!-- ABOUTME: Covers persistent storage, Local Identity defaults, first-run setup, proxying, and backup. -->
 
 # Docker Standalone Self-Hosting
 
@@ -32,6 +34,16 @@ docker volume create event_standalone_data
 
 Create a minimal `.env` file containing your production settings:
 
+> [!TIP]
+> **Authentication recommendation:** Keep the default embedded Local Identity
+> for the easiest standalone deployment and for localhost/private-network use.
+> Choose AT Protocol second when the instance has a public HTTPS domain and you
+> want Bluesky/AT Protocol accounts to handle password authentication instead
+> of storing user passwords yourself. AT Protocol is not the default because
+> its OAuth callback cannot operate on localhost. Choose Keycloak for
+> professional or SaaS operations that need advanced SSO/federation, 2FA/MFA,
+> and centralized identity administration.
+
 ```env
 ASPNETCORE_ENVIRONMENT=Production
 DATABASE_PROVIDER=sqlite
@@ -39,12 +51,11 @@ DATABASE_PROVIDER=sqlite
 # Base Application URLs
 PUBLIC_URL=https://events.example.org
 
-# Authentication (Keycloak)
+# Authentication (Local Identity; the standalone default)
 # See: ../security-and-identity/authentication.md
-KEYCLOAK_URL=https://auth.example.org
-KEYCLOAK_REALM=islamu
-KEYCLOAK_BLAZOR_CLIENT_ID=event-blazor
-KEYCLOAK_BLAZOR_CLIENT_SECRET=your-secure-32-byte-hex-secret
+AUTHENTICATION_PROVIDER=local
+AUTHENTICATION_LOCAL_JWT_KEY=replace-with-output-from-openssl-rand-base64-64
+IDENTITY_DATABASE_TOPOLOGY=colocated
 
 # Operator Legal Identity (Required for Production startup)
 # See: ../configuration-and-operations/environment-variables.md#9-operator-legal-identity-production-gate
@@ -106,7 +117,10 @@ Once the container is healthy:
    ```
 2. Navigate to `http://localhost:8080/setup` (or `https://events.example.org/setup` behind your reverse proxy).
 3. Paste the setup secret and finalize your instance details (see [Administration Guide](../administration-and-branding/admin-guide.md)).
-4. Once completed, the setup flow is permanently locked.
+4. Keep **Local Identity** selected unless you intentionally operate Keycloak.
+   When the wizard opens sign-in, choose **Create an account** to establish the
+   first local administrator credentials.
+5. Once completed, the setup flow is permanently locked.
 
 ---
 
