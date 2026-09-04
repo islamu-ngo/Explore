@@ -9,7 +9,7 @@ ABOUTME: Summarizes CLA research, owner decisions, and unsafe workflow patterns 
 > **Last Verified:** 2026-05-31
 > **Source Anchors:** `docs/CI_CD_GOVERNANCE.md`, `docs/CONTRIBUTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `dev/active/enterprise-ci-cd-hardening/enterprise-ci-cd-hardening-tasks.md`
 
-This document records the legal contribution gate decision and automation threat model. The active agreement is [legal/CLA.md](../../legal/CLA.md).
+This document records the legal contribution gate decision and automation threat model. The active agreement is [legal/CLA.md](../../../legal/CLA.md).
 
 ## Current Decision
 
@@ -111,7 +111,7 @@ Repository rule:
 
 ## Current Contributor Instructions
 
-Every non-bot contributor must sign the ISLAMU Event CLA in [legal/CLA.md](../../legal/CLA.md) by posting the exact CLA v1.0 signature comment on the pull request.
+Every non-bot contributor must sign the ISLAMU Event CLA in [legal/CLA.md](../../../legal/CLA.md) by posting the exact CLA v1.0 signature comment on the pull request.
 
 Required pull request comment:
 

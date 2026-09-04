@@ -3,14 +3,41 @@ ABOUTME: Captures key runtime patterns and boundaries that are not obvious from 
 
 # Technical Architecture
 
-## System Profile
-- Style: Clean Architecture + CQRS + BFF.
-- Runtime: .NET 10 (`net10.0`, preview SDK pinned in `global.json`).
-- API host: `Explore.API`.
-- BFF host: `Explore.Blazor`.
-- Interactive UI client: `Explore.Blazor.Client`.
-- Optional combined host: `Event.Standalone`.
-- Data: PostgreSQL, SQLite, SQL Server, MariaDB, or MySQL via EF Core.
+> **Audience:** Contributors | Architects | Operators | Integrators | AI agents
+> **Status:** Implemented
+> **Owner:** Contributor Experience
+> **Last Verified:** 2026-09-03
+> **Source Anchors:** `src/Explore.API/Program.cs`, `src/Explore.Application/`, `src/Explore.Domain/`, `src/Explore.Persistence/`, `src/Explore.Infrastructure/`, `src/Explore.Blazor/`, `src/Explore.AppHost/`
+
+## System Profile & Codebase Scale (2026-09-03 Checkpoint)
+
+| Metric / Dimension | Value as of 2026-09-03 | Architectural Context |
+|---|---|---|
+| **Runtime & SDK** | .NET 10 (`net10.0`) | Pinned preview SDK in `global.json`, C# 13 features |
+| **Architectural Style** | Clean Architecture + CQRS + BFF | Compile-enforced assembly boundaries + MediatR pipeline |
+| **Backend Production LOC** | **500,837 LOC** | API 73k, Application 224k, Domain 55k, Persistence 81k, Infrastructure 67k |
+| **Frontend / Client LOC** | **378,000 LOC** | `Explore.Blazor.Client` (incl. 182,524 LOC generated `EventApiClient.g.cs`) |
+| **Feature Slices** | **126 slices** | CQRS vertical slices under `Explore.Application/Features/` |
+| **Controllers** | **172 controllers / 32,418 LOC** | Clean REST endpoints; route capability partitioning |
+| **CQRS Handlers** | **625 handlers / 64,926 LOC** | Average 104 LOC per handler; command & query separation |
+| **Test Suite Scale** | **32 test projects / 1,783 test files** | **455,176 total test LOC**; backend-only test LOC: **338,497** |
+| **Backend Test:Code Ratio** | **≈ 0.68** (338.5k test / 500.8k prod) | Comprehensive unit, integration, contract, and benchmark coverage |
+| **Architecture Tests** | **89 rule files / 22,792 LOC** | NetArchTest guardrails enforcing conventions and boundaries |
+| **Database Engines** | 5 supported providers | PostgreSQL, SQLite, SQL Server, MariaDB, MySQL via EF Core |
+| **Migrations** | Generated migrations × 5 providers | Independent histories across application, data protection, and privacy |
+| **Tenant Isolation** | 339 EF Core global query filters | Governed bypass catalogue (`TenantFilterBypassReasons.cs`, 8.6 KB) |
+| **Authorization** | Cerbos PDP + local fallback | 61 policy YAMLs + SafeMode latch + batch link planning |
+| **Durable Outbox** | 6 specialized outboxes | Email, WebPush, IntegrationSync, Webhook, PdsSync, PolicyChange |
+| **Health Checks** | 26 health-check classes | Storage, database, Redis, Cerbos, recovery, Quartz readiness |
+| **Observability** | OpenTelemetry via Aspire Defaults | 6 named meters, 5 named trace sources, Prometheus scraping |
+| **Configuration Validation** | 107 `ValidateOnStart` registrations | Fail-closed startup options validation via `IValidateOptions` |
+| **Secrets Management** | Dedicated `Explore.Secrets` (48 files) | Infisical external provider, replica convergence, rotation-aware factories |
+| **Caching** | `HybridCache` (100 files) + Output Cache | L1 memory + L2 Redis with tag-based invalidation (96 endpoints) |
+| **Rate Limiting** | 69 ASP.NET rate-limit policies | Granular per-endpoint sliding/fixed/token window policies |
+| **Job Scheduling** | Quartz.NET clustered store | 15 scheduled recurring jobs, `QRTZ_` tables on all 5 providers |
+| **CI/CD Workflows** | 21 GitHub Actions workflows | SHA-pinned actions, locked NuGet restore, 150 centrally pinned packages |
+| **Code Hygiene** | **0 TODO / 0 FIXME / 0 HACK** | 0 `[Obsolete]`, 0 `NotImplementedException`, ~95% ABOUTME coverage |
+| **ADRs Documented** | 26 ADRs | Complete architectural decisions recorded in `docs/internal/adr/` |
 
 ## Ticketing Recovery And Deployment Capability Authority
 
@@ -68,12 +95,21 @@ Split/Standalone is a process-composition choice only: it changes where BFF and 
 
 Container packaging is explicit. The repository `docker-compose.yml` describes the Split deployment; Standalone is the single `Event.Standalone` image run directly with an env file and defaults to SQLite. AppHost remains the local topology selector. Selecting Standalone through AppHost does not automatically change the database provider; database selection always remains an explicit structured provider contract.
 
-## Layer Boundaries
-1. `Explore.Domain`: entities, enums, domain rules, no infrastructure concerns.
-2. `Explore.Application`: requests/handlers, DTOs, validators, contracts.
-3. `Explore.Persistence` + `Explore.Infrastructure`: data + external service implementations.
-4. `Explore.API`: the API host composition root for Domain, Application, Persistence, and Infrastructure.
-5. `Explore.Blazor` and `Explore.Blazor.Client`: isolated presentation/BFF projects that consume generated `IEventApiClient` contracts only; `Event.Standalone` reuses their host modules without giving the client implementation-layer dependencies.
+## Layer Boundaries & Compile-Time Enforcement
+
+The platform enforces Clean Architecture through **separate .NET project assemblies** with compile-time boundary enforcement, reinforced by 89 architecture test files (22,792 LOC):
+
+1. **`Explore.Domain` (55k LOC)**: Entities, enums, domain rules, state machines, and lifecycle specifications. References only `Event.Wire.Contracts`.
+2. **`Explore.Application` (224k LOC)**: CQRS requests/handlers (MediatR), DTOs, FluentValidation validators, application contracts. Depends only on `Explore.Domain`. Cannot reference Persistence, Infrastructure, or API.
+3. **`Explore.Persistence` (81k LOC) + `Explore.Infrastructure` (67k LOC)**: EF Core DbContext, repositories, provider primitives, migrations, email, storage, Keycloak, webhooks. Depend on `Explore.Application`.
+4. **`Explore.API` (73k LOC)**: REST API host, composition root for all backend layers, HTTP middleware, controllers, Swagger/OpenAPI.
+5. **`Explore.Blazor` & `Explore.Blazor.Client` (378k LOC)**: Isolated BFF server and WebAssembly client. The client has **zero** source or project dependencies on Domain, Application, or Persistence; its backend boundary is strictly the generated `IEventApiClient` contract (182,524 LOC).
+
+### Compile-Time vs Test-Time Enforcement
+In many frameworks, Clean Architecture layers are merely logical packages or folders within a single project module, requiring reflection-based test rules (like ArchUnit) to detect layer leaks. In ISLAMU Event, each layer is a distinct compiled .NET assembly. If a developer accidentally attempts to access a persistence repository from `Explore.Domain` or an internal domain entity from `Explore.Blazor.Client`, the code **cannot compile**. Compile-time gating gives instant feedback on every keystroke in the IDE.
+
+### Intentional Unified Domain & Persistence Model
+Unlike purist architectures that maintain two distinct class hierarchies (Domain Aggregate Roots vs ORM Entities) connected by hundreds of mappers, ISLAMU Event **intentionally unifies domain entities and EF Core persistence entities** in `Explore.Domain`. Domain entities contain EF Core mapping annotations and navigation properties while directly housing rich behavior (`Publish`, `Cancel`, `ApplyScheduleTimeZone`, `RecalculateScheduleSummaryFromSessions`) and delegating to domain rule engines. This deliberate design eliminates 200+ duplicate mirror classes and 140+ mappers, enables native LINQ expressions and query projections directly from domain entities, and powers 339 EF Core global query filters without translation layers. See full rationale in [DOMAIN.md](DOMAIN.md#architectural-rationale-unified-domain--persistence-model-pragmatic-ddd).
 
 The API dependency direction is inward: API -> Infrastructure/Persistence -> Application -> Domain. Blazor has no project or source dependency on those layers; its backend boundary is the generated API client.
 

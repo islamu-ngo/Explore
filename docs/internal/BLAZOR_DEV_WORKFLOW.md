@@ -47,8 +47,8 @@ After the site is up, inspect the affected page in a browser at the relevant des
 | Process management | Aspire AppHost spawns child `dotnet` processes — stop ALL `dotnet` processes before rebuild, not just the AppHost |
 | Enhanced navigation | Blazor enhanced navigation interferes with `page.goto()` — use `page.reload()` instead |
 | Scoped CSS | Changes to `*.razor.css` require a full rebuild (not hot-reload) |
-| MudBlazor version | v9 — match existing component API; see [`blazor-ui-conventions`](../.agents/skills/blazor-ui-conventions/SKILL.md) |
-| CSS isolation + BEM | See [`blazor-css-isolation`](../.agents/skills/blazor-css-isolation/SKILL.md) |
+| MudBlazor version | v9 — match existing component API; see [`blazor-ui-conventions`](../../.agents/skills/blazor-ui-conventions/SKILL.md) |
+| CSS isolation + BEM | See [`blazor-css-isolation`](../../.agents/skills/blazor-css-isolation/SKILL.md) |
 | Purchase contract generation | Build `Explore.API` in Release to refresh `schemas/openapi_islamu-event.json`, then build `Explore.Blazor.Client` to run pinned NSwag and the record transformer |
 | Purchase generated-contract gate | Run `TicketPurchaseGeneratedContractTests`; never edit `EventApiClient.g.cs` directly |
 
@@ -57,7 +57,7 @@ After the site is up, inspect the affected page in a browser at the relevant des
 ## 4. Cross-References
 
 - Component / render-mode conventions → [`docs/BLAZOR.md`](BLAZOR.md)
-- BFF auth / YARP / token forwarding → [`docs/SECURITY-MODEL.md`](SECURITY-MODEL.md), [`blazor-bff-patterns`](../.agents/skills/blazor-bff-patterns/SKILL.md)
-- UI conventions (MudBlazor, BEM, theming) → [`blazor-ui-conventions`](../.agents/skills/blazor-ui-conventions/SKILL.md)
+- BFF auth / YARP / token forwarding → [`docs/SECURITY-MODEL.md`](SECURITY-MODEL.md), [`blazor-bff-patterns`](../../.agents/skills/blazor-bff-patterns/SKILL.md)
+- UI conventions (MudBlazor, BEM, theming) → [`blazor-ui-conventions`](../../.agents/skills/blazor-ui-conventions/SKILL.md)
 - Accessibility requirements → [`docs/ACCESSIBILITY.md`](ACCESSIBILITY.md)
-- Design tokens, CSS layers, wrappers → [`design-system`](../.agents/skills/design-system/SKILL.md)
+- Design tokens, CSS layers, wrappers → [`design-system`](../../.agents/skills/design-system/SKILL.md)

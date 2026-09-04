@@ -261,7 +261,7 @@ Lifecycle state changes are semantic aggregate operations. Application coordinat
 
 | Change | Primary intent | Additive secondary intent |
 |--------|----------------|---------------------------|
-| Deployment-owned secret source, resolver policy, persistence removal, rotation, safe visibility, or topology convergence | [`secrets-authority`](../.agents/contract/intents.yaml) | Apply the path-matched bootstrap, migration, API, HAL, OpenAPI, Blazor, or CI intent declared by `secrets-authority.routing` |
+| Deployment-owned secret source, resolver policy, persistence removal, rotation, safe visibility, or topology convergence | [`secrets-authority`](../../.agents/contract/intents.yaml) | Apply the path-matched bootstrap, migration, API, HAL, OpenAPI, Blazor, or CI intent declared by `secrets-authority.routing` |
 
 The primary intent owns Tier 1 authority, confidentiality, reset, convergence, and greenfield-removal constraints. Secondary obligations remain additive except for the single declared OpenAPI compatibility conflict: secrets-authority removal of obsolete secret-bearing compatibility controls that workstream, while every other OpenAPI gate still applies.
 
@@ -269,7 +269,7 @@ The primary intent owns Tier 1 authority, confidentiality, reset, convergence, a
 
 | Change | Primary intent | Scope and constraints |
 |--------|----------------|-----------------------|
-| Mixed product-source and test strong-typing remediation, runtime-dispatch elimination, typed DID/identity/authorization boundaries, and assurance audit | [`strong-typing-refactor`](../.agents/contract/intents.yaml) | Governs cross-layer strong-typing refactoring, invariant-disposition before deletion, no backward-compatibility, and zero-drift generated artifacts |
+| Mixed product-source and test strong-typing remediation, runtime-dispatch elimination, typed DID/identity/authorization boundaries, and assurance audit | [`strong-typing-refactor`](../../.agents/contract/intents.yaml) | Governs cross-layer strong-typing refactoring, invariant-disposition before deletion, no backward-compatibility, and zero-drift generated artifacts |
 
 ### Choosing ID Types
 
@@ -506,7 +506,7 @@ For detailed code patterns and examples, see:
 
 ## AI Contribution Routing
 
-Every change — human or agent — routes through the Contribution Contract before editing. The contract answers **eight** deterministic questions (intent, rules, must-read files, may-change paths, must-run tests, docs-to-update, PR checklist, forbidden-without-approval). See [`AGENTS.md`](../AGENTS.md) §1 and [`.agents/contract/README.md`](../.agents/contract/README.md).
+Every change — human or agent — routes through the Contribution Contract before editing. The contract answers **eight** deterministic questions (intent, rules, must-read files, may-change paths, must-run tests, docs-to-update, PR checklist, forbidden-without-approval). See [`AGENTS.md`](../../AGENTS.md) §1 and [`.agents/contract/README.md`](../../.agents/contract/README.md).
 
 ### Intent Classification (Decision Table)
 
@@ -531,18 +531,18 @@ If no intent matches, stop and propose a new one per `.agents/contract/README.md
 
 | File You Edit | Rule File |
 |---|---|
-| `Explore.API/Controllers/**/*.cs` | [`.agents/rules/api-controllers.md`](../.agents/rules/api-controllers.md) |
-| `Explore.API/Hateoas/**/*.cs` | [`.agents/rules/api-hateoas.md`](../.agents/rules/api-hateoas.md) |
-| `Explore.Application/**/*.cs` | [`.agents/rules/application-layer.md`](../.agents/rules/application-layer.md) |
-| `Explore.Domain/**/*.cs` | [`.agents/rules/domain.md`](../.agents/rules/domain.md) |
-| `Explore.Persistence/**/*.cs` (non-migration) | [`.agents/rules/efcore-persistence.md`](../.agents/rules/efcore-persistence.md) |
-| `Explore.Persistence/Migrations/**/*.cs` | [`.agents/rules/efcore-migrations.md`](../.agents/rules/efcore-migrations.md) |
-| `Explore.Blazor/**/*` (BFF) | [`.agents/rules/blazor-server.md`](../.agents/rules/blazor-server.md) |
-| `Explore.Blazor.Client/**/*` (WASM) | [`.agents/rules/blazor-client.md`](../.agents/rules/blazor-client.md) |
-| `**/*Tests/**/*.cs`, `**/*UnitTests/**/*.cs`, `**/*IntegrationTests/**/*.cs` | [`.agents/rules/tests.md`](../.agents/rules/tests.md) |
+| `Explore.API/Controllers/**/*.cs` | [`.agents/rules/api-controllers.md`](../../.agents/rules/api-controllers.md) |
+| `Explore.API/Hateoas/**/*.cs` | [`.agents/rules/api-hateoas.md`](../../.agents/rules/api-hateoas.md) |
+| `Explore.Application/**/*.cs` | [`.agents/rules/application-layer.md`](../../.agents/rules/application-layer.md) |
+| `Explore.Domain/**/*.cs` | [`.agents/rules/domain.md`](../../.agents/rules/domain.md) |
+| `Explore.Persistence/**/*.cs` (non-migration) | [`.agents/rules/efcore-persistence.md`](../../.agents/rules/efcore-persistence.md) |
+| `Explore.Persistence/Migrations/**/*.cs` | [`.agents/rules/efcore-migrations.md`](../../.agents/rules/efcore-migrations.md) |
+| `Explore.Blazor/**/*` (BFF) | [`.agents/rules/blazor-server.md`](../../.agents/rules/blazor-server.md) |
+| `Explore.Blazor.Client/**/*` (WASM) | [`.agents/rules/blazor-client.md`](../../.agents/rules/blazor-client.md) |
+| `**/*Tests/**/*.cs`, `**/*UnitTests/**/*.cs`, `**/*IntegrationTests/**/*.cs` | [`.agents/rules/tests.md`](../../.agents/rules/tests.md) |
 
 ### Context Maintenance
 
 - Benchmark scenarios live in `.agents/benchmarks/cold-start-tasks.yaml` to measure cold-start agent success.
 
-If a rule in `.agents/rules/` appears to conflict with `QUICK_REFERENCE.md` or this file, the canonical doc wins and the rule file must be fixed per [`AGENTS.md`](../AGENTS.md) §4.
+If a rule in `.agents/rules/` appears to conflict with `QUICK_REFERENCE.md` or this file, the canonical doc wins and the rule file must be fixed per [`AGENTS.md`](../../AGENTS.md) §4.

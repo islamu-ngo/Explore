@@ -87,9 +87,9 @@ graph TD
 
 | Layer | Responsibility | Key Components |
 |---|---|---|
-| **Domain** | Provider-neutral aggregates, financial value objects, immutable recipient snapshots, and pure policy narrowing rules. | [`PaymentAttempt`](../src/Explore.Domain/PaymentAttempt.cs), [`OrganizerPaymentProviderConnection`](../src/Explore.Domain/OrganizerPaymentProviderConnection.cs), [`PaidEventPolicyVersion`](../src/Explore.Domain/PaidEventPolicyVersion.cs), [`PaidEventPolicyRules`](../src/Explore.Domain/Services/Registration/PaidEventPolicyRules.cs) |
-| **Application** | Use-case orchestration, payment claim management, preflight checks, and provider capability interfaces. | [`IOrganizerPaymentOnboardingProvider`](../src/Explore.Application/Contracts/Services/IOrganizerPaymentOnboardingProvider.cs), [`IHostedCheckoutSessionCreator`](../src/Explore.Application/Contracts/Payments/IHostedCheckoutProvider.cs), [`PaidEventPublicationPreflightService`](../src/Explore.Application/Features/EventTicketing/Services/PaidEventPublicationPreflightService.cs) |
-| **Infrastructure** | Concrete third-party SDK calls, HTTP clients, signature verifications, retries, and error mapping. | [`StripeConnectAccountAdapter`](../src/Explore.Infrastructure/Payments/Stripe/StripeConnectAccountAdapter.cs), [`StripeCheckoutAdapter`](../src/Explore.Infrastructure/Payments/Stripe/Checkout/StripeCheckoutAdapter.cs) |
+| **Domain** | Provider-neutral aggregates, financial value objects, immutable recipient snapshots, and pure policy narrowing rules. | [`PaymentAttempt`](../../src/Explore.Domain/PaymentAttempt.cs), [`OrganizerPaymentProviderConnection`](../../src/Explore.Domain/OrganizerPaymentProviderConnection.cs), [`PaidEventPolicyVersion`](../../src/Explore.Domain/PaidEventPolicyVersion.cs), [`PaidEventPolicyRules`](../../src/Explore.Domain/Services/Registration/PaidEventPolicyRules.cs) |
+| **Application** | Use-case orchestration, payment claim management, preflight checks, and provider capability interfaces. | [`IOrganizerPaymentOnboardingProvider`](../../src/Explore.Application/Contracts/Services/IOrganizerPaymentOnboardingProvider.cs), [`IHostedCheckoutSessionCreator`](../../src/Explore.Application/Contracts/Payments/IHostedCheckoutProvider.cs), [`PaidEventPublicationPreflightService`](../../src/Explore.Application/Features/EventTicketing/Services/PaidEventPublicationPreflightService.cs) |
+| **Infrastructure** | Concrete third-party SDK calls, HTTP clients, signature verifications, retries, and error mapping. | [`StripeConnectAccountAdapter`](../../src/Explore.Infrastructure/Payments/Stripe/StripeConnectAccountAdapter.cs), [`StripeCheckoutAdapter`](../../src/Explore.Infrastructure/Payments/Stripe/Checkout/StripeCheckoutAdapter.cs) |
 | **Presentation (API/BFF)** | HAL resource links, antiforgery-protected checkout redirection, and incoming webhook ingestion endpoints. | `PaidEventPolicySettingsController`, `OrganizerPaymentConnectionsController`, `BffRegistrationPaymentEndpoints`, `IncomingWebhooksController` |
 
 ---
@@ -108,7 +108,7 @@ To maintain Islamic Value-Sensitive Design principles (Trust / *Amanah*, Justice
 
 ### Policy Ceiling vs. Policy Narrowing
 
-Under [`PaidEventPolicyRules`](../src/Explore.Domain/Services/Registration/PaidEventPolicyRules.cs), tenant policies can **only narrow** the instance policy ceiling, never broaden it:
+Under [`PaidEventPolicyRules`](../../src/Explore.Domain/Services/Registration/PaidEventPolicyRules.cs), tenant policies can **only narrow** the instance policy ceiling, never broaden it:
 
 1. **Payments Activation**: If disabled at the instance level (`IsPaymentsEnabled = false`), no tenant can enable payments. If enabled at the instance level, a tenant can disable payments (`IsPaymentsEnabled = false`) for itself.
 2. **Allowed Currencies**: Effective currencies = `Instance Currencies ∩ Tenant Currencies ∩ Provider Capabilities`.
@@ -206,12 +206,12 @@ In the `OrganizerDirect` profile:
 
 ## 5. Financial Invariants & Safety Rules
 
-1. **Integer Minor Units**: All monetary amounts are stored and calculated as integer minor units (`long` or `int`, e.g., cents, pence) using the [`Money`](../src/Explore.Domain/ValueObjects/Money.cs) value object. Floating-point types (`float`, `double`, `decimal`) are strictly forbidden in domain money calculations to eliminate rounding errors.
+1. **Integer Minor Units**: All monetary amounts are stored and calculated as integer minor units (`long` or `int`, e.g., cents, pence) using the [`Money`](../../src/Explore.Domain/ValueObjects/Money.cs) value object. Floating-point types (`float`, `double`, `decimal`) are strictly forbidden in domain money calculations to eliminate rounding errors.
 2. **Explicit Single Currency**: Every ticket catalog version and registration order is bound to exactly one immutable ISO-4217 currency code (e.g. `EUR`, `USD`, `SAR`). Mixed-currency orders and silent foreign exchange conversions are forbidden.
 3. **Zero Cardholder Data Liability (PCI DSS)**: ISLAMU servers never handle, transmit, or store credit card numbers, CVVs, or bank account credentials. All payment capture occurs via provider-hosted checkouts (e.g. Stripe Checkout) or provider-hosted onboarding.
-4. **Pre-Commit Idempotency**: Mutating provider requests require a deterministic, unique idempotency key persisted in [`PaymentAttempt`](../src/Explore.Domain/PaymentAttempt.cs) before executing remote network I/O.
+4. **Pre-Commit Idempotency**: Mutating provider requests require a deterministic, unique idempotency key persisted in [`PaymentAttempt`](../../src/Explore.Domain/PaymentAttempt.cs) before executing remote network I/O.
 5. **Asynchronous Provider Truth**: Browser return URLs are treated as navigation only, not proof of payment. Terminal payment state is advanced strictly through signed webhooks and background reconciliation jobs.
-6. **Immutable Historical Snapshots**: When a ticket catalog is published, an [`OrganizerPaymentRecipientSnapshot`](../src/Explore.Domain/OrganizerPaymentRecipientSnapshot.cs) records the exact organizer actor, connected account ID, country, currency, and policy version. Replacing a connected account applies only to future sales and never alters historical order records.
+6. **Immutable Historical Snapshots**: When a ticket catalog is published, an [`OrganizerPaymentRecipientSnapshot`](../../src/Explore.Domain/OrganizerPaymentRecipientSnapshot.cs) records the exact organizer actor, connected account ID, country, currency, and policy version. Replacing a connected account applies only to future sales and never alters historical order records.
 
 ---
 
@@ -414,7 +414,7 @@ Create an incoming webhook verifier and handler in `src/Explore.Infrastructure/P
        public string[] AllowedCheckoutHosts { get; set; } = ["www.mollie.com"];
    }
    ```
-2. Register secrets in [`SecretDefinitionRegistry.cs`](../src/Explore.Domain/Secrets/SecretDefinitionRegistry.cs).
+2. Register secrets in [`SecretDefinitionRegistry.cs`](../../src/Explore.Domain/Secrets/SecretDefinitionRegistry.cs).
 3. Bind the adapter implementations in `Explore.Infrastructure/Payments/PaymentServicesRegistration.cs`.
 
 ---
@@ -536,4 +536,4 @@ merchant's accounting, tax, invoice, credit-note, banking, or escrow system.
 - [SECRETS.md](SECRETS.md) - Multi-provider secret management
 - [SECURITY-MODEL.md](SECURITY-MODEL.md) - Platform security invariants and privilege boundaries
 - [WEBHOOKS.md](WEBHOOKS.md) - Webhook delivery, callback verifications, and operational runbooks
-- [I-VSD Paid Event Payments Consultation](../islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md)
+- [I-VSD Paid Event Payments Consultation](../../islamic-value-sensitive-design/i-vsd-paid-event-payments-consultation.md)

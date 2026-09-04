@@ -12,8 +12,6 @@ ISLAMU Event powers ISLAMU’s Islamic events instance, but the software itself 
 
 > Pre-1.0 notice: ISLAMU Event is still before v1. Breaking changes may happen between releases. We avoid data-loss-class breaks where possible, but configuration changes may be required.
 
-Operator references: [Official Docs](https://islamu.gitbook.io/islamu-event) · [5-Min Quickstart](https://islamu.gitbook.io/islamu-event/documentation/readme/getting-started/5-minute-quickstart) · [Self-Hosting](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting) · [Deployment Tiers](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/deployment-tiers) · [Docker Compose](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/docker-compose) · [Configuration](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/environment-variables) · [Secrets](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/secrets) · [Troubleshooting](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/troubleshooting-and-health)
-
 ![GitHub Workflow Status][github-workflow-status-shield]
 [![GitHub License][github-license-shield]][github-license-link]
 [![GitHub Repo Stars][github-stars-shield]][github-stars-link]

@@ -27,7 +27,7 @@ curl -sSL https://aspire.dev/install.sh | bash
 
 ## Starting Point
 
-For high-level expectations, project scope, discussion requirements, and the AI contribution policy, see the repository root [CONTRIBUTING.md](../CONTRIBUTING.md).
+For high-level expectations, project scope, discussion requirements, and the AI contribution policy, see the repository root [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 If this is your first contribution, start with [FIRST_CONTRIBUTION.md](FIRST_CONTRIBUTION.md). It gives the shortest safe path for docs-only and small-bug PRs without duplicating this full workflow.
 
@@ -44,11 +44,11 @@ Use the GitHub templates to keep requests and reviews actionable:
 
 | Template | Use For |
 |---|---|
-| [Bug report](../.github/ISSUE_TEMPLATE/01_BUG_REPORT.yaml) | Reproducible defects, validation gaps, and regressions. |
+| [Bug report](../../.github/ISSUE_TEMPLATE/01_BUG_REPORT.yaml) | Reproducible defects, validation gaps, and regressions. |
 | [Feature request](https://github.com/islamu-ngo/Event/discussions/categories/feature-requests) | New behavior with explicit problem, proposal, and non-goals (via GitHub Discussions). |
-| [Documentation issue](../.github/ISSUE_TEMPLATE/documentation.yml) | Stale, missing, confusing, or incorrect docs with source anchors. |
-| [AI agent task](../.github/ISSUE_TEMPLATE/ai_agent_task.yml) | Work packages that need context, scoped files, validation, and handoff expectations. |
-| [Pull request template](../.github/PULL_REQUEST_TEMPLATE.md) | PR summary, changes, AI disclosure, validation evidence, release notes, and contributor agreement. |
+| [Documentation issue](../../.github/ISSUE_TEMPLATE/documentation.yml) | Stale, missing, confusing, or incorrect docs with source anchors. |
+| [AI agent contract](../../AGENTS.md) | Work packages that need context, scoped files, validation, and handoff expectations. |
+| [Pull request template](../../.github/PULL_REQUEST_TEMPLATE.md) | PR summary, changes, AI disclosure, validation evidence, release notes, and contributor agreement. |
 
 ### How to Contribute
 
@@ -66,9 +66,9 @@ Before opening a PR:
 
 ## Contributor Legal Status
  
-Every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement](../legal/CLA.md) by posting the exact CLA signature comment on the pull request. The CLA gives the ISLAMU project steward broad inbound rights to maintain, provide, and relicense ISLAMU Event under alternative terms when sustainability, enterprise internal-use on-premises compliance, nonprofit, humanitarian, public-sector, or procurement-restricted needs require it.
+Every non-bot contributor must sign the [ISLAMU Event Contributor License Agreement](../../legal/CLA.md) by posting the exact CLA signature comment on the pull request. The CLA gives the ISLAMU project steward broad inbound rights to maintain, provide, and relicense ISLAMU Event under alternative terms when sustainability, enterprise internal-use on-premises compliance, nonprofit, humanitarian, public-sector, or procurement-restricted needs require it.
 
-**Anti-SaaS Governance Invariant:** The Project Steward is bound never to license ISLAMU Event under terms that allow a third-party closed-source SaaS. Any entity operating a public SaaS must do so under `AGPL-3.0-or-later`, preserving universal community parity. See [I-VSD Strategy Review](../islamic-value-sensitive-design/i-vsd-licensing-and-commercial-strategy.md).
+**Anti-SaaS Governance Invariant:** The Project Steward is bound never to license ISLAMU Event under terms that allow a third-party closed-source SaaS. Any entity operating a public SaaS must do so under `AGPL-3.0-or-later`, preserving universal community parity. See [I-VSD Strategy Review](../../islamic-value-sensitive-design/i-vsd-licensing-and-commercial-strategy.md).
 
 The `Contributor License Agreement` workflow records v1.0 signatures in `signatures/v1.0/cla.json` on the dedicated `cla-signatures` branch. A pre-flight script short-circuits the full action when all commit authors are already signed or allowlisted. It uses `pull_request_target` and `issue_comment` metadata only; it must not checkout, build, test, cache, restore packages, or execute pull-request head code.
 
@@ -121,7 +121,7 @@ matching `Change-Id:` footer. A backport records the original commit in that fra
 Canonical release notes deliberately carry **no** author or committer identity, email,
 raw commit body, or provider handle. Release artifacts are signed, mirrored, and
 permanent, so contributor recognition is kept out of them on purpose; see
-[i-vsd-release-governance.md](../islamic-value-sensitive-design/i-vsd-release-governance.md)
+[i-vsd-release-governance.md](../../islamic-value-sensitive-design/i-vsd-release-governance.md)
 for why that trade was made.
 
 The release preparation commit is:
@@ -280,7 +280,7 @@ Before submitting:
       OpenAPI, API inventory, and the NSwag client; the second generation is
       byte-stable and no generated file was hand-edited
 - [ ] Operator/release changes update `docs/SELF_HOSTING.md`, `docs/BACKUP_RESTORE_UPGRADE.md`, or `docs/RELEASE_CHECKLIST.md` when applicable
-- [ ] Multi-session work records bounded resume and handoff state in its task-owned `*-context.md` following [Context Engineering](../.agents/CONTEXT_ENGINEERING.md#workstream-and-handoff-state)
+- [ ] Multi-session work records bounded resume and handoff state in its task-owned `*-context.md` following [Context Engineering](../../.agents/CONTEXT_ENGINEERING.md#workstream-and-handoff-state)
 - [ ] Breaking changes are explicitly documented
 - [ ] No type error suppression (`as any`, `@ts-ignore`)
 - [ ] No empty catch blocks or deleted failing tests

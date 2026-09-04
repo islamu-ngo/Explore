@@ -23,12 +23,23 @@ Impacts:
       Syntax-tree-only parsing, deterministic directory revalidation,
       canonical parity, value-free failures, and no partial output protect
       self-hosted composition.
+  Migration:
+    Reference: docs/RELEASE_RUNBOOK.md
+    Disposition: not-applicable
+    Detail: >-
+      The source compiler introduces no persisted state or data migration.
   Configuration:
     Reference: docs/SETUP_COMPOSITION.md
     Disposition: documented
     Detail: >-
       Canonical defaults bound source bytes, parser structure, paths,
       files, directories, scalar sizes, and normalized nodes.
+  OpenAPI:
+    Reference: docs/API_CHANGELOG.md
+    Disposition: not-applicable
+    Detail: >-
+      Setup composition is an offline input concern and does not change the
+      HTTP API contract.
   Operator:
     Reference: docs/OPERATIONS.md
     Disposition: documented

@@ -355,7 +355,7 @@ operation, and time while a shared schema must represent all valid states.
 
 ## Related
 
-- [Event Draft Lifecycle Architecture Consultation](../../dev/report/Event%20Draft%20Lifecycle%20Architecture%20Consultation.md)
+- [Event Draft Lifecycle Architecture Consultation](../../../dev/report/Event%20Draft%20Lifecycle%20Architecture%20Consultation.md)
 - [Domain Model](../DOMAIN.md)
 - [Technical Architecture](../ARCHITECTURE.md)
 - [ADR-002: Outbox Pattern](ADR-002-outbox-pattern.md)

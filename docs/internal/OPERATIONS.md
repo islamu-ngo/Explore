@@ -72,7 +72,7 @@ Reconciliation claims at most 50 rows in stable `next_attempt_at/created_at/id` 
 | Diagnose repeated symptoms | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | You have a concrete failure such as `401`, `429`, `504`, unhealthy readiness, setup-secret errors, or secret-provider failures. |
 | Validate release readiness | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | A change affects migrations, configuration, secrets, security, upgrade paths, or operator docs. |
 | Prepare, attest, tag, or re-verify a governed release | [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) | You are running `prepare`, `verify-candidate`, `verify-tag`, `verify-main`, `verify-baseline`, opening or deleting a maintenance line, or checking an existing release from its tag alone. |
-| Prevent or repair Change-Id collisions | [Release Engineering](../eng/release/README.md#collision-proof-change-workflow) | You are creating a public change, preflighting a feature range, installing commit hooks, or binding an immutable colliding footer to a replacement fragment. |
+| Prevent or repair Change-Id collisions | [Release Engineering](../../eng/release/README.md#collision-proof-change-workflow) | You are creating a public change, preflighting a feature range, installing commit hooks, or binding an immutable colliding footer to a replacement fragment. |
 | Review privacy-erasure workflow | [PRIVACY_ERASURE.md](PRIVACY_ERASURE.md) | You need the current authority-first erasure flow, replay gate, receipt/status behavior, provider-work fences, cleanup, or operator gaps. |
 
 ## Admission Check-In Operations (Phase 21)
@@ -1616,7 +1616,7 @@ into an outage. Pausing an individual job pauses its triggers without removing i
 it once immediately while leaving its schedule untouched.
 
 Changing anything in this section is governed by the **`schedule-background-work`** intent in
-[`.agents/contract/intents.yaml`](../.agents/contract/intents.yaml). It answers the contract's eight
+[`.agents/contract/intents.yaml`](../../.agents/contract/intents.yaml). It answers the contract's eight
 questions for scheduler work and encodes the invariants that have already caused defects here: Quartz types
 stay inside `Explore.API`, scheduler payloads stay pointer-only, scheduler tables are raw ADO rather than EF
 migrations, scheduler DDL is never destructive, cron expressions use Quartz's `?` day rule, and a missing
@@ -2199,7 +2199,7 @@ gate; fixture success is not that evidence.
 
 ## AI Agent Operational Context
 
-AI-agent workflow rules are not runtime operations. Keep them in [../AGENTS.md](../AGENTS.md) and [the context-engineering contract](../.agents/CONTEXT_ENGINEERING.md) so operators do not have to scan agent tooling while diagnosing production behavior.
+AI-agent workflow rules are not runtime operations. Keep them in [../../AGENTS.md](../../AGENTS.md) and [the context-engineering contract](../../.agents/CONTEXT_ENGINEERING.md) so operators do not have to scan agent tooling while diagnosing production behavior.
 
 The only repository workflow utility is the read-only `eng/agent-workflow`
 guard. Use `validate-intents .agents/contract/intents.yaml` for YAML syntax and

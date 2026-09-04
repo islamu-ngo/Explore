@@ -6,7 +6,7 @@ ABOUTME: Explains how all services, layers, and hosting topologies interact acro
 > **Audience:** Contributors | Developers | Architects | AI agents
 > **Status:** Implemented
 > **Owner:** Contributor Experience
-> **Last Verified:** 2026-08-16
+> **Last Verified:** 2026-09-03
 > **Source Anchors:** `Explore.API/Program.cs`, `Explore.Blazor/Program.cs`, `Explore.AppHost/AppHost.cs`, `Event.Standalone/Program.cs`, `docs/DEVELOPER_GUIDE.md`, `docs/REQUEST_FLOWS.md`
 
 This document provides a high-level visual and technical overview of how all subsystems, projects, and external services in the **ISLAMU Event** platform interact.
@@ -111,18 +111,18 @@ graph TD
     BlazorClient -.->|Calls via Generated IEventApiClient only| APIHost
 ```
 
-### Project Catalog & Responsibilities
+### Project Catalog & Responsibilities (2026-09-03 Checkpoint: 500,837 Backend Prod LOC)
 
-| Project | Clean Architecture Layer | Key Responsibilities | Dependencies |
-|---|---|---|---|
-| **`Explore.Domain`** | Domain | Entities (`Event`, `Organization`, `User`, `OutboxMessage`), status enums, marker interfaces (`ITenantEntity`, `IAuditableEntity`, `ISoftDeletable`). | *None (Zero external dependencies)* |
-| **`Explore.Application`** | Application | CQRS feature slices (Commands/Queries), MediatR handlers, FluentValidation rules, DTOs, specification query filters, and interface contracts (`IEventRepository`, `ITenantContext`). | `Explore.Domain` |
-| **`Explore.Persistence`** | Persistence / Data | `ExploreDbContext` (split partials), EF Core entity configurations, named query filters, repository implementations, and data protection key stores. | `Explore.Application`, `Explore.Domain` |
-| **`Explore.Infrastructure`** | Infrastructure | Email dispatching (SMTP), object storage (S3/MinIO), outgoing webhooks (Svix/Local), ATProto transport, and moderation adapters. | `Explore.Application`, `Explore.Domain` |
-| **`Explore.API`** | Presentation / API Host | Composition root, ASP.NET Core controllers, middleware pipeline (tenant resolution, rate limiting, HATEOAS, auth), HAL resource assemblers, and OpenAPI generation. | `Explore.Application`, `Explore.Persistence`, `Explore.Infrastructure`, `Explore.Domain` |
-| **`Explore.Blazor`** | Presentation / BFF Host | Blazor Server host, OIDC authentication challenge endpoints, session cookie management, and YARP reverse proxy to `Explore.API`. | `Event.Web.BffHosting`, `Explore.Blazor.Client` |
-| **`Explore.Blazor.Client`** | Presentation / UI Client | Interactive Blazor WebAssembly frontend, MudBlazor pages, components, dialogs, design system tokens, and NSwag-generated `IEventApiClient` consumption. | *None (Generated client boundary)* |
-| **`Event.Standalone`** | Optional Combined Host | Single-process host combining `Explore.API` and `Explore.Blazor` with an in-process direct pipeline and SQLite defaults for minimal resource footprints. | `Explore.API`, `Explore.Blazor` |
+| Project | Clean Architecture Layer | Scale (LOC) | Key Responsibilities | Dependencies |
+|---|---|---|---|---|
+| **`Explore.Domain`** | Domain | **55,000 LOC** | Entities (`Event`, `Organization`, `User`, `OutboxMessage`), status enums, marker interfaces (`ITenantEntity`, `IAuditableEntity`, `ISoftDeletable`). **Architectural note:** Intentionally unifies domain and EF Core persistence models to eliminate 200+ duplicate mirror classes and 140+ mappers while enabling native LINQ expression projections and direct global query filtering. | *None (Zero external dependencies; references only `Event.Wire.Contracts`)* |
+| **`Explore.Application`** | Application | **224,000 LOC** | CQRS feature slices (126 slices, 625 handlers, Commands/Queries), MediatR handlers, FluentValidation rules, DTOs, specification query filters, and interface contracts (`IEventRepository`, `ITenantContext`). | `Explore.Domain` |
+| **`Explore.Persistence`** | Persistence / Data | **81,000 LOC** | `ExploreDbContext` (split partials, 339 query filters), EF Core entity configurations, named query filters, repository implementations across 5 database providers, and data protection key stores. | `Explore.Application`, `Explore.Domain` |
+| **`Explore.Infrastructure`** | Infrastructure | **67,000 LOC** | 6 specialized outboxes, email dispatching (SMTP), object storage (S3/MinIO), outgoing webhooks (Svix/Local), ATProto transport, and moderation adapters. | `Explore.Application`, `Explore.Domain` |
+| **`Explore.API`** | Presentation / API Host | **73,000 LOC** | Composition root, 172 ASP.NET Core controllers (32,418 LOC), middleware pipeline (tenant resolution, rate limiting, HATEOAS, auth), HAL resource assemblers, and OpenAPI generation. | `Explore.Application`, `Explore.Persistence`, `Explore.Infrastructure`, `Explore.Domain` |
+| **`Explore.Blazor`** | Presentation / BFF Host | Shared Host | Blazor Server host, OIDC authentication challenge endpoints, session cookie management, and YARP reverse proxy to `Explore.API`. | `Event.Web.BffHosting`, `Explore.Blazor.Client` |
+| **`Explore.Blazor.Client`** | Presentation / UI Client | **378,000 LOC** | Interactive Blazor WebAssembly frontend, MudBlazor pages, components, dialogs, design system tokens, and NSwag-generated `IEventApiClient` consumption (182,524 LOC generated client). | *None (Generated client boundary)* |
+| **`Event.Standalone`** | Optional Combined Host | Composition Root | Single-process host combining `Explore.API` and `Explore.Blazor` with an in-process direct pipeline and SQLite defaults for minimal resource footprints. | `Explore.API`, `Explore.Blazor` |
 | **`Explore.AppHost`** | Orchestrator | .NET Aspire orchestration project for spinning up local development topologies (databases, Keycloak, Cerbos, Redis, Mailpit). | Aspire SDK |
 
 ---

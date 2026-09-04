@@ -6,7 +6,7 @@
 > **Audience:** Contributors | AI Agents | Platform Architects | Maintainers  
 > **Status:** Canonical & Implemented  
 > **Last Verified:** 2026-09-01 Europe/Brussels<br>
-> **Source Anchors:** [`AGENTS.md`](../AGENTS.md), [`.agents/CONTEXT_ENGINEERING.md`](../.agents/CONTEXT_ENGINEERING.md), [`.agents/contract/intents.yaml`](../.agents/contract/intents.yaml), [`implementation-plan`](../.agents/skills/implementation-plan/SKILL.md), [`senior-cto-feedback`](../.agents/skills/senior-cto-feedback/SKILL.md), [`conventional-commit`](../.agents/skills/conventional-commit/SKILL.md), [`docs/QUICK_REFERENCE.md`](QUICK_REFERENCE.md)
+> **Source Anchors:** [`AGENTS.md`](../../AGENTS.md), [`.agents/CONTEXT_ENGINEERING.md`](../../.agents/CONTEXT_ENGINEERING.md), [`.agents/contract/intents.yaml`](../../.agents/contract/intents.yaml), [`implementation-plan`](../../.agents/skills/implementation-plan/SKILL.md), [`senior-cto-feedback`](../../.agents/skills/senior-cto-feedback/SKILL.md), [`conventional-commit`](../../.agents/skills/conventional-commit/SKILL.md), [`docs/QUICK_REFERENCE.md`](QUICK_REFERENCE.md)
 
 ---
 
@@ -204,11 +204,11 @@ flowchart TD
 Current adapter facts:
 
 - OmO auto-loads `.omo/rules`; the contract system routes `.agents/rules`.
-- Root [`CLAUDE.md`](../CLAUDE.md) and [Copilot instructions](../.github/copilot-instructions.md) point to `AGENTS.md`; Claude settings currently register graph hooks rather than rule mirrors.
+- Root [`CLAUDE.md`](../../CLAUDE.md) and [Copilot instructions](../../.github/copilot-instructions.md) point to `AGENTS.md`; Claude settings currently register graph hooks rather than rule mirrors.
 - `.cursorrules` currently contains graph guidance, not a mirrored rule tree.
 - No additional Claude/Cursor/Copilot/Gemini twin directories are asserted as implemented.
 
-Harness injection order does not change repository authority. Root [`AGENTS.md`](../AGENTS.md) remains controlling: Critical Rules → `docs/QUICK_REFERENCE.md` → `docs/GOVERNANCE.md` → matching path-scoped rules. Adapter convergence remains proposal **#5** below.
+Harness injection order does not change repository authority. Root [`AGENTS.md`](../../AGENTS.md) remains controlling: Critical Rules → `docs/QUICK_REFERENCE.md` → `docs/GOVERNANCE.md` → matching path-scoped rules. Adapter convergence remains proposal **#5** below.
 
 ### The Twin Rules Synchronization Contract
 
@@ -493,9 +493,9 @@ The guard never executes Git or mutates repository state.
 
 ## 11. Related Documentation & Canonical Anchors
 
-- [`AGENTS.md`](../AGENTS.md) — Canonical agent contract and entrypoint.
-- [`.agents/CONTEXT_ENGINEERING.md`](../.agents/CONTEXT_ENGINEERING.md) — Context budget policy and retrieval limits.
-- [`.agents/contract/intents.yaml`](../.agents/contract/intents.yaml) — Machine-readable task and intent registry.
+- [`AGENTS.md`](../../AGENTS.md) — Canonical agent contract and entrypoint.
+- [`.agents/CONTEXT_ENGINEERING.md`](../../.agents/CONTEXT_ENGINEERING.md) — Context budget policy and retrieval limits.
+- [`.agents/contract/intents.yaml`](../../.agents/contract/intents.yaml) — Machine-readable task and intent registry.
 - [`docs/QUICK_REFERENCE.md`](QUICK_REFERENCE.md) — Global invariant quick reference.
 - [`docs/GOVERNANCE.md`](GOVERNANCE.md) — Architectural governance, coding patterns, and conventions.
 - [`docs/DOCUMENTATION_ARCHITECTURE.md`](DOCUMENTATION_ARCHITECTURE.md) — Documentation structure, layout, and maintenance rules.

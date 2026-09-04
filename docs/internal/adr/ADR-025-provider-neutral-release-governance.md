@@ -80,4 +80,4 @@ pre-automation baseline until the prospective cutover is explicitly approved.
 - [Release Policy](../RELEASE_POLICY.md)
 - [Release Runbook](../RELEASE_RUNBOOK.md)
 - [Release Checklist](../RELEASE_CHECKLIST.md)
-- [Historical git-cliff report](../../dev/report/git-cliff-changelog-automation-report.md)
+- [Historical git-cliff report](../../../dev/report/git-cliff-changelog-automation-report.md)

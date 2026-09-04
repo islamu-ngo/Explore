@@ -117,4 +117,4 @@ Cold-start benchmark results should be recorded under `dev/_journal/benchmark-re
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - issue diagnosis and practical recovery.
 - [TESTING.md](TESTING.md) - test project and verification command policy.
 - [GOVERNANCE.md](GOVERNANCE.md) - engineering governance and context-system benchmark references.
-- [../.agents/benchmarks/README.md](../.agents/benchmarks/README.md) - cold-start agent benchmark procedure.
+- [../../.agents/benchmarks/README.md](../../.agents/benchmarks/README.md) - cold-start agent benchmark procedure.

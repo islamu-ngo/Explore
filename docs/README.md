@@ -19,8 +19,8 @@ docs/
 | I am a... | Goal | Go To |
 |---|---|---|
 | **Adopter / Self-Hoster / Operator** | Deploying, operating, or configuring an instance (Docker, Coolify, Traefik) | 📖 **[Public Documentation](public/)**<br>*(Also available online at [islamu.gitbook.io/islamu-event](https://islamu.gitbook.io/islamu-event))* |
-| **Community Admin / Organizer** | Managing events, ticketing, white-labeling, or tenant branding via UI | 🏢 **[Administration Guides](public/documentation/readme/administration-and-branding.md)** |
-| **API Integrator** | Integrating third-party apps or building clients against the REST API | 🔌 **[API Reference & Cookbook](public/api-reference/readme.md)** |
+| **Community Admin / Organizer** | Managing events, ticketing, white-labeling, or tenant branding via UI | 🏢 **[Administration Guides](public/documentation/readme/administration-and-branding/README.md)** |
+| **API Integrator** | Integrating third-party apps or building clients against the REST API | 🔌 **[API Reference & Cookbook](public/api-reference/README.md)** |
 | **Developer Contributor** | Contributing C# backend, Blazor frontend, or architecture improvements | 💻 **[Internal Developer Docs](internal/)** (Start with [`internal/DEVELOPER_GUIDE.md`](internal/DEVELOPER_GUIDE.md)) |
 | **AI Coding Agent** | Pair programming, verifying invariants, running tests, or planning tasks | 🤖 **[`AGENTS.md`](../AGENTS.md)** & **[`internal/index.md`](internal/index.md)** |
 
@@ -32,13 +32,13 @@ docs/
 
 This directory is the source of truth for the public GitBook site. It is curated for clarity, actionable step-by-step guidance, and ease of adoption without exposing internal framework mechanics.
 
-- **[Getting Started](public/documentation/readme/getting-started.md)**: 5-minute evaluation, architectural concepts, and platform advantages.
-- **[Self-Hosting](public/documentation/readme/self-hosting.md)**: Production topologies using Docker Compose, Coolify, Traefik, or standalone containers.
-- **[Configuration & Operations](public/documentation/readme/configuration-and-operations.md)**: Environment variable matrices, secrets injection, backup, restore, and health checks.
-- **[Security & Identity](public/documentation/readme/security-and-identity.md)**: Authentication with Keycloak, tenant isolation, and privacy erasure.
-- **[Events & Ticketing](public/documentation/readme/events-and-ticketing.md)**: Modular aspects, custom registration properties, admission credentials, and payouts.
-- **[API Reference](public/api-reference/readme.md)**: HAL-REST concepts, interactive endpoints, and task-first recipes.
-- **[Changelog](public/changelog/readme.md)**: Adopter-facing release notes, upgrade instructions, and breaking change announcements.
+- **[Getting Started](public/documentation/readme/getting-started/README.md)**: 5-minute evaluation, architectural concepts, and platform advantages.
+- **[Self-Hosting](public/documentation/readme/self-hosting/README.md)**: Production topologies using Docker Compose, Coolify, Traefik, or standalone containers.
+- **[Configuration & Operations](public/documentation/readme/configuration-and-operations/README.md)**: Environment variable matrices, secrets injection, backup, restore, and health checks.
+- **[Security & Identity](public/documentation/readme/security-and-identity/README.md)**: Authentication with Keycloak, tenant isolation, and privacy erasure.
+- **[Events & Ticketing](public/documentation/readme/events-and-ticketing/README.md)**: Modular aspects, custom registration properties, admission credentials, and payouts.
+- **[API Reference](public/api-reference/README.md)**: HAL-REST concepts, interactive endpoints, and task-first recipes.
+- **[Changelog](public/changelog/README.md)**: Adopter-facing release notes, upgrade instructions, and breaking change announcements.
 
 ---
 

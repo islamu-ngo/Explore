@@ -3,18 +3,29 @@ ABOUTME: Helps AI agents and developers locate code quickly without full-repo sc
 
 # Codebase Structure Reference
 
-> Complete directory map for AI agents and developers.
-> Lists all folders with max 2 key files per folder for quick lookup.
-> Last Updated: August 2026
+> **Audience:** Contributors | Architects | Developers | AI agents
+> **Status:** Implemented
+> **Owner:** Contributor Experience
+> **Last Verified:** 2026-09-03
+> **Source Anchors:** `src/`, `tests/`
+
+Complete directory map for AI agents and developers. Lists all folders with max 2 key files per folder for quick lookup.
 
 ---
 
-## Solution Overview
+## Solution Overview & Scale (2026-09-03 Checkpoint)
 
-The solution uses **Clean Architecture** with CQRS (MediatR). There are **two naming prefixes** during the Explore-to-Event transition:
+The solution implements **Clean Architecture** with CQRS (MediatR), enforced at compile time through 5 separate project assemblies plus presentation hosts:
 
-- **Explore.\*** - Main application projects (API, Domain, Application, Persistence, Blazor, Infrastructure) (historical naming from when the project was "Explore", were not renamed to "Event" yet)
-- **Event.\*** - Test projects plus newer shared/runtime projects such as shared BFF hosting and the control-plane UI.
+- **Backend Production Scale**: **500,837 LOC** (API: 73k, Application: 224k, Domain: 55k, Persistence: 81k, Infrastructure: 67k).
+- **Presentation Scale**: **378,000 LOC** in `Explore.Blazor.Client` (including 182,524 LOC generated in `EventApiClient.g.cs`).
+- **Feature Surface**: **126 feature slices**, **172 controllers** (32,418 LOC), **625 CQRS handlers** (64,926 LOC, average 104 LOC).
+- **Testing Scale**: **32 test projects**, **1,783 test files**, **455,176 test LOC** (backend-only test LOC: **338,497**; test:code ratio ≈ **0.68**).
+- **Architecture Guardrails**: **89 rule files / 22,792 LOC** in `Event.Architecture.Tests` using NetArchTest.
+
+There are **two naming prefixes** during the Explore-to-Event transition:
+- **Explore.\*** - Main application projects (API, Domain, Application, Persistence, Blazor, Infrastructure) (historical naming from when the project was "Explore", were not renamed to "Event" yet).
+- **Event.\*** - Test projects plus newer shared/runtime projects such as shared BFF hosting, standalone host, migration service, and the control-plane UI.
 
 ---
 
@@ -71,9 +82,11 @@ For topology, trust-boundary, and operations rollback behavior, cross-check:
 
 ## Directory Tree
 
-### Explore.Domain/ — Domain Entities & Interfaces
+### Explore.Domain/ — Domain Entities & Interfaces (55k LOC)
 
-Pure domain model. No external dependencies. All entities live at root level.
+Pure domain model with compile-time zero external dependencies (references only `Event.Wire.Contracts`). All entities live at root level.
+
+**Architectural Invariant**: Domain entities in `Explore.Domain` intentionally serve as EF Core persistence entities, pairing mapping annotations (`[ForeignKey]`) and navigation properties with rich domain behaviors (`Publish`, `Cancel`, `ApplyScheduleTimeZone`, `RecalculateScheduleSummaryFromSessions`) and delegating to domain rule engines (`EventLifecycleRules`). This intentional design eliminates 200+ duplicate mirror classes and 140+ mappers, enables native LINQ expression tree projections, and directly powers 339 EF Core global query filters without translation layers.
 
 ```
 Explore.Domain/

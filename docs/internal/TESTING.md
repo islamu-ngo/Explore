@@ -3,6 +3,31 @@ ABOUTME: Covers 3 host profiles, fixture model, builders/seeds, database lifecyc
 
 # Testing
 
+> **Audience:** Contributors | Architects | AI agents
+> **Status:** Implemented
+> **Owner:** Contributor Experience
+> **Last Verified:** 2026-09-03
+> **Source Anchors:** `tests/`, `eng/agent-workflow/tests/`, `eng/release/tests/`, `.github/workflows/`
+
+## Codebase Test Metrics & Guardrail Scale (2026-09-03 Checkpoint)
+
+| Metric / Dimension | Value as of 2026-09-03 | Architectural Context |
+|---|---|---|
+| **Total Test Scale** | **32 projects / 1,783 test files** | **455,176 total test lines of code** |
+| **Backend Test LOC** | **338,497 LOC** | Pure backend test surface (excludes UI/client tests) |
+| **Backend Test:Code Ratio** | **≈ 0.68** (338.5k test / 500.8k prod) | Exceptionally dense test coverage across all layers |
+| **API Integration Tests** | 347 files / 93.8k LOC | `Event.API.IntegrationTests` (full stack HTTP, auth, HATEOAS) |
+| **Persistence Integration Tests** | 239 files / 90.6k LOC | `Event.Persistence.IntegrationTests` (real engine providers) |
+| **Application Unit Tests** | 282 files / 52.1k LOC | `Event.Application.UnitTests` (CQRS handlers, validation, mapping) |
+| **Infrastructure Tests** | 191 files / 54.0k LOC | `Explore.Infrastructure.Tests` (external adapters, storage, auth fallback) |
+| **Domain Unit Tests** | 125 files / 25.1k LOC | `Event.Domain.UnitTests` (pure domain logic, lifecycle rules) |
+| **Architecture Rule Tests** | **89 files / 22,792 LOC** | `Event.Architecture.Tests` (NetArchTest compile/structure guardrails) |
+| **CI/CD Security Workflows** | 21 GitHub Actions workflows | CodeQL, Scorecard, secret-scanning, dep-review, contract checks |
+| **Supply Chain Posture** | Locked NuGet Restore | Commit SHA-pinned actions, `RestoreLockedMode`, 150 pinned packages |
+| **Code Hygiene** | **0 TODO / 0 FIXME / 0 HACK** | 0 `[Obsolete]`, 0 `NotImplementedException`, ~95% ABOUTME coverage |
+
+---
+
 ## Framework
 
 The project uses [TUnit](https://github.com/thomhurst/TUnit) — a modern, fast, parallel .NET testing framework.

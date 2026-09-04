@@ -1073,7 +1073,6 @@ intents:
       - docs/internal/AGENTIC_CONTEXT_ENGINEERING.md
       - docs/internal/OPERATIONS.md
       - docs/internal/TESTING.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md
     load_skills: []
     load_rules:
       - .agents/rules/tests.md
@@ -1093,7 +1092,6 @@ intents:
       - "docs/internal/AGENTIC_CONTEXT_ENGINEERING.md"
       - "docs/internal/OPERATIONS.md"
       - "docs/internal/TESTING.md"
-      - "dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md"
     paths_forbidden:
       - "src/**"
       - "src/**/Migrations/**"
@@ -1113,7 +1111,6 @@ intents:
       - docs/internal/TESTING.md
       - .agents/contract/intents.yaml
       - .agents/contract/README.md
-      - dev/active/agentic-workflow-control-plane/agentic-workflow-control-plane-plan.md
     unique_acceptance:
       - "The guard parses `.agents/contract/intents.yaml` as one bounded UTF-8 YAML document"
       - "The commit guard accepts only `git commit` commands with distinct literal file pathspecs after `--`"

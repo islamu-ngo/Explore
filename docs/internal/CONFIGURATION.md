@@ -99,7 +99,7 @@ not cached as successful absence. See [Secrets Management](SECRETS.md#runtime-re
 ## Configuration Manifest Contract
 
 The governed editor and operator contract is
-[`schemas/configuration-manifest-v1alpha2.schema.json`](../schemas/configuration-manifest-v1alpha2.schema.json).
+[`schemas/configuration-manifest-v1alpha2.schema.json`](../../schemas/configuration-manifest-v1alpha2.schema.json).
 It uses JSON Schema Draft 2020-12 with immutable identifier
 `https://schemas.islamu.org/event/configuration-manifest/v1alpha1/schema.json`.
 That URL is currently an identifier, not a promise that a public endpoint serves the

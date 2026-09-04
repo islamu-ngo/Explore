@@ -3,8 +3,14 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 
 # Quick Reference
 
+> **Audience:** Contributors | Developers | Architects | AI agents
+> **Status:** Implemented
+> **Owner:** Contributor Experience
+> **Last Verified:** 2026-09-03
+> **Source Anchors:** `docs/internal/GOVERNANCE.md`, `docs/internal/ARCHITECTURE.md`, `docs/internal/DOMAIN.md`
+
 ## Critical Rules
-1. Repositories return entities, not DTOs; mapping happens in handlers.
+1. Repositories return entities, not DTOs; mapping happens in handlers. Domain entities in `Explore.Domain` intentionally double as EF Core persistence entities (avoiding 200+ duplicate mirror classes and 140+ mappers while enabling native LINQ expression projections and powering 339 global query filters; see [DOMAIN.md](DOMAIN.md#architectural-rationale-unified-domain--persistence-model-pragmatic-ddd)).
 2. Validators are manually instantiated in handlers/services (not injected as `IValidator<T>`).
 3. Link/junction writes go through repositories, not direct navigation collection mutation.
 4. Use `Guid` for core aggregates, `int` for most lookup IDs, `long` only for size/cursor style fields.
@@ -26,7 +32,7 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 20. Named route constants in `RouteNames` must match `[HttpGet(Name = "...")]` attribute values on controller actions.
 21. **HAL links are the single source of truth for UI**: Clients must gate action affordances (Edit, Delete, etc.) by checking for the presence of the corresponding link in the `_links` object, never by local role/claim inspection.
 22. Normalized lookup DTOs expose `*Id`, `*Code`, and `*Name`; do not expose persisted enum wrappers in API contracts.
-23. **Blazor is fully isolated from API implementation layers**: `Explore.Blazor`, `Explore.Blazor.Client`, and their tests must not reference Domain, Application, Infrastructure, or Persistence. Backend communication and backend/domain models come only from the generated `IEventApiClient` contract.
+23. **Blazor is fully isolated from API implementation layers**: `Explore.Blazor`, `Explore.Blazor.Client`, and their tests must not reference Domain, Application, Infrastructure, or Persistence. Backend communication and backend/domain models come only from the generated API client contracts (`EventApiTagClients.g.cs` / per-tag clients).
 24. **EF Core migrations and model snapshots are generated artifacts**: Never hand-edit them. Correct the entity/configuration or migration-generation extension, delete the unapplied development migration, and regenerate it with `dotnet ef migrations`.
 25. **External behavior research is clean-room only**: Implementation context may contain neutral functional requirements and repository-native design material, never third-party source, snippets, ASTs, SQL, migrations, tests, comments, or assets. Independently design the implementation's structure, sequence, and organization and record provenance under [`docs/legal/IP_GOVERNANCE.md`](legal/IP_GOVERNANCE.md).
 26. **Controllers never resolve services from the container.** `HttpContext.RequestServices` is banned in `Explore.API/Controllers`; take a constructor dependency, or read the request principal directly. Enforce the rule through compiled or runtime API contracts, never a historical source allowlist.
@@ -134,4 +140,4 @@ All disabled in `Testing` environment.
 | 13 | Periodic worker | Quartz `IJob` doing one pass, registered via `AddSweepJob<TJob>` | `BackgroundService` with `while (!ct.IsCancellationRequested) { …; await Task.Delay(interval, ct); }` |
 | 14 | Controller abstraction | Concrete class inheriting `EventControllerBase` + MediatR dispatch + `CommandFailurePolicy` | `CrudControllerBase<...>` / `LookupControllerBase<...>` (generic action inheritance anti-pattern) |
 
-These are enforced by `Event.Architecture.Tests` and the `.agents/rules/` path-scoped rule files — see [`.agents/rules/README.md`](../.agents/rules/README.md).
+These are enforced by `Event.Architecture.Tests` and the `.agents/rules/` path-scoped rule files — see [`.agents/rules/README.md`](../../.agents/rules/README.md).

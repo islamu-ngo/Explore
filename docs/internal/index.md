@@ -82,7 +82,7 @@ Start with [Repository README](../../README.md) or the [Documentation Hub](../RE
 - [RELEASE_POLICY.md](RELEASE_POLICY.md) - normative provider-neutral release invariants; prospective until the release engine is activated.
 - [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) - current manual and future governed-release operator procedure.
 - [adr/ADR-025-provider-neutral-release-governance.md](adr/ADR-025-provider-neutral-release-governance.md) - trusted-bundle, exact-commit, and renderer-only release architecture.
-- [legal/CLA.md](../legal/CLA.md) - active ISLAMU Event contributor license agreement.
+- [legal/CLA.md](../../legal/CLA.md) - active ISLAMU Event contributor license agreement.
 - [legal/CONTRIBUTION_GOVERNANCE.md](legal/CONTRIBUTION_GOVERNANCE.md) - CLA legal contribution decision record and automation threat model.
 - [legal/IP_GOVERNANCE.md](legal/IP_GOVERNANCE.md) - clean-room research, source isolation, dependency-license compatibility, and audit evidence policy.
 - [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) - naming rules for entities, CQRS, services, tests.
@@ -95,14 +95,14 @@ Start with [Repository README](../../README.md) or the [Documentation Hub](../RE
 - [BLAZOR_DEV_WORKFLOW.md](BLAZOR_DEV_WORKFLOW.md) - stop → build → run → wait → inspect loop for Blazor visual verification.
 
 ## AI Agent Contribution Context
-- [../AGENTS.md](../AGENTS.md) - tool-neutral entrypoint, Contribution Contract, rule authority, cold-start flow.
-- [../.agents/contract/README.md](../.agents/contract/README.md) - Contribution Contract (eight questions every change must answer).
-- [../.agents/contract/intents.yaml](../.agents/contract/intents.yaml) - intent → context map (paths, rules, skills, tests, docs).
-- [../.agents/rules/README.md](../.agents/rules/README.md) - path-scoped rule files auto-loaded by editing scope.
-- [../.agents/skills/_SKILL_SCHEMA.md](../.agents/skills/_SKILL_SCHEMA.md) - schema every migrated `SKILL.md` follows.
-- [../.agents/agents/_AGENT_SCHEMA.md](../.agents/agents/_AGENT_SCHEMA.md) - schema every subagent file follows.
-- [../.agents/benchmarks/README.md](../.agents/benchmarks/README.md) - cold-start agent benchmark scenarios.
-- [../dev/_journal/README.md](../dev/_journal/README.md) - durable findings log + promotion rules.
+- [../../AGENTS.md](../../AGENTS.md) - tool-neutral entrypoint, Contribution Contract, rule authority, cold-start flow.
+- [../../.agents/contract/README.md](../../.agents/contract/README.md) - Contribution Contract (eight questions every change must answer).
+- [../../.agents/contract/intents.yaml](../../.agents/contract/intents.yaml) - intent → context map (paths, rules, skills, tests, docs).
+- [../../.agents/rules/README.md](../../.agents/rules/README.md) - path-scoped rule files auto-loaded by editing scope.
+- [../../.agents/skills/_SKILL_SCHEMA.md](../../.agents/skills/_SKILL_SCHEMA.md) - schema every migrated `SKILL.md` follows.
+- [../../.agents/agents/_AGENT_SCHEMA.md](../../.agents/agents/_AGENT_SCHEMA.md) - schema every subagent file follows.
+- [../../.agents/benchmarks/README.md](../../.agents/benchmarks/README.md) - cold-start agent benchmark scenarios.
+- [../../dev/_journal/README.md](../../dev/_journal/README.md) - durable findings log + promotion rules.
 
 ## Runtime And Operations
 - [CONFIGURATION_MANIFEST.md](CONFIGURATION_MANIFEST.md) - strict instance-and-tenant bootstrap contract, operator workflow, rerun semantics, export, recovery, and contributor extension guide.

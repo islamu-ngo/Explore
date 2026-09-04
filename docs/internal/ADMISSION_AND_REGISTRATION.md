@@ -54,13 +54,13 @@ flowchart LR
 Registration and Admission are kept in separate aggregates for five critical architectural reasons:
 
 1. **Entitlement Expansion (1-to-Many Mappings):**
-   A purchaser buys one ticket type (e.g., *"3-Day Conference All-Access Pass"*). That single order line entitles the attendee to multiple days, tracks, and individual sessions. The registration domain records the $1$ purchase, while the admission domain expands this into $M$ granular session-level [`EventRegistration`](../src/Explore.Domain/EventRegistration.cs) admission slots.
+   A purchaser buys one ticket type (e.g., *"3-Day Conference All-Access Pass"*). That single order line entitles the attendee to multiple days, tracks, and individual sessions. The registration domain records the $1$ purchase, while the admission domain expands this into $M$ granular session-level [`EventRegistration`](../../src/Explore.Domain/EventRegistration.cs) admission slots.
 2. **Purchaser vs. Attendee Independence:**
-   A purchaser (e.g., a corporate buyer or family member) often buys tickets for other individuals. The order belongs to the purchaser, but each assigned [`RegistrationParticipant`](../src/Explore.Domain/RegistrationParticipant.cs) receives their own independently managed [`AdmissionTicket`](../src/Explore.Domain/AdmissionTicket.cs) and cryptographic QR credential.
+   A purchaser (e.g., a corporate buyer or family member) often buys tickets for other individuals. The order belongs to the purchaser, but each assigned [`RegistrationParticipant`](../../src/Explore.Domain/RegistrationParticipant.cs) receives their own independently managed [`AdmissionTicket`](../../src/Explore.Domain/AdmissionTicket.cs) and cryptographic QR credential.
 3. **Zero-Knowledge Security & PII Isolation:**
    Registration orders store sensitive PII, custom questionnaire answers, and payment provider tokens. Conversely, the admission credential aggregate stores **only versioned keyed HMAC-SHA-256 lookup digests**, never plaintext barcodes, tokens, or PII. The HMAC key remains outside the database in the secret provider, so a database read replica or backup does not contain usable admission credentials or barcodes.
 4. **Independent Lifecycle & Revocation:**
-   If a ticket is lost, stolen, or reassigned, the admission credential can be rotated or revoked (`AdmissionTicketStatusEnum.Revoked`) without rewriting the immutable financial or tax history of the original [`RegistrationOrder`](../src/Explore.Domain/RegistrationOrder.cs).
+   If a ticket is lost, stolen, or reassigned, the admission credential can be rotated or revoked (`AdmissionTicketStatusEnum.Revoked`) without rewriting the immutable financial or tax history of the original [`RegistrationOrder`](../../src/Explore.Domain/RegistrationOrder.cs).
 5. **High-Throughput Online Gate Checking:**
    Gate check-in accepts camera, HID, and manual input only through server-authoritative online validation. It resolves the high-entropy bearer digest without loading heavy order history, pricing rules, payment attempts, or custom form answers; there is no offline validation fallback or retained offline admission queue.
 
@@ -70,46 +70,46 @@ Registration and Admission are kept in separate aggregates for five critical arc
 
 ### Registration Domain Models
 
-* **[`RegistrationOrder`](../src/Explore.Domain/RegistrationOrder.cs)**: The aggregate root managing the booking workflow, purchaser actor/account, order lines, financial sums, currency, inventory reservations, and payment state.
+* **[`RegistrationOrder`](../../src/Explore.Domain/RegistrationOrder.cs)**: The aggregate root managing the booking workflow, purchaser actor/account, order lines, financial sums, currency, inventory reservations, and payment state.
   * *Statuses (`RegistrationOrderStatusEnum`)*: `Draft` $\to$ `PendingPayment` $\to$ `Confirmed`, `Cancelled`, `Expired`, `Refunded`.
-* **[`RegistrationOrderLine`](../src/Explore.Domain/RegistrationOrderLine.cs)**: Represents quantity, pricing snapshot, and target [`EventTicketType`](../src/Explore.Domain/EventTicketType.cs).
-* **[`RegistrationParticipant`](../src/Explore.Domain/RegistrationParticipant.cs)**: Attendee identity facts (name, email, optional linked user ID) and questionnaire responses.
-* **[`RegistrationTicketAssignment`](../src/Explore.Domain/RegistrationTicketAssignment.cs)**: Binds a single unit of an order line to a specific participant.
+* **[`RegistrationOrderLine`](../../src/Explore.Domain/RegistrationOrderLine.cs)**: Represents quantity, pricing snapshot, and target [`EventTicketType`](../../src/Explore.Domain/EventTicketType.cs).
+* **[`RegistrationParticipant`](../../src/Explore.Domain/RegistrationParticipant.cs)**: Attendee identity facts (name, email, optional linked user ID) and questionnaire responses.
+* **[`RegistrationTicketAssignment`](../../src/Explore.Domain/RegistrationTicketAssignment.cs)**: Binds a single unit of an order line to a specific participant.
 
 ### Admission Domain Models
 
-* **[`AdmissionTicket`](../src/Explore.Domain/AdmissionTicket.cs)**: The aggregate root for physical/digital gate admission. Issued automatically only after confirmed free authority or exact reconciled paid-finalization authority.
+* **[`AdmissionTicket`](../../src/Explore.Domain/AdmissionTicket.cs)**: The aggregate root for physical/digital gate admission. Issued automatically only after confirmed free authority or exact reconciled paid-finalization authority.
   * *Statuses (`AdmissionTicketStatusEnum`)*: `Active`, `Suspended`, `Revoked`, `Cancelled`, `Transferred`, `Expired`.
   * *Transition reasons include*: `Issued`, `Reissued`, `Transferred`, `FullyRefunded`, `OrderCancelled`, `ManualRevocation`, and `Compromised`.
-* **[`AdmissionTicketCredential`](../src/Explore.Domain/AdmissionTicketCredential.cs)**: Child entity owning the versioned cryptographic lookup digest (`LookupDigest`) and key version (`LookupKeyVersion`).
-* **[`EventRegistration`](../src/Explore.Domain/EventRegistration.cs)**: The concrete per-session admission slot linking an attendee to a specific [`EventSession`](../src/Explore.Domain/EventSession.cs), used for session-level capacity tracking and roster management.
-* **[`AdmissionRecoveryCapability`](../src/Explore.Domain/AdmissionRecoveryCapability.cs)**: Durable keyed-digest state for an expiring, single-use, rate-limited guest recovery capability; plaintext is never persisted.
+* **[`AdmissionTicketCredential`](../../src/Explore.Domain/AdmissionTicketCredential.cs)**: Child entity owning the versioned cryptographic lookup digest (`LookupDigest`) and key version (`LookupKeyVersion`).
+* **[`EventRegistration`](../../src/Explore.Domain/EventRegistration.cs)**: The concrete per-session admission slot linking an attendee to a specific [`EventSession`](../../src/Explore.Domain/EventSession.cs), used for session-level capacity tracking and roster management.
+* **[`AdmissionRecoveryCapability`](../../src/Explore.Domain/AdmissionRecoveryCapability.cs)**: Durable keyed-digest state for an expiring, single-use, rate-limited guest recovery capability; plaintext is never persisted.
 
 ---
 
 ## 4. Key Application & Infrastructure Services
 
 ### 1. Entitlement Materialization
-* **[`RegistrationAdmissionMaterializer`](../src/Explore.Application/Services/Registration/RegistrationAdmissionMaterializer.cs)**:
-  * Evaluates [`TicketTypeEntitlement`](../src/Explore.Domain/TicketTypeEntitlement.cs) scopes (`Event`, `EventDay`, `EventSession`).
+* **[`RegistrationAdmissionMaterializer`](../../src/Explore.Application/Services/Registration/RegistrationAdmissionMaterializer.cs)**:
+  * Evaluates [`TicketTypeEntitlement`](../../src/Explore.Domain/TicketTypeEntitlement.cs) scopes (`Event`, `EventDay`, `EventSession`).
   * Expands each purchased ticket into individual session admission instances (`EventRegistration`) for the assigned participant.
 
 ### 2. Credential Generation & Zero-Knowledge Storage
-* **[`AdmissionIssuanceService`](../src/Explore.Application/Services/Registration/AdmissionIssuanceService.cs)**:
+* **[`AdmissionIssuanceService`](../../src/Explore.Application/Services/Registration/AdmissionIssuanceService.cs)**:
   * Executes under a database transaction fence during order finalization.
   * Generates random 32-byte cryptographic bearers.
-  * Invokes [`IAdmissionCredentialDigestService`](../src/Explore.Infrastructure/Services/Registration/AdmissionCredentialDigestService.cs) to compute HMAC-SHA-256 lookup digests.
+  * Invokes [`IAdmissionCredentialDigestService`](../../src/Explore.Infrastructure/Services/Registration/AdmissionCredentialDigestService.cs) to compute HMAC-SHA-256 lookup digests.
   * Stages encrypted delivery outbox messages before committing.
 
 ### 3. QR Wire Codec & Payload Standard
-* **[`AdmissionQrPayloadCodec`](../src/Event.Wire.Contracts/Admissions/AdmissionQrPayloadCodec.cs)**:
+* **[`AdmissionQrPayloadCodec`](../../src/Event.Wire.Contracts/Admissions/AdmissionQrPayloadCodec.cs)**:
   * Formats admission QR codes with the canonical prefix:
     $$\text{islamu-admission:v1:}\langle\text{43-character Base64url bearer}\rangle$$
   * Total payload length is exactly 63 characters.
   * Strictly redacts plaintext credentials from debugging strings, logs, and OpenTelemetry spans.
 
 ### 4. Self-Service Ticket Recovery (Lost Tickets)
-* **[`AdmissionTicketRecoveryController`](../src/Explore.API/Controllers/AdmissionTicketRecoveryController.cs)** & **[`AdmissionRecoveryService`](../src/Explore.Application/Services/Registration/AdmissionRecoveryService.cs)**:
+* **[`AdmissionTicketRecoveryController`](../../src/Explore.API/Controllers/AdmissionTicketRecoveryController.cs)** & **[`AdmissionRecoveryService`](../../src/Explore.Application/Services/Registration/AdmissionRecoveryService.cs)**:
   * `POST /api/tickets/recovery`: Accepts an attendee email address. Returns an indistinguishable `202 Accepted` response regardless of whether the email exists. It is a `PublicTransactional` write protected by the exact `public_transactional` per-IP policy, idempotency middleware, and a chained tenant recovery budget.
   * Sends a single-use magic recovery link with an encrypted capability token.
   * `POST /api/tickets/recovery/consume`: Consumes the capability via `X-Admission-Ticket-Recovery-Capability`, rotates it atomically, and returns QR and print delivery documents. It uses the dedicated admission-recovery limiter and deliberately does not use idempotency replay because a successful bearer response must remain single-use.

@@ -675,12 +675,12 @@ scenarios:
       persistence, and Blazor test fixtures to typed public contracts, and enforce the assurance audit.
     expected_must_reads:
       - "AGENTS.md"
-      - "docs/QUICK_REFERENCE.md"
-      - "docs/GOVERNANCE.md"
-      - "docs/TESTING.md"
-      - "docs/SECURITY-MODEL.md"
-      - "docs/DOMAIN.md"
-      - "docs/RECORD_CONTRACTS.md"
+      - "docs/internal/QUICK_REFERENCE.md"
+      - "docs/internal/GOVERNANCE.md"
+      - "docs/internal/TESTING.md"
+      - "docs/internal/SECURITY-MODEL.md"
+      - "docs/internal/DOMAIN.md"
+      - "docs/internal/RECORD_CONTRACTS.md"
       - "dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-plan.md"
       - "dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-context.md"
       - "dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-tasks.md"

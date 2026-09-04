@@ -3,9 +3,13 @@ ABOUTME: Captures what you cannot guess from reading ARCHITECTURE.md alone — i
 
 # Codebase Insights
 
-> Non-intuitive patterns, hidden knowledge, and things requiring deep analysis.
-> This document captures what you cannot guess from reading ARCHITECTURE.md alone.
-> Last Updated: 2026-08-28
+> **Audience:** Contributors | Architects | AI agents
+> **Status:** Implemented
+> **Owner:** Contributor Experience
+> **Last Verified:** 2026-09-03
+> **Source Anchors:** `src/Explore.API/`, `src/Explore.Application/`, `src/Explore.Domain/`, `src/Explore.Persistence/`, `src/Explore.Infrastructure/`, `src/Explore.Secrets/`
+
+Non-intuitive patterns, hidden knowledge, and implementation details requiring deep analysis. This document captures what you cannot guess from reading `ARCHITECTURE.md` alone.
 
 ---
 
@@ -790,3 +794,109 @@ initial migration per provider during development. This is not an in-place
 upgrade path for databases on the removed development history: recreate or
 restore a compatible database, run the generated initial, and verify no pending
 model changes.
+
+---
+
+## 37. Unified Domain & Persistence Entity Model: Intentional Pragmatic Architecture
+
+A central tenet of the ISLAMU Event architecture is the **deliberate unification of Domain Entities and EF Core Persistence Entities** in `Explore.Domain`.
+
+### The Theoretical Purist Approach vs. Our Pragmatic Model
+Standard academic DDD literature often prescribes strict physical isolation:
+- Domain layer containing pure POCO aggregate roots with private state, encapsulated behind complex factories.
+- Infrastructure/Persistence layer containing separate ORM entities decorated with table mappings, foreign keys, and navigations.
+- A vast mapping layer (140+ mappers, 200+ duplicate entity classes) translating back and forth on every query and mutation.
+
+### Why ISLAMU Event Intentionally Rejects the Dual-Model Hierarchy
+Our entities in `Explore.Domain` directly contain EF Core navigation properties, foreign key annotations (`[ForeignKey]`), and public getters/setters, while simultaneously encapsulating domain behaviors and invariant transition rules (`Event.Publish()`, `Event.Cancel()`, `Event.ApplyScheduleTimeZone()`, `EventLifecycleRules`).
+
+This intentional choice provides major engineering advantages:
+
+1. **Zero Dual-Model Maintenance Tax**:
+   Eliminating parallel entity definitions saves maintaining over 200 duplicate classes across 126 feature slices. Developers modify a single authoritative class when evolving domain models.
+2. **Zero Mapping Drift & Elimination of Reflection Overhead**:
+   Dual-model systems suffer from constant mapper desynchronization, forgotten fields, and performance degradation from reflection-based mappers. With a single model, mapping drift between domain and database is structurally impossible.
+3. **First-Class EF Core Expression Tree Projection (`IQueryable<T>`)**:
+   Relational databases excel at filtering, joining, and projecting data via SQL. Because our domain entities are the persistence entities, repositories and query specifications construct native LINQ expression trees directly against the domain model. Repositories can execute `.Select(e => new EventSummaryDto { ... })` and let EF Core translate directly to optimized SQL queries without loading full entity graphs. In a pure detached model, EF Core cannot inspect or translate expressions referencing unmapped domain classes.
+4. **Native Integration with 339 EF Core Global Query Filters**:
+   Tenant scoping (`TenantId`) and soft deletion (`IsDeleted`) are implemented as 339 EF Core named global query filters on `ExploreDbContext`. These filters bind directly to domain interface markers (`ITenantEntity`, `ISoftDeletable`). Every LINQ query executed anywhere in the application automatically applies these filters without manual where clauses or translation adapters.
+5. **Precise Change Tracking Without Snapshot Diffing**:
+   EF Core's change tracker natively tracks property modifications on entity instances. When a command handler mutates an entity via domain methods, EF Core identifies the exact columns modified and emits minimal `UPDATE` statements. A detached domain model requires complex snapshot diffing or manual state re-application to an attached persistence entity.
+6. **Compile-Time Assembly Protection**:
+   `Explore.Domain.csproj` references only `Event.Wire.Contracts`, with **zero external dependencies**. Clean Architecture is enforced at compile time: Domain cannot reference Persistence, Application, or API.
+
+---
+
+## 38. Comprehensive Architecture Test Guardrail Surface (89 Test Files / 22,792 LOC)
+
+The codebase is protected by **89 architecture test files** comprising **22,792 lines of code** in `tests/Event.Architecture.Tests` using `NetArchTest`. This represents an exceptionally thorough automated guardrail suite:
+
+### Key Guardrail Dimensions
+- **Layer Boundary Gating**: Enforces inward dependency flow: `Domain` has no dependencies; `Application` depends only on `Domain`; `Persistence` and `Infrastructure` depend only on `Application`; `API` is the composition root.
+- **Blazor Client Isolation**: `BlazorIsolationArchitectureTests` ensures `Explore.Blazor.Client` and `Explore.Blazor` never reference Domain, Application, or Persistence, preventing backend leakage into the presentation tier.
+- **OpenAPI & Generated Contract Stability**: `OpenApiContractArchitectureTests` and `GeneratedClientBuildLifecycleArchitectureTests` assert that committed OpenAPI schemas and generated client contracts remain in sync.
+- **Privacy & PII Inventory**: `PrivacyErasureContractArchitectureTests` audits all entities containing personal data, ensuring PII splits, erasure state machines, and lifecycle tables remain documented and tested.
+- **CQRS Conventions**: Handlers must follow strict naming (`*CommandHandler`, `*QueryHandler`), enforce return types (`BaseCommandResponse<TId>`), and pair with validators without DI injection (`HandlerValidatorPairingTests`).
+- **Cache Governance**: Validates that caching abstractions (`HybridCache`, Output Cache) are consumed through approved interfaces and not leaked into domain entities.
+- **Cerbos Policy Parity**: Asserts that controller actions and HAL link policies have corresponding Cerbos resource/action definitions.
+- **Provider Migration Ownership**: Ensures each of the 5 database providers maintains independent, unpolluted EF migration histories.
+
+---
+
+## 39. Generated API Client (`EventApiClient.g.cs` — 182k LOC) as an Architectural Boundary
+
+The frontend client application (`Explore.Blazor.Client`) does not share DTOs or entity classes with the backend. Instead, it interacts with the backend strictly through **`EventApiClient.g.cs`** — a **182,524 LOC** strongly typed client generated at build time from the API's OpenAPI specification using NSwag.
+
+### Governance Invariants
+- **Zero Frontend Drift**: Any change to API route templates, request payloads, or response DTOs immediately updates the OpenAPI specification and regenerates `EventApiClient.g.cs`. If a frontend component uses an obsolete field or invalid endpoint, the client fails at compile time.
+- **No Direct Assembly References**: `Explore.Blazor.Client` has no project reference to `Explore.Application` or `Explore.Domain`. It consumes only generated contracts, ensuring total architectural decoupling.
+- **Architecture Enforcement**: `GeneratedClientRecordArchitectureTests` asserts that generated models conform to immutable record semantics and comply with platform serialization rules.
+
+---
+
+## 40. Specialized Outbox Topology (6 Specialized Outboxes)
+
+Rather than relying on a single generic outbox table for all asynchronous effects, the platform employs **6 specialized transactional outboxes** alongside the general-purpose `OutboxMessage`:
+
+1. **`EmailDispatchOutbox`** (ADR-008): Manages email sending with dedicated state machine, retry count, template parameters, and recipient tracking.
+2. **`WebPushDispatchOutbox`**: Handles WebPush notification dispatch with subscription validation and automatic pruning of expired endpoints.
+3. **`IntegrationSyncOutbox`**: Coordinates synchronization tasks with external partner integrations.
+4. **`IncomingWebhookEffectOutbox`**: Executes asynchronous side effects resulting from verified inbound webhooks (e.g. Stripe checkout events).
+5. **`PdsSyncOutbox`**: Coordinates synchronization with ATProto Personal Data Servers (PDS) for federated event discovery.
+6. **`PolicyChangeOutbox`**: Dispatches tenant policy and role updates to distributed policy enforcement points.
+
+### Dispatching & Safety
+- **`CompositeOutboxMessageDispatcher`**: Orchestrates sweep jobs across all outboxes in a coordinated pass.
+- **`DurableSideEffectBoundaryTests`**: An architecture test suite that prohibits MediatR command handlers from directly invoking external communication services (SMTP, HTTP clients, or push gateways). All external side effects must be staged transactionally through an outbox in the same database transaction as the domain state change.
+
+---
+
+## 41. Secret Management, Sourcing, and Rotation Subsystem
+
+Platform secrets, encryption keys, and connection credentials are governed by a dedicated **`Explore.Secrets`** project (48 source files) and strict fail-closed policies:
+
+- **Authoritative Sourcing**: Secrets originate strictly from **Infisical**, explicit environment injection (`.env.example`), or shared .NET User Secrets in Development. Hard-coded credentials are strictly forbidden.
+- **Dynamic Rotation & Replica Convergence**: The rotation engine supports background credential rotation (e.g. database passwords, API tokens) and coordinates convergence across multiple application replicas.
+- **Rotation-Aware Factories**: `Explore.Secrets` provides rotation-aware `DbContextFactory` and `HttpClientFactory` implementations that transparently cycle connections with new credentials without requiring application restarts.
+- **Fail-Closed Startup Validation**: Over **107 `ValidateOnStart` / `IValidateOptions`** registrations enforce that all mandatory settings and secrets are verified at boot time; the application immediately halts if any configuration is missing or malformed.
+
+---
+
+## 42. Optimistic Concurrency Mechanics & If-Match Evaluation
+
+The platform enforces optimistic concurrency control across all mutable state:
+
+- **`ConcurrencyStamp` on Entities**: Tracked across 423 persistence references. Every update command expects the current concurrency stamp of the target aggregate.
+- **Precondition Evaluation**: Controllers parse the `If-Match` HTTP header using `ExploreControllerBase.TryParseConcurrencyStamp`. If the header is missing or does not match the stored concurrency stamp, the request fails with a validation problem.
+- **ETag Emission**: `ETagMiddleware` automatically generates SHA256 weak ETags (`W/"..."`) for `application/json` and `application/hal+json` responses, enabling HTTP caching and conditional updates (`If-Match` / `If-None-Match`).
+
+---
+
+## 43. Dependency Licensing Governance & Dual Build Paths
+
+To ensure clean-room compliance and protect outbound licensing paths (governed by `docs/internal/legal/IP_GOVERNANCE.md` and `docs/internal/legal/CONTRIBUTION_GOVERNANCE.md`), the repository maintains strict dependency licensing controls:
+
+- **AutoMapper MIT Freeze**: Pinned to **AutoMapper 14.0.0** (the last MIT-licensed release, explicitly annotated in `Directory.Packages.props` as security-frozen due to CVE-2026-32933) with an optional commercial-license build path (16.1.1).
+- **MediatR Apache Freeze**: Pinned to **MediatR 12.5.0** (the last Apache 2.0-licensed release).
+- **Central Package Management & Lock Files**: All 150 NuGet dependencies are centrally managed in `Directory.Packages.props`. CI workflows execute with `RestoreLockedMode` against `packages.lock.json` to prevent dependency tampering or unauthorized transitive upgrades.
+
