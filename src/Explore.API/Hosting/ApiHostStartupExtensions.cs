@@ -6,6 +6,7 @@ using Explore.API.Extensions;
 using Explore.Application.Contracts.Services;
 using Explore.Persistence;
 using Explore.Persistence.Schema;
+using Explore.Persistence.Security;
 using Explore.Persistence.Seed;
 using Explore.Infrastructure.ConfigurationManifest;
 using Explore.Infrastructure.Services;
@@ -76,6 +77,9 @@ public static class ApiHostStartupExtensions
                                     db,
                                     app.Configuration);
                                 await PostgresModelConstraintApplier.ApplyAsync(
+                                    db,
+                                    cancellationToken);
+                                await PostgresTenantRowLevelSecurityModel.ApplyAsync(
                                     db,
                                     cancellationToken);
                                 logger.LogInformation(

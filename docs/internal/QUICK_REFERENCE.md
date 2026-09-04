@@ -21,7 +21,7 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 9. User ID fallback order is `sub` -> `nameidentifier` -> `sid` -> `internal_user_id`, GUID-parseable values only. `Explore.Application.Authentication.PlatformIdentityPrincipalExtensions` is the **single** authority for it; `IUserContext` delegates there. Never re-derive identity from raw claims.
 10. HAL responses are default; `Prefer: return=minimal` can remove link-heavy payloads.
 11. Most create/update commands use `BaseCommandResponse<TId>`; many delete commands currently use `bool`.
-12. Tenant isolation is enforced centrally by global query filters in `ExploreDbContext`; do not bypass casually.
+12. Tenant isolation is enforced centrally by global query filters in `ExploreDbContext` and backed by PostgreSQL Row-Level Security (RLS) defense-in-depth (`FORCE ROW LEVEL SECURITY`); do not bypass casually.
 13. Exception handling uses chained `IExceptionHandler` (not middleware); **every** error response is RFC 7807 ProblemDetails — handler-generated failures included, via `CommandFailurePolicy` or `MapCommandResponse`. Never return a raw `BaseCommandResponse` as a failure body.
 14. Rate limiting is disabled in `Testing` environment (all policies replaced with `NoLimiter`).
 15. Middleware pipeline order in `Program.cs` is critical — do not rearrange without understanding dependencies.
@@ -52,6 +52,12 @@ Runtime tenant resolution:
 Single-tenant fallback default tenant ID: `018e4e5c-7f00-7000-8000-000000000001`.
 
 Governance settings resolution uses a **5-tier cascade**: User → Group → Organization → Tenant → Instance. Instance-level locks prevent higher-tier overrides unless in single-tenant mode.
+
+Database defense-in-depth (PostgreSQL):
+- PostgreSQL enforces tenant isolation via Row-Level Security (RLS) across all tenant-scoped tables (`ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY`).
+- `PostgresTenantSessionInterceptor` sets the connection session variable `app.current_tenant_id` on every connection open.
+- Model-derived policies fail closed (`0` rows visible, cross-tenant inserts rejected with 42501) when `app.current_tenant_id` is missing or empty, protecting against raw SQL queries or inadvertent `IgnoreQueryFilters()` calls.
+- Runtime database roles must have `NOBYPASSRLS` and must not have `SUPERUSER`.
 
 ## Auditing And Soft Delete
 1. Auditable entities use `CreatedAt/By` and `UpdatedAt/By`.

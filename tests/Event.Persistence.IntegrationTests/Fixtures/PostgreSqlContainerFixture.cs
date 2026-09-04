@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Schema;
+using Explore.Persistence.Security;
 using Explore.Persistence.Seed;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
@@ -52,6 +53,7 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         {
             await migratorContext.Database.MigrateAsync();
             await PostgresModelConstraintApplier.ApplyAsync(migratorContext);
+            await PostgresTenantRowLevelSecurityModel.ApplyAsync(migratorContext);
         }
 
         await using (var runtimeContext = CreateDbContextInternal(PrimaryDatabaseRole.Runtime))
@@ -125,7 +127,10 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
             optionsBuilder,
             CreateDatabaseOptions(role));
         optionsBuilder.ConfigureWarnings(warnings =>
-            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
+        {
+            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
+            warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
+        });
         if (interceptors is { Count: > 0 })
         {
             optionsBuilder.AddInterceptors(interceptors);

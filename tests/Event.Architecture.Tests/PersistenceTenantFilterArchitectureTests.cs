@@ -4,6 +4,10 @@
 namespace Event.Architecture.Tests;
 
 using System.Text.RegularExpressions;
+using Explore.Persistence;
+using Explore.Persistence.QueryFilters;
+using Explore.Persistence.Security;
+using Microsoft.EntityFrameworkCore;
 
 public class PersistenceTenantFilterArchitectureTests
 {
@@ -139,5 +143,41 @@ public class PersistenceTenantFilterArchitectureTests
                 relativePath,
                 Path.Combine("src", "Explore.Persistence", "QueryFilters", "TenantFilterBypassReasons.cs"),
                 StringComparison.Ordinal);
+    }
+
+    [Test]
+    [DisplayName("PostgreSQL RLS model must discover all tenant-scoped tables with valid column or parent join")]
+    public async Task PostgresTenantRowLevelSecurityModel_MustDiscoverAllTenantTables()
+    {
+        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseSqlite("DataSource=:memory:")
+            .Options;
+
+        await using var context = new ExploreDbContext(options);
+        var model = context.Model;
+
+        var tenantTables = PostgresTenantRowLevelSecurityModel.GetTenantTables(model);
+
+        await Assert.That(tenantTables.Count).IsGreaterThan(200);
+
+        foreach (var table in tenantTables)
+        {
+            if (table.ParentJoin is null)
+            {
+                await Assert.That(table.TenantIdColumn).IsNotNull();
+            }
+            else
+            {
+                await Assert.That(table.ParentJoin.ParentTableName).IsNotNull();
+                await Assert.That(table.ParentJoin.ForeignKeyColumn).IsNotNull();
+                await Assert.That(table.ParentJoin.ParentKeyColumn).IsNotNull();
+                await Assert.That(table.ParentJoin.ParentTenantIdColumn).IsNotNull();
+            }
+
+            var sql = PostgresTenantRowLevelSecurityModel.BuildEnableRlsSql(table, "islamu_event");
+            await Assert.That(sql).Contains("ENABLE ROW LEVEL SECURITY");
+            await Assert.That(sql).Contains("FORCE ROW LEVEL SECURITY");
+            await Assert.That(sql).Contains("CREATE POLICY");
+        }
     }
 }

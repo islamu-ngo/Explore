@@ -4,6 +4,7 @@
 using Explore.Application.Configuration;
 using Explore.Persistence.Database;
 using Explore.Persistence.Privacy.ErasureAuthority;
+using Explore.Persistence.Security;
 using Explore.Persistence.Seed;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
@@ -55,6 +56,7 @@ public static class ExploreDatabaseMigrator
         if (runtimeDatabase.Database.IsNpgsql())
         {
             await PostgresModelConstraintApplier.ApplyAsync(runtimeDatabase, cancellationToken);
+            await PostgresTenantRowLevelSecurityModel.ApplyAsync(runtimeDatabase, cancellationToken);
         }
         logger.LogInformation("Database migration operation {Operation} completed.", "ProviderAdjustments");
 

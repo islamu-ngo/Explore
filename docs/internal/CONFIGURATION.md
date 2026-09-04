@@ -520,7 +520,16 @@ application migration. The primary file must not be named
 
 | Key | Default | Description |
 |---|---:|---|
-| `Persistence:EnableRlsTenantSession` | `false` | PostgreSQL-only tenant-session interceptor. It is not registered for other providers and does not enable RLS policies by itself. |
+| `Persistence:EnableRlsTenantSession` | `false` | PostgreSQL-only tenant-session interceptor (`PostgresTenantSessionInterceptor`). Binds `app.current_tenant_id` on every connection open so that database-level Row-Level Security (RLS) policies enforced by `PostgresTenantRowLevelSecurityModel` isolate tenant data at the storage layer. |
+
+### PostgreSQL Row-Level Security (RLS) Defense-in-Depth
+
+When using PostgreSQL as the primary database provider, the platform enforces tenant isolation both at the EF Core layer (via `QueryFilterNames.Tenant` global query filters) and at the storage layer via native PostgreSQL Row-Level Security:
+
+1. **Dynamic Policy Application:** `PostgresTenantRowLevelSecurityModel.ApplyAsync` enumerates all tenant-scoped tables dynamically from EF Core `IModel` metadata during database migration and API bootstrap, issuing `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`, `ALTER TABLE ... FORCE ROW LEVEL SECURITY`, and idempotent `CREATE POLICY tenant_isolation` statements.
+2. **Vertically Partitioned & Child Entities:** Tables without a direct `tenant_id` column (such as `EventSessionIslamicAspect`, `ExternalApiKeyQuota`, and `LocationPii`) are protected through model-derived relational `EXISTS (SELECT 1 FROM parent ...)` policies linked to their tenant-bearing principal table.
+3. **Fail-Closed Session Semantics:** Policies evaluate `tenant_id = nullif(current_setting('app.current_tenant_id', true), '')::uuid`. When `app.current_tenant_id` is unconfigured or empty, the expression yields `NULL`, returning 0 rows and rejecting cross-tenant inserts with SQLSTATE `42501` (`insufficient_privilege`). This prevents data leaks even under raw SQL execution or accidental `IgnoreQueryFilters()` bypasses.
+4. **Role Privileges:** Application runtime database connections operate under roles with `NOBYPASSRLS` and without `SUPERUSER`, guaranteeing that table owners and runtime connections are strictly constrained by RLS.
 
 ### Privacy-erasure authority topology
 
