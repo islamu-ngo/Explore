@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations.MySql.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260903091246_Init")]
+    [Migration("20260904212444_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -3328,6 +3328,39 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasDatabaseName("ix_audit_logs_tenant_id_entity_type_entity_id");
 
                     b.ToTable("ie_audit_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.AuthenticationProvider", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_authentication_providers");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_authentication_providers_master_code");
+
+                    b.ToTable("ie_authentication_providers", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.BookingPartyType", b =>
@@ -32584,16 +32617,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("id");
 
-                    b.Property<string>("AuthProvider")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)")
-                        .HasColumnName("auth_provider");
-
-                    b.Property<string>("AuthProviderId")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)")
-                        .HasColumnName("auth_provider_id");
-
                     b.Property<Guid>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("char(36)")
@@ -32908,6 +32931,10 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("id");
 
+                    b.Property<int>("AuthenticationProviderId")
+                        .HasColumnType("int")
+                        .HasColumnName("authentication_provider_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("created_at");
@@ -32916,28 +32943,23 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("created_by");
 
-                    b.Property<string>("Provider")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("provider");
-
                     b.Property<string>("ProviderDisplayName")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)")
                         .HasColumnName("provider_display_name");
 
                     b.Property<string>("ProviderKey")
+                        .IsRequired()
                         .HasMaxLength(2048)
                         .HasColumnType("varchar(2048)")
                         .HasColumnName("provider_key");
 
                     b.Property<byte[]>("ProviderKeyUniquenessHash")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("binary(32)")
-                        .HasColumnName("provider_key_uniqueness_hash");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("char(36)")
-                        .HasColumnName("tenant_id");
+                        .HasColumnName("provider_key_uniqueness_hash")
+                        .HasComputedColumnSql("unhex(sha2(concat(cast(authentication_provider_id as char), ':', provider_key), 256))", true);
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime(6)")
@@ -32954,12 +32976,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ie_user_external_logins");
 
+                    b.HasIndex("AuthenticationProviderId")
+                        .HasDatabaseName("ix_user_external_logins_authentication_provider_id");
+
                     b.HasIndex("ProviderKeyUniquenessHash")
                         .IsUnique()
                         .HasDatabaseName("ix_user_external_logins_provider_key_uniqueness_hash");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_user_external_logins_tenant_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_user_external_logins_user_id");
@@ -33055,7 +33077,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .HasName("pk_ie_user_pii");
 
                     b.HasIndex("Email")
-                        .IsUnique()
                         .HasDatabaseName("ix_user_pii_email");
 
                     b.ToTable("ie_user_pii", (string)null);
@@ -36516,6 +36537,279 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         {
                             t.HasCheckConstraint("ck_configuration_import_artifacts_byte_length", "byte_length BETWEEN 1 AND 4194304");
                         });
+                });
+
+            modelBuilder.Entity("Explore.Persistence.Identity.LocalIdentityRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("longtext")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("normalized_name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_local_identity_roles");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_local_identity_roles_normalized_name");
+
+                    b.ToTable("ie_local_identity_roles", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Persistence.Identity.LocalIdentityUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int")
+                        .HasColumnName("access_failed_count");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("longtext")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("email");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("email_confirmed");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("last_name");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("lockout_enabled");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("lockout_end");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("normalized_email");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("normalized_user_name");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("longtext")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("phone_number");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("phone_number_confirmed");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("longtext")
+                        .HasColumnName("security_stamp");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("two_factor_enabled");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("user_name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_local_identity_users");
+
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("ix_local_identity_users_normalized_email");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_local_identity_users_normalized_user_name");
+
+                    b.ToTable("ie_local_identity_users", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("claim_type");
+
+                    b.Property<string>("ClaimValue")
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)")
+                        .HasColumnName("claim_value");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("role_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_identity_role_claims");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_identity_role_claims_role_id");
+
+                    b.ToTable("ie_identity_role_claims", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("claim_type");
+
+                    b.Property<string>("ClaimValue")
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)")
+                        .HasColumnName("claim_value");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ie_identity_user_claims");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_identity_user_claims_user_id");
+
+                    b.ToTable("ie_identity_user_claims", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+                {
+                    b.Property<string>("LoginProvider")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("login_provider");
+
+                    b.Property<string>("ProviderKey")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("provider_key");
+
+                    b.Property<string>("ProviderDisplayName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("provider_display_name");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("LoginProvider", "ProviderKey")
+                        .HasName("pk_ie_identity_user_logins");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_identity_user_logins_user_id");
+
+                    b.ToTable("ie_identity_user_logins", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("role_id");
+
+                    b.HasKey("UserId", "RoleId")
+                        .HasName("pk_ie_identity_user_roles");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_identity_user_roles_role_id");
+
+                    b.ToTable("ie_identity_user_roles", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("char(36)")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("LoginProvider")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("login_provider");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("longtext")
+                        .HasColumnName("value");
+
+                    b.HasKey("UserId", "LoginProvider", "Name")
+                        .HasName("pk_ie_identity_user_tokens");
+
+                    b.ToTable("ie_identity_user_tokens", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Application.Contracts.Admissions.AdmissionDeliveryIntent", b =>
@@ -47454,12 +47748,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
             modelBuilder.Entity("Explore.Domain.UserExternalLogin", b =>
                 {
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                    b.HasOne("Explore.Domain.AuthenticationProvider", "AuthenticationProvider")
                         .WithMany()
-                        .HasForeignKey("TenantId")
+                        .HasForeignKey("AuthenticationProviderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_user_external_logins_tenants_tenant_id");
+                        .HasConstraintName("fk_ie_user_external_logins_ie_authentication_providers__bea245ab");
 
                     b.HasOne("Explore.Domain.User", "User")
                         .WithMany()
@@ -47468,7 +47762,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_user_external_logins_users_user_id");
 
-                    b.Navigation("Tenant");
+                    b.Navigation("AuthenticationProvider");
 
                     b.Navigation("User");
                 });
@@ -48225,6 +48519,63 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_ie_configuration_direct_transfer_chunks_ie_configura_c2d603d8");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+                {
+                    b.HasOne("Explore.Persistence.Identity.LocalIdentityRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_identity_role_claims_local_identity_roles_role_id");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.HasOne("Explore.Persistence.Identity.LocalIdentityUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_identity_user_claims_local_identity_users_user_id");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+                {
+                    b.HasOne("Explore.Persistence.Identity.LocalIdentityUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_identity_user_logins_local_identity_users_user_id");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.HasOne("Explore.Persistence.Identity.LocalIdentityRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_identity_user_roles_local_identity_roles_role_id");
+
+                    b.HasOne("Explore.Persistence.Identity.LocalIdentityUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_identity_user_roles_local_identity_users_user_id");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.HasOne("Explore.Persistence.Identity.LocalIdentityUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_identity_user_tokens_local_identity_users_user_id");
                 });
 
             modelBuilder.Entity("Explore.Domain.Actor", b =>

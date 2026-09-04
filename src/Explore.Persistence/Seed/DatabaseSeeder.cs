@@ -120,6 +120,11 @@ public static class DatabaseSeeder
         var moderatorUser = SeedData.ModeratorUser;
         context.Set<User>().AddRange(adminUser, regularUser, moderatorUser);
         await context.SaveChangesAsync(ct);
+        context.Set<UserExternalLogin>().AddRange(
+            SeedData.AdminDevelopmentLogin,
+            SeedData.RegularDevelopmentLogin,
+            SeedData.ModeratorDevelopmentLogin);
+        await context.SaveChangesAsync(ct);
 
         // Phase 3: Global organizations
         var islamuOrg = SeedData.IslamuOrg;

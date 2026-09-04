@@ -24,8 +24,8 @@ public sealed class InstanceBootstrapStateTests
         await Assert.That((int)InstanceBootstrapStatus.Completed).IsEqualTo(3);
         await Assert.That((int)InstanceBootstrapMode.Interactive).IsEqualTo(1);
         await Assert.That((int)InstanceBootstrapMode.ConfiguredAdministrator).IsEqualTo(2);
-        await Assert.That((int)InstanceBootstrapProviderKind.Keycloak).IsEqualTo(1);
-        await Assert.That((int)InstanceBootstrapProviderKind.Atproto).IsEqualTo(2);
+        await Assert.That((int)AuthenticationProviderKind.Keycloak).IsEqualTo(1);
+        await Assert.That((int)AuthenticationProviderKind.Atproto).IsEqualTo(2);
     }
 
     [Test]
@@ -88,7 +88,7 @@ public sealed class InstanceBootstrapStateTests
         await Assert.That(state.Id.Version).IsEqualTo(7);
         await Assert.That(state.Status).IsEqualTo(InstanceBootstrapStatus.Pending);
         await Assert.That(state.Mode).IsEqualTo(InstanceBootstrapMode.ConfiguredAdministrator);
-        await Assert.That(state.ProviderKind).IsEqualTo(InstanceBootstrapProviderKind.Keycloak);
+        await Assert.That(state.ProviderKind).IsEqualTo(AuthenticationProviderKind.Keycloak);
         await Assert.That(state.DeploymentMode).IsEqualTo(DeploymentMode.MultiTenant);
         await Assert.That(state.Generation).IsEqualTo(7);
         await Assert.That(state.ConfigurationFingerprint).IsEqualTo(Fingerprint('a'));
@@ -106,10 +106,10 @@ public sealed class InstanceBootstrapStateTests
             InitialId, DeploymentMode.SingleTenant, DateTime.SpecifyKind(CreatedAt, DateTimeKind.Local)))
             .Throws<ArgumentException>();
         await Assert.That(() => InstanceBootstrapState.CreateConfiguredAdministratorPending(
-            InitialId, InstanceBootstrapProviderKind.Keycloak, DeploymentMode.MultiTenant,
+            InitialId, AuthenticationProviderKind.Keycloak, DeploymentMode.MultiTenant,
             0, Fingerprint('a'), Fingerprint('b'), CreatedAt)).Throws<ArgumentException>();
         await Assert.That(() => InstanceBootstrapState.CreateConfiguredAdministratorPending(
-            InitialId, InstanceBootstrapProviderKind.Keycloak, DeploymentMode.MultiTenant,
+            InitialId, AuthenticationProviderKind.Keycloak, DeploymentMode.MultiTenant,
             -1, Fingerprint('a'), Fingerprint('b'), CreatedAt)).Throws<ArgumentException>();
     }
 
@@ -120,10 +120,10 @@ public sealed class InstanceBootstrapStateTests
             InitialId, default, DeploymentMode.MultiTenant, 7,
             Fingerprint('a'), Fingerprint('b'), CreatedAt)).Throws<ArgumentException>();
         await Assert.That(() => InstanceBootstrapState.CreateConfiguredAdministratorPending(
-            InitialId, InstanceBootstrapProviderKind.Keycloak, DeploymentMode.MultiTenant, 7,
+            InitialId, AuthenticationProviderKind.Keycloak, DeploymentMode.MultiTenant, 7,
             null!, Fingerprint('b'), CreatedAt)).Throws<ArgumentException>();
         await Assert.That(() => InstanceBootstrapState.CreateConfiguredAdministratorPending(
-            InitialId, InstanceBootstrapProviderKind.Keycloak, DeploymentMode.MultiTenant, 7,
+            InitialId, AuthenticationProviderKind.Keycloak, DeploymentMode.MultiTenant, 7,
             Fingerprint('a'), null!, CreatedAt)).Throws<ArgumentException>();
     }
 
@@ -136,10 +136,10 @@ public sealed class InstanceBootstrapStateTests
     {
         string malformed = new(value, length);
         await Assert.That(() => InstanceBootstrapState.CreateConfiguredAdministratorPending(
-            InitialId, InstanceBootstrapProviderKind.Keycloak, DeploymentMode.MultiTenant, 7,
+            InitialId, AuthenticationProviderKind.Keycloak, DeploymentMode.MultiTenant, 7,
             malformed, Fingerprint('b'), CreatedAt)).Throws<ArgumentException>();
         await Assert.That(() => InstanceBootstrapState.CreateConfiguredAdministratorPending(
-            InitialId, InstanceBootstrapProviderKind.Keycloak, DeploymentMode.MultiTenant, 7,
+            InitialId, AuthenticationProviderKind.Keycloak, DeploymentMode.MultiTenant, 7,
             Fingerprint('a'), malformed, CreatedAt)).Throws<ArgumentException>();
     }
 
@@ -148,7 +148,7 @@ public sealed class InstanceBootstrapStateTests
     {
         InstanceBootstrapState original = ConfiguredPending();
         InstanceBootstrapState replacement = original.Supersede(
-            ReplacementId, InstanceBootstrapProviderKind.Atproto, DeploymentMode.SingleTenant,
+            ReplacementId, AuthenticationProviderKind.Atproto, DeploymentMode.SingleTenant,
             8, Fingerprint('c'), Fingerprint('d'), SupersededAt);
 
         await Assert.That(original.Status).IsEqualTo(InstanceBootstrapStatus.Superseded);
@@ -156,7 +156,7 @@ public sealed class InstanceBootstrapStateTests
         await Assert.That(replacement.Id).IsEqualTo(ReplacementId);
         await Assert.That(replacement.Id.Version).IsEqualTo(7);
         await Assert.That(replacement.Status).IsEqualTo(InstanceBootstrapStatus.Pending);
-        await Assert.That(replacement.ProviderKind).IsEqualTo(InstanceBootstrapProviderKind.Atproto);
+        await Assert.That(replacement.ProviderKind).IsEqualTo(AuthenticationProviderKind.Atproto);
         await Assert.That(replacement.DeploymentMode).IsEqualTo(DeploymentMode.SingleTenant);
         await Assert.That(replacement.Generation).IsEqualTo(8);
         await Assert.That(replacement.ConfigurationFingerprint).IsEqualTo(Fingerprint('c'));
@@ -177,7 +177,7 @@ public sealed class InstanceBootstrapStateTests
             InstanceBootstrapState state = ConfiguredPending();
             BootstrapSnapshot before = Snapshot(state);
             await Assert.That(() => state.Supersede(
-                ReplacementId, InstanceBootstrapProviderKind.Keycloak, DeploymentMode.MultiTenant,
+                ReplacementId, AuthenticationProviderKind.Keycloak, DeploymentMode.MultiTenant,
                 attempt.generation, attempt.configuration, attempt.selector, SupersededAt))
                 .Throws<InvalidOperationException>();
             await Assert.That(Snapshot(state)).IsEqualTo(before);
@@ -189,7 +189,7 @@ public sealed class InstanceBootstrapStateTests
     {
         InstanceBootstrapState invalidId = ConfiguredPending();
         await AssertRejectedWithoutMutation(invalidId, () => invalidId.Supersede(
-            Guid.NewGuid(), InstanceBootstrapProviderKind.Atproto, DeploymentMode.SingleTenant,
+            Guid.NewGuid(), AuthenticationProviderKind.Atproto, DeploymentMode.SingleTenant,
             8, Fingerprint('c'), Fingerprint('d'), SupersededAt));
 
         InstanceBootstrapState invalidProvider = ConfiguredPending();
@@ -199,17 +199,17 @@ public sealed class InstanceBootstrapStateTests
 
         InstanceBootstrapState invalidConfiguration = ConfiguredPending();
         await AssertRejectedWithoutMutation(invalidConfiguration, () => invalidConfiguration.Supersede(
-            ReplacementId, InstanceBootstrapProviderKind.Atproto, DeploymentMode.SingleTenant,
+            ReplacementId, AuthenticationProviderKind.Atproto, DeploymentMode.SingleTenant,
             8, "issuer:raw-authority", Fingerprint('d'), SupersededAt));
 
         InstanceBootstrapState invalidSelector = ConfiguredPending();
         await AssertRejectedWithoutMutation(invalidSelector, () => invalidSelector.Supersede(
-            ReplacementId, InstanceBootstrapProviderKind.Atproto, DeploymentMode.SingleTenant,
+            ReplacementId, AuthenticationProviderKind.Atproto, DeploymentMode.SingleTenant,
             8, Fingerprint('c'), "subject:raw-account", SupersededAt));
 
         InstanceBootstrapState invalidTimestamp = ConfiguredPending();
         await AssertRejectedWithoutMutation(invalidTimestamp, () => invalidTimestamp.Supersede(
-            ReplacementId, InstanceBootstrapProviderKind.Atproto, DeploymentMode.SingleTenant,
+            ReplacementId, AuthenticationProviderKind.Atproto, DeploymentMode.SingleTenant,
             8, Fingerprint('c'), Fingerprint('d'), CreatedAt.AddTicks(-1)));
     }
 
@@ -218,14 +218,14 @@ public sealed class InstanceBootstrapStateTests
     {
         InstanceBootstrapState state = ConfiguredPending();
         bool completed = state.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CompletedAt);
+            AuthenticationProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CompletedAt);
 
         await Assert.That(completed).IsTrue();
         await Assert.That(state.Status).IsEqualTo(InstanceBootstrapStatus.Completed);
         await Assert.That(state.CompletedIdentityFingerprint).IsEqualTo(state.SelectorFingerprint);
         await Assert.That(state.CompletedByUserId).IsEqualTo(UserId);
         await Assert.That(state.CompletedAt).IsEqualTo(CompletedAt);
-        await Assert.That(state.ProviderKind).IsEqualTo(InstanceBootstrapProviderKind.Keycloak);
+        await Assert.That(state.ProviderKind).IsEqualTo(AuthenticationProviderKind.Keycloak);
         await Assert.That(state.Generation).IsEqualTo(7);
     }
 
@@ -235,7 +235,7 @@ public sealed class InstanceBootstrapStateTests
         InstanceBootstrapState state = CompletedConfigured();
         BootstrapSnapshot before = Snapshot(state);
         bool replay = state.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CompletedAt.AddHours(1));
+            AuthenticationProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CompletedAt.AddHours(1));
 
         await Assert.That(replay).IsFalse();
         await Assert.That(Snapshot(state)).IsEqualTo(before);
@@ -244,12 +244,12 @@ public sealed class InstanceBootstrapStateTests
     [Test]
     public async Task ConfiguredCompletionMismatchesThrowWithoutChangingEvidence()
     {
-        foreach ((InstanceBootstrapProviderKind provider, long generation, string identity, Guid userId) attempt in new[]
+        foreach ((AuthenticationProviderKind provider, long generation, string identity, Guid userId) attempt in new[]
         {
-            (InstanceBootstrapProviderKind.Atproto, 7L, Fingerprint('b'), UserId),
-            (InstanceBootstrapProviderKind.Keycloak, 8L, Fingerprint('b'), UserId),
-            (InstanceBootstrapProviderKind.Keycloak, 7L, Fingerprint('c'), UserId),
-            (InstanceBootstrapProviderKind.Keycloak, 7L, Fingerprint('b'), ReplacementId)
+            (AuthenticationProviderKind.Atproto, 7L, Fingerprint('b'), UserId),
+            (AuthenticationProviderKind.Keycloak, 8L, Fingerprint('b'), UserId),
+            (AuthenticationProviderKind.Keycloak, 7L, Fingerprint('c'), UserId),
+            (AuthenticationProviderKind.Keycloak, 7L, Fingerprint('b'), ReplacementId)
         })
         {
             InstanceBootstrapState state = CompletedConfigured();
@@ -280,19 +280,19 @@ public sealed class InstanceBootstrapStateTests
     {
         InstanceBootstrapState invalidIdentity = ConfiguredPending();
         await AssertRejectedWithoutMutation(invalidIdentity, () => invalidIdentity.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 7, "did:plc:raw-identity", UserId, CompletedAt));
+            AuthenticationProviderKind.Keycloak, 7, "did:plc:raw-identity", UserId, CompletedAt));
 
         InstanceBootstrapState invalidUser = ConfiguredPending();
         await AssertRejectedWithoutMutation(invalidUser, () => invalidUser.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 7, Fingerprint('b'), Guid.NewGuid(), CompletedAt));
+            AuthenticationProviderKind.Keycloak, 7, Fingerprint('b'), Guid.NewGuid(), CompletedAt));
 
         InstanceBootstrapState invalidTimestamp = ConfiguredPending();
         await AssertRejectedWithoutMutation(invalidTimestamp, () => invalidTimestamp.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CreatedAt.AddTicks(-1)));
+            AuthenticationProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CreatedAt.AddTicks(-1)));
 
         InstanceBootstrapState nonUtcTimestamp = ConfiguredPending();
         await AssertRejectedWithoutMutation(nonUtcTimestamp, () => nonUtcTimestamp.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 7, Fingerprint('b'), UserId,
+            AuthenticationProviderKind.Keycloak, 7, Fingerprint('b'), UserId,
             DateTime.SpecifyKind(CompletedAt, DateTimeKind.Local)));
     }
 
@@ -301,17 +301,17 @@ public sealed class InstanceBootstrapStateTests
     {
         InstanceBootstrapState providerMismatch = ConfiguredPending();
         await AssertRejectedWithoutMutation(providerMismatch, () => providerMismatch.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Atproto, 7, Fingerprint('b'), UserId, CompletedAt),
+            AuthenticationProviderKind.Atproto, 7, Fingerprint('b'), UserId, CompletedAt),
             expectArgumentException: false);
 
         InstanceBootstrapState generationDrift = ConfiguredPending();
         await AssertRejectedWithoutMutation(generationDrift, () => generationDrift.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 8, Fingerprint('b'), UserId, CompletedAt),
+            AuthenticationProviderKind.Keycloak, 8, Fingerprint('b'), UserId, CompletedAt),
             expectArgumentException: false);
 
         InstanceBootstrapState identityMismatch = ConfiguredPending();
         await AssertRejectedWithoutMutation(identityMismatch, () => identityMismatch.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 7, Fingerprint('c'), UserId, CompletedAt),
+            AuthenticationProviderKind.Keycloak, 7, Fingerprint('c'), UserId, CompletedAt),
             expectArgumentException: false);
     }
 
@@ -320,18 +320,18 @@ public sealed class InstanceBootstrapStateTests
     {
         InstanceBootstrapState superseded = ConfiguredPending();
         _ = superseded.Supersede(
-            ReplacementId, InstanceBootstrapProviderKind.Atproto, DeploymentMode.SingleTenant,
+            ReplacementId, AuthenticationProviderKind.Atproto, DeploymentMode.SingleTenant,
             8, Fingerprint('c'), Fingerprint('d'), SupersededAt);
         BootstrapSnapshot supersededBefore = Snapshot(superseded);
         await Assert.That(() => superseded.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CompletedAt))
+            AuthenticationProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CompletedAt))
             .Throws<InvalidOperationException>();
         await Assert.That(Snapshot(superseded)).IsEqualTo(supersededBefore);
 
         InstanceBootstrapState completed = CompletedConfigured();
         BootstrapSnapshot completedBefore = Snapshot(completed);
         await Assert.That(() => completed.Supersede(
-            ReplacementId, InstanceBootstrapProviderKind.Atproto, DeploymentMode.SingleTenant,
+            ReplacementId, AuthenticationProviderKind.Atproto, DeploymentMode.SingleTenant,
             8, Fingerprint('c'), Fingerprint('d'), CompletedAt.AddMinutes(1)))
             .Throws<InvalidOperationException>();
         await Assert.That(Snapshot(completed)).IsEqualTo(completedBefore);
@@ -379,14 +379,14 @@ public sealed class InstanceBootstrapStateTests
 
     private static InstanceBootstrapState ConfiguredPending() =>
         InstanceBootstrapState.CreateConfiguredAdministratorPending(
-            InitialId, InstanceBootstrapProviderKind.Keycloak, DeploymentMode.MultiTenant,
+            InitialId, AuthenticationProviderKind.Keycloak, DeploymentMode.MultiTenant,
             7, Fingerprint('a'), Fingerprint('b'), CreatedAt);
 
     private static InstanceBootstrapState CompletedConfigured()
     {
         InstanceBootstrapState state = ConfiguredPending();
         _ = state.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CompletedAt);
+            AuthenticationProviderKind.Keycloak, 7, Fingerprint('b'), UserId, CompletedAt);
         return state;
     }
 
@@ -401,7 +401,7 @@ public sealed class InstanceBootstrapStateTests
         Guid Id,
         InstanceBootstrapStatus Status,
         InstanceBootstrapMode Mode,
-        InstanceBootstrapProviderKind? ProviderKind,
+        AuthenticationProviderKind? ProviderKind,
         DeploymentMode DeploymentMode,
         long Generation,
         string? ConfigurationFingerprint,

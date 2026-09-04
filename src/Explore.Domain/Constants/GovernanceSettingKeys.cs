@@ -227,7 +227,7 @@ public static class GovernanceSettingKeys
 
     public static class Authentication
     {
-        public const string KeycloakEnabled = "auth.keycloak_enabled";
+        public const string PrimaryProviderId = "auth.primary_provider_id";
         public const string KeycloakAuthority = "auth.keycloak_authority";
         public const string KeycloakClientId = "auth.keycloak_client_id";
         public const string AtprotoLoginEnabled = "auth.atproto_login_enabled";

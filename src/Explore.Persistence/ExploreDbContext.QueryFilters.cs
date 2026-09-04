@@ -776,8 +776,6 @@ public partial class ExploreDbContext
                         && e.ExternalApiKey.TenantId == TenantFilterTenantId));
         modelBuilder.Entity<UserAuthenticationToken>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
-        modelBuilder.Entity<UserExternalLogin>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
         modelBuilder.Entity<UserPreference>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => IsTenantFilterBypassed || e.TenantId == TenantFilterTenantId);
         modelBuilder.Entity<UserNotificationPreference>()

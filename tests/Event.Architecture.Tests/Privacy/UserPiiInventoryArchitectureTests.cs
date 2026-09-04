@@ -604,9 +604,10 @@ public sealed class UserPiiInventoryArchitectureTests
     {
         HashSet<IEntityType> userLinkedEntities = model.GetEntityTypes()
             .Where(entity =>
-                entity.ClrType == typeof(Explore.Domain.User)
-                || entity.GetProperties().Any(IsDirectUserLink)
-                || HasTypedOwnerLink(entity))
+                entity.ClrType.Namespace is not "Microsoft.AspNetCore.Identity" and not "Explore.Persistence.Identity"
+                && (entity.ClrType == typeof(Explore.Domain.User)
+                    || entity.GetProperties().Any(IsDirectUserLink)
+                    || HasTypedOwnerLink(entity)))
             .ToHashSet();
 
         bool discovered;
@@ -615,6 +616,11 @@ public sealed class UserPiiInventoryArchitectureTests
             discovered = false;
             foreach (IEntityType entity in model.GetEntityTypes())
             {
+                if (entity.ClrType.Namespace is "Microsoft.AspNetCore.Identity" or "Explore.Persistence.Identity")
+                {
+                    continue;
+                }
+
                 if (userLinkedEntities.Contains(entity)
                     || !entity.GetForeignKeys().Any(foreignKey =>
                         userLinkedEntities.Contains(foreignKey.PrincipalEntityType)
@@ -637,7 +643,8 @@ public sealed class UserPiiInventoryArchitectureTests
         && foreignKey.PrincipalEntityType.ClrType == typeof(Explore.Domain.Actor);
 
     private static bool IsDirectUserLink(IReadOnlyProperty property) =>
-        property.Name.EndsWith("UserId", StringComparison.Ordinal);
+        property.DeclaringType.ClrType.Namespace is not "Microsoft.AspNetCore.Identity" and not "Explore.Persistence.Identity"
+        && property.Name.EndsWith("UserId", StringComparison.Ordinal);
 
     private static bool HasTypedOwnerLink(IReadOnlyEntityType entity) =>
         entity.GetProperties().Any(property =>

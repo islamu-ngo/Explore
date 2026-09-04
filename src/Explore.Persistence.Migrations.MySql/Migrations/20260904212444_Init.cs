@@ -476,6 +476,24 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "ie_authentication_providers",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false),
+                    master_code = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    full_name = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    description = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_authentication_providers", x => x.id);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "ie_booking_party_types",
                 columns: table => new
                 {
@@ -1482,6 +1500,64 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                     table.CheckConstraint("ck_legal_documents_current_version", "current_version > 0");
                     table.CheckConstraint("ck_legal_documents_scope_tenant", "(scope = 1 AND tenant_id IS NULL) OR (scope = 2 AND tenant_id IS NOT NULL)");
                     table.CheckConstraint("ck_legal_documents_state", "state >= 1 AND state <= 6");
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "ie_local_identity_roles",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    name = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    normalized_name = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    concurrency_stamp = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_local_identity_roles", x => x.id);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "ie_local_identity_users",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    first_name = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    last_name = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    user_name = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    normalized_user_name = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    email = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    normalized_email = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    email_confirmed = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    password_hash = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    security_stamp = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    concurrency_stamp = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    phone_number = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    phone_number_confirmed = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    two_factor_enabled = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    lockout_end = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: true),
+                    lockout_enabled = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    access_failed_count = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_local_identity_users", x => x.id);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -3434,10 +3510,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    auth_provider = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    auth_provider_id = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
                     email_verified = table.Column<bool>(type: "tinyint(1)", nullable: true),
                     concurrency_stamp = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     last_active_tenant_id = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
@@ -3998,6 +4070,127 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         principalTable: "ie_legal_documents",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_role_claims",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    role_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    claim_type = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    claim_value = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_role_claims", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_identity_role_claims_local_identity_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "ie_local_identity_roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_user_claims",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    claim_type = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    claim_value = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_user_claims", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_identity_user_claims_local_identity_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_local_identity_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_user_logins",
+                columns: table => new
+                {
+                    login_provider = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    provider_key = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    provider_display_name = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_user_logins", x => new { x.login_provider, x.provider_key });
+                    table.ForeignKey(
+                        name: "fk_identity_user_logins_local_identity_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_local_identity_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_user_roles",
+                columns: table => new
+                {
+                    user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    role_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_user_roles", x => new { x.user_id, x.role_id });
+                    table.ForeignKey(
+                        name: "fk_identity_user_roles_local_identity_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "ie_local_identity_roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_identity_user_roles_local_identity_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_local_identity_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_user_tokens",
+                columns: table => new
+                {
+                    user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    login_provider = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    name = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    value = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_user_tokens", x => new { x.user_id, x.login_provider, x.name });
+                    table.ForeignKey(
+                        name: "fk_identity_user_tokens_local_identity_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_local_identity_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -4571,6 +4764,41 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         principalTable: "ie_users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "ie_user_external_logins",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
+                    authentication_provider_id = table.Column<int>(type: "int", nullable: false),
+                    provider_key = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    provider_display_name = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
+                    provider_key_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: false, computedColumnSql: "unhex(sha2(concat(cast(authentication_provider_id as char), ':', provider_key), 256))", stored: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_user_external_logins", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ie_user_external_logins_ie_authentication_providers__bea245ab",
+                        column: x => x.authentication_provider_id,
+                        principalTable: "ie_authentication_providers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_user_external_logins_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -6427,43 +6655,6 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_user_authentication_tokens_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "ie_users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "ie_user_external_logins",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    user_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    tenant_id = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    provider = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    provider_key = table.Column<string>(type: "varchar(2048)", maxLength: 2048, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    provider_display_name = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    created_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    updated_by = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    provider_key_uniqueness_hash = table.Column<byte[]>(type: "binary(32)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_ie_user_external_logins", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_user_external_logins_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "ie_tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_user_external_logins_users_user_id",
                         column: x => x.user_id,
                         principalTable: "ie_users",
                         principalColumn: "id",
@@ -19585,6 +19776,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
+                name: "ix_authentication_providers_master_code",
+                table: "ie_authentication_providers",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_booking_party_types_master_code",
                 table: "ie_booking_party_types",
                 column: "master_code",
@@ -21661,6 +21858,26 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_identity_role_claims_role_id",
+                table: "ie_identity_role_claims",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_identity_user_claims_user_id",
+                table: "ie_identity_user_claims",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_identity_user_logins_user_id",
+                table: "ie_identity_user_logins",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_identity_user_roles_role_id",
+                table: "ie_identity_user_roles",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_ie_incoming_webhook_effect_outboxes_status_next_atte_c214d79d",
                 table: "ie_incoming_webhook_effect_outboxes",
                 columns: new[] { "status", "next_attempt_at", "created_at" });
@@ -21902,6 +22119,23 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "ix_legal_documents_tenant_id_state_kind",
                 table: "ie_legal_documents",
                 columns: new[] { "tenant_id", "state", "kind" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_local_identity_roles_normalized_name",
+                table: "ie_local_identity_roles",
+                column: "normalized_name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_local_identity_users_normalized_email",
+                table: "ie_local_identity_users",
+                column: "normalized_email");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_local_identity_users_normalized_user_name",
+                table: "ie_local_identity_users",
+                column: "normalized_user_name",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_location_address_sources_master_code",
@@ -25090,15 +25324,15 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_user_external_logins_authentication_provider_id",
+                table: "ie_user_external_logins",
+                column: "authentication_provider_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_user_external_logins_provider_key_uniqueness_hash",
                 table: "ie_user_external_logins",
                 column: "provider_key_uniqueness_hash",
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_user_external_logins_tenant_id",
-                table: "ie_user_external_logins",
-                column: "tenant_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_external_logins_user_id",
@@ -25119,8 +25353,7 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_user_pii_email",
                 table: "ie_user_pii",
-                column: "email",
-                unique: true);
+                column: "email");
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_preferences_tenant_id_user_id_setting_key",
@@ -26470,6 +26703,21 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "ie_idempotency_records");
 
             migrationBuilder.DropTable(
+                name: "ie_identity_role_claims");
+
+            migrationBuilder.DropTable(
+                name: "ie_identity_user_claims");
+
+            migrationBuilder.DropTable(
+                name: "ie_identity_user_logins");
+
+            migrationBuilder.DropTable(
+                name: "ie_identity_user_roles");
+
+            migrationBuilder.DropTable(
+                name: "ie_identity_user_tokens");
+
+            migrationBuilder.DropTable(
                 name: "ie_incoming_webhook_effect_outboxes");
 
             migrationBuilder.DropTable(
@@ -26899,6 +27147,12 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
                 name: "ie_group_positions");
 
             migrationBuilder.DropTable(
+                name: "ie_local_identity_roles");
+
+            migrationBuilder.DropTable(
+                name: "ie_local_identity_users");
+
+            migrationBuilder.DropTable(
                 name: "ie_incoming_webhook_processing_attempt_outcomes");
 
             migrationBuilder.DropTable(
@@ -27023,6 +27277,9 @@ namespace Explore.Persistence.Migrations.MySql.Migrations
 
             migrationBuilder.DropTable(
                 name: "ie_user_appearance_profiles");
+
+            migrationBuilder.DropTable(
+                name: "ie_authentication_providers");
 
             migrationBuilder.DropTable(
                 name: "ie_outbox_messages");

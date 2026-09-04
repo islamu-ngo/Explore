@@ -44,9 +44,9 @@ public class TenantUserRoleGrantConfiguration : IEntityTypeConfiguration<TenantU
             .HasForeignKey(e => new { e.RoleId, e.RoleScopeId })
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasCheckConstraint(
+        builder.ToTable(t => t.HasCheckConstraint(
             "ck_tenant_user_role_grants_role_scope",
-            $"role_scope_id = {(int)RoleScopeEnum.Tenant}");
+            $"role_scope_id = {(int)RoleScopeEnum.Tenant}"));
 
         builder.HasIndex(e => new { e.TenantId, e.TenantUserId, e.RoleId })
             .IsUnique()

@@ -52,6 +52,7 @@ public static class LookupTableSeeder
         await SeedNotificationExternalDelegationStatusesAsync(context, cancellationToken);
         await SeedExternalWorkflowProviderKindsAsync(context, cancellationToken);
         await SeedAccountAuthorityKindsAsync(context, cancellationToken);
+        await SeedAuthenticationProvidersAsync(context, cancellationToken);
         await SeedSupportAccessSessionStatusesAsync(context, cancellationToken);
         await SeedSupportAccessModesAsync(context, cancellationToken);
         await SeedSupportAccessEndReasonsAsync(context, cancellationToken);
@@ -1110,6 +1111,55 @@ public static class LookupTableSeeder
 
         context.Set<ApprovalStatus>().AddRange(missingStatuses);
         await context.SaveChangesAsync(ct);
+    }
+
+    internal static async Task SeedAuthenticationProvidersAsync(
+        ExploreDbContext context,
+        CancellationToken cancellationToken)
+    {
+        await AddMissingLookupRowsAsync(context.AuthenticationProviders,
+        [
+            new()
+            {
+                Id = (int)AuthenticationProviderKind.Keycloak,
+                MasterCode = "KEYCLOAK",
+                FullName = "Keycloak",
+                Description = "External OpenID Connect identity authority",
+            },
+            new()
+            {
+                Id = (int)AuthenticationProviderKind.Atproto,
+                MasterCode = "ATPROTO",
+                FullName = "AT Protocol",
+                Description = "Decentralized AT Protocol identity authority",
+            },
+            new()
+            {
+                Id = (int)AuthenticationProviderKind.Google,
+                MasterCode = "GOOGLE",
+                FullName = "Google",
+                Description = "Google OpenID Connect identity authority",
+            },
+            new()
+            {
+                Id = (int)AuthenticationProviderKind.Local,
+                MasterCode = "LOCAL",
+                FullName = "Local Identity",
+                Description = "Embedded ASP.NET Core Identity authority",
+            },
+            new()
+            {
+                Id = (int)AuthenticationProviderKind.Development,
+                MasterCode = "DEVELOPMENT",
+                FullName = "Development",
+                Description = "Development-only bootstrap identity authority",
+            },
+        ], cancellationToken);
+
+        if (context.ChangeTracker.HasChanges())
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private static async Task SeedAnalyticsProvidersAsync(ExploreDbContext context, CancellationToken ct)

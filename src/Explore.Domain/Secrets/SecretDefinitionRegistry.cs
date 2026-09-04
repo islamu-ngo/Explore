@@ -130,6 +130,18 @@ public static class SecretDefinitionRegistry
             public const string DbPassword = "keycloak.db_password";
         }
 
+        public static class Authentication
+        {
+            public const string LocalJwtKey = "authentication.local.jwt_key";
+        }
+
+        public static class IdentityDatabase
+        {
+            public const string ConnectionString = "identity_database.connection_string";
+            public const string RuntimePassword = "identity_database.runtime.password";
+            public const string MigratorPassword = "identity_database.migrator.password";
+        }
+
         public static class Stripe
         {
             public const string PlatformSecretKey = "payments.stripe.platform_secret_key";
@@ -433,6 +445,50 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "KEYCLOAK_DB_PASSWORD",
                 IsBootstrapSecret = false,
                 Description = "Keycloak backing database password (read by Keycloak itself).",
+            },
+            new()
+            {
+                Key = Keys.Authentication.LocalJwtKey,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/api",
+                DefaultInfisicalKey = "AUTHENTICATION_LOCAL_JWT_KEY",
+                DefaultEnvironmentVariableName = "AUTHENTICATION_LOCAL_JWT_KEY",
+                IsBootstrapSecret = false,
+                Description = "HMAC signing key for embedded Local Identity access tokens.",
+            },
+            new()
+            {
+                Key = Keys.IdentityDatabase.ConnectionString,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/database/identity",
+                DefaultInfisicalKey = "IDENTITY_DATABASE_CONNECTION_STRING",
+                DefaultEnvironmentVariableName = "IDENTITY_DATABASE_CONNECTION_STRING",
+                IsBootstrapSecret = false,
+                Description = "Optional external Identity database connection string.",
+            },
+            new()
+            {
+                Key = Keys.IdentityDatabase.RuntimePassword,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/database/identity",
+                DefaultInfisicalKey = "IDENTITY_DATABASE_RUNTIME_PASSWORD",
+                DefaultEnvironmentVariableName = "IDENTITY_DATABASE_RUNTIME_PASSWORD",
+                IsBootstrapSecret = false,
+                Description = "Runtime credential for an external Identity database.",
+            },
+            new()
+            {
+                Key = Keys.IdentityDatabase.MigratorPassword,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/database/identity",
+                DefaultInfisicalKey = "IDENTITY_DATABASE_MIGRATOR_PASSWORD",
+                DefaultEnvironmentVariableName = "IDENTITY_DATABASE_MIGRATOR_PASSWORD",
+                IsBootstrapSecret = false,
+                Description = "Migration credential for an external Identity database.",
             },
 
             new()

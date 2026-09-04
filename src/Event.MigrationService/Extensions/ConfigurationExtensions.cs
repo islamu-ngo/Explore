@@ -24,7 +24,8 @@ public static class ConfigurationExtensions
             bootstrapConfiguration,
             environmentName,
             "/database",
-            "/database/erasure");
+            "/database/erasure",
+            "/database/identity");
         var databaseOptions = PrimaryDatabaseConfiguration.BindMigrator(authority);
         var database = PrimaryDatabaseConfiguration.BuildConnectionString(databaseOptions);
 

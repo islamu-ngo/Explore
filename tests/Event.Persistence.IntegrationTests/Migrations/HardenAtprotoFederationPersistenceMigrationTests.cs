@@ -103,7 +103,7 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
         await Assert.That(() => context.SaveChangesAsync()).Throws<DbUpdateException>();
         await Assert.That(await ReadCountAsync(
             "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = current_schema() " +
-            "AND indexname = 'ix_user_external_logins_provider_provider_key'"))
+            "AND indexname = 'ix_user_external_logins_authentication_provider_id_provider_key'"))
             .IsEqualTo(1L);
     }
 
@@ -172,11 +172,10 @@ public sealed class AtprotoFederationBaselineGuardTests(PostgreSqlContainerFixtu
     private static UserExternalLogin CreateExternalLogin(Guid tenantId, Guid userId, string providerKey) => new()
     {
         Id = Guid.CreateVersion7(),
-        TenantId = tenantId,
-        Tenant = null!,
         UserId = userId,
         User = null!,
-        Provider = "atproto",
+        AuthenticationProviderId = (int)AuthenticationProviderKind.Atproto,
+        AuthenticationProvider = null!,
         ProviderKey = providerKey,
         ProviderDisplayName = "ATProto",
         CreatedAt = DateTime.UtcNow

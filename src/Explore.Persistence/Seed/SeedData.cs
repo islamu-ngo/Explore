@@ -45,8 +45,6 @@ public static class SeedData
             FirstName = "Admin",
             LastName = "User"
         },
-        AuthProvider = "dev",
-        AuthProviderId = "admin-001",
         EmailVerified = true,
         CreatedAt = SeedTimestamp
     };
@@ -60,8 +58,6 @@ public static class SeedData
             FirstName = "Regular",
             LastName = "User"
         },
-        AuthProvider = "dev",
-        AuthProviderId = "user-001",
         EmailVerified = true,
         CreatedAt = SeedTimestamp
     };
@@ -75,10 +71,44 @@ public static class SeedData
             FirstName = "Moderator",
             LastName = "User"
         },
-        AuthProvider = "dev",
-        AuthProviderId = "moderator-001",
         EmailVerified = true,
         CreatedAt = SeedTimestamp
+    };
+
+    public static UserExternalLogin AdminDevelopmentLogin => new()
+    {
+        Id = SeedIds.AdminDevelopmentLoginId,
+        UserId = SeedIds.AdminUserId,
+        User = null!,
+        AuthenticationProviderId = (int)AuthenticationProviderKind.Development,
+        AuthenticationProvider = null!,
+        ProviderKey = "admin-001",
+        ProviderDisplayName = "Development",
+        CreatedAt = SeedTimestamp,
+    };
+
+    public static UserExternalLogin RegularDevelopmentLogin => new()
+    {
+        Id = SeedIds.RegularDevelopmentLoginId,
+        UserId = SeedIds.RegularUserId,
+        User = null!,
+        AuthenticationProviderId = (int)AuthenticationProviderKind.Development,
+        AuthenticationProvider = null!,
+        ProviderKey = "user-001",
+        ProviderDisplayName = "Development",
+        CreatedAt = SeedTimestamp,
+    };
+
+    public static UserExternalLogin ModeratorDevelopmentLogin => new()
+    {
+        Id = SeedIds.ModeratorDevelopmentLoginId,
+        UserId = SeedIds.ModeratorUserId,
+        User = null!,
+        AuthenticationProviderId = (int)AuthenticationProviderKind.Development,
+        AuthenticationProvider = null!,
+        ProviderKey = "moderator-001",
+        ProviderDisplayName = "Development",
+        CreatedAt = SeedTimestamp,
     };
 
     // ===== Organizations =====

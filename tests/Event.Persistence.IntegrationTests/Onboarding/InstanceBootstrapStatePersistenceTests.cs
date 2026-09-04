@@ -37,7 +37,7 @@ public sealed class InstanceBootstrapStatePersistenceTests(PostgreSqlContainerFi
             var repository = new InstanceBootstrapStateRepository(write);
             InstanceBootstrapState state = InstanceBootstrapState.CreateConfiguredAdministratorPending(
                 stateId,
-                InstanceBootstrapProviderKind.Atproto,
+                AuthenticationProviderKind.Atproto,
                 DeploymentMode.MultiTenant,
                 generation: 17,
                 ConfigurationFingerprint,
@@ -45,7 +45,7 @@ public sealed class InstanceBootstrapStatePersistenceTests(PostgreSqlContainerFi
                 CreatedAt);
             await repository.Create(state);
             await Assert.That(state.CompleteConfiguredAdministrator(
-                InstanceBootstrapProviderKind.Atproto,
+                AuthenticationProviderKind.Atproto,
                 generation: 17,
                 SelectorFingerprint,
                 userId,
@@ -60,7 +60,7 @@ public sealed class InstanceBootstrapStatePersistenceTests(PostgreSqlContainerFi
 
         await Assert.That(persisted.Status).IsEqualTo(InstanceBootstrapStatus.Completed);
         await Assert.That(persisted.Mode).IsEqualTo(InstanceBootstrapMode.ConfiguredAdministrator);
-        await Assert.That(persisted.ProviderKind).IsEqualTo(InstanceBootstrapProviderKind.Atproto);
+        await Assert.That(persisted.ProviderKind).IsEqualTo(AuthenticationProviderKind.Atproto);
         await Assert.That(persisted.DeploymentMode).IsEqualTo(DeploymentMode.MultiTenant);
         await Assert.That(persisted.Generation).IsEqualTo(17L);
         await Assert.That(persisted.ConfigurationFingerprint).IsEqualTo(ConfigurationFingerprint);
@@ -134,15 +134,15 @@ public sealed class InstanceBootstrapStatePersistenceTests(PostgreSqlContainerFi
         {
             write.InstanceBootstrapStates.AddRange(
                 InstanceBootstrapState.CreateConfiguredAdministratorPending(
-                    earlierId, InstanceBootstrapProviderKind.Keycloak,
+                    earlierId, AuthenticationProviderKind.Keycloak,
                     DeploymentMode.SingleTenant, 1, ConfigurationFingerprint,
                     SelectorFingerprint, CreatedAt.AddMinutes(-1)),
                 InstanceBootstrapState.CreateConfiguredAdministratorPending(
-                    lowerTieId, InstanceBootstrapProviderKind.Keycloak,
+                    lowerTieId, AuthenticationProviderKind.Keycloak,
                     DeploymentMode.SingleTenant, 2, ConfigurationFingerprint,
                     SelectorFingerprint, CreatedAt),
                 InstanceBootstrapState.CreateConfiguredAdministratorPending(
-                    higherTieId, InstanceBootstrapProviderKind.Keycloak,
+                    higherTieId, AuthenticationProviderKind.Keycloak,
                     DeploymentMode.SingleTenant, 3, ConfigurationFingerprint,
                     SelectorFingerprint, CreatedAt));
             await write.SaveChangesAsync();
@@ -166,8 +166,6 @@ public sealed class InstanceBootstrapStatePersistenceTests(PostgreSqlContainerFi
             FirstName = "Bootstrap",
             LastName = "Administrator"
         },
-        AuthProvider = "atproto",
-        AuthProviderId = $"did:plc:{userId:N}",
         EmailVerified = true,
         ConcurrencyStamp = Guid.CreateVersion7(),
         CreatedAt = CreatedAt

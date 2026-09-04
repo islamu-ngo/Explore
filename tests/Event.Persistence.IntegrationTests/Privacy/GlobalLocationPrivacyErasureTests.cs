@@ -961,11 +961,10 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         string providerKey) => new()
         {
             Id = Guid.CreateVersion7(),
-            TenantId = tenant.Id,
-            Tenant = tenant,
             UserId = user.Id,
             User = user,
-            Provider = "keycloak",
+            AuthenticationProviderId = (int)AuthenticationProviderKind.Keycloak,
+            AuthenticationProvider = null!,
             ProviderKey = providerKey,
             ProviderDisplayName = "Keycloak",
             CreatedAt = DateTime.UtcNow,

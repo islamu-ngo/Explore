@@ -374,6 +374,20 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ie_authentication_providers",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    master_code = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_authentication_providers", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ie_booking_party_types",
                 columns: table => new
                 {
@@ -1182,6 +1196,49 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                     table.CheckConstraint("ck_legal_documents_current_version", "current_version > 0");
                     table.CheckConstraint("ck_legal_documents_scope_tenant", "(scope = 1 AND tenant_id IS NULL) OR (scope = 2 AND tenant_id IS NOT NULL)");
                     table.CheckConstraint("ck_legal_documents_state", "state >= 1 AND state <= 6");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_local_identity_roles",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    normalized_name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    concurrency_stamp = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_local_identity_roles", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_local_identity_users",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    first_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    last_name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    user_name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    normalized_user_name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    normalized_email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    email_confirmed = table.Column<bool>(type: "INTEGER", nullable: false),
+                    password_hash = table.Column<string>(type: "TEXT", nullable: true),
+                    security_stamp = table.Column<string>(type: "TEXT", nullable: true),
+                    concurrency_stamp = table.Column<string>(type: "TEXT", nullable: true),
+                    phone_number = table.Column<string>(type: "TEXT", maxLength: 64, nullable: true),
+                    phone_number_confirmed = table.Column<bool>(type: "INTEGER", nullable: false),
+                    two_factor_enabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    lockout_end = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
+                    lockout_enabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    access_failed_count = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_local_identity_users", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -2750,8 +2807,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    auth_provider = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    auth_provider_id = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
                     email_verified = table.Column<bool>(type: "INTEGER", nullable: true),
                     concurrency_stamp = table.Column<Guid>(type: "TEXT", nullable: false),
                     last_active_tenant_id = table.Column<Guid>(type: "TEXT", nullable: true),
@@ -3201,6 +3256,112 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         principalTable: "ie_legal_documents",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_role_claims",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    role_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    claim_type = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    claim_value = table.Column<string>(type: "TEXT", maxLength: 2048, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_role_claims", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_identity_role_claims_local_identity_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "ie_local_identity_roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_user_claims",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    claim_type = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    claim_value = table.Column<string>(type: "TEXT", maxLength: 2048, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_user_claims", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_identity_user_claims_local_identity_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_local_identity_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_user_logins",
+                columns: table => new
+                {
+                    login_provider = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    provider_key = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
+                    provider_display_name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_user_logins", x => new { x.login_provider, x.provider_key });
+                    table.ForeignKey(
+                        name: "fk_identity_user_logins_local_identity_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_local_identity_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_user_roles",
+                columns: table => new
+                {
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    role_id = table.Column<Guid>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_user_roles", x => new { x.user_id, x.role_id });
+                    table.ForeignKey(
+                        name: "fk_identity_user_roles_local_identity_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "ie_local_identity_roles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_identity_user_roles_local_identity_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_local_identity_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_identity_user_tokens",
+                columns: table => new
+                {
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    login_provider = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    name = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    value = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_identity_user_tokens", x => new { x.user_id, x.login_provider, x.name });
+                    table.ForeignKey(
+                        name: "fk_identity_user_tokens_local_identity_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_local_identity_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -3704,6 +3865,37 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         principalTable: "ie_users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ie_user_external_logins",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    authentication_provider_id = table.Column<int>(type: "INTEGER", nullable: false),
+                    provider_key = table.Column<string>(type: "TEXT", maxLength: 2048, nullable: false),
+                    provider_display_name = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
+                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ie_user_external_logins", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_user_external_logins_authentication_providers_authentication_provider_id",
+                        column: x => x.authentication_provider_id,
+                        principalTable: "ie_authentication_providers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_user_external_logins_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "ie_users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -5310,38 +5502,6 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_user_authentication_tokens_users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "ie_users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ie_user_external_logins",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    provider = table.Column<string>(type: "TEXT", maxLength: 255, nullable: true),
-                    provider_key = table.Column<string>(type: "TEXT", maxLength: 2048, nullable: true),
-                    provider_display_name = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    created_at = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    created_by = table.Column<Guid>(type: "TEXT", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    updated_by = table.Column<Guid>(type: "TEXT", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_ie_user_external_logins", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_user_external_logins_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "ie_tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_user_external_logins_users_user_id",
                         column: x => x.user_id,
                         principalTable: "ie_users",
                         principalColumn: "id",
@@ -17490,6 +17650,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 descending: new[] { false, true });
 
             migrationBuilder.CreateIndex(
+                name: "ix_authentication_providers_master_code",
+                table: "ie_authentication_providers",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_booking_party_types_master_code",
                 table: "ie_booking_party_types",
                 column: "master_code",
@@ -19568,6 +19734,26 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_identity_role_claims_role_id",
+                table: "ie_identity_role_claims",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_identity_user_claims_user_id",
+                table: "ie_identity_user_claims",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_identity_user_logins_user_id",
+                table: "ie_identity_user_logins",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_identity_user_roles_role_id",
+                table: "ie_identity_user_roles",
+                column: "role_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_incoming_webhook_effect_outboxes_status_next_attempt_at_created_at",
                 table: "ie_incoming_webhook_effect_outboxes",
                 columns: new[] { "status", "next_attempt_at", "created_at" });
@@ -19809,6 +19995,23 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 name: "ix_legal_documents_tenant_id_state_kind",
                 table: "ie_legal_documents",
                 columns: new[] { "tenant_id", "state", "kind" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_local_identity_roles_normalized_name",
+                table: "ie_local_identity_roles",
+                column: "normalized_name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_local_identity_users_normalized_email",
+                table: "ie_local_identity_users",
+                column: "normalized_email");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_local_identity_users_normalized_user_name",
+                table: "ie_local_identity_users",
+                column: "normalized_user_name",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_location_address_sources_master_code",
@@ -22997,16 +23200,10 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_user_external_logins_provider_provider_key",
+                name: "ix_user_external_logins_authentication_provider_id_provider_key",
                 table: "ie_user_external_logins",
-                columns: new[] { "provider", "provider_key" },
-                unique: true,
-                filter: "provider IS NOT NULL AND provider_key IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_user_external_logins_tenant_id",
-                table: "ie_user_external_logins",
-                column: "tenant_id");
+                columns: new[] { "authentication_provider_id", "provider_key" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_external_logins_user_id",
@@ -23027,8 +23224,7 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_user_pii_email",
                 table: "ie_user_pii",
-                column: "email",
-                unique: true);
+                column: "email");
 
             migrationBuilder.CreateIndex(
                 name: "ix_user_preferences_tenant_id_user_id_setting_key",
@@ -24369,6 +24565,21 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 name: "ie_idempotency_records");
 
             migrationBuilder.DropTable(
+                name: "ie_identity_role_claims");
+
+            migrationBuilder.DropTable(
+                name: "ie_identity_user_claims");
+
+            migrationBuilder.DropTable(
+                name: "ie_identity_user_logins");
+
+            migrationBuilder.DropTable(
+                name: "ie_identity_user_roles");
+
+            migrationBuilder.DropTable(
+                name: "ie_identity_user_tokens");
+
+            migrationBuilder.DropTable(
                 name: "ie_incoming_webhook_effect_outboxes");
 
             migrationBuilder.DropTable(
@@ -24798,6 +25009,12 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
                 name: "ie_group_positions");
 
             migrationBuilder.DropTable(
+                name: "ie_local_identity_roles");
+
+            migrationBuilder.DropTable(
+                name: "ie_local_identity_users");
+
+            migrationBuilder.DropTable(
                 name: "ie_incoming_webhook_processing_attempt_outcomes");
 
             migrationBuilder.DropTable(
@@ -24922,6 +25139,9 @@ namespace Explore.Persistence.Migrations.Sqlite.Migrations
 
             migrationBuilder.DropTable(
                 name: "ie_user_appearance_profiles");
+
+            migrationBuilder.DropTable(
+                name: "ie_authentication_providers");
 
             migrationBuilder.DropTable(
                 name: "ie_outbox_messages");

@@ -1,5 +1,5 @@
-// ABOUTME: Domain entity representing an external login provider for a user.
-// Stores OAuth/OIDC provider information for user authentication.
+// ABOUTME: Global binding from one external authentication authority to one platform user.
+// ABOUTME: Keeps tenant participation separate while preserving exact provider-account uniqueness.
 
 using System;
 using System.Collections.Generic;
@@ -10,7 +10,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class UserExternalLogin : ITenantEntity, IAuditableEntity
+public class UserExternalLogin : IAuditableEntity
 {
     public Guid Id { get; set; }
 
@@ -18,12 +18,11 @@ public class UserExternalLogin : ITenantEntity, IAuditableEntity
     public Guid UserId { get; set; }
     public required User User { get; set; }
 
-    [ForeignKey("Tenant")]
-    public Guid TenantId { get; set; }
-    public required Tenant Tenant { get; set; }
+    [ForeignKey(nameof(AuthenticationProvider))]
+    public int AuthenticationProviderId { get; set; }
+    public required AuthenticationProvider AuthenticationProvider { get; set; }
 
-    public string? Provider { get; set; }
-    public string? ProviderKey { get; set; }
+    public required string ProviderKey { get; set; }
     public string? ProviderDisplayName { get; set; }
 
     // Audit fields

@@ -39,8 +39,6 @@ public class User : IAuditableEntity, ISoftDeletable, IConcurrencyAware
 
     public Actor? Actor { get; set; }
 
-    public string? AuthProvider { get; set; }
-    public string? AuthProviderId { get; set; }
     public bool? EmailVerified { get; set; }
     public Guid ConcurrencyStamp { get; set; }
     public Guid? LastActiveTenantId { get; set; }

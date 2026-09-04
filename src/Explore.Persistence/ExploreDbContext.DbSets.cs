@@ -11,6 +11,8 @@ using Explore.Domain.Settings.Documents;
 using Explore.Domain.Views;
 using Explore.Application.Features.ConfigurationManifest.Importing;
 using Explore.Persistence.Entities;
+using Explore.Persistence.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StorageObject = Explore.Domain.StorageObject;
 
@@ -63,6 +65,7 @@ public partial class ExploreDbContext
     // ===== Users & Authentication =====
     public DbSet<User> Users { get; set; }
     public DbSet<UserPii> UserPii { get; set; }
+    public DbSet<AuthenticationProvider> AuthenticationProviders { get; set; }
     public DbSet<ExternalApiKey> ExternalApiKeys { get; set; }
     public DbSet<ExternalApiKeyOwnerTypeLookup> ExternalApiKeyOwnerTypes { get; set; }
     public DbSet<ExternalApiKeyStatus> ExternalApiKeyStatuses { get; set; }
@@ -70,6 +73,13 @@ public partial class ExploreDbContext
     public DbSet<ExternalApiKeyQuota> ExternalApiKeyQuotas { get; set; }
     public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
     public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
+    public DbSet<LocalIdentityUser> LocalIdentityUsers { get; set; }
+    public DbSet<LocalIdentityRole> LocalIdentityRoles { get; set; }
+    public DbSet<IdentityUserRole<Guid>> IdentityUserRoles { get; set; }
+    public DbSet<IdentityUserClaim<Guid>> IdentityUserClaims { get; set; }
+    public DbSet<IdentityRoleClaim<Guid>> IdentityRoleClaims { get; set; }
+    public DbSet<IdentityUserLogin<Guid>> IdentityUserLogins { get; set; }
+    public DbSet<IdentityUserToken<Guid>> IdentityUserTokens { get; set; }
     public DbSet<ExternalBinding> ExternalBindings { get; set; }
     public DbSet<ManagedControlPlaneRegistration> ManagedControlPlaneRegistrations { get; set; }
     public DbSet<ManagedTenantProvisioningOperation> ManagedTenantProvisioningOperations { get; set; }

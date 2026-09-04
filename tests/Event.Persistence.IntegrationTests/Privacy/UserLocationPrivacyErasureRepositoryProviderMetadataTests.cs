@@ -44,9 +44,8 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
 
         var ownerExternalLoginA = CreateExternalLogin(tenantA, owner, "keycloak", "kc-owner-a");
         var ownerExternalLoginB = CreateExternalLogin(tenantB, owner, "keycloak", "kc-owner-b");
-        var ownerExternalLoginNoLocator = CreateExternalLogin(tenantA, owner, "oidc", null);
         var unrelatedExternalLogin = CreateExternalLogin(tenantA, unrelated, "keycloak", "kc-unrelated");
-        seedContext.UserExternalLogins.AddRange(ownerExternalLoginA, ownerExternalLoginB, ownerExternalLoginNoLocator, unrelatedExternalLogin);
+        seedContext.UserExternalLogins.AddRange(ownerExternalLoginA, ownerExternalLoginB, unrelatedExternalLogin);
 
         var ownerPushSubscriptionA = WebPushSubscription.Create(
             tenantA.Id,
@@ -838,14 +837,17 @@ public sealed class UserLocationPrivacyErasureRepositoryProviderMetadataTests(
         return actor;
     }
 
-    private static UserExternalLogin CreateExternalLogin(Tenant tenant, User user, string provider, string? providerKey) => new()
+    private static UserExternalLogin CreateExternalLogin(
+        Tenant tenant,
+        User user,
+        string provider,
+        string providerKey) => new()
     {
         Id = Guid.CreateVersion7(),
-        TenantId = tenant.Id,
-        Tenant = tenant,
         UserId = user.Id,
         User = user,
-        Provider = provider,
+        AuthenticationProviderId = (int)provider.ParseAuthenticationProviderKind(),
+        AuthenticationProvider = null!,
         ProviderKey = providerKey,
         ProviderDisplayName = "Keycloak",
         CreatedAt = DateTime.UtcNow

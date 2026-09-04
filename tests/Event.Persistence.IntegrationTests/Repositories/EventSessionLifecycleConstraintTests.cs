@@ -147,7 +147,7 @@ public class EventSessionLifecycleConstraintTests
         await Assert.That(reloaded.EventSessionStatusId).IsEqualTo((int)EventSessionStatusEnum.Draft);
     }
 
-    private static async Task<(Tenant Tenant, Explore.Domain.Event Event)> SetupEventAsync(ExploreDbContext context)
+    private static async Task<(Tenant Tenant, Explore.Domain.Event Event, Guid UserId)> SetupEventAsync(ExploreDbContext context)
     {
         var activeStatus = await context.TenantStatuses.FindAsync(2);
         var tenant = new Tenant { FullName = "Lifecycle Test Tenant", Slug = "lifecycle-" + Guid.NewGuid().ToString("N")[..8], TenantStatusId = activeStatus?.Id ?? 2, TenantStatus = activeStatus! };
@@ -161,12 +161,12 @@ public class EventSessionLifecycleConstraintTests
         var @event = new Explore.Domain.Event(EventStatusEnum.Draft) { Id = Guid.NewGuid(), Title = "Lifecycle Test Event", EventProvenanceTypeId = (int)EventProvenanceTypeEnum.OrganizerCreated, EventTypeId = 1, AudienceGenderId = 1, AudienceAgeId = 1, ActorId = actor.Id, Actor = null!, TenantId = tenant.Id, Tenant = null!, VisibilityTypeId = 1, VisibilityType = null!, EventStatus = null!, EventFormatId = 1, EventFormat = null!, TotalViews = 0 };
         context.Events.Add(@event);
         await context.SaveChangesAsync();
-        return (tenant, @event);
+        return (tenant, @event, user.Id);
     }
 
     private static async Task<RoomScheduleScope> SetupRoomScopeAsync(ExploreDbContext context)
     {
-        var (tenant, @event) = await SetupEventAsync(context);
+        var (tenant, @event, userId) = await SetupEventAsync(context);
         var location = new Location { FullName = "Lifecycle Test Venue", Country = "BE", City = "Brussels", TenantId = tenant.Id, Tenant = null! };
         location.SetManualAddress("123 Test St", "1000");
         context.Locations.Add(location);
@@ -174,21 +174,40 @@ public class EventSessionLifecycleConstraintTests
         var room = new LocationRoom { LocationId = location.Id, Location = null!, Name = "Main Hall", Capacity = 200, SortOrder = 1, TenantId = tenant.Id, Tenant = null! };
         context.LocationRooms.Add(room);
         await context.SaveChangesAsync();
-        return new RoomScheduleScope(tenant, @event, location, room);
+        // ck_event_session_physical_location_requires_event_location: a session may only carry a
+        // physical location through the EventLocation aggregate that owns its disclosure policy.
+        var eventLocation = EventLocation.CreatePhysical(
+            tenant.Id,
+            @event.Id,
+            location.Id,
+            userId,
+            DateTime.UtcNow);
+        context.Set<EventLocation>().Add(eventLocation);
+        await context.SaveChangesAsync();
+        return new RoomScheduleScope(tenant, @event, location, room, eventLocation);
     }
 
     private static EventSession CreateRoomSession(RoomScheduleScope scope, DateTimeOffset startUtc, DateTimeOffset endUtc)
     {
-        var session = new EventSession { EventId = scope.Event.Id, Event = null!, LocationId = scope.Location.Id, Location = null!, RoomId = scope.Room.Id, Room = null!, StartTime = startUtc, EndTime = endUtc, TenantId = scope.Tenant.Id, Tenant = null! };
+        var session = new EventSession { EventId = scope.Event.Id, Event = null!, StartTime = startUtc, EndTime = endUtc, TenantId = scope.Tenant.Id, Tenant = null! };
+        session.AssignEventLocation(scope.EventLocation);
+        session.RoomId = scope.Room.Id;
         session.Reschedule(UtcInstantRange.Create(startUtc, endUtc), "UTC", new EventScheduleProjectionCalculator());
         return session;
     }
 
     private static EventSession CreateUnscheduledRoomSession(RoomScheduleScope scope)
     {
-        var session = new EventSession { EventId = scope.Event.Id, Event = null!, LocationId = scope.Location.Id, Location = null!, RoomId = scope.Room.Id, Room = null!, StartTime = null, EndTime = null, TenantId = scope.Tenant.Id, Tenant = null! };
+        var session = new EventSession { EventId = scope.Event.Id, Event = null!, StartTime = null, EndTime = null, TenantId = scope.Tenant.Id, Tenant = null! };
+        session.AssignEventLocation(scope.EventLocation);
+        session.RoomId = scope.Room.Id;
         return session;
     }
 
-    private sealed record RoomScheduleScope(Tenant Tenant, Explore.Domain.Event Event, Location Location, LocationRoom Room);
+    private sealed record RoomScheduleScope(
+        Tenant Tenant,
+        Explore.Domain.Event Event,
+        Location Location,
+        LocationRoom Room,
+        EventLocation EventLocation);
 }

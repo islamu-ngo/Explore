@@ -14,22 +14,21 @@ public class UserExternalLoginConfiguration : IEntityTypeConfiguration<UserExter
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.Property(e => e.Provider).HasMaxLength(255);
-        builder.Property(e => e.ProviderKey).HasMaxLength(2048);
+        builder.Property(e => e.ProviderKey).HasMaxLength(2_048).IsRequired();
         builder.Property(e => e.ProviderDisplayName).HasMaxLength(500);
 
-        builder.HasIndex(e => new { e.Provider, e.ProviderKey })
-            .IsUnique()
-            .HasFilter("provider IS NOT NULL AND provider_key IS NOT NULL");
+        builder.HasIndex(e => new { e.AuthenticationProviderId, e.ProviderKey })
+            .IsUnique();
+
+        builder.HasOne(e => e.AuthenticationProvider)
+            .WithMany()
+            .HasForeignKey(e => e.AuthenticationProviderId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.User)
             .WithMany()
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(e => e.Tenant)
-            .WithMany()
-            .HasForeignKey(e => e.TenantId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }

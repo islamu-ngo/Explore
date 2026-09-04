@@ -4,7 +4,6 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Authentication;
 using Explore.Domain;
-using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -19,13 +18,13 @@ public class UserExternalLoginRepository : GenericRepository<UserExternalLogin, 
     }
 
     public async Task<UserExternalLogin?> GetByProviderAndKey(
-        string provider,
         ProviderAccountKey accountKey)
     {
         return await _dbContext.UserExternalLogins
-            .IgnoreTenantFilter(TenantFilterBypassReasons.UserExternalLoginAuthentication)
             .AsNoTracking()
-            .FirstOrDefaultAsync(l => l.Provider == provider && l.ProviderKey == accountKey.Value);
+            .FirstOrDefaultAsync(login =>
+                login.AuthenticationProviderId == (int)accountKey.ProviderKind
+                && login.ProviderKey == accountKey.Value);
     }
 
     public async Task<List<UserExternalLogin>> GetByUser(Guid userId)

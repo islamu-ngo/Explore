@@ -21,6 +21,7 @@ using Explore.Domain;
 using Explore.Persistence.Caching;
 using Explore.Persistence.Database;
 using Explore.Persistence.Extensions;
+using Explore.Persistence.Identity;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Persistence.Privacy.ErasureAuthority.Repositories;
 using Explore.Persistence.Queries;
@@ -31,6 +32,7 @@ using Explore.Secrets.Bootstrap;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -115,6 +117,42 @@ public static class PersistenceServicesRegistration
             });
 
         }
+
+        LocalIdentityOptions localIdentityOptions =
+            configuration.GetSection(LocalIdentityOptions.SectionName).Get<LocalIdentityOptions>()
+            ?? new LocalIdentityOptions();
+        IdentityBuilder identityBuilder = services.AddIdentityCore<LocalIdentityUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = localIdentityOptions.LockoutThreshold;
+                options.Lockout.DefaultLockoutTimeSpan =
+                    TimeSpan.FromMinutes(localIdentityOptions.LockoutDurationMinutes);
+                options.Password.RequiredLength = 12;
+                options.Password.RequiredUniqueChars = 1;
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+            })
+            .AddRoles<LocalIdentityRole>();
+
+        if (IdentityDatabaseConfiguration.GetTopology(configuration) == IdentityDatabaseTopology.External)
+        {
+            services.AddDbContext<ExternalIdentityDbContext>(options =>
+                IdentityDatabaseProviderComposition.Configure(
+                    options,
+                    configuration,
+                    PrimaryDatabaseRole.Runtime));
+            identityBuilder.AddEntityFrameworkStores<ExternalIdentityDbContext>();
+        }
+        else
+        {
+            identityBuilder.AddEntityFrameworkStores<ExploreDbContext>();
+        }
+        identityBuilder.AddDefaultTokenProviders();
+        services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddScoped<ILocalIdentityAuthService, LocalIdentityAuthService>();
 
         // Unit of Work (wraps EF Core transactions)
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();

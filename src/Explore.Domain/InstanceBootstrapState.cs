@@ -14,7 +14,7 @@ public class InstanceBootstrapState
     public Guid Id { get; private set; }
     public InstanceBootstrapStatus Status { get; private set; }
     public InstanceBootstrapMode Mode { get; private set; }
-    public InstanceBootstrapProviderKind? ProviderKind { get; private set; }
+    public AuthenticationProviderKind? ProviderKind { get; private set; }
     public DeploymentMode DeploymentMode { get; private set; }
     public long Generation { get; private set; }
     public string? ConfigurationFingerprint { get; private set; }
@@ -47,7 +47,7 @@ public class InstanceBootstrapState
 
     public static InstanceBootstrapState CreateConfiguredAdministratorPending(
         Guid id,
-        InstanceBootstrapProviderKind providerKind,
+        AuthenticationProviderKind providerKind,
         DeploymentMode deploymentMode,
         long generation,
         string configurationFingerprint,
@@ -55,7 +55,7 @@ public class InstanceBootstrapState
         DateTime createdAt)
     {
         RequireUuidV7(id, nameof(id));
-        RequireDefined(providerKind, nameof(providerKind));
+        RequireConfiguredProvider(providerKind, nameof(providerKind));
         RequireDefined(deploymentMode, nameof(deploymentMode));
         RequirePositiveGeneration(generation, nameof(generation));
         RequireFingerprint(configurationFingerprint, nameof(configurationFingerprint));
@@ -78,7 +78,7 @@ public class InstanceBootstrapState
 
     public InstanceBootstrapState Supersede(
         Guid replacementId,
-        InstanceBootstrapProviderKind providerKind,
+        AuthenticationProviderKind providerKind,
         DeploymentMode deploymentMode,
         long replacementGeneration,
         string configurationFingerprint,
@@ -86,7 +86,7 @@ public class InstanceBootstrapState
         DateTime supersededAt)
     {
         RequireUuidV7(replacementId, nameof(replacementId));
-        RequireDefined(providerKind, nameof(providerKind));
+        RequireConfiguredProvider(providerKind, nameof(providerKind));
         RequireDefined(deploymentMode, nameof(deploymentMode));
         RequirePositiveGeneration(replacementGeneration, nameof(replacementGeneration));
         RequireFingerprint(configurationFingerprint, nameof(configurationFingerprint));
@@ -146,13 +146,13 @@ public class InstanceBootstrapState
     }
 
     public bool CompleteConfiguredAdministrator(
-        InstanceBootstrapProviderKind providerKind,
+        AuthenticationProviderKind providerKind,
         long generation,
         string identityFingerprint,
         Guid completedByUserId,
         DateTime completedAt)
     {
-        RequireDefined(providerKind, nameof(providerKind));
+        RequireConfiguredProvider(providerKind, nameof(providerKind));
         RequirePositiveGeneration(generation, nameof(generation));
         RequireFingerprint(identityFingerprint, nameof(identityFingerprint));
         RequireUuidV7(completedByUserId, nameof(completedByUserId));
@@ -267,6 +267,21 @@ public class InstanceBootstrapState
         if (!Enum.IsDefined(value))
         {
             throw new ArgumentOutOfRangeException(parameterName, value, "Value is outside the closed enum contract.");
+        }
+    }
+
+    private static void RequireConfiguredProvider(
+        AuthenticationProviderKind value,
+        string parameterName)
+    {
+        if (value is not AuthenticationProviderKind.Keycloak
+            and not AuthenticationProviderKind.Local
+            and not AuthenticationProviderKind.Atproto)
+        {
+            throw new ArgumentOutOfRangeException(
+                parameterName,
+                value,
+                "Configured administrator bootstrap supports only Local Identity, Keycloak, or ATProto.");
         }
     }
 }

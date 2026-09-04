@@ -15,9 +15,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.Property(e => e.AuthProvider).HasMaxLength(500);
-        builder.Property(e => e.AuthProviderId).HasMaxLength(500);
-
         builder.HasOne(e => e.Pii)
             .WithOne(e => e.User)
             .HasForeignKey<UserPii>(e => e.UserId)

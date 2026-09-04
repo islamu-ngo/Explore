@@ -1,5 +1,5 @@
-// ABOUTME: Verifies user external-login authentication bypass is bounded by provider and provider key.
-// ABOUTME: Proves cross-tenant identity resolution does not leak unrelated ambient tenant login rows.
+// ABOUTME: Verifies external-login bindings are global identity authority independent of tenant context.
+// ABOUTME: Proves repository lookup remains bounded by the exact normalized provider account key.
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Authentication;
@@ -17,15 +17,10 @@ namespace Event.Persistence.IntegrationTests.TenantIsolation;
 public class UserExternalLoginRepositoryBypassTests(PostgreSqlContainerFixture fixture)
 {
     [Test]
-    public async Task GetByProviderAndKey_WithAmbientTenant_ReturnsOnlyExactExternalLogin()
+    public async Task GetByProviderAndKey_WithAmbientTenant_ReturnsOnlyExactGlobalBinding()
     {
         await fixture.ResetAsync();
         await using var seedContext = fixture.CreateDbContext();
-
-        var tenantA = CreateTenant("external-login-a");
-        var tenantB = CreateTenant("external-login-b");
-        seedContext.Tenants.AddRange(tenantA, tenantB);
-        await seedContext.SaveChangesAsync();
 
         var userA = CreateUser("external-login-a");
         var userB = CreateUser("external-login-b");
@@ -38,40 +33,33 @@ public class UserExternalLoginRepositoryBypassTests(PostgreSqlContainerFixture f
         ProviderAccountKey tenantBKey = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
             "https://auth.example.test/realms/ISLAMU",
             "subject-b");
-        var tenantALogin = CreateExternalLogin(tenantA.Id, userA.Id, "keycloak", tenantAKey.Value);
-        var tenantBLogin = CreateExternalLogin(tenantB.Id, userB.Id, "keycloak", tenantBKey.Value);
+        ProviderAccountKey missingKey = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            "https://auth.example.test/realms/ISLAMU",
+            "subject-missing");
+        var tenantALogin = CreateExternalLogin(userA.Id, "keycloak", tenantAKey.Value);
+        var tenantBLogin = CreateExternalLogin(userB.Id, "keycloak", tenantBKey.Value);
         seedContext.UserExternalLogins.AddRange(tenantALogin, tenantBLogin);
         await seedContext.SaveChangesAsync();
 
-        await using var tenantBContext = fixture.CreateTenantFilteredDbContext(new TestTenantContext(tenantB.Id));
-        var visibleWithoutBypass = await tenantBContext.UserExternalLogins
+        await using var tenantContext = fixture.CreateTenantFilteredDbContext(
+            new TestTenantContext(Guid.CreateVersion7()));
+        var visibleBindings = await tenantContext.UserExternalLogins
             .AsNoTracking()
             .Select(login => login.Id)
             .ToListAsync();
 
-        var repository = new UserExternalLoginRepository(tenantBContext);
-        var tenantAByProviderKey = await repository.GetByProviderAndKey("keycloak", tenantAKey);
-        var wrongProvider = await repository.GetByProviderAndKey("google", tenantAKey);
-        var tenantAByUserWithoutBypass = await repository.GetByUser(userA.Id);
+        var repository = new UserExternalLoginRepository(tenantContext);
+        var tenantAByProviderKey = await repository.GetByProviderAndKey(tenantAKey);
+        var missing = await repository.GetByProviderAndKey(missingKey);
+        var tenantAByUser = await repository.GetByUser(userA.Id);
 
-        await Assert.That(visibleWithoutBypass).IsEquivalentTo([tenantBLogin.Id]);
+        await Assert.That(visibleBindings)
+            .IsEquivalentTo([tenantALogin.Id, tenantBLogin.Id]);
         await Assert.That(tenantAByProviderKey).IsNotNull();
         await Assert.That(tenantAByProviderKey!.Id).IsEqualTo(tenantALogin.Id);
-        await Assert.That(tenantAByProviderKey.TenantId).IsEqualTo(tenantA.Id);
-        await Assert.That(wrongProvider).IsNull();
-        await Assert.That(tenantAByUserWithoutBypass).IsEmpty();
-    }
-
-    private static Tenant CreateTenant(string slugPrefix)
-    {
-        return new Tenant
-        {
-            Id = Guid.CreateVersion7(),
-            FullName = $"External Login {slugPrefix}",
-            Slug = $"{slugPrefix}-{Guid.NewGuid().ToString("N")[..8]}",
-            TenantStatusId = (int)TenantStatusEnum.Active,
-            TenantStatus = null!,
-        };
+        await Assert.That(missing).IsNull();
+        await Assert.That(tenantAByUser.Select(login => login.Id))
+            .IsEquivalentTo([tenantALogin.Id]);
     }
 
     private static User CreateUser(string emailPrefix)
@@ -91,23 +79,15 @@ public class UserExternalLoginRepositoryBypassTests(PostgreSqlContainerFixture f
     }
 
     private static UserExternalLogin CreateExternalLogin(
-        Guid tenantId,
         Guid userId,
         string provider,
         string providerKey)
     {
-        return new UserExternalLogin
-        {
-            Id = Guid.CreateVersion7(),
-            TenantId = tenantId,
-            Tenant = null!,
-            UserId = userId,
-            User = null!,
-            Provider = provider,
-            ProviderKey = providerKey,
-            ProviderDisplayName = provider,
-            CreatedAt = DateTime.UtcNow,
-        };
+        return new UserExternalLogin { Id = Guid.CreateVersion7(),
+        UserId = userId,
+        User = null!, AuthenticationProviderId = (int)provider.ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = providerKey,
+        ProviderDisplayName = provider,
+        CreatedAt = DateTime.UtcNow, };
     }
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;

@@ -25,7 +25,6 @@ public class UserPiiConfiguration : IEntityTypeConfiguration<UserPii>
             .HasMaxLength(500)
             .IsRequired();
 
-        builder.HasIndex(e => e.Email)
-            .IsUnique();
+        builder.HasIndex(e => e.Email);
     }
 }

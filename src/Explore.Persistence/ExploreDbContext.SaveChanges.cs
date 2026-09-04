@@ -361,12 +361,6 @@ public partial class ExploreDbContext
                         ? ComputeMySqlUniquenessHash(storageObject.Provider, objectKey)
                         : null;
                     break;
-                case UserExternalLogin externalLogin:
-                    entry.Property("ProviderKeyUniquenessHash").CurrentValue =
-                        externalLogin.Provider is { } loginProvider && externalLogin.ProviderKey is { } providerKey
-                            ? ComputeMySqlUniquenessHash(loginProvider, providerKey)
-                            : null;
-                    break;
                 case WebPushSubscription webPushSubscription:
                     var active = webPushSubscription.IsActive && !webPushSubscription.IsDeleted;
                     entry.Property("ActiveEndpointUniquenessHash").CurrentValue = active

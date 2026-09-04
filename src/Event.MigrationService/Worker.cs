@@ -2,7 +2,9 @@
 // ABOUTME: Runs once in the migration service process before stopping the host.
 
 using Explore.Persistence;
+using Explore.Persistence.Identity;
 using Explore.Persistence.Schema;
+using Microsoft.EntityFrameworkCore;
 using Explore.Secrets.Database;
 using Explore.Infrastructure.ConfigurationManifest;
 
@@ -26,6 +28,13 @@ public sealed class Worker(IServiceProvider serviceProvider, IHostApplicationLif
     private async Task MigrateAsync(CancellationToken stoppingToken)
     {
         await using var scope = serviceProvider.CreateAsyncScope();
+        var externalIdentity = scope.ServiceProvider.GetService<ExternalIdentityDbContext>();
+        if (externalIdentity is not null)
+        {
+            logger.LogInformation("Applying external Local Identity database migrations.");
+            await externalIdentity.Database.MigrateAsync(stoppingToken);
+        }
+
         var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var startupSequence = scope.ServiceProvider
             .GetRequiredService<IConfigurationManifestPostMigrationSequence>();

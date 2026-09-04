@@ -7,6 +7,7 @@ using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Infrastructure.ConfigurationManifest;
 using Explore.Persistence;
 using Explore.Persistence.Database;
+using Explore.Persistence.Identity;
 using Explore.Persistence.Privacy.ErasureAuthority;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,7 @@ public class Program
             PrimaryDatabaseProviderComposition.ConfigureApplication(options, runtimeDatabaseOptions));
         builder.Services.AddScoped(provider =>
             provider.GetRequiredService<IDbContextFactory<ExploreDbContext>>().CreateDbContext());
+        builder.Services.AddExternalIdentityMigrationContext(builder.Configuration);
         builder.Services.AddConfigurationManifestPersistence();
         builder.Services.AddConfigurationManifestStartup(
             builder.Configuration,

@@ -184,7 +184,7 @@ public sealed class InstanceOnboardingConcurrencyTests(PostgreSqlContainerFixtur
             await new InstanceBootstrapStateRepository(seed).Create(
                 InstanceBootstrapState.CreateConfiguredAdministratorPending(
                     stateId,
-                    InstanceBootstrapProviderKind.Keycloak,
+                    AuthenticationProviderKind.Keycloak,
                     DeploymentMode.MultiTenant,
                     7,
                     ConfigurationFingerprint,
@@ -229,18 +229,12 @@ public sealed class InstanceOnboardingConcurrencyTests(PostgreSqlContainerFixtur
                     CreatedAt = CompletedAt,
                     ConcurrencyStamp = Guid.CreateVersion7()
                 });
-                write.UserExternalLogins.Add(new UserExternalLogin
-                {
-                    Id = loginId,
-                    UserId = userId,
-                    User = user,
-                    TenantId = tenantId,
-                    Tenant = tenant,
-                    Provider = "keycloak",
-                    ProviderKey = "rollback-subject",
-                    ProviderDisplayName = "keycloak",
-                    CreatedAt = CompletedAt
-                });
+                write.UserExternalLogins.Add(new UserExternalLogin { Id = loginId,
+                UserId = userId,
+                User = user,
+                AuthenticationProviderId = (int)"keycloak".ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = "rollback-subject",
+                ProviderDisplayName = "keycloak",
+                CreatedAt = CompletedAt });
                 write.PlatformUserRoles.Add(new PlatformUserRole
                 {
                     Id = Guid.CreateVersion7(),
@@ -261,7 +255,7 @@ public sealed class InstanceOnboardingConcurrencyTests(PostgreSqlContainerFixtur
                     CreatedAt = CompletedAt
                 });
                 state.CompleteConfiguredAdministrator(
-                    InstanceBootstrapProviderKind.Keycloak,
+                    AuthenticationProviderKind.Keycloak,
                     7,
                     ExactIdentityFingerprint,
                     userId,
@@ -302,7 +296,7 @@ public sealed class InstanceOnboardingConcurrencyTests(PostgreSqlContainerFixtur
         await new InstanceBootstrapStateRepository(seed).Create(
             InstanceBootstrapState.CreateConfiguredAdministratorPending(
                 stateId,
-                InstanceBootstrapProviderKind.Keycloak,
+                AuthenticationProviderKind.Keycloak,
                 DeploymentMode.MultiTenant,
                 7,
                 ConfigurationFingerprint,
@@ -335,7 +329,7 @@ public sealed class InstanceOnboardingConcurrencyTests(PostgreSqlContainerFixtur
 
             if (state is null
                 || state.Mode != InstanceBootstrapMode.ConfiguredAdministrator
-                || state.ProviderKind != InstanceBootstrapProviderKind.Keycloak)
+                || state.ProviderKind != AuthenticationProviderKind.Keycloak)
             {
                 return ClaimDisposition.IdentityMismatch;
             }
@@ -362,7 +356,7 @@ public sealed class InstanceOnboardingConcurrencyTests(PostgreSqlContainerFixtur
             }
 
             state.CompleteConfiguredAdministrator(
-                InstanceBootstrapProviderKind.Keycloak,
+                AuthenticationProviderKind.Keycloak,
                 generation,
                 identityFingerprint,
                 userId,
@@ -381,8 +375,6 @@ public sealed class InstanceOnboardingConcurrencyTests(PostgreSqlContainerFixtur
             FirstName = "Configured",
             LastName = "Administrator"
         },
-        AuthProvider = "keycloak",
-        AuthProviderId = $"subject-{userId:N}",
         EmailVerified = true,
         ConcurrencyStamp = Guid.CreateVersion7(),
         CreatedAt = CreatedAt

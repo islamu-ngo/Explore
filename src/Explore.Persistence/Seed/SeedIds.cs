@@ -27,6 +27,9 @@ public static class SeedIds
     public static readonly Guid AdminUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000030");
     public static readonly Guid RegularUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000031");
     public static readonly Guid ModeratorUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000032");
+    public static readonly Guid AdminDevelopmentLoginId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000033");
+    public static readonly Guid RegularDevelopmentLoginId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000034");
+    public static readonly Guid ModeratorDevelopmentLoginId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000035");
 
     // ===== Organizations (Development) =====
     public static readonly Guid IslamuOrgId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000040");

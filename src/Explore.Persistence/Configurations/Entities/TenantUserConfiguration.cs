@@ -42,8 +42,8 @@ public class TenantUserConfiguration : IEntityTypeConfiguration<TenantUser>
             .IsUnique()
             .HasFilter("actor_id IS NOT NULL");
 
-        builder.HasCheckConstraint(
+        builder.ToTable(t => t.HasCheckConstraint(
             "ck_tenant_users_status",
-            $"status_id IN ({(int)TenantUserStatusEnum.Active}, {(int)TenantUserStatusEnum.Suspended}, {(int)TenantUserStatusEnum.Banned}, {(int)TenantUserStatusEnum.Removed})");
+            $"status_id IN ({(int)TenantUserStatusEnum.Active}, {(int)TenantUserStatusEnum.Suspended}, {(int)TenantUserStatusEnum.Banned}, {(int)TenantUserStatusEnum.Removed})"));
     }
 }
