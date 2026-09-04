@@ -27,7 +27,6 @@ public class AppearanceSettingGroup : ISettingGroup
         GovernanceSettingKeys.Appearance.DefaultThemeMode,
         GovernanceSettingKeys.Appearance.LegacyDefaultThemeId
     ];
-#pragma warning restore CS0618
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
     {
@@ -44,6 +43,7 @@ public class AppearanceSettingGroup : ISettingGroup
             var rawLegacy = SettingValueSerializer.DeserializeString(legacySetting.Value);
             ActiveProfileId = Guid.TryParse(rawLegacy, out var parsedLegacy) ? parsedLegacy : null;
         }
+#pragma warning restore CS0618
 
         if (settings.TryGetValue(GovernanceSettingKeys.Appearance.ThemeMode, out var themeModeSetting))
         {

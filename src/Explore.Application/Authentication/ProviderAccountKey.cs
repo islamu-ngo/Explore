@@ -7,7 +7,7 @@ namespace Explore.Application.Authentication;
 
 public sealed record ProviderAccountKey
 {
-    public ProviderAccountKey(InstanceBootstrapProviderKind providerKind, string value)
+    public ProviderAccountKey(AuthenticationProviderKind providerKind, string value)
     {
         if (!Enum.IsDefined(providerKind))
         {
@@ -22,6 +22,6 @@ public sealed record ProviderAccountKey
         Value = value;
     }
 
-    public InstanceBootstrapProviderKind ProviderKind { get; }
+    public AuthenticationProviderKind ProviderKind { get; }
     public string Value { get; }
 }

@@ -152,6 +152,62 @@ public sealed class EnvironmentCatalogueInvariantTests
     }
 
     [Test]
+    public async Task LocalIdentityCatalogueDefinesTwoAxisProviderAndExternalDatabaseContract()
+    {
+        EnvironmentCatalogue catalogue = CanonicalEnvironmentCatalogue.Catalogue;
+        string[] expectedKeys =
+        [
+            "AUTHENTICATION_PROVIDER",
+            "ATPROTO_LOGIN_ENABLED",
+            "AUTHENTICATION_LOCAL_JWT_KEY",
+            "AUTHENTICATION_LOCAL_LOCKOUT_THRESHOLD",
+            "AUTHENTICATION_LOCAL_LOCKOUT_DURATION_MINUTES",
+            "IDENTITY_DATABASE_TOPOLOGY",
+            "IDENTITY_DATABASE_PROVIDER",
+            "IDENTITY_DATABASE_CONNECTION_STRING",
+            "IDENTITY_DATABASE_HOST",
+            "IDENTITY_DATABASE_PORT",
+            "IDENTITY_DATABASE_NAME",
+            "IDENTITY_DATABASE_SCHEMA",
+            "IDENTITY_DATABASE_TLS_MODE",
+            "IDENTITY_DATABASE_TRUST_SERVER_CERTIFICATE",
+            "IDENTITY_DATABASE_RUNTIME_USERNAME",
+            "IDENTITY_DATABASE_RUNTIME_PASSWORD",
+            "IDENTITY_DATABASE_MIGRATOR_USERNAME",
+            "IDENTITY_DATABASE_MIGRATOR_PASSWORD",
+        ];
+        string[] missing = expectedKeys
+            .Where(key => catalogue.Lookup(key) is null)
+            .ToArray();
+
+        await Assert.That(missing).IsEmpty()
+            .Because("the canonical catalogue must own every local authentication deployment key");
+
+        EnvironmentVariableDefinition provider = catalogue.Lookup("AUTHENTICATION_PROVIDER")!;
+        EnvironmentVariableDefinition atproto = catalogue.Lookup("ATPROTO_LOGIN_ENABLED")!;
+        EnvironmentVariableDefinition signingKey = catalogue.Lookup("AUTHENTICATION_LOCAL_JWT_KEY")!;
+        EnvironmentVariableDefinition topology = catalogue.Lookup("IDENTITY_DATABASE_TOPOLOGY")!;
+        EnvironmentVariableDefinition connectionString = catalogue.Lookup("IDENTITY_DATABASE_CONNECTION_STRING")!;
+
+        await Assert.That(provider.Category).IsEqualTo(EnvironmentVariableCategory.Platform);
+        await Assert.That(provider.Sensitivity).IsEqualTo(EnvironmentVariableSensitivity.Public);
+        await Assert.That(provider.Requirement).IsEqualTo(EnvironmentVariableRequirement.Optional);
+        await Assert.That(provider.ValidatorId).IsEqualTo("authentication-provider");
+        await Assert.That(atproto.ValidatorId).IsEqualTo("boolean");
+        await Assert.That(atproto.SafeDefault).IsNull();
+        await Assert.That(signingKey.Category).IsEqualTo(EnvironmentVariableCategory.Security);
+        await Assert.That(signingKey.Sensitivity).IsEqualTo(EnvironmentVariableSensitivity.Secret);
+        await Assert.That(signingKey.SafeDefault).IsNull();
+        await Assert.That(topology.Category).IsEqualTo(EnvironmentVariableCategory.Integration);
+        await Assert.That(topology.Requirement).IsEqualTo(EnvironmentVariableRequirement.Defaulted);
+        await Assert.That(topology.SafeDefault).IsEqualTo("colocated");
+        await Assert.That(topology.ValidatorId).IsEqualTo("identity-database-topology");
+        await Assert.That(connectionString.Sensitivity).IsEqualTo(EnvironmentVariableSensitivity.Secret);
+        await Assert.That(expectedKeys.All(key =>
+            catalogue.Lookup(key)!.RestartBehavior == EnvironmentRestartBehavior.Process)).IsTrue();
+    }
+
+    [Test]
     public async Task ConfiguredBootstrapCatalogueHasExactClosedKeysAndValueSafeMetadata()
     {
         EnvironmentCatalogue catalogue = CanonicalEnvironmentCatalogue.Catalogue;

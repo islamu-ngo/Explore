@@ -17,7 +17,7 @@ public sealed class ConfiguredAdministratorClaimInvariantTests
         BaseCommandResponse<Guid> response = await scenario.ClaimAsync();
 
         await Assert.That(response.IsSuccess).IsTrue();
-        await Assert.That(scenario.Bootstrap.ProviderKind).IsEqualTo(InstanceBootstrapProviderKind.Keycloak);
+        await Assert.That(scenario.Bootstrap.ProviderKind).IsEqualTo(AuthenticationProviderKind.Keycloak);
         await Assert.That(scenario.Bootstrap.Generation).IsEqualTo(7);
         await Assert.That(scenario.Bootstrap.CompletedIdentityFingerprint)
             .IsEqualTo(OnboardingCompletionScenario.Fingerprint);
@@ -25,10 +25,40 @@ public sealed class ConfiguredAdministratorClaimInvariantTests
     }
 
     [Test]
+    public async Task LocalIdentityProviderCanClaimConfiguredAdministratorExactlyOnce()
+    {
+        var scenario = new OnboardingCompletionScenario(
+            providerKind: AuthenticationProviderKind.Local);
+
+        BaseCommandResponse<Guid> response = await scenario.ClaimAsync();
+
+        await Assert.That(response.IsSuccess).IsTrue();
+        await Assert.That(scenario.Bootstrap.ProviderKind)
+            .IsEqualTo(AuthenticationProviderKind.Local);
+        await Assert.That(scenario.Bootstrap.CompletedByUserId)
+            .IsEqualTo(scenario.UserId);
+    }
+
+    [Test]
+    public async Task LocalIdentityBootstrapRejectsKeycloakAccountWithoutWrites()
+    {
+        var scenario = new OnboardingCompletionScenario(
+            providerKind: AuthenticationProviderKind.Local);
+        var keycloakAccount = new ProviderAccountKey(
+            AuthenticationProviderKind.Keycloak,
+            "subject-123");
+
+        BaseCommandResponse<Guid> response = await scenario.ClaimAsync(
+            account: keycloakAccount);
+
+        await AssertBoundedMismatch(response, scenario);
+    }
+
+    [Test]
     public async Task IndirectOrWrongProviderIdentityProducesNoWrites()
     {
         var scenario = new OnboardingCompletionScenario();
-        var wrongAccount = new ProviderAccountKey(InstanceBootstrapProviderKind.Keycloak, "other-subject");
+        var wrongAccount = new ProviderAccountKey(AuthenticationProviderKind.Keycloak, "other-subject");
 
         BaseCommandResponse<Guid> response = await scenario.ClaimAsync(account: wrongAccount);
 
@@ -39,7 +69,7 @@ public sealed class ConfiguredAdministratorClaimInvariantTests
     public async Task BindingForDifferentProviderProducesNoWrites()
     {
         var scenario = new OnboardingCompletionScenario();
-        scenario.BindingAccount = new ProviderAccountKey(InstanceBootstrapProviderKind.Atproto, "did:plc:other");
+        scenario.BindingAccount = new ProviderAccountKey(AuthenticationProviderKind.Atproto, "did:plc:other");
 
         BaseCommandResponse<Guid> response = await scenario.ClaimAsync();
 
@@ -99,7 +129,7 @@ public sealed class ConfiguredAdministratorClaimInvariantTests
         switch (conflict)
         {
             case 1:
-                replayAccount = new ProviderAccountKey(InstanceBootstrapProviderKind.Atproto, "did:plc:other");
+                replayAccount = new ProviderAccountKey(AuthenticationProviderKind.Atproto, "did:plc:other");
                 scenario.BindingAccount = replayAccount;
                 break;
             case 2:

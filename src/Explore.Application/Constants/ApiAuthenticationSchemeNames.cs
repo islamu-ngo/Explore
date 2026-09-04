@@ -19,5 +19,7 @@ public static class ApiAuthenticationSchemeNames
 
     public const string AtprotoSession = "AtprotoSession";
 
+    public const string LocalIdentity = "LocalIdentityBearer";
+
     public const string PrivacyErasureReceipt = "PrivacyErasureReceipt";
 }

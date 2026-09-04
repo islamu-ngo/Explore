@@ -114,20 +114,11 @@ internal static class AtprotoPublicationPlannerTestFactory
                 PdsHost = "https://pds.example/"
             }]);
         var logins = Substitute.For<IUserExternalLoginRepository>();
-        logins.GetByProviderAndKey(
-                RepositoryBackedAtprotoSession.Provider,
-                PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(
-                    AtprotoDid.Parse(did)))
-            .Returns(new UserExternalLogin
-            {
-                Id = Guid.CreateVersion7(),
-                TenantId = tenantId,
-                Tenant = null!,
-                UserId = ownerUserId,
-                User = null!,
-                Provider = RepositoryBackedAtprotoSession.Provider,
-                ProviderKey = did
-            });
+        logins.GetByProviderAndKey(PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(
+            AtprotoDid.Parse(did)))
+            .Returns(new UserExternalLogin { Id = Guid.CreateVersion7(),
+            UserId = ownerUserId,
+            User = null!, AuthenticationProviderId = (int)RepositoryBackedAtprotoSession.Provider.ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = did });
         return new(
             new AtprotoEventGovernanceResolver(settings),
             eventRepository ?? Substitute.For<IEventRepository>(),

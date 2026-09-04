@@ -282,6 +282,7 @@ public static class ApplicationServicesRegistration
         services.AddSingleton<IAiToolContractRegistry>(_ => AiToolContractRegistry.CreateDefault());
         services.AddScoped<IAiAssistantActorContextService, AiAssistantActorContextService>();
         services.AddScoped<AtprotoSubjectOnboardingOperation>();
+        services.AddScoped<AtprotoJitAccountProvisioningOperation>();
         services.AddScoped<IAiContextGateway, AiContextGateway>();
         services.AddScoped<IAiProviderTrustResolver, DefaultAiProviderTrustResolver>();
         services.AddScoped<IAiContextRedactor, AiContextRedactor>();

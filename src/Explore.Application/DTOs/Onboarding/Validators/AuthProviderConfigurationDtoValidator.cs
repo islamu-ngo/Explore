@@ -2,6 +2,7 @@
 // ABOUTME: Enforces at least one provider enabled and required credentials when a provider is toggled on.
 
 using FluentValidation;
+using Explore.Domain.Enums;
 
 namespace Explore.Application.DTOs.Onboarding.Validators;
 
@@ -10,11 +11,22 @@ public class AuthProviderConfigurationDtoValidator : AbstractValidator<AuthProvi
     public AuthProviderConfigurationDtoValidator(
         AuthProviderConfigurationDto? authoritativeCurrentConfiguration = null)
     {
-        RuleFor(x => x)
-            .Must(HasAtLeastOneProviderEnabled)
-            .WithMessage("At least one authentication provider must be enabled.");
+        RuleFor(x => x.PrimaryProviderId)
+            .Must(BeSupportedPrimaryProvider)
+            .WithMessage("Primary authentication provider must be Local Identity, Keycloak, or AT Protocol.");
 
-        When(x => x.KeycloakEnabled, () =>
+        When(x => x.PrimaryProviderId == (int)AuthenticationProviderKind.Atproto, () =>
+        {
+            RuleFor(x => x.AtprotoLoginEnabled)
+                .Equal(true)
+                .WithMessage("AT Protocol login must be enabled when AT Protocol is the primary provider.");
+
+            RuleFor(x => x.GoogleSsoEnabled)
+                .Equal(false)
+                .WithMessage("Google SSO must be disabled when AT Protocol is the sole primary provider.");
+        });
+
+        When(x => x.PrimaryProviderId == (int)AuthenticationProviderKind.Keycloak, () =>
         {
             RuleFor(x => x.KeycloakAuthority)
                 .NotEmpty()
@@ -56,10 +68,10 @@ public class AuthProviderConfigurationDtoValidator : AbstractValidator<AuthProvi
         });
     }
 
-    private static bool HasAtLeastOneProviderEnabled(AuthProviderConfigurationDto dto)
-    {
-        return dto.KeycloakEnabled || dto.AtprotoLoginEnabled || dto.GoogleSsoEnabled;
-    }
+    private static bool BeSupportedPrimaryProvider(int providerId) =>
+        providerId is (int)AuthenticationProviderKind.Local
+            or (int)AuthenticationProviderKind.Keycloak
+            or (int)AuthenticationProviderKind.Atproto;
 
     private static bool CanReuseConfiguredKeycloakSecret(
         AuthProviderConfigurationDto? current,

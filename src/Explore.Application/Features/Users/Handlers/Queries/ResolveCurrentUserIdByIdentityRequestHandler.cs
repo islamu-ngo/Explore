@@ -3,6 +3,8 @@
 using Explore.Application.Authentication;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Users.Requests.Queries;
+using Explore.Domain;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.Users.Handlers.Queries;
@@ -20,15 +22,11 @@ public class ResolveCurrentUserIdByIdentityRequestHandler
 
     public async Task<Guid?> Handle(ResolveCurrentUserIdByIdentityRequest request, CancellationToken cancellationToken)
     {
-        var normalizedProvider = request.Provider.Trim().ToLowerInvariant();
-        var providerKind = normalizedProvider == "atproto"
-            ? Explore.Domain.Enums.InstanceBootstrapProviderKind.Atproto
-            : Explore.Domain.Enums.InstanceBootstrapProviderKind.Keycloak;
+        AuthenticationProviderKind providerKind =
+            request.Provider.ParseAuthenticationProviderKind();
         var accountKey = new ProviderAccountKey(providerKind, request.ProviderId.Trim());
 
-        var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(
-            normalizedProvider,
-            accountKey);
+        var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(accountKey);
         return externalLogin?.UserId;
     }
 }

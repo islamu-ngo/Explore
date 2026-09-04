@@ -358,24 +358,26 @@ public sealed class InstanceOnboardingCompletionOperation(
         string lastName = string.IsNullOrWhiteSpace(suppliedLastName)
             ? string.Empty
             : suppliedLastName.Trim();
+        AuthenticationProviderKind providerKind;
         string provider;
         string providerKey;
         bool emailVerified;
 
         if (input.ConfiguredCommand is not null)
         {
-            provider = input.ConfiguredCommand.AuthenticatedAccount.ProviderKind
-                .ToString()
-                .ToLowerInvariant();
+            providerKind = input.ConfiguredCommand.AuthenticatedAccount.ProviderKind;
+            provider = providerKind.ToAuthenticationProviderCode();
             providerKey = input.ConfiguredCommand.AuthenticatedAccount.Value;
             emailVerified = false;
         }
         else
         {
             CompleteInstanceOnboardingCommand command = input.InteractiveCommand!;
-            provider = string.IsNullOrWhiteSpace(command.AuthProvider)
+            string providerCode = string.IsNullOrWhiteSpace(command.AuthProvider)
                 ? AuthSchemeNames.Keycloak.ToLowerInvariant()
                 : command.AuthProvider.Trim().ToLowerInvariant();
+            providerKind = providerCode.ParseAuthenticationProviderKind();
+            provider = providerKind.ToAuthenticationProviderCode();
             providerKey = string.IsNullOrWhiteSpace(command.AuthProviderId)
                 ? input.UserId.ToString()
                 : command.AuthProviderId.Trim();
@@ -391,13 +393,10 @@ public sealed class InstanceOnboardingCompletionOperation(
                 FirstName = firstName,
                 LastName = lastName
             },
-            AuthProvider = provider,
-            AuthProviderId = providerKey,
             EmailVerified = emailVerified
         };
         user = await userRepository.Create(user);
 
-        Guid actorTenantId = tenantId ?? PlatformDefaults.DefaultTenantId;
         await actorRepository.Create(new Actor
         {
             ActorTypeId = (int)ActorTypeEnum.User,
@@ -411,9 +410,8 @@ public sealed class InstanceOnboardingCompletionOperation(
             Id = input.ExternalLoginId,
             UserId = user.Id,
             User = user,
-            TenantId = actorTenantId,
-            Tenant = null!,
-            Provider = provider,
+            AuthenticationProviderId = (int)providerKind,
+            AuthenticationProvider = null!,
             ProviderKey = providerKey,
             ProviderDisplayName = provider
         });

@@ -263,13 +263,11 @@ public sealed class AtprotoEventPublicationPlanner(
         }
 
         Explore.Domain.UserExternalLogin? login = await externalLoginRepository.GetByProviderAndKey(
-            RepositoryBackedAtprotoSession.Provider,
             PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(
                 Explore.Domain.ValueObjects.AtprotoDid.Parse(sessions[0].SubjectDid)));
         if (login is null
-            || login.TenantId != request.TenantId
             || login.UserId != ownerUserId
-            || !string.Equals(login.Provider, RepositoryBackedAtprotoSession.Provider, StringComparison.Ordinal)
+            || login.AuthenticationProviderId != (int)AuthenticationProviderKind.Atproto
             || !string.Equals(login.ProviderKey, sessions[0].SubjectDid, StringComparison.Ordinal))
         {
             return Skipped(request, "account_not_linked");
@@ -479,13 +477,11 @@ public sealed class AtprotoEventPublicationPlanner(
         }
 
         Explore.Domain.UserExternalLogin? login = await externalLoginRepository.GetByProviderAndKey(
-            RepositoryBackedAtprotoSession.Provider,
             PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(
                 Explore.Domain.ValueObjects.AtprotoDid.Parse(outbox.Did)));
         if (login is null
-            || login.TenantId != outbox.TenantId
             || login.UserId != outbox.UserId
-            || !string.Equals(login.Provider, RepositoryBackedAtprotoSession.Provider, StringComparison.Ordinal)
+            || login.AuthenticationProviderId != (int)AuthenticationProviderKind.Atproto
             || !string.Equals(login.ProviderKey, outbox.Did, StringComparison.Ordinal))
         {
             return AtprotoDeliveryGateResult.Deny("account_not_linked");

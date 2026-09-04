@@ -130,7 +130,7 @@ public sealed record AtprotoSessionBootstrapResult(
     public static AtprotoSessionBootstrapResult Succeeded(
         Guid userId,
         Guid actorId,
-        Guid participationId,
+        Guid? participationId,
         AtprotoSubjectClassification classification,
         AtprotoIssuedSessionToken token,
         Guid? canonicalActorId = null,

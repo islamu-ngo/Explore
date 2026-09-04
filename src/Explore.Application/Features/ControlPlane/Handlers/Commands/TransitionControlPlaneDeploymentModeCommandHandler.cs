@@ -25,7 +25,7 @@ public sealed class TransitionControlPlaneDeploymentModeCommandHandler(
         TransitionControlPlaneDeploymentModeCommand request,
         CancellationToken cancellationToken)
     {
-        if (!Enum.IsDefined(typeof(DeploymentMode), request.TargetMode))
+        if (!Enum.IsDefined(request.TargetMode))
         {
             return Failure("A valid target deployment mode is required.");
         }

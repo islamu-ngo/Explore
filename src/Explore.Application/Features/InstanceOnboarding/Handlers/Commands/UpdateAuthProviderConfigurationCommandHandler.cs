@@ -2,13 +2,16 @@
 // ABOUTME: Prevents admin lockout by ensuring the current admin keeps at least one enabled linked provider.
 
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
+using Explore.Application.Features.InstanceOnboarding.Services;
 using Explore.Application.Responses;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
@@ -17,14 +20,12 @@ public class UpdateAuthProviderConfigurationCommandHandler :
     IRequestHandler<UpdateAuthProviderConfigurationCommand, BaseCommandResponse<Guid>>,
     IRequestHandler<UpdateAuthProviderConfigurationDuringSetupCommand, BaseCommandResponse<Guid>>
 {
-    private const string KeycloakProvider = "keycloak";
-    private const string GoogleProvider = "google";
-    private const string AtprotoProvider = "atproto";
-
     private readonly IAdminContext _adminContext;
     private readonly IUserRepository _userRepository;
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly IAuthProviderConfigurationService _configurationService;
+    private readonly IAuthenticationProviderModeCacheInvalidator
+        _authenticationProviderModeCacheInvalidator;
     private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
     private readonly ISetupSecretProvider _setupSecretProvider;
 
@@ -33,6 +34,8 @@ public class UpdateAuthProviderConfigurationCommandHandler :
         IUserRepository userRepository,
         IUserExternalLoginRepository userExternalLoginRepository,
         IAuthProviderConfigurationService configurationService,
+        IAuthenticationProviderModeCacheInvalidator
+            authenticationProviderModeCacheInvalidator,
         IJwtAuthorityRefreshNotifier jwtAuthorityRefreshNotifier,
         ISetupSecretProvider setupSecretProvider)
     {
@@ -40,6 +43,8 @@ public class UpdateAuthProviderConfigurationCommandHandler :
         _userRepository = userRepository;
         _userExternalLoginRepository = userExternalLoginRepository;
         _configurationService = configurationService;
+        _authenticationProviderModeCacheInvalidator =
+            authenticationProviderModeCacheInvalidator;
         _jwtAuthorityRefreshNotifier = jwtAuthorityRefreshNotifier;
         _setupSecretProvider = setupSecretProvider;
     }
@@ -84,7 +89,10 @@ public class UpdateAuthProviderConfigurationCommandHandler :
         var patch = configurationPatch.Configuration.Value;
         var configuration = new AuthProviderConfigurationDto
         {
-            KeycloakEnabled = patch.KeycloakEnabled,
+            PrimaryProviderId = patch.PrimaryProviderId,
+            PrimaryProviderCode = string.Empty,
+            PrimaryProviderName = string.Empty,
+            LockPrimaryProvider = patch.LockPrimaryProvider,
             KeycloakAuthority = patch.KeycloakAuthority,
             KeycloakClientId = patch.KeycloakClientId,
             KeycloakClientSecret = patch.KeycloakClientSecret,
@@ -95,7 +103,6 @@ public class UpdateAuthProviderConfigurationCommandHandler :
             GoogleSsoEnabled = patch.GoogleSsoEnabled,
             GoogleClientId = patch.GoogleClientId,
             GoogleClientSecret = patch.GoogleClientSecret,
-            LockKeycloakEnabled = patch.LockKeycloakEnabled,
             LockAtprotoLoginEnabled = patch.LockAtprotoLoginEnabled,
             LockGoogleSsoEnabled = patch.LockGoogleSsoEnabled
         };
@@ -118,7 +125,10 @@ public class UpdateAuthProviderConfigurationCommandHandler :
             }
 
             var currentUserLogins = await _userExternalLoginRepository.GetByUser(currentAdminUserId.Value);
-            if (!WouldKeepAtLeastOneProviderEnabledForCurrentAdmin(currentUser.AuthProvider, currentUserLogins, configuration))
+            if (!AuthenticationProviderLockoutPolicy
+                    .PreservesCurrentAdministratorAccess(
+                        currentUserLogins,
+                        configuration))
             {
                 const string message = "Cannot disable all authentication providers linked to your current admin account.";
                 return BaseCommandResponse.Validation<Guid>([message], message);
@@ -126,53 +136,11 @@ public class UpdateAuthProviderConfigurationCommandHandler :
         }
 
         await _configurationService.ApplyConfigurationAsync(configuration);
+        _authenticationProviderModeCacheInvalidator.InvalidateInstanceMode();
         await _jwtAuthorityRefreshNotifier.ReloadAsync(cancellationToken);
 
         return BaseCommandResponse.Success(
             Guid.Empty,
             "Authentication provider configuration updated successfully.");
-    }
-
-    private static bool WouldKeepAtLeastOneProviderEnabledForCurrentAdmin(
-        string? userPrimaryProvider,
-        List<Domain.UserExternalLogin> userExternalLogins,
-        DTOs.Onboarding.AuthProviderConfigurationDto configuration)
-    {
-        var enabledProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (configuration.KeycloakEnabled)
-        {
-            enabledProviders.Add(KeycloakProvider);
-        }
-
-        if (configuration.GoogleSsoEnabled)
-        {
-            enabledProviders.Add(GoogleProvider);
-        }
-
-        if (configuration.AtprotoLoginEnabled)
-        {
-            enabledProviders.Add(AtprotoProvider);
-        }
-
-        var linkedProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (!string.IsNullOrWhiteSpace(userPrimaryProvider))
-        {
-            linkedProviders.Add(userPrimaryProvider.Trim());
-        }
-
-        foreach (var login in userExternalLogins)
-        {
-            if (!string.IsNullOrWhiteSpace(login.Provider))
-            {
-                linkedProviders.Add(login.Provider.Trim());
-            }
-        }
-
-        if (linkedProviders.Count == 0)
-        {
-            return true;
-        }
-
-        return linkedProviders.Any(enabledProviders.Contains);
     }
 }

@@ -16,12 +16,12 @@ namespace Explore.Application.Features.Authentication.Atproto.Services;
 public sealed record AtprotoSubjectOnboardingResult(bool Success, string FailureCode, Guid? ActorId = null, Guid? ParticipationId = null)
 {
     public static AtprotoSubjectOnboardingResult Failed(string code) => new(false, code);
-    public static AtprotoSubjectOnboardingResult Succeeded(Guid actorId, Guid participationId) => new(true, string.Empty, actorId, participationId);
+    public static AtprotoSubjectOnboardingResult Succeeded(Guid actorId, Guid? participationId) => new(true, string.Empty, actorId, participationId);
 }
 
 public sealed class AtprotoSubjectOnboardingOperation(
     IUserExternalLoginRepository logins, IAtprotoIdentityRepository identities, IActorRepository actors, IActorTypeRepository actorTypes,
-    ITenantUserRepository tenantUsers, ITenantUserRoleGrantRepository tenantRoles, IOrganizationRepository organizations,
+    ITenantRepository tenants, ITenantUserRepository tenantUsers, ITenantUserRoleGrantRepository tenantRoles, IOrganizationRepository organizations,
     IOrganizationTenantRepository organizationTenants, IOrganizationMemberRepository organizationMembers, IGroupRepository groups,
     IGroupTenantRepository groupTenants, IGroupMemberRepository groupMembers, IActorReferenceConsolidationRepository references,
     IGenericRepository<ActorMerge, Guid> merges)
@@ -32,8 +32,12 @@ public sealed class AtprotoSubjectOnboardingOperation(
         ProviderAccountKey accountKey = PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(did);
         if (user.IsDeleted || userActor.IsDeleted || userActor.IsSuspended || userActor.UserId != user.Id)
             return AtprotoSubjectOnboardingResult.Failed("linked_identity_incomplete");
-        var login = await logins.GetByProviderAndKey("atproto", accountKey).ConfigureAwait(false);
-        if (login is null || login.UserId != user.Id || login.Provider != "atproto" || login.ProviderKey != accountKey.Value) return AtprotoSubjectOnboardingResult.Failed("account_not_linked");
+        var login = await logins.GetByProviderAndKey(accountKey).ConfigureAwait(false);
+        if (login is null
+            || login.UserId != user.Id
+            || login.AuthenticationProviderId != (int)AuthenticationProviderKind.Atproto
+            || login.ProviderKey != accountKey.Value)
+            return AtprotoSubjectOnboardingResult.Failed("account_not_linked");
 
         var tenantUser = await tenantUsers.GetByTenantAndUserAsync(tenantId, user.Id, cancellationToken).ConfigureAwait(false);
         if (tenantUser is not null && (tenantUser.IsDeleted || tenantUser.StatusId != (int)TenantUserStatusEnum.Active
@@ -82,7 +86,13 @@ public sealed class AtprotoSubjectOnboardingOperation(
             await identities.Update(identity).ConfigureAwait(false);
         }
 
-        tenantUser ??= await tenantUsers.Create(new TenantUser { TenantId = tenantId, Tenant = null!, UserId = user.Id, User = user, ActorId = userActor.Id, Actor = userActor, StatusId = (int)TenantUserStatusEnum.Active, JoinedAt = at, CreatedAt = at, CreatedBy = user.Id }).ConfigureAwait(false);
+        Tenant? tenant = await tenants.GetById(tenantId).ConfigureAwait(false);
+        if (tenant is null)
+        {
+            return AtprotoSubjectOnboardingResult.Succeeded(represented.Id, null);
+        }
+
+        tenantUser ??= await tenantUsers.Create(new TenantUser { TenantId = tenantId, Tenant = tenant, UserId = user.Id, User = user, ActorId = userActor.Id, Actor = userActor, StatusId = (int)TenantUserStatusEnum.Active, JoinedAt = at, CreatedAt = at, CreatedBy = user.Id }).ConfigureAwait(false);
         if (tenantUser.ActorId is null)
         {
             tenantUser.ActorId = userActor.Id; tenantUser.Actor = userActor; tenantUser.UpdatedAt = at; tenantUser.UpdatedBy = user.Id;

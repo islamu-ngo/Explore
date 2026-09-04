@@ -120,7 +120,7 @@ public sealed class GetOnboardingPreflightQueryHandler(
     {
         var keycloakReady = HasConfigurationValue("Keycloak:Authority")
             && (HasConfigurationValue("Keycloak:ClientId") || HasConfigurationValue("Keycloak:Audience"));
-        var storedKeycloak = await HasEnabledSettingAsync(GovernanceSettingKeys.Authentication.KeycloakEnabled)
+        var storedKeycloak = await IsKeycloakPrimaryProviderAsync()
             && await HasSettingValueAsync(GovernanceSettingKeys.Authentication.KeycloakAuthority)
             && await HasSettingValueAsync(GovernanceSettingKeys.Authentication.KeycloakClientId);
         var atprotoReady = await HasEnabledSettingAsync(GovernanceSettingKeys.Authentication.AtprotoLoginEnabled)
@@ -300,6 +300,17 @@ public sealed class GetOnboardingPreflightQueryHandler(
     }
 
     private async Task<bool> HasSettingValueAsync(string key) => !string.IsNullOrWhiteSpace(await GetSettingValueAsync(key));
+
+    private async Task<bool> IsKeycloakPrimaryProviderAsync()
+    {
+        var value = await GetSettingValueAsync(GovernanceSettingKeys.Authentication.PrimaryProviderId);
+        return int.TryParse(
+                   value,
+                   System.Globalization.NumberStyles.Integer,
+                   System.Globalization.CultureInfo.InvariantCulture,
+                   out var providerId)
+               && providerId == (int)AuthenticationProviderKind.Keycloak;
+    }
 
     private async Task<string?> GetSettingValueAsync(string key)
     {

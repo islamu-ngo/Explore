@@ -151,7 +151,7 @@ public sealed class InstanceOnboardingCompletionOperationTests
         var scenario = new OnboardingCompletionScenario
         {
             BindingAccount = new ProviderAccountKey(
-                InstanceBootstrapProviderKind.Atproto,
+                AuthenticationProviderKind.Atproto,
                 "did:plc:different-configured-account")
         };
 
@@ -206,10 +206,16 @@ internal sealed class OnboardingCompletionScenario
     private readonly StatefulUnitOfWork _unitOfWork;
     private readonly ConfiguredProviderFake _provider;
 
-    public OnboardingCompletionScenario(bool interactive = false)
+    public OnboardingCompletionScenario(
+        bool interactive = false,
+        AuthenticationProviderKind providerKind = AuthenticationProviderKind.Keycloak)
     {
         UserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000222");
-        Account = new ProviderAccountKey(InstanceBootstrapProviderKind.Keycloak, "subject-123");
+        Account = new ProviderAccountKey(
+            providerKind,
+            providerKind == AuthenticationProviderKind.Local
+                ? UserId.ToString("D")
+                : "subject-123");
         Bootstrap = interactive
             ? InstanceBootstrapState.CreateInteractivePending(
                 Guid.Parse("018e4e5c-7f00-7000-8000-000000000111"),
@@ -430,7 +436,7 @@ internal sealed class OnboardingCompletionScenario
             DateTime.UtcNow);
 
     public static InstanceBootstrapState CreatePending(
-        InstanceBootstrapProviderKind provider,
+        AuthenticationProviderKind provider,
         long generation,
         string fingerprint) => InstanceBootstrapState.CreateConfiguredAdministratorPending(
             Guid.CreateVersion7(), provider, DeploymentMode.SingleTenant, generation,

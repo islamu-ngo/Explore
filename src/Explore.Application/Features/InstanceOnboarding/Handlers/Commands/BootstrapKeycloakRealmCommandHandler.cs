@@ -7,6 +7,7 @@ using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Onboarding;
 using Explore.Application.Responses;
+using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -91,7 +92,9 @@ public class BootstrapKeycloakRealmCommandHandler
 
         var runtimeConfiguration = new AuthProviderConfigurationDto
         {
-            KeycloakEnabled = true,
+            PrimaryProviderId = (int)AuthenticationProviderKind.Keycloak,
+            PrimaryProviderCode = "keycloak",
+            PrimaryProviderName = "Keycloak",
             KeycloakAuthority = BuildRealmAuthority(
                 request.BootstrapRequest.KeycloakBaseUrl,
                 request.BootstrapRequest.Realm),

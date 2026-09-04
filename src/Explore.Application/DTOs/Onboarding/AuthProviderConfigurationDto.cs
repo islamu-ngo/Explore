@@ -7,8 +7,14 @@ namespace Explore.Application.DTOs.Onboarding;
 
 public sealed record AuthProviderConfigurationDto
 {
+    // Primary authentication provider (Local Identity, Keycloak, or AT Protocol)
+    public int PrimaryProviderId { get; init; } =
+        (int)global::Explore.Domain.Enums.AuthenticationProviderKind.Local;
+    public string PrimaryProviderCode { get; init; } = "local";
+    public string PrimaryProviderName { get; init; } = "Local Identity";
+    public bool LockPrimaryProvider { get; init; }
+
     // Keycloak
-    public bool KeycloakEnabled { get; init; }
     public string KeycloakAuthority { get; init; } = string.Empty;
     public string KeycloakClientId { get; init; } = string.Empty;
     public string KeycloakClientSecret { get; set; } = string.Empty;
@@ -25,7 +31,6 @@ public sealed record AuthProviderConfigurationDto
     public string GoogleClientSecret { get; set; } = string.Empty;
 
     // Lock flags (for multi-tenant override control)
-    public bool LockKeycloakEnabled { get; init; }
     public bool LockAtprotoLoginEnabled { get; init; }
     public bool LockGoogleSsoEnabled { get; init; }
 }

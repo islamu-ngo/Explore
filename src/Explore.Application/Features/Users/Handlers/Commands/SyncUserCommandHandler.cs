@@ -26,7 +26,6 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
     private readonly IActorRepository _actorRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly IInstanceBootstrapStateRepository _bootstrapRepository;
-    private readonly ITenantContext _tenantContext;
     private readonly InstanceOnboardingCompletionOperation _onboardingCompletion;
     private readonly HybridCache _cache;
     private readonly IUnitOfWork _unitOfWork;
@@ -38,7 +37,6 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         IActorRepository actorRepository,
         ITenantRepository tenantRepository,
         IInstanceBootstrapStateRepository bootstrapRepository,
-        ITenantContext tenantContext,
         InstanceOnboardingCompletionOperation onboardingCompletion,
         HybridCache cache,
         IUnitOfWork unitOfWork,
@@ -49,7 +47,6 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         _actorRepository = actorRepository;
         _tenantRepository = tenantRepository;
         _bootstrapRepository = bootstrapRepository;
-        _tenantContext = tenantContext;
         _onboardingCompletion = onboardingCompletion;
         _cache = cache;
         _unitOfWork = unitOfWork;
@@ -62,15 +59,23 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
 
         try
         {
-            var provider = NormalizeProvider(userDto.AuthProvider);
             ProviderAccountKey accountKey = request.AccountKey;
-            var providerUserId = accountKey.Value;
-            var supportsEmailAutoMatch = SupportsEmailAutoMatch(provider);
+            AuthenticationProviderKind providerKind = accountKey.ProviderKind;
+            string provider = providerKind.ToAuthenticationProviderCode();
+            if (!string.IsNullOrWhiteSpace(userDto.AuthProvider)
+                && userDto.AuthProvider.ParseAuthenticationProviderKind() != providerKind)
+            {
+                return BaseCommandResponse.Validation<Guid>(
+                    ["Provider account authority is invalid."],
+                    "Provider account authority is invalid.");
+            }
+
+            var supportsEmailAutoMatch = SupportsEmailAutoMatch(providerKind);
             var email = NormalizeEmail(userDto.Email);
 
-            bool usesAtprotoAuthority = provider == "atproto";
+            bool usesAtprotoAuthority = providerKind == AuthenticationProviderKind.Atproto;
             bool hasAtprotoAuthority =
-                accountKey.ProviderKind == InstanceBootstrapProviderKind.Atproto;
+                accountKey.ProviderKind == AuthenticationProviderKind.Atproto;
             if (usesAtprotoAuthority != hasAtprotoAuthority)
             {
                 return BaseCommandResponse.Validation<Guid>(
@@ -78,15 +83,14 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                     "Provider account authority is invalid.");
             }
 
-            var existingLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, accountKey);
+            var existingLogin = await _userExternalLoginRepository.GetByProviderAndKey(accountKey);
             InstanceBootstrapState? bootstrap = await _bootstrapRepository.GetCurrent(cancellationToken);
             if (bootstrap is
                 {
                     Mode: InstanceBootstrapMode.ConfiguredAdministrator
                 })
             {
-                if (bootstrap.ProviderKind == InstanceBootstrapProviderKind.Keycloak
-                    && provider != "keycloak")
+                if (bootstrap.ProviderKind != providerKind)
                 {
                     return BaseCommandResponse.Failure<Guid>(
                         "configured_administrator_claim_mismatch",
@@ -164,7 +168,7 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
             string? safeEmail = null;
             if (user == null)
             {
-                safeEmail = ResolveEmailForCreation(provider, email);
+                safeEmail = ResolveEmailForCreation(providerKind, email);
                 if (string.IsNullOrWhiteSpace(safeEmail))
                 {
                     return BaseCommandResponse.Validation<Guid>(
@@ -190,8 +194,6 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                             FirstName = ResolveFirstName(userDto.FirstName),
                             LastName = ResolveLastName(userDto.LastName)
                         },
-                        AuthProvider = provider,
-                        AuthProviderId = providerUserId,
                         EmailVerified = userDto.EmailVerified ?? supportsEmailAutoMatch
                     };
 
@@ -211,7 +213,7 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
 
                     await _actorRepository.Create(actor);
 
-                    await EnsureExternalLoginLinkInTransactionAsync(createdUser, provider, accountKey, loginId, ct);
+                    await EnsureExternalLoginLinkInTransactionAsync(createdUser, accountKey, loginId, ct);
                     return createdUser;
                 }
                 else
@@ -223,8 +225,6 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
 
                     user.FirstName = ResolveFirstName(userDto.FirstName);
                     user.LastName = ResolveLastName(userDto.LastName);
-                    user.AuthProvider = provider;
-                    user.AuthProviderId = providerUserId;
                     if (userDto.EmailVerified.HasValue)
                     {
                         user.EmailVerified = userDto.EmailVerified;
@@ -239,7 +239,7 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
 
                     await _userRepository.Update(user);
 
-                    await EnsureExternalLoginLinkInTransactionAsync(user, provider, accountKey, loginId, ct);
+                    await EnsureExternalLoginLinkInTransactionAsync(user, accountKey, loginId, ct);
                     return user;
                 }
             }, cancellationToken);
@@ -263,12 +263,11 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
 
     private async Task EnsureExternalLoginLinkInTransactionAsync(
         User user,
-        string provider,
         ProviderAccountKey accountKey,
         Guid loginId,
         CancellationToken ct)
     {
-        var existingByProviderAndKey = await _userExternalLoginRepository.GetByProviderAndKey(provider, accountKey);
+        var existingByProviderAndKey = await _userExternalLoginRepository.GetByProviderAndKey(accountKey);
         if (existingByProviderAndKey != null)
         {
             if (existingByProviderAndKey.UserId != user.Id)
@@ -282,36 +281,20 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
             Id = loginId,
             UserId = user.Id,
             User = user,
-            TenantId = _tenantContext.TenantId,
-            Tenant = null!,
-            Provider = provider,
+            AuthenticationProviderId = (int)accountKey.ProviderKind,
+            AuthenticationProvider = null!,
             ProviderKey = accountKey.Value,
-            ProviderDisplayName = GetProviderDisplayName(provider)
+            ProviderDisplayName = GetProviderDisplayName(accountKey.ProviderKind)
         };
 
         await _userExternalLoginRepository.Create(login);
     }
 
-    private static string NormalizeProvider(string? provider)
+    private static bool SupportsEmailAutoMatch(AuthenticationProviderKind provider)
     {
-        if (string.IsNullOrWhiteSpace(provider))
-        {
-            return AuthSchemeNames.Keycloak.ToLowerInvariant();
-        }
-
-        return provider.Trim().ToLowerInvariant() switch
-        {
-            "keycloak" => "keycloak",
-            "google" => "google",
-            "atproto" => "atproto",
-            _ => provider.Trim().ToLowerInvariant()
-        };
-    }
-
-
-    private static bool SupportsEmailAutoMatch(string provider)
-    {
-        return provider is "keycloak" or "google";
+        return provider is AuthenticationProviderKind.Keycloak
+            or AuthenticationProviderKind.Google
+            or AuthenticationProviderKind.Local;
     }
 
     private static string NormalizeEmail(string? email)
@@ -321,14 +304,14 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
             : email.Trim().ToLowerInvariant();
     }
 
-    private static string ResolveEmailForCreation(string provider, string email)
+    private static string ResolveEmailForCreation(AuthenticationProviderKind provider, string email)
     {
         if (!string.IsNullOrWhiteSpace(email))
         {
             return email;
         }
 
-        return provider == "atproto" ? string.Empty : email;
+        return provider == AuthenticationProviderKind.Atproto ? string.Empty : email;
     }
 
     private static string ResolveFirstName(string? firstName)
@@ -346,14 +329,16 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         return $"{ResolveFirstName(firstName)} {ResolveLastName(lastName)}".Trim();
     }
 
-    private static string GetProviderDisplayName(string provider)
+    private static string GetProviderDisplayName(AuthenticationProviderKind provider)
     {
         return provider switch
         {
-            "keycloak" => "Keycloak",
-            "google" => "Google",
-            "atproto" => "AT Protocol",
-            _ => provider
+            AuthenticationProviderKind.Keycloak => "Keycloak",
+            AuthenticationProviderKind.Google => "Google",
+            AuthenticationProviderKind.Atproto => "AT Protocol",
+            AuthenticationProviderKind.Local => "Local Identity",
+            AuthenticationProviderKind.Development => "Development",
+            _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, null),
         };
     }
 

@@ -1,10 +1,12 @@
-// ABOUTME: Verifies a PDS session, enforces linked-account identity, and atomically stores local ATProto state.
-// ABOUTME: Issues a platform JWT only after the identity, index, and encrypted OAuth session commit succeeds.
+// ABOUTME: Verifies a PDS session, enforces provider admission, and atomically stores local ATProto identity.
+// ABOUTME: Issues a platform JWT after commit and persists refresh state once the target tenant exists.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Authentication;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
 using Explore.Application.Features.Authentication.Atproto.Services;
@@ -23,8 +25,9 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
     ISender sender,
     IUserExternalLoginRepository externalLoginRepository,
     IInstanceBootstrapStateRepository bootstrapRepository,
-    IUserRepository userRepository,
-    IActorRepository actorRepository,
+    IAuthenticationProviderDispatcher authenticationProviderDispatcher,
+    IAuthProviderConfigurationService authProviderConfiguration,
+    AtprotoJitAccountProvisioningOperation jitAccountProvisioning,
     AtprotoSubjectOnboardingOperation onboardingOperation,
     IUnitOfWork unitOfWork,
     IAdminCacheInvalidator adminCacheInvalidator,
@@ -62,9 +65,26 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
             return AtprotoSessionBootstrapResult.Failed("pds_identity_mismatch");
         }
 
-        ProviderAccountKey accountKey = PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(verified.Did);
+        ProviderAccountKey accountKey =
+            PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(
+                verified.Did);
+        AuthenticationProviderKind primaryProvider =
+            await authenticationProviderDispatcher
+                .GetActivePrimaryProviderAsync(cancellationToken)
+                .ConfigureAwait(false);
+        AuthProviderConfigurationDto providerConfiguration =
+            await authProviderConfiguration
+                .ReadConfigurationAsync()
+                .ConfigureAwait(false);
+        if (primaryProvider != AuthenticationProviderKind.Atproto
+            && !providerConfiguration.AtprotoLoginEnabled)
+        {
+            return AtprotoSessionBootstrapResult.Failed(
+                "provider_inactive");
+        }
+
         var login = await externalLoginRepository
-            .GetByProviderAndKey("atproto", accountKey).ConfigureAwait(false);
+            .GetByProviderAndKey(accountKey).ConfigureAwait(false);
         InstanceBootstrapState? bootstrap = await bootstrapRepository
             .GetCurrent(cancellationToken).ConfigureAwait(false);
         bool configuredAccount = bootstrap?.Mode == InstanceBootstrapMode.ConfiguredAdministrator;
@@ -95,7 +115,7 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
             }
 
             login = await externalLoginRepository
-                .GetByProviderAndKey("atproto", accountKey).ConfigureAwait(false);
+                .GetByProviderAndKey(accountKey).ConfigureAwait(false);
             if (!IsExactLinkedLogin(login, accountKey))
             {
                 return AtprotoSessionBootstrapResult.Failed("configured_claim_incomplete");
@@ -103,49 +123,85 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
         }
         else if (!IsExactLinkedLogin(login, accountKey))
         {
-            return AtprotoSessionBootstrapResult.Failed("account_not_linked");
+            if (primaryProvider != AuthenticationProviderKind.Atproto)
+            {
+                return AtprotoSessionBootstrapResult.Failed(
+                    "account_not_linked");
+            }
         }
 
-        var preparedSession = await securityGateway.PreparePersistenceAsync(
-            verified,
-            tenantId,
-            login!.UserId,
-            cancellationToken).ConfigureAwait(false);
         var indexedAt = timeProvider.GetUtcNow().UtcDateTime;
-        var onboarding = await unitOfWork.ExecuteSerializableAsync(async transactionToken =>
+        var jitIds = new AtprotoJitAccountIds(
+            login?.UserId ?? Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7());
+        BootstrapPersistenceOutcome persistence =
+            await unitOfWork.ExecuteBootstrapConvergenceAsync(
+                async transactionToken =>
         {
-            var user = await userRepository.GetById(login.UserId).ConfigureAwait(false);
-            var actor = await actorRepository
-                .GetTrackedActorByUserId(login.UserId, transactionToken).ConfigureAwait(false);
-            if (user is null || actor is null || actor.UserId != user.Id)
+            AtprotoPlatformAccount? account =
+                await jitAccountProvisioning.EnsureAsync(
+                    accountKey,
+                    jitIds,
+                    indexedAt,
+                    transactionToken).ConfigureAwait(false);
+            if (account is null)
             {
-                return AtprotoSubjectOnboardingResult.Failed("linked_identity_incomplete");
+                return BootstrapPersistenceOutcome.Failed(
+                    "linked_identity_incomplete");
             }
 
-            var result = await onboardingOperation.ExecuteAsync(
+            AtprotoSubjectOnboardingResult onboarding =
+                await onboardingOperation.ExecuteAsync(
                 request,
                 verified,
-                user,
-                actor,
+                account.User,
+                account.PersonalActor,
                 tenantId,
                 indexedAt,
                 transactionToken).ConfigureAwait(false);
-            if (result.Success)
+            if (!onboarding.Success)
             {
-                await securityGateway.PersistPreparedAsync(preparedSession, transactionToken).ConfigureAwait(false);
+                return BootstrapPersistenceOutcome.Failed(
+                    onboarding.FailureCode);
             }
 
-            return result;
-        }, cancellationToken).ConfigureAwait(false);
-        if (!onboarding.Success) return AtprotoSessionBootstrapResult.Failed(onboarding.FailureCode);
+            if (onboarding.ParticipationId is not null)
+            {
+                AtprotoPreparedOAuthSession preparedSession =
+                    await securityGateway.PreparePersistenceAsync(
+                        verified,
+                        tenantId,
+                        account.User.Id,
+                        transactionToken).ConfigureAwait(false);
+                await securityGateway.PersistPreparedAsync(
+                    preparedSession,
+                    transactionToken).ConfigureAwait(false);
+            }
 
-        adminCacheInvalidator.InvalidateUser(login.UserId);
+            return BootstrapPersistenceOutcome.Succeeded(
+                account.User.Id,
+                onboarding.ActorId!.Value,
+                onboarding.ParticipationId);
+        },
+                cancellationToken).ConfigureAwait(false);
+        if (!persistence.Success)
+        {
+            return AtprotoSessionBootstrapResult.Failed(
+                persistence.FailureCode);
+        }
+
+        adminCacheInvalidator.InvalidateUser(persistence.UserId!.Value);
         var issued = await tokenIssuer
-            .IssueAsync(login.UserId, tenantId, verified.Did, cancellationToken).ConfigureAwait(false);
+            .IssueAsync(
+                persistence.UserId.Value,
+                tenantId,
+                verified.Did,
+                cancellationToken).ConfigureAwait(false);
         return AtprotoSessionBootstrapResult.Succeeded(
-            login.UserId,
-            onboarding.ActorId!.Value,
-            onboarding.ParticipationId!.Value,
+            persistence.UserId.Value,
+            persistence.ActorId!.Value,
+            persistence.ParticipationId,
             request.Classification,
             issued,
             request.CanonicalActorId,
@@ -154,6 +210,23 @@ public sealed class BootstrapAtprotoSessionCommandHandler(
 
     private static bool IsExactLinkedLogin(UserExternalLogin? login, ProviderAccountKey accountKey) =>
         login is not null
-        && string.Equals(login.Provider, "atproto", StringComparison.Ordinal)
+        && login.AuthenticationProviderId == (int)AuthenticationProviderKind.Atproto
         && string.Equals(login.ProviderKey, accountKey.Value, StringComparison.Ordinal);
+
+    private sealed record BootstrapPersistenceOutcome(
+        bool Success,
+        string FailureCode,
+        Guid? UserId = null,
+        Guid? ActorId = null,
+        Guid? ParticipationId = null)
+    {
+        public static BootstrapPersistenceOutcome Failed(string failureCode) =>
+            new(false, failureCode);
+
+        public static BootstrapPersistenceOutcome Succeeded(
+            Guid userId,
+            Guid actorId,
+            Guid? participationId) =>
+            new(true, string.Empty, userId, actorId, participationId);
+    }
 }

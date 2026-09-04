@@ -97,7 +97,9 @@ public sealed record PatchAuthProviderConfigurationDto
 
 public sealed record AuthProviderConfigurationWriteDto
 {
-    public bool KeycloakEnabled { get; init; }
+    public int PrimaryProviderId { get; init; } =
+        (int)global::Explore.Domain.Enums.AuthenticationProviderKind.Local;
+    public bool LockPrimaryProvider { get; init; }
     public string KeycloakAuthority { get; init; } = string.Empty;
     public string KeycloakClientId { get; init; } = string.Empty;
     public string KeycloakClientSecret { get; init; } = string.Empty;
@@ -106,7 +108,6 @@ public sealed record AuthProviderConfigurationWriteDto
     public bool GoogleSsoEnabled { get; init; }
     public string GoogleClientId { get; init; } = string.Empty;
     public string GoogleClientSecret { get; init; } = string.Empty;
-    public bool LockKeycloakEnabled { get; init; }
     public bool LockAtprotoLoginEnabled { get; init; }
     public bool LockGoogleSsoEnabled { get; init; }
 }

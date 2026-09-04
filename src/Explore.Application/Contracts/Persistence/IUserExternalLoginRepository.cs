@@ -8,6 +8,6 @@ namespace Explore.Application.Contracts.Persistence;
 
 public interface IUserExternalLoginRepository : IGenericRepository<UserExternalLogin, Guid>
 {
-    Task<UserExternalLogin?> GetByProviderAndKey(string provider, ProviderAccountKey accountKey);
+    Task<UserExternalLogin?> GetByProviderAndKey(ProviderAccountKey accountKey);
     Task<List<UserExternalLogin>> GetByUser(Guid userId);
 }

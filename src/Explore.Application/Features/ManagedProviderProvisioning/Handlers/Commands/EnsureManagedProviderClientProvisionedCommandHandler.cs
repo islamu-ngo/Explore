@@ -194,9 +194,7 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
             return Failure("A tenant with this slug already exists.", "Tenant slug must be unique across managed provider provisioning requests.");
         }
 
-        var existingLogin = await userExternalLoginRepository.GetByProviderAndKey(
-            normalizedIdentityProvider,
-            accountKey);
+        var existingLogin = await userExternalLoginRepository.GetByProviderAndKey(accountKey);
         User? existingUser = existingLogin == null ? null : await userRepository.GetById(existingLogin.UserId);
         if (existingLogin != null && existingUser == null)
         {
@@ -270,9 +268,8 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                     Id = userExternalLoginId,
                     UserId = user.Id,
                     User = null!,
-                    TenantId = tenant.Id,
-                    Tenant = null!,
-                    Provider = normalizedIdentityProvider,
+                    AuthenticationProviderId = (int)accountKey.ProviderKind,
+                    AuthenticationProvider = null!,
                     ProviderKey = accountKey.Value,
                     ProviderDisplayName = dto.ExternalAdmin.IdentityProvider.Trim(),
                     CreatedAt = DateTime.UtcNow,
@@ -625,8 +622,6 @@ public class EnsureManagedProviderClientProvisionedCommandHandler(
                 FirstName = admin.FirstName.Trim(),
                 LastName = admin.LastName.Trim()
             },
-            AuthProvider = normalizedIdentityProvider,
-            AuthProviderId = accountKey.Value,
             EmailVerified = admin.EmailVerified,
             CreatedAt = DateTime.UtcNow
         });

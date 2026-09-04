@@ -157,6 +157,14 @@ public static class PlatformIdentityPrincipalExtensions
 
     private static string GetAuthProvider(ClaimsIdentity? identity)
     {
+        string? authority = identity?.FindFirst("auth_provider")?.Value
+            .Trim()
+            .ToLowerInvariant();
+        if (authority is "local" or "keycloak" or "atproto" or "google")
+        {
+            return authority;
+        }
+
         var explicitProvider = identity?.FindFirst("idp")?.Value;
         if (!string.IsNullOrWhiteSpace(explicitProvider))
         {
@@ -192,12 +200,12 @@ public static class PlatformIdentityPrincipalExtensions
         string authority = NormalizeIssuerAuthority(issuer);
         string exactSubject = subject;
         return new ProviderAccountKey(
-            InstanceBootstrapProviderKind.Keycloak,
+            AuthenticationProviderKind.Keycloak,
             $"oidc:{authority.Length}:{authority}:{exactSubject}");
     }
 
     public static ProviderAccountKey CreateAtprotoAccountKey(AtprotoDid did) =>
-        new(InstanceBootstrapProviderKind.Atproto, did.Value);
+        new(AuthenticationProviderKind.Atproto, did.Value);
 
     private static ProviderAccountKey? GetProviderAccountKey(
         ClaimsIdentity? identity,
