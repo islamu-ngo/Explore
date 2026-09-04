@@ -7,20 +7,23 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Explore.Application.Settings;
+using ISLAMU.Wire.Contracts.ConfigurationPortability;
 
 public sealed class ConfigurationManifestContractTests
 {
     private const string ContractNamespace =
         "ISLAMU.Wire.Contracts.ConfigurationPortability.";
 
-    private static readonly Assembly ApplicationAssembly =
-        typeof(SettingUpsertService).Assembly;
+    // The v1alpha2 manifest contract types are declared in the Event.Wire.Contracts assembly and
+    // consumed by controllers, handlers, validators, and the OpenAPI transformer. Anchor the
+    // reflection probes on the assembly that actually declares them rather than Explore.Application.
+    private static readonly Assembly ContractAssembly =
+        typeof(ConfigurationManifestContractMetadata).Assembly;
 
     [Test]
     public async Task ContractMetadata_UsesOneAlignedV1Alpha2Identity()
     {
-        Type? metadataType = ApplicationAssembly.GetType(
+        Type? metadataType = ContractAssembly.GetType(
             ContractNamespace + "ConfigurationManifestContractMetadata");
 
         await Assert.That(metadataType).IsNotNull();
@@ -37,7 +40,7 @@ public sealed class ConfigurationManifestContractTests
     [Test]
     public async Task RootContract_RequiresClosedInstanceAndTenantScopes()
     {
-        Type? rootType = ApplicationAssembly.GetType(
+        Type? rootType = ContractAssembly.GetType(
             ContractNamespace + "ConfigurationManifestV1Alpha2");
 
         await Assert.That(rootType).IsNotNull();
@@ -83,7 +86,7 @@ public sealed class ConfigurationManifestContractTests
     [Test]
     public async Task Deserialize_StrictUnifiedEnvelope_AcceptsInstanceAndTenantSections()
     {
-        Type? rootType = ApplicationAssembly.GetType(
+        Type? rootType = ContractAssembly.GetType(
             ContractNamespace + "ConfigurationManifestV1Alpha2");
         await Assert.That(rootType).IsNotNull();
 
@@ -131,7 +134,7 @@ public sealed class ConfigurationManifestContractTests
         string path,
         string rawValue)
     {
-        Type? rootType = ApplicationAssembly.GetType(
+        Type? rootType = ContractAssembly.GetType(
             ContractNamespace + "ConfigurationManifestV1Alpha2");
         await Assert.That(rootType).IsNotNull();
 

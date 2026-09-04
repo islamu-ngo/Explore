@@ -11,7 +11,7 @@ namespace Event.Api.IntegrationTests.Features;
 /// These manage tenant configuration and user-tenant relationships.
 /// </summary>
 [NotInParallel("ApiTestFixture")]
-[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
+[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerClass)]
 public class TenantControllerTests
 {
     private readonly ApiTestFixture _fixture;

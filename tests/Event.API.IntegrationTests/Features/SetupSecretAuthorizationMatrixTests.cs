@@ -5,8 +5,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Services;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,8 +59,7 @@ public class SetupSecretAuthorizationMatrixTests
     {
         await using var factory = CreateFactory(new MatrixSetupSecretProvider());
         using var client = factory.CreateClient();
-        var userId = Guid.CreateVersion7();
-        await SeedInstanceAdminAsync(factory, userId);
+        Guid userId = await SeedInstanceAdminAsync(factory);
         using var request = BearerPatch(path, factory.CreateJwt(userId));
         request.Headers.Add(SetupSecretHeaderName, "invalid-setup-secret");
 
@@ -118,8 +119,7 @@ public class SetupSecretAuthorizationMatrixTests
     {
         await using var factory = CreateFactory(new MatrixSetupSecretProvider());
         using var client = factory.CreateClient();
-        var userId = Guid.NewGuid();
-        await SeedInstanceAdminAsync(factory, userId);
+        Guid userId = await SeedInstanceAdminAsync(factory);
         using var request = BearerPatch(path, factory.CreateJwt(userId));
 
         var response = await client.SendAsync(request);
@@ -157,12 +157,16 @@ public class SetupSecretAuthorizationMatrixTests
         return request;
     }
 
-    private static async Task SeedInstanceAdminAsync(
-        ExternalApiPhase0WebApplicationFactory factory,
-        Guid userId)
+    private static async Task<Guid> SeedInstanceAdminAsync(
+        ExternalApiPhase0WebApplicationFactory factory)
     {
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        Guid userId = dbContext.InstanceBootstrapStates
+            .Single()
+            .CompletedByUserId
+            ?? throw new InvalidOperationException(
+                "The API fixture must seed one completed bootstrap administrator.");
         dbContext.Users.Add(new User
         {
             Id = userId,
@@ -178,14 +182,48 @@ public class SetupSecretAuthorizationMatrixTests
                 LastName = "Admin"
             }
         });
-        var completedAt = DateTime.UtcNow;
-        var bootstrap = InstanceBootstrapState.CreateInteractivePending(
-            Guid.CreateVersion7(),
-            DeploymentMode.SingleTenant,
-            completedAt);
-        bootstrap.CompleteInteractive(userId, completedAt);
-        dbContext.InstanceBootstrapStates.Add(bootstrap);
+        dbContext.UserExternalLogins.Add(new UserExternalLogin
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            User = null!,
+            TenantId = PlatformDefaults.DefaultTenantId,
+            Tenant = null!,
+            Provider = "keycloak",
+            ProviderKey = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+                ExternalApiPhase0WebApplicationFactory.TestIssuer,
+                userId.ToString()).Value,
+            ProviderDisplayName = "keycloak",
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = userId
+        });
+        Role? platformAdministratorRole = dbContext.Roles
+            .SingleOrDefault(role => role.Id == (int)RoleEnum.Admin);
+        if (platformAdministratorRole is null)
+        {
+            platformAdministratorRole = new Role
+            {
+                Id = (int)RoleEnum.Admin,
+                MasterCode = "platform.admin",
+                FullName = "Platform Administrator",
+                Scope = RoleScopeEnum.Platform,
+                RoleScope = null!,
+                IsSystem = true
+            };
+            dbContext.Roles.Add(platformAdministratorRole);
+        }
+        dbContext.PlatformUserRoles.Add(new PlatformUserRole
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            User = null!,
+            RoleId = platformAdministratorRole.Id,
+            Role = platformAdministratorRole,
+            GrantedAt = DateTime.UtcNow,
+            GrantedBy = userId
+        });
         await dbContext.SaveChangesAsync();
+        return userId;
     }
 
     private sealed class MatrixSetupSecretProvider(bool isSetupModeActive = true) : ISetupSecretProvider

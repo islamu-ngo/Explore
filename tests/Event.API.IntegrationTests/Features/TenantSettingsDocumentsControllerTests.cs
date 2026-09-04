@@ -28,7 +28,7 @@ using TUnit.Core;
 namespace Event.Api.IntegrationTests.Features;
 
 [NotInParallel("ApiTestFixture")]
-[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
+[ClassDataSource<ApiTestFixture>(Shared = SharedType.PerClass)]
 public sealed class TenantSettingsDocumentsControllerAnonymousTests
 {
     private readonly ApiTestFixture _fixture;

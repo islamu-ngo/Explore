@@ -7,6 +7,7 @@ using System.Text;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.Instance;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,7 +121,7 @@ public sealed class OptionalUpdateHttpBindingTests
 
     private static async Task<Guid> CreateInstanceAdminAsync(AuthenticatedWebApplicationFactory factory)
     {
-        var userId = Guid.NewGuid();
+        var userId = Guid.CreateVersion7();
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
 
@@ -146,6 +147,31 @@ public sealed class OptionalUpdateHttpBindingTests
             completedAt);
         bootstrap.CompleteInteractive(userId, completedAt);
         dbContext.InstanceBootstrapStates.Add(bootstrap);
+        Role? platformAdministratorRole = dbContext.Roles
+            .SingleOrDefault(role => role.Id == (int)RoleEnum.Admin);
+        if (platformAdministratorRole is null)
+        {
+            platformAdministratorRole = new Role
+            {
+                Id = (int)RoleEnum.Admin,
+                MasterCode = "platform.admin",
+                FullName = "Platform Administrator",
+                Scope = RoleScopeEnum.Platform,
+                RoleScope = null!,
+                IsSystem = true
+            };
+            dbContext.Roles.Add(platformAdministratorRole);
+        }
+        dbContext.PlatformUserRoles.Add(new PlatformUserRole
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            User = null!,
+            RoleId = platformAdministratorRole.Id,
+            Role = platformAdministratorRole,
+            GrantedAt = completedAt,
+            GrantedBy = userId
+        });
 
         await dbContext.SaveChangesAsync();
         return userId;
