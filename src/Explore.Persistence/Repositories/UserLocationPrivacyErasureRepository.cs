@@ -24,16 +24,14 @@ public sealed class UserLocationPrivacyErasureRepository(ExploreDbContext dbCont
             .IgnoreAllFilters(reason)
             .AsNoTracking()
             .Where(value => value.UserId == subjectId
-                && value.ProviderKey != null
-                && value.Provider != null
-                && value.Provider.ToLower() == "keycloak")
+                && value.AuthenticationProviderId == (int)AuthenticationProviderKind.Keycloak)
             .Select(value => new PrivacyErasureProviderCandidate(
                 PrivacyErasureProviderKind.Keycloak,
                 PrivacyErasureProviderAction.RevokeOrUnlinkExternalIdentity,
-                value.TenantId,
+                null,
                 value.Id,
                 PrivacyErasureProviderLocatorKind.AccountIdentifier,
-                value.ProviderKey!))
+                value.ProviderKey))
             .ToArrayAsync(cancellationToken));
         candidates.AddRange(await dbContext.AtprotoIdentities
             .IgnoreAllFilters(reason)

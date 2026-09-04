@@ -28,6 +28,8 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
     private readonly ILinkPolicy<TDto> _detailLinkPolicy;
     private readonly ICollectionLinkPolicy<TListDto> _collectionLinkPolicy;
 
+    protected IHateoasLinkGenerator LinkGenerator => _linkGenerator;
+
     protected ResourceAssemblerBase(
         IHateoasLinkGenerator linkGenerator,
         ILinkPolicy<TDto> detailLinkPolicy,

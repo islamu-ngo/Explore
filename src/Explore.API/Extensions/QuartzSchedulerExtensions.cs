@@ -157,7 +157,7 @@ public static class QuartzSchedulerExtensions
         // is challenged before any scheduler state is read, matching the guardrail the previous scheduler had.
         app.Use(async (context, next) =>
         {
-            if (!context.Request.Path.StartsWithSegments(statusPath))
+            if (!context.Request.Path.StartsWithSegments(statusPath, StringComparison.OrdinalIgnoreCase))
             {
                 await next();
                 return;

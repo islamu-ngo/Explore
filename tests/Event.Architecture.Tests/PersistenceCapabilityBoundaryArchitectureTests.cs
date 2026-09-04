@@ -10,6 +10,8 @@ namespace Event.Architecture.Tests;
 
 public sealed partial class PersistenceCapabilityBoundaryArchitectureTests
 {
+    private static readonly JsonSerializerOptions RegistryJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
     [Test]
     public async Task RawEfBoundary_ShouldRejectSyntheticFixture()
     {
@@ -522,7 +524,7 @@ public sealed partial class PersistenceCapabilityBoundaryArchitectureTests
         await using FileStream stream = File.OpenRead(registryPath);
         return await JsonSerializer.DeserializeAsync<PersistenceViolationRegistry>(
                 stream,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                RegistryJsonOptions)
             ?? throw new InvalidOperationException("Persistence violation registry is empty.");
     }
 

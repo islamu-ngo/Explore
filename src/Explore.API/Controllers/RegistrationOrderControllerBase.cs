@@ -36,9 +36,7 @@ namespace Explore.API.Controllers;
 /// the other rejects.
 /// </para>
 /// </summary>
-public abstract class RegistrationOrderControllerBase(
-    IMediator mediator,
-    IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler) : ControllerBase
+public abstract class RegistrationOrderControllerBase : ControllerBase
 {
     protected const string CapabilityHeader = "X-Registration-Order-Capability";
     protected const string AttemptCapabilityHeader = "X-Registration-Attempt-Capability";

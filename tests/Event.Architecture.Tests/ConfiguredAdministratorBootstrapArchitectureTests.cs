@@ -201,8 +201,8 @@ public sealed class ConfiguredAdministratorBootstrapArchitectureTests
             method.GetParameters().Count(parameter =>
                 parameter.ParameterType == typeof(ProviderAccountKey)) == 1);
         await Assert.That(repositoryLookups).All(method =>
-            method.GetParameters().Count(parameter =>
-                parameter.ParameterType == typeof(string)) == 1);
+            !method.GetParameters().Any(parameter =>
+                parameter.ParameterType == typeof(string)));
     }
 
     [Test]

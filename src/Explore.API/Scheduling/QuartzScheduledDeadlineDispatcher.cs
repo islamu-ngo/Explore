@@ -98,7 +98,7 @@ public sealed class QuartzScheduledDeadlineDispatcher(
         var jobData = new JobDataMap();
         foreach (var (key, value) in deadline.Pointer)
         {
-            jobData.Put(key, value);
+            jobData[key] = value;
         }
 
         return TriggerBuilder.Create()

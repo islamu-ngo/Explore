@@ -69,7 +69,7 @@ public sealed class WebhookEndpointOperationsController(IMediator mediator) : Ev
                     detail: response.Message),
             _ => ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
             {
-                ["webhookEndpoint"] = response.Errors.ToArray()
+                ["webhookEndpoint"] = response.Errors?.ToArray() ?? []
             }))
         };
     }
@@ -119,7 +119,7 @@ public sealed class WebhookEndpointOperationsController(IMediator mediator) : Ev
                 detail: response.Message),
             _ => ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
             {
-                ["webhookEndpoint"] = response.Errors.ToArray()
+                ["webhookEndpoint"] = response.Errors?.ToArray() ?? []
             }))
         };
     }

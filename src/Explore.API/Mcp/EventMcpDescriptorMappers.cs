@@ -50,8 +50,6 @@ using EventSessionTemplateSyncHistoryItemDto = Explore.Application.DTOs.EventSes
 using EventTemplateDiffDto = Explore.Application.DTOs.EventTemplateSync.TemplateDiffDto;
 using EventTemplateSyncHistoryItemDto = Explore.Application.DTOs.EventTemplateSync.EventTemplateSyncHistoryItemDto;
 
-using static Explore.API.Mcp.EventMcpBounds;
-
 namespace Explore.API.Mcp;
 
 /// <summary>

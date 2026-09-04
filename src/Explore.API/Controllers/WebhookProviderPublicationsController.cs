@@ -182,7 +182,7 @@ public sealed class WebhookProviderPublicationsController(
 
         return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
         {
-            ["providerPublication"] = response.Errors.ToArray()
+            ["providerPublication"] = response.Errors?.ToArray() ?? []
         }));
     }
 

@@ -113,7 +113,7 @@ public sealed class EventLocationDisclosureConvergenceTests
                 && typeof(IEventLocationDisclosureService).IsAssignableFrom(type))
             .ToArray();
 
-        await Assert.That(implementations).HasCount(1);
+        await Assert.That(implementations).Count().IsEqualTo(1);
         await Assert.That(implementations[0]).IsEqualTo(typeof(EventLocationDisclosureService));
     }
 

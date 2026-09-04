@@ -331,10 +331,7 @@ public sealed class RegistrationInventoryRepository(ExploreDbContext dbContext) 
         int batchSize,
         CancellationToken cancellationToken)
     {
-        if (batchSize <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(batchSize));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchSize);
 
         return await dbContext.RegistrationOrders
             .IgnoreQueryFilters([QueryFilterNames.Tenant])

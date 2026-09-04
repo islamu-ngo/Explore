@@ -75,7 +75,8 @@ public static class ApiHostStartupExtensions
                                 logger.LogInformation("Applying database migrations...");
                                 await ExploreDatabaseMigrator.MigrateAsync(
                                     db,
-                                    app.Configuration);
+                                    app.Configuration,
+                                    cancellationToken);
                                 await PostgresModelConstraintApplier.ApplyAsync(
                                     db,
                                     cancellationToken);
@@ -99,7 +100,8 @@ public static class ApiHostStartupExtensions
                                 db,
                                 app.Environment,
                                 seedDevelopmentData,
-                                app.Configuration);
+                                app.Configuration,
+                                cancellationToken);
                             logger.LogInformation("Database seeding completed.");
                         },
                         shutdownCts.Token);

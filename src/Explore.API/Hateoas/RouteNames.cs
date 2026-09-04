@@ -9,6 +9,8 @@ namespace Explore.API.Hateoas;
 /// </summary>
 public static class RouteNames
 {
+    public const string LoginLocalIdentity = nameof(LoginLocalIdentity);
+    public const string RegisterLocalIdentity = nameof(RegisterLocalIdentity);
     public const string CreateSetupTargetEnrollment = nameof(CreateSetupTargetEnrollment);
     public const string GetSetupTargetEnrollment = nameof(GetSetupTargetEnrollment);
     public const string RevokeSetupTargetEnrollment = nameof(RevokeSetupTargetEnrollment);
@@ -306,6 +308,7 @@ public static class RouteNames
 
     #region Event Session Routes
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores", Justification = "Preserves existing route naming convention pinned by RouteNameCoverageTests.")]
     public const string GetEventSessions_List = "GetEventSessionsList";
     public const string GetEventSessionById = nameof(GetEventSessionById);
     public const string GetManagedEventSessionById = nameof(GetManagedEventSessionById);

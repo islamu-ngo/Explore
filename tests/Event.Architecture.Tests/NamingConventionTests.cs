@@ -35,7 +35,7 @@ public class NamingConventionTests
 
         if (!result.IsSuccessful && result.FailingTypes != null)
         {
-            Console.WriteLine($"CommandHandler Naming Failures ({result.FailingTypes.Count()}):");
+            Console.WriteLine($"CommandHandler Naming Failures ({result.FailingTypes.Count}):");
             foreach (var type in result.FailingTypes)
             {
                 Console.WriteLine($"  - {type.FullName}");

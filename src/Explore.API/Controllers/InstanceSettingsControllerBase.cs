@@ -41,7 +41,7 @@ public abstract class InstanceSettingsControllerBase(
     /// </summary>
     protected async Task<bool> IsInstanceAdminOrSetupAuthenticated(CancellationToken cancellationToken)
     {
-        if (await adminContext.IsInstanceAdminAsync(cancellationToken))
+        if (await AdminContext.IsInstanceAdminAsync(cancellationToken))
         {
             return true;
         }

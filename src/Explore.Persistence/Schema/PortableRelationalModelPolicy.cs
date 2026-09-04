@@ -471,16 +471,19 @@ internal static partial class PortableRelationalModelPolicy
     {
         var providerKeyIndex = entityType.GetIndexes().Single(index =>
             index.Properties.Select(property => property.Name).SequenceEqual([
-                nameof(UserExternalLogin.Provider),
+                nameof(UserExternalLogin.AuthenticationProviderId),
                 nameof(UserExternalLogin.ProviderKey)
             ]));
         entityType.RemoveIndex(providerKeyIndex);
 
         var property = entityType.AddProperty("ProviderKeyUniquenessHash", typeof(byte[]));
-        property.IsNullable = true;
+        property.IsNullable = false;
         property.SetColumnName("provider_key_uniqueness_hash");
         property.SetColumnType("binary(32)");
-        property.ValueGenerated = ValueGenerated.Never;
+        property.SetComputedColumnSql(
+            "unhex(sha2(concat(cast(authentication_provider_id as char), ':', provider_key), 256))");
+        property.SetIsStored(true);
+        property.ValueGenerated = ValueGenerated.OnAddOrUpdate;
 
         var index = entityType.AddIndex(property);
         index.IsUnique = true;

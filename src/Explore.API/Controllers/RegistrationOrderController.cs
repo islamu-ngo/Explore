@@ -31,7 +31,7 @@ namespace Explore.API.Controllers;
 public sealed class RegistrationOrderController(
     IMediator mediator,
     IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler)
-    : RegistrationOrderControllerBase(mediator, assembler)
+    : RegistrationOrderControllerBase
 {
 
     [AllowAnonymous]

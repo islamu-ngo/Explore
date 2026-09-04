@@ -42,10 +42,7 @@ public sealed class RegistrationFormAuthoringRepository(ExploreDbContext dbConte
         int limit,
         CancellationToken cancellationToken)
     {
-        if (limit <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(limit));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
 
         return await VersionGraph()
             .AsNoTracking()

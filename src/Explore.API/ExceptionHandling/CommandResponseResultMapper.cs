@@ -171,12 +171,12 @@ internal static class CommandResponseResultMapper
     public static ActionResult ToForbiddenProblem(
         this ControllerBase controller,
         string title = "Forbidden",
-        string detail = "The authenticated principal is not authorized to perform this operation.")
+        string? detail = null)
     {
         var problemDetails = ApiProblemFactory.CreateForbiddenProblem(
             controller.HttpContext,
             title,
-            detail);
+            detail ?? "The authenticated principal is not authorized to perform this operation.");
 
         return ApiProblemFactory.ToProblemResult(problemDetails);
     }

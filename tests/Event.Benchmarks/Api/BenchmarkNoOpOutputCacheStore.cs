@@ -20,7 +20,7 @@ internal sealed class BenchmarkNoOpOutputCacheStore : IOutputCacheStore
     public ValueTask SetAsync(
         string key,
         byte[] value,
-        string[] tags,
+        string[]? tags,
         TimeSpan validFor,
         CancellationToken cancellationToken)
     {

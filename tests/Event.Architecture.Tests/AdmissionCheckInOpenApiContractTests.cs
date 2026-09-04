@@ -35,7 +35,7 @@ public sealed class AdmissionCheckInOpenApiContractTests
             JsonElement schema = schemas.GetProperty(schemaName);
             await Assert.That(schema.GetProperty("type").GetString()).IsEqualTo("string");
             await Assert.That(schema.GetProperty("enum").EnumerateArray()
-                .Select(value => value.GetString())
+                .Select(value => value.GetString()!)
                 .ToArray()).IsEquivalentTo(expectedValues);
 
             Type? generatedType = typeof(IAdmissionCheckInClient).Assembly.GetType(

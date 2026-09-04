@@ -308,7 +308,7 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
         eventEntity.OrganizerActor?.UserId,
         eventEntity.OrganizerActor?.OrganizationId,
         eventEntity.OrganizerActor?.GroupId,
-        eventEntity.EventProvenanceType?.MasterCode ?? eventEntity.EventProvenanceTypeId.ToString(),
+        eventEntity.EventProvenanceType?.MasterCode ?? eventEntity.EventProvenanceTypeId.ToString(System.Globalization.CultureInfo.InvariantCulture),
         eventEntity.SubmittedByUserId);
 
     private sealed record PendingCheck(int Index, AuthorizationRequest Check)

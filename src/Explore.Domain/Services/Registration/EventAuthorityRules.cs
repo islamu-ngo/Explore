@@ -57,7 +57,7 @@ public static class EventAuthorityRules
         }
 
         if (guestRecoveryPolicy.HasValue
-            && !Enum.IsDefined(typeof(GuestRecoveryPolicyEnum), guestRecoveryPolicy.Value))
+            && !Enum.IsDefined(guestRecoveryPolicy.Value))
         {
             errors.Add(Error(
                 EventParticipationConfigurationErrorCode.UnknownGuestRecoveryPolicy,

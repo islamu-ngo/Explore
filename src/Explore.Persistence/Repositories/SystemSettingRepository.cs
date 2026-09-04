@@ -22,12 +22,12 @@ public class SystemSettingRepository : ISystemSettingRepository
     }
 
     public async Task<SystemSetting?> GetByKey(
-        string settingKey,
+        string key,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.SystemSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.SettingKey == settingKey, cancellationToken);
+            .FirstOrDefaultAsync(s => s.SettingKey == key, cancellationToken);
     }
 
     public Task<string?> UpsertAsync(
@@ -118,11 +118,11 @@ public class SystemSettingRepository : ISystemSettingRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<bool> IsLocked(string settingKey, CancellationToken cancellationToken = default)
+    public async Task<bool> IsLocked(string key, CancellationToken cancellationToken = default)
     {
         var setting = await _dbContext.SystemSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.SettingKey == settingKey, cancellationToken);
+            .FirstOrDefaultAsync(s => s.SettingKey == key, cancellationToken);
 
         return setting?.IsLocked ?? false;
     }

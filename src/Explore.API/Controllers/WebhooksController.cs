@@ -34,12 +34,8 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType)]
 public sealed class WebhooksController(
     IMediator mediator,
-    ITenantContext tenantContext,
     IWebhookOwnershipScopeResolver webhookOwnershipScopeResolver,
-    IResourceAssembler<WebhookConsumerDto, WebhookConsumerDto> webhookConsumerAssembler,
-    IResourceAssembler<WebhookEndpointDto, WebhookEndpointDto> webhookEndpointAssembler,
-    IResourceAssembler<WebhookMessageDto, WebhookMessageDto> webhookMessageAssembler,
-    IResourceAssembler<WebhookDeliveryAttemptDto, WebhookDeliveryAttemptDto> webhookDeliveryAttemptAssembler)
+    IResourceAssembler<WebhookConsumerDto, WebhookConsumerDto> webhookConsumerAssembler)
     : WebhooksControllerBase(webhookOwnershipScopeResolver)
 {
     private static readonly ApiValidationProblemDescriptor ConsumerValidationProblem = new(

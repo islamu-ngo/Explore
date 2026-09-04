@@ -27,7 +27,7 @@ public sealed class TicketPurchaseController(IMediator mediator) : ControllerBas
     private const string CapabilityHeader = "X-Registration-Order-Capability";
     private const string IdempotencyKeyHeader = "Idempotency-Key";
 
-    private static readonly ApiValidationProblemDescriptor ValidationProblem = new(
+    private static readonly ApiValidationProblemDescriptor PurchaseValidationProblem = new(
         "registrationOrder",
         "Registration order request failed",
         "Registration order request failed.");
@@ -38,7 +38,7 @@ public sealed class TicketPurchaseController(IMediator mediator) : ControllerBas
 
     private static readonly CommandFailurePolicy Failures =
         CommandFailurePolicy
-            .ValidatedBy(ValidationProblem)
+            .ValidatedBy(PurchaseValidationProblem)
             .NotFound(
                 NotFoundProblem,
                 "registration_order_not_found",
@@ -90,7 +90,7 @@ public sealed class TicketPurchaseController(IMediator mediator) : ControllerBas
         if (request is null)
         {
             return this.ToValidationProblem(
-                ValidationProblem,
+                PurchaseValidationProblem,
                 "A ticket-purchase payload is required.");
         }
 
@@ -140,7 +140,7 @@ public sealed class TicketPurchaseController(IMediator mediator) : ControllerBas
         if (request is null)
         {
             return this.ToValidationProblem(
-                ValidationProblem,
+                PurchaseValidationProblem,
                 "A ticket-purchase payload is required.");
         }
 

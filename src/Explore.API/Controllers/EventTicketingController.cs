@@ -276,7 +276,10 @@ public sealed class EventTicketingController(
         return response.IsSuccess ? CreatedAtRoute(route, values, response) : TicketingFailures.Map(this, response);
     }
 
-    private bool TryGenerateAbsoluteRouteUrl(string routeName, Guid eventId, out Uri? uri)
+    private bool TryGenerateAbsoluteRouteUrl(
+        string routeName,
+        Guid eventId,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Uri? uri)
     {
         uri = null;
         string? value = Url.RouteUrl(routeName, new { eventId }, Request.Scheme);

@@ -68,7 +68,7 @@ public sealed class RegistrationProviderFoundationArchitectureTests
         await using ExploreDbContext context = CreateModelContext();
         IEntityType lookup = context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(TLookup))!;
         await Assert.That(lookup.FindPrimaryKey()!.Properties.Single().ClrType).IsEqualTo(typeof(int));
-        await Assert.That(Enum.GetValues<TEnum>().Select(value => Convert.ToInt32(value)).Order().ToArray()).IsEquivalentTo(
+        await Assert.That(Enum.GetValues<TEnum>().Select(value => Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture)).Order().ToArray()).IsEquivalentTo(
             Enumerable.Range(1, Enum.GetValues<TEnum>().Length).ToArray());
     }
 

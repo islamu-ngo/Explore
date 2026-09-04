@@ -34,7 +34,7 @@ public sealed class InstancePaidEventPolicySettingsController(
         "Paid-event policy not found",
         "The active instance paid-event policy was not found.");
 
-    private static readonly ApiValidationProblemDescriptor ValidationProblem = new(
+    private static readonly ApiValidationProblemDescriptor PolicyValidationProblem = new(
         "paidEventPolicy",
         "Paid-event policy validation failed",
         "Paid-event policy update failed.");
@@ -77,7 +77,7 @@ public sealed class InstancePaidEventPolicySettingsController(
         CancellationToken cancellationToken)
     {
         BaseCommandResponse<Guid> response = await mediator.Send(new ReviseInstancePaidEventPolicyCommand(policy), cancellationToken);
-        return response.IsSuccess ? Ok(response) : this.ToCommandValidationProblem(response, ValidationProblem);
+        return response.IsSuccess ? Ok(response) : this.ToCommandValidationProblem(response, PolicyValidationProblem);
     }
 }
 
@@ -95,7 +95,7 @@ public sealed class TenantPaidEventPolicySettingsController(
         "Paid-event policy not found",
         "The active paid-event policy configuration was not found.");
 
-    private static readonly ApiValidationProblemDescriptor ValidationProblem = new(
+    private static readonly ApiValidationProblemDescriptor TenantPolicyValidationProblem = new(
         "paidEventPolicy",
         "Paid-event policy validation failed",
         "Paid-event policy update failed.");
@@ -145,6 +145,6 @@ public sealed class TenantPaidEventPolicySettingsController(
         BaseCommandResponse<Guid> response = await mediator.Send(
             new ReviseTenantPaidEventPolicyCommand(tenantId, policy),
             cancellationToken);
-        return response.IsSuccess ? Ok(response) : this.ToCommandValidationProblem(response, ValidationProblem);
+        return response.IsSuccess ? Ok(response) : this.ToCommandValidationProblem(response, TenantPolicyValidationProblem);
     }
 }

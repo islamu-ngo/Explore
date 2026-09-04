@@ -64,7 +64,7 @@ public sealed class ControlPlaneDeploymentModeController(
     {
         if (dto is null
             || !Enum.TryParse<DeploymentMode>(dto.TargetMode, ignoreCase: false, out var targetMode)
-            || !Enum.IsDefined(typeof(DeploymentMode), targetMode))
+            || !Enum.IsDefined(targetMode))
         {
             var message = "A valid target deployment mode is required.";
             return BadRequest(BaseCommandResponse.Validation<ControlPlaneDeploymentModeTransitionDto>([message], message));

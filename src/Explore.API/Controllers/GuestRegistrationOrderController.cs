@@ -39,8 +39,7 @@ namespace Explore.API.Controllers;
 [ApiController]
 public sealed class GuestRegistrationOrderController(
     IMediator mediator,
-    IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler,
-    TimeProvider timeProvider) : RegistrationOrderControllerBase(mediator, assembler)
+    TimeProvider timeProvider) : RegistrationOrderControllerBase
 {
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.PublicTransactional)]

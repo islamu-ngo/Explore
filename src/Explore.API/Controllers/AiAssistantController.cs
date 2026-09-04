@@ -141,7 +141,7 @@ public sealed class AiAssistantController : ControllerBase
         {
             return this.ToValidationProblem(
                 ModelDiscoveryValidationProblem,
-                string.Join(" ", validation.Failures));
+                string.Join(" ", validation.Failures ?? []));
         }
 
         try

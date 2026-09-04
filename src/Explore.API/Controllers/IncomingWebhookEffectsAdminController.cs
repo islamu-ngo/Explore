@@ -31,7 +31,7 @@ public sealed class IncomingWebhookEffectsAdminController(
     IResourceAssembler<IncomingWebhookEffectStatusDto, IncomingWebhookEffectStatusDto> statusAssembler)
     : EventControllerBase
 {
-    private static readonly ApiValidationProblemDescriptor ValidationProblem = new(
+    private static readonly ApiValidationProblemDescriptor EffectValidationProblem = new(
         "incomingWebhookEffect",
         "Incoming Coop effect request failed",
         "The incoming Coop effect request was invalid.");
@@ -53,7 +53,7 @@ public sealed class IncomingWebhookEffectsAdminController(
             cancellationToken);
         if (!result.IsSuccess)
         {
-            return this.ToCommandValidationProblem(result, ValidationProblem);
+            return this.ToCommandValidationProblem(result, EffectValidationProblem);
         }
 
         var resource = statusAssembler.ToCollectionResource(
@@ -99,7 +99,7 @@ public sealed class IncomingWebhookEffectsAdminController(
             "incoming_webhook_effect_redrive_generation_conflict" or
             "incoming_webhook_effect_redrive_not_eligible" or
             "incoming_webhook_effect_redrive_payload_unavailable" => Conflict(result),
-            _ => this.ToCommandValidationProblem(result, ValidationProblem)
+            _ => this.ToCommandValidationProblem(result, EffectValidationProblem)
         };
     }
 }

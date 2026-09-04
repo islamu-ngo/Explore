@@ -107,7 +107,7 @@ internal static class QueryValidationRules
         }
 
         if (!Enum.TryParse<TemporalView>(value.Trim(), ignoreCase: true, out var view)
-            || !Enum.IsDefined(typeof(TemporalView), view))
+            || !Enum.IsDefined(view))
         {
             yield return new ValidationResult(
                 $"{memberName} must be one of: upcoming, ongoing, past, upcomingAndOngoing, all.",

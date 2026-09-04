@@ -236,7 +236,7 @@ public sealed class WebhookBulkReplaysController(
     private ActionResult<BaseCommandResponse<Guid>> ValidationFailure(BaseCommandResponse<Guid> response) =>
         ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]>
         {
-            ["bulkReplay"] = response.Errors.ToArray()
+            ["bulkReplay"] = response.Errors?.ToArray() ?? []
         }));
 
     private static Guid? Normalize(Guid? value) => value is { } id && id != Guid.Empty ? id : null;

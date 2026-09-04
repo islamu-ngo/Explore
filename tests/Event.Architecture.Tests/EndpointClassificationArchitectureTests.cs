@@ -49,6 +49,8 @@ public class EndpointClassificationArchitectureTests
         "EmailUnsubscribeController.Post",
         "IncomingWebhooksController.RecordSvixOperationalCallback",
         "IncomingWebhooksController.RecordStripeConnectCallback",
+        "LocalAuthController.Login",
+        "LocalAuthController.Register",
         "RegistrationProviderCallbackController.RecordCallback"
     };
 

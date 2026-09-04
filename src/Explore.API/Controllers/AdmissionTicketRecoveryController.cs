@@ -36,7 +36,7 @@ public sealed class AdmissionTicketRecoveryController(IMediator mediator) : Cont
     [ProducesResponseType(typeof(AdmissionTicketRecoveryRequestResultDto), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<ActionResult<AdmissionTicketRecoveryRequestResultDto>> Request(
+    public new async Task<ActionResult<AdmissionTicketRecoveryRequestResultDto>> Request(
         [FromBody] RequestAdmissionTicketRecoveryCommand? request,
         CancellationToken cancellationToken)
     {

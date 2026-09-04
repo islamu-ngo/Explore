@@ -16,11 +16,11 @@ public class AppSettingRepository : IAppSettingRepository
         _dbContext = dbContext;
     }
 
-    public async Task<AppSetting?> GetByKeyAsync(string configKey)
+    public async Task<AppSetting?> GetByKeyAsync(string key)
     {
         return await _dbContext.AppSettings
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.ConfigKey == configKey);
+            .FirstOrDefaultAsync(s => s.ConfigKey == key);
     }
 
     public async Task<List<AppSetting>> GetByCategoryAsync(string? category = null)
@@ -69,9 +69,9 @@ public class AppSettingRepository : IAppSettingRepository
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task<bool> DeleteAsync(string configKey)
+    public async Task<bool> DeleteAsync(string key)
     {
-        var setting = await _dbContext.AppSettings.FirstOrDefaultAsync(s => s.ConfigKey == configKey);
+        var setting = await _dbContext.AppSettings.FirstOrDefaultAsync(s => s.ConfigKey == key);
         if (setting == null)
         {
             return false;
@@ -82,11 +82,11 @@ public class AppSettingRepository : IAppSettingRepository
         return true;
     }
 
-    public async Task<bool> ExistsAsync(string configKey)
+    public async Task<bool> ExistsAsync(string key)
     {
         return await _dbContext.AppSettings
             .AsNoTracking()
-            .AnyAsync(s => s.ConfigKey == configKey);
+            .AnyAsync(s => s.ConfigKey == key);
     }
 
     public async Task BulkUpdateAsync(IEnumerable<AppSetting> settings)

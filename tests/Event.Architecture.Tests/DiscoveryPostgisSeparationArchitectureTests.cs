@@ -51,7 +51,7 @@ public sealed class DiscoveryPostgisSeparationArchitectureTests
             NearestSessionId = Guid.NewGuid(),
             NearestLocationId = Guid.NewGuid(),
             NearestLocationName = "Exact venue",
-            NearestOccurrenceStartsAtUtc = DateTimeOffset.Parse("2026-07-20T12:00:00Z")
+            NearestOccurrenceStartsAtUtc = DateTimeOffset.Parse("2026-07-20T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture)
         };
         var mapMethod = typeof(GetHomeDiscoveryQueryHandler).GetMethod(
             "MapDiscoveryItem",

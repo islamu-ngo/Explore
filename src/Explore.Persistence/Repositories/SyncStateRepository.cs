@@ -1,3 +1,6 @@
+// ABOUTME: Persistence repository implementation for tracking synchronization state across services.
+// ABOUTME: Inherits standard generic CRUD operations and provides service-scoped query helpers.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -21,11 +24,6 @@ public class SyncStateRepository : GenericRepository<SyncState, int>, ISyncState
     public async Task<SyncState?> GetSyncStateByService(string service)
     {
         return await _dbContext.SyncStates.AsNoTracking().FirstOrDefaultAsync(s => s.Service == service);
-    }
-
-    public async Task<bool> Exists(int id)
-    {
-        return await _dbContext.SyncStates.AsNoTracking().AnyAsync(s => s.Id == id);
     }
 
     public async Task<bool> ExistsByService(string service)

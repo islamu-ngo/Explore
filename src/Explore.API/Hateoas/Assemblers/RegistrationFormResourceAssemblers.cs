@@ -16,17 +16,17 @@ public sealed class RegistrationWorkflowResourceAssembler(
     IResourceAssembler<RegistrationFormDto, RegistrationFormDto> formAssembler)
     : ResourceAssemblerBase<RegistrationWorkflowDto, RegistrationWorkflowDto>(linkGenerator, detailPolicy, collectionPolicy)
 {
-    public override async Task<HalResource<RegistrationWorkflowDto>> ToResource(RegistrationWorkflowDto dto, HttpContext context)
+    public override async Task<HalResource<RegistrationWorkflowDto>> ToResource(RegistrationWorkflowDto dto, HttpContext httpContext)
     {
-        HalResource<RegistrationWorkflowDto> resource = await base.ToResource(dto, context);
-        if (IsMinimalResponse(context)) return resource;
+        HalResource<RegistrationWorkflowDto> resource = await base.ToResource(dto, httpContext);
+        if (IsMinimalResponse(httpContext)) return resource;
         var requirements = new List<HalResource<RegistrationRequirementDto>>(dto.Requirements.Count);
         foreach (RegistrationRequirementDto requirement in dto.Requirements)
         {
             requirements.Add(new HalResource<RegistrationRequirementDto>
             {
                 Data = requirement,
-                Links = await GenerateLinks(policy.GetRequirementLinks(dto, requirement), context.User, context),
+                Links = await GenerateLinks(policy.GetRequirementLinks(dto, requirement), httpContext.User, httpContext),
                 Embedded = new Dictionary<string, object>
                 {
                     ["channels"] = requirement.Channels.Select(channel => new HalResource<RegistrationChannelDto>(channel)).ToArray()
@@ -36,7 +36,7 @@ public sealed class RegistrationWorkflowResourceAssembler(
         var forms = new List<HalResource<RegistrationFormDto>>(dto.Forms.Count);
         foreach (RegistrationFormDto form in dto.Forms)
         {
-            forms.Add(await formAssembler.ToResource(form, context));
+            forms.Add(await formAssembler.ToResource(form, httpContext));
         }
         return new HalResource<RegistrationWorkflowDto>
         {
@@ -58,17 +58,17 @@ public sealed class RegistrationFormResourceAssembler(
     RegistrationFormLinkPolicy policy)
     : ResourceAssemblerBase<RegistrationFormDto, RegistrationFormDto>(linkGenerator, detailPolicy, collectionPolicy)
 {
-    public override async Task<HalResource<RegistrationFormDto>> ToResource(RegistrationFormDto dto, HttpContext context)
+    public override async Task<HalResource<RegistrationFormDto>> ToResource(RegistrationFormDto dto, HttpContext httpContext)
     {
-        HalResource<RegistrationFormDto> resource = await base.ToResource(dto, context);
-        if (IsMinimalResponse(context)) return resource;
+        HalResource<RegistrationFormDto> resource = await base.ToResource(dto, httpContext);
+        if (IsMinimalResponse(httpContext)) return resource;
         var versions = new List<HalResource<RegistrationFormVersionSummaryDto>>(dto.Versions.Count);
         foreach (RegistrationFormVersionSummaryDto version in dto.Versions)
         {
             versions.Add(new HalResource<RegistrationFormVersionSummaryDto>
             {
                 Data = version,
-                Links = await GenerateLinks(policy.GetVersionLinks(dto, version), context.User, context)
+                Links = await GenerateLinks(policy.GetVersionLinks(dto, version), httpContext.User, httpContext)
             });
         }
         return new HalResource<RegistrationFormDto>
@@ -88,12 +88,12 @@ public sealed class RegistrationFormVersionResourceAssembler(
     IHateoasAuthorizationEvaluator authorizationEvaluator)
     : ResourceAssemblerBase<RegistrationFormVersionDto, RegistrationFormVersionDto>(linkGenerator, detailPolicy, collectionPolicy)
 {
-    public override async Task<HalResource<RegistrationFormVersionDto>> ToResource(RegistrationFormVersionDto dto, HttpContext context)
+    public override async Task<HalResource<RegistrationFormVersionDto>> ToResource(RegistrationFormVersionDto dto, HttpContext httpContext)
     {
-        if (IsMinimalResponse(context)) return new HalResource<RegistrationFormVersionDto>(dto);
+        if (IsMinimalResponse(httpContext)) return new HalResource<RegistrationFormVersionDto>(dto);
 
-        var user = ResolveCapabilityPrincipal(context);
-        IReadOnlyList<LinkDefinition> rootDefinitions = await GetDetailLinkDefinitionsAsync(dto, user, context);
+        var user = ResolveCapabilityPrincipal(httpContext);
+        IReadOnlyList<LinkDefinition> rootDefinitions = await GetDetailLinkDefinitionsAsync(dto, user, httpContext);
         LinkDefinition[][] sectionDefinitions = dto.Sections
             .Select(section => policy.GetSectionLinks(dto, section).ToArray()).ToArray();
         LinkDefinition[][] fieldDefinitions = dto.Sections
@@ -109,20 +109,20 @@ public sealed class RegistrationFormVersionResourceAssembler(
             .Concat(optionDefinitions.SelectMany(group => group))
             .Concat(ruleDefinitions.SelectMany(group => group))
             .ToArray();
-        IReadOnlyList<bool> decisions = await authorizationEvaluator.AreLinksAllowedAsync(definitions, user, context);
+        IReadOnlyList<bool> decisions = await authorizationEvaluator.AreLinksAllowedAsync(definitions, user, httpContext);
 
         var decisionIndex = rootDefinitions.Count;
-        Dictionary<string, HalLink>[] sectionLinks = MaterializeGroups(sectionDefinitions, decisions, ref decisionIndex, context, linkGenerator);
-        Dictionary<string, HalLink>[] fieldLinks = MaterializeGroups(fieldDefinitions, decisions, ref decisionIndex, context, linkGenerator);
-        Dictionary<string, HalLink>[] optionLinks = MaterializeGroups(optionDefinitions, decisions, ref decisionIndex, context, linkGenerator);
-        Dictionary<string, HalLink>[] ruleLinks = MaterializeGroups(ruleDefinitions, decisions, ref decisionIndex, context, linkGenerator);
+        Dictionary<string, HalLink>[] sectionLinks = MaterializeGroups(sectionDefinitions, decisions, ref decisionIndex, httpContext, LinkGenerator);
+        Dictionary<string, HalLink>[] fieldLinks = MaterializeGroups(fieldDefinitions, decisions, ref decisionIndex, httpContext, LinkGenerator);
+        Dictionary<string, HalLink>[] optionLinks = MaterializeGroups(optionDefinitions, decisions, ref decisionIndex, httpContext, LinkGenerator);
+        Dictionary<string, HalLink>[] ruleLinks = MaterializeGroups(ruleDefinitions, decisions, ref decisionIndex, httpContext, LinkGenerator);
         var sectionIndex = 0;
         var fieldIndex = 0;
         var optionIndex = 0;
         return new HalResource<RegistrationFormVersionDto>
         {
             Data = dto,
-            Links = Materialize(rootDefinitions, decisions, 0, context, linkGenerator),
+            Links = Materialize(rootDefinitions, decisions, 0, httpContext, LinkGenerator),
             Embedded = new Dictionary<string, object>
             {
                 ["sections"] = dto.Sections.Select(section => new HalResource<RegistrationFormSectionDto>

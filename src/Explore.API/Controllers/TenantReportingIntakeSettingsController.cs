@@ -35,13 +35,13 @@ public sealed class TenantReportingIntakeSettingsController(
     IResourceAssembler<TenantReportingIntakePolicyDto, TenantReportingIntakePolicyDto> assembler)
     : EventControllerBase
 {
-    private static readonly ApiValidationProblemDescriptor ValidationProblem = new(
+    private static readonly ApiValidationProblemDescriptor PolicyValidationProblem = new(
         "reportingIntakePolicy",
         "Reporting-intake policy validation failed",
         "The reporting-intake policy update failed.");
 
     private static readonly CommandFailurePolicy UpdateFailures = CommandFailurePolicy
-        .ValidatedBy(ValidationProblem)
+        .ValidatedBy(PolicyValidationProblem)
         .Forbidden(
             "Reporting-intake policy access denied",
             "The requested tenant does not match the current tenant.",

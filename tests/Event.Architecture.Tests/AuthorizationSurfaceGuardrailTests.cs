@@ -57,6 +57,8 @@ public sealed class AuthorizationSurfaceGuardrailTests
         "Explore.Application.Features.Authentication.Atproto.Requests.Commands.BootstrapAtprotoSessionCommand",
         "Explore.Application.Features.Authentication.Atproto.Requests.Commands.RefreshAtprotoSessionCommand",
         "Explore.Application.Features.Authentication.Atproto.Requests.Commands.RevokeAtprotoSessionCommand",
+        "Explore.Application.Features.Authentication.Local.Requests.Commands.LocalLoginCommand",
+        "Explore.Application.Features.Authentication.Local.Requests.Commands.LocalRegisterCommand",
         "Explore.Application.Features.CategoryTypeCategories.Requests.Commands.CreateCategoryTypeCategoriesCommand",
         "Explore.Application.Features.CategoryTypeCategories.Requests.Commands.DeleteCategoryTypeCategoriesCommand",
         "Explore.Application.Features.CategoryTypeCategories.Requests.Commands.UpdateCategoryTypeCategoriesCommand",
@@ -247,6 +249,8 @@ public sealed class AuthorizationSurfaceGuardrailTests
         new("IncomingWebhooksController.RecordStripeConnectCallback", "PublicOrSignatureGated", "Existing anonymous mutation surface explicitly preserved by Phase 0 inventory; Task 0.3 must verify public/signature/setup boundary or add authorization."),
         new("IncomingWebhooksController.RecordSvixOperationalCallback", "PublicOrSignatureGated", "Existing anonymous mutation surface explicitly preserved by Phase 0 inventory; Task 0.3 must verify public/signature/setup boundary or add authorization."),
         new("InstanceOnboardingController.ValidateSecret", "PublicOrSignatureGated", "Existing anonymous mutation surface explicitly preserved by Phase 0 inventory; Task 0.3 must verify public/signature/setup boundary or add authorization."),
+        new("LocalAuthController.Login", "PublicOrSignatureGated", "Anonymous credential verification is protected by the dedicated write rate policy, generic failures, runtime primary-provider gating, and lockout; idempotency replay would retain issued credentials."),
+        new("LocalAuthController.Register", "PublicOrSignatureGated", "Anonymous account creation is protected by validation, normalized uniqueness, the dedicated write rate policy, runtime primary-provider gating, and rollback on token/sync failure."),
         new("RegistrationProviderCallbackController.RecordCallback", "PublicOrSignatureGated", "Existing anonymous mutation surface explicitly preserved by Phase 0 inventory; Task 0.3 must verify public/signature/setup boundary or add authorization."),
     ];
     private static readonly InventoryEntry[] NamedAnonymousMutationViolations = [];

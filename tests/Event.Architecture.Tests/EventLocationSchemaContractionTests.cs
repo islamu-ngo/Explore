@@ -61,7 +61,7 @@ public sealed class EventLocationSchemaContractionTests
             }
         }
 
-        await Assert.That(matchingMigrations).HasCount(1);
+        await Assert.That(matchingMigrations).Count().IsEqualTo(1);
 
         (string migrationPath, string source) = matchingMigrations[0];
         await Assert.That(CountOccurrences(source, ContractionSql)).IsEqualTo(Carriers.Length);
@@ -99,7 +99,7 @@ public sealed class EventLocationSchemaContractionTests
             }
 
             // The designer snapshot is what proves the migration was produced by dotnet ef, not by hand.
-            await Assert.That(matchingSources).HasCount(1);
+            await Assert.That(matchingSources).Count().IsEqualTo(1);
             string designerPath = matchingSources[0][..^".cs".Length] + ".Designer.cs";
             await Assert.That(File.Exists(designerPath)).IsTrue();
         }

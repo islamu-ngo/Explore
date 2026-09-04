@@ -38,7 +38,7 @@ namespace Explore.API.Controllers;
 [ApiController]
 public sealed class AuthenticatedRegistrationOrderController(
     IMediator mediator,
-    IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler) : RegistrationOrderControllerBase(mediator, assembler)
+    IResourceAssembler<RegistrationOrderDto, RegistrationOrderDto> assembler) : RegistrationOrderControllerBase
 {
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]

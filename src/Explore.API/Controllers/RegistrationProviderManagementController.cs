@@ -37,7 +37,7 @@ public sealed class RegistrationProviderManagementController(
     IResourceAssembler<RegistrationProviderLaunchDescriptorDto, RegistrationProviderLaunchDescriptorDto> launchDescriptorAssembler)
     : EventControllerBase
 {
-    private static readonly ApiValidationProblemDescriptor ValidationProblem = new(
+    private static readonly ApiValidationProblemDescriptor ProviderManagementValidationProblem = new(
         "registrationProviderManagement",
         "Registration provider management request failed",
         "The registration provider management request was invalid.");
@@ -351,5 +351,5 @@ public sealed class RegistrationProviderManagementController(
 
     private ActionResult<BaseCommandResponse<Guid>> ToActionResult(BaseCommandResponse<Guid> result) => result.IsSuccess
         ? Ok(result)
-        : this.ToCommandValidationProblem(result, ValidationProblem);
+        : this.ToCommandValidationProblem(result, ProviderManagementValidationProblem);
 }

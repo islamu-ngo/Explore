@@ -7,17 +7,28 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>Recommended</AnalysisMode>
     <!--
+      Architectural & Domain Policy Suppressions (Intentionally designed this way):
+      - CA1014: CLSCompliantAttribute is obsolete for modern .NET application services.
+      - CA1716: Root namespace and platform are intentionally named 'Event' (ISLAMU Event Platform),
+                which conflicts with the VB.NET 'event' keyword.
+      - CA1711: Domain services like 'AiAssistantRunQueue' idiomatically use the 'Queue' suffix.
+      - CA1859: Clean Architecture encapsulation: returning IReadOnlyList<T> instead of concrete List<T>
+                is an intentional design constraint to guarantee immutability across layer boundaries.
+      - CA1873: Logger argument evaluation without IsEnabled guard (noisy for standard property reads).
+    -->
+    <NoWarn>$(NoWarn);CA1014;CA1716;CA1711;CA1859;CA1873</NoWarn>
+    <!--
       Temporary ratchet suppressions. Categories are removed incrementally as warnings are resolved:
       - Nullable: 'nullable' alias (CS8600-CS8631, CS8669, CS8767)
-      - C# Compiler: CS0105, CS0108, CS0168, CS0169, CS0219, CS0414, CS0618, CS0649, CS4014, CS9107, CS9113, CS9124
+      - C# Compiler: CS0168, CS0169, CS0219, CS0414, CS0618, CS0649, CS4014, CS9107, CS9113
       - Framework/Component: MUD0002, EF1002, S3903, S5332, SYSLIB0050, SYSLIB1034
-      - Code Analysis (Design/Naming): CA1000, CA1036, CA1050, CA1068, CA1707, CA1708, CA1711, CA1716, CA1720, CA1725, CA1727
+      - Code Analysis (Design/Naming): CA1000, CA1036, CA1050, CA1068, CA1707, CA1708, CA1720, CA1727
       - Code Analysis (Globalization): CA1304, CA1305, CA1309, CA1311
       - Code Analysis (Maintainability/Interoperability): CA1416, CA1512
-      - Code Analysis (Performance): CA1805, CA1806, CA1816, CA1826, CA1827, CA1829, CA1832, CA1846, CA1847, CA1859, CA1860, CA1861, CA1862, CA1863, CA1865, CA1869, CA1870, CA1873, CA1875
-      - Code Analysis (Reliability/Security): CA2000, CA2012, CA2016, CA2208, CA2263
+      - Code Analysis (Performance): CA1805, CA1806, CA1816, CA1826, CA1827, CA1829, CA1832, CA1846, CA1847, CA1860, CA1861, CA1862, CA1863, CA1865, CA1869, CA1870, CA1875
+      - Code Analysis (Reliability/Security): CA2000, CA2012, CA2208
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);nullable;CS0105;CS0108;CS0168;CS0169;CS0219;CS0414;CS0618;CS0649;CS4014;CS9107;CS9113;CS9124;MUD0002;EF1002;S3903;S5332;SYSLIB0050;SYSLIB1034;CA1000;CA1036;CA1050;CA1068;CA1304;CA1305;CA1309;CA1311;CA1416;CA1512;CA1707;CA1708;CA1711;CA1716;CA1720;CA1725;CA1727;CA1805;CA1806;CA1816;CA1826;CA1827;CA1829;CA1832;CA1846;CA1847;CA1859;CA1860;CA1861;CA1862;CA1863;CA1865;CA1869;CA1870;CA1873;CA1875;CA2000;CA2012;CA2016;CA2208;CA2263</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);nullable;CS0168;CS0169;CS0219;CS0414;CS0618;CS0649;CS4014;CS9107;CS9113;MUD0002;EF1002;S3903;S5332;SYSLIB0050;SYSLIB1034;CA1000;CA1036;CA1050;CA1068;CA1304;CA1305;CA1309;CA1311;CA1416;CA1512;CA1707;CA1708;CA1720;CA1727;CA1805;CA1806;CA1816;CA1826;CA1827;CA1829;CA1832;CA1846;CA1847;CA1860;CA1861;CA1862;CA1863;CA1865;CA1869;CA1870;CA1875;CA2000;CA2012;CA2208</WarningsNotAsErrors>
     <Deterministic>true</Deterministic>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -47,7 +58,18 @@
     <RestoreLockedMode>false</RestoreLockedMode>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+  <!-- Test Projects: standard BDD test method naming (Method_When_Should) and assertion ergonomics -->
+  <PropertyGroup Condition="$(MSBuildProjectFullPath.Contains('/tests/')) or '$(IsTestProject)' == 'true'">
     <EnableMicrosoftTestingPlatformExtensions>true</EnableMicrosoftTestingPlatformExtensions>
+    <!--
+      Test-Specific Policy Suppressions:
+      - CA1707: Test method names use underscores per BDD naming conventions (e.g. UnitOfWork_State_ExpectedOutcome).
+      - CA1307: Ordinal string comparison in test assertions.
+      - CA1861: Constant array arguments in test assertions.
+      - CA1829: Use Count property instead of Enumerable.Count() in assertions.
+      - CA1860: Avoid Any() on Count-bearing types in assertions.
+      - CA1875: Use Regex.Count instead of Regex.Matches().Count in assertions.
+    -->
+    <NoWarn>$(NoWarn);CA1707;CA1307;CA1861;CA1829;CA1860;CA1875</NoWarn>
   </PropertyGroup>
 </Project>
