@@ -7,6 +7,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Onboarding;
 using Explore.Application.Responses;
+using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -66,7 +67,8 @@ public sealed class KeycloakBootstrapRealRuntimeTests
             await Assert.That(internalConfigResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
             var config = await internalConfigResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
             await Assert.That(config).IsNotNull();
-            await Assert.That(config!.KeycloakEnabled).IsTrue();
+            await Assert.That(config!.PrimaryProviderId)
+                .IsEqualTo((int)AuthenticationProviderKind.Keycloak);
             await Assert.That(config.KeycloakAuthority).IsEqualTo($"{_keycloak.KeycloakBaseUrl}/realms/{KeycloakContainerFixture.RealmName}");
             await Assert.That(config.KeycloakClientId).IsEqualTo(KeycloakContainerFixture.TestClientId);
             await Assert.That(config.KeycloakClientSecret).IsEqualTo(RotatedBlazorSecret);

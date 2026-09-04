@@ -383,7 +383,9 @@ public class InstanceOnboardingControllerTests
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var externalLogin = await dbContext.UserExternalLogins
-            .SingleAsync(candidate => candidate.Provider == "keycloak" && candidate.ProviderKey == providerId);
+            .SingleAsync(candidate =>
+                candidate.AuthenticationProviderId == (int)AuthenticationProviderKind.Keycloak
+                && candidate.ProviderKey == providerId);
         var user = await dbContext.Users.SingleAsync(candidate => candidate.Id == externalLogin.UserId);
 
         await Assert.That(user.Id).IsNotEqualTo(Guid.Empty);
@@ -420,10 +422,9 @@ public class InstanceOnboardingControllerTests
         var createdUser = await dbContext.Users.SingleAsync(x => x.Id == internalUserId);
         var externalLogin = await dbContext.UserExternalLogins.SingleAsync(x => x.UserId == internalUserId);
 
-        await Assert.That(createdUser.AuthProvider).IsEqualTo("keycloak");
-        await Assert.That(createdUser.AuthProviderId).IsEqualTo(providerId);
         await Assert.That(createdUser.Pii.Email).IsEqualTo(email);
-        await Assert.That(externalLogin.Provider).IsEqualTo("keycloak");
+        await Assert.That(externalLogin.AuthenticationProviderId)
+            .IsEqualTo((int)AuthenticationProviderKind.Keycloak);
         await Assert.That(externalLogin.ProviderKey).IsEqualTo(providerId);
     }
 
@@ -650,7 +651,8 @@ public class InstanceOnboardingControllerTests
 
         var config = await getResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
         await Assert.That(config).IsNotNull();
-        await Assert.That(config!.KeycloakEnabled).IsFalse();
+        await Assert.That(config!.PrimaryProviderId)
+            .IsEqualTo((int)AuthenticationProviderKind.Local);
         await Assert.That(config.GoogleSsoEnabled).IsTrue();
     }
 
@@ -794,7 +796,8 @@ public class InstanceOnboardingControllerTests
         await Assert.That(internalWithSecretResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var internalConfig = await internalWithSecretResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
         await Assert.That(internalConfig).IsNotNull();
-        await Assert.That(internalConfig!.KeycloakEnabled).IsTrue();
+        await Assert.That(internalConfig!.PrimaryProviderId)
+            .IsEqualTo((int)AuthenticationProviderKind.Keycloak);
         await Assert.That(internalConfig.KeycloakAuthority).IsEqualTo("https://keycloak.example.com/realms/ISLAMU");
         await Assert.That(internalConfig.KeycloakClientId).IsEqualTo("islamu-event-blazor");
         await Assert.That(internalConfig.KeycloakClientSecret).IsEqualTo("runtime-blazor-secret");
@@ -1074,26 +1077,23 @@ public class InstanceOnboardingControllerTests
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
 
         var exists = await dbContext.UserExternalLogins
-            .AnyAsync(x => x.UserId == userId && x.Provider == provider && x.ProviderKey == providerKey);
+            .AnyAsync(x =>
+                x.UserId == userId
+                && x.AuthenticationProviderId == (int)provider.ParseAuthenticationProviderKind()
+                && x.ProviderKey == providerKey);
 
         if (exists)
         {
             return;
         }
 
-        dbContext.UserExternalLogins.Add(new UserExternalLogin
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            User = null!,
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Tenant = null!,
-            Provider = provider,
-            ProviderKey = providerKey,
-            ProviderDisplayName = provider,
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId
-        });
+        dbContext.UserExternalLogins.Add(new UserExternalLogin { Id = Guid.NewGuid(),
+        UserId = userId,
+        User = null!,
+        AuthenticationProviderId = (int)provider.ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = providerKey,
+        ProviderDisplayName = provider,
+        CreatedAt = DateTime.UtcNow,
+        CreatedBy = userId });
 
         await dbContext.SaveChangesAsync();
     }
@@ -1109,21 +1109,15 @@ public class InstanceOnboardingControllerTests
             return;
         }
 
-        dbContext.Users.Add(new User
+        dbContext.Users.Add(new User { Id = userId, CreatedAt = DateTime.UtcNow,
+        CreatedBy = userId,
+        Pii = new UserPii
         {
-            Id = userId,
-            AuthProvider = "keycloak",
-            AuthProviderId = userId.ToString(),
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId,
-            Pii = new UserPii
-            {
-                UserId = userId,
-                Email = $"{userId:N}@integration.test",
-                FirstName = "Instance",
-                LastName = "Admin"
-            }
-        });
+            UserId = userId,
+            Email = $"{userId:N}@integration.test",
+            FirstName = "Instance",
+            LastName = "Admin"
+        } });
 
         await dbContext.SaveChangesAsync();
     }
@@ -1268,7 +1262,8 @@ public class InstanceOnboardingControllerTests
         string clientId)
     {
         await Assert.That(configuration).IsNotNull();
-        await Assert.That(configuration!.KeycloakEnabled).IsTrue();
+        await Assert.That(configuration!.PrimaryProviderId)
+            .IsEqualTo((int)AuthenticationProviderKind.Keycloak);
         await Assert.That(configuration.KeycloakDetectedFromEnvironment).IsTrue();
         await Assert.That(configuration.KeycloakAuthority).IsEqualTo(authority);
         await Assert.That(configuration.KeycloakClientId).IsEqualTo(clientId);
@@ -1279,7 +1274,6 @@ public class InstanceOnboardingControllerTests
     {
         return new AuthProviderConfigurationDto
         {
-            KeycloakEnabled = false,
             KeycloakAuthority = string.Empty,
             KeycloakClientId = string.Empty,
             KeycloakClientSecret = string.Empty,
@@ -1288,7 +1282,6 @@ public class InstanceOnboardingControllerTests
             GoogleSsoEnabled = true,
             GoogleClientId = "google-client-id",
             GoogleClientSecret = "google-client-secret",
-            LockKeycloakEnabled = false,
             LockAtprotoLoginEnabled = false,
             LockGoogleSsoEnabled = false
         };
@@ -1301,7 +1294,7 @@ public class InstanceOnboardingControllerTests
         {
             Configuration = OptionalUpdate<AuthProviderConfigurationWriteDto>.Set(new AuthProviderConfigurationWriteDto
             {
-                KeycloakEnabled = configuration.KeycloakEnabled,
+                PrimaryProviderId = configuration.PrimaryProviderId,
                 KeycloakAuthority = configuration.KeycloakAuthority,
                 KeycloakClientId = configuration.KeycloakClientId,
                 KeycloakClientSecret = configuration.KeycloakClientSecret,
@@ -1310,7 +1303,6 @@ public class InstanceOnboardingControllerTests
                 GoogleSsoEnabled = configuration.GoogleSsoEnabled,
                 GoogleClientId = configuration.GoogleClientId,
                 GoogleClientSecret = configuration.GoogleClientSecret,
-                LockKeycloakEnabled = configuration.LockKeycloakEnabled,
                 LockAtprotoLoginEnabled = configuration.LockAtprotoLoginEnabled,
                 LockGoogleSsoEnabled = configuration.LockGoogleSsoEnabled
             })

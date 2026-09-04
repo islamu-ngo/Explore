@@ -101,8 +101,8 @@ public class ApiClientNamingTests
 
         await Assert.That(clientTypes).IsNotEmpty()
             .Because("Reflection target GeneratedEventApiClients.ClientTypes must resolve from the Explore.Blazor.Client assembly.");
-        await Assert.That(clientTypes.Count).IsEqualTo(161)
-            .Because("Generated client registry should reflect all 161 OpenAPI tag client pairs.");
+        await Assert.That(clientTypes.Count).IsEqualTo(162)
+            .Because("Generated client registry should reflect all 162 OpenAPI tag client pairs.");
 
         foreach (var pair in clientTypes)
         {

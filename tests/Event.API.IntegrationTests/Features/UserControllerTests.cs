@@ -15,6 +15,7 @@ using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Domain.Constants;
 using Explore.Persistence;
 using MediatR;
@@ -114,7 +115,8 @@ public class UserControllerTests
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        UserExternalLogin login = await dbContext.UserExternalLogins.SingleAsync(x => x.Provider == "keycloak");
+        UserExternalLogin login = await dbContext.UserExternalLogins.SingleAsync(x =>
+            x.AuthenticationProviderId == (int)AuthenticationProviderKind.Keycloak);
         await Assert.That(login.ProviderKey).IsEqualTo(expected.Value);
     }
 
@@ -140,7 +142,8 @@ public class UserControllerTests
         await Assert.That(body!.Id).IsNotEqualTo(legacyUserId);
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
-        await Assert.That(await dbContext.UserExternalLogins.CountAsync(x => x.Provider == "keycloak")).IsEqualTo(2);
+        await Assert.That(await dbContext.UserExternalLogins.CountAsync(x =>
+            x.AuthenticationProviderId == (int)AuthenticationProviderKind.Keycloak)).IsEqualTo(2);
         await Assert.That(await dbContext.UserExternalLogins.AnyAsync(x =>
             x.ProviderKey == PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
                 "https://auth.example.test/realms/ISLAMU",
@@ -366,40 +369,30 @@ public class UserControllerTests
 
         if (!await dbContext.Users.AnyAsync(x => x.Id == userId))
         {
-            dbContext.Users.Add(new User
+            dbContext.Users.Add(new User { Id = userId, EmailVerified = true,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = userId,
+            Pii = new UserPii
             {
-                Id = userId,
-                AuthProvider = "keycloak",
-                AuthProviderId = userId.ToString(),
-                EmailVerified = true,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = userId,
-                Pii = new UserPii
-                {
-                    UserId = userId,
-                    Email = email,
-                    FirstName = "Integration",
-                    LastName = "User"
-                }
-            });
+                UserId = userId,
+                Email = email,
+                FirstName = "Integration",
+                LastName = "User"
+            } });
         }
 
         if (!await dbContext.UserExternalLogins.AnyAsync(x =>
-                x.UserId == userId && x.Provider == provider && x.ProviderKey == providerKey))
+                x.UserId == userId
+                && x.AuthenticationProviderId == (int)provider.ParseAuthenticationProviderKind()
+                && x.ProviderKey == providerKey))
         {
-            dbContext.UserExternalLogins.Add(new UserExternalLogin
-            {
-                Id = Guid.CreateVersion7(),
-                UserId = userId,
-                User = null!,
-                TenantId = PlatformDefaults.DefaultTenantId,
-                Tenant = null!,
-                Provider = provider,
-                ProviderKey = providerKey,
-                ProviderDisplayName = provider,
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = userId
-            });
+            dbContext.UserExternalLogins.Add(new UserExternalLogin { Id = Guid.CreateVersion7(),
+            UserId = userId,
+            User = null!,
+            AuthenticationProviderId = (int)provider.ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = providerKey,
+            ProviderDisplayName = provider,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = userId });
         }
 
         await dbContext.SaveChangesAsync();

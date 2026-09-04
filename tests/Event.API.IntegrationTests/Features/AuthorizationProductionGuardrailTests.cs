@@ -33,7 +33,10 @@ namespace Event.Api.IntegrationTests.Features;
 /// outside the Testing environment, and no allow-all stub can be injected accidentally.
 /// </summary>
 [Category(TestCategories.Fast)]
-[NotInParallel("SecurityInfra")]
+// Exclusive rather than key-scoped: proving production wiring requires a non-Testing host, whose
+// bootstrap contract is satisfied through process environment values. A key-scoped constraint would
+// still let unrelated tests build hosts concurrently and observe that shared state.
+[NotInParallel]
 public class AuthorizationProductionGuardrailTests
 {
     [Test]
@@ -106,6 +109,18 @@ public class AuthorizationProductionGuardrailTests
     /// </summary>
     private sealed class ProductionLikeWebApplicationFactory : WebApplicationFactory<Program>
     {
+        private readonly BootstrapAuthorityEnvironmentScope _bootstrapAuthority = new();
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+            {
+                _bootstrapAuthority.Dispose();
+            }
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("ProductionGuardrail");
@@ -119,6 +134,7 @@ public class AuthorizationProductionGuardrailTests
                     ["Database:Host"] = "localhost",
                     ["Database:Port"] = "5432",
                     ["Database:Database"] = "test_guardrails",
+                    ["SecretProvider:Provider"] = "Environment",
                     ["Database:Runtime:Username"] = "postgres",
                     ["Database:Runtime:Password"] = "postgres",
                     ["Database:Runtime:TlsMode"] = "Prefer",
@@ -179,6 +195,18 @@ public class AuthorizationProductionGuardrailTests
     /// </summary>
     private sealed class NoAuthConfigWebApplicationFactory : WebApplicationFactory<Program>
     {
+        private readonly BootstrapAuthorityEnvironmentScope _bootstrapAuthority = new();
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+            {
+                _bootstrapAuthority.Dispose();
+            }
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("ProductionGuardrail");
@@ -192,6 +220,7 @@ public class AuthorizationProductionGuardrailTests
                     ["Database:Host"] = "localhost",
                     ["Database:Port"] = "5432",
                     ["Database:Database"] = "test_no_auth",
+                    ["SecretProvider:Provider"] = "Environment",
                     ["Database:Runtime:Username"] = "postgres",
                     ["Database:Runtime:Password"] = "postgres",
                     ["Database:Runtime:TlsMode"] = "Prefer",
@@ -255,8 +284,52 @@ public class AuthorizationProductionGuardrailTests
         }
     }
 
+    /// <summary>
+    /// Outside Development and Testing the host selects exactly one deployment-owned secret authority
+    /// and then resolves bootstrap coordinates from that authority alone. Environment mode therefore
+    /// requires process environment values, not host settings, which is the same contract the
+    /// standalone startup lane exercises. The scope restores prior values so it cannot leak.
+    /// </summary>
+    private sealed class BootstrapAuthorityEnvironmentScope : IDisposable
+    {
+        private static readonly KeyValuePair<string, string?>[] Values =
+        [
+            new("SECRET_PROVIDER", "Environment"),
+            new("INSTANCE_BOOTSTRAP_MODE", "Interactive"),
+            new("Database__Provider", "PostgreSql"),
+            new("Database__Host", "localhost"),
+            new("Database__Database", "guardrail"),
+            new("Database__Runtime__Database", "guardrail"),
+            new("Database__Migrator__Database", "guardrail"),
+            new("Database__Runtime__Username", "postgres"),
+            new("Database__Runtime__Password", "postgres"),
+        ];
+
+        private readonly List<KeyValuePair<string, string?>> _previous = new(Values.Length);
+
+        public BootstrapAuthorityEnvironmentScope()
+        {
+            foreach (var value in Values)
+            {
+                _previous.Add(new(value.Key, Environment.GetEnvironmentVariable(value.Key)));
+                Environment.SetEnvironmentVariable(value.Key, value.Value);
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (var previous in _previous)
+            {
+                Environment.SetEnvironmentVariable(previous.Key, previous.Value);
+            }
+        }
+    }
+
     private static void ConfigureEarlyHostSettings(IWebHostBuilder builder)
     {
+        // The secret authority is selected before application configuration sources are composed,
+        // so the selection must be an early host setting rather than an in-memory entry.
+        builder.UseSetting("SecretProvider:Provider", "Environment");
         builder.UseSetting("Database:Provider", "PostgreSql");
         builder.UseSetting("Database:Host", "localhost");
         builder.UseSetting("Database:Port", "5432");

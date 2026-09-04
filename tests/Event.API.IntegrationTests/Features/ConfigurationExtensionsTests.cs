@@ -102,6 +102,42 @@ public sealed class ConfigurationExtensionsTests
     }
 
     [Test]
+    public async Task AddSecretAuthorityConfiguration_MapsTwoAxisLocalIdentityConfigurationWithoutOverridingCanonicalValues()
+    {
+        var mapped = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["AUTHENTICATION_PROVIDER"] = "local",
+            ["ATPROTO_LOGIN_ENABLED"] = "true",
+            ["AUTHENTICATION_LOCAL_JWT_KEY"] = "deployment-secret",
+            ["AUTHENTICATION_LOCAL_LOCKOUT_THRESHOLD"] = "7",
+            ["AUTHENTICATION_LOCAL_LOCKOUT_DURATION_MINUTES"] = "20",
+            ["IDENTITY_DATABASE_TOPOLOGY"] = "external",
+            ["IDENTITY_DATABASE_PROVIDER"] = "PostgreSql",
+            ["IDENTITY_DATABASE_HOST"] = "identity-db",
+            ["IDENTITY_DATABASE_RUNTIME_PASSWORD"] = "runtime-secret",
+        });
+        var canonical = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["AUTHENTICATION_PROVIDER"] = "local",
+            ["ATPROTO_LOGIN_ENABLED"] = "true",
+            ["Authentication:Provider"] = "keycloak",
+            ["Authentication:AtprotoLoginEnabled"] = "false",
+        });
+
+        await Assert.That(mapped["Authentication:Provider"]).IsEqualTo("local");
+        await Assert.That(mapped["Authentication:AtprotoLoginEnabled"]).IsEqualTo("true");
+        await Assert.That(mapped["Authentication:Local:JwtKey"]).IsEqualTo("deployment-secret");
+        await Assert.That(mapped["Authentication:Local:LockoutThreshold"]).IsEqualTo("7");
+        await Assert.That(mapped["Authentication:Local:LockoutDurationMinutes"]).IsEqualTo("20");
+        await Assert.That(mapped["IdentityDatabase:Topology"]).IsEqualTo("external");
+        await Assert.That(mapped["IdentityDatabase:Provider"]).IsEqualTo("PostgreSql");
+        await Assert.That(mapped["IdentityDatabase:Host"]).IsEqualTo("identity-db");
+        await Assert.That(mapped["IdentityDatabase:Runtime:Password"]).IsEqualTo("runtime-secret");
+        await Assert.That(canonical["Authentication:Provider"]).IsEqualTo("keycloak");
+        await Assert.That(canonical["Authentication:AtprotoLoginEnabled"]).IsEqualTo("false");
+    }
+
+    [Test]
     public async Task AddSecretAuthorityConfiguration_MapsDatabaseFolderAgnosticKeys()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>

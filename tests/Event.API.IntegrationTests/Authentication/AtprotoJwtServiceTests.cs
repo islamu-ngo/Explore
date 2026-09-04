@@ -10,6 +10,7 @@ using Explore.API.Attributes;
 using Explore.API.Authentication;
 using Explore.API.Controllers;
 using Explore.API.Extensions;
+using Explore.Application.Configuration;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -152,6 +153,14 @@ public sealed class AtprotoJwtServiceTests
         var atprotoContext = ContextWithBearer(atproto);
         await Assert.That(AuthenticationExtensions.SelectDefaultAuthenticationScheme(atprotoContext))
             .IsEqualTo(ApiAuthenticationSchemeNames.AtprotoSession);
+
+        var local = CreateToken(
+            keys.UnknownKey,
+            LocalIdentityOptions.Issuer,
+            LocalIdentityOptions.Audience,
+            [new Claim(JwtRegisteredClaimNames.Sub, userId.ToString("D"))]);
+        await Assert.That(AuthenticationExtensions.SelectDefaultAuthenticationScheme(ContextWithBearer(local)))
+            .IsEqualTo(ApiAuthenticationSchemeNames.LocalIdentity);
 
         var keycloak = CreateToken(
             keys.UnknownKey,

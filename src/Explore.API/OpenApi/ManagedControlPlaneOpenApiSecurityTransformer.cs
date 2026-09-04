@@ -34,10 +34,13 @@ public sealed class ManagedControlPlaneOpenApiSecurityTransformer :
         OpenApiOperationTransformerContext context,
         CancellationToken cancellationToken)
     {
-        ApplyOperationSecurity(
-            operation,
-            context.Description.ActionDescriptor,
-            context.Document);
+        if (context.Document is not null)
+        {
+            ApplyOperationSecurity(
+                operation,
+                context.Description.ActionDescriptor,
+                context.Document);
+        }
         return Task.CompletedTask;
     }
 

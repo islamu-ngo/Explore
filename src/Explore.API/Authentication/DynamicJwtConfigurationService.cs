@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Net.Security;
 using System.Net.Sockets;
 using Explore.Application.Contracts.Services;
+using Explore.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Protocols;
@@ -108,7 +109,9 @@ public sealed class DynamicJwtConfigurationService : IJwtAuthorityRefreshNotifie
             }
 
             var dto = await configService.ReadConfigurationAsync();
-            if (!dto.KeycloakEnabled || string.IsNullOrWhiteSpace(dto.KeycloakAuthority))
+            if (dto.PrimaryProviderId != (int)AuthenticationProviderKind.Keycloak
+                || string.IsNullOrWhiteSpace(dto.KeycloakAuthority)
+                || string.IsNullOrWhiteSpace(dto.KeycloakClientId))
             {
                 return null;
             }
@@ -136,6 +139,7 @@ public sealed class DynamicJwtConfigurationService : IJwtAuthorityRefreshNotifie
         return BuildState(authority, metadataAddress, source: "Environment");
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "SocketsHttpHandler and HttpClient instances are owned by ConfigurationManager for dynamic JWKS refresh.")]
     private State BuildState(string? authority, string? metadataAddress = null, string source = "")
     {
         var resolvedMetadata = !string.IsNullOrWhiteSpace(metadataAddress)

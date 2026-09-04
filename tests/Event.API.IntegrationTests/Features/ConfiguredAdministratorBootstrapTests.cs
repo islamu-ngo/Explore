@@ -260,7 +260,7 @@ public sealed class ConfiguredAdministratorBootstrapTests
         var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         db.InstanceBootstrapStates.Add(InstanceBootstrapState.CreateConfiguredAdministratorPending(
             Guid.CreateVersion7(),
-            InstanceBootstrapProviderKind.Keycloak,
+            AuthenticationProviderKind.Keycloak,
             DeploymentMode.MultiTenant,
             7,
             new string('b', 64),

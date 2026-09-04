@@ -21,7 +21,7 @@ public static class ConfigurationExtensions
         IConfiguration authority = SecretAuthorityConfiguration.Build(
             bootstrapConfig,
             environmentName,
-            "/keycloak", "/database", "/database/erasure", "/api", "/blazor",
+            "/keycloak", "/database", "/database/erasure", "/database/identity", "/api", "/blazor",
             "/cerbos", "/mcp", "/ai", "/storage", "/smtp", "/integrations/listmonk");
         var isolatedAuthority = new ConfigurationBuilder().AddConfiguration(authority);
         PrivacyErasureAuthorityDatabaseConfiguration.ProjectDiscreteConfiguration(isolatedAuthority);
@@ -101,6 +101,9 @@ public static class ConfigurationExtensions
                 "CERBOS_PLAINTEXT_MODE",
                 "CERBOS__PLAINTEXT_MODE"));
         var authorizationProvider = ReadFirst(config, "Authorization:Provider", "AUTHORIZATION_PROVIDER")?.Trim();
+        var authenticationProvider = ReadFirst(config, "Authentication:Provider", "AUTHENTICATION_PROVIDER")?.Trim();
+        var atprotoLoginEnabled = NormalizeBoolean(
+            ReadFirst(config, "Authentication:AtprotoLoginEnabled", "ATPROTO_LOGIN_ENABLED"));
         var deploymentMode = NormalizeDeploymentMode(config["DEPLOYMENT_MODE"]);
         var managedControlPlaneEnabled = NormalizeBoolean(ReadFirst(
             config,
@@ -192,6 +195,10 @@ public static class ConfigurationExtensions
             ["Keycloak:MetadataAddress"] = null,
             ["Keycloak:ClientId"] = null,
             ["Keycloak:ClientSecret"] = null,
+            ["Authentication:Local:JwtKey"] = null,
+            ["IdentityDatabase:ConnectionString"] = null,
+            ["IdentityDatabase:Runtime:Password"] = null,
+            ["IdentityDatabase:Migrator:Password"] = null,
             ["Database:Provider"] = null,
             ["Database:Host"] = null,
             ["Database:Port"] = null,
@@ -356,6 +363,46 @@ public static class ConfigurationExtensions
         TrySet(mappedConfig, config, "Cerbos:UseTls", cerbosUseTls);
         TrySet(mappedConfig, config, "Cerbos:PlaintextMode", cerbosPlaintextMode);
         TrySet(mappedConfig, config, "Authorization:Provider", authorizationProvider);
+
+        // Authentication provider selection is a two-axis contract: one primary provider plus
+        // an independent ATProto login toggle. Explicit structured values retain precedence.
+        TrySet(mappedConfig, config, "Authentication:Provider", authenticationProvider);
+        TrySet(mappedConfig, config, "Authentication:AtprotoLoginEnabled", atprotoLoginEnabled);
+        TrySet(mappedConfig, config, "Authentication:Local:JwtKey",
+            ReadFirst(config, "Authentication:Local:JwtKey", "AUTHENTICATION_LOCAL_JWT_KEY"));
+        TrySet(mappedConfig, config, "Authentication:Local:LockoutThreshold",
+            ReadFirst(config, "Authentication:Local:LockoutThreshold", "AUTHENTICATION_LOCAL_LOCKOUT_THRESHOLD"));
+        TrySet(mappedConfig, config, "Authentication:Local:LockoutDurationMinutes",
+            ReadFirst(config, "Authentication:Local:LockoutDurationMinutes", "AUTHENTICATION_LOCAL_LOCKOUT_DURATION_MINUTES"));
+        TrySet(mappedConfig, config, "IdentityDatabase:Topology",
+            ReadFirst(config, "IdentityDatabase:Topology", "IDENTITY_DATABASE_TOPOLOGY"));
+        TrySet(mappedConfig, config, "IdentityDatabase:Provider",
+            ReadFirst(config, "IdentityDatabase:Provider", "IDENTITY_DATABASE_PROVIDER"));
+        TrySet(mappedConfig, config, "IdentityDatabase:ConnectionString",
+            ReadFirst(config, "IdentityDatabase:ConnectionString", "IDENTITY_DATABASE_CONNECTION_STRING"));
+        TrySet(mappedConfig, config, "IdentityDatabase:Host",
+            ReadFirst(config, "IdentityDatabase:Host", "IDENTITY_DATABASE_HOST"));
+        TrySet(mappedConfig, config, "IdentityDatabase:Port",
+            ReadFirst(config, "IdentityDatabase:Port", "IDENTITY_DATABASE_PORT"));
+        TrySet(mappedConfig, config, "IdentityDatabase:Name",
+            ReadFirst(config, "IdentityDatabase:Name", "IDENTITY_DATABASE_NAME"));
+        TrySet(mappedConfig, config, "IdentityDatabase:Schema",
+            ReadFirst(config, "IdentityDatabase:Schema", "IDENTITY_DATABASE_SCHEMA"));
+        TrySet(mappedConfig, config, "IdentityDatabase:TlsMode",
+            ReadFirst(config, "IdentityDatabase:TlsMode", "IDENTITY_DATABASE_TLS_MODE"));
+        TrySet(mappedConfig, config, "IdentityDatabase:TrustServerCertificate",
+            NormalizeBoolean(ReadFirst(
+                config,
+                "IdentityDatabase:TrustServerCertificate",
+                "IDENTITY_DATABASE_TRUST_SERVER_CERTIFICATE")));
+        TrySet(mappedConfig, config, "IdentityDatabase:Runtime:Username",
+            ReadFirst(config, "IdentityDatabase:Runtime:Username", "IDENTITY_DATABASE_RUNTIME_USERNAME"));
+        TrySet(mappedConfig, config, "IdentityDatabase:Runtime:Password",
+            ReadFirst(config, "IdentityDatabase:Runtime:Password", "IDENTITY_DATABASE_RUNTIME_PASSWORD"));
+        TrySet(mappedConfig, config, "IdentityDatabase:Migrator:Username",
+            ReadFirst(config, "IdentityDatabase:Migrator:Username", "IDENTITY_DATABASE_MIGRATOR_USERNAME"));
+        TrySet(mappedConfig, config, "IdentityDatabase:Migrator:Password",
+            ReadFirst(config, "IdentityDatabase:Migrator:Password", "IDENTITY_DATABASE_MIGRATOR_PASSWORD"));
 
         // Deployment
         TrySet(mappedConfig, config, "Deployment:Mode", deploymentMode);

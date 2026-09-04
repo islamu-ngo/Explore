@@ -6,11 +6,13 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Explore.API.Authentication;
 using Explore.API.Configuration;
 using Explore.API.ExceptionHandling;
 using Explore.API.Mcp;
 using Explore.Application.Authorization;
+using Explore.Application.Configuration;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
@@ -54,6 +56,18 @@ public static class AuthenticationExtensions
                 options => options.SessionLifetime >= TimeSpan.FromMinutes(1)
                            && options.SessionLifetime <= TimeSpan.FromHours(1),
                 "ATProto session lifetime must be between one minute and one hour.")
+            .ValidateOnStart();
+        services.AddOptions<AuthenticationProviderDeploymentOptions>()
+            .Bind(configuration.GetSection(AuthenticationProviderDeploymentOptions.SectionName))
+            .Validate(
+                AuthenticationProviderDeploymentOptions.IsValid,
+                "Authentication:Provider must be blank, 'local', 'keycloak', or 'atproto'.")
+            .ValidateOnStart();
+        services.AddOptions<LocalIdentityOptions>()
+            .Bind(configuration.GetSection(LocalIdentityOptions.SectionName))
+            .Validate(
+                LocalIdentityOptions.IsValid,
+                "Local Identity lockout and token lifetime settings are outside their supported ranges.")
             .ValidateOnStart();
         services.AddScoped<AtprotoJwtService>();
         services.AddScoped<IAtprotoSessionTokenIssuer>(provider => provider.GetRequiredService<AtprotoJwtService>());
@@ -190,6 +204,25 @@ public static class AuthenticationExtensions
                     }
                 };
             })
+            .AddJwtBearer(ApiAuthenticationSchemeNames.LocalIdentity, options =>
+            {
+                options.MapInboundClaims = false;
+                options.RequireHttpsMetadata = false;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        ResolveLocalIdentityValidationKey(configuration)),
+                    ValidateIssuer = true,
+                    ValidIssuer = LocalIdentityOptions.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = LocalIdentityOptions.Audience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromMinutes(1),
+                    NameClaimType = JwtRegisteredClaimNames.Email,
+                    RoleClaimType = "roles"
+                };
+            })
             .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
                 ApiAuthenticationSchemeNames.ApiKey,
                 options =>
@@ -317,12 +350,23 @@ public static class AuthenticationExtensions
             return ApiAuthenticationSchemeNames.ApiKey;
         }
 
-        return IsAtprotoSessionBearer(context.Request)
-            ? ApiAuthenticationSchemeNames.AtprotoSession
+        if (IsAtprotoSessionBearer(context.Request))
+        {
+            return ApiAuthenticationSchemeNames.AtprotoSession;
+        }
+
+        return IsLocalIdentityBearer(context.Request)
+            ? ApiAuthenticationSchemeNames.LocalIdentity
             : JwtBearerDefaults.AuthenticationScheme;
     }
 
     internal static bool IsAtprotoSessionBearer(HttpRequest request)
+        => IsBearerFromIssuer(request, AtprotoJwtOptions.SessionIssuer);
+
+    internal static bool IsLocalIdentityBearer(HttpRequest request)
+        => IsBearerFromIssuer(request, LocalIdentityOptions.Issuer);
+
+    private static bool IsBearerFromIssuer(HttpRequest request, string issuer)
     {
         var authorization = request.Headers.Authorization;
         if (authorization.Count != 1
@@ -342,13 +386,41 @@ public static class AuthenticationExtensions
         {
             return string.Equals(
                 new JwtSecurityTokenHandler().ReadJwtToken(token).Issuer,
-                AtprotoJwtOptions.SessionIssuer,
+                issuer,
                 StringComparison.Ordinal);
         }
         catch (Exception)
         {
             return false;
         }
+    }
+
+    private static byte[] ResolveLocalIdentityValidationKey(
+        IConfiguration configuration)
+    {
+        string? configured = configuration[
+            $"{LocalIdentityOptions.SectionName}:JwtKey"];
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            return RandomNumberGenerator.GetBytes(32);
+        }
+
+        byte[] key;
+        try
+        {
+            key = Convert.FromBase64String(configured);
+        }
+        catch (FormatException exception)
+        {
+            throw new InvalidOperationException(
+                "Local Identity JWT validation authority is invalid.",
+                exception);
+        }
+
+        return key.Length >= 32
+            ? key
+            : throw new InvalidOperationException(
+                "Local Identity JWT validation authority does not meet the 256-bit minimum.");
     }
 
     private static bool ApiKeyCallerHasMcpReadAndEventReadAuthorityOrIsUser(ClaimsPrincipal principal)

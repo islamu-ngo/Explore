@@ -167,36 +167,24 @@ public class SetupSecretAuthorizationMatrixTests
             .CompletedByUserId
             ?? throw new InvalidOperationException(
                 "The API fixture must seed one completed bootstrap administrator.");
-        dbContext.Users.Add(new User
+        dbContext.Users.Add(new User { Id = userId, CreatedAt = DateTime.UtcNow,
+        CreatedBy = userId,
+        Pii = new UserPii
         {
-            Id = userId,
-            AuthProvider = "keycloak",
-            AuthProviderId = userId.ToString(),
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId,
-            Pii = new UserPii
-            {
-                UserId = userId,
-                Email = $"{userId:N}@integration.test",
-                FirstName = "Instance",
-                LastName = "Admin"
-            }
-        });
-        dbContext.UserExternalLogins.Add(new UserExternalLogin
-        {
-            Id = Guid.CreateVersion7(),
             UserId = userId,
-            User = null!,
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Tenant = null!,
-            Provider = "keycloak",
-            ProviderKey = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
-                ExternalApiPhase0WebApplicationFactory.TestIssuer,
-                userId.ToString()).Value,
-            ProviderDisplayName = "keycloak",
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId
-        });
+            Email = $"{userId:N}@integration.test",
+            FirstName = "Instance",
+            LastName = "Admin"
+        } });
+        dbContext.UserExternalLogins.Add(new UserExternalLogin { Id = Guid.CreateVersion7(),
+        UserId = userId,
+        User = null!,
+        AuthenticationProviderId = (int)"keycloak".ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            ExternalApiPhase0WebApplicationFactory.TestIssuer,
+            userId.ToString()).Value,
+        ProviderDisplayName = "keycloak",
+        CreatedAt = DateTime.UtcNow,
+        CreatedBy = userId });
         Role? platformAdministratorRole = dbContext.Roles
             .SingleOrDefault(role => role.Id == (int)RoleEnum.Admin);
         if (platformAdministratorRole is null)

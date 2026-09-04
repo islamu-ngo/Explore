@@ -239,21 +239,15 @@ public class SetupSecretFlowTests
         var exists = await dbContext.Users.AnyAsync(x => x.Id == userId);
         if (exists) return;
 
-        dbContext.Users.Add(new User
+        dbContext.Users.Add(new User { Id = userId, CreatedAt = DateTime.UtcNow,
+        CreatedBy = userId,
+        Pii = new UserPii
         {
-            Id = userId,
-            AuthProvider = "keycloak",
-            AuthProviderId = userId.ToString(),
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId,
-            Pii = new UserPii
-            {
-                UserId = userId,
-                Email = $"{userId:N}@integration.test",
-                FirstName = "Test",
-                LastName = "User"
-            }
-        });
+            UserId = userId,
+            Email = $"{userId:N}@integration.test",
+            FirstName = "Test",
+            LastName = "User"
+        } });
 
         await dbContext.SaveChangesAsync();
     }

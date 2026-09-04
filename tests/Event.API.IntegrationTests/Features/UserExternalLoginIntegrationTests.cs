@@ -10,6 +10,8 @@ using Explore.Application.Authentication;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
 using Explore.Application.Features.Authentication.Atproto.Models;
 using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
@@ -74,7 +76,9 @@ public class UserExternalLoginIntegrationTests
             "https://accounts.google.com",
             "google-sub-123").Value;
         var googleLink = await dbContext.UserExternalLogins
-            .SingleOrDefaultAsync(x => x.Provider == "google" && x.ProviderKey == providerKey);
+            .SingleOrDefaultAsync(x =>
+                x.AuthenticationProviderId == (int)AuthenticationProviderKind.Google
+                && x.ProviderKey == providerKey);
         await Assert.That(googleLink).IsNotNull();
         await Assert.That(googleLink!.UserId).IsEqualTo(existingUserId);
     }
@@ -145,7 +149,7 @@ public class UserExternalLoginIntegrationTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("pds_identity_mismatch");
         await sender.DidNotReceiveWithAnyArgs().Send(default(ClaimConfiguredInstanceAdministratorCommand)!, default);
-        await logins.DidNotReceiveWithAnyArgs().GetByProviderAndKey(default!, default!);
+        await logins.DidNotReceiveWithAnyArgs().GetByProviderAndKey(default!);
         await gateway.DidNotReceiveWithAnyArgs().PreparePersistenceAsync(default!, default, default, default);
         await gateway.DidNotReceiveWithAnyArgs().PersistPreparedAsync(default!, default);
         await tokenIssuer.DidNotReceiveWithAnyArgs().IssueAsync(default, default, default!, default);
@@ -204,21 +208,15 @@ public class UserExternalLoginIntegrationTests
                 return Task.CompletedTask;
             });
 
-        var login = new UserExternalLogin
-        {
-            Id = Guid.CreateVersion7(),
-            UserId = userId,
-            User = null!,
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Tenant = null!,
-            Provider = "atproto",
-            ProviderKey = did.Value,
-            ProviderDisplayName = "AT Protocol"
-        };
+        var login = new UserExternalLogin { Id = Guid.CreateVersion7(),
+        UserId = userId,
+        User = null!,
+        AuthenticationProviderId = (int)"atproto".ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = did.Value,
+        ProviderDisplayName = "AT Protocol" };
         var logins = Substitute.For<IUserExternalLoginRepository>();
         var bothInitialReads = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         int loginReads = 0;
-        logins.GetByProviderAndKey("atproto", Arg.Any<ProviderAccountKey>())
+        logins.GetByProviderAndKey(Arg.Any<ProviderAccountKey>())
             .Returns(async _ =>
             {
                 int read = Interlocked.Increment(ref loginReads);
@@ -256,7 +254,7 @@ public class UserExternalLoginIntegrationTests
         bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(
             InstanceBootstrapState.CreateConfiguredAdministratorPending(
                 Guid.CreateVersion7(),
-                InstanceBootstrapProviderKind.Atproto,
+                AuthenticationProviderKind.Atproto,
                 DeploymentMode.MultiTenant,
                 1,
                 new string('a', 64),
@@ -304,17 +302,11 @@ public class UserExternalLoginIntegrationTests
     {
         AtprotoDid did = AtprotoDid.Parse($"did:plc:{Guid.NewGuid():N}");
         Guid userId = Guid.CreateVersion7();
-        var login = new UserExternalLogin
-        {
-            Id = Guid.CreateVersion7(),
-            UserId = userId,
-            User = null!,
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Tenant = null!,
-            Provider = "atproto",
-            ProviderKey = did.Value,
-            ProviderDisplayName = "AT Protocol"
-        };
+        var login = new UserExternalLogin { Id = Guid.CreateVersion7(),
+        UserId = userId,
+        User = null!,
+        AuthenticationProviderId = (int)"atproto".ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = did.Value,
+        ProviderDisplayName = "AT Protocol" };
         var gateway = Substitute.For<IAtprotoOAuthSecurityGateway>();
         gateway.VerifyAsync(Arg.Any<AtprotoOAuthVerificationInput>(), Arg.Any<CancellationToken>())
             .Returns(AtprotoOAuthVerificationResult.Verified(new AtprotoVerifiedOAuthSession(
@@ -324,7 +316,7 @@ public class UserExternalLoginIntegrationTests
                 "oauth-key",
                 new byte[] { 1 })));
         var logins = Substitute.For<IUserExternalLoginRepository>();
-        logins.GetByProviderAndKey("atproto", Arg.Any<ProviderAccountKey>()).Returns(login);
+        logins.GetByProviderAndKey(Arg.Any<ProviderAccountKey>()).Returns(login);
         var sender = Substitute.For<ISender>();
         int claimAttempts = 0;
         ClaimConfiguredInstanceAdministratorCommand? lastClaim = null;
@@ -340,7 +332,7 @@ public class UserExternalLoginIntegrationTests
         bootstrapRepository.GetCurrent(Arg.Any<CancellationToken>()).Returns(
             InstanceBootstrapState.CreateConfiguredAdministratorPending(
                 Guid.CreateVersion7(),
-                InstanceBootstrapProviderKind.Atproto,
+                AuthenticationProviderKind.Atproto,
                 DeploymentMode.MultiTenant,
                 1,
                 new string('a', 64),
@@ -400,19 +392,13 @@ public class UserExternalLoginIntegrationTests
                 "https://pds.example.test/",
                 "oauth-key",
                 null));
-        var login = new UserExternalLogin
-        {
-            Id = Guid.CreateVersion7(),
-            UserId = userId,
-            User = null!,
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Tenant = null!,
-            Provider = "atproto",
-            ProviderKey = did.Value,
-            ProviderDisplayName = "AT Protocol"
-        };
+        var login = new UserExternalLogin { Id = Guid.CreateVersion7(),
+        UserId = userId,
+        User = null!,
+        AuthenticationProviderId = (int)"atproto".ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = did.Value,
+        ProviderDisplayName = "AT Protocol" };
         var logins = Substitute.For<IUserExternalLoginRepository>();
-        logins.GetByProviderAndKey("atproto", Arg.Any<ProviderAccountKey>()).Returns(login);
+        logins.GetByProviderAndKey(Arg.Any<ProviderAccountKey>()).Returns(login);
         var sender = Substitute.For<ISender>();
         var tokenIssuer = Substitute.For<IAtprotoSessionTokenIssuer>();
         tokenIssuer.IssueAsync(userId, Arg.Any<Guid>(), did, Arg.Any<CancellationToken>())
@@ -434,6 +420,65 @@ public class UserExternalLoginIntegrationTests
             default);
     }
 
+    [Test]
+    public async Task BootstrapAtprotoSession_LinkedLoginIsRejectedWhenAtprotoIsDisabled()
+    {
+        AtprotoDid did = AtprotoDid.Parse($"did:plc:{Guid.NewGuid():N}");
+        Guid userId = Guid.CreateVersion7();
+        var verified = new AtprotoVerifiedOAuthSession(
+            did,
+            "canonical.example.test",
+            new Uri("https://pds.example.test"),
+            "oauth-key",
+            new byte[] { 1 });
+        var gateway = Substitute.For<IAtprotoOAuthSecurityGateway>();
+        gateway.VerifyAsync(
+                Arg.Any<AtprotoOAuthVerificationInput>(),
+                Arg.Any<CancellationToken>())
+            .Returns(AtprotoOAuthVerificationResult.Verified(verified));
+        var logins = Substitute.For<IUserExternalLoginRepository>();
+        logins.GetByProviderAndKey(Arg.Any<ProviderAccountKey>())
+            .Returns(new UserExternalLogin
+            {
+                Id = Guid.CreateVersion7(),
+                UserId = userId,
+                User = null!,
+                AuthenticationProviderId =
+                    (int)AuthenticationProviderKind.Atproto,
+                AuthenticationProvider = null!,
+                ProviderKey = did.Value,
+                ProviderDisplayName = "AT Protocol"
+            });
+        var dispatcher = Substitute.For<IAuthenticationProviderDispatcher>();
+        dispatcher.GetActivePrimaryProviderAsync(
+                Arg.Any<CancellationToken>())
+            .Returns(AuthenticationProviderKind.Local);
+        var configuration =
+            Substitute.For<IAuthProviderConfigurationService>();
+        configuration.ReadConfigurationAsync()
+            .Returns(new AuthProviderConfigurationDto
+            {
+                AtprotoLoginEnabled = false
+            });
+        BootstrapAtprotoSessionCommandHandler handler = CreateAtprotoHandler(
+            gateway,
+            Substitute.For<IAtprotoSessionTokenIssuer>(),
+            Substitute.For<ISender>(),
+            logins,
+            out _,
+            authenticationProviderDispatcher: dispatcher,
+            authProviderConfiguration: configuration);
+
+        AtprotoSessionBootstrapResult result = await handler.Handle(
+            CreateBootstrapCommand(did),
+            CancellationToken.None);
+
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.FailureCode).IsEqualTo("provider_inactive");
+        await gateway.DidNotReceiveWithAnyArgs()
+            .PreparePersistenceAsync(default!, default, default, default);
+    }
+
     private static BootstrapAtprotoSessionCommand CreateBootstrapCommand(AtprotoDid did) =>
         new(
             did,
@@ -448,22 +493,20 @@ public class UserExternalLoginIntegrationTests
         ISender sender,
         IUserExternalLoginRepository logins,
         out IUnitOfWork unitOfWork,
-        IInstanceBootstrapStateRepository? bootstrapRepository = null)
+        IInstanceBootstrapStateRepository? bootstrapRepository = null,
+        IAuthenticationProviderDispatcher?
+            authenticationProviderDispatcher = null,
+        IAuthProviderConfigurationService?
+            authProviderConfiguration = null)
     {
         var users = Substitute.For<IUserRepository>();
-        users.GetById(Arg.Any<Guid>()).Returns(call => new User
+        users.GetById(Arg.Any<Guid>()).Returns(call => new User { Id = call.Arg<Guid>(), Pii = new UserPii
         {
-            Id = call.Arg<Guid>(),
-            AuthProvider = "atproto",
-            AuthProviderId = "linked",
-            Pii = new UserPii
-            {
-                UserId = call.Arg<Guid>(),
-                Email = "atproto@example.test",
-                FirstName = "ATProto",
-                LastName = "User"
-            }
-        });
+            UserId = call.Arg<Guid>(),
+            Email = "atproto@example.test",
+            FirstName = "ATProto",
+            LastName = "User"
+        } });
         var actors = Substitute.For<IActorRepository>();
         actors.GetTrackedActorByUserId(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new Actor
@@ -495,6 +538,7 @@ public class UserExternalLoginIntegrationTests
             identities,
             actors,
             Substitute.For<IActorTypeRepository>(),
+            Substitute.For<ITenantRepository>(),
             tenantUsers,
             tenantRoles,
             Substitute.For<IOrganizationRepository>(),
@@ -514,6 +558,16 @@ public class UserExternalLoginIntegrationTests
         var tenantContext = Substitute.For<ITenantContext>();
         tenantContext.TenantId.Returns(PlatformDefaults.DefaultTenantId);
         var configuration = new ConfigurationBuilder().Build();
+        if (authProviderConfiguration is null)
+        {
+            authProviderConfiguration =
+                Substitute.For<IAuthProviderConfigurationService>();
+            authProviderConfiguration.ReadConfigurationAsync()
+                .Returns(new AuthProviderConfigurationDto
+            {
+                AtprotoLoginEnabled = true
+            });
+        }
 
         return new BootstrapAtprotoSessionCommandHandler(
             gateway,
@@ -521,8 +575,13 @@ public class UserExternalLoginIntegrationTests
             sender,
             logins,
             bootstrapRepository ?? Substitute.For<IInstanceBootstrapStateRepository>(),
-            users,
-            actors,
+            authenticationProviderDispatcher
+            ?? Substitute.For<IAuthenticationProviderDispatcher>(),
+            authProviderConfiguration,
+            new AtprotoJitAccountProvisioningOperation(
+                users,
+                actors,
+                logins),
             onboarding,
             unitOfWork,
             Substitute.For<IAdminCacheInvalidator>(),
@@ -541,21 +600,15 @@ public class UserExternalLoginIntegrationTests
             return;
         }
 
-        dbContext.Users.Add(new User
+        dbContext.Users.Add(new User { Id = userId, CreatedAt = DateTime.UtcNow,
+        CreatedBy = userId,
+        Pii = new UserPii
         {
-            Id = userId,
-            AuthProvider = "keycloak",
-            AuthProviderId = userId.ToString(),
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId,
-            Pii = new UserPii
-            {
-                UserId = userId,
-                Email = email ?? $"{userId:N}@integration.test",
-                FirstName = "Integration",
-                LastName = "User"
-            }
-        });
+            UserId = userId,
+            Email = email ?? $"{userId:N}@integration.test",
+            FirstName = "Integration",
+            LastName = "User"
+        } });
 
         await dbContext.SaveChangesAsync();
     }
@@ -565,19 +618,13 @@ public class UserExternalLoginIntegrationTests
         using var scope = _fixture.Factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
 
-        dbContext.UserExternalLogins.Add(new UserExternalLogin
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            User = null!,
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Tenant = null!,
-            Provider = provider,
-            ProviderKey = providerKey,
-            ProviderDisplayName = provider,
-            CreatedAt = DateTime.UtcNow,
-            CreatedBy = userId
-        });
+        dbContext.UserExternalLogins.Add(new UserExternalLogin { Id = Guid.NewGuid(),
+        UserId = userId,
+        User = null!,
+        AuthenticationProviderId = (int)provider.ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = providerKey,
+        ProviderDisplayName = provider,
+        CreatedAt = DateTime.UtcNow,
+        CreatedBy = userId });
         await dbContext.SaveChangesAsync();
     }
 
