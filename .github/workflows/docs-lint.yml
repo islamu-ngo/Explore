@@ -1,0 +1,111 @@
+# ABOUTME: Automated documentation quality gate verifying link integrity, GitBook routing, and HTML purity.
+# ABOUTME: Ensures zero broken relative links, valid GitBook mappings in README.md, and no forbidden raw HTML tags.
+
+name: Documentation Quality & Integrity
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/docs-lint.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/docs-lint.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-lint:
+    name: Documentation Quality & Integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify Zero Raw HTML in Public Docs
+        shell: bash
+        run: |
+          echo "=== Step 1: Checking for forbidden raw HTML in docs/public/ ==="
+          html_matches=$(grep -rnE '<(details|summary|div|accordion|iframe|script|style)[ >]' docs/public/ || true)
+          if [ -n "$html_matches" ]; then
+            echo "::error::Forbidden raw HTML tags found in docs/public/:"
+            echo "$html_matches"
+            exit 1
+          fi
+          echo "Passed: Zero raw HTML tags detected in docs/public/."
+
+      - name: Verify GitBook URL Mappings in README.md
+        shell: bash
+        run: |
+          echo "=== Step 2: Validating GitBook URL targets in README.md ==="
+          errors=0
+          total=0
+          while IFS= read -r url; do
+            total=$((total + 1))
+            path="${url#https://islamu.gitbook.io/islamu-event/}"
+            path="${path%%#*}"
+            file="docs/public/${path}.md"
+            dir_readme="docs/public/${path}/README.md"
+            if [ ! -f "$file" ] && [ ! -f "$dir_readme" ]; then
+              echo "::error::Missing documentation target for GitBook URL: $url (neither $file nor $dir_readme exists)"
+              errors=$((errors + 1))
+            fi
+          done < <(grep -oE "https://islamu\.gitbook\.io/islamu-event/[^ )]+" README.md | sort -u)
+
+          echo "Checked $total GitBook URLs."
+          if [ $errors -gt 0 ]; then
+            echo "::error::Failed with $errors missing GitBook URL targets."
+            exit 1
+          fi
+          echo "Passed: All $total GitBook URLs in README.md resolve to valid files."
+
+      - name: Verify Relative Markdown Link Integrity
+        shell: bash
+        run: |
+          echo "=== Step 3: Validating relative Markdown links across docs/ and README.md ==="
+          errors=0
+          total=0
+
+          target_files=("README.md" $(find docs -name "*.md"))
+
+          for file in "${target_files[@]}"; do
+            src_dir=$(dirname "$file")
+            links=$(grep -oE "\[[^]]+\]\([^)]+\)" "$file" | sed -n "s/.*](\([^)]*\))/\1/p" || true)
+            for link in $links; do
+              case "$link" in
+                http://*|https://*|mailto:*|tel:*|\#*)
+                  continue
+                  ;;
+              esac
+              target="${link%%#*}"
+              [ -z "$target" ] && continue
+              total=$((total + 1))
+              target_decoded="${target//%20/ }"
+              resolved="$src_dir/$target_decoded"
+              if [ ! -e "$resolved" ]; then
+                echo "::error file=$file::Broken relative link: $link (resolved to: $resolved)"
+                errors=$((errors + 1))
+              fi
+            done
+          done
+
+          echo "Checked $total relative links across documentation."
+          if [ $errors -gt 0 ]; then
+            echo "::error::Failed with $errors broken relative links."
+            exit 1
+          fi
+          echo "Passed: All $total relative links are valid."
