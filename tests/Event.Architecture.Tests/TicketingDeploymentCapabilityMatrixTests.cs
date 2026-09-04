@@ -147,7 +147,7 @@ public sealed class TicketingDeploymentCapabilityMatrixTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs"));
+            "EventApiTagClients.g.cs"));
         await Assert.That(client).Contains(
             "GetTicketingDeploymentCapabilitiesAsync");
         await Assert.That(client).DoesNotContain(
@@ -156,6 +156,7 @@ public sealed class TicketingDeploymentCapabilityMatrixTests
         await Assert.That(File.Exists(Path.Combine(
                 RepositoryRoot,
                 "docs",
+                "internal",
                 "releases",
                 "changes",
                 "CHG-01M15N7V6Q2K8R4Y9T3W5X0ZAB.yaml")))

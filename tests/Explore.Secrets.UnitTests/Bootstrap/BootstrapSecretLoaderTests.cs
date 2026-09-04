@@ -87,27 +87,48 @@ public class BootstrapSecretLoaderTests
 
     #region Deterministic Authority
 
+    // BootstrapSecretLoader resolves the Infisical authority through AddInfisical, which reads
+    // its secret-zero credentials (URL, project, client id/secret, environment) ONLY from the
+    // process environment (SecretProvider__Infisical__* / INFISICAL_*) and deliberately ignores
+    // merged IConfiguration values so a lower-priority config source can never inject them.
+    // These tests therefore drive the authority through the process environment and point every
+    // endpoint at loopback (or an immediately-invalid URI), so the lane exercises the real
+    // fail-closed path with no outbound network I/O and no possibility of hanging.
+
     [Test]
     public async Task LoadPostgresConnectionString_InfisicalSelectedWithoutCredentials_DoesNotFallBack()
     {
-        var configuration = InfisicalConfiguration(new Dictionary<string, string?>());
+        var previousBootstrap = CaptureInfisicalEnvironment();
+        ClearInfisicalEnvironment();
+        try
+        {
+            var configuration = InfisicalConfiguration();
 
-        await AssertInfisicalFailureDoesNotFallBack(configuration);
+            await AssertInfisicalFailureDoesNotFallBack(configuration);
+        }
+        finally
+        {
+            RestoreInfisicalEnvironment(previousBootstrap);
+        }
     }
 
     [Test]
     public async Task LoadPostgresConnectionString_InfisicalSelectedWithInvalidUrl_DoesNotFallBack()
     {
         string coordinateCanary = $"invalid-{Guid.CreateVersion7():N}";
-        var configuration = InfisicalConfiguration(new Dictionary<string, string?>
+        var previousBootstrap = CaptureInfisicalEnvironment();
+        ClearInfisicalEnvironment();
+        try
         {
-            ["SecretProvider:Infisical:Url"] = coordinateCanary,
-            ["SecretProvider:Infisical:ProjectId"] = $"project-{Guid.CreateVersion7():N}",
-            ["SecretProvider:Infisical:ClientId"] = $"client-{Guid.CreateVersion7():N}",
-            ["SecretProvider:Infisical:ClientSecret"] = SecretsTestValues.CreateSecret(),
-        });
+            SetInfisicalBootstrap(coordinateCanary);
+            var configuration = InfisicalConfiguration();
 
-        await AssertInfisicalFailureDoesNotFallBack(configuration, coordinateCanary);
+            await AssertInfisicalFailureDoesNotFallBack(configuration, coordinateCanary);
+        }
+        finally
+        {
+            RestoreInfisicalEnvironment(previousBootstrap);
+        }
     }
 
     [Test]
@@ -115,15 +136,19 @@ public class BootstrapSecretLoaderTests
     {
         string coordinateCanary = $"path-{Guid.CreateVersion7():N}";
         string unavailableUrl = GetUnusedLoopbackUrl(coordinateCanary);
-        var configuration = InfisicalConfiguration(new Dictionary<string, string?>
+        var previousBootstrap = CaptureInfisicalEnvironment();
+        ClearInfisicalEnvironment();
+        try
         {
-            ["SecretProvider:Infisical:Url"] = unavailableUrl,
-            ["SecretProvider:Infisical:ProjectId"] = $"project-{Guid.CreateVersion7():N}",
-            ["SecretProvider:Infisical:ClientId"] = $"client-{Guid.CreateVersion7():N}",
-            ["SecretProvider:Infisical:ClientSecret"] = SecretsTestValues.CreateSecret(),
-        });
+            SetInfisicalBootstrap(unavailableUrl);
+            var configuration = InfisicalConfiguration();
 
-        await AssertInfisicalFailureDoesNotFallBack(configuration, coordinateCanary);
+            await AssertInfisicalFailureDoesNotFallBack(configuration, coordinateCanary);
+        }
+        finally
+        {
+            RestoreInfisicalEnvironment(previousBootstrap);
+        }
     }
 
     [Test]
@@ -134,16 +159,20 @@ public class BootstrapSecretLoaderTests
         listener.Start();
         var endpoint = (IPEndPoint)listener.LocalEndpoint;
         Task response = RespondUnauthorizedAsync(listener, providerBodyCanary);
-        var configuration = InfisicalConfiguration(new Dictionary<string, string?>
+        var previousBootstrap = CaptureInfisicalEnvironment();
+        ClearInfisicalEnvironment();
+        try
         {
-            ["SecretProvider:Infisical:Url"] = $"http://127.0.0.1:{endpoint.Port}",
-            ["SecretProvider:Infisical:ProjectId"] = $"project-{Guid.CreateVersion7():N}",
-            ["SecretProvider:Infisical:ClientId"] = $"client-{Guid.CreateVersion7():N}",
-            ["SecretProvider:Infisical:ClientSecret"] = SecretsTestValues.CreateSecret(),
-        });
+            SetInfisicalBootstrap($"http://127.0.0.1:{endpoint.Port}");
+            var configuration = InfisicalConfiguration();
 
-        await AssertInfisicalFailureDoesNotFallBack(configuration, providerBodyCanary);
-        await response;
+            await AssertInfisicalFailureDoesNotFallBack(configuration, providerBodyCanary);
+            await response;
+        }
+        finally
+        {
+            RestoreInfisicalEnvironment(previousBootstrap);
+        }
     }
 
     #endregion
@@ -357,11 +386,56 @@ public class BootstrapSecretLoaderTests
 
     #endregion
 
-    private static IConfiguration InfisicalConfiguration(IDictionary<string, string?> values)
+    private static readonly string[] InfisicalBootstrapKeys =
+    [
+        "SecretProvider__Infisical__Url",
+        "SecretProvider__Infisical__ProjectId",
+        "SecretProvider__Infisical__ClientId",
+        "SecretProvider__Infisical__ClientSecret",
+        "SecretProvider__Infisical__Environment",
+        "INFISICAL_URL",
+        "INFISICAL_PROJECT_ID",
+        "INFISICAL_CLIENT_ID",
+        "INFISICAL_CLIENT_SECRET",
+        "INFISICAL_ENV",
+    ];
+
+    private static IConfiguration InfisicalConfiguration() =>
+        BuildConfig(new Dictionary<string, string?>
+        {
+            ["SecretProvider:Provider"] = "Infisical",
+        });
+
+    private static void SetInfisicalBootstrap(string url)
     {
-        values["SecretProvider:Provider"] = "Infisical";
-        values.TryAdd("SecretProvider:Infisical:Environment", "test");
-        return BuildConfig(values);
+        Environment.SetEnvironmentVariable("SecretProvider__Infisical__Url", url);
+        Environment.SetEnvironmentVariable(
+            "SecretProvider__Infisical__ProjectId", $"project-{Guid.CreateVersion7():N}");
+        Environment.SetEnvironmentVariable(
+            "SecretProvider__Infisical__ClientId", $"client-{Guid.CreateVersion7():N}");
+        Environment.SetEnvironmentVariable(
+            "SecretProvider__Infisical__ClientSecret", SecretsTestValues.CreateSecret());
+        Environment.SetEnvironmentVariable("SecretProvider__Infisical__Environment", "test");
+    }
+
+    private static Dictionary<string, string?> CaptureInfisicalEnvironment() =>
+        InfisicalBootstrapKeys.ToDictionary(
+            key => key, Environment.GetEnvironmentVariable, StringComparer.Ordinal);
+
+    private static void ClearInfisicalEnvironment()
+    {
+        foreach (var key in InfisicalBootstrapKeys)
+        {
+            Environment.SetEnvironmentVariable(key, null);
+        }
+    }
+
+    private static void RestoreInfisicalEnvironment(IReadOnlyDictionary<string, string?> values)
+    {
+        foreach (var pair in values)
+        {
+            Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+        }
     }
 
     private static async Task AssertInfisicalFailureDoesNotFallBack(
@@ -416,7 +490,10 @@ public class BootstrapSecretLoaderTests
 
     private static async Task RespondUnauthorizedAsync(TcpListener listener, string responseBody)
     {
-        using TcpClient client = await listener.AcceptTcpClientAsync();
+        // Bound the accept so a future production regression that never connects fails this test
+        // in seconds instead of hanging the whole [NotInParallel] class indefinitely.
+        using var acceptTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using TcpClient client = await listener.AcceptTcpClientAsync(acceptTimeout.Token);
         await using NetworkStream stream = client.GetStream();
         byte[] body = Encoding.UTF8.GetBytes(responseBody);
         byte[] response = Encoding.ASCII.GetBytes(

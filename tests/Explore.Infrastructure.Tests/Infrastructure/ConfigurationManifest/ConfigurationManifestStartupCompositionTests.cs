@@ -6,6 +6,8 @@ namespace Explore.Infrastructure.Tests.Infrastructure.ConfigurationManifest;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Features.ConfigurationManifest.Handlers.Commands;
+using Explore.Application.Features.ConfigurationManifest.Importing;
+using Explore.Application.Features.ConfigurationManifest.Managed;
 using Explore.Infrastructure.ConfigurationManifest;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -50,6 +52,12 @@ public sealed class ConfigurationManifestStartupCompositionTests
             .IsTypeOf<DeferredConfigurationManifestEffectDelivery>();
         await Assert.That(scope.ServiceProvider
                 .GetService<IConfigurationManifestEffectDispatcher>())
+            .IsNull();
+        await Assert.That(scope.ServiceProvider
+                .GetService<IConfigurationImportEffectDelivery>())
+            .IsNull();
+        await Assert.That(scope.ServiceProvider
+                .GetService<IConfigurationDirectTransferChunkStore>())
             .IsNull();
     }
 }

@@ -200,7 +200,7 @@ public sealed class ConfigurationManifestReaderTests
         yield return ValidManifest[..specStart] + "  \"spec\": null\n}";
 
         yield return ValidManifest.Replace(
-            "\"instance\": {\n      \"settings\": {},\n      \"documents\": {}\n    }",
+            "\"instance\": {\n      \"settings\": {},\n      \"documents\": {},\n      \"legalDocuments\": {}\n    }",
             "\"instance\": null",
             StringComparison.Ordinal);
 
