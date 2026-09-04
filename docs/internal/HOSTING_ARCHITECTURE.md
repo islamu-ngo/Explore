@@ -1,100 +1,96 @@
-<!-- ABOUTME: Canonical architectural specification for hosting composition roots and startup lifecycle. -->
-<!-- ABOUTME: Defines Explore.API, Explore.Blazor, Event.Standalone, and Event.MigrationService responsibilities. -->
+<!-- ABOUTME: Architectural specification of C# composition roots, hosting topologies, and startup lifecycle phases. -->
+<!-- ABOUTME: Defines the runtime boundary between Explore.API, Explore.Blazor, Event.Standalone, and Event.MigrationService. -->
 
 # Hosting Architecture & Composition Roots
 
-> **Audience:** Contributors | Architects | AI agents  
-> **Status:** Implemented  
-> **Owner:** Platform/Ops  
-> **Last Verified:** 2026-09-03  
-> **Source Anchors:** `Explore.AppHost/AppHost.cs`, `Explore.API/Program.cs`, `Explore.Blazor/Program.cs`, `Event.Standalone/Program.cs`, `Event.MigrationService/Worker.cs`  
-
-> 📖 **Operator Runbooks & Deployment Guides:**  
-> For production deployment instructions, Docker Compose files, standalone container execution, Coolify setups, and reverse proxy recipes (Caddy, Traefik, Nginx), consult the public documentation:  
-> 👉 **[`docs/public/documentation/readme/self-hosting/`](../public/documentation/readme/self-hosting/)**
+Last Updated: 2026-09-03 Europe/Brussels
 
 ---
 
-## 1. Composition Roots & Process Model
+## 1. Composition Roots & Assembly Responsibilities
 
-The platform defines three runtime composition roots and one migration worker:
+ISLAMU Event divides its runtime hosting across four distinct composition roots:
 
-```text
-                        ┌───────────────────────────────┐
-                        │      Explore.AppHost (Aspire) │
-                        └──────────────┬────────────────┘
-                                       │ (orchestrates)
-          ┌────────────────────────────┼────────────────────────────┐
-          ▼                            ▼                            ▼
-┌───────────────────┐        ┌───────────────────┐        ┌───────────────────┐
-│ Event.Migration   │        │   Explore.API     │        │  Explore.Blazor   │
-│ Service (One-Shot)│        │   (Core Backend)  │        │  (BFF & Web UI)   │
-└───────────────────┘        └───────────────────┘        └───────────────────┘
-                                       ▲
-                                       │ (replaces in standalone mode)
-                             ┌───────────────────┐
-                             │ Event.Standalone  │
-                             │ (Combined Host)   │
-                             └───────────────────┘
+```mermaid
+graph TD
+    subgraph Standalone["Single-Process Monolith (Tier 1)"]
+        StandaloneRoot["Event.Standalone<br/>(API + Blazor BFF + SQLite)"]
+    end
+
+    subgraph SplitTopology["Production Split Topology (Tier 2 / Tier 3)"]
+        Migrator["Event.MigrationService<br/>(One-Shot Schema Migrator)"]
+        API["Explore.API<br/>(ASP.NET Core REST/HAL API)"]
+        BFF["Explore.Blazor<br/>(BFF Server + YARP + Wasm Host)"]
+        
+        Migrator -->|1. Run Migrations| DB[(PostgreSQL)]
+        API -->|2. Serve Business Logic| DB
+        BFF -->|3. Proxy /api Requests| API
+    end
+
+    classDef root fill:#eef2ff,stroke:#6366f1,stroke-width:2px;
+    classDef split fill:#f0fdf4,stroke:#22c55e,stroke-width:2px;
+    class StandaloneRoot root;
+    class Migrator,API,BFF split;
 ```
 
-### Process Roles
+### 1. `Explore.API` (REST / HAL API Server)
+* **Assembly**: `src/Explore.API/`
+* **Entrypoint**: `Program.cs`
+* **Role**: Primary domain and persistence authority. Hosts all MediatR request handlers, Cerbos/Local authorization evaluation, EF Core DbContexts (`ExploreDbContext`, `PrivacyErasureDbContext`), OpenAPI/Scalar endpoints, and webhook ingest/dispatch engines.
+* **Network Exposure**: In production split topologies, `Explore.API` is internal to the container network (`islamu-network`) and communicates with `Explore.Blazor` over private HTTP/gRPC.
 
-| Project | Packaging | Responsibilities |
-|---|---|---|
-| **`Explore.API`** | `src/Explore.API/` | Composition root for Domain, Application, Persistence, and Infrastructure layers. Hosts REST endpoints, MediatR pipeline, OpenAPI/Scalar, and background workers. |
-| **`Explore.Blazor`** | `src/Explore.Blazor/` | Backend-for-Frontend (BFF) server hosting the Blazor WebAssembly client, OIDC cookie authentication with Keycloak, and YARP reverse-proxy forwarding to `Explore.API`. |
-| **`Event.MigrationService`** | `src/Event.MigrationService/` | Dedicated one-shot worker responsible for applying EF Core database migrations, initial data seeding, and Data Protection key initialization before API/UI start. |
-| **`Event.Standalone`** | `src/Event.Standalone/` | Single-process distribution combining `Explore.API`, `Explore.Blazor`, and in-process migrations into one container for lightweight, single-replica deployments. |
+### 2. `Explore.Blazor` (Backend-for-Frontend & UI Host)
+* **Assembly**: `src/Explore.Blazor/` (Server) & `src/Explore.Blazor.Client/` (WebAssembly Client)
+* **Entrypoint**: `src/Explore.Blazor/Program.cs`
+* **Role**: BFF host managing OAuth2/OIDC sessions, HTTP-only anti-forgery session cookies, YARP reverse-proxy routes forwarding `/api/*` requests to `Explore.API`, and serving static MudBlazor WebAssembly assets.
+* **Network Exposure**: Publicly exposed via reverse proxy (Traefik/Caddy/Nginx) on port 80/443.
+
+### 3. `Event.Standalone` (Monolithic Lightweight Host)
+* **Assembly**: `src/Event.Standalone/`
+* **Entrypoint**: `Program.cs`
+* **Role**: Unifies `Explore.API` endpoints and `Explore.Blazor` BFF server into a **single .NET process**. Uses SQLite (`Data Source=/app/data/islamu.db`) and embedded migrations, enabling single-container deployments on resource-constrained servers (1 vCPU, 2 GB RAM).
+
+### 4. `Event.MigrationService` (One-Shot Database Migrator)
+* **Assembly**: `src/Event.MigrationService/`
+* **Entrypoint**: `Program.cs`
+* **Role**: Ephemeral container executed during deployment before `Explore.API` accepts traffic. Applies EF Core migrations atomically to PostgreSQL, seeds baseline lookup tables, and exits with code `0`.
 
 ---
 
 ## 2. Startup Lifecycle & Phase Ordering
 
-Whether operating in a split topology or standalone image, startup follows a strict, sequential lifecycle. A failure at any stage prevents subsequent stages from starting:
+Application startup in `Explore.API` and `Event.Standalone` executes in deterministic, sequential phases:
 
-```mermaid
-graph TD
-    A[Phase 1: Migrations & Seeding] --> B[Phase 2: Configuration Manifest Bootstrap]
-    B --> C[Phase 3: Serializable Preparation & Caches]
-    C --> D[Phase 4: HTTP Listener Ready]
+```
+[Phase 0: Config & Secrets] ──► [Phase 1: DB Readiness] ──► [Phase 2: Migrations]
+                                                                    │
+[Phase 5: HTTP Pipeline]    ◄── [Phase 4: Caching/Outbox] ◄── [Phase 3: AuthN Discovery]
 ```
 
-1. **Phase 1 — Migrations & Seeding**:
-   - `Event.MigrationService` (split) or in-process migrator (standalone) executes EF Core migrations.
-   - Applies application tables, Data Protection key ring schema, and Privacy Erasure Authority tables.
-   - Runs idempotent database seeders (`DatabaseSeeder.cs`).
-2. **Phase 2 — Configuration Manifest Bootstrap**:
-   - Reads declarative YAML manifests if configured (`CONFIGURATION_MANIFEST_MODE`).
-   - Reconciles instance-level and tenant-level configuration and branding documents.
-3. **Phase 3 — Serializable Preparation & Caches**:
-   - Initializes the `PrivacyErasureStartupGate` to replay authority facts and establish anti-resurrection fences before traffic is served.
-   - Warms in-memory lookup caches and verifies external secret bindings.
-4. **Phase 4 — HTTP Readiness**:
-   - Kestrel binds HTTP listeners.
-   - Liveness (`/alive`) and readiness (`/health`) endpoints report `Healthy`.
+1. **Phase 0 (Configuration & Options Binding)**:
+   * Load environment variables and optional Infisical secrets via `Explore.Secrets`.
+   * Bind strongly typed options classes (`IOptions<TOptions>`) and execute `ValidateDataAnnotations()` and `ValidateOnStart()`.
+2. **Phase 1 (Storage & Infrastructure Readiness)**:
+   * Perform TCP connection test to PostgreSQL or test file write permissions for SQLite.
+3. **Phase 2 (Schema Migrations)**:
+   * Execute `DbContext.Database.MigrateAsync()` for main application and privacy-erasure contexts.
+4. **Phase 3 (Identity & OIDC Handshake)**:
+   * Fetch OpenID Connect discovery document from Keycloak (`/.well-known/openid-configuration`) and cache public signing keys (JWKS).
+5. **Phase 4 (Cache & Asynchronous Workers)**:
+   * Initialize Redis multiplexer connection pool (or in-memory cache fallback).
+   * Start `EmailDispatchWorker` and `WebhookOutboxWorker` background services.
+6. **Phase 5 (Middleware Pipeline Registration)**:
+   * Pipeline order: `ExceptionHandlerMiddleware` $\to$ `RequestCorrelationMiddleware` $\to$ `ApiTenantResolutionMiddleware` $\to$ `AuthenticationMiddleware` $\to$ `AuthorizationMiddleware` $\to$ Endpoint Routing.
 
 ---
 
-## 3. Database Provider Abstraction
+## 3. Operational Deployment Runbooks (Public Source of Truth)
 
-Relational persistence is mediated through EF Core in `Explore.Persistence`:
+For step-by-step container configuration, Docker Compose YAML manifests, environment variables, reverse proxies, and backup/restore procedures, **refer exclusively to the canonical public documentation**:
 
-- **Supported Providers**: PostgreSQL (`Npgsql`), SQLite (`Microsoft.EntityFrameworkCore.Sqlite`), SQL Server (`Microsoft.EntityFrameworkCore.SqlServer`), and MySQL/MariaDB (`Pomelo.EntityFrameworkCore.MySql`).
-- **Namespace Rules**:
-  - PostgreSQL and SQL Server use the configured `DATABASE_SCHEMA` (defaults to `public`) with clean table names.
-  - SQLite and flat namespace providers prefix tables with `ie_`.
-- **Query Filters**: Multi-tenancy is enforced at the `DbContext` level using EF Core global query filters (`HasQueryFilter(e => e.TenantId == CurrentTenantId)`). Cross-tenant queries must explicitly use `IgnoreQueryFilters()`.
-
----
-
-## 4. Operational Runbook Routing
-
-For all operational deployment configurations, refer to public documentation:
-
-- **Docker Compose Production Setup**: [`docs/public/documentation/readme/self-hosting/docker-compose.md`](../public/documentation/readme/self-hosting/docker-compose.md)
-- **Standalone Container Setup**: [`docs/public/documentation/readme/self-hosting/docker-standalone.md`](../public/documentation/readme/self-hosting/docker-standalone.md)
-- **Coolify, Cerbos & Traefik Setup**: [`docs/public/documentation/readme/self-hosting/coolify-cerbos-traefik.md`](../public/documentation/readme/self-hosting/coolify-cerbos-traefik.md)
-- **Deployment Sizing & Tiers**: [`docs/public/documentation/readme/self-hosting/deployment-tiers.md`](../public/documentation/readme/self-hosting/deployment-tiers.md)
-- **Backups & Disaster Recovery**: [`docs/public/documentation/readme/configuration-and-operations/backup-restore-upgrade.md`](../public/documentation/readme/configuration-and-operations/backup-restore-upgrade.md)
-- **Troubleshooting**: [`docs/public/documentation/readme/configuration-and-operations/troubleshooting-and-health.md`](../public/documentation/readme/configuration-and-operations/troubleshooting-and-health.md)
+* 📖 **[Deployment Tiers & Hardware Sizing](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/deployment-tiers)**
+* 📖 **[Docker Standalone Runbook](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/docker-standalone)**
+* 📖 **[Docker Compose Production Runbook](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/docker-compose)**
+* 📖 **[Coolify with Cerbos & Traefik](https://islamu.gitbook.io/islamu-event/documentation/readme/self-hosting/coolify-cerbos-traefik)**
+* 📖 **[Environment Variables Reference](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/environment-variables)**
+* 📖 **[Secrets Management Guide](https://islamu.gitbook.io/islamu-event/documentation/readme/configuration-and-operations/secrets)**

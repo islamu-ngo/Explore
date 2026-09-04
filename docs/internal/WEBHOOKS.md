@@ -23,6 +23,38 @@ domain/application event
   -> Local, Svix, Composite, DryRun, or Disabled
 ```
 
+```mermaid
+flowchart TD
+    Event[Domain Event Occurs<br/>e.g. EventPublished, TicketMinted] --> Outbox[(Database Outbox)]
+    
+    Outbox --> Router{WEBHOOKS_PROVIDER}
+    
+    subgraph LocalMode["Mode: Local (In-Process)"]
+        Router -->|Local| Dispatcher[Built-in Webhook Dispatcher]
+        Dispatcher --> SSRF[SSRF Security Filter<br/>Blocks 127.0.0.1, RFC 1918, Cloud Metadata]
+        SSRF --> Sign[Sign HMAC-SHA256<br/>webhook-signature header]
+        Sign --> HTTPClient[Direct HTTP POST]
+        HTTPClient -->|Transient Failure| LocalBackoff[8-Step Exponential Backoff with Jitter]
+        LocalBackoff --> Dispatcher
+    end
+
+    subgraph SvixMode["Mode: Svix (Enterprise Dedicated)"]
+        Router -->|Svix| SvixClient[Svix API Client Bridge]
+        SvixClient --> SvixServer[Svix Server Container v1.96.1]
+        SvixServer --> SvixDB[(Dedicated PostgreSQL)]
+        SvixServer --> SvixQueue[(Dedicated Redis)]
+        SvixServer --> ExternalWorkers[Svix Distributed Workers]
+    end
+
+    HTTPClient --> Subscriber[Subscriber Webhook Endpoint]
+    ExternalWorkers --> Subscriber
+
+    classDef local fill:#eff6ff,stroke:#3b82f6,stroke-width:2px;
+    classDef svix fill:#faf5ff,stroke:#a855f7,stroke-width:2px;
+    class LocalMode local;
+    class SvixMode svix;
+```
+
 ISLAMU owns the canonical event catalog and `webhook_messages` ledger even when Svix performs final delivery. That keeps audit, provider switching, payload retention, and local fallback under the application boundary.
 
 Incoming registration-provider callbacks are not outgoing webhooks. `POST /api/integrations/registration/{provider}/{bindingId}/callback` reuses the incoming-webhook message/effect ledger with effect kind `registration.provider_submission`, acknowledges non-oversize deliveries with `202 Accepted`, and parks unverifiable or unsafe evidence for organizer reconciliation. Outgoing `Webhooks:*` mode does not enable, disable, or authenticate that callback route.

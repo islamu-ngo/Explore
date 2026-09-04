@@ -302,6 +302,20 @@ Any future refund implementation must:
 5. document deployment-specific responsibility without deriving legal conclusions from the charge profile; and
 6. prove webhook, retry, duplicate-delivery, insufficient-balance, and restore behavior before activation.
 
+```mermaid
+stateDiagram-v2
+    [*] --> Paid: Webhook Confirmed
+    Paid --> RefundRequested: Buyer requests refund via self-service portal
+    RefundRequested --> OrganizerApproved: Organizer approves in Studio Console
+    RefundRequested --> Rejected: Organizer rejects with reason code
+    Rejected --> Paid: Order remains active
+    OrganizerApproved --> StripeInitiated: API calls Stripe Refund API
+    StripeInitiated --> Refunded: Signed charge.refunded webhook confirmed
+    StripeInitiated --> RefundFailed: Stripe processing error
+    RefundFailed --> OrganizerApproved: Retry refund dispatch
+    Refunded --> [*]: Admission tickets invalidated
+```
+
 ---
 
 ## Fair Return Replacement Settlement

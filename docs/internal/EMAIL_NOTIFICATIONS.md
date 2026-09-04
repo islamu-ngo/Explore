@@ -19,6 +19,33 @@ Channel policy is fixed: registration and critical event changes use required in
 
 The provider-handoff transition is the suppression fence. Consent, preference, cancellation, and supersession can stop work before it; after it, SMTP/persistence uncertainty is `Unknown`, not an automatic retry or a claim that an in-flight message was recalled. Sent/skipped content redacts after 180 days, unresolved replay material waits for operator resolution, and redacted work is never replayable.
 
+```mermaid
+flowchart TD
+    subgraph Core["Core Business Transaction"]
+        Cmd[Business Command<br/>e.g. RegisterAttendeeCommand] --> DBTx[(PostgreSQL / SQLite<br/>Atomic Database Transaction)]
+        DBTx --> State[Entity State Updated<br/>Order / Admission Minted]
+        DBTx --> OutboxRow[EmailDispatchOutbox Row Inserted<br/>Status: Pending]
+    end
+
+    subgraph Worker["Asynchronous Dispatch Engine"]
+        Poller[EmailDispatchWorker Poller] -->|Fetch Pending Rows| OutboxRow
+        Poller --> Context[Resolve Tenant Branding & Sender Headers]
+        Context --> SMTPConnect[Connect to SMTP Relay via MailKit]
+        
+        SMTPConnect -->|Success 250 OK| Dispatched[Mark Row: Dispatched<br/>Record Timestamp]
+        
+        SMTPConnect -->|Transient Failure<br/>Timeout / Rate-Limit| RetryCheck{Retry Count < Max?}
+        RetryCheck -->|Yes| Backoff[Exponential Backoff with Jitter<br/>Schedule Next Attempt]
+        Backoff --> OutboxRow
+        RetryCheck -->|No| DeadLetter[Mark Row: DeadLetter<br/>Emit OpenTelemetry Alert]
+    end
+
+    classDef core fill:#eef2ff,stroke:#6366f1,stroke-width:2px;
+    classDef engine fill:#f0fdf4,stroke:#22c55e,stroke-width:2px;
+    class Core core;
+    class Worker engine;
+```
+
 ## What Is Implemented
 
 | Area | Implemented Behavior |

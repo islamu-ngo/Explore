@@ -22,6 +22,11 @@ ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET a
 
 Use this page when you have a symptom. For planned work, installation, backup, restore, upgrade, or rollback procedures, use the linked runbooks instead of copying procedures into this file.
 
+> [!IMPORTANT]
+> **Production & Self-Hosting Operational Triage:**
+> For Docker Compose, standalone containers, Traefik, Keycloak deployment, storage S3/MinIO, and reverse proxy troubleshooting, consult the authoritative **[Troubleshooting & Health Guide (Public Documentation)](../public/documentation/readme/configuration-and-operations/troubleshooting-and-health.md)**.
+> This internal document is strictly scoped to C# development, EF Core migrations, MediatR pipeline debugging, and test suite execution.
+
 ## Paid Checkout Is Not Offered
 
 1. Confirm the order HAL contains both `payment-acceptance` and `start-payment`; do not bypass a missing relation.

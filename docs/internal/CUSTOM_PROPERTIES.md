@@ -258,6 +258,46 @@ runtime table instead.
 
 ## Definition Lifecycle
 
+```mermaid
+flowchart TD
+    subgraph Authoring["1. Property Definition"]
+        Def[Organizer / Admin creates Property<br/>e.g. Dietary Needs, Prayer Space]
+        Type[Assign Value Type<br/>Text, Number, Single/Multi-Select, File]
+        Ceiling[Set Exposure Ceiling<br/>Public | Private | System]
+        Def --> Type --> Ceiling
+    end
+
+    subgraph Intake["2. Registration Intake"]
+        Form[Attendee Registration Form] --> Submit[Attendee Submits Answer]
+        Submit --> Validate[Server Validates Type & Bounds]
+        Validate --> Store[(Encrypted Relational Storage)]
+    end
+
+    subgraph Enforcement["3. Read Access Gating"]
+        Store --> ReadCheck{Caller Identity & Exposure Ceiling}
+        ReadCheck -->|Public| PubView[Public Event / Attendee Directory]
+        ReadCheck -->|Private| OrgView[Organizer Management Console / Export]
+        ReadCheck -->|System| SysView[Background Workers & Audit Logs Only]
+    end
+
+    subgraph Lifecycle["4. Retirement vs. GDPR Purge"]
+        Retire[Retire Field] -->|Soft-Delete| PreserveHistorical[Preserve Past Answers for Audits<br/>Block on New Registrations]
+        GDPR[GDPR Erasure Request] -->|Hard-Purge| Scrub[Purge Field Values<br/>Anti-Resurrection Tombstone Recorded]
+    end
+
+    Ceiling --> Form
+    Store --> Lifecycle
+
+    classDef author fill:#f8fafc,stroke:#64748b,stroke-width:2px;
+    classDef intake fill:#f0fdf4,stroke:#22c55e,stroke-width:2px;
+    classDef gate fill:#eff6ff,stroke:#3b82f6,stroke-width:2px;
+    classDef purge fill:#fef2f2,stroke:#ef4444,stroke-width:2px;
+    class Authoring author;
+    class Intake intake;
+    class Enforcement gate;
+    class Lifecycle purge;
+```
+
 Layer 3 definitions have two deletion paths:
 
 1. Normal delete is retirement. It deactivates and soft-deletes the definition,

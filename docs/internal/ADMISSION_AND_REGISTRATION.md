@@ -193,6 +193,36 @@ sequenceDiagram
 | Undo | Authorized action, exact active check-in fact, and closed reason code | A compensating append-only undo fact linked to that check-in; no prior fact is deleted | Corrected admission state with preserved history and no operator prose. |
 | Revocation or expiry | Server-side capability and credential lifecycle facts | Scope or credential becomes unusable immediately | Generic rejection; detailed fixed reason remains internal. |
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Attendee
+    actor Volunteer as Gate Volunteer
+    participant App as Check-In App (PWA)
+    participant API as Platform API
+    participant DB as PostgreSQL
+
+    Attendee->>Volunteer: Present Digital Ticket / QR Code
+    Volunteer->>App: Scan QR Code with Device Camera
+    App->>API: POST /api/events/{id}/admissions/check-in { token }
+    
+    API->>API: Compute versioned HMAC-SHA-256 digest of presented token
+    API->>DB: Query Admission by Digest & Event ID
+
+    alt Ticket Not Found or Event Mismatch
+        API-->>App: 404 Not Found / 400 Bad Request ("Invalid Entry Pass")
+        App-->>Volunteer: Red Screen: Access Denied
+    else Already Checked In (Duplicate Entry Attempt)
+        API-->>App: 409 Conflict ("Already Checked In at 14:02 by Gate 1")
+        App-->>Volunteer: Yellow Screen: Duplicate Scan Warning
+    else Valid & Unused Admission
+        API->>DB: Atomic Update: Mark Status CheckedIn + Record Timestamp & Volunteer ID
+        API-->>App: 200 OK (Includes attendee name & HAL affordances)
+        Note over App: App inspects _links: renders green success + "Undo" button
+        App-->>Volunteer: Green Screen: Access Granted!
+    end
+```
+
 `AdmissionTarget` also owns a durable `Active`/`Stopped` operational status. Authorized stop and
 restore commands update that state under the target concurrency token and append a bounded
 PII-free operator audit fact in the same transaction. Check-in rules and scanner-capability

@@ -52,6 +52,7 @@ This directory is the engineering brain for core maintainers and AI coding agent
 - **[Domain Model](internal/DOMAIN.md)**: Aggregate roots, entities, invariants, and state machines.
 - **[API Contract & HAL Rules](internal/API.md)**: RFC 9457 ProblemDetails, HAL link affordances, output caching, and versioning.
 - **[Configuration & Manifests](internal/CONFIGURATION.md)**: Complete binding paths, schema types, fallback hierarchy, and manifest specifications.
+- **[Hosting Architecture](internal/HOSTING_ARCHITECTURE.md)**: Composition roots (Explore.API, Explore.Blazor, Event.Standalone), startup lifecycle phases, and provider abstraction.
 - **[Operations & Verification](internal/OPERATIONS.md)**: Build, test, CI/CD runbooks, Aspire local hosting, and diagnostic tooling.
 - **[Architecture Decision Records (ADRs)](internal/adr/)**: Permanent record of architectural choices and tradeoffs.
 
