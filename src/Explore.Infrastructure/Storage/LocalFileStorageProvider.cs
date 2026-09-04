@@ -33,33 +33,33 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
     public string Provider => StorageProviders.Local;
 
     public async Task<FileStorageWriteResult> WriteAsync(
-        FileStorageWriteInput request,
+        FileStorageWriteInput input,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(request.Content);
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(input.Content);
 
-        if (!request.Content.CanRead)
+        if (!input.Content.CanRead)
         {
-            throw new ArgumentException("Storage write content stream must be readable.", nameof(request));
+            throw new ArgumentException("Storage write content stream must be readable.", nameof(input));
         }
 
-        if (request.TenantId == Guid.Empty)
+        if (input.TenantId == Guid.Empty)
         {
-            throw new ArgumentException("A tenant id is required for local storage writes.", nameof(request));
+            throw new ArgumentException("A tenant id is required for local storage writes.", nameof(input));
         }
 
-        if (string.IsNullOrWhiteSpace(request.ContentType))
+        if (string.IsNullOrWhiteSpace(input.ContentType))
         {
-            throw new ArgumentException("A content type is required for local storage writes.", nameof(request));
+            throw new ArgumentException("A content type is required for local storage writes.", nameof(input));
         }
 
-        if (request.ExpectedSizeBytes is < 0 || request.MaxSizeBytes is < 0)
+        if (input.ExpectedSizeBytes is < 0 || input.MaxSizeBytes is < 0)
         {
-            throw new ArgumentException("Storage write byte limits cannot be negative.", nameof(request));
+            throw new ArgumentException("Storage write byte limits cannot be negative.", nameof(input));
         }
 
-        var objectKey = ResolveWriteObjectKey(request.TenantId, request.Extension, request.ObjectKey);
+        var objectKey = ResolveWriteObjectKey(input.TenantId, input.Extension, input.ObjectKey);
         var finalPath = ResolveObjectPath(objectKey);
         var directory = Path.GetDirectoryName(finalPath)
             ?? throw new InvalidOperationException("Unable to resolve storage object directory.");
@@ -84,14 +84,14 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
 
             while (true)
             {
-                var bytesRead = await request.Content.ReadAsync(buffer, cancellationToken);
+                var bytesRead = await input.Content.ReadAsync(buffer, cancellationToken);
                 if (bytesRead == 0)
                 {
                     break;
                 }
 
                 bytesWritten += bytesRead;
-                if (request.MaxSizeBytes is { } maxSizeBytes && bytesWritten > maxSizeBytes)
+                if (input.MaxSizeBytes is { } maxSizeBytes && bytesWritten > maxSizeBytes)
                 {
                     throw new InvalidOperationException("Local storage write exceeded the requested byte limit.");
                 }
@@ -101,7 +101,7 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
             }
 
             _ = sha256.TransformFinalBlock([], 0, 0);
-            if (request.ExpectedSizeBytes is { } expectedSizeBytes && bytesWritten != expectedSizeBytes)
+            if (input.ExpectedSizeBytes is { } expectedSizeBytes && bytesWritten != expectedSizeBytes)
             {
                 throw new InvalidOperationException("Local storage write did not match the expected byte count.");
             }
@@ -114,7 +114,7 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
                 Provider,
                 objectKey,
                 bytesWritten,
-                request.ContentType,
+                input.ContentType,
                 Convert.ToHexString(sha256.Hash!).ToLowerInvariant());
         }
         catch
@@ -129,27 +129,27 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
     }
 
     public Task<bool> ExistsAsync(
-        FileStorageExistsInput request,
+        FileStorageExistsInput input,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(input);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var path = ResolveObjectPath(request.ObjectKey);
+        var path = ResolveObjectPath(input.ObjectKey);
         return Task.FromResult(File.Exists(path));
     }
 
     public Task<FileStorageReadResult> OpenReadAsync(
-        FileStorageReadInput request,
+        FileStorageReadInput input,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(input);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var path = ResolveObjectPath(request.ObjectKey);
+        var path = ResolveObjectPath(input.ObjectKey);
         if (!File.Exists(path))
         {
-            throw new FileNotFoundException("Stored file was not found.", request.ObjectKey);
+            throw new FileNotFoundException("Stored file was not found.", input.ObjectKey);
         }
 
         var fileInfo = new FileInfo(path);
@@ -163,19 +163,19 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
 
         return Task.FromResult(new FileStorageReadResult(
             stream,
-            string.IsNullOrWhiteSpace(request.ContentType) ? "application/octet-stream" : request.ContentType,
+            string.IsNullOrWhiteSpace(input.ContentType) ? "application/octet-stream" : input.ContentType,
             fileInfo.Length,
             fileInfo.LastWriteTimeUtc));
     }
 
     public Task<FileStorageDeleteResult> DeleteAsync(
-        FileStorageDeleteInput request,
+        FileStorageDeleteInput input,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(input);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var path = ResolveObjectPath(request.ObjectKey);
+        var path = ResolveObjectPath(input.ObjectKey);
         var deleted = false;
 
         if (File.Exists(path))
@@ -184,7 +184,7 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
             deleted = true;
         }
 
-        return Task.FromResult(new FileStorageDeleteResult(Provider, request.ObjectKey, deleted));
+        return Task.FromResult(new FileStorageDeleteResult(Provider, input.ObjectKey, deleted));
     }
 
     public async Task<FileStorageProviderStatus> TestAsync(
@@ -274,36 +274,36 @@ public sealed class LocalFileStorageProvider : IFileStorageInventoryProvider
     }
 
     public Task<FileStorageQuarantineResult> QuarantineAsync(
-        FileStorageQuarantineInput request,
+        FileStorageQuarantineInput input,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(input);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.IsNullOrWhiteSpace(request.Reason))
+        if (string.IsNullOrWhiteSpace(input.Reason))
         {
-            throw new ArgumentException("A quarantine reason is required.", nameof(request));
+            throw new ArgumentException("A quarantine reason is required.", nameof(input));
         }
 
-        var sourcePath = ResolveObjectPath(request.ObjectKey);
+        var sourcePath = ResolveObjectPath(input.ObjectKey);
         if (!File.Exists(sourcePath))
         {
-            return Task.FromResult(new FileStorageQuarantineResult(Provider, request.ObjectKey, Quarantined: false));
+            return Task.FromResult(new FileStorageQuarantineResult(Provider, input.ObjectKey, Quarantined: false));
         }
 
         var root = ResolveRootPath();
         var quarantinePath = Path.Combine(
             root,
             QuarantineDirectoryName,
-            request.UtcNow.ToString("yyyyMMdd", CultureInfo.InvariantCulture),
-            $"{HashObjectKey(request.ObjectKey)}-{Path.GetFileName(sourcePath)}");
+            input.UtcNow.ToString("yyyyMMdd", CultureInfo.InvariantCulture),
+            $"{HashObjectKey(input.ObjectKey)}-{Path.GetFileName(sourcePath)}");
 
         Directory.CreateDirectory(Path.GetDirectoryName(quarantinePath)
             ?? throw new InvalidOperationException("Unable to resolve quarantine directory."));
 
         File.Move(sourcePath, quarantinePath, overwrite: false);
 
-        return Task.FromResult(new FileStorageQuarantineResult(Provider, request.ObjectKey, Quarantined: true));
+        return Task.FromResult(new FileStorageQuarantineResult(Provider, input.ObjectKey, Quarantined: true));
     }
 
     internal string ResolveObjectPath(string objectKey)
