@@ -31,4 +31,9 @@ public interface IDynamicAuthSchemeManager
     /// Does not include the Cookie scheme (always registered).
     /// </summary>
     Task<IReadOnlyList<string>> GetRegisteredProviderSchemesAsync();
+
+    /// <summary>
+    /// Returns the active primary provider boundary code: local, keycloak, or atproto.
+    /// </summary>
+    string GetActivePrimaryProvider();
 }

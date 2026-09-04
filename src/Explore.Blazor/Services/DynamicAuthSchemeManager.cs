@@ -31,6 +31,8 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     // Tracks the last-known Keycloak client secret so it can be preserved
     // when ApplyConfiguration is called without secrets (includeSecrets: false).
     private string? _currentKeycloakSecret;
+    private readonly string? _deploymentPrimaryProvider;
+    private string _activePrimaryProvider;
 
     public DynamicAuthSchemeManager(
         IAuthenticationSchemeProvider schemeProvider,
@@ -48,6 +50,9 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         _dataProtection = dataProtection;
         _oidcOptionsFactory = oidcOptionsFactory;
         _logger = logger;
+        _deploymentPrimaryProvider = ResolveDeploymentPrimaryProvider(
+            configuration["Authentication:Provider"]);
+        _activePrimaryProvider = _deploymentPrimaryProvider ?? "local";
     }
 
     public async Task InitializeAsync()
@@ -67,6 +72,11 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
 
             if (!string.IsNullOrEmpty(envAuthority) && !string.IsNullOrEmpty(envClientId))
             {
+                if (_deploymentPrimaryProvider is null)
+                {
+                    _activePrimaryProvider = "keycloak";
+                }
+
                 _logger.LogInformation(
                     "Keycloak config detected in environment variables — registering Keycloak scheme from env " +
                     "(authority={Authority}, clientId={ClientId}, hasSecret={HasSecret})",
@@ -83,10 +93,26 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                 RegisterKeycloakScheme(envAuthority, envClientId, envClientSecret, envMetadataAddress);
             }
 
-            if (!string.IsNullOrEmpty(envGoogleClientId))
+            if (!string.IsNullOrEmpty(envGoogleClientId)
+                && !string.Equals(
+                    _activePrimaryProvider,
+                    "atproto",
+                    StringComparison.Ordinal))
             {
                 _logger.LogInformation("Google config detected in environment/configuration — registering Google scheme from env");
                 RegisterGoogleScheme(envGoogleClientId, envGoogleClientSecret);
+            }
+
+            if (string.Equals(
+                    _activePrimaryProvider,
+                    "atproto",
+                    StringComparison.Ordinal)
+                || _configuration.GetValue<bool>(
+                    "Authentication:AtprotoLoginEnabled"))
+            {
+                RegisterAtprotoScheme(
+                    _configuration["Atproto:PublicUrl"]
+                    ?? string.Empty);
             }
 
             // 2. Read DB configuration via API (may override or add providers).
@@ -151,6 +177,9 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         return Task.FromResult<IReadOnlyList<string>>(SnapshotRegisteredSchemes().AsReadOnly());
     }
 
+    public string GetActivePrimaryProvider() =>
+        Volatile.Read(ref _activePrimaryProvider);
+
     private List<string> SnapshotRegisteredSchemes()
     {
         lock (_registeredSchemesSync)
@@ -182,10 +211,22 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
 
     private void ApplyConfiguration(AuthProviderConfigurationDto config)
     {
-        // Keycloak: register if enabled and has credentials (env vars may already have registered it)
-        if (config.KeycloakEnabled == true &&
-            !string.IsNullOrEmpty(config.KeycloakAuthority) &&
-            !string.IsNullOrEmpty(config.KeycloakClientId))
+        if (_deploymentPrimaryProvider is null)
+        {
+            _activePrimaryProvider = config.PrimaryProviderId switch
+            {
+                1 => "keycloak",
+                2 => "atproto",
+                4 or null => "local",
+                _ => throw new InvalidOperationException(
+                    "The API returned an unsupported primary authentication provider.")
+            };
+        }
+
+        // Keep configured Keycloak validation/refresh metadata registered even when Local
+        // becomes the primary provider. Provider discovery gates new login challenges.
+        if (!string.IsNullOrEmpty(config.KeycloakAuthority)
+            && !string.IsNullOrEmpty(config.KeycloakClientId))
         {
             if (!_registeredSchemes.Contains(AuthSchemeNames.Keycloak))
             {
@@ -209,21 +250,6 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                     effectiveSecret);
             }
         }
-        else if (config.KeycloakEnabled != true && _registeredSchemes.Contains(AuthSchemeNames.Keycloak))
-        {
-            // Only remove if NOT configured via env vars (env vars take priority)
-            var envAuthority = _configuration["Keycloak:Authority"];
-            if (string.IsNullOrEmpty(envAuthority))
-            {
-                RemoveScheme(AuthSchemeNames.Keycloak);
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "Keycloak is disabled in DB settings but configured via environment variables — keeping scheme registered");
-            }
-        }
-
         // Google: register if enabled and has credentials
         if (config.GoogleSsoEnabled == true && !string.IsNullOrEmpty(config.GoogleClientId))
         {
@@ -252,7 +278,11 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         }
 
         // ATProto: register handler if enabled (no OIDC — custom handler)
-        if (config.AtprotoLoginEnabled == true)
+        if (config.AtprotoLoginEnabled == true
+            || string.Equals(
+                _activePrimaryProvider,
+                "atproto",
+                StringComparison.Ordinal))
         {
             if (!_registeredSchemes.Contains(AuthSchemeNames.Atproto))
             {
@@ -263,6 +293,18 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         {
             RemoveScheme(AuthSchemeNames.Atproto);
         }
+    }
+
+    private static string? ResolveDeploymentPrimaryProvider(string? configured)
+    {
+        string? provider = configured?.Trim().ToLowerInvariant();
+        return provider switch
+        {
+            null or "" => null,
+            "local" or "keycloak" or "atproto" => provider,
+            _ => throw new InvalidOperationException(
+                "Authentication:Provider must be blank, 'local', 'keycloak', or 'atproto'.")
+        };
     }
 
     private void RegisterKeycloakScheme(

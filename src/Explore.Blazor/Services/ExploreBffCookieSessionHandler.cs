@@ -2,6 +2,7 @@
 // ABOUTME: Handles admin-claim enrichment, setup-aware redirects, and circuit token cleanup outside Event.Web.BffHosting.
 
 using System.Security.Claims;
+using System.Diagnostics.CodeAnalysis;
 using Event.Web.BffHosting.Authentication;
 using Event.Web.BffHosting.Security;
 using Microsoft.AspNetCore.Authentication;
@@ -84,6 +85,7 @@ public sealed class ExploreBffCookieSessionHandler(
         principal.AddIdentity(new ClaimsIdentity([new Claim("auth_provider", provider)]));
     }
 
+    [DoesNotReturn]
     private static void AbortConfiguredSignIn() =>
         throw new InvalidOperationException(
             "Configured administrator sign-in did not establish synchronized authority.");

@@ -7,6 +7,8 @@ using Event.Web.BffHosting.Authentication;
 using Explore.Atproto.Transport;
 using Explore.Blazor.Authentication;
 using Explore.Blazor.Constants;
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Models;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
 using Microsoft.AspNetCore.Authentication;
@@ -60,6 +62,16 @@ public static class BffAuthEndpoints
 
         app.MapGet("/auth/providers", HandleGetProviders);
 
+        app.MapPost("/bff/auth/local/login", HandleLocalLoginAsync)
+            .ValidateAntiforgery()
+            .RequireRateLimiting(RateLimitingExtensions.LocalAuthenticationPolicy)
+            .ExcludeFromDescription();
+
+        app.MapPost("/bff/auth/local/register", HandleLocalRegistrationAsync)
+            .ValidateAntiforgery()
+            .RequireRateLimiting(RateLimitingExtensions.LocalAuthenticationPolicy)
+            .ExcludeFromDescription();
+
         app.MapPost("/bff/auth/refresh-schemes", HandleRefreshSchemesAsync)
             .ValidateAntiforgery()
             .ExcludeFromDescription();
@@ -104,6 +116,32 @@ public static class BffAuthEndpoints
         }
 
         // Resolve which auth scheme to challenge
+        var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
+        string activePrimaryProvider = schemeManager.GetActivePrimaryProvider();
+        if (onboardingAdmission == AuthOnboardingAdmission.AllowCompleted
+            && string.Equals(
+                activePrimaryProvider,
+                "atproto",
+                StringComparison.Ordinal)
+            && !string.Equals(
+                provider,
+                "atproto",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Response.Redirect(
+                returnUrlService.BuildLoginRedirectUrl(
+                    returnUrl,
+                    "atproto"));
+            return;
+        }
+        if (onboardingAdmission == AuthOnboardingAdmission.AllowCompleted
+            && string.Equals(provider, "keycloak", StringComparison.OrdinalIgnoreCase)
+            && activePrimaryProvider != "keycloak")
+        {
+            ctx.Response.Redirect(returnUrlService.BuildLoginRedirectUrl(returnUrl));
+            return;
+        }
+
         var providerReadiness = ctx.RequestServices.GetRequiredService<IBffProviderReadinessService>();
         var schemeName = providerReadiness.ResolveProviderScheme(provider);
         if (string.Equals(schemeName, AuthSchemeNames.Atproto, StringComparison.Ordinal))
@@ -122,12 +160,23 @@ public static class BffAuthEndpoints
         else
         {
             // No provider specified — try to find a single registered provider
-            var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
             var registered = await schemeManager.GetRegisteredProviderSchemesAsync();
             var readySchemes = new List<string>();
 
             foreach (var registeredScheme in registered)
             {
+                if (activePrimaryProvider == "atproto"
+                    && registeredScheme != AuthSchemeNames.Atproto)
+                {
+                    continue;
+                }
+
+                if (registeredScheme == AuthSchemeNames.Keycloak
+                    && activePrimaryProvider != "keycloak")
+                {
+                    continue;
+                }
+
                 if (await providerReadiness.IsProviderReadyAsync(registeredScheme, ctx.RequestAborted))
                 {
                     readySchemes.Add(registeredScheme);
@@ -187,7 +236,8 @@ public static class BffAuthEndpoints
             ctx,
             "Atproto",
             isChallengeEndpoint: true);
-        if (onboardingAdmission != AuthOnboardingAdmission.Allow)
+        if (onboardingAdmission is not AuthOnboardingAdmission.AllowCompleted
+            and not AuthOnboardingAdmission.AllowDuringSetup)
         {
             return onboardingAdmission == AuthOnboardingAdmission.Unavailable
                 ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable)
@@ -502,13 +552,13 @@ public static class BffAuthEndpoints
         var status = await statusProvider.GetStatusAsync(ctx.RequestAborted);
         return status.Disposition switch
         {
-            BffOnboardingDisposition.Completed => AuthOnboardingAdmission.Allow,
+            BffOnboardingDisposition.Completed => AuthOnboardingAdmission.AllowCompleted,
             BffOnboardingDisposition.InteractivePending => HasTrustedSetupSecret(ctx)
-                ? AuthOnboardingAdmission.Allow
+                ? AuthOnboardingAdmission.AllowDuringSetup
                 : AuthOnboardingAdmission.RedirectSetup,
             BffOnboardingDisposition.ConfiguredAdministratorPending =>
                 isChallengeEndpoint && status.AllowsProvider(provider)
-                    ? AuthOnboardingAdmission.Allow
+                    ? AuthOnboardingAdmission.AllowDuringSetup
                     : AuthOnboardingAdmission.Deny,
             BffOnboardingDisposition.Closed => AuthOnboardingAdmission.Unavailable,
             _ => AuthOnboardingAdmission.Unavailable
@@ -523,7 +573,8 @@ public static class BffAuthEndpoints
     {
         switch (admission)
         {
-            case AuthOnboardingAdmission.Allow:
+            case AuthOnboardingAdmission.AllowCompleted:
+            case AuthOnboardingAdmission.AllowDuringSetup:
                 return true;
             case AuthOnboardingAdmission.RedirectSetup:
                 logger.LogInformation(
@@ -551,7 +602,8 @@ public static class BffAuthEndpoints
 
     private enum AuthOnboardingAdmission
     {
-        Allow,
+        AllowCompleted,
+        AllowDuringSetup,
         RedirectSetup,
         Deny,
         Unavailable
@@ -665,6 +717,227 @@ public static class BffAuthEndpoints
         return await refreshService.RefreshSessionAsync(ctx, cancellationToken);
     }
 
+    private static async Task<IResult> HandleLocalLoginAsync(
+        HttpContext ctx,
+        LocalBffLoginRequest request,
+        ILocalAuthClient client,
+        IDynamicAuthSchemeManager schemeManager,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(
+                schemeManager.GetActivePrimaryProvider(),
+                "local",
+                StringComparison.Ordinal))
+        {
+            return LocalAuthenticationFailure(
+                StatusCodes.Status409Conflict);
+        }
+
+        var initialStatus = await ctx.RequestServices
+            .GetRequiredService<IBffOnboardingStatusProvider>()
+            .GetStatusAsync(cancellationToken);
+        if (!AllowsLocalAuthentication(initialStatus))
+        {
+            return LocalAuthenticationFailure(StatusCodes.Status409Conflict);
+        }
+
+        try
+        {
+            LocalAuthResponseDto response = await client.LoginLocalIdentityAsync(
+                new LocalAuthRequestDto
+                {
+                    Email = request.Email,
+                    Password = request.Password
+                },
+                cancellationToken: cancellationToken);
+            return await CompleteLocalSignInAsync(
+                ctx,
+                response,
+                request.IsPersistent,
+                request.ReturnUrl,
+                initialStatus);
+        }
+        catch (ApiException exception)
+        {
+            return LocalAuthenticationFailure(exception.StatusCode);
+        }
+    }
+
+    private static async Task<IResult> HandleLocalRegistrationAsync(
+        HttpContext ctx,
+        LocalBffRegistrationRequest request,
+        ILocalAuthClient client,
+        IDynamicAuthSchemeManager schemeManager,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(
+                schemeManager.GetActivePrimaryProvider(),
+                "local",
+                StringComparison.Ordinal))
+        {
+            return LocalAuthenticationFailure(
+                StatusCodes.Status409Conflict);
+        }
+
+        var initialStatus = await ctx.RequestServices
+            .GetRequiredService<IBffOnboardingStatusProvider>()
+            .GetStatusAsync(cancellationToken);
+        if (!AllowsLocalAuthentication(initialStatus))
+        {
+            return LocalAuthenticationFailure(StatusCodes.Status409Conflict);
+        }
+
+        try
+        {
+            LocalRegistrationResponseDto response =
+                await client.RegisterLocalIdentityAsync(
+                    new LocalRegistrationRequestDto
+                    {
+                        Email = request.Email,
+                        Password = request.Password,
+                        FirstName = request.FirstName,
+                        LastName = request.LastName
+                    },
+                    cancellationToken: cancellationToken);
+            if (response.Success != true || response.Authentication is null)
+            {
+                return LocalAuthenticationFailure(StatusCodes.Status400BadRequest);
+            }
+
+            return await CompleteLocalSignInAsync(
+                ctx,
+                response.Authentication,
+                request.IsPersistent,
+                request.ReturnUrl,
+                initialStatus);
+        }
+        catch (ApiException exception)
+        {
+            return LocalAuthenticationFailure(exception.StatusCode);
+        }
+    }
+
+    private static async Task<IResult> CompleteLocalSignInAsync(
+        HttpContext ctx,
+        LocalAuthResponseDto response,
+        bool isPersistent,
+        string? returnUrl,
+        BffOnboardingStatus initialStatus)
+    {
+        if (response.Success != true
+            || response.UserId is not { } userId
+            || userId == Guid.Empty
+            || string.IsNullOrWhiteSpace(response.Token)
+            || response.ExpiresAt is not { } expiresAt)
+        {
+            return LocalAuthenticationFailure(StatusCodes.Status401Unauthorized);
+        }
+
+        var claims = new List<Claim>
+        {
+            new("sub", userId.ToString("D")),
+            new(ClaimTypes.NameIdentifier, userId.ToString("D")),
+            new("internal_user_id", userId.ToString("D")),
+            new(ClaimTypes.Name, response.Email ?? userId.ToString("D")),
+            new(ClaimTypes.Email, response.Email ?? string.Empty),
+            new("given_name", response.FirstName ?? string.Empty),
+            new("family_name", response.LastName ?? string.Empty),
+            new("email_verified", response.EmailVerified == true ? "true" : "false"),
+            new("auth_provider", "local"),
+            new("sid", Guid.CreateVersion7().ToString("D"))
+        };
+        claims.AddRange((response.Roles ?? [])
+            .Where(role => !string.IsNullOrWhiteSpace(role))
+            .Select(role => new Claim(ClaimTypes.Role, role)));
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            claims,
+            "LocalIdentity",
+            ClaimTypes.Name,
+            ClaimTypes.Role));
+        string safeReturnUrl = ResolveLocalReturnUrl(returnUrl);
+        var properties = new AuthenticationProperties
+        {
+            AllowRefresh = false,
+            IsPersistent = isPersistent,
+            ExpiresUtc = expiresAt,
+            RedirectUri = safeReturnUrl
+        };
+        properties.Items[
+            EventBffAuthenticationConstants.AuthenticationProviderPropertyKey] = "local";
+        properties.StoreTokens([
+            new AuthenticationToken { Name = "access_token", Value = response.Token },
+            new AuthenticationToken { Name = "expires_at", Value = expiresAt.ToString("O") },
+            new AuthenticationToken { Name = "token_type", Value = "Bearer" }
+        ]);
+        var statusProvider = ctx.RequestServices
+            .GetRequiredService<IBffOnboardingStatusProvider>();
+        statusProvider.Invalidate();
+        bool hasAdminAuthority = await ctx.RequestServices
+            .GetRequiredService<BffAdminClaimsTransformation>()
+            .EnrichPrincipalAsync(
+                principal,
+                properties,
+                forceRefresh: true,
+                synchronizeUser: false,
+                cancellationToken: ctx.RequestAborted);
+        BffOnboardingStatus refreshedStatus = await statusProvider
+            .GetStatusAsync(ctx.RequestAborted);
+        if (refreshedStatus.Disposition == BffOnboardingDisposition.Closed
+            || initialStatus.Disposition
+                == BffOnboardingDisposition.ConfiguredAdministratorPending
+            && (refreshedStatus.Disposition != BffOnboardingDisposition.Completed
+                || !hasAdminAuthority))
+        {
+            return LocalAuthenticationFailure(StatusCodes.Status403Forbidden);
+        }
+
+        ExploreBffCookieSessionHandler.MarkUserSynchronizationCompleted(properties);
+        await ctx.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            properties);
+        ctx.RequestServices.GetService<ICircuitAccessTokenService>()?
+            .SetToken(response.Token);
+        return Results.Ok(new { redirectUrl = safeReturnUrl });
+    }
+
+    private static IResult LocalAuthenticationFailure(int statusCode)
+    {
+        int safeStatus = statusCode is StatusCodes.Status400BadRequest
+            or StatusCodes.Status401Unauthorized
+            or StatusCodes.Status403Forbidden
+            or StatusCodes.Status409Conflict
+            or StatusCodes.Status429TooManyRequests
+            ? statusCode
+            : StatusCodes.Status503ServiceUnavailable;
+        return Results.Problem(
+            title: safeStatus == StatusCodes.Status401Unauthorized
+                ? "Authentication failed"
+                : "Local authentication unavailable",
+            detail: safeStatus == StatusCodes.Status401Unauthorized
+                ? "The submitted credentials are invalid."
+                : "The local authentication request could not be completed.",
+            statusCode: safeStatus);
+    }
+
+    private static bool AllowsLocalAuthentication(BffOnboardingStatus status) =>
+        status.Disposition != BffOnboardingDisposition.Closed
+        && (status.Disposition
+                != BffOnboardingDisposition.ConfiguredAdministratorPending
+            || status.AllowsProvider("local"));
+
+    private static string ResolveLocalReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl)
+            || !Uri.TryCreate(returnUrl, UriKind.Relative, out _)
+            || returnUrl.StartsWith("//", StringComparison.Ordinal))
+        {
+            return "/";
+        }
+
+        return returnUrl;
+    }
+
     private static async Task<IResult> HandleInternalRefreshSessionAsync(
         HttpContext ctx,
         CancellationToken cancellationToken)
@@ -718,9 +991,33 @@ public static class BffAuthEndpoints
             var keycloakFromEnv = !string.IsNullOrEmpty(config["Keycloak:Authority"]);
 
             var providers = new List<object>();
+            string primaryProvider = schemeManager.GetActivePrimaryProvider();
+            bool atprotoLoginEnabled = primaryProvider == "atproto";
+            if (primaryProvider == "local")
+            {
+                providers.Add(new
+                {
+                    name = "local",
+                    displayName = "Local Identity",
+                    type = "credentials",
+                    recommended = true
+                });
+            }
 
             foreach (var scheme in registered)
             {
+                if (primaryProvider == "atproto"
+                    && scheme != AuthSchemeNames.Atproto)
+                {
+                    continue;
+                }
+
+                if (scheme == AuthSchemeNames.Keycloak
+                    && primaryProvider != "keycloak")
+                {
+                    continue;
+                }
+
                 var ready = await providerReadiness.IsProviderReadyAsync(scheme, ctx.RequestAborted);
                 if (!ready)
                 {
@@ -756,8 +1053,12 @@ public static class BffAuthEndpoints
                         AuthSchemeNames.Atproto => "handle_input",
                         _ => "button"
                     },
-                    recommended = scheme == AuthSchemeNames.Keycloak && keycloakFromEnv
+                    recommended = primaryProvider == "atproto"
+                        ? scheme == AuthSchemeNames.Atproto
+                        : scheme == AuthSchemeNames.Keycloak
+                          && keycloakFromEnv
                 });
+                atprotoLoginEnabled |= scheme == AuthSchemeNames.Atproto;
             }
 
             logger.LogInformation(
@@ -765,7 +1066,12 @@ public static class BffAuthEndpoints
                 providers.Count);
 
             ctx.Response.ContentType = "application/json";
-            await ctx.Response.WriteAsJsonAsync(new { providers });
+            await ctx.Response.WriteAsJsonAsync(new
+            {
+                primaryProvider,
+                atprotoLoginEnabled,
+                providers
+            });
         }
         catch (Exception ex)
         {

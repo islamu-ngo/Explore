@@ -6,6 +6,7 @@ using Explore.Blazor.Extensions;
 using Explore.Blazor.Hosting;
 using Explore.Persistence;
 using Explore.Persistence.Database;
+using Explore.Persistence.Identity;
 using Explore.Persistence.Schema;
 using Explore.Secrets.Database;
 using Explore.Infrastructure.ConfigurationManifest;
@@ -42,6 +43,11 @@ if (primaryDatabase.Provider == PrimaryDatabaseProvider.Sqlite &&
     throw new InvalidOperationException(
         "Hosting:ReplicaCount must be 1 when Database:Provider=Sqlite. Event.Standalone local SQLite storage supports exactly one application replica.");
 }
+
+await ExternalIdentityDatabaseMigrator.MigrateIfExternalAsync(
+    app.Configuration,
+    app.Logger,
+    shutdownCts.Token);
 
 await using (var scope = app.Services.CreateAsyncScope())
 {

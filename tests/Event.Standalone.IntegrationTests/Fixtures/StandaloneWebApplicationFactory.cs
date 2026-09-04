@@ -195,6 +195,8 @@ public sealed class DynamicAuthInitializationProbe(IServiceScopeFactory scopeFac
 
     public Task<IReadOnlyList<string>> GetRegisteredProviderSchemesAsync() =>
         Task.FromResult<IReadOnlyList<string>>([]);
+
+    public string GetActivePrimaryProvider() => "local";
 }
 
 public sealed class ForwardedRequestProbe : IEventBffTenantHintProvider

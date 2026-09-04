@@ -16,6 +16,7 @@ public static class RateLimitingExtensions
 {
     public const string SetupSecretPolicy = "BffSetupSecret";
     public const string AtprotoAuthenticationPolicy = "BffAtprotoAuthentication";
+    public const string LocalAuthenticationPolicy = "BffLocalAuthentication";
     public const string RegistrationPaymentCheckoutIssuePolicy = "BffRegistrationPaymentCheckoutIssue";
     public const string TicketPurchaseAuthorityPolicy =
         "BffTicketPurchaseAuthority";
@@ -37,6 +38,8 @@ public static class RateLimitingExtensions
                 options.AddPolicy(SetupSecretPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(AtprotoAuthenticationPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(LocalAuthenticationPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(RegistrationPaymentCheckoutIssuePolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
@@ -61,6 +64,9 @@ public static class RateLimitingExtensions
         var atprotoSection = configuration.GetSection("RateLimiting:AtprotoAuthentication");
         var atprotoPermitLimit = Math.Clamp(atprotoSection.GetValue("PermitLimit", 10), 1, 1000);
         var atprotoWindowSeconds = Math.Clamp(atprotoSection.GetValue("WindowSeconds", 60), 1, 3600);
+        var localSection = configuration.GetSection("RateLimiting:LocalAuthentication");
+        var localPermitLimit = Math.Clamp(localSection.GetValue("PermitLimit", 10), 1, 100);
+        var localWindowSeconds = Math.Clamp(localSection.GetValue("WindowSeconds", 60), 1, 3600);
         var checkoutSection = configuration.GetSection("RateLimiting:RegistrationPaymentCheckoutIssue");
         var checkoutPermitLimit = Math.Clamp(checkoutSection.GetValue("PermitLimit", 10), 1, 100);
         var checkoutWindowSeconds = Math.Clamp(checkoutSection.GetValue("WindowSeconds", 60), 1, 3600);
@@ -147,6 +153,17 @@ public static class RateLimitingExtensions
                     {
                         PermitLimit = atprotoPermitLimit,
                         Window = TimeSpan.FromSeconds(atprotoWindowSeconds),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+            options.AddPolicy(LocalAuthenticationPolicy, httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    $"local-auth:ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = localPermitLimit,
+                        Window = TimeSpan.FromSeconds(localWindowSeconds),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0,
                         AutoReplenishment = true

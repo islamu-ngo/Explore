@@ -2,14 +2,21 @@
 // ABOUTME: Verifies auth provider failures and browser-supplied auth headers stay safe.
 
 using Explore.Blazor.IntegrationTests.Fixtures;
+using Explore.Blazor.Constants;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
+using Event.Web.BffHosting.Authentication;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
 
@@ -44,6 +51,129 @@ public sealed class BffAuthEndpointValidationTests
         await Assert.That(body).DoesNotContain("refresh_token");
         await Assert.That(body).DoesNotContain("secretLen");
         await Assert.That(body).DoesNotContain("islamu-event-blazor");
+    }
+
+    [Test]
+    public async Task RetainedKeycloakSchemeIsHiddenFromNewLoginWhenLocalIsPrimary()
+    {
+        using var factory = new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IDynamicAuthSchemeManager>();
+                services.AddSingleton<IDynamicAuthSchemeManager>(
+                    new RetainedKeycloakSchemeManager());
+                var readiness = Substitute.For<IBffProviderReadinessService>();
+                readiness.IsProviderReadyAsync(
+                        AuthSchemeNames.Keycloak,
+                        Arg.Any<CancellationToken>())
+                    .Returns(true);
+                readiness.MapSchemeToProviderQueryValue(AuthSchemeNames.Keycloak)
+                    .Returns("keycloak");
+                services.RemoveAll<IBffProviderReadinessService>();
+                services.AddSingleton(readiness);
+            });
+        });
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        using var providers = await client.GetAsync("/auth/providers");
+        string body = await providers.Content.ReadAsStringAsync();
+        using var challenge = await client.GetAsync(
+            "/auth/challenge?provider=keycloak&returnUrl=/dashboard");
+
+        await Assert.That(providers.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(body).Contains("\"primaryProvider\":\"local\"");
+        await Assert.That(body).Contains("\"name\":\"local\"");
+        await Assert.That(body).DoesNotContain("\"name\":\"keycloak\"");
+        await Assert.That(challenge.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+        await Assert.That(challenge.Headers.Location?.ToString()).Contains("/login");
+    }
+
+    [Test]
+    public async Task AtprotoPrimaryReturnsOnlyTheReadyAtprotoProvider()
+    {
+        using var factory = new BlazorBffWebApplicationFactory()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.RemoveAll<IDynamicAuthSchemeManager>();
+                    services.AddSingleton<IDynamicAuthSchemeManager>(
+                        new AtprotoPrimarySchemeManager());
+                    var readiness =
+                        Substitute.For<IBffProviderReadinessService>();
+                    readiness.IsProviderReadyAsync(
+                            Arg.Any<string>(),
+                            Arg.Any<CancellationToken>())
+                        .Returns(true);
+                    readiness.HasMinimalProviderConfig(
+                            Arg.Any<string>())
+                        .Returns(true);
+                    readiness.MapSchemeToProviderQueryValue(
+                            AuthSchemeNames.Atproto)
+                        .Returns("atproto");
+                    readiness.MapSchemeToProviderQueryValue(
+                            AuthSchemeNames.Keycloak)
+                        .Returns("keycloak");
+                    readiness.MapSchemeToProviderQueryValue(
+                            AuthSchemeNames.Google)
+                        .Returns("google");
+                    services.RemoveAll<IBffProviderReadinessService>();
+                    services.AddSingleton(readiness);
+                });
+            });
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false,
+                HandleCookies = true
+            });
+
+        using HttpResponseMessage response =
+            await client.GetAsync("/auth/providers");
+        string body = await response.Content.ReadAsStringAsync();
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert.That(body).Contains("\"primaryProvider\":\"atproto\"");
+        await Assert.That(body).Contains("\"name\":\"atproto\"");
+        await Assert.That(body).Contains("\"type\":\"handle_input\"");
+        await Assert.That(body).DoesNotContain("\"name\":\"local\"");
+        await Assert.That(body).DoesNotContain("\"name\":\"keycloak\"");
+        await Assert.That(body).DoesNotContain("\"name\":\"google\"");
+    }
+
+    [Test]
+    public async Task AtprotoDeploymentPrimaryRegistersSchemeBeforeApiConfigurationIsAvailable()
+    {
+        var schemes = new AuthenticationSchemeProvider(
+            Options.Create(new AuthenticationOptions()));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Authentication:Provider"] = "atproto",
+                ["Authentication:AtprotoLoginEnabled"] = "true",
+                ["Atproto:PublicUrl"] = "https://events.example.test",
+                ["Atproto:UseSingleNodeMemoryStore"] = "true"
+            })
+            .Build();
+        var manager = new DynamicAuthSchemeManager(
+            schemes,
+            new OptionsCache<OpenIdConnectOptions>(),
+            Substitute.For<IServiceScopeFactory>(),
+            configuration,
+            new EphemeralDataProtectionProvider(),
+            Substitute.For<IEventBffOidcOptionsFactory>(),
+            Substitute.For<ILogger<DynamicAuthSchemeManager>>());
+
+        await manager.InitializeAsync();
+
+        await Assert.That(
+                await manager.GetRegisteredProviderSchemesAsync())
+            .Contains(AuthSchemeNames.Atproto);
     }
 
     [Test]
@@ -180,6 +310,40 @@ public sealed class BffAuthEndpointValidationTests
         public Task<IReadOnlyList<string>> GetRegisteredProviderSchemesAsync() =>
             throw new InvalidOperationException(
                 "raw provider failure refresh_token=secret-token secretLen=24 clientId=islamu-event-blazor");
+
+        public string GetActivePrimaryProvider() => "local";
+    }
+
+    private sealed class RetainedKeycloakSchemeManager : IDynamicAuthSchemeManager
+    {
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public Task RefreshSchemesAsync(string? setupSecret = null) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<string>> GetRegisteredProviderSchemesAsync() =>
+            Task.FromResult<IReadOnlyList<string>>([AuthSchemeNames.Keycloak]);
+
+        public string GetActivePrimaryProvider() => "local";
+    }
+
+    private sealed class AtprotoPrimarySchemeManager
+        : IDynamicAuthSchemeManager
+    {
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public Task RefreshSchemesAsync(string? setupSecret = null) =>
+            Task.CompletedTask;
+
+        public Task<IReadOnlyList<string>>
+            GetRegisteredProviderSchemesAsync() =>
+            Task.FromResult<IReadOnlyList<string>>(
+            [
+                AuthSchemeNames.Keycloak,
+                AuthSchemeNames.Google,
+                AuthSchemeNames.Atproto
+            ]);
+
+        public string GetActivePrimaryProvider() => "atproto";
     }
 
     private sealed class ExactSelfCallTokenService : IBffSelfCallTokenService

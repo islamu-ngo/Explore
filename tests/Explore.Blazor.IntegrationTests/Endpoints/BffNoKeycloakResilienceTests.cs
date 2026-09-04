@@ -86,7 +86,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Providers_ReturnsEmptyList()
+    public async Task Providers_ReturnsLocalIdentityAsDefaultPrimaryProvider()
     {
         var response = await _client.GetAsync("/auth/providers");
 
@@ -97,8 +97,10 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
 
         var payload = await response.Content.ReadFromJsonAsync<ProvidersPayload>();
         await Assert.That(payload).IsNotNull();
-        await Assert.That(payload!.Providers is null or { Count: 0 }).IsTrue()
-            .Because("without Keycloak configuration, no providers should be registered");
+        await Assert.That(payload!.PrimaryProvider).IsEqualTo("local");
+        await Assert.That(payload.Providers).IsNotNull();
+        await Assert.That(payload.Providers!.Select(provider => provider.Name))
+            .IsEquivalentTo(["local"]);
     }
 
     [Test]
@@ -119,6 +121,55 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
         var response = await _client.GetAsync("/");
 
         await Assert.That(response.StatusCode).IsEqualTo(System.Net.HttpStatusCode.OK).Because("static pages should be accessible regardless of auth configuration");
+    }
+
+    /// <summary>
+    /// Serving the shell anonymously without an identity provider must not open protected
+    /// resources. Routes are discovered from the live endpoint table so a newly added protected
+    /// route is covered automatically instead of drifting away from a hardcoded list.
+    /// </summary>
+    [Test]
+    public async Task ProtectedResources_StayFailClosedForAnonymousCallers()
+    {
+        Microsoft.AspNetCore.Routing.RouteEndpoint[] protectedReadRoutes = _factory.Services
+            .GetRequiredService<Microsoft.AspNetCore.Routing.EndpointDataSource>()
+            .Endpoints
+            .OfType<Microsoft.AspNetCore.Routing.RouteEndpoint>()
+            .Where(endpoint =>
+                endpoint.Metadata.GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>().Count > 0
+                && endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Authorization.IAllowAnonymous>() is null)
+            .Where(endpoint => endpoint.Metadata
+                .GetMetadata<Microsoft.AspNetCore.Routing.HttpMethodMetadata>()?.HttpMethods
+                .Contains(Microsoft.AspNetCore.Http.HttpMethods.Get, StringComparer.OrdinalIgnoreCase) == true)
+            .ToArray();
+
+        var failures = new List<string>();
+
+        foreach (var endpoint in protectedReadRoutes)
+        {
+            var route = System.Text.RegularExpressions.Regex.Replace(
+                endpoint.RoutePattern.RawText ?? string.Empty,
+                @"\{[^}]+\}",
+                _ => Guid.CreateVersion7().ToString());
+
+            using var response = await _client.GetAsync(route);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+                failures.Add($"GET {route} => 200 OK");
+            }
+
+            if (response.Headers.TryGetValues("Set-Cookie", out var cookies)
+                && cookies.Any(cookie => cookie.Contains(".AspNetCore.Cookies", StringComparison.Ordinal)))
+            {
+                failures.Add($"GET {route} issued an authentication cookie");
+            }
+        }
+
+        await Assert.That(protectedReadRoutes).IsNotEmpty()
+            .Because("the invariant is vacuous if no protected route is discovered");
+        await Assert.That(failures).IsEmpty()
+            .Because("anonymous callers must gain neither a session nor administrative authority when no identity provider is configured");
     }
 
     [Test]
@@ -286,7 +337,13 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
 
     private sealed class ProvidersPayload
     {
-        public List<object>? Providers { get; set; }
+        public string? PrimaryProvider { get; set; }
+        public List<ProviderPayload>? Providers { get; set; }
+    }
+
+    private sealed class ProviderPayload
+    {
+        public string? Name { get; set; }
     }
 
     /// <summary>
