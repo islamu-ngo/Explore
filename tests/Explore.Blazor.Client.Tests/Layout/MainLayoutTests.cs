@@ -138,6 +138,43 @@ public class MainLayoutTests : IDisposable
 
     public void Dispose() => _ctx.Dispose();
 
+    [Test]
+    public async Task MobileViewportClosesOpenWorkspaceNavigation()
+    {
+        var cut = RenderLayout();
+        DockLayoutState dockLayout = _ctx.Services
+            .GetRequiredService<DockLayoutState>();
+        await Assert.That(dockLayout.GetPanel(
+            ShellDockPanels.WorkspaceNavId)?.State.IsOpen).IsTrue();
+
+        dockLayout.UpdateViewport(
+            viewportWidth: 390,
+            isMobile: true,
+            DockScope.Shell,
+            minimumContentWidth: 375);
+
+        await Assert.That(dockLayout.GetPanel(
+            ShellDockPanels.WorkspaceNavId)?.State.IsOpen).IsFalse();
+        await Assert.That(cut.Markup).DoesNotContain(
+            "workspace-navigation-panel--open");
+    }
+
+    [Test]
+    public async Task LoginRouteDoesNotOpenWorkspaceNavigationDuringPrerender()
+    {
+        _ctx.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo("/login");
+
+        var cut = RenderLayout();
+        DockLayoutState dockLayout = _ctx.Services
+            .GetRequiredService<DockLayoutState>();
+
+        await Assert.That(dockLayout.GetPanel(
+            ShellDockPanels.WorkspaceNavId)?.State.IsOpen).IsFalse();
+        await Assert.That(cut.Markup).DoesNotContain(
+            "workspace-navigation-panel--open");
+    }
+
     #region Accessibility
 
     [Test]

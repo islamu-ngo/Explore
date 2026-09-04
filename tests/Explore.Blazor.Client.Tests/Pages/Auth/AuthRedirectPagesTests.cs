@@ -240,6 +240,39 @@ public class AuthRedirectPagesTests : IDisposable
     }
 
     [Test]
+    public async Task LoginRedirect_WithAtprotoPrimary_ShowsFocusedHandleFormOnly()
+    {
+        ConfigureAuthProviderClient(new
+        {
+            primaryProvider = "atproto",
+            atprotoLoginEnabled = true,
+            providers = new[]
+            {
+                new
+                {
+                    name = "Atproto",
+                    displayName = "AT Protocol",
+                    type = "handle_input",
+                    recommended = true
+                }
+            }
+        });
+        var nav =
+            _ctx.Services.GetRequiredService<BunitNavigationManager>();
+        nav.NavigateTo("/login?returnUrl=%2Fonboarding%2Finstance");
+
+        var cut = _ctx.Render<LoginRedirect>();
+
+        await Assert.That(cut.Markup).Contains("ATProto handle");
+        await Assert.That(cut.Markup).Contains(
+            "Sign in without a local password");
+        await Assert.That(cut.Markup).DoesNotContain(
+            "Continue with ATProto");
+        await Assert.That(cut.Markup).DoesNotContain("Email address");
+        await Assert.That(cut.Markup).DoesNotContain("Password");
+    }
+
+    [Test]
     public async Task LoginRedirect_ClickingAtproto_ShouldRevealHandleInput()
     {
         // Arrange

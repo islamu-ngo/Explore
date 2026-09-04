@@ -426,12 +426,15 @@
                             Add Event
                         </MudButton>
                     }
-                    <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="navbar__login-btn"
-                                Size="Size.Small"
-                                StartIcon="@Icons.Material.Filled.Login"
-                                OnClick="StartLogin">
-                        Sign in
-                    </MudButton>
+                    @if (!IsLoginRoute)
+                    {
+                        <MudButton Elevation="0" Color="Color.Primary" Variant="Variant.Filled" Class="navbar__login-btn"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Login"
+                                   OnClick="StartLogin">
+                            Sign in
+                        </MudButton>
+                    }
 
                     @* AI Assistant toggle follows tenant audience policy and the current user's preference. *@
                     @if (AiAssistantState.IsButtonVisible)

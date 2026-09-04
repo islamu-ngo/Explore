@@ -22,22 +22,68 @@
                 <div>
                     <MudText Typo="Typo.h6" Style="font-weight: 700;">Authentication Providers</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        At least one authentication provider must remain enabled. Multiple providers may be enabled.
+                        Choose Local Identity, Keycloak, or passwordless AT Protocol as the primary sign-in authority.
                     </MudText>
                 </div>
 
-                @if (!HasAnyAuthenticationProviderEnabled)
-                {
-                    <MudAlert Severity="Severity.Warning">
-                        At least one authentication provider must remain enabled.
-                    </MudAlert>
-                }
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Existing sessions remain valid when the primary provider changes. Create and verify administrator credentials with the target provider before saving a switch.
+                </MudAlert>
+
+                <MudRadioGroup T="int"
+                               Value="CurrentPrimaryProviderId"
+                               ValueChanged="SelectPrimaryProviderAsync"
+                               aria-label="Primary authentication provider">
+                    <MudPaper Outlined="true" Class="pa-4 mb-3">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                            <div>
+                                <MudRadio T="int"
+                                          Value="LocalIdentityProviderId"
+                                          Color="Color.Primary"
+                                          Dense="true"
+                                          Disabled="@(Model.LockPrimaryProvider == true)"
+                                          data-testid="primary-provider-local">
+                                    Local Identity
+                                </MudRadio>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ms-8">
+                                    Built-in ASP.NET Core Identity credentials with no external identity service.
+                                </MudText>
+                            </div>
+                            @ProviderStatusChip(IsLocalIdentityPrimary)
+                        </MudStack>
+                    </MudPaper>
+
+                    <MudPaper Outlined="true" Class="pa-4 mb-3">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
+                            <div>
+                                <MudRadio T="int"
+                                          Value="AtprotoProviderId"
+                                          Color="Color.Primary"
+                                          Dense="true"
+                                          Disabled="@(Model.LockPrimaryProvider == true)"
+                                          data-testid="primary-provider-atproto">
+                                    AT Protocol
+                                </MudRadio>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ms-8">
+                                    Passwordless decentralized sign-in through each user's personal data server.
+                                </MudText>
+                            </div>
+                            @ProviderStatusChip(IsAtprotoPrimary)
+                        </MudStack>
+                    </MudPaper>
 
                 <MudPaper Outlined="true" Class="pa-4">
                     <MudStack Spacing="2">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Keycloak</MudText>
+                                <MudRadio T="int"
+                                          Value="KeycloakProviderId"
+                                          Color="Color.Primary"
+                                          Dense="true"
+                                          Disabled="@(Model.LockPrimaryProvider == true)"
+                                          data-testid="primary-provider-keycloak">
+                                    Keycloak
+                                </MudRadio>
                                 <MudTooltip Text="Self-hosted OIDC provider for full identity management control.">
                                     <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
                                 </MudTooltip>
@@ -45,17 +91,18 @@
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Auto-detected</MudChip>
                                 }
-                                @ProviderStatusChip(Model.KeycloakEnabled == true)
+                                @ProviderStatusChip(IsKeycloakPrimary)
                             </MudStack>
-                            @AuthenticationProviderButton("Keycloak", Model.KeycloakEnabled == true, () => SetAuthenticationProviderAsync("Keycloak", v => Model.KeycloakEnabled = v, Model.KeycloakEnabled == true))
                         </MudStack>
 
-                        @if (Model.KeycloakEnabled == true)
-                        {
-                            <MudTextField Variant="Variant.Outlined" T="string" Label="Authority URL" @bind-Value="Model.KeycloakAuthority" />
-                            <MudTextField Variant="Variant.Outlined" T="string" Label="Client ID" @bind-Value="Model.KeycloakClientId" />
-                            <MudTextField Variant="Variant.Outlined" T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
+                        <MudTextField Variant="Variant.Outlined" T="string" Label="Authority URL" @bind-Value="Model.KeycloakAuthority"
+                                      HelperText="Configure and verify the target realm before switching the primary provider." />
+                        <MudTextField Variant="Variant.Outlined" T="string" Label="Client ID" @bind-Value="Model.KeycloakClientId" />
+                        <MudTextField Variant="Variant.Outlined" T="string" Label="Client Secret" InputType="InputType.Password"
+                                      @bind-Value="Model.KeycloakClientSecret" autocomplete="new-password" />
 
+                        @if (IsKeycloakPrimary)
+                        {
                             <MudPaper Outlined="true" Class="pa-4 mt-2">
                                 <MudStack Spacing="2">
                                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
@@ -234,12 +281,13 @@
 
                         @if (!IsSingleTenant)
                         {
-                            <MudSwitch T="bool" Value="@(Model.LockKeycloakEnabled == true)" ValueChanged="@(value => Model.LockKeycloakEnabled = value)" Color="Color.Warning">
-                                Lock Keycloak setting for tenants
+                            <MudSwitch T="bool" Value="@(Model.LockPrimaryProvider == true)" ValueChanged="@(value => Model.LockPrimaryProvider = value)" Color="Color.Warning">
+                                Lock primary provider for tenants
                             </MudSwitch>
                         }
                     </MudStack>
                 </MudPaper>
+                </MudRadioGroup>
 
                 <MudPaper Outlined="true" Class="pa-4">
                     <MudStack Spacing="2">
@@ -251,8 +299,28 @@
                                 </MudTooltip>
                                 @ProviderStatusChip(Model.AtprotoLoginEnabled == true)
                             </MudStack>
-                            @AuthenticationProviderButton("AT Protocol Login", Model.AtprotoLoginEnabled == true, () => SetAuthenticationProviderAsync("AT Protocol Login", v => Model.AtprotoLoginEnabled = v, Model.AtprotoLoginEnabled == true))
+                            @if (IsAtprotoPrimary)
+                            {
+                                <MudSwitch T="bool"
+                                           Value="true"
+                                           Disabled="true"
+                                           Color="Color.Primary"
+                                           data-testid="atproto-login-toggle">
+                                    Required for AT Protocol primary mode
+                                </MudSwitch>
+                            }
+                            else
+                            {
+                                @AuthenticationProviderButton("AT Protocol Login", Model.AtprotoLoginEnabled == true, () => SetAuthenticationProviderAsync("AT Protocol Login", v => Model.AtprotoLoginEnabled = v, Model.AtprotoLoginEnabled == true))
+                            }
                         </MudStack>
+
+                        @if (IsAtprotoPrimary)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                AT Protocol is the sole primary authority. Its login axis cannot be disabled, and Google SSO is unavailable in this mode.
+                            </MudAlert>
+                        }
 
                         @if (Model.AtprotoLoginEnabled == true)
                         {
@@ -268,6 +336,8 @@
                     </MudStack>
                 </MudPaper>
 
+                @if (!IsAtprotoPrimary)
+                {
                 <MudPaper Outlined="true" Class="pa-4">
                     <MudStack Spacing="2">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="2">
@@ -295,6 +365,7 @@
                         }
                     </MudStack>
                 </MudPaper>
+                }
             </MudStack>
         </MudPaper>
 
@@ -466,6 +537,9 @@
 @code {
     private const string LocalProvider = "local";
     private const string CerbosProvider = "cerbos";
+    private const int KeycloakProviderId = 1;
+    private const int AtprotoProviderId = 2;
+    private const int LocalIdentityProviderId = 4;
 
     [Parameter, EditorRequired]
     public AuthProviderConfigurationDto Model { get; set; } = null!;
@@ -499,8 +573,21 @@
     private BaseCommandResponseOfGuid? _syncResult;
     private BaseCommandResponseOfGuid? _downloadResult;
 
-    private bool HasAnyAuthenticationProviderEnabled =>
-        Model.KeycloakEnabled == true || Model.AtprotoLoginEnabled == true || Model.GoogleSsoEnabled == true;
+    private int CurrentPrimaryProviderId =>
+        Model.PrimaryProviderId is KeycloakProviderId
+            or AtprotoProviderId
+            or LocalIdentityProviderId
+            ? Model.PrimaryProviderId.Value
+            : LocalIdentityProviderId;
+
+    private bool IsLocalIdentityPrimary =>
+        CurrentPrimaryProviderId == LocalIdentityProviderId;
+
+    private bool IsKeycloakPrimary =>
+        CurrentPrimaryProviderId == KeycloakProviderId;
+
+    private bool IsAtprotoPrimary =>
+        CurrentPrimaryProviderId == AtprotoProviderId;
 
     private RenderFragment ProviderStatusChip(bool enabled) => @<MudChip T="string"
         Size="Size.Small"
@@ -516,17 +603,6 @@
 
     private async Task SetAuthenticationProviderAsync(string providerName, Action<bool> setEnabled, bool currentlyEnabled)
     {
-        if (currentlyEnabled && CountEnabledAuthenticationProviders() == 1)
-        {
-            await DialogService.ShowMessageBoxAsync(new MessageBoxOptions
-            {
-                Title = "Authentication provider required",
-                Message = $"{providerName} is the only enabled authentication provider. Enable another provider before disabling it.",
-                YesText = "OK"
-            }, DialogOptionsFactory.Confirmation());
-            return;
-        }
-
         var action = currentlyEnabled ? "Disable" : "Enable";
         var confirmed = await DialogService.ShowMessageBoxAsync(new MessageBoxOptions
         {
@@ -544,13 +620,100 @@
         }
     }
 
-    private int CountEnabledAuthenticationProviders()
+    private async Task SelectPrimaryProviderAsync(int providerId)
     {
-        var count = 0;
-        if (Model.KeycloakEnabled == true) count++;
-        if (Model.AtprotoLoginEnabled == true) count++;
-        if (Model.GoogleSsoEnabled == true) count++;
-        return count;
+        if (providerId == CurrentPrimaryProviderId)
+        {
+            return;
+        }
+
+        if (providerId == KeycloakProviderId
+            && (string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
+                || string.IsNullOrWhiteSpace(Model.KeycloakClientId)
+                || (string.IsNullOrWhiteSpace(Model.KeycloakClientSecret)
+                    && Model.KeycloakClientSecretOwnership?.Configured != true)))
+        {
+            await DialogService.ShowMessageBoxAsync(new MessageBoxOptions
+            {
+                Title = "Prepare Keycloak first",
+                Message = "Enter the Keycloak authority, client ID, and client secret, then verify the target realm before switching.",
+                YesText = "OK"
+            }, DialogOptionsFactory.Confirmation());
+            return;
+        }
+
+        if (providerId == AtprotoProviderId
+            && (!Uri.TryCreate(
+                    Model.AtprotoPublicUrl,
+                    UriKind.Absolute,
+                    out Uri? atprotoPublicUrl)
+                || atprotoPublicUrl.Scheme is not (
+                    "http" or "https")))
+        {
+            await DialogService.ShowMessageBoxAsync(new MessageBoxOptions
+            {
+                Title = "Prepare AT Protocol first",
+                Message = "Enter a valid public URL before switching to AT Protocol.",
+                YesText = "OK"
+            }, DialogOptionsFactory.Confirmation());
+            return;
+        }
+
+        string targetName = providerId switch
+        {
+            LocalIdentityProviderId => "Local Identity",
+            KeycloakProviderId => "Keycloak",
+            AtprotoProviderId => "AT Protocol",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(providerId),
+                providerId,
+                null)
+        };
+        string targetRequirement = providerId switch
+        {
+            LocalIdentityProviderId =>
+                "A verified Local Identity administrator account must already exist. The server rejects this change if the target account cannot sign in.",
+            KeycloakProviderId =>
+                "The target Keycloak realm and administrator account must already be usable. The server rejects this change if target credentials are unavailable.",
+            AtprotoProviderId =>
+                "Your administrator account must already have an exact AT Protocol identity binding. The server rejects the switch if that authority is unavailable.",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(providerId),
+                providerId,
+                null)
+        };
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            new MessageBoxOptions
+            {
+                Title = $"Switch primary provider to {targetName}",
+                Message = $"{targetRequirement} Existing sessions continue until their normal expiry.",
+                YesText = $"Switch to {targetName}",
+                CancelText = "Cancel"
+            },
+            DialogOptionsFactory.Confirmation());
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        Model.PrimaryProviderId = providerId;
+        Model.PrimaryProviderCode = providerId switch
+        {
+            LocalIdentityProviderId => "LOCAL",
+            KeycloakProviderId => "KEYCLOAK",
+            AtprotoProviderId => "ATPROTO",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(providerId),
+                providerId,
+                null)
+        };
+        Model.PrimaryProviderName = targetName;
+        if (providerId == AtprotoProviderId)
+        {
+            Model.AtprotoLoginEnabled = true;
+            Model.GoogleSsoEnabled = false;
+            Model.GoogleClientSecret = string.Empty;
+        }
     }
 
     private bool IsAuthorizationProviderSelected(string provider) =>
@@ -604,7 +767,7 @@
         && !_isApplyingKeycloakSync
         && !_isRotatingKeycloakClientSecret
         && OnboardingService is not null
-        && Model.KeycloakEnabled == true
+        && IsKeycloakPrimary
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
         && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
         && (!_useTemporaryKeycloakAdmin
@@ -617,7 +780,7 @@
         && !_isApplyingKeycloakSync
         && !_isRotatingKeycloakClientSecret
         && OnboardingService is not null
-        && Model.KeycloakEnabled == true
+        && IsKeycloakPrimary
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
         && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
         && (!_useTemporaryKeycloakAdmin
@@ -631,7 +794,7 @@
         && !_isRotatingKeycloakClientSecret
         && _keycloakBackupConfirmed
         && OnboardingService is not null
-        && Model.KeycloakEnabled == true
+        && IsKeycloakPrimary
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
         && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
         && !string.IsNullOrWhiteSpace(_temporaryKeycloakAdminUsername)
@@ -646,7 +809,7 @@
         && !_isPreviewingKeycloakSync
         && !_isApplyingKeycloakSync
         && OnboardingService is not null
-        && Model.KeycloakEnabled == true
+        && IsKeycloakPrimary
         && !string.IsNullOrWhiteSpace(Model.KeycloakAuthority)
         && !string.IsNullOrWhiteSpace(Model.KeycloakClientId)
         && (!IsKeycloakSecretApplicationManaged

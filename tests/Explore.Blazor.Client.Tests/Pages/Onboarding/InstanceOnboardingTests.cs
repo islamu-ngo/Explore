@@ -127,7 +127,6 @@ public class InstanceOnboardingTests : IDisposable
 
         RequireContains(cut.Markup, "Authentication provider");
         RequireContains(cut.Markup, "Manage authentication");
-        RequireContains(cut.Markup, "create, repair, or reconcile the Keycloak realm");
         Require(cut.FindAll("a").Any(link => link.GetAttribute("href") == "/onboarding/auth-provider"),
             "Configured authentication must retain access to realm management.");
         RequireNotContains(cut.Markup, "Configure authentication");

@@ -1,25 +1,31 @@
 .login-page {
-    min-height: min(42rem, calc(100vh - 6rem));
+    min-block-size: min(42rem, calc(100dvh - 6rem));
     display: flex;
     align-items: center;
+    inline-size: 100%;
+    box-sizing: border-box;
 }
 
-::deep .login-page__card {
+.login-page ::deep .login-page__container {
+    inline-size: 100%;
+}
+
+.login-page ::deep .login-page__card {
     width: 100%;
     border-radius: 1.25rem;
     border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
 }
 
-::deep .login-page__title {
+.login-page ::deep .login-page__title {
     font-weight: 800 !important;
     letter-spacing: -0.03em;
 }
 
-.login-page__subtitle {
+.login-page ::deep .login-page__subtitle {
     max-width: 30rem;
 }
 
-.login-page__providers {
+.login-page ::deep .login-page__providers {
     width: 100%;
 }
 
@@ -36,17 +42,47 @@
     gap: var(--isl-space-3);
 }
 
-::deep .login-page__recommended-chip {
-    font-weight: 700 !important;
+.login-page ::deep .login-page__credentials-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-4);
+    border: 1px solid var(--isl-color-border);
+    border-radius: 1rem;
+    background: color-mix(
+        in srgb,
+        var(--isl-color-surface) 94%,
+        var(--isl-color-primary));
 }
 
-::deep .login-page__provider-button {
+.login-page ::deep .login-page__credential-input,
+.login-page ::deep .login-page__credential-submit {
+    width: 100%;
+}
+
+.login-page ::deep .login-page__credential-submit {
+    border-radius: 0.875rem;
+    font-weight: 700;
+    text-transform: none;
+    min-block-size: 3.5rem;
+}
+
+.login-page ::deep .login-page__persistent-option {
+    min-block-size: var(--isl-target-min);
+}
+
+.login-page ::deep .login-page__recommended-chip {
+    font-weight: 700 !important;
+    margin: 0 !important;
+}
+
+.login-page ::deep .login-page__provider-button {
     border-radius: 0.875rem !important;
     font-weight: 700 !important;
     text-transform: none !important;
 }
 
-.login-page__handle-panel {
+.login-page ::deep .login-page__handle-panel {
     display: flex;
     flex-direction: column;
     gap: var(--isl-space-3);
@@ -56,7 +92,7 @@
     border: 1px solid color-mix(in srgb, var(--mud-palette-primary) 18%, transparent);
 }
 
-::deep .login-page__handle-submit {
+.login-page ::deep .login-page__handle-submit {
     border-radius: 0.875rem !important;
     font-weight: 700 !important;
     text-transform: none !important;
@@ -64,7 +100,11 @@
 
 @media (max-width: 37.5em) {
     .login-page {
-        min-height: auto;
+        min-block-size: auto;
         align-items: flex-start;
     }
+}
+
+.login-page ::deep .login-page__credential-input .mud-input-outlined-border {
+    border-color: var(--mud-palette-text-secondary);
 }

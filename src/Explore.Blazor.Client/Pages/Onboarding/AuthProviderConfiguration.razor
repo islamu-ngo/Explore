@@ -1,5 +1,5 @@
 @* ABOUTME: Auth provider configuration page shown after setup token validation, before login. *@
-@* ABOUTME: Lets instance admin enable/configure Keycloak, ATProto Login, and Google SSO providers. *@
+@* ABOUTME: Selects one primary credentials provider while configuring independent optional login methods. *@
 
 @page "/onboarding/auth-provider"
 @rendermode InteractiveServer
@@ -32,7 +32,7 @@
     <div class="auth-provider-configuration" dir="auto" @oninput="MarkDirty" @onchange="MarkDirty">
         <div class="auth-provider-configuration__intro">
             <MudText Typo="Typo.body1">
-                Set up the first login path for onboarding.
+                Choose the primary authentication provider for this instance.
             </MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
                 @NextStepsText
@@ -63,7 +63,9 @@
                 <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
             }
 
-            @if (_model.KeycloakDetectedFromEnvironment == true && !_showAdvancedConfig)
+            @if (IsKeycloakPrimary
+                && _model.KeycloakDetectedFromEnvironment == true
+                && !_showAdvancedConfig)
             {
                 <MudPaper Class="pa-8 mb-4 d-flex flex-column align-center text-center" Outlined="true">
                     <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Primary" Style="font-size: 4rem;" Class="mb-4" />
@@ -88,7 +90,55 @@
             else
             {
                 <div class="auth-provider-configuration__providers">
+                    <section aria-labelledby="primary-authentication-provider-heading">
+                        <MudText Id="primary-authentication-provider-heading"
+                                 Typo="Typo.h5"
+                                 HtmlTag="h2">
+                            Primary provider
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                            Choose Local Identity, Keycloak, or a passwordless AT Protocol deployment. Local Identity is the standalone default.
+                        </MudText>
+                        <MudRadioGroup T="int"
+                                       Value="CurrentPrimaryProviderId"
+                                       ValueChanged="OnPrimaryProviderChanged"
+                                       aria-label="Primary authentication provider">
+                            <MudRadio T="int"
+                                      Value="LocalIdentityProviderId"
+                                      Color="Color.Primary"
+                                      Dense="true"
+                                      data-testid="onboarding-primary-local">
+                                Local Identity
+                            </MudRadio>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ms-8 mb-2">
+                                Built-in ASP.NET Core Identity. No external identity service is required.
+                            </MudText>
+                            <MudRadio T="int"
+                                      Value="AtprotoProviderId"
+                                      Color="Color.Primary"
+                                      Dense="true"
+                                      data-testid="onboarding-primary-atproto">
+                                AT Protocol
+                            </MudRadio>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ms-8 mb-2">
+                                Passwordless decentralized sign-in through the user's personal data server.
+                            </MudText>
+                            <MudRadio T="int"
+                                      Value="KeycloakProviderId"
+                                      Color="Color.Primary"
+                                      Dense="true"
+                                      data-testid="onboarding-primary-keycloak">
+                                Keycloak
+                            </MudRadio>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ms-8">
+                                External OpenID Connect for managed or enterprise identity.
+                            </MudText>
+                        </MudRadioGroup>
+                    </section>
+
                     @* ── Keycloak ── *@
+                    @if (IsKeycloakPrimary)
+                    {
                     <details class="auth-provider-configuration__provider" open>
                         <summary id="keycloak-provider-summary"
                                  class="auth-provider-configuration__provider-summary"
@@ -111,18 +161,6 @@
                         </summary>
                         <div class="auth-provider-configuration__provider-content">
                             <MudStack Spacing="2">
-                                <div class="auth-provider-configuration__enable-switch" data-testid="keycloak-enable-switch">
-                                    <MudSwitch T="bool"
-                                               Value="@(_model.KeycloakEnabled == true)"
-                                               ValueChanged="OnKeycloakToggled"
-                                               Color="Color.Primary"
-                                               Disabled="@(_model.KeycloakDetectedFromEnvironment == true)">
-                                        Enable Keycloak
-                                    </MudSwitch>
-                                </div>
-
-                                @if (_model.KeycloakEnabled == true)
-                                {
                                     @if (_model.KeycloakDetectedFromEnvironment == true)
                                     {
                                         <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
@@ -220,10 +258,10 @@
                                                             HelperText="Cleared from this form after submit, whether bootstrap succeeds or fails." />
                                         </div>
                                     }
-                                }
                             </MudStack>
                         </div>
                     </details>
+                    }
 
                     @* ── ATProto Login ── *@
                     <details class="auth-provider-configuration__provider">
@@ -240,9 +278,19 @@
                         </summary>
                         <div class="auth-provider-configuration__provider-content">
                             <MudStack Spacing="2">
-                                <MudSwitch T="bool?" @bind-Value="_model.AtprotoLoginEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool?"
+                                           @bind-Value="_model.AtprotoLoginEnabled"
+                                           Color="Color.Primary"
+                                           Disabled="IsAtprotoPrimary">
                                     Enable AT Protocol Login
                                 </MudSwitch>
+
+                                @if (IsAtprotoPrimary)
+                                {
+                                    <MudAlert Severity="Severity.Info" Dense="true">
+                                        AT Protocol is the sole primary authority, so password and other federated login providers are disabled.
+                                    </MudAlert>
+                                }
 
                                 @if (_model.AtprotoLoginEnabled == true)
                                 {
@@ -266,6 +314,8 @@
                     </details>
 
                     @* ── Google SSO ── *@
+                    @if (!IsAtprotoPrimary)
+                    {
                     <details class="auth-provider-configuration__provider">
                         <summary class="auth-provider-configuration__provider-summary"
                                  aria-labelledby="google-provider-title"
@@ -298,15 +348,8 @@
                             </MudStack>
                         </div>
                     </details>
+                    }
                 </div>
-
-                @* ── Validation message ── *@
-                @if (!HasAnyProviderEnabled)
-                {
-                    <MudAlert Severity="Severity.Warning" Class="mb-4">
-                        At least one authentication provider must be enabled.
-                    </MudAlert>
-                }
 
                 @* ── Actions ── *@
             }
@@ -314,13 +357,15 @@
 </div>
     </ChildContent>
     <SummaryContent>
-        <p>Choose at least one login provider. Keycloak can use an existing realm or bootstrap clients; AT Protocol and Google remain optional.</p>
+        <p>Choose Local Identity, Keycloak, or passwordless AT Protocol as the primary provider. AT Protocol and Google remain optional only when Local Identity or Keycloak is primary.</p>
     </SummaryContent>
     <HelpContent>
         <p>Provider secrets are sent only to the server and are cleared from the form after one-time bootstrap requests.</p>
     </HelpContent>
     <ActionsContent>
-        @if (_model.KeycloakDetectedFromEnvironment == true && !_showAdvancedConfig)
+        @if (IsKeycloakPrimary
+            && _model.KeycloakDetectedFromEnvironment == true
+            && !_showAdvancedConfig)
         {
             <MudButton Id="onboarding-exit" Elevation="0" Variant="Variant.Text" Color="Color.Default" OnClick="RequestExitAsync">
                 Exit setup
@@ -370,6 +415,9 @@
 }
 
 @code {
+    private const int KeycloakProviderId = 1;
+    private const int AtprotoProviderId = 2;
+    private const int LocalIdentityProviderId = 4;
     private AuthProviderConfigurationDto _model = new();
     private KeycloakBootstrapRequestDto _keycloakBootstrap = new();
     private KeycloakConfigurationMode _keycloakConfigurationMode = KeycloakConfigurationMode.Manual;
@@ -384,8 +432,17 @@
     private bool _focusDiscardConfirmation;
     private bool _skipAuthorizationProviderStep;
     private bool _googleSecretAlreadyConfigured;
-    private bool HasAnyProviderEnabled =>
-        _model.KeycloakEnabled == true || _model.AtprotoLoginEnabled == true || _model.GoogleSsoEnabled == true;
+    private int CurrentPrimaryProviderId =>
+        _model.PrimaryProviderId is KeycloakProviderId
+            or AtprotoProviderId
+            or LocalIdentityProviderId
+            ? _model.PrimaryProviderId.Value
+            : LocalIdentityProviderId;
+
+    private bool IsKeycloakPrimary =>
+        CurrentPrimaryProviderId == KeycloakProviderId;
+    private bool IsAtprotoPrimary =>
+        CurrentPrimaryProviderId == AtprotoProviderId;
 
     private bool HasKeycloakCredentials =>
         _keycloakConfigurationMode == KeycloakConfigurationMode.Manual
@@ -410,8 +467,7 @@
 
     private bool CanSave =>
         !_submitState.IsSubmitting &&
-        HasAnyProviderEnabled &&
-        (_model.KeycloakEnabled != true || HasKeycloakCredentials) &&
+        (!IsKeycloakPrimary || HasKeycloakCredentials) &&
         (_model.AtprotoLoginEnabled != true || HasAtprotoCredentials) &&
         (_model.GoogleSsoEnabled != true || HasGoogleCredentials);
 
@@ -486,6 +542,13 @@
         }
 
         _model = await InstanceOnboardingService.GetAuthProviderConfigurationAsync();
+        if (_model.PrimaryProviderId is not (
+                KeycloakProviderId
+                or AtprotoProviderId
+                or LocalIdentityProviderId))
+        {
+            SetPrimaryProvider(LocalIdentityProviderId);
+        }
         _skipAuthorizationProviderStep = await InstanceOnboardingService.ShouldSkipAuthorizationProviderStepAsync();
         _googleSecretAlreadyConfigured = _model.GoogleSsoEnabled == true;
         _model.KeycloakClientSecret = string.Empty;
@@ -525,21 +588,18 @@
         _focusAdvancedConfiguration = true;
     }
 
-    private void OnKeycloakToggled(bool enabled)
+    private void OnPrimaryProviderChanged(int providerId)
     {
-        _isDirty = true;
-        _model.KeycloakEnabled = enabled;
-        if (!enabled)
+        if (providerId is not (
+                KeycloakProviderId
+                or AtprotoProviderId
+                or LocalIdentityProviderId))
         {
-            // Clear credentials when disabled (unless env-detected)
-            if (_model.KeycloakDetectedFromEnvironment != true)
-            {
-                _model.KeycloakAuthority = string.Empty;
-                _model.KeycloakClientId = string.Empty;
-                _model.KeycloakClientSecret = string.Empty;
-                ClearKeycloakBootstrapSecrets();
-            }
+            return;
         }
+
+        _isDirty = true;
+        SetPrimaryProvider(providerId);
     }
 
     private async Task SaveAndContinueAsync()
@@ -601,9 +661,18 @@
         _isDirty = false;
 
         var skipAuthorizationProvider = await InstanceOnboardingService.ShouldSkipAuthorizationProviderStepAsync();
-        Navigation.NavigateTo(
-            skipAuthorizationProvider ? "/onboarding/instance" : "/onboarding/authz-provider",
-            forceLoad: true);
+        string returnPath = skipAuthorizationProvider
+            ? "/onboarding/instance"
+            : "/onboarding/authz-provider";
+        string destination = CurrentPrimaryProviderId switch
+        {
+            AtprotoProviderId =>
+                $"/login?provider=atproto&returnUrl={Uri.EscapeDataString(returnPath)}",
+            LocalIdentityProviderId =>
+                $"/login?provider=local&returnUrl={Uri.EscapeDataString(returnPath)}",
+            _ => returnPath
+        };
+        Navigation.NavigateTo(destination, forceLoad: true);
     }
 
     private async Task<BaseCommandResponseOfGuid> BootstrapKeycloakWithSecretCleanupAsync()
@@ -619,8 +688,30 @@
     }
 
     private bool ShouldBootstrapKeycloak =>
-        _model.KeycloakEnabled == true &&
+        IsKeycloakPrimary &&
         _keycloakConfigurationMode == KeycloakConfigurationMode.Bootstrap;
+
+    private void SetPrimaryProvider(int providerId)
+    {
+        _model.PrimaryProviderId = providerId;
+        (_model.PrimaryProviderCode, _model.PrimaryProviderName) =
+            providerId switch
+            {
+                LocalIdentityProviderId => ("LOCAL", "Local Identity"),
+                KeycloakProviderId => ("KEYCLOAK", "Keycloak"),
+                AtprotoProviderId => ("ATPROTO", "AT Protocol"),
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(providerId),
+                    providerId,
+                    null)
+            };
+        if (providerId == AtprotoProviderId)
+        {
+            _model.AtprotoLoginEnabled = true;
+            _model.GoogleSsoEnabled = false;
+            _model.GoogleClientSecret = string.Empty;
+        }
+    }
 
     private void SeedKeycloakBootstrapDefaults()
     {

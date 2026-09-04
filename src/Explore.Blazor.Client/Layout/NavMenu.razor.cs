@@ -358,6 +358,12 @@ public partial class NavMenu : IDisposable
         && WorkspaceRegistry.Workspaces.Any(workspace =>
             workspace.Key == UiShellState.ActiveWorkspace && workspace.NavigationProviderType is not null);
 
+    private bool IsLoginRoute =>
+        Nav.ToBaseRelativePath(Nav.Uri)
+            .Split('?', '#')[0]
+            .TrimEnd('/')
+            .Equals("login", StringComparison.OrdinalIgnoreCase);
+
     private void OnDockLayoutChanged()
     {
         _ = InvokeAsync(StateHasChanged);

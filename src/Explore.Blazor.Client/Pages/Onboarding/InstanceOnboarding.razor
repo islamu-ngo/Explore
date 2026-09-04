@@ -476,7 +476,7 @@
                 new(
                     T("tasks.authentication.title", "Authentication provider"),
                     _authProviderConfigured == true
-                        ? T("tasks.authentication.configured_description", "Authentication is configured. Open provider management to create, repair, or reconcile the Keycloak realm.")
+                        ? T("tasks.authentication.configured_description", "Authentication is configured. Open provider management to review, repair, or switch the active sign-in authority.")
                         : _authProviderConfigured == false
                             ? T("tasks.authentication.description", "At least one sign-in provider must be configured before launch.")
                             : T("tasks.authentication.unavailable_description", "Authentication provider status is unavailable. Refresh before taking action."),
@@ -755,7 +755,9 @@
             {
                 Logger.LogWarning("Pre-complete auth session refresh failed. Aborting completion and redirecting to login.");
                 await SetCompletionErrorAsync(T("errors.session_expired", "Your session expired. Sign in again to complete setup."));
-                Navigation.NavigateTo("/login", forceLoad: true);
+                Navigation.NavigateTo(
+                    "/login?returnUrl=%2Fonboarding%2Finstance",
+                    forceLoad: true);
                 return;
             }
 

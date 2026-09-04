@@ -206,8 +206,12 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync()
             .Returns(new AuthProviderConfigurationDto
             {
-                KeycloakEnabled = true,
-                KeycloakDetectedFromEnvironment = true
+                PrimaryProviderId = 1,
+                PrimaryProviderCode = "KEYCLOAK",
+                PrimaryProviderName = "Keycloak",
+                KeycloakDetectedFromEnvironment = true,
+                KeycloakAuthority = "https://identity.example.test/realms/event",
+                KeycloakClientId = "event-bff"
             });
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
             .Returns(new AuthorizationProviderConfigurationDto
@@ -244,7 +248,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
         await Assert.That(cut.Markup).Contains("Authentication Providers", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("Authorization Providers", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("Keycloak", StringComparison.OrdinalIgnoreCase);
-        await Assert.That(cut.Markup).Contains("Disable Keycloak", StringComparison.OrdinalIgnoreCase);
+        await Assert.That(cut.Markup).Contains("Keycloak client-secret rotation", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("Local (Built-in RBAC)", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("Cerbos (External PDP)", StringComparison.OrdinalIgnoreCase);
         await Assert.That(cut.Markup).Contains("Enable Cerbos Authorization", StringComparison.OrdinalIgnoreCase);
@@ -390,7 +394,7 @@ public sealed class InstanceAdminSettingsLayoutTests : IDisposable
     public async Task InstanceAdminSettingsLayout_DeploymentManagedAuthorization_KeepsAuthenticationSaveAvailable()
     {
         _instanceOnboardingService.GetAuthProviderConfigurationAsAdminAsync()
-            .Returns(new AuthProviderConfigurationDto { KeycloakEnabled = true, GoogleSsoEnabled = true });
+            .Returns(new AuthProviderConfigurationDto { PrimaryProviderId = 1, GoogleSsoEnabled = true });
         _instanceOnboardingService.GetAuthorizationProviderConfigurationAsAdminAsync()
             .Returns(new AuthorizationProviderConfigurationDto
             {

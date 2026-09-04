@@ -13,6 +13,8 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class InstanceOnboardingServiceTests
 {
+    private const int KeycloakProviderId = 1;
+
     private Func<HttpRequestMessage, Task<HttpResponseMessage>> _bffHandler = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
     private Func<HttpRequestMessage, Task<HttpResponseMessage>> _authHandler = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
     private readonly IBffAuthApi _bffAuthApi;
@@ -373,7 +375,7 @@ public class InstanceOnboardingServiceTests
         Uri? requestUri = null;
         var expected = new AuthProviderConfigurationDto
         {
-            KeycloakEnabled = true,
+            PrimaryProviderId = KeycloakProviderId,
             KeycloakAuthority = "https://keycloak.example.com/auth/realms/ISLAMU",
             KeycloakClientId = "islamu-event-blazor",
             KeycloakClientSecret = string.Empty,
@@ -402,7 +404,7 @@ public class InstanceOnboardingServiceTests
         Uri? requestUri = null;
         var expected = new AuthProviderConfigurationDto
         {
-            KeycloakEnabled = true,
+            PrimaryProviderId = KeycloakProviderId,
             KeycloakAuthority = "https://keycloak.example.com/realms/ISLAMU",
             KeycloakClientId = "islamu-event-blazor"
         };
@@ -419,6 +421,44 @@ public class InstanceOnboardingServiceTests
         await Assert.That(requestUri).IsNotNull();
         await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/api/instance/settings/auth-provider");
         await Assert.That(result.KeycloakClientId).IsEqualTo("islamu-event-blazor");
+    }
+
+    [Test]
+    public async Task UpdateAuthProviderConfigurationAsAdminAsync_SendsPrimaryAndAtprotoAxes()
+    {
+        string? requestBody = null;
+        _bffHandler = async request =>
+        {
+            requestBody = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync();
+            return CreateJsonResponse(new BaseCommandResponseOfGuid
+            {
+                Success = true,
+                Message = "Updated"
+            });
+        };
+
+        var result = await _service.UpdateAuthProviderConfigurationAsAdminAsync(
+            new AuthProviderConfigurationDto
+            {
+                PrimaryProviderId = 4,
+                LockPrimaryProvider = true,
+                AtprotoLoginEnabled = true,
+                AtprotoPublicUrl = "https://events.example.test"
+            });
+        using var document = JsonDocument.Parse(requestBody!);
+        JsonElement configuration = document.RootElement
+            .GetProperty("configuration")
+            .GetProperty("value");
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(configuration.GetProperty("primaryProviderId").GetInt32())
+            .IsEqualTo(4);
+        await Assert.That(configuration.GetProperty("lockPrimaryProvider").GetBoolean())
+            .IsTrue();
+        await Assert.That(configuration.GetProperty("atprotoLoginEnabled").GetBoolean())
+            .IsTrue();
     }
 
     #endregion

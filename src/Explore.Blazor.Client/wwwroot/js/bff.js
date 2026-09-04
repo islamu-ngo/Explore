@@ -1,5 +1,5 @@
-// BFF (Backend-For-Frontend) JavaScript utilities for Blazor
-// Used by BffClient.cs for CSRF token extraction and auth status checks
+// ABOUTME: Browser-side BFF utilities for cookie-aware auth, setup, and antiforgery requests.
+// ABOUTME: Keeps credential submissions in the browser so HttpOnly session cookies are applied correctly.
 
 /**
  * Read a cookie value by name from document.cookie.
@@ -157,6 +157,18 @@ export async function fetchJson(url) {
     return await response.json();
 }
 
+/**
+ * Submit Local Identity credentials from the browser so the BFF Set-Cookie
+ * response is applied to the browser cookie jar rather than a server self-call.
+ * @param {string} url - Local login or registration endpoint.
+ * @param {object} body - Typed Local Identity request body.
+ * @returns {Promise<object|null>} The bounded success response, or null.
+ */
+export async function authenticateLocal(url, body) {
+    const result = await _bffMutate('POST', url, body);
+    return result.ok ? result.data : null;
+}
+
 /** @private Shared mutation helper. Reads XSRF token from cookie if present. */
 async function _bffMutate(method, url, body) {
     try {
@@ -177,17 +189,16 @@ async function _bffMutate(method, url, body) {
             body: body ? JSON.stringify(body) : undefined
         });
 
+        const text = await response.text();
+        const data = tryParseJson(text);
         let error = null;
         if (!response.ok) {
-            try {
-                const problem = await response.json();
-                error = problem.detail || problem.title || 'Request failed.';
-            } catch {
-                error = 'Request failed with status ' + response.status;
-            }
+            error = data?.detail
+                || data?.title
+                || 'Request failed with status ' + response.status;
         }
 
-        return { ok: response.ok, status: response.status, error };
+        return { ok: response.ok, status: response.status, error, data };
     } catch (error) {
         console.log('BFF mutation failed:', error);
         return { ok: false, status: 0, error: error.message };

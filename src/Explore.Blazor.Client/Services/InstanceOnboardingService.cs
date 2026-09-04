@@ -754,7 +754,8 @@ public sealed class InstanceOnboardingService(
             HasValue = true,
             Value = new AuthProviderConfigurationWriteDto
             {
-                KeycloakEnabled = config.KeycloakEnabled,
+                PrimaryProviderId = config.PrimaryProviderId,
+                LockPrimaryProvider = config.LockPrimaryProvider,
                 KeycloakAuthority = config.KeycloakAuthority,
                 KeycloakClientId = config.KeycloakClientId,
                 KeycloakClientSecret = config.KeycloakClientSecret,
@@ -763,7 +764,6 @@ public sealed class InstanceOnboardingService(
                 GoogleSsoEnabled = config.GoogleSsoEnabled,
                 GoogleClientId = config.GoogleClientId,
                 GoogleClientSecret = config.GoogleClientSecret,
-                LockKeycloakEnabled = config.LockKeycloakEnabled,
                 LockAtprotoLoginEnabled = config.LockAtprotoLoginEnabled,
                 LockGoogleSsoEnabled = config.LockGoogleSsoEnabled
             }

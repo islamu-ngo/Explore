@@ -139,7 +139,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         DockLayoutState.Changed += OnDockLayoutChanged;
         UiShellState.Changed += OnShellStateChanged;
         UpdateChromeVisibility();
-        if (!_hideChrome && ActiveWorkspaceHasNavigation)
+        if (!_hideChrome
+            && !IsAuthenticationEntryRoute
+            && ActiveWorkspaceHasNavigation)
         {
             SyncWorkspaceNavigationPolicyState(shouldBeOpen: true);
         }
@@ -359,6 +361,18 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     }
 
 
+    private bool IsAuthenticationEntryRoute
+    {
+        get
+        {
+            string path = NavigationManager.ToBaseRelativePath(
+                    NavigationManager.Uri)
+                .Split('?', '#')[0]
+                .TrimEnd('/');
+            return path.Equals("login", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     private void RegisterShellDockPanels()
     {
         DockLayoutState.Register(ShellDockPanels.WorkspaceNav, RenderShellWorkspaceNav);
@@ -394,6 +408,17 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private void OnDockLayoutChanged()
     {
+        var workspaceNavigation = DockLayoutState.GetPanel(
+            ShellDockPanels.WorkspaceNavId);
+        if (workspaceNavigation?.State.IsOpen == true
+            && (DockLayoutState.IsMobileViewport
+                || DockLayoutState.ShouldRenderDockedPanelAsOverlay(
+                    workspaceNavigation)))
+        {
+            SyncWorkspaceNavigationPolicyState(shouldBeOpen: false);
+            return;
+        }
+
         var aiOpen = DockLayoutState.GetPanel(ShellDockPanels.AiAssistantId)?.State.IsOpen == true;
 
         if (!_syncingAiAssistantState)
