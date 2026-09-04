@@ -17,6 +17,22 @@ public sealed class PlatformIdentityPrincipalExtensionsTests
     private const string InternalUserId = "44444444-4444-4444-8444-444444444444";
 
     [Test]
+    [Arguments("local")]
+    [Arguments("keycloak")]
+    [Arguments("atproto")]
+    [Arguments("google")]
+    public async Task ExplicitAuthenticationAuthorityClaimWinsProviderClassification(
+        string provider)
+    {
+        ClaimsPrincipal principal = Principal(
+            "Bearer",
+            new Claim("sub", SubUserId),
+            new Claim("auth_provider", provider));
+
+        await Assert.That(principal.GetAuthProvider()).IsEqualTo(provider);
+    }
+
+    [Test]
     [Arguments(0, SubUserId)]
     [Arguments(1, NameIdentifierUserId)]
     [Arguments(2, SidUserId)]

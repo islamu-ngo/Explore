@@ -117,7 +117,6 @@ public sealed class AdminClaimsTransformation : IClaimsTransformation
             return principal.GetPlatformUserId();
 
         var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(
-            providerIdentity.Provider,
             providerIdentity.AccountKey);
         return externalLogin?.UserId;
     }

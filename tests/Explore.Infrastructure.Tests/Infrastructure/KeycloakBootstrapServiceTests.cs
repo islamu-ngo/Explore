@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Onboarding;
+using Explore.Domain.Enums;
 using Explore.Infrastructure.Services.Keycloak;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -662,7 +663,7 @@ public sealed class KeycloakBootstrapServiceTests
     {
         return new AuthProviderConfigurationDto
         {
-            KeycloakEnabled = true,
+            PrimaryProviderId = (int)AuthenticationProviderKind.Keycloak,
             KeycloakAuthority = "https://keycloak.example.com/auth/realms/ISLAMU",
             KeycloakClientId = "islamu-event-blazor",
             KeycloakClientSecret = "runtime-blazor-secret"

@@ -85,7 +85,6 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             return cachedUserId;
 
         var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(
-            providerIdentity.Provider,
             providerIdentity.AccountKey);
         Guid? resolvedUserId = externalLogin?.UserId;
 

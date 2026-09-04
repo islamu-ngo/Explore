@@ -105,10 +105,10 @@ public sealed class ConfiguredAdministratorBootstrapProvider(
             throw Failure("instance_bootstrap_profile_matrix_invalid");
         }
 
-        InstanceBootstrapProviderKind providerKind = providerText switch
+        AuthenticationProviderKind providerKind = providerText switch
         {
-            "keycloak" => InstanceBootstrapProviderKind.Keycloak,
-            "atproto" => InstanceBootstrapProviderKind.Atproto,
+            "keycloak" => AuthenticationProviderKind.Keycloak,
+            "atproto" => AuthenticationProviderKind.Atproto,
             _ => throw Failure("instance_bootstrap_provider_invalid")
         };
         if (!long.TryParse(generationText, NumberStyles.None, CultureInfo.InvariantCulture, out long generation)
@@ -204,11 +204,11 @@ public sealed class ConfiguredAdministratorBootstrapProvider(
         };
     }
 
-    private ProviderAccountKey BuildAccountKey(InstanceBootstrapProviderKind providerKind, string subject)
+    private ProviderAccountKey BuildAccountKey(AuthenticationProviderKind providerKind, string subject)
     {
         try
         {
-            if (providerKind == InstanceBootstrapProviderKind.Atproto)
+            if (providerKind == AuthenticationProviderKind.Atproto)
             {
                 return AtprotoDid.TryParse(subject, out AtprotoDid did)
                     ? PlatformIdentityPrincipalExtensions.CreateAtprotoAccountKey(did)
@@ -330,7 +330,7 @@ public sealed class ConfiguredAdministratorBootstrapProvider(
 
     internal sealed record ConfigurationSnapshot(
         InstanceBootstrapMode Mode,
-        InstanceBootstrapProviderKind? ProviderKind,
+        AuthenticationProviderKind? ProviderKind,
         DeploymentMode DeploymentMode,
         long Generation,
         string? ConfigurationFingerprint,
@@ -343,7 +343,7 @@ public sealed class ConfiguredAdministratorBootstrapProvider(
             new(InstanceBootstrapMode.Interactive, null, deploymentMode, 0, null, null, null, null, null);
 
         public static ConfigurationSnapshot Configured(
-            InstanceBootstrapProviderKind providerKind,
+            AuthenticationProviderKind providerKind,
             DeploymentMode deploymentMode,
             long generation,
             string configurationFingerprint,

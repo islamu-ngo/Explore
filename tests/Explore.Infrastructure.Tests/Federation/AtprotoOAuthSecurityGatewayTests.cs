@@ -11,6 +11,7 @@ using CarpaNet.OAuth.Storage;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Secrets;
 using Explore.Application.Features.Authentication.Atproto.Handlers.Commands;
 using Explore.Application.Features.Authentication.Atproto.Models;
@@ -119,13 +120,18 @@ public sealed class AtprotoOAuthSecurityGatewayTests
             sender,
             externalLogins,
             Substitute.For<IInstanceBootstrapStateRepository>(),
-            users,
-            actors,
+            Substitute.For<IAuthenticationProviderDispatcher>(),
+            Substitute.For<IAuthProviderConfigurationService>(),
+            new AtprotoJitAccountProvisioningOperation(
+                users,
+                actors,
+                externalLogins),
             new AtprotoSubjectOnboardingOperation(
                 externalLogins,
                 atprotoIdentities,
                 actors,
                 Substitute.For<IActorTypeRepository>(),
+                Substitute.For<ITenantRepository>(),
                 Substitute.For<ITenantUserRepository>(),
                 Substitute.For<ITenantUserRoleGrantRepository>(),
                 Substitute.For<IOrganizationRepository>(),
@@ -153,7 +159,7 @@ public sealed class AtprotoOAuthSecurityGatewayTests
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.FailureCode).IsEqualTo("pds_identity_mismatch");
         await Assert.That(fixture.Transport.PdsRequests).IsEqualTo(1);
-        await externalLogins.DidNotReceiveWithAnyArgs().GetByProviderAndKey(default!, default!);
+        await externalLogins.DidNotReceiveWithAnyArgs().GetByProviderAndKey(default!);
         await actors.DidNotReceiveWithAnyArgs().Update(default!);
         await atprotoIdentities.DidNotReceiveWithAnyArgs().Create(default!);
         await fixture.TokenRepository.DidNotReceiveWithAnyArgs()

@@ -30,6 +30,7 @@ using Explore.Application.Services.Webhooks;
 using Explore.Application.Utilities;
 using Explore.Infrastructure.Ai;
 using Explore.Infrastructure.Analytics;
+using Explore.Infrastructure.Authentication;
 using Explore.Infrastructure.Configuration;
 using Explore.Infrastructure.Geocoding;
 using Explore.Infrastructure.Identity;
@@ -478,6 +479,12 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IMachinePrincipalAccessor>(provider => provider.GetRequiredService<MachinePrincipalAccessor>());
         services.AddScoped<IMachinePrincipalExecutionAccessor>(provider => provider.GetRequiredService<MachinePrincipalAccessor>());
         services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddScoped<ILocalJwtTokenGenerator, LocalJwtTokenGenerator>();
+        services.AddScoped<RuntimeAuthenticationProviderDispatcher>();
+        services.AddScoped<IAuthenticationProviderDispatcher>(provider =>
+            provider.GetRequiredService<RuntimeAuthenticationProviderDispatcher>());
+        services.AddScoped<IAuthenticationProviderModeCacheInvalidator>(provider =>
+            provider.GetRequiredService<RuntimeAuthenticationProviderDispatcher>());
         services.AddSingleton<
             ITicketingDeploymentCapabilityCatalog,
             TicketingDeploymentCapabilityCatalog>();

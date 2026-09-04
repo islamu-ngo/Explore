@@ -289,7 +289,7 @@ public sealed class ConfiguredAdministratorBootstrapProviderTests
         ProviderAccountKey wrongSubject = PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(Authority, "other-subject");
         await Assert.That(await provider.GetVerifiedBindingAsync(wrongSubject)).IsNull();
         await Assert.That(await provider.GetVerifiedBindingAsync(
-            new ProviderAccountKey(InstanceBootstrapProviderKind.Atproto, Did))).IsNull();
+            new ProviderAccountKey(AuthenticationProviderKind.Atproto, Did))).IsNull();
 
         configuration["INSTANCE_BOOTSTRAP_BINDING_GENERATION"] = "2";
         await Assert.That(await provider.GetVerifiedBindingAsync(provider.ReadConfiguration().AccountKey!)).IsNull();
@@ -367,7 +367,7 @@ public sealed class ConfiguredAdministratorBootstrapProviderTests
         await runner.PrepareAsync();
         InstanceBootstrapState current = (await database.Repository.GetCurrentForUpdate())!;
         _ = current.CompleteConfiguredAdministrator(
-            InstanceBootstrapProviderKind.Keycloak,
+            AuthenticationProviderKind.Keycloak,
             1,
             current.SelectorFingerprint!,
             Guid.Parse("01991f00-0000-7000-8000-000000000099"),
@@ -415,7 +415,7 @@ public sealed class ConfiguredAdministratorBootstrapProviderTests
             await runner.PrepareAsync();
             InstanceBootstrapState current = (await database.Repository.GetCurrentForUpdate())!;
             _ = current.CompleteConfiguredAdministrator(
-                InstanceBootstrapProviderKind.Keycloak,
+                AuthenticationProviderKind.Keycloak,
                 1,
                 current.SelectorFingerprint!,
                 Guid.Parse("01991f00-0000-7000-8000-000000000099"),
@@ -624,7 +624,7 @@ public sealed class ConfiguredAdministratorBootstrapProviderTests
         Guid Id,
         InstanceBootstrapStatus Status,
         InstanceBootstrapMode Mode,
-        InstanceBootstrapProviderKind? ProviderKind,
+        AuthenticationProviderKind? ProviderKind,
         DeploymentMode DeploymentMode,
         long Generation,
         string? ConfigurationFingerprint,

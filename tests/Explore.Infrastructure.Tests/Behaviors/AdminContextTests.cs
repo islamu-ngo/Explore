@@ -178,8 +178,7 @@ public class AdminContextTests
         const string subject = "sXzmb2sFh0rG8tVveiNrP3td";
 
         var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
-        externalLoginRepository
-            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), OidcAccountKey(subject))
+        externalLoginRepository.GetByProviderAndKey(OidcAccountKey(subject))
             .Returns(NewExternalLogin(userId, AuthSchemeNames.Google.ToLowerInvariant(), OidcAccountKey(subject).Value));
 
         var sut = CreateSut(
@@ -192,8 +191,7 @@ public class AdminContextTests
         var result = await sut.ResolveUserIdAsync(CancellationToken.None);
 
         await Assert.That(result).IsEqualTo(userId);
-        await externalLoginRepository.Received(1)
-            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), OidcAccountKey(subject));
+        await externalLoginRepository.Received(1).GetByProviderAndKey(OidcAccountKey(subject));
     }
 
     [Test]
@@ -203,11 +201,9 @@ public class AdminContextTests
         var platformRoles = Substitute.For<IPlatformUserRoleRepository>();
         platformRoles.IsUserPlatformAdmin(internalAdminId).Returns(true);
         var externalLogins = Substitute.For<IUserExternalLoginRepository>();
-        externalLogins.GetByProviderAndKey(
-                "keycloak",
-                PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
-                    "https://attacker.example.test/realms/event",
-                    internalAdminId.ToString("D")))
+        externalLogins.GetByProviderAndKey(PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            "https://attacker.example.test/realms/event",
+            internalAdminId.ToString("D")))
             .Returns((UserExternalLogin?)null);
         var principal = CreateExternalPrincipal(
             internalAdminId.ToString("D"),
@@ -224,11 +220,9 @@ public class AdminContextTests
 
         await Assert.That(result).IsFalse()
             .Because("an OIDC GUID subject is provider-owned and must resolve through its exact issuer-qualified external login");
-        await externalLogins.Received(1).GetByProviderAndKey(
-            "keycloak",
-            PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
-                "https://attacker.example.test/realms/event",
-                internalAdminId.ToString("D")));
+        await externalLogins.Received(1).GetByProviderAndKey(PlatformIdentityPrincipalExtensions.CreateOidcAccountKey(
+            "https://attacker.example.test/realms/event",
+            internalAdminId.ToString("D")));
     }
 
     [Test]
@@ -252,8 +246,7 @@ public class AdminContextTests
         var result = await sut.ResolveUserIdAsync(CancellationToken.None);
 
         await Assert.That(result).IsEqualTo(subUserId);
-        await externalLoginRepository.DidNotReceive()
-            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<ProviderAccountKey>());
+        await externalLoginRepository.DidNotReceive().GetByProviderAndKey(Arg.Any<ProviderAccountKey>());
     }
 
     [Test]
@@ -273,8 +266,7 @@ public class AdminContextTests
         var result = await sut.ResolveUserIdAsync(CancellationToken.None);
 
         await Assert.That(result).IsNull();
-        await externalLoginRepository.DidNotReceive()
-            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<ProviderAccountKey>());
+        await externalLoginRepository.DidNotReceive().GetByProviderAndKey(Arg.Any<ProviderAccountKey>());
     }
 
     [Test]
@@ -296,8 +288,7 @@ public class AdminContextTests
         var result = await sut.ResolveUserIdAsync(CancellationToken.None);
 
         await Assert.That(result).IsNull();
-        await externalLoginRepository.DidNotReceive()
-            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<ProviderAccountKey>());
+        await externalLoginRepository.DidNotReceive().GetByProviderAndKey(Arg.Any<ProviderAccountKey>());
     }
 
     [Test]
@@ -306,8 +297,7 @@ public class AdminContextTests
         const string subject = "handle.example.com";
         const string did = "did:plc:example";
         var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
-        externalLoginRepository
-            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), OidcAccountKey(subject))
+        externalLoginRepository.GetByProviderAndKey(OidcAccountKey(subject))
             .Returns((UserExternalLogin?)null);
         var sut = CreateSut(
             CreateHttpContextAccessor(CreateExternalPrincipal(subject, idp: "atproto", did: did)),
@@ -319,8 +309,7 @@ public class AdminContextTests
         var result = await sut.ResolveUserIdAsync(CancellationToken.None);
 
         await Assert.That(result).IsNull();
-        await externalLoginRepository.Received(1)
-            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), OidcAccountKey(subject));
+        await externalLoginRepository.Received(1).GetByProviderAndKey(OidcAccountKey(subject));
     }
 
     [Test]
@@ -330,8 +319,7 @@ public class AdminContextTests
         const string subject = "keycloak-subject";
 
         var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
-        externalLoginRepository
-            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), OidcAccountKey(subject))
+        externalLoginRepository.GetByProviderAndKey(OidcAccountKey(subject))
             .Returns(NewExternalLogin(userId, AuthSchemeNames.Keycloak.ToLowerInvariant(), OidcAccountKey(subject).Value));
 
         var sut = CreateSut(
@@ -344,8 +332,7 @@ public class AdminContextTests
         var result = await sut.ResolveUserIdAsync(CancellationToken.None);
 
         await Assert.That(result).IsEqualTo(userId);
-        await externalLoginRepository.Received(1)
-            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), OidcAccountKey(subject));
+        await externalLoginRepository.Received(1).GetByProviderAndKey(OidcAccountKey(subject));
     }
 
     [Test]
@@ -364,8 +351,7 @@ public class AdminContextTests
         var result = await sut.ResolveUserIdAsync(CancellationToken.None);
 
         await Assert.That(result).IsNull();
-        await externalLoginRepository.DidNotReceive()
-            .GetByProviderAndKey(Arg.Any<string>(), Arg.Any<ProviderAccountKey>());
+        await externalLoginRepository.DidNotReceive().GetByProviderAndKey(Arg.Any<ProviderAccountKey>());
     }
 
     [Test]
@@ -375,8 +361,7 @@ public class AdminContextTests
         const string email = "USER@Example.COM";
 
         var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
-        externalLoginRepository
-            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), OidcAccountKey(subject))
+        externalLoginRepository.GetByProviderAndKey(OidcAccountKey(subject))
             .Returns((UserExternalLogin?)null);
 
         var sut = CreateSut(
@@ -394,8 +379,7 @@ public class AdminContextTests
         var result = await sut.ResolveUserIdAsync(CancellationToken.None);
 
         await Assert.That(result).IsNull();
-        await externalLoginRepository.Received(1)
-            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), OidcAccountKey(subject));
+        await externalLoginRepository.Received(1).GetByProviderAndKey(OidcAccountKey(subject));
     }
 
     [Test]
@@ -404,8 +388,7 @@ public class AdminContextTests
         const string subject = "google-subject";
 
         var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
-        externalLoginRepository
-            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), OidcAccountKey(subject))
+        externalLoginRepository.GetByProviderAndKey(OidcAccountKey(subject))
             .Returns((UserExternalLogin?)null);
 
         var sut = CreateSut(
@@ -422,8 +405,7 @@ public class AdminContextTests
         var result = await sut.ResolveUserIdAsync(CancellationToken.None);
 
         await Assert.That(result).IsNull();
-        await externalLoginRepository.Received(1)
-            .GetByProviderAndKey(AuthSchemeNames.Google.ToLowerInvariant(), OidcAccountKey(subject));
+        await externalLoginRepository.Received(1).GetByProviderAndKey(OidcAccountKey(subject));
     }
 
     [Test]
@@ -433,8 +415,7 @@ public class AdminContextTests
         const string subject = "keycloak-onboarding-subject";
         UserExternalLogin? externalLogin = null;
         var externalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
-        externalLoginRepository
-            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), OidcAccountKey(subject))
+        externalLoginRepository.GetByProviderAndKey(OidcAccountKey(subject))
             .Returns(_ => externalLogin);
 
         var sut = CreateSut(
@@ -450,8 +431,7 @@ public class AdminContextTests
 
         await Assert.That(beforeOnboarding).IsNull();
         await Assert.That(afterOnboarding).IsEqualTo(userId);
-        await externalLoginRepository.Received(2)
-            .GetByProviderAndKey(AuthSchemeNames.Keycloak.ToLowerInvariant(), OidcAccountKey(subject));
+        await externalLoginRepository.Received(2).GetByProviderAndKey(OidcAccountKey(subject));
     }
 
     [Test]
@@ -880,17 +860,11 @@ public class AdminContextTests
 
     private static UserExternalLogin NewExternalLogin(Guid userId, string provider, string providerKey)
     {
-        return new UserExternalLogin
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            User = NewUser(userId, "user@example.com"),
-            TenantId = Guid.NewGuid(),
-            Tenant = null!,
-            Provider = provider,
-            ProviderKey = providerKey,
-            ProviderDisplayName = provider
-        };
+        return new UserExternalLogin { Id = Guid.NewGuid(),
+        UserId = userId,
+        User = NewUser(userId, "user@example.com"),
+        AuthenticationProviderId = (int)provider.ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = providerKey,
+        ProviderDisplayName = provider };
     }
 
     private static User NewUser(Guid userId, string email)

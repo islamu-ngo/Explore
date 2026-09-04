@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Onboarding;
 using Explore.Application.Services;
+using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Refit;
@@ -213,7 +214,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             ApiClientId = request.ApiClientId
         };
 
-        if (!configuration.KeycloakEnabled)
+        if (configuration.PrimaryProviderId != (int)AuthenticationProviderKind.Keycloak)
         {
             checks.Add(DoctorCheck(
                 "keycloak_disabled",
@@ -363,7 +364,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             DestructiveOperationsSupported = false
         };
 
-        if (!configuration.KeycloakEnabled)
+        if (configuration.PrimaryProviderId != (int)AuthenticationProviderKind.Keycloak)
         {
             diagnostics.Add(DoctorCheck(
                 "keycloak_disabled",
@@ -567,7 +568,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             return CompleteSyncPlan(plan, operations, diagnostics);
         }
 
-        if (!configuration.KeycloakEnabled
+        if (configuration.PrimaryProviderId != (int)AuthenticationProviderKind.Keycloak
             || string.IsNullOrWhiteSpace(configuration.KeycloakAuthority)
             || string.IsNullOrWhiteSpace(configuration.KeycloakClientId))
         {
@@ -702,7 +703,7 @@ public sealed class KeycloakBootstrapService : IKeycloakBootstrapService
             SecretOwnershipMode = "application-managed"
         };
 
-        if (!configuration.KeycloakEnabled
+        if (configuration.PrimaryProviderId != (int)AuthenticationProviderKind.Keycloak
             || string.IsNullOrWhiteSpace(configuration.KeycloakAuthority)
             || string.IsNullOrWhiteSpace(configuration.KeycloakClientId))
         {
