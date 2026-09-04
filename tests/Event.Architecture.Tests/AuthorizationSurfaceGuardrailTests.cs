@@ -10,6 +10,7 @@ using Explore.API.Attributes;
 using Explore.API.Filters;
 using Explore.Application.Authorization;
 using Explore.Application.Responses;
+using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -252,6 +253,25 @@ public sealed class AuthorizationSurfaceGuardrailTests
 
     [Test]
     [Category("AuthorizationSurfaceGuardrail")]
+    [DisplayName("Configured-administrator claims use purpose-bound bootstrap authority")]
+    public async Task ConfiguredAdministratorClaim_UsesPurposeBoundBootstrapAuthority()
+    {
+        Type requestType = typeof(ClaimConfiguredInstanceAdministratorCommand);
+        var inventory = AuthorizationSurfaceInventory.DiscoverMutatingRequests([requestType]);
+
+        await Assert.That(
+            requestType.GetCustomAttribute<AuthorizeConfiguredAdministratorClaimAttribute>())
+            .IsNotNull();
+        await Assert.That(requestType.GetCustomAttribute<AuthorizeResourceAttribute>())
+            .IsNull()
+            .Because("initial bootstrap authority cannot depend on an administrator already existing");
+        await Assert.That(inventory.ProtectedMutatingRequests.Select(item => item.Id))
+            .Contains(requestType.FullName!);
+        await Assert.That(inventory.UnprotectedMutatingRequests).IsEmpty();
+    }
+
+    [Test]
+    [Category("AuthorizationSurfaceGuardrail")]
     [DisplayName("Mutating MediatR requests must be authorization-classified or named in the Phase 0 inventory")]
     public async Task MutatingMediatRRequests_MustBeAuthorizationClassifiedOrNamed()
     {
@@ -406,7 +426,7 @@ internal static class AuthorizationSurfaceInventory
                 ResponseType: GetResponseType(type)?.FullName ?? string.Empty,
                 ClassificationReason: GetMutatingRequestReason(type));
 
-            if (type.GetCustomAttribute<AuthorizeResourceAttribute>(inherit: true) is not null)
+            if (HasAuthorizationClassification(type))
             {
                 protectedRequests.Add(item);
             }
@@ -418,6 +438,11 @@ internal static class AuthorizationSurfaceInventory
 
         return new MutatingRequestDiscovery(protectedRequests.ToArray(), unprotectedRequests.ToArray());
     }
+
+    private static bool HasAuthorizationClassification(Type type) =>
+        type.GetCustomAttribute<AuthorizeResourceAttribute>(inherit: true) is not null
+        || type.GetCustomAttribute<AuthorizeConfiguredAdministratorClaimAttribute>(
+            inherit: true) is not null;
 
     public static ControllerActionDiscovery DiscoverControllerActions(IEnumerable<Type> controllerTypes)
     {

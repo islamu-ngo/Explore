@@ -144,6 +144,51 @@ public sealed class InstanceOnboardingCompletionOperationTests
         await Assert.That(scenario.CommittedWrites).IsEmpty();
         await Assert.That(scenario.PostCommitEffects).IsEmpty();
     }
+
+    [Test]
+    public async Task ConfiguredClaim_MismatchedVerifiedBindingCannotEnterAuthorityTransfer()
+    {
+        var scenario = new OnboardingCompletionScenario
+        {
+            BindingAccount = new ProviderAccountKey(
+                InstanceBootstrapProviderKind.Atproto,
+                "did:plc:different-configured-account")
+        };
+
+        BaseCommandResponse<Guid> rejected = await scenario.ClaimAsync();
+
+        await Assert.That(rejected.IsSuccess).IsFalse();
+        await Assert.That(rejected.FailureCode)
+            .IsEqualTo("configured_administrator_claim_mismatch");
+        await Assert.That(scenario.Bootstrap.Status)
+            .IsEqualTo(InstanceBootstrapStatus.Pending);
+        await Assert.That(scenario.Bootstrap.CompletedByUserId).IsNull();
+        await Assert.That(scenario.Users).IsEmpty();
+        await Assert.That(scenario.CommittedWrites).IsEmpty();
+        await Assert.That(scenario.PostCommitEffects).IsEmpty();
+    }
+
+    [Test]
+    public async Task CompletedConfiguredClaim_DifferentActorCannotAcquireAuthority()
+    {
+        var scenario = new OnboardingCompletionScenario();
+        BaseCommandResponse<Guid> initial = await scenario.ClaimAsync();
+        int effectCount = scenario.PostCommitEffects.Count;
+        Guid attackerId = Guid.CreateVersion7();
+
+        BaseCommandResponse<Guid> rejected = await scenario.ClaimAsync(attackerId);
+
+        await Assert.That(initial.IsSuccess).IsTrue();
+        await Assert.That(rejected.IsSuccess).IsFalse();
+        await Assert.That(rejected.FailureCode)
+            .IsEqualTo("configured_administrator_claim_conflict");
+        await Assert.That(scenario.Bootstrap.CompletedByUserId)
+            .IsEqualTo(scenario.UserId);
+        await Assert.That(scenario.Users).DoesNotContain(attackerId);
+        await Assert.That(scenario.CommittedWrites).IsEmpty();
+        await Assert.That(scenario.PostCommitEffects.Count)
+            .IsEqualTo(effectCount);
+    }
 }
 
 internal sealed class OnboardingCompletionScenario
