@@ -11,12 +11,16 @@ public sealed class StudioContextServiceTests
     [Test]
     public async Task GetEventAttendeesAsync_ExcludesOrdersWithoutViewParticipantsRelation()
     {
-        var api = Substitute.For<IEventApiClient>();
-        var service = new StudioContextService(api);
+        var orderClient = Substitute.For<IRegistrationOrderClient>();
+        var authenticatedClient = Substitute.For<IAuthenticatedRegistrationOrderClient>();
+        var service = new StudioContextService(
+            Substitute.For<IStudioClient>(),
+            orderClient,
+            authenticatedClient);
         var eventId = Guid.CreateVersion7();
         var visibleOrderId = Guid.CreateVersion7();
         var hiddenOrderId = Guid.CreateVersion7();
-        api.GetEventRegistrationOrdersAsync(eventId, cancellationToken: Arg.Any<CancellationToken>())
+        orderClient.GetEventRegistrationOrdersAsync(eventId, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfRegistrationOrderDto
             {
                 _embedded = new HalCollectionEmbeddedOfRegistrationOrderDto
@@ -39,7 +43,7 @@ public sealed class StudioContextServiceTests
                     ]
                 }
             });
-        api.GetAuthenticatedRegistrationOrderParticipantsAsync(
+        authenticatedClient.GetAuthenticatedRegistrationOrderParticipantsAsync(
                 eventId,
                 visibleOrderId,
                 cancellationToken: Arg.Any<CancellationToken>())
@@ -55,7 +59,7 @@ public sealed class StudioContextServiceTests
 
         await Assert.That(result.Count).IsEqualTo(1);
         await Assert.That(result[0].Order.Id).IsEqualTo(visibleOrderId);
-        await api.DidNotReceive().GetAuthenticatedRegistrationOrderParticipantsAsync(
+        await authenticatedClient.DidNotReceive().GetAuthenticatedRegistrationOrderParticipantsAsync(
             eventId,
             hiddenOrderId,
             cancellationToken: Arg.Any<CancellationToken>());

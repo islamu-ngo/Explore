@@ -7,7 +7,8 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class AddressSuggestionServiceTests
 {
-    private readonly IEventApiClient _api = Substitute.For<IEventApiClient>();
+    private readonly IGeocodingClient _geocodingClient = Substitute.For<IGeocodingClient>();
+    private readonly ILocationClient _locationClient = Substitute.For<ILocationClient>();
     private readonly ILogger<AddressSuggestionService> _logger =
         Substitute.For<ILogger<AddressSuggestionService>>();
 
@@ -70,7 +71,7 @@ public sealed class AddressSuggestionServiceTests
             Source = LocationAddressSourceEnum.Manual,
             Visibility = LocationAddressVisibilityEnum.OrganizationScoped
         };
-        _api.GetAddressSuggestionsAsync(
+        _geocodingClient.GetAddressSuggestionsAsync(
                 Arg.Any<AddressSuggestionsRequestDto>(),
                 null,
                 null,
@@ -100,7 +101,7 @@ public sealed class AddressSuggestionServiceTests
         HalResourceOfAddressSuggestionDto returned = result.Suggestions.Single();
         ArgumentNullException.ThrowIfNull(returned);
         await Assert.That(returned).IsSameReferenceAs(item);
-        await _api.Received(1).GetAddressSuggestionsAsync(
+        await _geocodingClient.Received(1).GetAddressSuggestionsAsync(
             Arg.Is<AddressSuggestionsRequestDto>(request =>
                 request.SearchText == "community"
                 && request.OrganizationId == organizationId
@@ -131,7 +132,7 @@ public sealed class AddressSuggestionServiceTests
                 limit: 7,
                 invalidLink,
                 CancellationToken.None));
-        await _api.DidNotReceive().GetAddressSuggestionsAsync(
+        await _geocodingClient.DidNotReceive().GetAddressSuggestionsAsync(
             Arg.Any<AddressSuggestionsRequestDto>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -148,7 +149,7 @@ public sealed class AddressSuggestionServiceTests
             Href = $"https://event.example.test/api/location/{suggestion.LocationId:D}/address-approval",
             Method = "POST"
         };
-        _api.ApproveTenantAddressAsync(
+        _locationClient.ApproveTenantAddressAsync(
                 suggestion.LocationId!.Value,
                 $"\"{suggestion.ConcurrencyStamp:D}\"",
                 null,
@@ -159,7 +160,7 @@ public sealed class AddressSuggestionServiceTests
 
         await service.ApproveAsync(suggestion, link, cancellation.Token);
 
-        await _api.Received(1).ApproveTenantAddressAsync(
+        await _locationClient.Received(1).ApproveTenantAddressAsync(
             suggestion.LocationId!.Value,
             $"\"{suggestion.ConcurrencyStamp:D}\"",
             null,
@@ -188,7 +189,7 @@ public sealed class AddressSuggestionServiceTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.ApproveAsync(suggestion, link, CancellationToken.None));
-        await _api.DidNotReceive().ApproveTenantAddressAsync(
+        await _locationClient.DidNotReceive().ApproveTenantAddressAsync(
             Arg.Any<Guid>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -209,7 +210,7 @@ public sealed class AddressSuggestionServiceTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.ApproveAsync(suggestion, link, CancellationToken.None));
-        await _api.DidNotReceive().ApproveTenantAddressAsync(
+        await _locationClient.DidNotReceive().ApproveTenantAddressAsync(
             Arg.Any<Guid>(),
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -217,7 +218,7 @@ public sealed class AddressSuggestionServiceTests
             Arg.Any<CancellationToken>());
     }
 
-    private AddressSuggestionService CreateService() => new(_api, _logger);
+    private AddressSuggestionService CreateService() => new(_geocodingClient, _locationClient, _logger);
 
     private static HalResourceOfAddressSuggestionDto Suggestion() => new()
     {

@@ -10,10 +10,10 @@ namespace Explore.Blazor.Client.Services;
 
 public class EventDayService : IEventDayService
 {
-    private readonly IEventApiClient _client;
+    private readonly IEventDayClient _client;
     private readonly ILogger<EventDayService> _logger;
 
-    public EventDayService(IEventApiClient client, ILogger<EventDayService> logger)
+    public EventDayService(IEventDayClient client, ILogger<EventDayService> logger)
     {
         _client = client;
         _logger = logger;

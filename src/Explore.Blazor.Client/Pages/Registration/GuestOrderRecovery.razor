@@ -7,6 +7,7 @@
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
 @rendermode InteractiveServer
 @inject IRegistrationOrderService RegistrationOrderService
+@inject IRegistrationPaymentService RegistrationPaymentService
 @inject IGuestRegistrationOrderCapabilityStore CapabilityStore
 @inject IAccessibilityAnnouncerService Announcer
 @inject IAccessibilityFocusService Focus
@@ -218,17 +219,17 @@
     private async Task FinalizeAsync() => await ApplyAsync(() => RegistrationOrderService.FinalizeGuestAsync(EventId, OrderId, _capability!));
     private async Task CancelAsync() => await ApplyAsync(() => RegistrationOrderService.CancelGuestAsync(EventId, OrderId, _capability!));
     private Task<PaidOrderAcceptanceDisclosureDto?> LoadPaymentAcceptanceAsync(CancellationToken cancellationToken) =>
-        RegistrationOrderService.GetGuestPaymentAcceptanceAsync(EventId, OrderId, _capability!, _order!, cancellationToken);
+        RegistrationPaymentService.GetGuestPaymentAcceptanceAsync(EventId, OrderId, _capability!, _order!, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> StartPaymentAsync(string disclosureRevision, CancellationToken cancellationToken) =>
-        RegistrationOrderService.StartGuestPaymentAsync(EventId, OrderId, _capability!, _order!, disclosureRevision, cancellationToken);
+        RegistrationPaymentService.StartGuestPaymentAsync(EventId, OrderId, _capability!, _order!, disclosureRevision, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> LoadPaymentAsync(CancellationToken cancellationToken) =>
-        RegistrationOrderService.GetGuestPaymentAsync(EventId, OrderId, _capability!, _order!, cancellationToken);
+        RegistrationPaymentService.GetGuestPaymentAsync(EventId, OrderId, _capability!, _order!, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> RefreshPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
-        RegistrationOrderService.RefreshGuestPaymentAsync(EventId, OrderId, _capability!, payment, cancellationToken);
+        RegistrationPaymentService.RefreshGuestPaymentAsync(EventId, OrderId, _capability!, payment, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> RetryPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
-        RegistrationOrderService.RetryGuestPaymentAsync(EventId, OrderId, _capability!, payment, cancellationToken);
+        RegistrationPaymentService.RetryGuestPaymentAsync(EventId, OrderId, _capability!, payment, cancellationToken);
     private Task<string?> IssueCheckoutTicketAsync(string path, CancellationToken cancellationToken) =>
-        RegistrationOrderService.IssueGuestPaymentCheckoutTicketAsync(path, _capability!, cancellationToken);
+        RegistrationPaymentService.IssueGuestPaymentCheckoutTicketAsync(path, _capability!, cancellationToken);
     private Task ReloadAfterPaymentAsync() => LoadAsync();
 
     private Task ApplyPromotionAsync()

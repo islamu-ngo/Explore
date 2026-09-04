@@ -47,7 +47,7 @@ public static class BffTicketTransferEndpoints
         Guid transferId,
         [FromHeader(Name = CapabilityHeader)]
         string? capability,
-        IEventApiClient api,
+        ITicketTransferClient api,
         CancellationToken cancellationToken) =>
         ForwardAsync(
             () => api.GetTicketTransferAsync(
@@ -60,7 +60,7 @@ public static class BffTicketTransferEndpoints
     private static Task<IResult> HandleOfferAsync(
         Guid eventId,
         Guid admissionTicketId,
-        IEventApiClient api,
+        ITicketTransferClient api,
         CancellationToken cancellationToken) =>
         ForwardAsync(
             () => api.OfferTicketTransferAsync(
@@ -75,7 +75,7 @@ public static class BffTicketTransferEndpoints
         AcceptTicketTransferRequest request,
         [FromHeader(Name = CapabilityHeader)]
         string? capability,
-        IEventApiClient api,
+        ITicketTransferClient api,
         CancellationToken cancellationToken) =>
         ForwardAsync(
             () => api.AcceptTicketTransferAsync(
@@ -90,7 +90,7 @@ public static class BffTicketTransferEndpoints
         Guid eventId,
         Guid admissionTicketId,
         Guid transferId,
-        IEventApiClient api,
+        ITicketTransferClient api,
         CancellationToken cancellationToken) =>
         ForwardAsync(
             () => api.CancelTicketTransferAsync(
@@ -103,7 +103,7 @@ public static class BffTicketTransferEndpoints
         Guid eventId,
         Guid admissionTicketId,
         Guid transferId,
-        IEventApiClient api,
+        ITicketTransferClient api,
         CancellationToken cancellationToken) =>
         ForwardAsync(
             () => api.CorrectTicketTransferAsync(
@@ -116,7 +116,7 @@ public static class BffTicketTransferEndpoints
         Guid eventId,
         Guid admissionTicketId,
         Guid transferId,
-        IEventApiClient api,
+        ITicketTransferClient api,
         CancellationToken cancellationToken) =>
         ForwardAsync(
             () => api.ReissueTransferredTicketAsync(

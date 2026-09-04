@@ -8,9 +8,9 @@ namespace Explore.Blazor.Client.Services.Lookup;
 
 public class ScheduleItemKindService : IScheduleItemKindService
 {
-    private readonly IEventApiClient _client;
+    private readonly IScheduleItemKindClient _client;
 
-    public ScheduleItemKindService(IEventApiClient client)
+    public ScheduleItemKindService(IScheduleItemKindClient client)
     {
         _client = client;
     }

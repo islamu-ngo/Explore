@@ -7,9 +7,9 @@ namespace Explore.Blazor.Client.Services.Lookup;
 
 public class LanguageService : ILanguageService
 {
-    private readonly IEventApiClient _client;
+    private readonly ILanguageClient _client;
 
-    public LanguageService(IEventApiClient client)
+    public LanguageService(ILanguageClient client)
     {
         _client = client;
     }

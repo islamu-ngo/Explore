@@ -8,12 +8,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 public class EventFormatServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventFormatClient _apiClient;
     private readonly EventFormatService _service;
 
     public EventFormatServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IEventFormatClient>();
         _service = new EventFormatService(_apiClient);
     }
 

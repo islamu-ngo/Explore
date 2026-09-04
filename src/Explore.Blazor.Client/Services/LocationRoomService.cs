@@ -10,10 +10,10 @@ namespace Explore.Blazor.Client.Services;
 
 public class LocationRoomService : ILocationRoomService
 {
-    private readonly IEventApiClient _client;
+    private readonly ILocationRoomClient _client;
     private readonly ILogger<LocationRoomService> _logger;
 
-    public LocationRoomService(IEventApiClient client, ILogger<LocationRoomService> logger)
+    public LocationRoomService(ILocationRoomClient client, ILogger<LocationRoomService> logger)
     {
         _client = client;
         _logger = logger;

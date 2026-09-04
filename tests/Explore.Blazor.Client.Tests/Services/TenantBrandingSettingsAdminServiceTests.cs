@@ -5,7 +5,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class TenantBrandingSettingsAdminServiceTests
 {
-    private readonly IEventApiClient _api = Substitute.For<IEventApiClient>();
+    private readonly ITenantSettingsDocumentsClient _api = Substitute.For<ITenantSettingsDocumentsClient>();
     private readonly TenantBrandingSettingsAdminService _service;
 
     public TenantBrandingSettingsAdminServiceTests()

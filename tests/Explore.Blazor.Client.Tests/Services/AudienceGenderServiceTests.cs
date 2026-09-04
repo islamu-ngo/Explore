@@ -8,12 +8,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 public class AudienceGenderServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IAudienceGenderClient _apiClient;
     private readonly AudienceGenderService _service;
 
     public AudienceGenderServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IAudienceGenderClient>();
         _service = new AudienceGenderService(_apiClient);
     }
 

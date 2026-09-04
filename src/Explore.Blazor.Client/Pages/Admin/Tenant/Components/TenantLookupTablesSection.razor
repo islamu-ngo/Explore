@@ -1,5 +1,8 @@
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Constants
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
+@using Explore.Blazor.Client.Contracts.Services.Lookup
+@using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Pages.Admin.Components
 @using Explore.Blazor.Client.Pages.Admin.Dialogs
 @using Explore.Blazor.Client.Services
@@ -299,7 +302,14 @@
 </div>
 
 @code {
-    [Inject] private IAdminService AdminService { get; set; } = null!;
+    [Inject] private ICategoryService CategoryService { get; set; } = null!;
+    [Inject] private ITagService TagService { get; set; } = null!;
+    [Inject] private ILocationClient LocationClient { get; set; } = null!;
+    [Inject] private IEventLookupService EventLookupService { get; set; } = null!;
+    [Inject] private IDemographicLookupService DemographicLookupService { get; set; } = null!;
+    [Inject] private ICultureLookupService CultureLookupService { get; set; } = null!;
+    [Inject] private IOrganizationLookupService OrganizationLookupService { get; set; } = null!;
+    [Inject] private ISystemLookupService SystemLookupService { get; set; } = null!;
     [Inject] private IDialogService DialogService { get; set; } = null!;
     [Inject] private ISnackbar Snackbar { get; set; } = null!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = null!;
@@ -388,22 +398,32 @@
 
     private async Task LoadCategoriesAsync()
     {
-        _categories = await AdminService.GetCategoriesAsync() ?? new List<CategoryListDto>();
+        _categories = await CategoryService.GetCategoriesAsync() ?? new List<CategoryListDto>();
     }
 
     private async Task LoadTagsAsync()
     {
-        _tags = await AdminService.GetTagsAsync() ?? new List<TagListDto>();
+        _tags = await TagService.GetTagsAsync() ?? new List<TagListDto>();
     }
 
     private async Task LoadLocationsAsync()
     {
-        HalCollectionResourceOfLocationListDto resource =
-            await AdminService.GetLocationsAsync();
-        _locations = resource._embedded?.Items?.ToArray() ?? [];
-        _locationLinks = resource._links is { } links
-            ? new Dictionary<string, HalLink>(links)
-            : new Dictionary<string, HalLink>();
+        try
+        {
+            HalCollectionResourceOfLocationListDto resource =
+                await LocationClient.GetLocationsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize)
+                ?? new HalCollectionResourceOfLocationListDto();
+            _locations = resource._embedded?.Items?.ToArray() ?? [];
+            _locationLinks = resource._links is { } links
+                ? new Dictionary<string, HalLink>(links)
+                : new Dictionary<string, HalLink>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load locations: {ex.Message}", Severity.Error);
+            _locations = [];
+            _locationLinks = new Dictionary<string, HalLink>();
+        }
     }
 
     private async Task LoadReferenceLookupTablesAsync()
@@ -429,25 +449,25 @@
         await Task.WhenAll(tasks);
     }
 
-    private async Task LoadEventTypesAsync() => _eventTypes = await AdminService.GetEventTypesAsync();
-    private async Task LoadEventFormatsAsync() => _eventFormats = await AdminService.GetEventFormatsAsync();
-    private async Task LoadEventStatusesAsync() => _eventStatuses = await AdminService.GetEventStatusesAsync();
-    private async Task LoadVisibilityTypesAsync() => _visibilityTypes = await AdminService.GetVisibilityTypesAsync();
-    private async Task LoadRegistrationModesAsync() => _registrationModes = await AdminService.GetRegistrationModesAsync();
-    private async Task LoadAudienceGendersAsync() => _audienceGenders = await AdminService.GetAudienceGendersAsync();
-    private async Task LoadAudienceAgesAsync() => _audienceAges = await AdminService.GetAudienceAgesAsync();
-    private async Task LoadMadhabsAsync() => _madhabs = await AdminService.GetMadhabsAsync();
-    private async Task LoadLanguagesAsync() => _languages = await AdminService.GetLanguagesAsync();
-    private async Task LoadOrganizationPositionsAsync() => _organizationPositions = await AdminService.GetOrganizationPositionsAsync();
-    private async Task LoadApprovalStatusesAsync() => _approvalStatuses = await AdminService.GetApprovalStatusesAsync();
-    private async Task LoadActorTypesAsync() => _actorTypes = await AdminService.GetActorTypesAsync();
-    private async Task LoadFileTypesAsync() => _fileTypes = await AdminService.GetFileTypesAsync();
-    private async Task LoadDidCustodyTypesAsync() => _didCustodyTypes = await AdminService.GetDidCustodyTypesAsync();
+    private async Task LoadEventTypesAsync() => _eventTypes = await EventLookupService.GetEventTypesAsync();
+    private async Task LoadEventFormatsAsync() => _eventFormats = await EventLookupService.GetEventFormatsAsync();
+    private async Task LoadEventStatusesAsync() => _eventStatuses = await EventLookupService.GetEventStatusesAsync();
+    private async Task LoadVisibilityTypesAsync() => _visibilityTypes = await EventLookupService.GetVisibilityTypesAsync();
+    private async Task LoadRegistrationModesAsync() => _registrationModes = await EventLookupService.GetRegistrationModesAsync();
+    private async Task LoadAudienceGendersAsync() => _audienceGenders = await DemographicLookupService.GetAudienceGendersAsync();
+    private async Task LoadAudienceAgesAsync() => _audienceAges = await DemographicLookupService.GetAudienceAgesAsync();
+    private async Task LoadMadhabsAsync() => _madhabs = await CultureLookupService.GetMadhabsAsync();
+    private async Task LoadLanguagesAsync() => _languages = await CultureLookupService.GetLanguagesAsync();
+    private async Task LoadOrganizationPositionsAsync() => _organizationPositions = await OrganizationLookupService.GetOrganizationPositionsAsync();
+    private async Task LoadApprovalStatusesAsync() => _approvalStatuses = await OrganizationLookupService.GetApprovalStatusesAsync();
+    private async Task LoadActorTypesAsync() => _actorTypes = await OrganizationLookupService.GetActorTypesAsync();
+    private async Task LoadFileTypesAsync() => _fileTypes = await SystemLookupService.GetFileTypesAsync();
+    private async Task LoadDidCustodyTypesAsync() => _didCustodyTypes = await SystemLookupService.GetDidCustodyTypesAsync();
 
     private async Task OpenCreateCategoryDialogAsync()
         => await RunLookupCreateAsync<CreateCategoryDto>(
             options => CreateCategoryDialog.ShowAsync(DialogService, "Create Category", options: options),
-            AdminService.CreateCategoryAsync,
+            async dto => (await CategoryService.CreateCategoryAsync(dto))?.Success == true,
             dto => dto.FullName,
             "Category",
             LoadCategoriesAsync);
@@ -464,7 +484,7 @@
 
         await RunLookupEditAsync<UpdateCategoryDto>(
             options => EditCategoryDialog.ShowAsync(DialogService, "Edit Category", parameters, options),
-            dto => AdminService.UpdateCategoryAsync(category.Id.Value, category.ConcurrencyStamp ?? Guid.Empty, dto),
+            async dto => (await CategoryService.UpdateCategoryAsync(category.Id.Value, category.ConcurrencyStamp ?? Guid.Empty, dto))?.Success == true,
             dto => dto.FullName?.Value,
             "Category",
             LoadCategoriesAsync);
@@ -475,13 +495,13 @@
             category.Id,
             category.FullName,
             "category",
-            AdminService.DeleteCategoryAsync,
+            CategoryService.DeleteCategoryAsync,
             LoadCategoriesAsync);
 
     private async Task OpenCreateTagDialogAsync()
         => await RunLookupCreateAsync<CreateTagDto>(
             options => CreateTagDialog.ShowAsync(DialogService, "Create Tag", options: options),
-            AdminService.CreateTagAsync,
+            async dto => (await TagService.CreateTagAsync(dto))?.Success == true,
             dto => dto.FullName,
             "Tag",
             LoadTagsAsync);
@@ -491,7 +511,7 @@
         if (!tag.Id.HasValue)
             return;
 
-        var tagDetails = await AdminService.GetTagByIdAsync(tag.Id.Value);
+        var tagDetails = await TagService.GetTagByIdAsync(tag.Id.Value);
         if (tagDetails == null)
         {
             Snackbar.Add("Failed to load tag details.", Severity.Error);
@@ -505,7 +525,7 @@
 
         await RunLookupEditAsync<UpdateTagDto>(
             options => EditTagDialog.ShowAsync(DialogService, "Edit Tag", parameters, options),
-            dto => AdminService.UpdateTagAsync(tagDetails.Id!.Value, dto),
+            async dto => (await TagService.UpdateTagAsync(tagDetails.Id!.Value, dto))?.Success == true,
             dto => dto.FullName?.Value,
             "Tag",
             LoadTagsAsync);
@@ -516,7 +536,7 @@
             tag.Id,
             tag.FullName,
             "tag",
-            AdminService.DeleteTagAsync,
+            TagService.DeleteTagAsync,
             LoadTagsAsync);
 
     private async Task OpenCreateLocationDialogAsync(HalLink createLink)
@@ -533,7 +553,20 @@
                 "Create Location",
                 parameters,
                 options),
-            dto => AdminService.CreateLocationAsync(dto, createLink),
+            async dto =>
+            {
+                RequireLink(createLink, "POST", "/api/location", "location create");
+                try
+                {
+                    await LocationClient.CreateLocationAsync(dto);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Error creating location: {ex.Message}", Severity.Error);
+                    return false;
+                }
+            },
             dto => dto.FullName,
             "Location",
             LoadLocationsAsync);
@@ -547,9 +580,17 @@
         if (!location.Id.HasValue)
             return;
 
-        var locationDetails = await AdminService.GetLocationByIdAsync(
-            location.Id.Value,
-            selfLink);
+        RequireLink(selfLink, "GET", $"/api/location/{location.Id.Value:D}", "location view");
+        LocationDto? locationDetails;
+        try
+        {
+            locationDetails = (await LocationClient.GetLocationByIdAsync(location.Id.Value))?.ToDto();
+        }
+        catch
+        {
+            locationDetails = null;
+        }
+
         if (locationDetails == null)
         {
             Snackbar.Add("Failed to load location details.", Severity.Error);
@@ -567,11 +608,20 @@
 
         await RunLookupEditAsync<UpdateLocationDto>(
             options => EditLocationDialog.ShowAsync(DialogService, "Edit Location", parameters, options),
-            dto => AdminService.UpdateLocationAsync(
-                locationDetails.Id ?? Guid.Empty,
-                locationDetails.ConcurrencyStamp ?? Guid.Empty,
-                dto,
-                editLink),
+            async dto =>
+            {
+                RequireLink(editLink, "PATCH", $"/api/location/{locationDetails.Id:D}", "location update");
+                try
+                {
+                    await LocationClient.UpdateLocationAsync(locationDetails.Id ?? Guid.Empty, dto);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Error updating location: {ex.Message}", Severity.Error);
+                    return false;
+                }
+            },
             dto => dto.FullName?.Value,
             "Location",
             LoadLocationsAsync);
@@ -603,7 +653,20 @@
             location.Id,
             location.FullName,
             "location",
-            id => AdminService.DeleteLocationAsync(id, deleteLink),
+            async id =>
+            {
+                RequireLink(deleteLink, "DELETE", $"/api/location/{id:D}", "location delete");
+                try
+                {
+                    await LocationClient.DeleteLocationAsync(id);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Error deleting location: {ex.Message}", Severity.Error);
+                    return false;
+                }
+            },
             LoadLocationsAsync);
 
     private async Task RunLookupCreateAsync<TCreateDto>(
@@ -705,4 +768,23 @@
     private static string UppercaseFirst(string value) => string.IsNullOrEmpty(value)
         ? value
         : value[..1].ToUpperInvariant() + value[1..];
+
+    private static void RequireLink(
+        HalLink link,
+        string method,
+        string expectedPath,
+        string capability)
+    {
+        string? linkPath = string.IsNullOrWhiteSpace(link.Href)
+            ? null
+            : Uri.TryCreate(link.Href, UriKind.Absolute, out Uri? absolute)
+                ? absolute.AbsolutePath
+                : link.Href.Split(['?', '#'], 2)[0];
+        if (!string.Equals(link.Method, method, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(linkPath, expectedPath, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"The advertised {capability} capability is invalid.");
+        }
+    }
 }

@@ -1296,8 +1296,8 @@ public sealed class SetupAssistantArchitectureTests
             "src/Explore.Infrastructure/Services/SetupSecretProvider.cs",
             "src/Explore.API/Controllers/SetupTargetEnrollmentsController.cs",
             "src/Explore.API/OpenApi/SetupLiveRequestBodyTransformer.cs",
-            "src/Explore.Blazor.Client/Clients/EventApiClient.cs",
-            "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs",
+            "src/Explore.Blazor.Client/Clients/EventApiClients.cs",
+            "src/Explore.Blazor.Client/Clients/EventApiTagClients.g.cs",
             "tests/Event.API.IntegrationTests/Features/SetupLive*"
         ];
         foreach (string routeInput in setupLiveRouteInputs)

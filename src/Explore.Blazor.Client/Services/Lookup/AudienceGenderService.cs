@@ -7,9 +7,9 @@ namespace Explore.Blazor.Client.Services.Lookup;
 
 public class AudienceGenderService : IAudienceGenderService
 {
-    private readonly IEventApiClient _client;
+    private readonly IAudienceGenderClient _client;
 
-    public AudienceGenderService(IEventApiClient client)
+    public AudienceGenderService(IAudienceGenderClient client)
     {
         _client = client;
     }

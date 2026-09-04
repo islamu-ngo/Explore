@@ -239,8 +239,8 @@ public sealed class BffSupportAccessEndpointsTests
         {
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<IEventApiClient>();
-                services.AddSingleton<IEventApiClient>(_ => CreateApiClient(handler));
+                services.RemoveAll<ISupportAccessClient>();
+                services.AddSingleton<ISupportAccessClient>(_ => CreateSupportAccessClient(handler));
                 configureServices?.Invoke(services);
             });
         });
@@ -298,7 +298,7 @@ public sealed class BffSupportAccessEndpointsTests
         Content = JsonContent.Create(payload)
     };
 
-    private static IEventApiClient CreateApiClient(
+    private static ISupportAccessClient CreateSupportAccessClient(
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
     {
         var httpClient = new HttpClient(new StubHttpMessageHandler(handler))
@@ -306,7 +306,7 @@ public sealed class BffSupportAccessEndpointsTests
             BaseAddress = new Uri("https://api.test/")
         };
 
-        return new EventApiClient(httpClient);
+        return new SupportAccessClient(httpClient);
     }
 
     private sealed class StubHttpMessageHandler(

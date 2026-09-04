@@ -7,7 +7,7 @@
 @using Explore.Blazor.Client.Contracts.Services.SupportAccess
 @implements IDisposable
 
-@inject IAdminService AdminService
+@inject ITenantClient TenantClient
 @inject ISupportAccessClientService SupportAccessClientService
 @inject IAccessibilityAnnouncerService AccessibilityAnnouncerService
 @inject ISnackbar Snackbar
@@ -456,7 +456,7 @@
 
         try
         {
-            var tenantsTask = AdminService.GetTenantsAsync();
+            var tenantsTask = TenantClient.GetTenantsAsync();
             var currentTask = SupportAccessClientService.RefreshAsync();
 
             await Task.WhenAll(tenantsTask, currentTask);

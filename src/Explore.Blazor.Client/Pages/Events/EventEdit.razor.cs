@@ -29,7 +29,10 @@ public partial class EventEdit : IDisposable
     private const string MainContentAppearanceOwner = nameof(EventEdit);
 
     [Inject] protected IEventService EventService { get; set; } = null!;
-    [Inject] protected IAdminService AdminService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService EventLookupService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.Lookup.IDemographicLookupService DemographicLookupService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.Lookup.ICultureLookupService CultureLookupService { get; set; } = null!;
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
     [Inject] protected ITagService TagService { get; set; } = null!;
@@ -373,18 +376,18 @@ public partial class EventEdit : IDisposable
         {
             isLoading = true;
 
-            var eventTypesTask = AdminService.GetEventTypesAsync();
-            var audienceGendersTask = AdminService.GetAudienceGendersAsync();
-            var audienceAgesTask = AdminService.GetAudienceAgesAsync();
-            var eventStatusesTask = AdminService.GetEventStatusesAsync();
-            var eventFormatsTask = AdminService.GetEventFormatsAsync();
-            var visibilityTypesTask = AdminService.GetVisibilityTypesAsync();
-            var madhabsTask = AdminService.GetMadhabsAsync();
+            var eventTypesTask = EventLookupService.GetEventTypesAsync();
+            var audienceGendersTask = DemographicLookupService.GetAudienceGendersAsync();
+            var audienceAgesTask = DemographicLookupService.GetAudienceAgesAsync();
+            var eventStatusesTask = EventLookupService.GetEventStatusesAsync();
+            var eventFormatsTask = EventLookupService.GetEventFormatsAsync();
+            var visibilityTypesTask = EventLookupService.GetVisibilityTypesAsync();
+            var madhabsTask = CultureLookupService.GetMadhabsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
-            var sessionCreateContextTask = EventService.GetEventSessionCreateContextAsync(EventId);
-            var registrationModesTask = AdminService.GetRegistrationModesAsync();
-            var languagesTask = AdminService.GetLanguagesAsync();
+            var sessionCreateContextTask = EventSessionService.GetEventSessionCreateContextAsync(EventId);
+            var registrationModesTask = EventLookupService.GetRegistrationModesAsync();
+            var languagesTask = CultureLookupService.GetLanguagesAsync();
             var registrationPoliciesTask = RegistrationPolicyService.GetEventRegistrationPoliciesAsync();
 
             await Task.WhenAll(
@@ -414,8 +417,8 @@ public partial class EventEdit : IDisposable
                 PopulateFormFromEvent();
 
                 var programSummaryTask = EventService.GetManagedEventProgramSummaryAsync(EventId);
-                var sessionGroupsTask = EventService.GetManagedSessionGroupsByEventAsync(EventId);
-                var eventSessions = await EventService.GetSessionsByEventAsync(
+                var sessionGroupsTask = EventSessionService.GetManagedSessionGroupsByEventAsync(EventId);
+                var eventSessions = await EventSessionService.GetSessionsByEventAsync(
                     EventId,
                     includeManagedSessions: CanRequestManagedSessions);
                 sessions = eventSessions?.Select(s => SessionEditorModel.FromDto(s)).ToList()
@@ -727,7 +730,7 @@ public partial class EventEdit : IDisposable
 
     private async Task RefreshProgramSectionsAsync()
     {
-        _programSections = (await EventService.GetManagedSessionGroupsByEventAsync(EventId)).ToList();
+        _programSections = (await EventSessionService.GetManagedSessionGroupsByEventAsync(EventId)).ToList();
         _programSummary = await EventService.GetManagedEventProgramSummaryAsync(EventId);
     }
 
@@ -756,7 +759,7 @@ public partial class EventEdit : IDisposable
                 {
                     try
                     {
-                        await EventService.DeleteSessionAsync(session.Id.Value);
+                        await EventSessionService.DeleteSessionAsync(session.Id.Value);
                         sessions.RemoveAt(index);
                     }
                     catch (Exception ex)

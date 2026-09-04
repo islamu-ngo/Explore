@@ -5,13 +5,13 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class LocationRoomServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly ILocationRoomClient _apiClient;
     private readonly ILogger<LocationRoomService> _logger;
     private readonly LocationRoomService _service;
 
     public LocationRoomServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<ILocationRoomClient>();
         _logger = Substitute.For<ILogger<LocationRoomService>>();
         _service = new LocationRoomService(_apiClient, _logger);
     }

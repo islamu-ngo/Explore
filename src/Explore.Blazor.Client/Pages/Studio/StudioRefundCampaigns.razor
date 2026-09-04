@@ -1,6 +1,6 @@
 @* ABOUTME: Displays event refund/material-change campaign progress and HAL-authorized recovery. *@
 @* ABOUTME: Shows only bounded counters and confirms durable resume without exposing provider identifiers. *@
-@inject IRegistrationOrderService RegistrationOrderService
+@inject IRegistrationPaymentService RegistrationPaymentService
 @inject IDialogService Dialogs
 
 @if (_isLoading)
@@ -67,7 +67,7 @@ else if (_campaigns is { Count: > 0 })
         _message = null;
         try
         {
-            HalCollectionResourceOfRefundCampaignDto? collection = await RegistrationOrderService
+            HalCollectionResourceOfRefundCampaignDto? collection = await RegistrationPaymentService
                 .GetRefundCampaignsAsync(EventId);
             _failed = collection is null;
             _message = _failed ? "Refund campaign status is currently unavailable." : null;
@@ -100,7 +100,7 @@ else if (_campaigns is { Count: > 0 })
         _isBusy = true;
         try
         {
-            HalCollectionResourceOfRefundCampaignDto? refreshed = await RegistrationOrderService
+            HalCollectionResourceOfRefundCampaignDto? refreshed = await RegistrationPaymentService
                 .ResumeRefundCampaignAsync(EventId, campaign);
             _failed = refreshed is null;
             _message = refreshed is null

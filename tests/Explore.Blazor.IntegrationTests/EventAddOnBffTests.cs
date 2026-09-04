@@ -277,8 +277,14 @@ public sealed class EventAddOnBffTests
     private static WebApplicationFactory<Program> CreateFactory(RecordingApiTransport transport) =>
         new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
-                services.AddHttpClient<IEventApiClient, EventApiClient>()
-                    .ConfigurePrimaryHttpMessageHandler(() => transport)));
+            {
+                services.AddHttpClient<IEventAddOnCatalogClient, EventAddOnCatalogClient>()
+                    .ConfigurePrimaryHttpMessageHandler(() => transport);
+                services.AddHttpClient<IEventAddOnManagementClient, EventAddOnManagementClient>()
+                    .ConfigurePrimaryHttpMessageHandler(() => transport);
+                services.AddHttpClient<IRegistrationOrderAddOnClient, RegistrationOrderAddOnClient>()
+                    .ConfigurePrimaryHttpMessageHandler(() => transport);
+            }));
 
     private static HttpClient CreateClient(WebApplicationFactory<Program> factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions

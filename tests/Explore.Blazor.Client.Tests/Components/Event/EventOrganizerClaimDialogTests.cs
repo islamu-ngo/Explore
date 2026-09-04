@@ -18,14 +18,13 @@ public sealed class EventOrganizerClaimDialogTests : IDisposable
         var eventId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         SubmitEventOrganizerClaimDto? captured = null;
-        var eventService = Substitute.For<IEventService>();
-        eventService.SubmitEventOrganizerClaimAsync(
+        var claimService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventOrganizerClaimService>();
+        claimService.SubmitEventOrganizerClaimAsync(
                 eventId,
                 Arg.Do<SubmitEventOrganizerClaimDto>(request => captured = request),
                 Arg.Any<CancellationToken>())
             .Returns(true);
-        _ctx.Services.RemoveAll<IEventService>();
-        _ctx.Services.AddSingleton(eventService);
+        _ctx.Services.AddSingleton(claimService);
         var shellState = RegisterShellState();
         shellState.ReconcileActiveActors([new ManagedActorDto { ActorId = actorId, DisplayName = "Organizer" }], actorId);
         var provider = _ctx.Render<MudDialogProvider>();

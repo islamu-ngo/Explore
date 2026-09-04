@@ -47,8 +47,8 @@
       "responseDictionaryType": "System.Collections.Generic.IDictionary",
       "wrapResponses": true,
       "wrapResponseMethods": [
-        "EventApiClient.CreateSetupTargetEnrollment",
-        "EventApiClient.RotateSetupTargetEnrollmentCapability"
+        "Setup_LiveClient.CreateSetupTargetEnrollment",
+        "Setup_LiveClient.RotateSetupTargetEnrollmentCapability"
       ],
       "generateResponseClasses": true,
       "responseClass": "SwaggerResponse",
@@ -80,7 +80,7 @@
       "inlineNamedDictionaries": false,
       "inlineNamedTuples": true,
       "inlineNamedAny": false,
-      "generateDtoTypes": false,
+      "generateDtoTypes": true,
       "generateOptionalPropertiesAsNullable": true,
       "generateNullableReferenceTypes": true,
       "templateDirectory": null,

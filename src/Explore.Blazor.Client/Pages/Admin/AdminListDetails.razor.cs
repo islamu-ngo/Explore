@@ -9,7 +9,7 @@ namespace Explore.Blazor.Client.Pages.Admin;
 
 public partial class AdminListDetails
 {
-    [Inject] protected IAdminService AdminService { get; set; } = null!;
+    [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
     [Inject] protected NavigationManager NavigationManager { get; set; } = null!;
     [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
@@ -44,7 +44,7 @@ public partial class AdminListDetails
 
         try
         {
-            Organization = await AdminService.GetOrganizationDetailsAsync(OrganizationId);
+            Organization = await OrganizationService.GetOrganizationByIdAsync(OrganizationId);
 
             if (Organization == null)
             {

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace Explore.Blazor.Client.Services;
 
 public sealed class FooterAdminService(
-    IEventApiClient apiClient,
+    IFooterClient apiClient,
     ILogger<FooterAdminService> logger) : IFooterAdminService
 {
     public async Task<HalResourceOfTenantFooterSettingsDto?> GetTenantFooterSettingsAsync(

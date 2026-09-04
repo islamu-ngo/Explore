@@ -8,9 +8,9 @@ namespace Explore.Blazor.Client.Services.Lookup;
 
 public class RegistrationScopeService : IRegistrationScopeService
 {
-    private readonly IEventApiClient _client;
+    private readonly IRegistrationScopeClient _client;
 
-    public RegistrationScopeService(IEventApiClient client)
+    public RegistrationScopeService(IRegistrationScopeClient client)
     {
         _client = client;
     }

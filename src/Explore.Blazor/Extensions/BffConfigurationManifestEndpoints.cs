@@ -41,7 +41,8 @@ public static class BffConfigurationManifestEndpoints
         Guid tenantId,
         ConfigurationManifestExportView? view,
         HttpContext context,
-        IEventApiClient apiClient,
+        ITenantOnboardingClient tenantOnboardingClient,
+        ITenant_ConfigurationClient tenantConfigurationClient,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -52,7 +53,7 @@ public static class BffConfigurationManifestEndpoints
         try
         {
             HalResourceOfTenantOnboardingStatusDto status =
-                await apiClient.GetTenantOnboardingStatusAsync(
+                await tenantOnboardingClient.GetTenantOnboardingStatusAsync(
                     cancellationToken: cancellationToken);
             if (status.TenantId != tenantId
                 || !HasGetCapability(
@@ -66,7 +67,7 @@ public static class BffConfigurationManifestEndpoints
             }
 
             using FileResponse response =
-                await apiClient.ExportTenantConfigurationPackageAsync(
+                await tenantConfigurationClient.ExportTenantConfigurationPackageAsync(
                     tenantId,
                     view ?? ConfigurationManifestExportView.Overrides,
                     cancellationToken: cancellationToken);
@@ -113,7 +114,8 @@ public static class BffConfigurationManifestEndpoints
     private static async Task<IResult> HandleDownloadAsync(
         ConfigurationManifestExportView? view,
         HttpContext context,
-        IEventApiClient apiClient,
+        IControlPlaneClient controlPlaneClient,
+        IControl_Plane_ConfigurationClient controlPlaneConfigurationClient,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -129,7 +131,7 @@ public static class BffConfigurationManifestEndpoints
         try
         {
             HalResourceOfControlPlaneOverviewDto overview =
-                await apiClient.GetControlPlaneOverviewAsync(
+                await controlPlaneClient.GetControlPlaneOverviewAsync(
                     cancellationToken: cancellationToken);
             if (!HasGetCapability(overview, relation))
             {
@@ -140,7 +142,7 @@ public static class BffConfigurationManifestEndpoints
             }
 
             using FileResponse response =
-                await apiClient.ExportConfigurationManifestAsync(
+                await controlPlaneConfigurationClient.ExportConfigurationManifestAsync(
                     requestedView,
                     cancellationToken: cancellationToken);
 

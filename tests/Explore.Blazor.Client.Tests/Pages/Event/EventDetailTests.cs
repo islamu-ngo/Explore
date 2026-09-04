@@ -608,7 +608,9 @@ public sealed class EventDetailTests : IDisposable
 
         var eventService = Substitute.For<IEventService>();
         eventService.GetEventByIdAsync(Arg.Any<Guid>()).Returns(eventDto);
-        eventService.GetSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<bool>())
+
+        var eventSessionService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
+        eventSessionService.GetSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<bool>())
             .Returns(sessions ?? new List<EventSessionListDto>());
 
         var eventDayService = Substitute.For<IEventDayService>();
@@ -624,6 +626,8 @@ public sealed class EventDetailTests : IDisposable
             .Returns(sessionAgendaItems ?? new List<EventSessionAgendaItemListDto>());
 
         _ctx.Services.AddSingleton(eventService);
+        _ctx.Services.AddSingleton(eventSessionService);
+        _ctx.Services.AddSingleton(Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventModerationService>());
         _ctx.Services.AddSingleton(Substitute.For<IMapsService>());
         _ctx.Services.AddScoped<RouterStateService>();
         _ctx.Services.AddSingleton(Substitute.For<IUserService>());

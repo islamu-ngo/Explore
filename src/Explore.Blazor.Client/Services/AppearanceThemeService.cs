@@ -9,7 +9,8 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class AppearanceThemeService : IAppearanceThemeService
 {
-    private readonly IEventApiClient _api;
+    private readonly IUserAppearanceClient _api;
+    private readonly IUiThemeAdminClient _themeAdminClient;
     private readonly ILogger<AppearanceThemeService> _logger;
 
     private AppearanceState _current = new();
@@ -108,10 +109,12 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     public event EventHandler<AppearanceStateChangedEventArgs>? Changed;
 
     public AppearanceThemeService(
-        IEventApiClient api,
+        IUserAppearanceClient api,
+        IUiThemeAdminClient themeAdminClient,
         ILogger<AppearanceThemeService> logger)
     {
         _api = api;
+        _themeAdminClient = themeAdminClient;
         _logger = logger;
     }
 
@@ -416,7 +419,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         bool isPlatformCatalog,
         bool activeOnly,
         CancellationToken cancellationToken = default) =>
-        _api.GetUiThemeCatalogAsync(
+        _themeAdminClient.GetUiThemeCatalogAsync(
             isPlatformCatalog,
             activeOnly,
             cancellationToken: cancellationToken);
@@ -424,21 +427,21 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     public Task<UiThemeDetailsDto> GetThemeDetailsAsync(
         Guid id,
         CancellationToken cancellationToken = default) =>
-        _api.GetUiThemeDetailsAsync(id, cancellationToken: cancellationToken);
+        _themeAdminClient.GetUiThemeDetailsAsync(id, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> CreateThemeAsync(
         CreateUiThemeDto request,
         CancellationToken cancellationToken = default) =>
-        _api.CreateUiThemeAsync(request, cancellationToken: cancellationToken);
+        _themeAdminClient.CreateUiThemeAsync(request, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> UpdateThemeAsync(
         Guid id,
         UpdateUiThemeDto request,
         CancellationToken cancellationToken = default) =>
-        _api.UpdateUiThemeAsync(id, request, cancellationToken: cancellationToken);
+        _themeAdminClient.UpdateUiThemeAsync(id, request, cancellationToken: cancellationToken);
 
     public Task DeleteThemeAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _api.DeleteUiThemeAsync(id, cancellationToken: cancellationToken);
+        _themeAdminClient.DeleteUiThemeAsync(id, cancellationToken: cancellationToken);
 
     private static UiThemePaletteDto GetFallbackPalette(bool isDark) => isDark
         ? new UiThemePaletteDto

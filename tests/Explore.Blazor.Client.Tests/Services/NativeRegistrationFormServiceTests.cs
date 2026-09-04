@@ -9,11 +9,14 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class NativeRegistrationFormServiceTests
 {
-    private readonly IEventApiClient _api = Substitute.For<IEventApiClient>();
+    private readonly IAuthenticatedRegistrationOrderClient _api = Substitute.For<IAuthenticatedRegistrationOrderClient>();
     private readonly NativeRegistrationFormService _service;
 
     public NativeRegistrationFormServiceTests() =>
-        _service = new NativeRegistrationFormService(_api, Substitute.For<ILogger<NativeRegistrationFormService>>());
+        _service = new NativeRegistrationFormService(
+            _api,
+            Substitute.For<IGuestRegistrationOrderClient>(),
+            Substitute.For<ILogger<NativeRegistrationFormService>>());
 
     [Test]
     public async Task SubmitAuthenticated_UsesExactSubjectAttemptCapabilityAndIdempotency()

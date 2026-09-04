@@ -437,12 +437,16 @@ public sealed class RecordContractArchitectureTests
         && type.GetProperty("EqualityContract", BindingFlags.Instance | BindingFlags.NonPublic) is not null;
 
     private static bool IsGenerated(Type type) =>
-        type.GetCustomAttribute<GeneratedCodeAttribute>() is not null
+        type.Name.Contains('<')
+        || (type.DeclaringType is not null && IsGenerated(type.DeclaringType))
+        || type.GetCustomAttribute<GeneratedCodeAttribute>() is not null
         || type.GetCustomAttribute<System.Runtime.CompilerServices.CompilerGeneratedAttribute>() is not null;
 
-    private static bool IsValidator(Type type) => EnumerateTypeHierarchy(type)
-        .Any(current => current.IsGenericType
-            && current.GetGenericTypeDefinition().FullName == "FluentValidation.AbstractValidator`1");
+    private static bool IsValidator(Type type) =>
+        (type.DeclaringType is not null && IsValidator(type.DeclaringType))
+        || EnumerateTypeHierarchy(type)
+            .Any(current => current.IsGenericType
+                && current.GetGenericTypeDefinition().FullName == "FluentValidation.AbstractValidator`1");
 
     private static bool IsEntity(Type type) => type.Assembly == DomainAssembly
         && type.GetInterfaces().Any(contract => contract.Name is

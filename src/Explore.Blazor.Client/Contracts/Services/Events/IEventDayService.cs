@@ -1,5 +1,5 @@
 // ABOUTME: Contract for EventDay CRUD operations consumed by Blazor UI components.
-// ABOUTME: Wraps the NSwag-generated IEventApiClient methods for EventDay entity.
+// ABOUTME: Wraps the NSwag-generated event-day client methods.
 
 using Explore.Blazor.Client.Clients;
 

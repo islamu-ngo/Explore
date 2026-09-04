@@ -62,7 +62,7 @@ public sealed class FederationGenericCrudAbsenceTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs"));
+            "EventApiTagClients.g.cs"));
         await Assert.That(generatedClient).DoesNotContain("CreateActorAsync(");
         await Assert.That(generatedClient).DoesNotContain("UpdateActorAsync(");
         await Assert.That(generatedClient).DoesNotContain("DeleteActorAsync(");

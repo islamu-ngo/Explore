@@ -8,7 +8,7 @@ using Explore.Blazor.Client.Helpers;
 namespace Explore.Blazor.Client.Services;
 
 public sealed class ActorSubscriptionService(
-    IEventApiClient apiClient,
+    IActorSubscriptionClient apiClient,
     ILogger<ActorSubscriptionService> logger) : IActorSubscriptionService
 {
     public async Task<ActorSubscriptionDto?> GetSubscriptionAsync(Guid targetActorId, CancellationToken cancellationToken = default)

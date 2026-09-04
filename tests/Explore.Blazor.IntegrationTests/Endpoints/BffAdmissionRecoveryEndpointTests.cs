@@ -13,7 +13,7 @@ namespace Explore.Blazor.IntegrationTests.Endpoints;
 public sealed class BffAdmissionRecoveryEndpointTests : IAsyncDisposable
 {
     private const string Capability = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly IAdmissionTicketRecoveryClient _apiClient = Substitute.For<IAdmissionTicketRecoveryClient>();
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
 
@@ -23,7 +23,7 @@ public sealed class BffAdmissionRecoveryEndpointTests : IAsyncDisposable
         {
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<IEventApiClient>();
+                services.RemoveAll<IAdmissionTicketRecoveryClient>();
                 services.AddSingleton(_apiClient);
             });
         });

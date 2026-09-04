@@ -140,7 +140,7 @@ public sealed class StrongTypingIntentArchitectureTests
     [Test]
     public async Task GovernanceDecisionFramework_ReferencesStrongTypingRefactorIntent()
     {
-        var governancePath = ContextSystemHelpers.RepoPath("docs", "GOVERNANCE.md");
+        var governancePath = ContextSystemHelpers.RepoPath("docs", "internal", "GOVERNANCE.md");
         var governanceText = await File.ReadAllTextAsync(governancePath);
 
         await Assert.That(governanceText.Contains("`strong-typing-refactor`", StringComparison.Ordinal)).IsTrue();
@@ -150,7 +150,7 @@ public sealed class StrongTypingIntentArchitectureTests
     [Test]
     public async Task TestingGuidance_DocumentsExecutableArchitectureRules()
     {
-        var testingPath = ContextSystemHelpers.RepoPath("docs", "TESTING.md");
+        var testingPath = ContextSystemHelpers.RepoPath("docs", "internal", "TESTING.md");
         var testingText = await File.ReadAllTextAsync(testingPath);
 
         await Assert.That(testingText.Contains("Executable Architecture Contracts", StringComparison.Ordinal)).IsTrue();

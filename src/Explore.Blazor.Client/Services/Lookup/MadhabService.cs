@@ -7,9 +7,9 @@ namespace Explore.Blazor.Client.Services.Lookup;
 
 public class MadhabService : IMadhabService
 {
-    private readonly IEventApiClient _client;
+    private readonly IMadhabClient _client;
 
-    public MadhabService(IEventApiClient client)
+    public MadhabService(IMadhabClient client)
     {
         _client = client;
     }

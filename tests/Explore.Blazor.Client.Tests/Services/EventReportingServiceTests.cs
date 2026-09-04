@@ -8,7 +8,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class EventReportingServiceTests
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly IEventReportsClient _apiClient = Substitute.For<IEventReportsClient>();
     private readonly ILogger<EventReportingService> _logger = Substitute.For<ILogger<EventReportingService>>();
 
     [Test]

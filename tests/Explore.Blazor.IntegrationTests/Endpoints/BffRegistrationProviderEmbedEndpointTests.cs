@@ -11,6 +11,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
 
+public interface ITestRegistrationOrderProviderLaunchClient : IAuthenticatedRegistrationOrderClient, IGuestRegistrationOrderClient
+{
+}
+
 public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDisposable
 {
     private static readonly Guid EventId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000101");
@@ -21,7 +25,7 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
     private static readonly Guid FormId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000601");
     private static readonly Guid FormVersionId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000701");
 
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly ITestRegistrationOrderProviderLaunchClient _apiClient = Substitute.For<ITestRegistrationOrderProviderLaunchClient>();
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
 
@@ -31,8 +35,10 @@ public sealed partial class BffRegistrationProviderEmbedEndpointTests : IAsyncDi
         {
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<IEventApiClient>();
-                services.AddSingleton(_apiClient);
+                services.RemoveAll<IAuthenticatedRegistrationOrderClient>();
+                services.RemoveAll<IGuestRegistrationOrderClient>();
+                services.AddSingleton<IAuthenticatedRegistrationOrderClient>(_apiClient);
+                services.AddSingleton<IGuestRegistrationOrderClient>(_apiClient);
             });
         });
 

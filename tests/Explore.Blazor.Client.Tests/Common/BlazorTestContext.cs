@@ -75,7 +75,7 @@ public class BlazorTestContext : BunitContext
         AddLocalizationMocks();
         Services.AddSingleton(Substitute.For<IHttpClientFactory>());
         Services.AddSingleton(Substitute.For<IBffAuthApi>());
-        Services.AddSingleton(Substitute.For<IEventApiClient>());
+        Services.AddSingleton(Substitute.For<IUiShellClient>());
         Services.AddSingleton(Substitute.For<
             Explore.Blazor.Client.Contracts.Services.ITicketPurchaseGovernanceService>());
         Services.AddSingleton(Substitute.For<IAtprotoFederationSettingsService>());

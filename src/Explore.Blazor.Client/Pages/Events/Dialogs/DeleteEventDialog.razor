@@ -74,6 +74,9 @@
     private IEventService EventService { get; set; } = default!;
 
     [Inject]
+    private Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService { get; set; } = default!;
+
+    [Inject]
     private ISnackbar Snackbar { get; set; } = default!;
 
     [Inject]
@@ -95,7 +98,7 @@
 
         try
         {
-            var sessions = await EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true);
+            var sessions = await EventSessionService.GetSessionsByEventAsync(EventId, includeManagedSessions: true);
             _sessionCount = sessions?.Count ?? 0;
             Logger.LogDebug("Loaded {SessionCount} sessions for event {EventId}", _sessionCount, EventId);
         }

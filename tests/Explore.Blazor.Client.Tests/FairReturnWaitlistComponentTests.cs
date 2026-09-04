@@ -106,8 +106,12 @@ public sealed class FairReturnWaitlistComponentTests
         await focused.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await click;
 
+        cut.WaitForAssertion(() =>
+        {
+            IElement outcome = cut.Find("[id^='waitlist-outcome-']");
+            Assert.That(outcome.TextContent).Contains("Updated");
+        });
         IElement outcome = cut.Find("[id^='waitlist-outcome-']");
-        await Assert.That(outcome.TextContent).Contains("Updated");
         await Assert.That(outcome.GetAttribute("role")).IsEqualTo("status");
         await Assert.That(outcome.GetAttribute("aria-live")).IsEqualTo("polite");
         await Assert.That(outcome.GetAttribute("tabindex")).IsEqualTo("-1");

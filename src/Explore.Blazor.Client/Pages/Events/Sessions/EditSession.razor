@@ -148,7 +148,8 @@
     [Parameter] public Guid SessionId { get; set; }
 
     [Inject] private IEventService EventService { get; set; } = default!;
-    [Inject] private IAdminService AdminService { get; set; } = default!;
+    [Inject] private Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService { get; set; } = default!;
+    [Inject] private Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService EventLookupService { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private EventDto? _event;
@@ -180,10 +181,10 @@
         _editContext = new EditContext(_session);
         _errorStore.Init(_editContext);
         var eventTask = EventService.GetEventByIdAsync(EventId);
-        var sessionTask = EventService.GetManagedSessionByIdAsync(EventId, SessionId);
-        var createContextTask = EventService.GetEventSessionCreateContextAsync(EventId);
-        var sessionGroupsTask = EventService.GetManagedSessionGroupsByEventAsync(EventId);
-        var registrationModesTask = AdminService.GetRegistrationModesAsync();
+        var sessionTask = EventSessionService.GetManagedSessionByIdAsync(EventId, SessionId);
+        var createContextTask = EventSessionService.GetEventSessionCreateContextAsync(EventId);
+        var sessionGroupsTask = EventSessionService.GetManagedSessionGroupsByEventAsync(EventId);
+        var registrationModesTask = EventLookupService.GetRegistrationModesAsync();
 
         _event = await eventTask;
         _sourceSession = await sessionTask;
@@ -310,7 +311,7 @@
         try
         {
             var result = await EventSessionSaveCoordinator.SaveUpdateSessionAsync(
-                EventService,
+                EventSessionService,
                 _session,
                 EventId,
                 SessionId,

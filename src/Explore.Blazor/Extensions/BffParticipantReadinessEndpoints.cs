@@ -78,7 +78,7 @@ public static class BffParticipantReadinessEndpoints
         Guid assignmentId,
         [FromHeader(Name = CapabilityHeader)]
         string? capability,
-        IEventApiClient api,
+        IParticipantReadinessClient api,
         CancellationToken cancellationToken) =>
         ForwardAsync(
             () => api.GetParticipantReadinessAsync(
@@ -101,7 +101,7 @@ public static class BffParticipantReadinessEndpoints
                     Guid orderId,
                     Guid participantId,
                     Guid assignmentId,
-                    IEventApiClient api,
+                    IParticipantReadinessClient api,
                     CancellationToken cancellationToken) =>
                     ForwardAsync(
                         () => forward(
@@ -142,7 +142,7 @@ public static class BffParticipantReadinessEndpoints
     private delegate Task<
         HalResourceOfParticipantReadinessDto>
         ReadinessForwarder(
-            IEventApiClient api,
+            IParticipantReadinessClient api,
             Guid eventId,
             Guid orderId,
             Guid participantId,

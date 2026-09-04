@@ -28,7 +28,7 @@ public sealed class UserSettingsServiceTests
                 }
             ]
         };
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<ISettingsClient>();
         apiClient.GetUserSettingsAsync(
                 "AiAssistantPreferences",
                 Arg.Any<string?>(),

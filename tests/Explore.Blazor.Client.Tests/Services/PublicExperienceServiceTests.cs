@@ -5,12 +5,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class PublicExperienceServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IPublicExperienceClient _apiClient;
     private readonly PublicExperienceService _service;
 
     public PublicExperienceServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IPublicExperienceClient>();
         _service = new PublicExperienceService(
             _apiClient,
             Substitute.For<ILogger<PublicExperienceService>>());

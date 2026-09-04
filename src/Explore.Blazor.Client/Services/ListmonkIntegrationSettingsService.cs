@@ -8,7 +8,7 @@ using Explore.Blazor.Client.Contracts.Services.Webhooks;
 namespace Explore.Blazor.Client.Services;
 
 public sealed class ListmonkIntegrationSettingsService(
-    IEventApiClient apiClient,
+    IListmonkIntegrationSettingsClient apiClient,
     ILogger<ListmonkIntegrationSettingsService> logger) : IListmonkIntegrationSettingsService
 {
     public async Task<ListmonkIntegrationSettingsDto?> GetSettingsAsync(CancellationToken cancellationToken = default)

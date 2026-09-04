@@ -30,7 +30,7 @@ public interface IPublicExperienceService
 
 public class PublicExperienceService : IPublicExperienceService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IPublicExperienceClient _apiClient;
     private readonly ILogger<PublicExperienceService> _logger;
     private readonly TimeProvider _clock;
     private PublicExperienceSettingsDto? _cachedSettings;
@@ -45,7 +45,7 @@ public class PublicExperienceService : IPublicExperienceService
     public PublicExperienceAvailability ShellAvailability { get; private set; }
 
     public PublicExperienceService(
-        IEventApiClient apiClient,
+        IPublicExperienceClient apiClient,
         ILogger<PublicExperienceService> logger,
         TimeProvider? clock = null)
     {

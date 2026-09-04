@@ -41,7 +41,7 @@ public sealed class ReleaseInputPolicyTests
     [Test]
     public async Task RepositoryChangeFragmentsPassReleaseInputPolicy()
     {
-        string changesDirectory = Path.Combine(FindRepositoryRoot(), "docs", "releases", "changes");
+        string changesDirectory = Path.Combine(FindRepositoryRoot(), "docs", "internal", "releases", "changes");
         string[] fragments = Directory.GetFiles(changesDirectory, "CHG-*.yaml", SearchOption.TopDirectoryOnly)
             .Order(StringComparer.Ordinal)
             .Select(File.ReadAllText)
@@ -52,7 +52,8 @@ public sealed class ReleaseInputPolicyTests
             fragments,
             []);
 
-        await Assert.That(result.IsValid).IsTrue();
+        await Assert.That(result.IsValid).IsTrue()
+            .Because(string.Join("; ", result.Diagnostics));
         await Assert.That(result.Diagnostics).IsEmpty();
         await Assert.That(result.Fragments.Select(fragment => fragment.ChangeId)).Contains("CHG-2026-0010");
         await Assert.That(result.Fragments.Select(fragment => fragment.ChangeId)).Contains("CHG-2026-0011");

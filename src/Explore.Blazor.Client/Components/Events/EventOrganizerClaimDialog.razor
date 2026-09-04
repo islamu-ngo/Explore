@@ -5,7 +5,7 @@
 @using Explore.Blazor.Client.Contracts.Services.Accessibility
 @using Explore.Blazor.Client.Services.Shell
 
-@inject IEventService EventService
+@inject Explore.Blazor.Client.Contracts.Services.IEventOrganizerClaimService ClaimService
 @inject UiShellState ShellState
 @inject IAccessibilityAnnouncerService Announcer
 
@@ -85,7 +85,7 @@
         _error = null;
         try
         {
-            var submitted = await EventService.SubmitEventOrganizerClaimAsync(
+            var submitted = await ClaimService.SubmitEventOrganizerClaimAsync(
                 EventId,
                 new SubmitEventOrganizerClaimDto
                 {

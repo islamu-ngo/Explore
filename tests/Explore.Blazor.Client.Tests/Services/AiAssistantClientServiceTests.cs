@@ -8,7 +8,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class AiAssistantClientServiceTests
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly IAiAssistantClient _apiClient = Substitute.For<IAiAssistantClient>();
     private readonly ILogger<AiAssistantClientService> _logger = Substitute.For<ILogger<AiAssistantClientService>>();
 
     [Test]

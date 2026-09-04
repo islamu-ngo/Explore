@@ -17,7 +17,7 @@ public interface ITenantDirectoryOperatorIdentityAdminService
 }
 
 public sealed class TenantDirectoryOperatorIdentityAdminService(
-    IEventApiClient api,
+    ITenantSettingsDocumentsClient api,
     ILogger<TenantDirectoryOperatorIdentityAdminService> logger)
     : ITenantDirectoryOperatorIdentityAdminService
 {

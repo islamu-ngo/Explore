@@ -20,10 +20,10 @@ public interface ILocationService
 
 public class LocationService : ILocationService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly ILocationClient _apiClient;
     private readonly ILogger<LocationService> _logger;
 
-    public LocationService(IEventApiClient apiClient, ILogger<LocationService> logger)
+    public LocationService(ILocationClient apiClient, ILogger<LocationService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

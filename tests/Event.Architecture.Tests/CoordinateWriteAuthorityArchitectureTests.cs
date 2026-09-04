@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using Explore.Application.Contracts.LocationPrivacy;
+using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Location;
 using Explore.Application.Features.Federation.Atproto.Models;
 using MediatR;
@@ -17,8 +18,7 @@ public sealed class CoordinateWriteAuthorityArchitectureTests
 {
     private const string GeneratedClientNamespace = "Explore.Blazor.Client.Clients";
     private const string GeneratedCodeMarker = "[System.CodeDom.Compiler.GeneratedCode(";
-    private const string GeneratedClientInterfaceDeclaration = "public partial interface IEventApiClient";
-    private const string GeneratedClientPath = "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs";
+    private const string GeneratedTagClientsPath = "src/Explore.Blazor.Client/Clients/EventApiTagClients.g.cs";
 
     private static readonly Assembly ApplicationAssembly = typeof(CreateLocationDto).Assembly;
     private static readonly Lazy<GeneratedClientModel> GeneratedClient = new(CreateGeneratedClientModel);
@@ -48,6 +48,15 @@ public sealed class CoordinateWriteAuthorityArchitectureTests
         typeof(LocationDto),
         typeof(EventLocationDisclosureValues),
         typeof(AtprotoEventLocationSnapshot)
+    ];
+
+    private static readonly Type[] PermittedCoordinateTypes =
+    [
+        .. AuthorizedCoordinateReadTypes,
+        typeof(CreateEventLocationDto),
+        typeof(CreateEventDraftRequestDto),
+        typeof(CreateLocationDto),
+        typeof(UpdateLocationDto)
     ];
 
     private static readonly string[] WriteNamePrefixes =
@@ -228,12 +237,30 @@ public sealed class CoordinateWriteAuthorityArchitectureTests
 
     private static GeneratedClientModel CreateGeneratedClientModel()
     {
-        string source = File.ReadAllText(Path.Combine(ResolveRepositoryRoot(), GeneratedClientPath));
-        GeneratedClientContract[] contracts = ParseGeneratedClientContracts(source);
+        string root = ResolveRepositoryRoot();
+        string tagSource = File.ReadAllText(Path.Combine(root, GeneratedTagClientsPath));
+        GeneratedClientContract[] contracts = ParseGeneratedClientContracts(tagSource);
 
         return new GeneratedClientModel(
             contracts.ToDictionary(contract => contract.Name, StringComparer.Ordinal),
-            ExtractGeneratedTypeSection(source, GeneratedClientInterfaceDeclaration));
+            ExtractAllGeneratedInterfaceSections(tagSource));
+    }
+
+    private static string ExtractAllGeneratedInterfaceSections(string source)
+    {
+        var sb = new System.Text.StringBuilder();
+        int searchIndex = 0;
+        const string interfaceMarker = "public partial interface I";
+
+        while ((searchIndex = source.IndexOf(interfaceMarker, searchIndex, StringComparison.Ordinal)) >= 0)
+        {
+            int sectionEnd = source.IndexOf("public partial class ", searchIndex, StringComparison.Ordinal);
+            if (sectionEnd < 0) sectionEnd = source.Length;
+            sb.AppendLine(source[searchIndex..sectionEnd]);
+            searchIndex = sectionEnd;
+        }
+
+        return sb.ToString();
     }
 
     private static GeneratedClientContract[] ParseGeneratedClientContracts(string source)

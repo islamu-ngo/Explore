@@ -7,7 +7,7 @@ using Explore.Blazor.Client.Contracts.Services;
 namespace Explore.Blazor.Client.Services;
 
 public sealed partial class HomeDiscoveryService(
-    IEventApiClient apiClient,
+    IPublicExperienceClient apiClient,
     IUserSettingsService settingsService,
     ILogger<HomeDiscoveryService> logger) : IHomeDiscoveryService
 {

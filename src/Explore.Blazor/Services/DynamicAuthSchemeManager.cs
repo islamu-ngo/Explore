@@ -164,7 +164,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         string? setupSecret)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var apiClient = scope.ServiceProvider.GetRequiredService<IEventApiClient>();
+        var apiClient = scope.ServiceProvider.GetRequiredService<IInstanceOnboardingClient>();
         try
         {
             return includeSecrets && !string.IsNullOrEmpty(setupSecret)

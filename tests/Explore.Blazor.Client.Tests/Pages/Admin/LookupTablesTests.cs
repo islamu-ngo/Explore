@@ -1,7 +1,11 @@
 // ABOUTME: Component tests for tenant lookup tables section loading/error/success states.
 // ABOUTME: Verifies parallel lookup loading and consolidated lookup tab rendering.
 
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
+using Explore.Blazor.Client.Services;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
@@ -9,20 +13,28 @@ namespace Explore.Blazor.Client.Tests.Pages.Admin;
 public class LookupTablesTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
-    private readonly IAdminService _adminService;
+    private readonly IEventLookupService _eventLookupService;
     private readonly IDialogService _dialogService;
     private readonly ISnackbar _snackbar;
 
     public LookupTablesTests()
     {
         _ctx = new BlazorTestContext();
-        _adminService = Substitute.For<IAdminService>();
+        _eventLookupService = Substitute.For<IEventLookupService>();
         _dialogService = Substitute.For<IDialogService>();
         _snackbar = Substitute.For<ISnackbar>();
 
-        _ctx.Services.AddSingleton(_adminService);
+        _ctx.Services.AddSingleton(Substitute.For<ICategoryService>());
+        _ctx.Services.AddSingleton(Substitute.For<ITagService>());
+        _ctx.Services.AddSingleton(Substitute.For<ILocationClient>());
+        _ctx.Services.AddSingleton(_eventLookupService);
+        _ctx.Services.AddSingleton(Substitute.For<IDemographicLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<ICultureLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<IOrganizationLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<ISystemLookupService>());
         _ctx.Services.AddSingleton(_dialogService);
         _ctx.Services.AddSingleton(_snackbar);
+        _ctx.Services.AddSingleton(Substitute.For<IAccessibilityFocusService>());
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Admin User", "admin@example.com");
 
@@ -42,7 +54,7 @@ public class LookupTablesTests : IDisposable
     {
         // Arrange
         var pendingEventTypes = new TaskCompletionSource<ICollection<EventTypeListDto>>();
-        _adminService.GetEventTypesAsync().Returns(pendingEventTypes.Task);
+        _eventLookupService.GetEventTypesAsync().Returns(pendingEventTypes.Task);
 
         // Act
         var cut = RenderLookupTables();
@@ -59,7 +71,7 @@ public class LookupTablesTests : IDisposable
     public async Task LookupTables_ShowsLoadedContent_WhenLookupsSucceed()
     {
         // Arrange
-        _adminService.GetEventTypesAsync().Returns(
+        _eventLookupService.GetEventTypesAsync().Returns(
         [
             new EventTypeListDto
             {
@@ -82,7 +94,7 @@ public class LookupTablesTests : IDisposable
     public async Task LookupTables_UsesSnackbarError_WhenAnyLookupFails()
     {
         // Arrange
-        _adminService.GetEventFormatsAsync().ThrowsAsync(new InvalidOperationException("boom"));
+        _eventLookupService.GetEventFormatsAsync().ThrowsAsync(new InvalidOperationException("boom"));
 
         // Act
         var cut = RenderLookupTables();
@@ -92,24 +104,12 @@ public class LookupTablesTests : IDisposable
         await Assert.That(cut.Markup).Contains("Failed to load lookup data: boom");
     }
 
-
     private void SetupDefaultLookups()
     {
-        _adminService.GetLocationsAsync()
-            .Returns(new HalCollectionResourceOfLocationListDto());
-        _adminService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
-        _adminService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
-        _adminService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());
-        _adminService.GetVisibilityTypesAsync().Returns(new List<VisibilityTypeListDto>());
-        _adminService.GetRegistrationModesAsync().Returns(new List<RegistrationModeListDto>());
-        _adminService.GetAudienceGendersAsync().Returns(new List<AudienceGenderListDto>());
-        _adminService.GetAudienceAgesAsync().Returns(new List<AudienceAgeListDto>());
-        _adminService.GetMadhabsAsync().Returns(new List<MadhabListDto>());
-        _adminService.GetLanguagesAsync().Returns(new List<LanguageListDto>());
-        _adminService.GetOrganizationPositionsAsync().Returns(new List<OrganizationPositionListDto>());
-        _adminService.GetApprovalStatusesAsync().Returns(new List<StatusTypeListDto>());
-        _adminService.GetActorTypesAsync().Returns(new List<ActorTypeListDto>());
-        _adminService.GetFileTypesAsync().Returns(new List<FileTypeListDto>());
-        _adminService.GetDidCustodyTypesAsync().Returns(new List<DidCustodyTypeListDto>());
+        _eventLookupService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
+        _eventLookupService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
+        _eventLookupService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());
+        _eventLookupService.GetVisibilityTypesAsync().Returns(new List<VisibilityTypeListDto>());
+        _eventLookupService.GetRegistrationModesAsync().Returns(new List<RegistrationModeListDto>());
     }
 }

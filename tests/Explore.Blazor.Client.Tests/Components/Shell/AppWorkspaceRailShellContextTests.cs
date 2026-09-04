@@ -33,7 +33,7 @@ public sealed class AppWorkspaceRailShellContextTests : IDisposable
     public async Task RenderAnonymousUser_DoesNotCallShellContextEndpoint()
     {
         _ctx.SetAnonymousUser();
-        var apiClient = _ctx.Services.GetRequiredService<IEventApiClient>();
+        var apiClient = _ctx.Services.GetRequiredService<IUiShellClient>();
 
         _ctx.Render<AppWorkspaceRail>();
 

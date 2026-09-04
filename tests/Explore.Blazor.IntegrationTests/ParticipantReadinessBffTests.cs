@@ -20,7 +20,7 @@ public sealed class ParticipantReadinessBffTests
         ReadinessScope scope = ReadinessScope.Create();
         string capability = Guid.CreateVersion7()
             .ToString("N");
-        IEventApiClient api = SuccessfulApi(scope);
+        IParticipantReadinessClient api = SuccessfulApi(scope);
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = factory.CreateClient(
@@ -63,7 +63,7 @@ public sealed class ParticipantReadinessBffTests
     public async Task ReadinessWriteRequiresAntiforgeryBeforeApiCall()
     {
         ReadinessScope scope = ReadinessScope.Create();
-        IEventApiClient api = SuccessfulApi(scope);
+        IParticipantReadinessClient api = SuccessfulApi(scope);
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = factory.CreateClient(
@@ -99,7 +99,7 @@ public sealed class ParticipantReadinessBffTests
     public async Task ReadinessWriteRequiresCookieAuthority()
     {
         ReadinessScope scope = ReadinessScope.Create();
-        IEventApiClient api = SuccessfulApi(scope);
+        IParticipantReadinessClient api = SuccessfulApi(scope);
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = factory.CreateClient(
@@ -135,7 +135,7 @@ public sealed class ParticipantReadinessBffTests
     public async Task AuthenticatedActionsUseGeneratedClientOnly()
     {
         ReadinessScope scope = ReadinessScope.Create();
-        IEventApiClient api = SuccessfulApi(scope);
+        IParticipantReadinessClient api = SuccessfulApi(scope);
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = factory.CreateClient(
@@ -206,11 +206,11 @@ public sealed class ParticipantReadinessBffTests
                 Arg.Any<CancellationToken>());
     }
 
-    private static IEventApiClient SuccessfulApi(
+    private static IParticipantReadinessClient SuccessfulApi(
         ReadinessScope scope)
     {
-        IEventApiClient api =
-            Substitute.For<IEventApiClient>();
+        IParticipantReadinessClient api =
+            Substitute.For<IParticipantReadinessClient>();
         var response =
             new HalResourceOfParticipantReadinessDto
             {
@@ -322,13 +322,13 @@ public sealed class ParticipantReadinessBffTests
     }
 
     private static WebApplicationFactory<Program>
-        CreateFactory(IEventApiClient api) =>
+        CreateFactory(IParticipantReadinessClient api) =>
         new BlazorBffWebApplicationFactory()
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
                 {
-                    services.RemoveAll<IEventApiClient>();
+                    services.RemoveAll<IParticipantReadinessClient>();
                     services.AddSingleton(api);
                 });
             });

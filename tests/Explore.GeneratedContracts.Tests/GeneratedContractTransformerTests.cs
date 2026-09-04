@@ -283,7 +283,7 @@ public sealed class GeneratedContractTransformerTests
         namespace Generated
         {
         [System.CodeDom.Compiler.GeneratedCode("NSwag", "test")]
-        public partial interface IEventApiClient
+        public partial interface ISampleClient
         {
             void Send(RequestDto body);
         }

@@ -13,9 +13,11 @@ public sealed class CustomPropertyAdminServiceTests
     [Test]
     public async Task GetEventProjectionStatusAsync_PreservesStatusHalLinks()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var projectionClient = Substitute.For<ICustomPropertyProjectionAdminClient>();
+        var definitionClient = Substitute.For<ICustomPropertyDefinitionClient>();
+        var governanceClient = Substitute.For<ICustomPropertyGovernanceClient>();
         var tenantId = Guid.NewGuid();
-        apiClient.GetCustomPropertyProjectionStatusAsync(tenantId, null, null, Arg.Any<CancellationToken>())
+        projectionClient.GetCustomPropertyProjectionStatusAsync(tenantId, null, null, Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfProjectionStatusDto
             {
                 _embedded = new HalCollectionEmbeddedOfProjectionStatusDto
@@ -36,7 +38,7 @@ public sealed class CustomPropertyAdminServiceTests
                     ]
                 }
             });
-        var service = new CustomPropertyAdminService(apiClient, NullLogger<CustomPropertyAdminService>.Instance);
+        var service = new CustomPropertyAdminService(definitionClient, governanceClient, projectionClient, NullLogger<CustomPropertyAdminService>.Instance);
 
         var result = await service.GetEventProjectionStatusAsync(tenantId);
 
@@ -50,9 +52,11 @@ public sealed class CustomPropertyAdminServiceTests
     [Test]
     public async Task GetDirtyScopesAsync_PreservesItemHalLinksAndPagination()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var projectionClient = Substitute.For<ICustomPropertyProjectionAdminClient>();
+        var definitionClient = Substitute.For<ICustomPropertyDefinitionClient>();
+        var governanceClient = Substitute.For<ICustomPropertyGovernanceClient>();
         var tenantId = Guid.NewGuid();
-        apiClient.GetCustomPropertyProjectionDirtyScopesAsync(tenantId, "projection", 2, 10, null, null, Arg.Any<CancellationToken>())
+        projectionClient.GetCustomPropertyProjectionDirtyScopesAsync(tenantId, "projection", 2, 10, null, null, Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfProjectionDirtyScopeDto
             {
                 PageNumber = 2,
@@ -77,7 +81,7 @@ public sealed class CustomPropertyAdminServiceTests
                     ]
                 }
             });
-        var service = new CustomPropertyAdminService(apiClient, NullLogger<CustomPropertyAdminService>.Instance);
+        var service = new CustomPropertyAdminService(definitionClient, governanceClient, projectionClient, NullLogger<CustomPropertyAdminService>.Instance);
 
         var result = await service.GetDirtyScopesAsync(tenantId, "projection", 2, 10);
 

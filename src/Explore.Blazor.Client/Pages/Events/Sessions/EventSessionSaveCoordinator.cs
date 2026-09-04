@@ -2,6 +2,7 @@
 // ABOUTME: Keeps session save orchestration testable while preserving page-level validation, navigation, and submit UX.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Services;
 
 namespace Explore.Blazor.Client.Pages.Events.Sessions;
@@ -9,19 +10,19 @@ namespace Explore.Blazor.Client.Pages.Events.Sessions;
 internal static class EventSessionSaveCoordinator
 {
     public static async Task<EventSessionSaveResult> SaveCreateSessionAsync(
-        IEventService eventService,
+        IEventSessionService sessionService,
         CreateEventSessionDto session,
         Guid eventId,
         Guid? selectedSessionGroupId,
         Guid? savedSessionId)
     {
-        ArgumentNullException.ThrowIfNull(eventService);
+        ArgumentNullException.ThrowIfNull(sessionService);
         ArgumentNullException.ThrowIfNull(session);
 
         var sessionId = savedSessionId;
         if (!sessionId.HasValue || sessionId.Value == Guid.Empty)
         {
-            var result = await eventService.CreateSessionAsync(session);
+            var result = await sessionService.CreateSessionAsync(session);
             if (result.Success != true || result.Id == Guid.Empty)
             {
                 return EventSessionSaveResult.Failed(
@@ -32,7 +33,7 @@ internal static class EventSessionSaveCoordinator
         }
 
         return await AssignSelectedProgramSectionAsync(
-            eventService,
+            sessionService,
             eventId,
             selectedSessionGroupId,
             sessionId.Value,
@@ -40,7 +41,7 @@ internal static class EventSessionSaveCoordinator
     }
 
     public static async Task<EventSessionSaveResult> SaveUpdateSessionAsync(
-        IEventService eventService,
+        IEventSessionService sessionService,
         UpdateEventSessionDto session,
         Guid eventId,
         Guid sessionId,
@@ -48,10 +49,10 @@ internal static class EventSessionSaveCoordinator
         Guid? selectedSessionGroupId,
         Guid? initialSessionGroupId)
     {
-        ArgumentNullException.ThrowIfNull(eventService);
+        ArgumentNullException.ThrowIfNull(sessionService);
         ArgumentNullException.ThrowIfNull(session);
 
-        var result = await eventService.UpdateSessionAsync(
+        var result = await sessionService.UpdateSessionAsync(
             sessionId,
             expectedConcurrencyStamp,
             session);
@@ -66,7 +67,7 @@ internal static class EventSessionSaveCoordinator
             if (!initialSessionGroupId.HasValue || initialSessionGroupId.Value == Guid.Empty)
                 return EventSessionSaveResult.Succeeded(sessionId);
 
-            var unassignResult = await eventService.UnassignSessionFromGroupAsync(
+            var unassignResult = await sessionService.UnassignSessionFromGroupAsync(
                 eventId,
                 initialSessionGroupId.Value,
                 sessionId);
@@ -81,7 +82,7 @@ internal static class EventSessionSaveCoordinator
             return EventSessionSaveResult.Succeeded(sessionId);
 
         return await AssignSelectedProgramSectionAsync(
-            eventService,
+            sessionService,
             eventId,
             selectedSessionGroupId,
             sessionId,
@@ -89,7 +90,7 @@ internal static class EventSessionSaveCoordinator
     }
 
     private static async Task<EventSessionSaveResult> AssignSelectedProgramSectionAsync(
-        IEventService eventService,
+        IEventSessionService sessionService,
         Guid eventId,
         Guid? selectedSessionGroupId,
         Guid sessionId,
@@ -98,7 +99,7 @@ internal static class EventSessionSaveCoordinator
         if (!selectedSessionGroupId.HasValue || selectedSessionGroupId.Value == Guid.Empty)
             return EventSessionSaveResult.Succeeded(sessionId);
 
-        var result = await eventService.AssignSessionToGroupAsync(
+        var result = await sessionService.AssignSessionToGroupAsync(
             eventId,
             selectedSessionGroupId.Value,
             sessionId);

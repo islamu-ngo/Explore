@@ -91,7 +91,7 @@ public sealed class EventApiClientSerializationTests
     {
         Type[] protectedTypes =
         [
-            typeof(EventApiClient),
+            typeof(PublicExperienceClient),
             typeof(ApiException),
             typeof(ApiException<>),
             typeof(FileResponse),
@@ -287,18 +287,13 @@ public sealed class EventApiClientSerializationTests
         {
             BaseAddress = new Uri("https://example.test/")
         };
-        var monolithicClient = new EventApiClient(httpClient);
-        var perTagClient = new PublicExperienceClient(httpClient);
+        var client = new PublicExperienceClient(httpClient);
 
-        var monolithicResult = await monolithicClient.GetHomeDiscoveryAsync();
-        var perTagResult = await perTagClient.GetHomeDiscoveryAsync();
+        var result = await client.GetHomeDiscoveryAsync();
 
-        await Assert.That(monolithicResult.SectionStatuses).IsNotNull();
-        await Assert.That(monolithicResult.SectionStatuses!["hero"]).IsEqualTo(HomeDiscoverySectionStatus.Available);
-        await Assert.That(monolithicResult.Context?.Mode).IsEqualTo(HomeDiscoveryMode.All);
-        await Assert.That(perTagResult.SectionStatuses).IsNotNull();
-        await Assert.That(perTagResult.SectionStatuses!["hero"]).IsEqualTo(HomeDiscoverySectionStatus.Available);
-        await Assert.That(perTagResult.Context?.Mode).IsEqualTo(HomeDiscoveryMode.All);
+        await Assert.That(result.SectionStatuses).IsNotNull();
+        await Assert.That(result.SectionStatuses!["hero"]).IsEqualTo(HomeDiscoverySectionStatus.Available);
+        await Assert.That(result.Context?.Mode).IsEqualTo(HomeDiscoveryMode.All);
     }
 
     [Test]
@@ -327,7 +322,7 @@ public sealed class EventApiClientSerializationTests
         {
             BaseAddress = new Uri("https://example.test/")
         };
-        var client = new EventApiClient(httpClient);
+        var client = new SettingsClient(httpClient);
 
         var result = await client.GetInstanceAtprotoFederationSettingsAsync();
 
@@ -356,7 +351,7 @@ public sealed class EventApiClientSerializationTests
     {
         string sourcePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
-            "../../../../../src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"));
+            "../../../../../src/Explore.Blazor.Client/Clients/EventApiTagClients.g.cs"));
         const string declaration = "public partial record class ";
         return File.ReadLines(sourcePath)
             .Select(line => line.Trim())

@@ -9,6 +9,7 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject IRegistrationOrderService RegistrationOrderService
+@inject IRegistrationPaymentService RegistrationPaymentService
 @inject IAccessibilityAnnouncerService Announcer
 @inject IAccessibilityFocusService Focus
 @inject TimeProvider Clock
@@ -219,26 +220,26 @@
 
     private Task FinalizeAsync() => ApplyAsync(() => RegistrationOrderService.FinalizeCurrentAsync(EventId, OrderId));
     private Task<PaidOrderAcceptanceDisclosureDto?> LoadPaymentAcceptanceAsync(CancellationToken cancellationToken) =>
-        RegistrationOrderService.GetCurrentPaymentAcceptanceAsync(EventId, OrderId, _order!, cancellationToken);
+        RegistrationPaymentService.GetCurrentPaymentAcceptanceAsync(EventId, OrderId, _order!, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> StartPaymentAsync(string disclosureRevision, CancellationToken cancellationToken) =>
-        RegistrationOrderService.StartCurrentPaymentAsync(EventId, OrderId, _order!, disclosureRevision, cancellationToken);
+        RegistrationPaymentService.StartCurrentPaymentAsync(EventId, OrderId, _order!, disclosureRevision, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> LoadPaymentAsync(CancellationToken cancellationToken) =>
-        RegistrationOrderService.GetCurrentPaymentAsync(EventId, OrderId, _order!, cancellationToken);
+        RegistrationPaymentService.GetCurrentPaymentAsync(EventId, OrderId, _order!, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> RefreshPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
-        RegistrationOrderService.RefreshCurrentPaymentAsync(EventId, OrderId, payment, cancellationToken);
+        RegistrationPaymentService.RefreshCurrentPaymentAsync(EventId, OrderId, payment, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> RetryPaymentAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
-        RegistrationOrderService.RetryCurrentPaymentAsync(EventId, OrderId, payment, cancellationToken);
+        RegistrationPaymentService.RetryCurrentPaymentAsync(EventId, OrderId, payment, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> RequestRefundAsync(HalResourceOfRegistrationPaymentDto payment, CancellationToken cancellationToken) =>
-        RegistrationOrderService.RequestCurrentRefundAsync(EventId, OrderId, payment, cancellationToken);
+        RegistrationPaymentService.RequestCurrentRefundAsync(EventId, OrderId, payment, cancellationToken);
     private Task<HalResourceOfRegistrationPaymentDto?> RespondMaterialChangeAsync(
         HalResourceOfRegistrationPaymentDto payment,
         Guid campaignId,
         string choiceCode,
         CancellationToken cancellationToken) =>
-        RegistrationOrderService.RespondCurrentMaterialChangeAsync(
+        RegistrationPaymentService.RespondCurrentMaterialChangeAsync(
             EventId, OrderId, payment, campaignId, choiceCode, cancellationToken);
     private Task<string?> IssueCheckoutTicketAsync(string path, CancellationToken cancellationToken) =>
-        RegistrationOrderService.IssueCurrentPaymentCheckoutTicketAsync(path, cancellationToken);
+        RegistrationPaymentService.IssueCurrentPaymentCheckoutTicketAsync(path, cancellationToken);
     private Task ReloadAfterPaymentAsync() => LoadAsync();
 
     private Task ApplyPromotionAsync()

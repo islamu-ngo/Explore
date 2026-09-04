@@ -338,11 +338,6 @@ public sealed class EventEditTests : IDisposable
             Arg.Is<EventDraftEditModel>(dto =>
                 dto.RegistrationPolicyId == registrationPolicyId
                 && dto.ExpectedConcurrencyStamp == GetPrivateField<EventDto>(component, "currentEvent").ConcurrencyStamp));
-        await eventService.DidNotReceive().UpdateSessionAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<Guid>(),
-            Arg.Any<UpdateEventSessionDto>());
-        await eventService.DidNotReceive().CreateSessionAsync(Arg.Any<Explore.Blazor.Client.Clients.CreateEventSessionDto>());
     }
 
     [Test]

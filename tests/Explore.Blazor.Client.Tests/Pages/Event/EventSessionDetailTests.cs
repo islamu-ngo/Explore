@@ -15,7 +15,7 @@ public sealed class EventSessionDetailTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventSessionService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var agendaItemService = Substitute.For<IEventSessionAgendaItemService>();
         var session = new EventSessionDto
         {
@@ -30,12 +30,14 @@ public sealed class EventSessionDetailTests : IDisposable
             AdditionalProperties = CreateHalLinks("publish", "archive")
         };
 
-        eventService.GetManagedSessionByIdAsync(eventId, sessionId)
+        eventSessionService.GetManagedSessionByIdAsync(eventId, sessionId)
             .Returns(session);
         agendaItemService.GetManagedAgendaItemsBySessionAsync(eventId, sessionId)
             .Returns(new List<EventSessionAgendaItemListDto>());
 
-        _ctx.Services.AddScoped(_ => eventService);
+        _ctx.Services.AddScoped(_ => eventSessionService);
+        _ctx.Services.AddScoped(_ => Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventModerationService>());
+        _ctx.Services.AddScoped(_ => Substitute.For<IEventService>());
         _ctx.Services.AddScoped(_ => agendaItemService);
 
         var cut = _ctx.RenderMudComponent<EventSessionDetail>(parameters => parameters
@@ -48,7 +50,7 @@ public sealed class EventSessionDetailTests : IDisposable
                 throw new InvalidOperationException("Session details were not rendered.");
         }, TimeSpan.FromSeconds(3));
 
-        await eventService.Received(1).GetManagedSessionByIdAsync(eventId, sessionId);
+        await eventSessionService.Received(1).GetManagedSessionByIdAsync(eventId, sessionId);
         await Assert.That(cut.Markup).Contains($"/events/{eventId}");
         await Assert.That(cut.Markup).Contains("Parent Event");
         await Assert.That(cut.Markup).Contains("Publish");
@@ -62,7 +64,7 @@ public sealed class EventSessionDetailTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventSessionService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var agendaItemService = Substitute.For<IEventSessionAgendaItemService>();
         var publicSession = new EventSessionDto
         {
@@ -75,11 +77,13 @@ public sealed class EventSessionDetailTests : IDisposable
             AdditionalProperties = new Dictionary<string, object>()
         };
 
-        eventService.GetManagedSessionByIdAsync(eventId, sessionId).Returns((EventSessionDto?)null);
-        eventService.GetSessionByIdAsync(sessionId).Returns(publicSession);
+        eventSessionService.GetManagedSessionByIdAsync(eventId, sessionId).Returns((EventSessionDto?)null);
+        eventSessionService.GetSessionByIdAsync(sessionId).Returns(publicSession);
         agendaItemService.GetAgendaItemsBySessionAsync(sessionId)
             .Returns(new List<EventSessionAgendaItemListDto>());
-        _ctx.Services.AddScoped(_ => eventService);
+        _ctx.Services.AddScoped(_ => eventSessionService);
+        _ctx.Services.AddScoped(_ => Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventModerationService>());
+        _ctx.Services.AddScoped(_ => Substitute.For<IEventService>());
         _ctx.Services.AddScoped(_ => agendaItemService);
 
         var cut = _ctx.RenderMudComponent<EventSessionDetail>(parameters => parameters
@@ -92,8 +96,8 @@ public sealed class EventSessionDetailTests : IDisposable
                 throw new InvalidOperationException("Public session details were not rendered.");
         }, TimeSpan.FromSeconds(3));
 
-        await eventService.Received(1).GetManagedSessionByIdAsync(eventId, sessionId);
-        await eventService.Received(1).GetSessionByIdAsync(sessionId);
+        await eventSessionService.Received(1).GetManagedSessionByIdAsync(eventId, sessionId);
+        await eventSessionService.Received(1).GetSessionByIdAsync(sessionId);
         await agendaItemService.Received(1).GetAgendaItemsBySessionAsync(sessionId);
         await agendaItemService.DidNotReceive()
             .GetManagedAgendaItemsBySessionAsync(Arg.Any<Guid>(), Arg.Any<Guid>());

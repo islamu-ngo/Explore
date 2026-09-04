@@ -35,8 +35,8 @@ public sealed class TicketTransferBffTests
         TransferScope scope = TransferScope.Create();
         string capability =
             Guid.CreateVersion7().ToString("N");
-        IEventApiClient api =
-            Substitute.For<IEventApiClient>();
+        ITicketTransferClient api =
+            Substitute.For<ITicketTransferClient>();
         api.GetTicketTransferAsync(
                 scope.EventId,
                 scope.TicketId,
@@ -97,8 +97,8 @@ public sealed class TicketTransferBffTests
     public async Task UnauthenticatedTransferWritesRequireCookieAuthority()
     {
         TransferScope scope = TransferScope.Create();
-        IEventApiClient api =
-            Substitute.For<IEventApiClient>();
+        ITicketTransferClient api =
+            Substitute.For<ITicketTransferClient>();
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = CreateClient(factory);
@@ -135,8 +135,8 @@ public sealed class TicketTransferBffTests
     public async Task AuthenticatedWriteRequiresAntiforgeryBeforeApiCall()
     {
         TransferScope scope = TransferScope.Create();
-        IEventApiClient api =
-            Substitute.For<IEventApiClient>();
+        ITicketTransferClient api =
+            Substitute.For<ITicketTransferClient>();
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = CreateClient(factory);
@@ -173,8 +173,8 @@ public sealed class TicketTransferBffTests
             Guid.CreateVersion7().ToString("N");
         HalResourceOfTicketTransferDto transfer =
             TransferResource(scope);
-        IEventApiClient api =
-            Substitute.For<IEventApiClient>();
+        ITicketTransferClient api =
+            Substitute.For<ITicketTransferClient>();
         api.OfferTicketTransferAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<Guid>(),
@@ -325,8 +325,8 @@ public sealed class TicketTransferBffTests
         TransferScope scope = TransferScope.Create();
         string capability =
             Guid.CreateVersion7().ToString("N");
-        IEventApiClient api =
-            Substitute.For<IEventApiClient>();
+        ITicketTransferClient api =
+            Substitute.For<ITicketTransferClient>();
         api.GetTicketTransferAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<Guid>(),
@@ -366,13 +366,13 @@ public sealed class TicketTransferBffTests
     }
 
     private static WebApplicationFactory<Program>
-        CreateFactory(IEventApiClient api) =>
+        CreateFactory(ITicketTransferClient api) =>
         new BlazorBffWebApplicationFactory()
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
                 {
-                    services.RemoveAll<IEventApiClient>();
+                    services.RemoveAll<ITicketTransferClient>();
                     services.AddSingleton(api);
                 });
             });

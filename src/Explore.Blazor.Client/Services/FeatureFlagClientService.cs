@@ -12,12 +12,12 @@ public interface IFeatureFlagClientService
 
 public class FeatureFlagClientService : IFeatureFlagClientService
 {
-    private readonly IEventApiClient _api;
+    private readonly IFeaturesClient _api;
     private readonly FeatureStateContainer _featureState;
     private readonly ILogger<FeatureFlagClientService> _logger;
 
     public FeatureFlagClientService(
-        IEventApiClient api,
+        IFeaturesClient api,
         FeatureStateContainer featureState,
         ILogger<FeatureFlagClientService> logger)
     {

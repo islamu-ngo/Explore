@@ -68,7 +68,7 @@ public static class BffEventAddOnEndpoints
 
     private static Task<IResult> GetCatalogAsync(
         Guid eventId,
-        IEventApiClient api,
+        IEventAddOnCatalogClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -79,7 +79,7 @@ public static class BffEventAddOnEndpoints
 
     private static Task<IResult> GetManagementAsync(
         Guid eventId,
-        IEventApiClient api,
+        IEventAddOnManagementClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -92,7 +92,7 @@ public static class BffEventAddOnEndpoints
         Guid eventId,
         Guid registrationOrderId,
         [FromHeader(Name = CapabilityHeader)] string? capability,
-        IEventApiClient api,
+        IRegistrationOrderAddOnClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -107,7 +107,7 @@ public static class BffEventAddOnEndpoints
         Guid eventId,
         CreateEventAddOnCatalogDraftRequest body,
         [FromHeader(Name = IdempotencyHeader)] string idempotencyKey,
-        IEventApiClient api,
+        IEventAddOnManagementClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -122,7 +122,7 @@ public static class BffEventAddOnEndpoints
         Guid eventId,
         ManageEventAddOnCatalogItemRequest body,
         [FromHeader(Name = IdempotencyHeader)] string idempotencyKey,
-        IEventApiClient api,
+        IEventAddOnManagementClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -136,7 +136,7 @@ public static class BffEventAddOnEndpoints
     private static Task<IResult> PublishAsync(
         Guid eventId,
         [FromHeader(Name = IdempotencyHeader)] string idempotencyKey,
-        IEventApiClient api,
+        IEventAddOnManagementClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -149,7 +149,7 @@ public static class BffEventAddOnEndpoints
     private static Task<IResult> RetireAsync(
         Guid eventId,
         [FromHeader(Name = IdempotencyHeader)] string idempotencyKey,
-        IEventApiClient api,
+        IEventAddOnManagementClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -165,7 +165,7 @@ public static class BffEventAddOnEndpoints
         ReserveEventAddOnsRequest body,
         [FromHeader(Name = IdempotencyHeader)] string idempotencyKey,
         [FromHeader(Name = CapabilityHeader)] string? capability,
-        IEventApiClient api,
+        IRegistrationOrderAddOnClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -184,7 +184,7 @@ public static class BffEventAddOnEndpoints
         Guid registrationOrderAddOnLineId,
         [FromHeader(Name = IdempotencyHeader)] string idempotencyKey,
         [FromHeader(Name = CapabilityHeader)] string? capability,
-        IEventApiClient api,
+        IRegistrationOrderAddOnClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -204,7 +204,7 @@ public static class BffEventAddOnEndpoints
         RefundEventAddOnRequest body,
         [FromHeader(Name = IdempotencyHeader)] string idempotencyKey,
         [FromHeader(Name = CapabilityHeader)] string? capability,
-        IEventApiClient api,
+        IRegistrationOrderAddOnClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(

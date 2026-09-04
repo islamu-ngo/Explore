@@ -11,7 +11,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class HomeDiscoveryServiceTests
 {
-    private readonly IEventApiClient apiClient = Substitute.For<IEventApiClient>();
+    private readonly IPublicExperienceClient apiClient = Substitute.For<IPublicExperienceClient>();
     private readonly IUserSettingsService settingsService = Substitute.For<IUserSettingsService>();
 
     [Test]
@@ -212,7 +212,7 @@ public sealed class HomeDiscoveryServiceTests
         {
             BaseAddress = new Uri("https://example.test/")
         };
-        var client = new EventApiClient(httpClient);
+        var client = new PublicExperienceClient(httpClient);
 
         var result = await client.GetHomeDiscoveryAsync();
 

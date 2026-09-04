@@ -33,7 +33,8 @@ public static class BffRegistrationPaymentEndpoints
         Guid eventId,
         Guid orderId,
         HttpContext context,
-        IEventApiClient apiClient,
+        IAuthenticatedRegistrationOrderPaymentClient authenticatedClient,
+        IGuestRegistrationOrderPaymentClient guestClient,
         RegistrationPaymentCheckoutTicketStore ticketStore,
         ITenantRouteContextAccessor tenantContext,
         IConfiguration configuration,
@@ -50,8 +51,8 @@ public static class BffRegistrationPaymentEndpoints
         try
         {
             target = string.IsNullOrWhiteSpace(capability)
-                ? await apiClient.GetAuthenticatedRegistrationPaymentCheckoutTargetAsync(eventId, orderId, cancellationToken: cancellationToken)
-                : await apiClient.GetGuestRegistrationPaymentCheckoutTargetAsync(eventId, orderId, capability, cancellationToken: cancellationToken);
+                ? await authenticatedClient.GetAuthenticatedRegistrationPaymentCheckoutTargetAsync(eventId, orderId, cancellationToken: cancellationToken)
+                : await guestClient.GetGuestRegistrationPaymentCheckoutTargetAsync(eventId, orderId, capability, cancellationToken: cancellationToken);
         }
         catch (ApiException exception) when (exception.StatusCode is StatusCodes.Status401Unauthorized
             or StatusCodes.Status403Forbidden or StatusCodes.Status404NotFound)

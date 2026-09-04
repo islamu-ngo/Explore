@@ -9,10 +9,10 @@ namespace Explore.Blazor.Client.Services;
 
 public class EventSessionAgendaItemService : IEventSessionAgendaItemService
 {
-    private readonly IEventApiClient _client;
+    private readonly IEventSessionAgendaItemClient _client;
     private readonly ILogger<EventSessionAgendaItemService> _logger;
 
-    public EventSessionAgendaItemService(IEventApiClient client, ILogger<EventSessionAgendaItemService> logger)
+    public EventSessionAgendaItemService(IEventSessionAgendaItemClient client, ILogger<EventSessionAgendaItemService> logger)
     {
         _client = client;
         _logger = logger;

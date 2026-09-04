@@ -18,7 +18,7 @@ public interface ITenantPublicExperienceAdminService
 }
 
 public sealed class TenantPublicExperienceAdminService(
-    IEventApiClient apiClient,
+    ISettingsClient apiClient,
     IPublicExperienceService publicExperienceService,
     ILogger<TenantPublicExperienceAdminService> logger) : ITenantPublicExperienceAdminService
 {

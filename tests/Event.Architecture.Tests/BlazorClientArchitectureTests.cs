@@ -20,10 +20,9 @@ public class BlazorClientArchitectureTests
     // Every entry represents a deliberate deferral. Shrink these aggressively.
     // --------------------------------------------------------------------------------------------
 
-    private static readonly HashSet<string> Known_IEventApiClient_ComponentExceptions = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> Known_GeneratedApiClient_ComponentExceptions = new(StringComparer.OrdinalIgnoreCase)
     {
-        // Keep legacy instance-admin section until a dedicated service wraps it.
-        "Pages/Admin/Instance/Components/InstanceTenantsSection.razor",
+        "Pages/Admin/Instance/Components/SupportAccessConsoleSection.razor",
     };
 
     private static readonly HashSet<string> Known_ConsoleWriteLine_Files = new(StringComparer.OrdinalIgnoreCase);
@@ -127,17 +126,21 @@ public class BlazorClientArchitectureTests
     };
 
     // ============================================================================================
-    // RULE 1.1 — Components must not inject IEventApiClient directly.
+    // RULE 1.1 — Components must not inject generated API clients directly.
     // ============================================================================================
 
     [Test]
-    public async Task Rule_1_01_Components_MustNotInject_IEventApiClient_Directly()
+    public async Task Rule_1_01_Components_MustNotInject_GeneratedApiClients_Directly()
     {
         if (BlazorClientRoot is null)
         {
             await Assert.That(true).IsTrue().Because("Blazor.Client source not found — skipping");
             return;
         }
+
+        var clientInterfaceNames = Explore.Blazor.Client.Extensions.GeneratedEventApiClients.ClientTypes
+            .Select(c => c.InterfaceType.Name)
+            .ToHashSet(StringComparer.Ordinal);
 
         var violations = new List<string>();
         var razorDirs = new[] { "Pages", "Shared" };
@@ -151,19 +154,23 @@ public class BlazorClientArchitectureTests
             {
                 if (IsGenerated(file)) continue;
                 var content = await File.ReadAllTextAsync(file);
-                if (Regex.IsMatch(content, @"@inject\s+IEventApiClient\b", RegexOptions.CultureInvariant))
+                foreach (Match match in Regex.Matches(content, @"@inject\s+(?<type>I\w+)\b", RegexOptions.CultureInvariant))
                 {
-                    var relative = NormalisePath(Path.GetRelativePath(BlazorClientRoot, file));
-                    if (!IsKnownComponentException(relative, Known_IEventApiClient_ComponentExceptions))
+                    var injectedType = match.Groups["type"].Value;
+                    if (clientInterfaceNames.Contains(injectedType))
                     {
-                        violations.Add(relative);
+                        var relative = NormalisePath(Path.GetRelativePath(BlazorClientRoot, file));
+                        if (!IsKnownComponentException(relative, Known_GeneratedApiClient_ComponentExceptions))
+                        {
+                            violations.Add($"{relative} (@inject {injectedType})");
+                        }
                     }
                 }
             }
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because($"Components must not inject IEventApiClient directly — use a typed service in Services/. Violations: {string.Join(", ", violations)}");
+            .Because($"Components must not inject generated API clients directly — use a typed service in Services/. Violations: {string.Join(", ", violations)}");
     }
 
     // ============================================================================================

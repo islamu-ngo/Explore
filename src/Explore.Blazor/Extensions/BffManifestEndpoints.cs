@@ -24,7 +24,7 @@ public static class BffManifestEndpoints
     }
 
     private static async Task<IResult> HandleManifestAsync(
-        IEventApiClient apiClient,
+        IPublicExperienceClient apiClient,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -34,7 +34,7 @@ public static class BffManifestEndpoints
     }
 
     private static async Task<ManifestBrand> ResolveBrandAsync(
-        IEventApiClient apiClient,
+        IPublicExperienceClient apiClient,
         ILogger logger,
         CancellationToken cancellationToken)
     {

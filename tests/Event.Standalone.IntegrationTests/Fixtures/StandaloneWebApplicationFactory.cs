@@ -187,7 +187,7 @@ public sealed class DynamicAuthInitializationProbe(IServiceScopeFactory scopeFac
         Interlocked.Increment(ref _initializationCount);
         await Task.Yield();
         await using var scope = scopeFactory.CreateAsyncScope();
-        var apiClient = scope.ServiceProvider.GetRequiredService<IEventApiClient>();
+        var apiClient = scope.ServiceProvider.GetRequiredService<IEventTypeClient>();
         _ = await apiClient.GetEventTypesAsync(cancellationToken: CancellationToken.None);
     }
 

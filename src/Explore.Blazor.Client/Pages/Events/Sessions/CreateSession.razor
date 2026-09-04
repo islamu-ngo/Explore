@@ -141,7 +141,8 @@
     [Parameter] public Guid EventId { get; set; }
 
     [Inject] private IEventService EventService { get; set; } = default!;
-    [Inject] private IAdminService AdminService { get; set; } = default!;
+    [Inject] private Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService { get; set; } = default!;
+    [Inject] private Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService EventLookupService { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private const int FallbackRegistrationModeId = 1;
@@ -177,8 +178,8 @@
         _editContext = new EditContext(_session);
         _errorStore.Init(_editContext);
         var eventTask = EventService.GetEventByIdAsync(EventId);
-        var createContextTask = EventService.GetEventSessionCreateContextAsync(EventId);
-        var registrationModesTask = AdminService.GetRegistrationModesAsync();
+        var createContextTask = EventSessionService.GetEventSessionCreateContextAsync(EventId);
+        var registrationModesTask = EventLookupService.GetRegistrationModesAsync();
 
         _event = await eventTask;
         _createContext = await createContextTask;
@@ -289,7 +290,7 @@
         try
         {
             var result = await EventSessionSaveCoordinator.SaveCreateSessionAsync(
-                EventService,
+                EventSessionService,
                 _session,
                 EventId,
                 _selectedSessionGroupId,

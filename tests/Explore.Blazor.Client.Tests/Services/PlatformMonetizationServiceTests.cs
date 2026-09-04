@@ -19,7 +19,7 @@ public sealed class PlatformMonetizationServiceTests
             ExpectedContributionVersion = 7
         };
         var response = new BaseCommandResponseOfGuid { Success = true };
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IPlatformMonetizationSettingsClient>();
         apiClient.GetInstancePlatformMonetizationSettingsAsync(null, null, cancellation.Token).Returns(resource);
         apiClient.UpdateInstancePlatformMonetizationSettingsAsync(request, null, null, cancellation.Token).Returns(response);
         var service = new PlatformMonetizationService(apiClient);

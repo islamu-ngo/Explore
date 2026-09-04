@@ -8,12 +8,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 public class MadhabServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IMadhabClient _apiClient;
     private readonly MadhabService _service;
 
     public MadhabServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IMadhabClient>();
         _service = new MadhabService(_apiClient);
     }
 

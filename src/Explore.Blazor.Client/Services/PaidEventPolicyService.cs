@@ -6,24 +6,26 @@ using Explore.Blazor.Client.Contracts.Services.PaidEventPolicies;
 
 namespace Explore.Blazor.Client.Services;
 
-public sealed class PaidEventPolicyService(IEventApiClient apiClient) : IPaidEventPolicyService
+public sealed class PaidEventPolicyService(
+    IInstancePaidEventPolicySettingsClient instanceClient,
+    ITenantPaidEventPolicySettingsClient tenantClient) : IPaidEventPolicyService
 {
     public Task<HalResourceOfPaidEventPolicyDto> GetInstanceAsync(CancellationToken cancellationToken = default) =>
-        apiClient.GetInstancePaidEventPolicySettingsAsync(cancellationToken: cancellationToken);
+        instanceClient.GetInstancePaidEventPolicySettingsAsync(cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> UpdateInstanceAsync(
         RevisePaidEventPolicyDto request,
         CancellationToken cancellationToken = default) =>
-        apiClient.UpdateInstancePaidEventPolicySettingsAsync(request, cancellationToken: cancellationToken);
+        instanceClient.UpdateInstancePaidEventPolicySettingsAsync(request, cancellationToken: cancellationToken);
 
     public Task<HalResourceOfTenantPaidEventPolicyConfigurationDto> GetTenantAsync(
         Guid tenantId,
         CancellationToken cancellationToken = default) =>
-        apiClient.GetTenantPaidEventPolicySettingsAsync(tenantId, cancellationToken: cancellationToken);
+        tenantClient.GetTenantPaidEventPolicySettingsAsync(tenantId, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> UpdateTenantAsync(
         Guid tenantId,
         RevisePaidEventPolicyDto request,
         CancellationToken cancellationToken = default) =>
-        apiClient.UpdateTenantPaidEventPolicySettingsAsync(tenantId, request, cancellationToken: cancellationToken);
+        tenantClient.UpdateTenantPaidEventPolicySettingsAsync(tenantId, request, cancellationToken: cancellationToken);
 }

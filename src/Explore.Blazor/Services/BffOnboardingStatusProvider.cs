@@ -86,7 +86,7 @@ public sealed class BffOnboardingStatusProvider : IBffOnboardingStatusProvider
         try
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
-            var apiClient = scope.ServiceProvider.GetRequiredService<IEventApiClient>();
+            var apiClient = scope.ServiceProvider.GetRequiredService<IInstanceOnboardingClient>();
             var dto = await apiClient.GetInstanceOnboardingStatusAsync(
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 

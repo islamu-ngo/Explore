@@ -1,6 +1,7 @@
 @* ABOUTME: Dialog for managing event program sections, tracks, devrooms, and stages. *@
 @* ABOUTME: Uses EventService wrappers so Blazor never calls the generated API client directly. *@
 
+@using Explore.Blazor.Client.Contracts.Services
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using Explore.Blazor.Client.Helpers
@@ -8,7 +9,7 @@
 @using Explore.Blazor.Client.Components.Forms
 @using MudBlazor
 
-@inject IEventService EventService
+@inject IEventSessionService EventSessionService
 @inject IDialogService DialogService
 @inject ILogger<ProgramSectionsDialog> Logger
 
@@ -276,7 +277,7 @@
     {
         _sections = InitialSections?.OrderBy(section => section.SortOrder).ThenBy(section => section.Name).ToList() ?? [];
         _sortOrder = _sections.Count == 0 ? 0 : _sections.Max(section => section.SortOrder ?? 0) + 10;
-        var createContext = await EventService.GetEventSessionCreateContextAsync(EventId);
+        var createContext = await EventSessionService.GetEventSessionCreateContextAsync(EventId);
         _locations = createContext?.Locations ?? new List<EventSessionCreateLocationOptionDto>();
         _allRooms = createContext?.Rooms ?? new List<EventSessionCreateRoomOptionDto>();
     }
@@ -349,7 +350,7 @@
         try
         {
             BaseCommandResponseOfGuid response = _editingSectionId is null
-                ? await EventService.CreateSessionGroupAsync(new CreateEventSessionGroupRequestDto
+                ? await EventSessionService.CreateSessionGroupAsync(new CreateEventSessionGroupRequestDto
                 {
                     EventId = EventId,
                     Name = trimmedName,
@@ -366,7 +367,7 @@
                         Success = false,
                         Message = "Program section must be reloaded before saving."
                     }
-                    : await EventService.UpdateSessionGroupAsync(
+                    : await EventSessionService.UpdateSessionGroupAsync(
                         _editingSectionId.Value,
                         concurrencyStamp,
                         new UpdateEventSessionGroupRequestDto
@@ -400,7 +401,7 @@
                 return;
             }
 
-            _sections = (await EventService.GetManagedSessionGroupsByEventAsync(EventId))
+            _sections = (await EventSessionService.GetManagedSessionGroupsByEventAsync(EventId))
                 .OrderBy(section => section.SortOrder)
                 .ThenBy(section => section.Name)
                 .ToList();
@@ -443,14 +444,14 @@
 
         try
         {
-            bool deleted = await EventService.DeleteSessionGroupAsync(EventId, section.Id ?? Guid.Empty);
+            bool deleted = await EventSessionService.DeleteSessionGroupAsync(EventId, section.Id ?? Guid.Empty);
             if (!deleted)
             {
                 _errorMessage = "Program section could not be deleted.";
                 return;
             }
 
-            _sections = (await EventService.GetManagedSessionGroupsByEventAsync(EventId))
+            _sections = (await EventSessionService.GetManagedSessionGroupsByEventAsync(EventId))
                 .OrderBy(programSection => programSection.SortOrder)
                 .ThenBy(programSection => programSection.Name)
                 .ToList();
@@ -509,7 +510,7 @@
         try
         {
             int sortOrder = GetNextAssignmentSortOrder(sectionId);
-            BaseCommandResponseOfGuid response = await EventService.AssignSessionToGroupAsync(
+            BaseCommandResponseOfGuid response = await EventSessionService.AssignSessionToGroupAsync(
                 EventId,
                 sectionId,
                 sessionId,
@@ -548,7 +549,7 @@
 
         try
         {
-            BaseCommandResponseOfGuid response = await EventService.UnassignSessionFromGroupAsync(EventId, sectionId, sessionId);
+            BaseCommandResponseOfGuid response = await EventSessionService.UnassignSessionFromGroupAsync(EventId, sectionId, sessionId);
             if (response.Success != true)
             {
                 _errorMessage = response.Message ?? "Session could not be removed from the selected program section.";
@@ -571,7 +572,7 @@
 
     private async Task LoadSessionsAsync()
     {
-        _sessions = (await EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true))
+        _sessions = (await EventSessionService.GetSessionsByEventAsync(EventId, includeManagedSessions: true))
             .OrderBy(session => session.StartTime ?? DateTimeOffset.MaxValue)
             .ThenBy(session => session.Title)
             .ToList();

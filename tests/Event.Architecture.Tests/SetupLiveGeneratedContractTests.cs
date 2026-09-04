@@ -45,7 +45,7 @@ public sealed class SetupLiveGeneratedContractTests
         AssertSetupSchemas(document.RootElement.GetProperty("components")
             .GetProperty("schemas"));
 
-        MethodInfo write = typeof(IEventApiClient).GetMethod(
+        MethodInfo write = typeof(ISetup_LiveClient).GetMethod(
             "WriteSetupSecretBindingAsync")
             ?? throw new InvalidOperationException("missing-generated-setup-write");
         Type[] writeParameters = write.GetParameters()
@@ -59,10 +59,10 @@ public sealed class SetupLiveGeneratedContractTests
         ])).IsTrue();
         await Assert.That(write.ReturnType)
             .IsEqualTo(typeof(Task<HalResourceOfSetupSecretBindingOperationData>));
-        await Assert.That(typeof(IEventApiClient).GetMethod(
+        await Assert.That(typeof(ISetup_LiveClient).GetMethod(
                 "CreateSetupTargetEnrollmentAsync")?.ReturnType)
             .IsEqualTo(typeof(Task<SwaggerResponse<HalResourceOfSetupTargetEnrollmentData>>));
-        await Assert.That(typeof(IEventApiClient).GetMethod(
+        await Assert.That(typeof(ISetup_LiveClient).GetMethod(
                 "RotateSetupTargetEnrollmentCapabilityAsync")?.ReturnType)
             .IsEqualTo(typeof(Task<SwaggerResponse<HalResourceOfSetupTargetEnrollmentData>>));
         await AssertRequiredStringParameters("CreateSetupTargetEnrollmentAsync",
@@ -122,7 +122,7 @@ public sealed class SetupLiveGeneratedContractTests
             "HalResourceOfSetupSecretBindingReadinessItem",
             "HalCollectionEmbeddedOfSetupSecretBindingReadinessItem"
         ];
-        Type[] setupTypes = typeof(IEventApiClient).Assembly.GetExportedTypes()
+        Type[] setupTypes = typeof(ISetup_LiveClient).Assembly.GetExportedTypes()
             .Where(type => setupContractNames.Contains(type.Name, StringComparer.Ordinal))
             .ToArray();
         await Assert.That(setupTypes.Select(type => type.Name))
@@ -150,7 +150,7 @@ public sealed class SetupLiveGeneratedContractTests
         {
             BaseAddress = new Uri("https://setup.invalid/")
         };
-        var client = new EventApiClient(httpClient);
+        var client = new Setup_LiveClient(httpClient);
         var request = new CreateSetupTargetEnrollmentRequest
         {
             ClientChallenge = challenge,
@@ -368,7 +368,7 @@ public sealed class SetupLiveGeneratedContractTests
         string methodName,
         params string[] parameterNames)
     {
-        MethodInfo method = typeof(IEventApiClient).GetMethod(methodName)
+        MethodInfo method = typeof(ISetup_LiveClient).GetMethod(methodName)
             ?? throw new InvalidOperationException($"missing-generated-method:{methodName}");
         var nullability = new NullabilityInfoContext();
         foreach (string parameterName in parameterNames)

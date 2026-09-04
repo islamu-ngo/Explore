@@ -7,7 +7,10 @@ using Explore.Blazor.Client.Contracts.Services.Webhooks;
 namespace Explore.Blazor.Client.Services.Webhooks;
 
 public sealed class WebhookOperationsService(
-    IEventApiClient apiClient,
+    IWebhookBulkReplaysClient bulkReplaysClient,
+    IWebhookEndpointOperationsClient endpointOperationsClient,
+    IWebhookMessagesClient messagesClient,
+    IWebhookProviderPublicationsClient publicationsClient,
     ILogger<WebhookOperationsService> logger) : IWebhookOperationsService
 {
     private const int BadRequestStatusCode = 400;
@@ -20,7 +23,7 @@ public sealed class WebhookOperationsService(
     {
         try
         {
-            var payload = await apiClient.GetWebhookMessagePayloadAsync(
+            var payload = await messagesClient.GetWebhookMessagePayloadAsync(
                 messageId,
                 cancellationToken: cancellationToken);
             return new WebhookPayloadResult(true, "Webhook payload loaded.", payload);
@@ -47,7 +50,7 @@ public sealed class WebhookOperationsService(
         PauseWebhookEndpointRequestDto request,
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(
-            () => apiClient.PauseWebhookEndpointAsync(endpointId, request, cancellationToken: cancellationToken),
+            () => endpointOperationsClient.PauseWebhookEndpointAsync(endpointId, request, cancellationToken: cancellationToken),
             "Webhook endpoint paused.",
             "Unable to pause webhook endpoint.");
 
@@ -56,7 +59,7 @@ public sealed class WebhookOperationsService(
         ResumeWebhookEndpointRequestDto request,
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(
-            () => apiClient.ResumeWebhookEndpointAsync(endpointId, request, cancellationToken: cancellationToken),
+            () => endpointOperationsClient.ResumeWebhookEndpointAsync(endpointId, request, cancellationToken: cancellationToken),
             "Webhook endpoint resumed.",
             "Unable to resume webhook endpoint.");
 
@@ -65,7 +68,7 @@ public sealed class WebhookOperationsService(
     {
         try
         {
-            var collection = await apiClient.GetWebhookProviderPublicationsAsync(
+            var collection = await publicationsClient.GetWebhookProviderPublicationsAsync(
                 limit: OperationsLimit,
                 cancellationToken: cancellationToken);
             return new WebhookProviderPublicationSnapshot
@@ -90,7 +93,7 @@ public sealed class WebhookOperationsService(
         ReconcileWebhookProviderPublicationRequestDto request,
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(
-            () => apiClient.ReconcileWebhookProviderPublicationAsync(
+            () => publicationsClient.ReconcileWebhookProviderPublicationAsync(
                 publicationId,
                 request,
                 cancellationToken: cancellationToken),
@@ -102,7 +105,7 @@ public sealed class WebhookOperationsService(
         AbandonWebhookProviderPublicationRequestDto request,
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(
-            () => apiClient.AbandonWebhookProviderPublicationAsync(
+            () => publicationsClient.AbandonWebhookProviderPublicationAsync(
                 publicationId,
                 request,
                 cancellationToken: cancellationToken),
@@ -114,7 +117,7 @@ public sealed class WebhookOperationsService(
     {
         try
         {
-            var collection = await apiClient.GetWebhookBulkReplaysAsync(
+            var collection = await bulkReplaysClient.GetWebhookBulkReplaysAsync(
                 limit: OperationsLimit,
                 cancellationToken: cancellationToken);
             return new WebhookBulkReplaySnapshot
@@ -142,7 +145,7 @@ public sealed class WebhookOperationsService(
     {
         try
         {
-            var preview = await apiClient.PreviewWebhookBulkReplayAsync(
+            var preview = await bulkReplaysClient.PreviewWebhookBulkReplayAsync(
                 filter.FromUtc,
                 filter.ToUtc,
                 filter.WebhookConsumerId,
@@ -173,7 +176,7 @@ public sealed class WebhookOperationsService(
         ScheduleWebhookBulkReplayRequestDto request,
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(
-            () => apiClient.ScheduleWebhookBulkReplayAsync(request, cancellationToken: cancellationToken),
+            () => bulkReplaysClient.ScheduleWebhookBulkReplayAsync(request, cancellationToken: cancellationToken),
             "Webhook bulk replay scheduled.",
             "Unable to schedule webhook bulk replay.");
 
@@ -182,7 +185,7 @@ public sealed class WebhookOperationsService(
         CancelWebhookBulkReplayRequestDto request,
         CancellationToken cancellationToken = default) =>
         ExecuteCommandAsync(
-            () => apiClient.CancelWebhookBulkReplayAsync(
+            () => bulkReplaysClient.CancelWebhookBulkReplayAsync(
                 operationId,
                 request,
                 cancellationToken: cancellationToken),

@@ -8,9 +8,9 @@ namespace Explore.Blazor.Client.Services.Lookup;
 
 public class EventRegistrationPolicyService : IEventRegistrationPolicyService
 {
-    private readonly IEventApiClient _client;
+    private readonly IEventRegistrationPolicyClient _client;
 
-    public EventRegistrationPolicyService(IEventApiClient client)
+    public EventRegistrationPolicyService(IEventRegistrationPolicyClient client)
     {
         _client = client;
     }

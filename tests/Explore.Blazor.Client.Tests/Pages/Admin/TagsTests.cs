@@ -1,26 +1,39 @@
 // ABOUTME: Component tests for lookup tables section tag-related loading/error/success states.
 // ABOUTME: Verifies tag data appears in consolidated tenant lookup management UI.
 
-using MudBlazor;
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Lookup;
+using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
+using Microsoft.AspNetCore.Components;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
 public class TagsTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
-    private readonly IAdminService _adminService;
+    private readonly ITagService _tagService;
     private readonly ISnackbar _snackbar;
 
     public TagsTests()
     {
         _ctx = new BlazorTestContext();
-        _adminService = Substitute.For<IAdminService>();
+        _tagService = Substitute.For<ITagService>();
         _snackbar = Substitute.For<ISnackbar>();
 
-        _ctx.Services.AddSingleton(_adminService);
+        _ctx.Services.AddSingleton(Substitute.For<ICategoryService>());
+        _ctx.Services.AddSingleton(_tagService);
+        _ctx.Services.AddSingleton(Substitute.For<ILocationClient>());
+        _ctx.Services.AddSingleton(Substitute.For<IEventLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<IDemographicLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<ICultureLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<IOrganizationLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<ISystemLookupService>());
         _ctx.Services.AddSingleton(_snackbar);
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
+        _ctx.Services.AddSingleton(Substitute.For<IAccessibilityFocusService>());
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Admin User", "admin@example.com");
 
@@ -46,7 +59,7 @@ public class TagsTests : IDisposable
     {
         // Arrange
         var pending = new TaskCompletionSource<ICollection<TagListDto>>();
-        _adminService.GetTagsAsync().Returns(pending.Task);
+        _tagService.GetTagsAsync().Returns(pending.Task);
 
         // Act
         var cut = RenderTags();
@@ -62,7 +75,7 @@ public class TagsTests : IDisposable
     public async Task Tags_ShowsEmptyState_WhenNoTagsReturned()
     {
         // Arrange
-        _adminService.GetTagsAsync().Returns(new List<TagListDto>());
+        _tagService.GetTagsAsync().Returns(new List<TagListDto>());
 
         // Act
         var cut = RenderTags();
@@ -78,7 +91,7 @@ public class TagsTests : IDisposable
     public async Task Tags_ShowsTagRows_WhenDataExists()
     {
         // Arrange
-        _adminService.GetTagsAsync().Returns(
+        _tagService.GetTagsAsync().Returns(
         [
             new TagListDto
             {
@@ -103,7 +116,7 @@ public class TagsTests : IDisposable
     public async Task Tags_UsesSnackbarError_WhenLoadFails()
     {
         // Arrange
-        _adminService.GetTagsAsync().ThrowsAsync(new InvalidOperationException("boom"));
+        _tagService.GetTagsAsync().ThrowsAsync(new InvalidOperationException("boom"));
 
         // Act
         var cut = RenderTags();
@@ -115,23 +128,6 @@ public class TagsTests : IDisposable
 
     private void SetupDefaultLookups()
     {
-        _adminService.GetCategoriesAsync().Returns(new List<CategoryListDto>());
-        _adminService.GetTagsAsync().Returns(new List<TagListDto>());
-        _adminService.GetLocationsAsync()
-            .Returns(new HalCollectionResourceOfLocationListDto());
-        _adminService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
-        _adminService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
-        _adminService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());
-        _adminService.GetVisibilityTypesAsync().Returns(new List<VisibilityTypeListDto>());
-        _adminService.GetRegistrationModesAsync().Returns(new List<RegistrationModeListDto>());
-        _adminService.GetAudienceGendersAsync().Returns(new List<AudienceGenderListDto>());
-        _adminService.GetAudienceAgesAsync().Returns(new List<AudienceAgeListDto>());
-        _adminService.GetMadhabsAsync().Returns(new List<MadhabListDto>());
-        _adminService.GetLanguagesAsync().Returns(new List<LanguageListDto>());
-        _adminService.GetOrganizationPositionsAsync().Returns(new List<OrganizationPositionListDto>());
-        _adminService.GetApprovalStatusesAsync().Returns(new List<StatusTypeListDto>());
-        _adminService.GetActorTypesAsync().Returns(new List<ActorTypeListDto>());
-        _adminService.GetFileTypesAsync().Returns(new List<FileTypeListDto>());
-        _adminService.GetDidCustodyTypesAsync().Returns(new List<DidCustodyTypeListDto>());
+        _tagService.GetTagsAsync().Returns(new List<TagListDto>());
     }
 }

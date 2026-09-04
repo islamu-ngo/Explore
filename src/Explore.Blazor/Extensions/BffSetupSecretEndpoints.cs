@@ -283,7 +283,7 @@ public static class BffSetupSecretEndpoints
         string secret,
         CancellationToken cancellationToken)
     {
-        var apiClient = ctx.RequestServices.GetRequiredService<IEventApiClient>();
+        var apiClient = ctx.RequestServices.GetRequiredService<IInstanceOnboardingClient>();
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("SetupSecretGateway");
 

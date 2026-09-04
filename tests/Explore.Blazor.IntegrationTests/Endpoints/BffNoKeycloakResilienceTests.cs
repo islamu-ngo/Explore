@@ -180,7 +180,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     [Test]
     public async Task ManifestWebManifest_ReturnsDbBackedWhiteLabelInstallMetadata()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IPublicExperienceClient>();
         apiClient.GetPublicExperienceShellAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new PublicExperienceShellDto
             {
@@ -193,7 +193,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
             }));
         await using var factory = new NoKeycloakBlazorBffWebApplicationFactory(configureServices: services =>
         {
-            services.RemoveAll<IEventApiClient>();
+            services.RemoveAll<IPublicExperienceClient>();
             services.AddSingleton(apiClient);
         });
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -381,6 +381,22 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
                         Disposition: Explore.Blazor.Services.BffOnboardingDisposition.Completed));
                 services.RemoveAll<Explore.Blazor.Services.IBffOnboardingStatusProvider>();
                 services.AddSingleton(mockOnboarding);
+
+                var onboardingClient = Substitute.For<IInstanceOnboardingClient>();
+                onboardingClient.GetInstanceOnboardingStatusAsync(
+                        Arg.Any<string?>(),
+                        Arg.Any<string?>(),
+                        Arg.Any<CancellationToken>())
+                    .Returns(Task.FromResult(new HalResourceOfInstanceOnboardingStatusDto
+                    {
+                        IsCompleted = true,
+                        State = "Completed",
+                        Mode = "Interactive",
+                        Generation = 1,
+                        SelectedDeploymentMode = "SingleTenant"
+                    }));
+                services.RemoveAll<IInstanceOnboardingClient>();
+                services.AddSingleton(onboardingClient);
 
                 _configureServices?.Invoke(services);
             });

@@ -37,7 +37,8 @@ public static class BffRegistrationProviderEmbedEndpoints
     private static async Task<IResult> HandleLaunchAsync(
         RegistrationProviderBffLaunch request,
         HttpContext ctx,
-        IEventApiClient apiClient,
+        IAuthenticatedRegistrationOrderClient authenticatedClient,
+        IGuestRegistrationOrderClient guestClient,
         IDistributedCache cache,
         CancellationToken cancellationToken)
     {
@@ -62,9 +63,9 @@ public static class BffRegistrationProviderEmbedEndpoints
             };
             string idempotencyKey = Guid.CreateVersion7().ToString("D");
             HalResourceOfNativeRegistrationProviderLaunchDescriptorDto resource = string.IsNullOrWhiteSpace(request.GuestCapability)
-                ? await apiClient.LaunchAuthenticatedRegistrationProviderAttemptAsync(
+                ? await authenticatedClient.LaunchAuthenticatedRegistrationProviderAttemptAsync(
                     request.EventId, request.OrderId, idempotencyKey, body, cancellationToken: cancellationToken)
-                : await apiClient.LaunchGuestRegistrationProviderAttemptAsync(
+                : await guestClient.LaunchGuestRegistrationProviderAttemptAsync(
                     request.EventId, request.OrderId, idempotencyKey, body, request.GuestCapability, cancellationToken: cancellationToken);
             descriptor = RegistrationProviderLaunchDescriptor.From(resource.AdditionalProperties);
         }

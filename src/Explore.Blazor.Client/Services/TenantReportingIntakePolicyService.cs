@@ -6,7 +6,7 @@ using Explore.Blazor.Client.Contracts.Services.Reporting;
 
 namespace Explore.Blazor.Client.Services;
 
-public sealed class TenantReportingIntakePolicyService(IEventApiClient apiClient)
+public sealed class TenantReportingIntakePolicyService(ITenantReportingIntakeSettingsClient apiClient)
     : ITenantReportingIntakePolicyService
 {
     public Task<HalResourceOfTenantReportingIntakePolicyDto> GetAsync(

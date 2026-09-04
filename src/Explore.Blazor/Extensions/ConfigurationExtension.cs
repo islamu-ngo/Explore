@@ -159,8 +159,12 @@ public static class ConfigurationExtensions
         {
             ["Keycloak:ClientSecret"] = rawClientSecret,
             ["Google:ClientSecret"] = rawGoogleClientSecret,
-            [AtprotoClientKeyProvider.ConfigurationKey] = rawAtprotoOAuthClientPrivateJwks,
         };
+
+        if (!string.IsNullOrWhiteSpace(rawAtprotoOAuthClientPrivateJwks))
+        {
+            mappedConfig[AtprotoClientKeyProvider.ConfigurationKey] = rawAtprotoOAuthClientPrivateJwks;
+        }
 
         static void TrySet(IDictionary<string, string?> dict, IConfiguration root, string key, string? value)
         {

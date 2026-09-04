@@ -11,7 +11,7 @@ namespace Explore.Blazor.Client.Services.Scheduling;
 /// handed to components exactly as the server produced them, so affordance gating reads server truth rather than
 /// a client-side reconstruction of it.
 /// </summary>
-public sealed class SchedulerAdminApiAdapter(IEventApiClient apiClient) : ISchedulerAdminService
+public sealed class SchedulerAdminApiAdapter(ISchedulerAdminClient apiClient) : ISchedulerAdminService
 {
     public Task<HalResourceOfSchedulerAdminOverviewDto?> GetOverviewAsync(
         CancellationToken cancellationToken = default) =>

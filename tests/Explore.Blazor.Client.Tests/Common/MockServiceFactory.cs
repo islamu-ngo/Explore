@@ -17,62 +17,6 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// </remarks>
 public static class MockServiceFactory
 {
-    #region Core API Client
-
-    /// <summary>
-    /// Creates a mock IEventApiClient with default empty responses.
-    /// Uses HAL resource types that match the actual NSwag-generated client.
-    /// </summary>
-    public static IEventApiClient CreateEventApiClient()
-    {
-        var mock = Substitute.For<IEventApiClient>();
-
-        // Configure default successful empty responses for events (HAL collection)
-        // GetEventsAsync has many optional filter parameters (searchTerm, categoryId, etc.)
-        // Use ReturnsForAnyArgs to match regardless of which parameters are passed
-        mock.GetEventsAsync().ReturnsForAnyArgs(new HalCollectionResourceOfEventDiscoveryItemDto
-        {
-            _embedded = new HalCollectionEmbeddedOfEventDiscoveryItemDto
-            {
-                Items = new List<HalResourceOfEventDiscoveryItemDto>()
-            }
-        });
-
-        // Configure default successful empty responses for my events (HAL collection)
-        mock.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new HalCollectionResourceOfEventListDto
-            {
-                _embedded = new HalCollectionEmbeddedOfEventListDto
-                {
-                    Items = new List<HalResourceOfEventListDto>()
-                }
-            });
-
-        // Configure default successful empty responses for organizations (HAL collection)
-        mock.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new HalCollectionResourceOfOrganizationListDto
-            {
-                _embedded = new HalCollectionEmbeddedOfOrganizationListDto
-                {
-                    Items = new List<HalResourceOfOrganizationListDto>()
-                }
-            });
-
-        // Configure default successful empty responses for my organizations (HAL collection)
-        mock.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(new HalCollectionResourceOfOrganizationListDto
-            {
-                _embedded = new HalCollectionEmbeddedOfOrganizationListDto
-                {
-                    Items = new List<HalResourceOfOrganizationListDto>()
-                }
-            });
-
-        return mock;
-    }
-
-    #endregion
-
     #region Service Mocks
 
     /// <summary>
@@ -344,7 +288,8 @@ public static class MockServiceFactory
     /// <param name="services">Service collection to add mocks to</param>
     public static void RegisterAllCoreMocks(IServiceCollection services)
     {
-        services.AddSingleton(CreateEventApiClient());
+        services.AddSingleton(Substitute.For<IEventClient>());
+        services.AddSingleton(Substitute.For<IOrganizationClient>());
         services.AddSingleton(CreateEventService());
         services.AddSingleton(CreateOrganizationService());
         services.AddSingleton(CreateGroupService());

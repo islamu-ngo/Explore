@@ -8,7 +8,7 @@ using Explore.Blazor.Client.Helpers;
 namespace Explore.Blazor.Client.Services;
 
 public sealed class EventReportModerationService(
-    IEventApiClient apiClient,
+    IModerationReportClient apiClient,
     ILogger<EventReportModerationService> logger)
     : IEventReportModerationService
 {

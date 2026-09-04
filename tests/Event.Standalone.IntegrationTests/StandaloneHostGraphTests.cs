@@ -215,7 +215,7 @@ public sealed class StandaloneHostGraphTests
         using var publicClient = factory.CreateClient();
         await using var scope = factory.Services.CreateAsyncScope();
 
-        var apiClient = scope.ServiceProvider.GetRequiredService<IEventApiClient>();
+        var apiClient = scope.ServiceProvider.GetRequiredService<IEventTypeClient>();
         var eventTypes = await apiClient.GetEventTypesAsync(cancellationToken: CancellationToken.None);
 
         var clientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();

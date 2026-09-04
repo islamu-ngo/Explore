@@ -6,6 +6,7 @@
 @using Explore.Blazor.Client.Services.Shell
 
 @inject IEventService EventService
+@inject Explore.Blazor.Client.Contracts.Services.IEventOrganizerClaimService ClaimService
 @inject IDialogService DialogService
 @inject IAccessibilityFocusService FocusService
 @inject IAccessibilityAnnouncerService Announcer
@@ -130,7 +131,7 @@
         {
             try
             {
-                var claims = await EventService.GetClaimantOrganizerClaimsAsync(claimantActorId);
+                var claims = await ClaimService.GetClaimantOrganizerClaimsAsync(claimantActorId);
                 _claims.AddRange(claims.Where(claim => claim.EventId == eventId));
             }
             catch (Exception)
@@ -229,7 +230,7 @@
 
         try
         {
-            if (!await EventService.WithdrawEventOrganizerClaimAsync(eventId, claimId, claim.ConcurrencyStamp))
+            if (!await ClaimService.WithdrawEventOrganizerClaimAsync(eventId, claimId, claim.ConcurrencyStamp))
             {
                 await Announcer.AnnounceAssertiveAsync("The organizer claim could not be withdrawn.");
                 return;

@@ -1,4 +1,4 @@
-// ABOUTME: Discovers and registers DTO-free NSwag per-tag client interface and implementation pairs.
+// ABOUTME: Discovers and registers NSwag per-tag client interface and implementation pairs.
 // ABOUTME: Keeps multi-client composition scalable while linker metadata preserves reflected WASM types.
 
 using System.Diagnostics.CodeAnalysis;
@@ -18,11 +18,10 @@ public static class GeneratedEventApiClients
         Justification = "EventApiClients.TrimmerRoots.xml preserves every reflected generated client interface and implementation.")]
     private static IReadOnlyList<(Type InterfaceType, Type ImplementationType)> DiscoverClientTypes()
     {
-        var clientTypes = typeof(EventApiClient).Assembly
+        var clientTypes = typeof(PublicExperienceClient).Assembly
             .GetTypes()
             .Where(type => type is { IsClass: true, IsAbstract: false }
-                && type.Namespace == typeof(EventApiClient).Namespace
-                && type != typeof(EventApiClient)
+                && type.Namespace == typeof(PublicExperienceClient).Namespace
                 && IsNswagGenerated(type)
                 && type.GetConstructor([typeof(HttpClient)]) is not null)
             .Select(implementationType =>

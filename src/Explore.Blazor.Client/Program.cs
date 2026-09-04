@@ -70,20 +70,8 @@ builder.Services.AddScoped(sp =>
     return factory.CreateClient("BffClient");
 });
 
-// Register NSwag-generated API client for WASM
-// In WASM mode, the client calls through BFF endpoints (same origin)
-// The BFF handles authentication token attachment
-// IMPORTANT: AddHttpMessageHandler to send credentials (cookies) with every request
-builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
-{
-    // Use base address pointing to self - BFF will proxy to API
-    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
-})
-.AddHttpMessageHandler<EventApiBehaviorMessageHandler>()
-.AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
-.AddHttpMessageHandler<BffAntiforgeryMessageHandler>()
-.AddHttpMessageHandler<BffUnauthorizedHandler>();
-
+// Register the NSwag-generated per-tag API clients for WASM.
+// Requests use the same-origin BFF and shared transport behavior chain.
 foreach (var (interfaceType, implementationType) in GeneratedEventApiClients.ClientTypes)
 {
     builder.Services.AddTypedApiClient(

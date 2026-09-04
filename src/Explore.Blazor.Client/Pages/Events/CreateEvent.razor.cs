@@ -35,8 +35,11 @@ public partial class CreateEvent : IDisposable
     private const int NoRecovery = 5;
 
     [Inject] protected IEventService EventService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService { get; set; } = null!;
     [Inject] protected IUserService UserService { get; set; } = null!;
-    [Inject] protected IAdminService AdminService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService EventLookupService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.Lookup.IDemographicLookupService DemographicLookupService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.Lookup.ICultureLookupService CultureLookupService { get; set; } = null!;
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
     [Inject] protected ITagService TagService { get; set; } = null!;
@@ -823,7 +826,7 @@ public partial class CreateEvent : IDisposable
                 {
                     try
                     {
-                        await EventService.DeleteSessionAsync(session.Id.Value);
+                        await EventSessionService.DeleteSessionAsync(session.Id.Value);
                         sessions.RemoveAt(index);
                     }
                     catch (Exception ex)
@@ -869,16 +872,16 @@ public partial class CreateEvent : IDisposable
 
             await LoadCreationContextAsync();
 
-            var eventTypesTask = AdminService.GetEventTypesAsync();
-            var audienceGendersTask = AdminService.GetAudienceGendersAsync();
-            var audienceAgesTask = AdminService.GetAudienceAgesAsync();
-            var eventFormatsTask = AdminService.GetEventFormatsAsync();
-            var visibilityTypesTask = AdminService.GetVisibilityTypesAsync();
-            var madhabsTask = AdminService.GetMadhabsAsync();
+            var eventTypesTask = EventLookupService.GetEventTypesAsync();
+            var audienceGendersTask = DemographicLookupService.GetAudienceGendersAsync();
+            var audienceAgesTask = DemographicLookupService.GetAudienceAgesAsync();
+            var eventFormatsTask = EventLookupService.GetEventFormatsAsync();
+            var visibilityTypesTask = EventLookupService.GetVisibilityTypesAsync();
+            var madhabsTask = CultureLookupService.GetMadhabsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
-            var registrationModesTask = AdminService.GetRegistrationModesAsync();
-            var languagesTask = AdminService.GetLanguagesAsync();
+            var registrationModesTask = EventLookupService.GetRegistrationModesAsync();
+            var languagesTask = CultureLookupService.GetLanguagesAsync();
             var registrationPoliciesTask = RegistrationPolicyService.GetEventRegistrationPoliciesAsync();
             var eventTemplatesTask = LoadEventTemplatesAsync(createDto.EventTypeId);
 

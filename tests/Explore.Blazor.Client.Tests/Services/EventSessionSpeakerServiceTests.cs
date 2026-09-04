@@ -7,12 +7,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class EventSessionSpeakerServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventSessionSpeakerClient _apiClient;
     private readonly EventSessionSpeakerService _service;
 
     public EventSessionSpeakerServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IEventSessionSpeakerClient>();
         _service = new EventSessionSpeakerService(_apiClient);
     }
 

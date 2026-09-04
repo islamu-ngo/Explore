@@ -51,8 +51,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
             {
                 services.RemoveAll<IAntiforgery>();
                 services.AddSingleton(antiforgery);
-                services.RemoveAll<IEventApiClient>();
-                services.AddSingleton<IEventApiClient>(_ => CreateApiClient(_apiHandler));
+                services.RemoveAll<IStorageObjectClient>();
+                services.AddSingleton<IStorageObjectClient>(_ => CreateStorageObjectClient(_apiHandler));
+                services.RemoveAll<IOrganizationTenantEvidenceClient>();
+                services.AddSingleton<IOrganizationTenantEvidenceClient>(_ => CreateOrganizationTenantEvidenceClient(_apiHandler));
             });
         });
 
@@ -543,8 +545,10 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         {
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<IEventApiClient>();
-                services.AddSingleton<IEventApiClient>(_ => CreateApiClient(apiHandler));
+                services.RemoveAll<IStorageObjectClient>();
+                services.AddSingleton<IStorageObjectClient>(_ => CreateStorageObjectClient(apiHandler));
+                services.RemoveAll<IOrganizationTenantEvidenceClient>();
+                services.AddSingleton<IOrganizationTenantEvidenceClient>(_ => CreateOrganizationTenantEvidenceClient(apiHandler));
             });
         });
     }
@@ -583,13 +587,22 @@ public sealed class BffStorageUploadProxyTests : IAsyncDisposable
         return identity.PartitionKey;
     }
 
-    private static IEventApiClient CreateApiClient(StorageApiHandler apiHandler)
+    private static IStorageObjectClient CreateStorageObjectClient(StorageApiHandler apiHandler)
     {
         var httpClient = new HttpClient(apiHandler, disposeHandler: false)
         {
             BaseAddress = new Uri("https://api.example.test/")
         };
-        return new EventApiClient(httpClient);
+        return new StorageObjectClient(httpClient);
+    }
+
+    private static IOrganizationTenantEvidenceClient CreateOrganizationTenantEvidenceClient(StorageApiHandler apiHandler)
+    {
+        var httpClient = new HttpClient(apiHandler, disposeHandler: false)
+        {
+            BaseAddress = new Uri("https://api.example.test/")
+        };
+        return new OrganizationTenantEvidenceClient(httpClient);
     }
 
     private sealed class StorageApiHandler : HttpMessageHandler

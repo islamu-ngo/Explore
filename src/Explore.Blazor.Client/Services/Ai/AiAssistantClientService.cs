@@ -8,7 +8,7 @@ using Explore.Blazor.Client.Contracts.Services.Ai;
 namespace Explore.Blazor.Client.Services.Ai;
 
 public sealed class AiAssistantClientService(
-    IEventApiClient apiClient,
+    IAiAssistantClient apiClient,
     ILogger<AiAssistantClientService> logger) : IAiAssistantClientService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);

@@ -1,24 +1,36 @@
 // ABOUTME: Component tests for lookup tables section location-related loading/error/success states.
 // ABOUTME: Verifies location data appears in consolidated tenant lookup management UI.
 
-using MudBlazor;
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Pages.Admin.Tenant.Components;
+using Explore.Blazor.Client.Services;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
 public class LocationsTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
-    private readonly IAdminService _adminService;
+    private readonly ILocationClient _locationClient;
 
     public LocationsTests()
     {
         _ctx = new BlazorTestContext();
-        _adminService = Substitute.For<IAdminService>();
+        _locationClient = Substitute.For<ILocationClient>();
 
-        _ctx.Services.AddSingleton(_adminService);
+        _ctx.Services.AddSingleton(Substitute.For<ICategoryService>());
+        _ctx.Services.AddSingleton(Substitute.For<ITagService>());
+        _ctx.Services.AddSingleton(_locationClient);
+        _ctx.Services.AddSingleton(Substitute.For<IEventLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<IDemographicLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<ICultureLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<IOrganizationLookupService>());
+        _ctx.Services.AddSingleton(Substitute.For<ISystemLookupService>());
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
+        _ctx.Services.AddSingleton(Substitute.For<IAccessibilityFocusService>());
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Admin User", "admin@example.com");
 
@@ -45,7 +57,7 @@ public class LocationsTests : IDisposable
         // Arrange
         var pending =
             new TaskCompletionSource<HalCollectionResourceOfLocationListDto>();
-        _adminService.GetLocationsAsync().Returns(pending.Task);
+        _locationClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(pending.Task);
 
         // Act
         var cut = RenderLocations();
@@ -61,7 +73,7 @@ public class LocationsTests : IDisposable
     public async Task Locations_ShowsEmptyState_WhenNoLocationsReturned()
     {
         // Arrange
-        _adminService.GetLocationsAsync().Returns(LocationCollection());
+        _locationClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(LocationCollection());
 
         // Act
         var cut = RenderLocations();
@@ -77,7 +89,7 @@ public class LocationsTests : IDisposable
     public async Task Locations_ShowsLocationRows_WhenDataExists()
     {
         // Arrange
-        _adminService.GetLocationsAsync().Returns(LocationCollection(
+        _locationClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(LocationCollection(
             new LocationListDto
             {
                 Id = Guid.NewGuid(),
@@ -102,7 +114,7 @@ public class LocationsTests : IDisposable
     [Test]
     public async Task Locations_HidesWriteControlsWithoutHalCapabilities()
     {
-        _adminService.GetLocationsAsync().Returns(LocationCollection(
+        _locationClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(LocationCollection(
             new LocationListDto
             {
                 Id = Guid.CreateVersion7(),
@@ -151,7 +163,7 @@ public class LocationsTests : IDisposable
             ["edit"] = LocationLink("PATCH", $"/api/location/{locationId:D}"),
             ["delete"] = LocationLink("DELETE", $"/api/location/{locationId:D}")
         };
-        _adminService.GetLocationsAsync().Returns(resource);
+        _locationClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(resource);
 
         IRenderedComponent<TenantLookupTablesSection> cut = RenderLocations();
         SelectTab(cut, "Locations");
@@ -175,35 +187,24 @@ public class LocationsTests : IDisposable
     public async Task Locations_UsesSnackbarError_WhenLoadFails()
     {
         // Arrange
-        _adminService.GetLocationsAsync().ThrowsAsync(new InvalidOperationException("boom"));
+        var snackbar = _ctx.Services.GetRequiredService<ISnackbar>();
+        _locationClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException("boom"));
 
         // Act
         var cut = RenderLocations();
-        cut.WaitForState(() => cut.Markup.Contains("Failed to load lookup data", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+        cut.WaitForAssertion(() =>
+            snackbar.Received().Add(
+                Arg.Is<string>(message => message.Contains("Failed to load locations: boom", StringComparison.OrdinalIgnoreCase)),
+                Severity.Error,
+                Arg.Any<Action<SnackbarOptions>>(),
+                Arg.Any<string>()));
 
-        // Assert
-        await Assert.That(cut.Markup).Contains("Failed to load lookup data: boom");
+        await Assert.That(cut.Markup).DoesNotContain("Failed to load lookup data: boom");
     }
 
     private void SetupDefaultLookups()
     {
-        _adminService.GetCategoriesAsync().Returns(new List<CategoryListDto>());
-        _adminService.GetTagsAsync().Returns(new List<TagListDto>());
-        _adminService.GetLocationsAsync().Returns(LocationCollection());
-        _adminService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
-        _adminService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
-        _adminService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());
-        _adminService.GetVisibilityTypesAsync().Returns(new List<VisibilityTypeListDto>());
-        _adminService.GetRegistrationModesAsync().Returns(new List<RegistrationModeListDto>());
-        _adminService.GetAudienceGendersAsync().Returns(new List<AudienceGenderListDto>());
-        _adminService.GetAudienceAgesAsync().Returns(new List<AudienceAgeListDto>());
-        _adminService.GetMadhabsAsync().Returns(new List<MadhabListDto>());
-        _adminService.GetLanguagesAsync().Returns(new List<LanguageListDto>());
-        _adminService.GetOrganizationPositionsAsync().Returns(new List<OrganizationPositionListDto>());
-        _adminService.GetApprovalStatusesAsync().Returns(new List<StatusTypeListDto>());
-        _adminService.GetActorTypesAsync().Returns(new List<ActorTypeListDto>());
-        _adminService.GetFileTypesAsync().Returns(new List<FileTypeListDto>());
-        _adminService.GetDidCustodyTypesAsync().Returns(new List<DidCustodyTypeListDto>());
+        _locationClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(LocationCollection());
     }
 
     private static HalCollectionResourceOfLocationListDto LocationCollection(

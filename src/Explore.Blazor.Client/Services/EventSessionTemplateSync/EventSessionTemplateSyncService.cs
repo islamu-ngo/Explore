@@ -1,5 +1,5 @@
 // ABOUTME: Generated-client service for fetching and applying Event Session template synchronization.
-// ABOUTME: Routes every backend call through IEventApiClient and preserves generated payload types.
+// ABOUTME: Routes every backend call through the event-session-template-sync client and preserves generated payload types.
 
 using Explore.Blazor.Client.Clients;
 
@@ -7,9 +7,9 @@ namespace Explore.Blazor.Client.Services.EventSessionTemplateSync;
 
 public sealed class EventSessionTemplateSyncService : IEventSessionTemplateSyncService
 {
-    private readonly IEventApiClient _api;
+    private readonly IEventSessionTemplateSyncClient _api;
 
-    public EventSessionTemplateSyncService(IEventApiClient api)
+    public EventSessionTemplateSyncService(IEventSessionTemplateSyncClient api)
     {
         _api = api;
     }

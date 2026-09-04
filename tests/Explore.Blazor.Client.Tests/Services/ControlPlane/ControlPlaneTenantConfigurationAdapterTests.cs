@@ -17,7 +17,7 @@ public sealed class ControlPlaneTenantConfigurationAdapterTests
         var assignmentId = Guid.NewGuid();
         var assignedAt = new DateTimeOffset(2026, 7, 11, 8, 30, 0, TimeSpan.Zero);
         var recalculatedAt = assignedAt.AddMinutes(15);
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
         var setting = new ControlPlaneTenantEffectiveSettingDto
         {
             Key = "storage.max-bytes",
@@ -120,7 +120,7 @@ public sealed class ControlPlaneTenantConfigurationAdapterTests
     public async Task SetSettingAsync_UsesGeneratedOverrideOperationAndMapsSuccess()
     {
         var tenantId = Guid.NewGuid();
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
         apiClient.SetControlPlaneTenantSettingAsync(
                 tenantId,
                 "registration.capacity",
@@ -141,7 +141,7 @@ public sealed class ControlPlaneTenantConfigurationAdapterTests
     public async Task StringValue_RoundTripsThroughAdapterWithoutStorageQuotes()
     {
         Guid tenantId = Guid.NewGuid();
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
         apiClient.GetControlPlaneTenantEffectiveConfigurationAsync(
                 tenantId,
                 null,
@@ -193,7 +193,7 @@ public sealed class ControlPlaneTenantConfigurationAdapterTests
     public async Task LockSettingAsync_UsesGeneratedLockOperationAndMapsFailure()
     {
         var tenantId = Guid.NewGuid();
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
         apiClient.LockControlPlaneTenantSettingAsync(
                 tenantId,
                 "registration.capacity",
@@ -220,7 +220,7 @@ public sealed class ControlPlaneTenantConfigurationAdapterTests
     public async Task UnlockSettingAsync_UsesGeneratedUnlockOperationAndMapsSuccess()
     {
         var tenantId = Guid.NewGuid();
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
         apiClient.UnlockControlPlaneTenantSettingAsync(
                 tenantId,
                 "registration.capacity",
@@ -239,7 +239,7 @@ public sealed class ControlPlaneTenantConfigurationAdapterTests
     [Test]
     public async Task GetEffectiveConfigurationAsync_WhenApiReturnsForbidden_PropagatesGeneratedApiException()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
         apiClient.GetControlPlaneTenantEffectiveConfigurationAsync(Arg.Any<Guid>(), null, null, Arg.Any<CancellationToken>())
             .Returns<Task<HalResourceOfControlPlaneTenantEffectiveConfigurationDto>>(_ => throw new ApiException(
                 "Forbidden",
@@ -256,7 +256,7 @@ public sealed class ControlPlaneTenantConfigurationAdapterTests
     [Test]
     public async Task SetSettingAsync_WhenApiThrowsUnexpectedException_PropagatesException()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
         apiClient.SetControlPlaneTenantSettingAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<string>(),
@@ -276,7 +276,11 @@ public sealed class ControlPlaneTenantConfigurationAdapterTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddSingleton(Substitute.For<IEventApiClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneDeploymentModeClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneTenantConfigurationClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneTenantLifecycleClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneTenantPlanClient>());
         services.AddSharedApplicationServices();
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
@@ -287,6 +291,11 @@ public sealed class ControlPlaneTenantConfigurationAdapterTests
         await Assert.That(service).IsSameReferenceAs(adapter);
     }
 
-    private static ControlPlaneApiAdapter CreateAdapter(IEventApiClient apiClient) =>
-        new(apiClient);
+    private static ControlPlaneApiAdapter CreateAdapter(IControlPlaneTenantConfigurationClient apiClient) =>
+        new(
+            Substitute.For<IControlPlaneClient>(),
+            Substitute.For<IControlPlaneDeploymentModeClient>(),
+            apiClient,
+            Substitute.For<IControlPlaneTenantLifecycleClient>(),
+            Substitute.For<IControlPlaneTenantPlanClient>());
 }

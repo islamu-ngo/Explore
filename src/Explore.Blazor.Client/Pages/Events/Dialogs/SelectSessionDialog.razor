@@ -1,6 +1,6 @@
 @using Explore.Blazor.Client.Clients
 @using MudBlazor
-@inject IEventService EventService
+@inject Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService
 
 <MudDialog>
     <TitleContent>
@@ -29,7 +29,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var result = await EventService.GetAllSessionsAsync();
+        var result = await EventSessionService.GetAllSessionsAsync();
         sessions = result.ToList();
     }
 

@@ -23,6 +23,7 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
 
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private IEventService EventService { get; set; } = default!;
+    [Inject] private Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService { get; set; } = default!;
     [Inject] private IPublicExperienceService PublicExperienceService { get; set; } = default!;
     [Inject] private DockLayoutState DockLayoutState { get; set; } = default!;
     [Inject] private IBrowserActionInterop BrowserActionInterop { get; set; } = default!;
@@ -160,7 +161,7 @@ public partial class EventPreviewWorkspace : ComponentBase, IDisposable
         try
         {
             var detailTask = EventService.GetEventByIdAsync(eventId) ?? Task.FromResult<EventDto?>(null);
-            var sessionsTask = EventService.GetSessionsByEventAsync(eventId) ?? Task.FromResult<ICollection<EventSessionListDto>>([]);
+            var sessionsTask = EventSessionService.GetSessionsByEventAsync(eventId) ?? Task.FromResult<ICollection<EventSessionListDto>>([]);
 
             await Task.WhenAll(detailTask, sessionsTask);
 

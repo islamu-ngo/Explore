@@ -13,7 +13,7 @@ public sealed class GuestRegistrationOrderCapabilityTests
     public async Task StartGuestOrder_CapturesCapabilityOnlyFromResponseHeader()
     {
         var handler = new CapturingHandler();
-        var client = new EventApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://event.test/") });
+        var client = new GuestRegistrationOrderClient(new HttpClient(handler) { BaseAddress = new Uri("https://event.test/") });
 
         var result = await client.StartGuestRegistrationOrderWithCapabilityAsync(
             Guid.CreateVersion7(),
@@ -29,7 +29,7 @@ public sealed class GuestRegistrationOrderCapabilityTests
     public async Task StartGuestOrder_WithoutCapabilityHeader_FailsClosed()
     {
         var handler = new CapturingHandler { IncludeCapabilityHeader = false };
-        var client = new EventApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://event.test/") });
+        var client = new GuestRegistrationOrderClient(new HttpClient(handler) { BaseAddress = new Uri("https://event.test/") });
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             await client.StartGuestRegistrationOrderWithCapabilityAsync(
@@ -41,7 +41,7 @@ public sealed class GuestRegistrationOrderCapabilityTests
     public async Task ContinueGuestOrder_AddsRequiredIdempotencyKey()
     {
         var handler = new CapturingHandler();
-        var client = new EventApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://event.test/") });
+        var client = new GuestRegistrationOrderClient(new HttpClient(handler) { BaseAddress = new Uri("https://event.test/") });
 
         await client.ContinueGuestRegistrationOrderAsync(
             Guid.CreateVersion7(),
@@ -56,7 +56,7 @@ public sealed class GuestRegistrationOrderCapabilityTests
     public async Task ApplyGuestPromotion_SendsSingleExplicitIdempotencyKey()
     {
         var handler = new CapturingHandler();
-        var client = new EventApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://event.test/") });
+        var client = new GuestRegistrationOrderClient(new HttpClient(handler) { BaseAddress = new Uri("https://event.test/") });
 
         await client.ApplyGuestRegistrationOrderPromotionAsync(
             Guid.CreateVersion7(),

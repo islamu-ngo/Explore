@@ -8,11 +8,11 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class LocalizationAdminService : ILocalizationAdminService
 {
-    private readonly IEventApiClient _api;
+    private readonly ILocalizationAdminClient _api;
     private readonly ILogger<LocalizationAdminService> _logger;
 
     public LocalizationAdminService(
-        IEventApiClient api,
+        ILocalizationAdminClient api,
         ILogger<LocalizationAdminService> logger)
     {
         _api = api;

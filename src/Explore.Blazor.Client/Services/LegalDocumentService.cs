@@ -7,7 +7,7 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.LegalDocuments;
 
 public sealed class LegalDocumentService(
-    IEventApiClient apiClient,
+    ILegalDocumentsClient apiClient,
     ILogger<LegalDocumentService> logger) : ILegalDocumentService
 {
     public async Task<PublicLegalDocumentDto?> GetAsync(

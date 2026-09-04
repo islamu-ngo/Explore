@@ -7,7 +7,7 @@ using Explore.Blazor.Client.Pages.Studio.RegistrationForms;
 
 namespace Explore.Blazor.Client.Services;
 
-public sealed class RegistrationFormAuthoringService(IEventApiClient apiClient) : IRegistrationFormAuthoringService
+public sealed class RegistrationFormAuthoringService(IRegistrationFormsClient apiClient) : IRegistrationFormAuthoringService
 {
     public Task<HalResourceOfRegistrationWorkflowDto> GetWorkflowAsync(Guid eventId, CancellationToken cancellationToken = default) =>
         apiClient.GetRegistrationWorkflowAsync(eventId, "registration", cancellationToken: cancellationToken);

@@ -1,4 +1,4 @@
-// ABOUTME: Event team service that delegates to the NSwag-generated IEventApiClient for team management.
+// ABOUTME: Event team service that delegates to the NSwag-generated event-team client.
 // ABOUTME: Lists team members and performs event-role writes through BFF endpoints.
 
 using Explore.Blazor.Client.Clients;
@@ -9,11 +9,11 @@ namespace Explore.Blazor.Client.Services;
 
 public class EventTeamService : IEventTeamService
 {
-    private readonly IEventApiClient _client;
+    private readonly IEventTeamClient _client;
     private readonly ILogger<EventTeamService> _logger;
 
     public EventTeamService(
-        IEventApiClient client,
+        IEventTeamClient client,
         ILogger<EventTeamService> logger)
     {
         _client = client;

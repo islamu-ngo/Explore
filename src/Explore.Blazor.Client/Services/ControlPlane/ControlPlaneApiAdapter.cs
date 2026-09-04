@@ -6,7 +6,12 @@ using Explore.Blazor.Client.Contracts.Services.ControlPlane;
 
 namespace Explore.Blazor.Client.Services.ControlPlane;
 
-public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
+public sealed class ControlPlaneApiAdapter(
+    IControlPlaneClient controlPlaneClient,
+    IControlPlaneDeploymentModeClient deploymentModeClient,
+    IControlPlaneTenantConfigurationClient tenantConfigurationClient,
+    IControlPlaneTenantLifecycleClient tenantLifecycleClient,
+    IControlPlaneTenantPlanClient tenantPlanClient) :
     IControlPlaneOverviewService,
     IControlPlaneTenantService,
     IControlPlaneDomainService,
@@ -16,22 +21,22 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
 {
     public Task<HalResourceOfControlPlaneOverviewDto> GetOverviewAsync(
         CancellationToken cancellationToken = default) =>
-        apiClient.GetControlPlaneOverviewAsync(cancellationToken: cancellationToken);
+        controlPlaneClient.GetControlPlaneOverviewAsync(cancellationToken: cancellationToken);
 
     public Task<HalCollectionResourceOfControlPlaneTenantListItemDto> GetTenantsAsync(
         CancellationToken cancellationToken = default) =>
-        apiClient.GetControlPlaneTenantsAsync(cancellationToken: cancellationToken);
+        controlPlaneClient.GetControlPlaneTenantsAsync(cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> CreateTenantAsync(
         CreateTenantDto request,
         CancellationToken cancellationToken = default) =>
-        apiClient.CreateControlPlaneTenantAsync(request, cancellationToken: cancellationToken);
+        tenantLifecycleClient.CreateControlPlaneTenantAsync(request, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto> ActivateTenantAsync(
         Guid tenantId,
         string? reason = null,
         CancellationToken cancellationToken = default) =>
-        apiClient.ActivateControlPlaneTenantAsync(
+        tenantLifecycleClient.ActivateControlPlaneTenantAsync(
             tenantId,
             body: new ControlPlaneTenantLifecycleTransitionRequestDto { Reason = reason },
             cancellationToken: cancellationToken);
@@ -40,7 +45,7 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         Guid tenantId,
         string? reason = null,
         CancellationToken cancellationToken = default) =>
-        apiClient.SuspendControlPlaneTenantAsync(
+        tenantLifecycleClient.SuspendControlPlaneTenantAsync(
             tenantId,
             body: new ControlPlaneTenantLifecycleTransitionRequestDto { Reason = reason },
             cancellationToken: cancellationToken);
@@ -49,7 +54,7 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         Guid tenantId,
         string? reason = null,
         CancellationToken cancellationToken = default) =>
-        apiClient.ArchiveControlPlaneTenantAsync(
+        tenantLifecycleClient.ArchiveControlPlaneTenantAsync(
             tenantId,
             body: new ControlPlaneTenantLifecycleTransitionRequestDto { Reason = reason },
             cancellationToken: cancellationToken);
@@ -58,7 +63,7 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         Guid tenantId,
         string? reason = null,
         CancellationToken cancellationToken = default) =>
-        apiClient.ReactivateControlPlaneTenantAsync(
+        tenantLifecycleClient.ReactivateControlPlaneTenantAsync(
             tenantId,
             body: new ControlPlaneTenantLifecycleTransitionRequestDto { Reason = reason },
             cancellationToken: cancellationToken);
@@ -68,7 +73,7 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         string reason,
         string confirmationText,
         CancellationToken cancellationToken = default) =>
-        apiClient.ScheduleControlPlaneTenantPurgeAsync(
+        tenantLifecycleClient.ScheduleControlPlaneTenantPurgeAsync(
             tenantId,
             body: new ControlPlaneTenantLifecycleTransitionRequestDto
             {
@@ -79,22 +84,22 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
 
     public Task<HalResourceOfControlPlaneDomainOverviewDto> GetDomainsAsync(
         CancellationToken cancellationToken = default) =>
-        apiClient.GetControlPlaneDomainsAsync(cancellationToken: cancellationToken);
+        controlPlaneClient.GetControlPlaneDomainsAsync(cancellationToken: cancellationToken);
 
     public Task<HalResourceOfControlPlaneOperationsDto> GetOperationsAsync(
         CancellationToken cancellationToken = default) =>
-        apiClient.GetControlPlaneOperationsAsync(cancellationToken: cancellationToken);
+        controlPlaneClient.GetControlPlaneOperationsAsync(cancellationToken: cancellationToken);
 
     public Task<HalResourceOfControlPlaneDeploymentModeRunbookDto> GetDeploymentModeRunbookAsync(
         CancellationToken cancellationToken = default) =>
-        apiClient.GetControlPlaneDeploymentModeRunbookAsync(cancellationToken: cancellationToken);
+        deploymentModeClient.GetControlPlaneDeploymentModeRunbookAsync(cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfControlPlaneDeploymentModeTransitionDto> TransitionDeploymentModeAsync(
         string targetMode,
         string confirmationText,
         string? reason = null,
         CancellationToken cancellationToken = default) =>
-        apiClient.TransitionControlPlaneDeploymentModeAsync(
+        deploymentModeClient.TransitionControlPlaneDeploymentModeAsync(
             body: new ControlPlaneDeploymentModeTransitionRequestDto
             {
                 TargetMode = targetMode,
@@ -105,29 +110,29 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
 
     public Task<HalCollectionResourceOfControlPlaneTenantPlanListItemDto> GetPlansAsync(
         CancellationToken cancellationToken = default) =>
-        apiClient.GetControlPlaneTenantPlansAsync(cancellationToken: cancellationToken);
+        tenantPlanClient.GetControlPlaneTenantPlansAsync(cancellationToken: cancellationToken);
 
     public Task<HalResourceOfControlPlaneTenantPlanDetailDto> GetPlanAsync(
         string key,
         CancellationToken cancellationToken = default) =>
-        apiClient.GetControlPlaneTenantPlanByKeyAsync(key, cancellationToken: cancellationToken);
+        tenantPlanClient.GetControlPlaneTenantPlanByKeyAsync(key, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> CreatePlanDraftAsync(
         TenantPlanDraft draft,
         CancellationToken cancellationToken = default) =>
-        apiClient.CreateControlPlaneTenantPlanDraftAsync(draft, cancellationToken: cancellationToken);
+        tenantPlanClient.CreateControlPlaneTenantPlanDraftAsync(draft, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> CreateVersionDraftAsync(
         string key,
         TenantPlanDraft draft,
         CancellationToken cancellationToken = default) =>
-        apiClient.CreateControlPlaneTenantPlanVersionDraftAsync(key, draft, cancellationToken: cancellationToken);
+        tenantPlanClient.CreateControlPlaneTenantPlanVersionDraftAsync(key, draft, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> UpdateVersionDraftAsync(
         Guid versionId,
         TenantPlanDraft draft,
         CancellationToken cancellationToken = default) =>
-        apiClient.UpdateControlPlaneTenantPlanVersionDraftAsync(
+        tenantPlanClient.UpdateControlPlaneTenantPlanVersionDraftAsync(
             versionId,
             new PatchControlPlaneTenantPlanVersionDraftDto
             {
@@ -156,7 +161,7 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         Guid versionId,
         int existingTenantPolicy,
         CancellationToken cancellationToken = default) =>
-        apiClient.PublishControlPlaneTenantPlanVersionAsync(
+        tenantPlanClient.PublishControlPlaneTenantPlanVersionAsync(
             versionId,
             new PublishTenantPlanVersionRequest { ExistingTenantPolicy = existingTenantPolicy },
             cancellationToken: cancellationToken);
@@ -164,14 +169,14 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
     public Task<BaseCommandResponseOfGuid> ArchiveVersionAsync(
         Guid versionId,
         CancellationToken cancellationToken = default) =>
-        apiClient.ArchiveControlPlaneTenantPlanVersionAsync(versionId, cancellationToken: cancellationToken);
+        tenantPlanClient.ArchiveControlPlaneTenantPlanVersionAsync(versionId, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> ClonePlanAsync(
         Guid sourceVersionId,
         string key,
         string name,
         CancellationToken cancellationToken = default) =>
-        apiClient.CloneControlPlaneTenantPlanAsync(
+        tenantPlanClient.CloneControlPlaneTenantPlanAsync(
             sourceVersionId,
             new CloneTenantPlanRequest { Key = key, Name = name },
             cancellationToken: cancellationToken);
@@ -179,27 +184,27 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
     public Task<TenantPlanValidationResult> ValidateDraftAsync(
         TenantPlanDraft draft,
         CancellationToken cancellationToken = default) =>
-        apiClient.ValidateControlPlaneTenantPlanDraftAsync(draft, cancellationToken: cancellationToken);
+        tenantPlanClient.ValidateControlPlaneTenantPlanDraftAsync(draft, cancellationToken: cancellationToken);
 
     public Task<TenantPlanDiffResult> PreviewDiffAsync(
         TenantPlanEffectiveConfiguration current,
         TenantPlanDraft draft,
         CancellationToken cancellationToken = default) =>
-        apiClient.PreviewControlPlaneTenantPlanDiffAsync(
+        tenantPlanClient.PreviewControlPlaneTenantPlanDiffAsync(
             new PreviewTenantPlanDiffRequest { Current = current, Draft = draft },
             cancellationToken: cancellationToken);
 
     public Task<HalResourceOfControlPlaneTenantEffectiveConfigurationDto> GetEffectiveConfigurationAsync(
         Guid tenantId,
         CancellationToken cancellationToken = default) =>
-        apiClient.GetControlPlaneTenantEffectiveConfigurationAsync(tenantId, cancellationToken: cancellationToken);
+        tenantConfigurationClient.GetControlPlaneTenantEffectiveConfigurationAsync(tenantId, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> SetSettingAsync(
         Guid tenantId,
         string key,
         string value,
         CancellationToken cancellationToken = default) =>
-        apiClient.SetControlPlaneTenantSettingAsync(
+        tenantConfigurationClient.SetControlPlaneTenantSettingAsync(
             tenantId,
             key,
             new SetControlPlaneTenantSettingRequest { Value = value },
@@ -209,19 +214,19 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         Guid tenantId,
         string key,
         CancellationToken cancellationToken = default) =>
-        apiClient.LockControlPlaneTenantSettingAsync(tenantId, key, cancellationToken: cancellationToken);
+        tenantConfigurationClient.LockControlPlaneTenantSettingAsync(tenantId, key, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> UnlockSettingAsync(
         Guid tenantId,
         string key,
         CancellationToken cancellationToken = default) =>
-        apiClient.UnlockControlPlaneTenantSettingAsync(tenantId, key, cancellationToken: cancellationToken);
+        tenantConfigurationClient.UnlockControlPlaneTenantSettingAsync(tenantId, key, cancellationToken: cancellationToken);
 
     public Task<BaseCommandResponseOfGuid> SwitchPlanAsync(
         Guid tenantId,
         Guid tenantPlanVersionId,
         CancellationToken cancellationToken = default) =>
-        apiClient.SwitchControlPlaneTenantPlanAssignmentAsync(
+        tenantConfigurationClient.SwitchControlPlaneTenantPlanAssignmentAsync(
             tenantId,
             new SwitchTenantPlanAssignmentRequest { TenantPlanVersionId = tenantPlanVersionId },
             cancellationToken: cancellationToken);
@@ -230,7 +235,7 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         Guid tenantId,
         Guid assignmentId,
         CancellationToken cancellationToken = default) =>
-        apiClient.ApplyControlPlaneTenantPlanAssignmentAsync(
+        tenantConfigurationClient.ApplyControlPlaneTenantPlanAssignmentAsync(
             tenantId,
             assignmentId,
             cancellationToken: cancellationToken);
@@ -239,7 +244,7 @@ public sealed class ControlPlaneApiAdapter(IEventApiClient apiClient) :
         Guid tenantId,
         Guid assignmentId,
         CancellationToken cancellationToken = default) =>
-        apiClient.RollbackControlPlaneTenantPlanAssignmentAsync(
+        tenantConfigurationClient.RollbackControlPlaneTenantPlanAssignmentAsync(
             tenantId,
             assignmentId,
             cancellationToken: cancellationToken);

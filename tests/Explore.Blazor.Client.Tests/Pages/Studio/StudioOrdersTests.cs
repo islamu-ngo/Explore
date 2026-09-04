@@ -19,6 +19,7 @@ public sealed class StudioOrdersTests : IDisposable
     private readonly IEventService _eventService;
     private readonly IStudioContextService _studioContextService;
     private readonly IRegistrationOrderService _registrationOrderService;
+    private readonly IRegistrationPaymentService _registrationPaymentService;
     private readonly UiShellState _shellState;
 
     public StudioOrdersTests()
@@ -26,6 +27,7 @@ public sealed class StudioOrdersTests : IDisposable
         _eventService = _ctx.AddMockService<IEventService>();
         _studioContextService = _ctx.AddMockService<IStudioContextService>();
         _registrationOrderService = _ctx.AddMockService<IRegistrationOrderService>();
+        _registrationPaymentService = _ctx.AddMockService<IRegistrationPaymentService>();
         _ctx.Services.AddScoped<IWorkspaceRegistry, WorkspaceRegistry>();
         _ctx.Services.AddScoped<WorkspaceRouteClassifier>();
         _ctx.Services.AddScoped<UiShellState>();
@@ -84,7 +86,7 @@ public sealed class StudioOrdersTests : IDisposable
         await Assert.That(cut.FindAll(".studio-orders__event")).Count().IsEqualTo(1);
         await _studioContextService.Received(1).GetEventOrdersAsync(linkedEventId, Arg.Any<CancellationToken>());
         await _studioContextService.DidNotReceive().GetEventOrdersAsync(unlinkedEventId, Arg.Any<CancellationToken>());
-        await _registrationOrderService.DidNotReceive().GetRefundCampaignsAsync(linkedEventId, Arg.Any<CancellationToken>());
+        await _registrationPaymentService.DidNotReceive().GetRefundCampaignsAsync(linkedEventId, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -191,7 +193,7 @@ public sealed class StudioOrdersTests : IDisposable
         var linkedOrder = CreateOrder("studio-payment-status");
         var unlinkedOrder = CreateOrder();
         _studioContextService.GetEventOrdersAsync(eventId, Arg.Any<CancellationToken>()).Returns([linkedOrder, unlinkedOrder]);
-        _registrationOrderService.GetStudioPaymentAsync(eventId, linkedOrder.Id!.Value, linkedOrder, Arg.Any<CancellationToken>()).Returns(
+        _registrationPaymentService.GetStudioPaymentAsync(eventId, linkedOrder.Id!.Value, linkedOrder, Arg.Any<CancellationToken>()).Returns(
             new HalResourceOfRegistrationPaymentDto
             {
                 StatusCode = "NeedsReconciliation",
@@ -206,9 +208,9 @@ public sealed class StudioOrdersTests : IDisposable
         await Assert.That(cut.Markup).Contains("Needs reconciliation");
         await Assert.That(cut.Markup).Contains("Retry is not available");
         await Assert.That(cut.Markup).DoesNotContain("Provider");
-        await _registrationOrderService.Received(1).GetStudioPaymentAsync(
+        await _registrationPaymentService.Received(1).GetStudioPaymentAsync(
             eventId, linkedOrder.Id.Value, linkedOrder, Arg.Any<CancellationToken>());
-        await _registrationOrderService.DidNotReceive().GetStudioPaymentAsync(
+        await _registrationPaymentService.DidNotReceive().GetStudioPaymentAsync(
             eventId, unlinkedOrder.Id!.Value, unlinkedOrder, Arg.Any<CancellationToken>());
     }
 
@@ -221,13 +223,13 @@ public sealed class StudioOrdersTests : IDisposable
         var secondOrder = CreateOrder("studio-payment-status");
         var pending = new TaskCompletionSource<HalResourceOfRegistrationPaymentDto?>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationToken firstToken = default;
-        _registrationOrderService.GetStudioPaymentAsync(firstEventId, firstOrder.Id!.Value, firstOrder, Arg.Any<CancellationToken>())
+        _registrationPaymentService.GetStudioPaymentAsync(firstEventId, firstOrder.Id!.Value, firstOrder, Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 firstToken = call.ArgAt<CancellationToken>(3);
                 return pending.Task;
             });
-        _registrationOrderService.GetStudioPaymentAsync(secondEventId, secondOrder.Id!.Value, secondOrder, Arg.Any<CancellationToken>())
+        _registrationPaymentService.GetStudioPaymentAsync(secondEventId, secondOrder.Id!.Value, secondOrder, Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfRegistrationPaymentDto { StatusCode = "Succeeded", StatusName = "Current payment" });
 
         var cut = _ctx.RenderMudComponent<StudioPaymentStatus>(parameters => parameters
@@ -258,7 +260,7 @@ public sealed class StudioOrdersTests : IDisposable
         var first = CreateOrder("studio-payment-status");
         var second = CreateOrder("studio-payment-status");
         _studioContextService.GetEventOrdersAsync(eventId, Arg.Any<CancellationToken>()).Returns([first, second]);
-        _registrationOrderService.GetStudioPaymentAsync(eventId, Arg.Any<Guid>(), Arg.Any<HalResourceOfRegistrationOrderDto>(), Arg.Any<CancellationToken>())
+        _registrationPaymentService.GetStudioPaymentAsync(eventId, Arg.Any<Guid>(), Arg.Any<HalResourceOfRegistrationOrderDto>(), Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfRegistrationPaymentDto { StatusCode = "NeedsReconciliation", StatusName = "Needs reconciliation" });
 
         var cut = _ctx.RenderMudComponent<StudioOrderList>(parameters => parameters.Add(component => component.EventId, eventId));
@@ -306,7 +308,7 @@ public sealed class StudioOrdersTests : IDisposable
                 }
             }
         };
-        _registrationOrderService.GetStudioPaymentAsync(eventId, order.Id!.Value, order, Arg.Any<CancellationToken>())
+        _registrationPaymentService.GetStudioPaymentAsync(eventId, order.Id!.Value, order, Arg.Any<CancellationToken>())
             .Returns(payment);
 
         var cut = _ctx.RenderMudComponent<StudioPaymentStatus>(parameters => parameters
@@ -334,7 +336,7 @@ public sealed class StudioOrdersTests : IDisposable
                 ["resume-refund-campaign"] = new() { Href = "/api/refund-campaign/resume", Method = "POST" }
             }
         };
-        _registrationOrderService.GetRefundCampaignsAsync(eventId, Arg.Any<CancellationToken>())
+        _registrationPaymentService.GetRefundCampaignsAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfRefundCampaignDto
             {
                 _embedded = new HalCollectionEmbeddedOfRefundCampaignDto { Items = [campaign] }
@@ -368,7 +370,7 @@ public sealed class StudioOrdersTests : IDisposable
             .Returns(Task.FromResult(CreateResult([CreateEvent(eventId, hasOrderLink: true, hasRefundCampaignLink: true)])));
         _studioContextService.GetEventOrdersAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<HalResourceOfRegistrationOrderDto>>([]));
-        _registrationOrderService.GetRefundCampaignsAsync(eventId, Arg.Any<CancellationToken>())
+        _registrationPaymentService.GetRefundCampaignsAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfRefundCampaignDto
             {
                 _embedded = new HalCollectionEmbeddedOfRefundCampaignDto { Items = [] }
@@ -376,7 +378,7 @@ public sealed class StudioOrdersTests : IDisposable
 
         _ctx.RenderMudComponent<StudioOrders>().WaitForElement("[data-testid='studio-orders-empty']");
 
-        await _registrationOrderService.Received(1).GetRefundCampaignsAsync(eventId, Arg.Any<CancellationToken>());
+        await _registrationPaymentService.Received(1).GetRefundCampaignsAsync(eventId, Arg.Any<CancellationToken>());
     }
 
     private static HalResourceOfRegistrationOrderDto CreateOrder(params string[] relations) => new()

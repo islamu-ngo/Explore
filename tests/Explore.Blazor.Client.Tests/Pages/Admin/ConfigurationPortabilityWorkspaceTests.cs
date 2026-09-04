@@ -20,9 +20,9 @@ public sealed class ConfigurationManifestImportAdministrationTests : IDisposable
     [Test]
     public async Task InstanceImport_RendersOnlyWhenServerAdvertisesHalCapability()
     {
-        IEventApiClient api = InstanceApi(
+        IControlPlaneClient api = ConfigurationManifestImportAdministrationTests.InstanceApi(
             ControlPlaneLinkRelations.CreateConfigurationImportSession);
-        Register(context, api);
+        ConfigurationManifestImportAdministrationTests.Register(context, api);
 
         var cut = context.Render<ConfigurationPortabilityWorkspace>(parameters =>
             parameters.Add(component => component.Scope, ConfigurationImportScope.Instance));
@@ -47,9 +47,9 @@ public sealed class ConfigurationManifestImportAdministrationTests : IDisposable
             .Contains("server did not advertise configuration import authority");
     }
 
-    internal static IEventApiClient InstanceApi(params string[] relations)
+    internal static IControlPlaneClient InstanceApi(params string[] relations)
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IControlPlaneClient api = Substitute.For<IControlPlaneClient>();
         api.GetControlPlaneOverviewAsync(null, null, Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfControlPlaneOverviewDto
             {
@@ -58,12 +58,21 @@ public sealed class ConfigurationManifestImportAdministrationTests : IDisposable
         return api;
     }
 
-    internal static void Register(BlazorTestContext context, IEventApiClient api)
+    internal static void Register(
+        BlazorTestContext context,
+        IControlPlaneClient? controlPlaneClient = null,
+        ITenantOnboardingClient? tenantOnboardingClient = null)
     {
-        context.Services.AddSingleton(api);
+        var cpClient = controlPlaneClient ?? Substitute.For<IControlPlaneClient>();
+        var toClient = tenantOnboardingClient ?? Substitute.For<ITenantOnboardingClient>();
+        context.Services.AddSingleton(cpClient);
+        context.Services.AddSingleton(toClient);
         context.Services.AddSingleton<IConfigurationPortabilityService>(provider =>
             new ConfigurationPortabilityService(
-                api,
+                cpClient,
+                toClient,
+                Substitute.For<IControl_Plane_ConfigurationClient>(),
+                Substitute.For<ITenant_ConfigurationClient>(),
                 Substitute.For<IConfigurationManifestExportService>(),
                 Substitute.For<IBrowserActionInterop>(),
                 provider.GetRequiredService<NavigationManager>()));
@@ -86,8 +95,8 @@ public sealed class TenantConfigurationPortabilityAdministrationTests : IDisposa
     public async Task TenantWorkspace_UsesCurrentTenantAndNeverOffersInstanceExport()
     {
         Guid tenantId = Guid.CreateVersion7();
-        IEventApiClient api = Substitute.For<IEventApiClient>();
-        api.GetTenantOnboardingStatusAsync(null, null, Arg.Any<CancellationToken>())
+        var toClient = Substitute.For<ITenantOnboardingClient>();
+        toClient.GetTenantOnboardingStatusAsync(null, null, Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfTenantOnboardingStatusDto
             {
                 TenantId = tenantId,
@@ -95,12 +104,13 @@ public sealed class TenantConfigurationPortabilityAdministrationTests : IDisposa
                     ControlPlaneLinkRelations.CreateConfigurationImportSession,
                     ControlPlaneLinkRelations.ExportTenantConfigurationPackage)
             });
-        api.GetControlPlaneTenantsAsync(null, null, Arg.Any<CancellationToken>())
+        var cpClient = Substitute.For<IControlPlaneClient>();
+        cpClient.GetControlPlaneTenantsAsync(null, null, Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfControlPlaneTenantListItemDto
             {
                 _links = new Dictionary<string, HalLink>(StringComparer.Ordinal)
             });
-        ConfigurationManifestImportAdministrationTests.Register(context, api);
+        ConfigurationManifestImportAdministrationTests.Register(context, cpClient, toClient);
 
         var cut = context.Render<ConfigurationPortabilityWorkspace>(parameters =>
             parameters.Add(component => component.Scope, ConfigurationImportScope.Tenant));

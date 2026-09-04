@@ -11,12 +11,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 public class ActorServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IActorClient _apiClient;
     private readonly ActorService _service;
 
     public ActorServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IActorClient>();
         _service = new ActorService(_apiClient);
     }
 

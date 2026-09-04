@@ -350,9 +350,6 @@ public class HomeTests : IDisposable
                 PageSize = 3,
                 TotalCount = featuredEvents?.Count ?? 0
             });
-        eventService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
-        eventService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
-        eventService.GetAllSessionsAsync().Returns(new List<EventSessionListDto>());
         _ctx.Services.AddSingleton(eventService);
 
         var categoryService = Substitute.For<ICategoryService>();

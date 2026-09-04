@@ -38,7 +38,7 @@ public sealed class AdmissionCheckInOpenApiContractTests
                 .Select(value => value.GetString())
                 .ToArray()).IsEquivalentTo(expectedValues);
 
-            Type? generatedType = typeof(IEventApiClient).Assembly.GetType(
+            Type? generatedType = typeof(IAdmissionCheckInClient).Assembly.GetType(
                 $"Explore.Blazor.Client.Clients.{schemaName}");
             await Assert.That(generatedType).IsNotNull()
                 .Because($"NSwag must generate {schemaName} from its canonical OpenAPI component");

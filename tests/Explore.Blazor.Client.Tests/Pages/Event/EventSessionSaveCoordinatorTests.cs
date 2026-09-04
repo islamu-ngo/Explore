@@ -17,7 +17,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var eventId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var request = new ComposerCreateEventSessionRequest { Title = "Workshop" };
         eventService.CreateSessionAsync(request).Returns(new BaseCommandResponseOfGuid
         {
@@ -49,7 +49,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var eventId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var request = new ComposerCreateEventSessionRequest { Title = "Workshop" };
         eventService.AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0).Returns(new BaseCommandResponseOfGuid
         {
@@ -77,7 +77,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var request = CreateUpdateRequest(eventId);
         eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {
@@ -112,7 +112,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var request = CreateUpdateRequest(eventId);
         eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {
@@ -144,7 +144,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var eventId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var request = new ComposerCreateEventSessionRequest { Title = "Workshop" };
         eventService.CreateSessionAsync(request).Returns(new BaseCommandResponseOfGuid
         {
@@ -176,7 +176,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var request = CreateUpdateRequest(eventId);
         eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {
@@ -207,7 +207,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var newGroupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var request = CreateUpdateRequest(eventId);
         eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {
@@ -242,7 +242,7 @@ public sealed class EventSessionSaveCoordinatorTests
         var groupId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var expectedConcurrencyStamp = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var request = CreateUpdateRequest(eventId);
         eventService.UpdateSessionAsync(sessionId, expectedConcurrencyStamp, request).Returns(new BaseCommandResponseOfGuid
         {

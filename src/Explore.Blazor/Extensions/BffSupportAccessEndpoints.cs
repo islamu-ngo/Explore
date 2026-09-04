@@ -51,7 +51,7 @@ public static class BffSupportAccessEndpoints
 
     private static async Task<IResult> HandleCurrentAsync(
         HttpContext ctx,
-        IEventApiClient apiClient,
+        ISupportAccessClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -86,7 +86,7 @@ public static class BffSupportAccessEndpoints
     private static async Task<IResult> HandleListSessionsAsync(
         Guid targetTenantId,
         int limit,
-        IEventApiClient apiClient,
+        ISupportAccessClient apiClient,
         CancellationToken cancellationToken)
     {
         try
@@ -110,7 +110,7 @@ public static class BffSupportAccessEndpoints
         Guid targetTenantId,
         Guid sessionId,
         int limit,
-        IEventApiClient apiClient,
+        ISupportAccessClient apiClient,
         CancellationToken cancellationToken)
     {
         try
@@ -134,7 +134,7 @@ public static class BffSupportAccessEndpoints
     private static async Task<IResult> HandleStartAsync(
         StartSupportAccessSessionRequestDto? request,
         HttpContext ctx,
-        IEventApiClient apiClient,
+        ISupportAccessClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -183,7 +183,7 @@ public static class BffSupportAccessEndpoints
     private static async Task<IResult> HandleStopCurrentAsync(
         StopSupportAccessSessionRequestDto? request,
         HttpContext ctx,
-        IEventApiClient apiClient,
+        ISupportAccessClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -237,7 +237,7 @@ public static class BffSupportAccessEndpoints
         Guid sessionId,
         ForceStopSupportAccessSessionRequestDto? request,
         HttpContext ctx,
-        IEventApiClient apiClient,
+        ISupportAccessClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         CancellationToken cancellationToken)
     {
@@ -270,7 +270,7 @@ public static class BffSupportAccessEndpoints
 
     private static async Task<SupportAccessSessionDto?> ResolveCurrentSessionAsync(
         HttpContext ctx,
-        IEventApiClient apiClient,
+        ISupportAccessClient apiClient,
         IBffSupportAccessSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)

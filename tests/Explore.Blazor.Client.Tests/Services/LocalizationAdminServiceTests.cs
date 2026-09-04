@@ -7,7 +7,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class LocalizationAdminServiceTests
 {
-    private readonly IEventApiClient _api = Substitute.For<IEventApiClient>();
+    private readonly ILocalizationAdminClient _api = Substitute.For<ILocalizationAdminClient>();
 
     [Test]
     public async Task GetConfigurationAsync_WhenApiSucceeds_ReturnsConfiguration()

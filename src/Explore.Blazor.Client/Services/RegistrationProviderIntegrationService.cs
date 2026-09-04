@@ -6,7 +6,7 @@ using Explore.Blazor.Client.Contracts.Services;
 
 namespace Explore.Blazor.Client.Services;
 
-public sealed class RegistrationProviderIntegrationService(IEventApiClient apiClient) : IRegistrationProviderIntegrationService
+public sealed class RegistrationProviderIntegrationService(IRegistrationProviderManagementClient apiClient) : IRegistrationProviderIntegrationService
 {
     private const string ProviderBase = "/api/tenants/{0}/events/{1}/registration-providers";
 

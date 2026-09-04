@@ -5,12 +5,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class EventSessionLanguageServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventSessionLanguageClient _apiClient;
     private readonly EventSessionLanguageService _service;
 
     public EventSessionLanguageServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IEventSessionLanguageClient>();
         _service = new EventSessionLanguageService(_apiClient);
     }
 

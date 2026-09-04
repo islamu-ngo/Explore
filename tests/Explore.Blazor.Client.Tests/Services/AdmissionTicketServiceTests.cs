@@ -16,7 +16,7 @@ public sealed class AdmissionTicketServiceTests
     [Test]
     public async Task GetCurrentReturnsTypedHalResources()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IAdmissionTicketClient api = Substitute.For<IAdmissionTicketClient>();
         HalResourceOfAdmissionTicketDto ticket = Ticket();
         api.GetCurrentAdmissionTicketsAsync(
                 Arg.Any<string?>(),
@@ -42,7 +42,7 @@ public sealed class AdmissionTicketServiceTests
     [Test]
     public async Task ReissueQrWithoutExactHalPostLinkNeverCallsApi()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IAdmissionTicketClient api = Substitute.For<IAdmissionTicketClient>();
         HalResourceOfAdmissionTicketDto ticket = Ticket();
         ticket._links!["qr-code"] = new HalLink
         {
@@ -59,9 +59,9 @@ public sealed class AdmissionTicketServiceTests
     }
 
     [Test]
-    public async Task ReissueQrWithExactHalPostLinkCallsApi()
+    public async Task ReissueQrForwardsExactHalPostAction()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IAdmissionTicketClient api = Substitute.For<IAdmissionTicketClient>();
         HalResourceOfAdmissionTicketDto ticket = Ticket();
         ticket._links!["qr-code"] = new HalLink
         {
@@ -71,12 +71,6 @@ public sealed class AdmissionTicketServiceTests
         var expected = new AdmissionTicketQrDeliveryDto
         {
             TicketId = ticket.TicketId,
-            Id = ticket.TicketId,
-            EventId = ticket.EventId,
-            StatusCode = "ACTIVE",
-            DisplayReference = ticket.DisplayReference,
-            ManualCode = "sensitive",
-            ManualCodeClassificationCode = "SENSITIVE_BEARER",
             QrRepresentation = "<svg/>",
             PrintModel = "print",
             DeliverySurface = "qr"
@@ -102,7 +96,9 @@ public sealed class AdmissionTicketServiceTests
     [Test]
     public async Task ConsumeRecoveryUsesBffAndMapsNotFoundWithoutApiClientCall()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IAdmissionTicketClient api = Substitute.For<IAdmissionTicketClient>();
+        IAdmissionTicketRecoveryClient recoveryClient =
+            Substitute.For<IAdmissionTicketRecoveryClient>();
         IAdmissionRecoveryBffClient bff =
             Substitute.For<IAdmissionRecoveryBffClient>();
         bff.ConsumeAsync(
@@ -110,7 +106,7 @@ public sealed class AdmissionTicketServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(ApiResult<AdmissionTicketRecoveryDeliveryDto>.Failure(
                 new ApiProblemException(HttpStatusCode.NotFound, "Not found")));
-        var service = Create(api, bff);
+        var service = Create(api, bff, recoveryClient);
 
         AdmissionRecoveryUiResult result =
             await service.ConsumeRecoveryAsync("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
@@ -119,16 +115,18 @@ public sealed class AdmissionTicketServiceTests
         await bff.Received(1).ConsumeAsync(
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             Arg.Any<CancellationToken>());
-        await api.DidNotReceiveWithAnyArgs()
+        await recoveryClient.DidNotReceiveWithAnyArgs()
             .ConsumeAdmissionTicketRecoveryAsync(default, default, default, default);
     }
 
     private static AdmissionTicketService Create(
-        IEventApiClient api,
-        IAdmissionRecoveryBffClient? bff = null)
+        IAdmissionTicketClient api,
+        IAdmissionRecoveryBffClient? bff = null,
+        IAdmissionTicketRecoveryClient? recoveryClient = null)
     {
         return new AdmissionTicketService(
             api,
+            recoveryClient ?? Substitute.For<IAdmissionTicketRecoveryClient>(),
             bff ?? Substitute.For<IAdmissionRecoveryBffClient>(),
             NullLogger<AdmissionTicketService>.Instance);
     }

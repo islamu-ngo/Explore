@@ -1,4 +1,4 @@
-// ABOUTME: Implementation of ICustomPropertyDefinitionService wrapping IEventApiClient.
+// ABOUTME: Implements custom-property definition operations through definition, event, and session tag clients.
 // ABOUTME: Handles HAL unwrap, error catching, and logging for CRUD of layer 3 definitions.
 
 using Explore.Blazor.Client.Clients;
@@ -12,12 +12,20 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly ICustomPropertyDefinitionClient _definitionClient;
+    private readonly IEventCustomPropertyClient _eventClient;
+    private readonly IEventSessionCustomPropertyClient _sessionClient;
     private readonly ILogger<CustomPropertyDefinitionService> _logger;
 
-    public CustomPropertyDefinitionService(IEventApiClient apiClient, ILogger<CustomPropertyDefinitionService> logger)
+    public CustomPropertyDefinitionService(
+        ICustomPropertyDefinitionClient definitionClient,
+        IEventCustomPropertyClient eventClient,
+        IEventSessionCustomPropertyClient sessionClient,
+        ILogger<CustomPropertyDefinitionService> logger)
     {
-        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _definitionClient = definitionClient ?? throw new ArgumentNullException(nameof(definitionClient));
+        _eventClient = eventClient ?? throw new ArgumentNullException(nameof(eventClient));
+        _sessionClient = sessionClient ?? throw new ArgumentNullException(nameof(sessionClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -29,7 +37,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
     {
         try
         {
-            var response = await _apiClient.GetCustomPropertyDefinitionsAsync(
+            var response = await _definitionClient.GetCustomPropertyDefinitionsAsync(
                 entityTypeName,
                 pageNumber,
                 pageSize,
@@ -50,7 +58,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
     {
         try
         {
-            var hal = await _apiClient.GetCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
+            var hal = await _definitionClient.GetCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
             return hal.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
@@ -70,7 +78,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
     {
         try
         {
-            var response = await _apiClient.GetEventCustomPropertyDefinitionsAsync(
+            var response = await _eventClient.GetEventCustomPropertyDefinitionsAsync(
                 eventId,
                 1,
                 200,
@@ -98,7 +106,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
     {
         try
         {
-            var response = await _apiClient.GetEventSessionCustomPropertyDefinitionsAsync(
+            var response = await _sessionClient.GetEventSessionCustomPropertyDefinitionsAsync(
                 eventSessionId,
                 1,
                 200,
@@ -128,7 +136,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
 
         try
         {
-            var response = await _apiClient.CreateCustomPropertyDefinitionAsync(body, cancellationToken: cancellationToken);
+            var response = await _definitionClient.CreateCustomPropertyDefinitionAsync(body, cancellationToken: cancellationToken);
             return response;
         }
         catch (ApiException<ProblemDetails> ex)
@@ -153,7 +161,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
 
         try
         {
-            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(id, $"\"{expectedConcurrencyStamp:D}\"", body, cancellationToken: cancellationToken);
+            var response = await _definitionClient.UpdateCustomPropertyDefinitionAsync(id, $"\"{expectedConcurrencyStamp:D}\"", body, cancellationToken: cancellationToken);
             return response;
         }
         catch (ApiException<ProblemDetails> ex)
@@ -174,7 +182,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
     {
         try
         {
-            await _apiClient.DeleteCustomPropertyDefinitionAsync(id, cancellationToken: cancellationToken);
+            await _definitionClient.DeleteCustomPropertyDefinitionAsync(id, cancellationToken: cancellationToken);
             return true;
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
@@ -194,7 +202,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
     {
         try
         {
-            var hal = await _apiClient.GetEventCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
+            var hal = await _eventClient.GetEventCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
             return hal.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
@@ -209,7 +217,7 @@ public sealed class CustomPropertyDefinitionService : ICustomPropertyDefinitionS
     {
         try
         {
-            var hal = await _apiClient.GetEventSessionCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
+            var hal = await _sessionClient.GetEventSessionCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
             return hal.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)

@@ -21,6 +21,10 @@ using NSubstitute;
 
 namespace Explore.Blazor.IntegrationTests.Endpoints;
 
+public interface ITestRegistrationPaymentClient : IAuthenticatedRegistrationOrderPaymentClient, IGuestRegistrationOrderPaymentClient
+{
+}
+
 public sealed class BffRegistrationPaymentEndpointTests
 {
     [Test]
@@ -41,7 +45,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task ProviderCallbacksOnlyNavigateToRecoveryWithNoStore()
     {
-        IEventApiClient apiClient = Substitute.For<IEventApiClient>();
+        ITestRegistrationPaymentClient apiClient = Substitute.For<ITestRegistrationPaymentClient>();
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
@@ -78,7 +82,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task PublicBaseUrlSubpathPreservesBffAndRecoveryPaths()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_subpath");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_subpath");
         await using WebApplicationFactory<Program> factory = CreateFactory(
             apiClient,
             publicBaseUrl: "https://localhost/events");
@@ -101,7 +105,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task AuthenticatedCheckoutTicket_IssuesOpaquePathAndConsumesOnce()
     {
-        IEventApiClient apiClient = Substitute.For<IEventApiClient>();
+        ITestRegistrationPaymentClient apiClient = Substitute.For<ITestRegistrationPaymentClient>();
         apiClient.GetAuthenticatedRegistrationPaymentCheckoutTargetAsync(
                 Arg.Any<Guid>(), Arg.Any<Guid>(), null, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RegistrationPaymentCheckoutTargetDto { Url = "https://checkout.stripe.com/c/pay/cs_test" }));
@@ -159,7 +163,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     public async Task GuestCheckoutTicket_UsesCapabilityHeaderWithoutDisclosure()
     {
         const string capability = "guest-secret-capability";
-        IEventApiClient apiClient = Substitute.For<IEventApiClient>();
+        ITestRegistrationPaymentClient apiClient = Substitute.For<ITestRegistrationPaymentClient>();
         apiClient.GetGuestRegistrationPaymentCheckoutTargetAsync(
                 Arg.Any<Guid>(), Arg.Any<Guid>(), capability, null, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RegistrationPaymentCheckoutTargetDto { Url = "https://checkout.stripe.com/c/pay/cs_guest" }));
@@ -202,7 +206,7 @@ public sealed class BffRegistrationPaymentEndpointTests
                 activity.DisplayName + " " + string.Join(' ', activity.Tags.Select(tag => tag.Value)))
         };
         ActivitySource.AddActivityListener(listener);
-        IEventApiClient apiClient = Substitute.For<IEventApiClient>();
+        ITestRegistrationPaymentClient apiClient = Substitute.For<ITestRegistrationPaymentClient>();
         apiClient.GetGuestRegistrationPaymentCheckoutTargetAsync(
                 Arg.Any<Guid>(), Arg.Any<Guid>(), capability, null, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RegistrationPaymentCheckoutTargetDto { Url = "https://checkout.stripe.com/c/pay/cs_otel_private" }));
@@ -230,7 +234,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutTicketIssue_RejectsMissingAntiforgeryAndAccessFailures()
     {
-        IEventApiClient apiClient = Substitute.For<IEventApiClient>();
+        ITestRegistrationPaymentClient apiClient = Substitute.For<ITestRegistrationPaymentClient>();
         apiClient.GetAuthenticatedRegistrationPaymentCheckoutTargetAsync(
                 Arg.Any<Guid>(), Arg.Any<Guid>(), null, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<RegistrationPaymentCheckoutTargetDto>(ApiFailure(StatusCodes.Status401Unauthorized)));
@@ -265,7 +269,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     public async Task CheckoutTicket_ExpiresAndMaliciousTargetIsNeverIssued()
     {
         var timeProvider = new MutableTimeProvider(new DateTime(2026, 8, 21, 12, 0, 0, DateTimeKind.Utc));
-        IEventApiClient apiClient = Substitute.For<IEventApiClient>();
+        ITestRegistrationPaymentClient apiClient = Substitute.For<ITestRegistrationPaymentClient>();
         apiClient.GetAuthenticatedRegistrationPaymentCheckoutTargetAsync(
                 Arg.Any<Guid>(), Arg.Any<Guid>(), null, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RegistrationPaymentCheckoutTargetDto { Url = "https://checkout.stripe.com/c/pay/cs_expiring" }));
@@ -298,7 +302,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutCookie_PathBaseAudienceAndSessionFailuresDoNotBurnNonce()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_pathbase");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_pathbase");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient);
         using HttpClient firstClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         using HttpClient secondClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -334,7 +338,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutCookie_ConcurrentConsumeHasOneWinner()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_concurrent");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_concurrent");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         BrowserSession session = await IssueBrowserSessionAsync(client);
@@ -361,7 +365,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutCookie_AllowlistRotationDoesNotBurnNonce()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_rotation");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_rotation");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         BrowserSession session = await IssueBrowserSessionAsync(client);
@@ -386,7 +390,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     public async Task StandaloneCheckoutCookie_ReplacesActiveTicketAndScavengesExpiry()
     {
         var timeProvider = new MutableTimeProvider(new DateTime(2026, 8, 21, 12, 0, 0, DateTimeKind.Utc));
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_replace");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_replace");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient, timeProvider);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         BrowserSession session = await IssueBrowserSessionAsync(client);
@@ -409,7 +413,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task SplitCheckoutCookie_MissingOrFailedRedisFailsClosed()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_redis");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_redis");
         await using WebApplicationFactory<Program> missingFactory = CreateFactory(apiClient, requireRedis: true);
         using HttpClient missingClient = missingFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         BrowserSession missingSession = await IssueBrowserSessionAsync(missingClient);
@@ -431,7 +435,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutCookie_CrossSiteGetIsRejectedWithoutBurningTicket()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_fetch_site");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_fetch_site");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         BrowserSession session = await IssueBrowserSessionAsync(client);
@@ -460,7 +464,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutCookie_AuthCookieRenewalDoesNotBreakDedicatedSession()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_auth_refresh");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_auth_refresh");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         BrowserSession session = await IssueBrowserSessionAsync(client);
@@ -478,7 +482,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutIssue_OversizedHostedTargetFailsWithoutTicketCookie()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/" + new string('a', 5000));
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/" + new string('a', 5000));
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         BrowserSession session = await IssueBrowserSessionAsync(client);
@@ -492,7 +496,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutIssue_RotatedAntiforgerySessionsShareEffectiveIpRateBound()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_rate");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_rate");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient, checkoutPermitLimit: 2);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         BrowserSession firstSession = await IssueBrowserSessionAsync(client);
@@ -513,7 +517,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutIssue_InvalidAntiforgeryDoesNotConsumePermits()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_antiforgery_rate");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_antiforgery_rate");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient, checkoutPermitLimit: 2);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
@@ -536,7 +540,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutIssue_TrustedForwardedClientIpsUseDistinctPartitions()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_forwarded_rate");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_forwarded_rate");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient, checkoutPermitLimit: 1);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         BrowserSession session = await IssueBrowserSessionAsync(client);
@@ -556,7 +560,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     [Test]
     public async Task CheckoutIssue_AuthenticatedRateBoundUsesStableUserId()
     {
-        IEventApiClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_user_rate");
+        ITestRegistrationPaymentClient apiClient = CheckoutTargetClient("https://checkout.stripe.com/c/pay/cs_user_rate");
         await using WebApplicationFactory<Program> factory = CreateFactory(apiClient, checkoutPermitLimit: 2);
         using HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         client.DefaultRequestHeaders.Add(
@@ -578,9 +582,9 @@ public sealed class BffRegistrationPaymentEndpointTests
 
     private const string CheckoutIssuePath = "/bff/registration-payments/events/018e4e5c-7f00-7000-8000-000000000101/orders/018e4e5c-7f00-7000-8000-000000000201/checkout-ticket";
 
-    private static IEventApiClient CheckoutTargetClient(string target)
+    private static ITestRegistrationPaymentClient CheckoutTargetClient(string target)
     {
-        IEventApiClient apiClient = Substitute.For<IEventApiClient>();
+        ITestRegistrationPaymentClient apiClient = Substitute.For<ITestRegistrationPaymentClient>();
         apiClient.GetAuthenticatedRegistrationPaymentCheckoutTargetAsync(
                 Arg.Any<Guid>(), Arg.Any<Guid>(), null, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new RegistrationPaymentCheckoutTargetDto { Url = target }));
@@ -661,7 +665,7 @@ public sealed class BffRegistrationPaymentEndpointTests
     }
 
     private static WebApplicationFactory<Program> CreateFactory(
-        IEventApiClient apiClient,
+        ITestRegistrationPaymentClient apiClient,
         TimeProvider? timeProvider = null,
         bool requireRedis = false,
         IConnectionMultiplexer? redis = null,
@@ -683,9 +687,11 @@ public sealed class BffRegistrationPaymentEndpointTests
 
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<IEventApiClient>();
+                services.RemoveAll<IAuthenticatedRegistrationOrderPaymentClient>();
+                services.RemoveAll<IGuestRegistrationOrderPaymentClient>();
                 services.RemoveAll<IConnectionMultiplexer>();
-                services.AddSingleton(apiClient);
+                services.AddSingleton<IAuthenticatedRegistrationOrderPaymentClient>(apiClient);
+                services.AddSingleton<IGuestRegistrationOrderPaymentClient>(apiClient);
                 if (redis is not null)
                 {
                     services.AddSingleton(redis);

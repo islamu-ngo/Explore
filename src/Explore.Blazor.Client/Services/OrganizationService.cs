@@ -72,6 +72,11 @@ public interface IOrganizationService
         OrganizationTenantEvidenceDto evidence,
         bool approve,
         CancellationToken cancellationToken = default);
+
+    Task<ICollection<OrganizationListDto>> GetOrganizationRequestsAsync();
+    Task<bool> ApproveOrganizationAsync(Guid id);
+    Task<bool> RejectOrganizationAsync(Guid id);
+    Task<bool> RevertToPendingAsync(Guid id);
 }
 
 /// <summary>
@@ -80,16 +85,22 @@ public interface IOrganizationService
 /// </summary>
 public class OrganizationService : IOrganizationService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IOrganizationClient _apiClient;
+    private readonly IApprovalStatusClient _approvalStatusClient;
+    private readonly IOrganizationTenantEvidenceClient _tenantEvidenceClient;
     private readonly IBffClient _bffClient;
     private readonly ILogger<OrganizationService> _logger;
 
     public OrganizationService(
-        IEventApiClient apiClient,
+        IOrganizationClient apiClient,
+        IApprovalStatusClient approvalStatusClient,
+        IOrganizationTenantEvidenceClient tenantEvidenceClient,
         IBffClient bffClient,
         ILogger<OrganizationService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _approvalStatusClient = approvalStatusClient ?? throw new ArgumentNullException(nameof(approvalStatusClient));
+        _tenantEvidenceClient = tenantEvidenceClient ?? throw new ArgumentNullException(nameof(tenantEvidenceClient));
         _bffClient = bffClient ?? throw new ArgumentNullException(nameof(bffClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -113,7 +124,7 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            return await _apiClient.GetApprovalStatusOptionsAsync() ?? new List<StatusTypeListDto>();
+            return await _approvalStatusClient.GetApprovalStatusOptionsAsync() ?? new List<StatusTypeListDto>();
         }
         catch (ApiException ex)
         {
@@ -253,7 +264,7 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            var result = await _apiClient.GetOrganizationTenantEvidenceCollectionAsync(
+            var result = await _tenantEvidenceClient.GetOrganizationTenantEvidenceCollectionAsync(
                 organizationId,
                 cancellationToken: cancellationToken);
             return result.GetItems();
@@ -334,7 +345,7 @@ public class OrganizationService : IOrganizationService
                 return false;
             }
 
-            var submitted = await _apiClient.SubmitOrganizationTenantEvidenceAsync(
+            var submitted = await _tenantEvidenceClient.SubmitOrganizationTenantEvidenceAsync(
                 organizationId,
                 new SubmitOrganizationTenantEvidenceDto
                 {
@@ -376,7 +387,7 @@ public class OrganizationService : IOrganizationService
 
         try
         {
-            var response = await _apiClient.ReviewOrganizationTenantEvidenceAsync(
+            var response = await _tenantEvidenceClient.ReviewOrganizationTenantEvidenceAsync(
                 organizationId,
                 evidenceId,
                 new ReviewOrganizationTenantEvidenceDto
@@ -401,6 +412,99 @@ public class OrganizationService : IOrganizationService
             _logger.LogWarning(
                 "Organization evidence could not be reviewed. FailureType={FailureType}",
                 ex.GetType().Name);
+            return false;
+        }
+    }
+
+    public async Task<ICollection<OrganizationListDto>> GetOrganizationRequestsAsync()
+    {
+        try
+        {
+            var result = await _apiClient.GetOrganizationsAsync(
+                pageNumber: ApiConstants.FirstPage,
+                pageSize: ApiConstants.DefaultPageSize);
+            return result?.GetItems() ?? new List<OrganizationListDto>();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.GetOrganizationRequestsAsync] API error fetching organization requests. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<OrganizationListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.GetOrganizationRequestsAsync] Unexpected error fetching organization requests");
+            return new List<OrganizationListDto>();
+        }
+    }
+
+    public async Task<bool> ApproveOrganizationAsync(Guid id)
+    {
+        try
+        {
+            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = ApprovalStatusId.Approved };
+            await _apiClient.UpdateOrganizationApprovalStatusAsync(id, updateDto);
+            return true;
+        }
+        catch (ApiException ex) when (ex.StatusCode is 204 or 200)
+        {
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.ApproveOrganizationAsync] API error approving organization. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.ApproveOrganizationAsync] Unexpected error approving organization. OrganizationId: {OrganizationId}", id);
+            return false;
+        }
+    }
+
+    public async Task<bool> RejectOrganizationAsync(Guid id)
+    {
+        try
+        {
+            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = ApprovalStatusId.Rejected };
+            await _apiClient.UpdateOrganizationApprovalStatusAsync(id, updateDto);
+            return true;
+        }
+        catch (ApiException ex) when (ex.StatusCode is 204 or 200)
+        {
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.RejectOrganizationAsync] API error rejecting organization. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.RejectOrganizationAsync] Unexpected error rejecting organization. OrganizationId: {OrganizationId}", id);
+            return false;
+        }
+    }
+
+    public async Task<bool> RevertToPendingAsync(Guid id)
+    {
+        try
+        {
+            var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = ApprovalStatusId.Pending };
+            await _apiClient.UpdateOrganizationApprovalStatusAsync(id, updateDto);
+            return true;
+        }
+        catch (ApiException ex) when (ex.StatusCode is 204 or 200)
+        {
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.RevertToPendingAsync] API error reverting organization to pending. OrganizationId: {OrganizationId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[OrganizationService.RevertToPendingAsync] Unexpected error reverting organization to pending. OrganizationId: {OrganizationId}", id);
             return false;
         }
     }

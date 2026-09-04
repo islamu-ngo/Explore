@@ -17,13 +17,13 @@ namespace Explore.Blazor.Client.Tests.Services.Shell;
 public sealed class UiShellContextServiceTests : IDisposable
 {
     private readonly ServiceProvider _services;
-    private readonly IEventApiClient _apiClient;
+    private readonly IUiShellClient _apiClient;
     private readonly AuthenticationStateProvider _authStateProvider;
     private readonly CurrentUserState _currentUserState;
 
     public UiShellContextServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IUiShellClient>();
         _authStateProvider = Substitute.For<AuthenticationStateProvider>();
         _currentUserState = new CurrentUserState();
 

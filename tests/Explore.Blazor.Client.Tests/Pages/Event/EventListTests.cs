@@ -15,9 +15,12 @@ public class EventListTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IEventService _eventService;
+    private readonly Explore.Blazor.Client.Contracts.Services.IEventSessionService _eventSessionService;
     private readonly ICategoryService _categoryService;
     private readonly ITagService _tagService;
-    private readonly IAdminService _adminService;
+    private readonly Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService _eventLookupService;
+    private readonly Explore.Blazor.Client.Contracts.Services.Lookup.IDemographicLookupService _demographicLookupService;
+    private readonly Explore.Blazor.Client.Contracts.Services.Lookup.ICultureLookupService _cultureLookupService;
     private readonly ILocationService _locationService;
     private readonly IPublicExperienceService _publicExperienceService;
     private readonly DockLayoutState _dockLayoutState;
@@ -28,9 +31,12 @@ public class EventListTests : IDisposable
         _ctx = new BlazorTestContext();
 
         _eventService = Substitute.For<IEventService>();
+        _eventSessionService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         _categoryService = Substitute.For<ICategoryService>();
         _tagService = Substitute.For<ITagService>();
-        _adminService = Substitute.For<IAdminService>();
+        _eventLookupService = Substitute.For<Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService>();
+        _demographicLookupService = Substitute.For<Explore.Blazor.Client.Contracts.Services.Lookup.IDemographicLookupService>();
+        _cultureLookupService = Substitute.For<Explore.Blazor.Client.Contracts.Services.Lookup.ICultureLookupService>();
         _locationService = Substitute.For<ILocationService>();
         _publicExperienceService = Substitute.For<IPublicExperienceService>();
         _dockLayoutState = new DockLayoutState();
@@ -43,9 +49,12 @@ public class EventListTests : IDisposable
             .Returns(Task.FromResult(true));
 
         _ctx.Services.AddSingleton(_eventService);
+        _ctx.Services.AddSingleton(_eventSessionService);
         _ctx.Services.AddSingleton(_categoryService);
         _ctx.Services.AddSingleton(_tagService);
-        _ctx.Services.AddSingleton(_adminService);
+        _ctx.Services.AddSingleton(_eventLookupService);
+        _ctx.Services.AddSingleton(_demographicLookupService);
+        _ctx.Services.AddSingleton(_cultureLookupService);
         _ctx.Services.AddSingleton(_locationService);
         _ctx.Services.AddSingleton(_publicExperienceService);
         _ctx.Services.AddSingleton(_dockLayoutState);
@@ -75,17 +84,17 @@ public class EventListTests : IDisposable
 
     private void SetupDefaultLookupResponses()
     {
-        _adminService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
-        _adminService.GetAudienceGendersAsync().Returns(new List<AudienceGenderListDto>());
-        _adminService.GetAudienceAgesAsync().Returns(new List<AudienceAgeListDto>());
-        _adminService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());
-        _eventService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
+        _eventLookupService.GetEventTypesAsync().Returns(new List<EventTypeListDto>());
+        _demographicLookupService.GetAudienceGendersAsync().Returns(new List<AudienceGenderListDto>());
+        _demographicLookupService.GetAudienceAgesAsync().Returns(new List<AudienceAgeListDto>());
+        _eventLookupService.GetEventStatusesAsync().Returns(new List<EventStatusListDto>());
+        _eventLookupService.GetEventFormatsAsync().Returns(new List<EventFormatListDto>());
         _categoryService.GetAllCategoriesAsync().Returns(new List<CategoryListDto>());
         _tagService.GetAllTagsAsync().Returns(new List<TagListDto>());
-        _adminService.GetMadhabsAsync().Returns(new List<MadhabListDto>());
+        _cultureLookupService.GetMadhabsAsync().Returns(new List<MadhabListDto>());
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
-        _adminService.GetRegistrationModesAsync().Returns(new List<RegistrationModeListDto>());
-        _adminService.GetLanguagesAsync().Returns(new List<LanguageListDto>());
+        _eventLookupService.GetRegistrationModesAsync().Returns(new List<RegistrationModeListDto>());
+        _cultureLookupService.GetLanguagesAsync().Returns(new List<LanguageListDto>());
     }
 
     private static PaginatedResult<EventListDto> CreateResult(int pageNumber, int pageSize, List<EventListDto> items)
@@ -228,7 +237,7 @@ public class EventListTests : IDisposable
             AdditionalProperties = withEditLink ? CreateHalLinks("edit") : new Dictionary<string, object>()
         });
 
-        _eventService.GetSessionsByEventAsync(eventId, Arg.Any<bool>()).Returns(new List<EventSessionListDto>());
+        _eventSessionService.GetSessionsByEventAsync(eventId, Arg.Any<bool>()).Returns(new List<EventSessionListDto>());
     }
 
     private static Dictionary<string, object> CreateHalLinks(params string[] relations)

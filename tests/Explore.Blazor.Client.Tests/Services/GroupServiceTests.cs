@@ -8,14 +8,16 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class GroupServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IGroupClient _apiClient;
+    private readonly IGroupMemberClient _groupMemberClient;
     private readonly GroupService _service;
 
     public GroupServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IGroupClient>();
+        _groupMemberClient = Substitute.For<IGroupMemberClient>();
         var logger = Substitute.For<ILogger<GroupService>>();
-        _service = new GroupService(_apiClient, logger);
+        _service = new GroupService(_apiClient, _groupMemberClient, logger);
     }
 
     [Test]
@@ -99,7 +101,7 @@ public sealed class GroupServiceTests
         var memberId = Guid.NewGuid();
         var response = CreateGroupMemberCollection(memberId, withCreateLink: true, withItemLinks: true);
 
-        _apiClient.GetGroupMembersAsync(groupId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _groupMemberClient.GetGroupMembersAsync(groupId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         var result = await _service.GetGroupMembersWithAffordancesAsync(groupId);
@@ -117,7 +119,7 @@ public sealed class GroupServiceTests
     {
         var groupId = Guid.NewGuid();
         var memberId = Guid.NewGuid();
-        _apiClient.GetGroupMembersAsync(groupId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _groupMemberClient.GetGroupMembersAsync(groupId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(CreateGroupMemberCollection(memberId, withCreateLink: false, withItemLinks: false));
 
         var members = await _service.GetGroupMembersAsync(groupId);
@@ -144,7 +146,7 @@ public sealed class GroupServiceTests
     public async Task GetGroupMembersWithAffordancesAsync_ReturnsEmptyResult_WhenApiFails()
     {
         var groupId = Guid.NewGuid();
-        _apiClient.GetGroupMembersAsync(groupId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _groupMemberClient.GetGroupMembersAsync(groupId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new Explore.Blazor.Client.Clients.ApiException("API Error", 500, null, null, null));
 
         var result = await _service.GetGroupMembersWithAffordancesAsync(groupId);

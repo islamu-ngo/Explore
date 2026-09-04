@@ -9,9 +9,9 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class EventSessionLanguageService : IEventSessionLanguageService
 {
-    private readonly IEventApiClient _client;
+    private readonly IEventSessionLanguageClient _client;
 
-    public EventSessionLanguageService(IEventApiClient client)
+    public EventSessionLanguageService(IEventSessionLanguageClient client)
     {
         _client = client;
     }

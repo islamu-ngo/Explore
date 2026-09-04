@@ -1,5 +1,5 @@
 // ABOUTME: Service layer for external API key management across all 5 owner types.
-// ABOUTME: Anti-Corruption Layer over NSwag-generated EventApiClient methods.
+// ABOUTME: Anti-Corruption Layer over NSwag-generated IExternalApiKeyClient methods.
 
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
@@ -30,10 +30,10 @@ public interface IExternalApiKeyService
 
 public class ExternalApiKeyService : IExternalApiKeyService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IExternalApiKeyClient _apiClient;
     private readonly ILogger<ExternalApiKeyService> _logger;
 
-    public ExternalApiKeyService(IEventApiClient apiClient, ILogger<ExternalApiKeyService> logger)
+    public ExternalApiKeyService(IExternalApiKeyClient apiClient, ILogger<ExternalApiKeyService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

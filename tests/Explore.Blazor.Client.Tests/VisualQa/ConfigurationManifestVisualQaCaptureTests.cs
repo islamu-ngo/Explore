@@ -41,7 +41,8 @@ public sealed class ConfigurationManifestVisualQaCaptureTests
         context.Services.AddSingleton(service);
 
         MudTheme theme = new AppearanceThemeService(
-            Substitute.For<IEventApiClient>(),
+            Substitute.For<IUserAppearanceClient>(),
+            Substitute.For<IUiThemeAdminClient>(),
             NullLogger<AppearanceThemeService>.Instance)
             .CreateTheme("64px");
         var themeProvider = context.Render<MudThemeProvider>(parameters => parameters

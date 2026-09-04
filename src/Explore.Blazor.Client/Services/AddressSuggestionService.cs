@@ -29,7 +29,8 @@ public sealed record AddressSuggestionSearchResult
 }
 
 public sealed class AddressSuggestionService(
-    IEventApiClient apiClient,
+    IGeocodingClient geocodingClient,
+    ILocationClient locationClient,
     ILogger<AddressSuggestionService> logger)
     : IAddressSuggestionService
 {
@@ -51,7 +52,7 @@ public sealed class AddressSuggestionService(
         try
         {
             HalResourceOfAddressSuggestionsResponseDto response =
-                await apiClient.GetAddressSuggestionsAsync(
+                await geocodingClient.GetAddressSuggestionsAsync(
                     new AddressSuggestionsRequestDto
                     {
                         SearchText = searchText,
@@ -98,7 +99,7 @@ public sealed class AddressSuggestionService(
             $"/api/location/{locationId:D}/address-approval",
             "address approval");
 
-        await apiClient.ApproveTenantAddressAsync(
+        await locationClient.ApproveTenantAddressAsync(
             locationId,
             $"\"{suggestion.ConcurrencyStamp:D}\"",
             cancellationToken: cancellationToken);

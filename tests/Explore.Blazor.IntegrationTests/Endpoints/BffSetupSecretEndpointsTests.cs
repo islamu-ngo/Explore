@@ -279,8 +279,8 @@ public sealed class BffSetupSecretEndpointsTests
         {
             BaseAddress = new Uri("https://api.example.test/")
         });
-        builder.Services.AddSingleton<IEventApiClient>(services =>
-            new EventApiClient(services.GetRequiredService<HttpClient>()));
+        builder.Services.AddSingleton<IInstanceOnboardingClient>(services =>
+            new InstanceOnboardingClient(services.GetRequiredService<HttpClient>()));
 
         var app = builder.Build();
         app.UseRouting();

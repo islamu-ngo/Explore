@@ -23,9 +23,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 {
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IEventService EventService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService { get; set; } = null!;
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
     [Inject] protected ITagService TagService { get; set; } = null!;
-    [Inject] protected IAdminService AdminService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService EventLookupService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.Lookup.IDemographicLookupService DemographicLookupService { get; set; } = null!;
+    [Inject] protected Explore.Blazor.Client.Contracts.Services.Lookup.ICultureLookupService CultureLookupService { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
     [Inject] protected ILogger<EventList> Logger { get; set; } = null!;
@@ -356,15 +359,15 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         isLoading = true;
         try
         {
-            var eventTypesTask = AdminService.GetEventTypesAsync();
-            var audienceGendersTask = AdminService.GetAudienceGendersAsync();
-            var audienceAgesTask = AdminService.GetAudienceAgesAsync();
-            var eventFormatsTask = EventService.GetEventFormatsAsync();
+            var eventTypesTask = EventLookupService.GetEventTypesAsync();
+            var audienceGendersTask = DemographicLookupService.GetAudienceGendersAsync();
+            var audienceAgesTask = DemographicLookupService.GetAudienceAgesAsync();
+            var eventFormatsTask = EventLookupService.GetEventFormatsAsync();
             var categoriesTask = CategoryService.GetAllCategoriesAsync();
             var tagsTask = TagService.GetAllTagsAsync();
-            var madhabsTask = AdminService.GetMadhabsAsync();
-            var registrationModesTask = AdminService.GetRegistrationModesAsync();
-            var languagesTask = AdminService.GetLanguagesAsync();
+            var madhabsTask = CultureLookupService.GetMadhabsAsync();
+            var registrationModesTask = EventLookupService.GetRegistrationModesAsync();
+            var languagesTask = CultureLookupService.GetLanguagesAsync();
             var tagGroupsTask = TagService.GetTagsGroupedByTagTypeAsync();
             var categoryGroupsTask = CategoryService.GetCategoriesGroupedByCategoryTypeAsync();
 
@@ -664,7 +667,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         try
         {
             var detailTask = EventService.GetEventByIdAsync(evt.Id!.Value);
-            var sessionsTask = EventService.GetSessionsByEventAsync(evt.Id!.Value);
+            var sessionsTask = EventSessionService.GetSessionsByEventAsync(evt.Id!.Value);
             await Task.WhenAll(detailTask, sessionsTask);
 
             _selectedEventDetail = await detailTask;

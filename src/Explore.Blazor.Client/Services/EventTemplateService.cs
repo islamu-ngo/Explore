@@ -1,4 +1,4 @@
-// ABOUTME: Implementation of IEventTemplateService wrapping IEventApiClient.
+// ABOUTME: Implementation of IEventTemplateService wrapping the event-template client.
 // ABOUTME: Handles HAL unwrap, error catching, and logging for event templates.
 
 using Explore.Blazor.Client.Clients;
@@ -9,10 +9,10 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class EventTemplateService : IEventTemplateService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventTemplateClient _apiClient;
     private readonly ILogger<EventTemplateService> _logger;
 
-    public EventTemplateService(IEventApiClient apiClient, ILogger<EventTemplateService> logger)
+    public EventTemplateService(IEventTemplateClient apiClient, ILogger<EventTemplateService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

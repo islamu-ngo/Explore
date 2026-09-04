@@ -1,7 +1,7 @@
 @* ABOUTME: Bounded read-only Studio payment projection for one registration order. *@
 @* ABOUTME: Renders refund actions only from exact payment HAL relations and confirms financial mutations. *@
 @using Explore.Blazor.Client.Helpers
-@inject IRegistrationOrderService RegistrationOrderService
+@inject IRegistrationPaymentService RegistrationPaymentService
 @inject IDialogService Dialogs
 @implements IDisposable
 
@@ -122,7 +122,7 @@
         _requestCancellation = cancellation;
         try
         {
-            HalResourceOfRegistrationPaymentDto? payment = await RegistrationOrderService.GetStudioPaymentAsync(
+            HalResourceOfRegistrationPaymentDto? payment = await RegistrationPaymentService.GetStudioPaymentAsync(
                 eventId, orderId.Value, Order, cancellation.Token);
             if (_disposed || cancellation.IsCancellationRequested || generation != _loadGeneration ||
                 EventId != eventId || Order.Id != orderId || Order._links?.ContainsKey("studio-payment-status") != true)
@@ -175,7 +175,7 @@
         _actionMessage = null;
         try
         {
-            HalResourceOfRegistrationPaymentDto? refreshed = await RegistrationOrderService.CreateStudioRefundAsync(
+            HalResourceOfRegistrationPaymentDto? refreshed = await RegistrationPaymentService.CreateStudioRefundAsync(
                 EventId, orderId, _payment, remaining, CancellationToken.None);
             _payment = refreshed ?? _payment;
             _actionFailed = refreshed is null;
@@ -210,7 +210,7 @@
         _actionMessage = null;
         try
         {
-            HalResourceOfRegistrationPaymentDto? refreshed = await RegistrationOrderService.RetryStudioRefundAsync(
+            HalResourceOfRegistrationPaymentDto? refreshed = await RegistrationPaymentService.RetryStudioRefundAsync(
                 EventId, orderId, _payment, CancellationToken.None);
             _payment = refreshed ?? _payment;
             _actionFailed = refreshed is null;

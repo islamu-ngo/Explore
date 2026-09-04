@@ -1,4 +1,4 @@
-// ABOUTME: Implementation of IUserAppearancePreferencesService wrapping IEventApiClient.
+// ABOUTME: Implementation of IUserAppearancePreferencesService wrapping the user-appearance client.
 // ABOUTME: Handles error catching and logging for user appearance preferences.
 
 using Explore.Blazor.Client.Clients;
@@ -9,10 +9,10 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class UserAppearancePreferencesService : IUserAppearancePreferencesService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IUserAppearanceClient _apiClient;
     private readonly ILogger<UserAppearancePreferencesService> _logger;
 
-    public UserAppearancePreferencesService(IEventApiClient apiClient, ILogger<UserAppearancePreferencesService> logger)
+    public UserAppearancePreferencesService(IUserAppearanceClient apiClient, ILogger<UserAppearancePreferencesService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

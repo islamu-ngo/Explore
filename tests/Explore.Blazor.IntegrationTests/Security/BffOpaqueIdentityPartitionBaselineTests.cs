@@ -217,7 +217,7 @@ public sealed class BffOpaqueIdentityPartitionBaselineTests
         builder.Services.AddSingleton<ISetupSecretSessionService>(sessions);
         builder.Services.AddSingleton<ISetupSecretCookieProtector, PassThroughCookieProtector>();
         builder.Services.AddSingleton<ISetupSecretResolver>(new TrustedSetupSecretResolver(secret));
-        builder.Services.AddSingleton(Substitute.For<IEventApiClient>());
+        builder.Services.AddSingleton(Substitute.For<IInstanceOnboardingClient>());
 
         var app = builder.Build();
         app.UseRouting();

@@ -8,7 +8,8 @@ using Explore.Blazor.Client.Contracts.Services;
 namespace Explore.Blazor.Client.Services;
 
 public sealed class NativeRegistrationFormService(
-    IEventApiClient apiClient,
+    IAuthenticatedRegistrationOrderClient authenticatedClient,
+    IGuestRegistrationOrderClient guestClient,
     ILogger<NativeRegistrationFormService> logger) : INativeRegistrationFormService
 {
     public async Task<NativeRegistrationRequirementCollectionView?> GetRequirementsAsync(
@@ -18,9 +19,9 @@ public sealed class NativeRegistrationFormService(
         try
         {
             HalResourceOfNativeRegistrationRequirementProgressCollectionDto source = guestCapability is { } guest
-                ? await apiClient.GetGuestNativeRegistrationRequirementProgressAsync(
+                ? await guestClient.GetGuestNativeRegistrationRequirementProgressAsync(
                     eventId, orderId, guest.Value, cancellationToken: cancellationToken)
-                : await apiClient.GetAuthenticatedNativeRegistrationRequirementProgressAsync(
+                : await authenticatedClient.GetAuthenticatedNativeRegistrationRequirementProgressAsync(
                     eventId, orderId, cancellationToken: cancellationToken);
             return NativeRegistrationRequirementCollectionView.From(source);
         }
@@ -46,9 +47,9 @@ public sealed class NativeRegistrationFormService(
         try
         {
             HalResourceOfNativeRegistrationAttemptDto source = guestCapability is { } guest
-                ? await apiClient.LaunchGuestNativeRegistrationAttemptAsync(
+                ? await guestClient.LaunchGuestNativeRegistrationAttemptAsync(
                     eventId, orderId, idempotencyKey, request, guest.Value, cancellationToken: cancellationToken)
-                : await apiClient.LaunchAuthenticatedNativeRegistrationAttemptAsync(
+                : await authenticatedClient.LaunchAuthenticatedNativeRegistrationAttemptAsync(
                     eventId, orderId, idempotencyKey, request, cancellationToken: cancellationToken);
             return NativeRegistrationAttemptView.From(source);
         }
@@ -80,10 +81,10 @@ public sealed class NativeRegistrationFormService(
         try
         {
             NativeRegistrationSubmissionDto response = guestCapability is { } guest
-                ? await apiClient.SubmitGuestNativeRegistrationAttemptAsync(
+                ? await guestClient.SubmitGuestNativeRegistrationAttemptAsync(
                     eventId, orderId, attempt.AttemptId, idempotencyKey, request, guest.Value,
                     attempt.AttemptCapabilityToken, cancellationToken: cancellationToken)
-                : await apiClient.SubmitAuthenticatedNativeRegistrationAttemptAsync(
+                : await authenticatedClient.SubmitAuthenticatedNativeRegistrationAttemptAsync(
                     eventId, orderId, attempt.AttemptId, idempotencyKey, request,
                     attempt.AttemptCapabilityToken, cancellationToken: cancellationToken);
             return response.Accepted ? NativeRegistrationActionResult.Accepted : NativeRegistrationActionResult.Failed;
@@ -108,10 +109,10 @@ public sealed class NativeRegistrationFormService(
         try
         {
             _ = guestCapability is { } guest
-                ? await apiClient.SkipGuestNativeRegistrationRequirementAsync(
+                ? await guestClient.SkipGuestNativeRegistrationRequirementAsync(
                     eventId, orderId, attempt.AttemptId, idempotencyKey, request, guest.Value,
                     attempt.AttemptCapabilityToken, cancellationToken: cancellationToken)
-                : await apiClient.SkipAuthenticatedNativeRegistrationRequirementAsync(
+                : await authenticatedClient.SkipAuthenticatedNativeRegistrationRequirementAsync(
                     eventId, orderId, attempt.AttemptId, idempotencyKey, request,
                     attempt.AttemptCapabilityToken, cancellationToken: cancellationToken);
             return true;

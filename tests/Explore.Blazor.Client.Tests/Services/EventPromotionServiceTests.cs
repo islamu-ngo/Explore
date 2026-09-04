@@ -11,7 +11,7 @@ public sealed class EventPromotionServiceTests
     [Test]
     public async Task GetPromotionsAsync_MapsTypedHalItemsAndExactRelations()
     {
-        var api = Substitute.For<IEventApiClient>();
+        var api = Substitute.For<IEventPromotionsClient>();
         var service = new EventPromotionService(api);
         var eventId = Guid.CreateVersion7();
         var catalogVersionId = Guid.CreateVersion7();
@@ -62,7 +62,7 @@ public sealed class EventPromotionServiceTests
     [Test]
     public async Task LifecycleMutations_ForwardGeneratedRequestsAndCancellation()
     {
-        var api = Substitute.For<IEventApiClient>();
+        var api = Substitute.For<IEventPromotionsClient>();
         var service = new EventPromotionService(api);
         var eventId = Guid.CreateVersion7();
         var definitionId = Guid.CreateVersion7();

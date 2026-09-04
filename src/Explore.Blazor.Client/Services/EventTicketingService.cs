@@ -7,7 +7,7 @@ using Explore.Blazor.Client.Pages.Studio;
 
 namespace Explore.Blazor.Client.Services;
 
-public sealed class EventTicketingService(IEventApiClient apiClient) : IEventTicketingService
+public sealed class EventTicketingService(IEventTicketingClient apiClient) : IEventTicketingService
 {
     public async Task<EventTicketCatalogState?> GetCatalogAsync(
         Guid eventId,

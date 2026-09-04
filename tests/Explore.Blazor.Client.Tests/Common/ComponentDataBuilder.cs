@@ -12,7 +12,7 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// <remarks>
 /// <para>
 /// All property names and types are verified against the actual NSwag-generated DTOs
-/// in Explore.Blazor.Client.Clients.EventApiClient.g.cs
+/// in Explore.Blazor.Client.Clients.EventApiTagClients.g.cs
 /// </para>
 /// <para>
 /// Key type mappings (verified from API client):
@@ -35,7 +35,7 @@ public static class ComponentDataBuilder
 
     /// <summary>
     /// Generates fake EventListDto for list displays.
-    /// Property names match EventApiClient.g.cs (line 24695+)
+    /// Property names match EventApiTagClients.g.cs
     /// </summary>
     public static Faker<EventListDto> EventListDto => new Faker<EventListDto>()
         .RuleFor(e => e.Id, f => Guid.NewGuid())
@@ -92,7 +92,7 @@ public static class ComponentDataBuilder
 
     /// <summary>
     /// Generates fake EventDto for detail views.
-    /// Property names match EventApiClient.g.cs (line 24474+)
+    /// Property names match EventApiTagClients.g.cs
     /// </summary>
     public static Faker<EventDto> EventDto => new Faker<EventDto>()
         .RuleFor(e => e.Id, f => Guid.NewGuid())
@@ -153,7 +153,7 @@ public static class ComponentDataBuilder
 
     /// <summary>
     /// Generates fake OrganizationListDto for list displays.
-    /// Property names match EventApiClient.g.cs (line 25785+)
+    /// Property names match EventApiTagClients.g.cs
     /// Postcode is string in OrganizationListDto (verified)
     /// </summary>
     public static Faker<OrganizationListDto> OrganizationListDto => new Faker<OrganizationListDto>()
@@ -171,7 +171,7 @@ public static class ComponentDataBuilder
 
     /// <summary>
     /// Generates fake OrganizationDto for detail views.
-    /// Property names match EventApiClient.g.cs (line 25694+)
+    /// Property names match EventApiTagClients.g.cs
     /// Postcode is string in OrganizationDto (verified)
     /// </summary>
     public static Faker<OrganizationDto> OrganizationDto => new Faker<OrganizationDto>()
@@ -189,7 +189,7 @@ public static class ComponentDataBuilder
 
     /// <summary>
     /// Generates fake CreateOrganizationDto for form testing.
-    /// Property names match EventApiClient.g.cs (line 24045+)
+    /// Property names match EventApiTagClients.g.cs
     /// IMPORTANT: Postcode is int in CreateOrganizationDto (verified from API line 24063)
     /// </summary>
     public static Faker<CreateOrganizationDto> CreateOrganizationDto => new Faker<CreateOrganizationDto>()
@@ -224,7 +224,7 @@ public static class ComponentDataBuilder
 
     /// <summary>
     /// Generates fake LocationListDto for location dropdowns.
-    /// Property names match EventApiClient.g.cs (line 25610+)
+    /// Property names match EventApiTagClients.g.cs
     /// NOTE: LocationListDto does NOT have Postcode, Latitude, or Longitude properties
     /// </summary>
     public static Faker<LocationListDto> LocationListDto => new Faker<LocationListDto>()
@@ -307,7 +307,7 @@ public static class ComponentDataBuilder
 
     /// <summary>
     /// Generates fake EventSessionListDto for session lists.
-    /// Property names match EventApiClient.g.cs (line 25133+)
+    /// Property names match EventApiTagClients.g.cs
     /// NOTE: EventSessionListDto does NOT have a Description property
     /// </summary>
     public static Faker<EventSessionListDto> EventSessionListDto => new Faker<EventSessionListDto>()

@@ -10,12 +10,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 public class OrganizationReviewServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IOrganizationReviewClient _apiClient;
     private readonly OrganizationReviewService _service;
 
     public OrganizationReviewServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IOrganizationReviewClient>();
         var logger = Substitute.For<ILogger<OrganizationReviewService>>();
         _service = new OrganizationReviewService(_apiClient, logger);
     }

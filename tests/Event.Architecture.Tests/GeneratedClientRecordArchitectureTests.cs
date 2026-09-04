@@ -137,7 +137,7 @@ public sealed class GeneratedClientRecordArchitectureTests
     {
         Type[] protectedTypes =
         [
-            typeof(EventApiClient),
+            typeof(PublicExperienceClient),
             typeof(ApiException),
             typeof(ApiException<>),
             typeof(FileResponse),
@@ -169,7 +169,7 @@ public sealed class GeneratedClientRecordArchitectureTests
         "src",
         "Explore.Blazor.Client",
         "Clients",
-        "EventApiClient.g.cs");
+        "EventApiTagClients.g.cs");
 
     private static string MutablePolicyPath() => Path.Combine(
         RepositoryRoot(),

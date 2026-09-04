@@ -8,7 +8,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class EventLocationServiceTests
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly IEventLocationClient _apiClient = Substitute.For<IEventLocationClient>();
     private readonly EventLocationService _service;
 
     public EventLocationServiceTests() =>

@@ -54,10 +54,10 @@ public interface IUserService
 /// </summary>
 public class UserService : IUserService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IUserClient _apiClient;
     private readonly ILogger<UserService> _logger;
 
-    public UserService(IEventApiClient apiClient, ILogger<UserService> logger)
+    public UserService(IUserClient apiClient, ILogger<UserService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

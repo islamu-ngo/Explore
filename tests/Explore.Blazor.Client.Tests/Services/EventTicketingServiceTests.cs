@@ -30,7 +30,7 @@ public sealed class EventTicketingServiceTests
                 ["capacity-pools"] = Array.Empty<object>()
             }
         };
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IEventTicketingClient>();
         apiClient.GetEventTicketCatalogManagementAsync(eventId, null, null, cancellation.Token)
             .Returns(resource);
         var service = new EventTicketingService(apiClient);
@@ -48,7 +48,7 @@ public sealed class EventTicketingServiceTests
     public async Task GetCatalogAsync_WhenGeneratedWrapperIsMalformed_FailsClosed()
     {
         var eventId = Guid.CreateVersion7();
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IEventTicketingClient>();
         apiClient.GetEventTicketCatalogManagementAsync(eventId, null, null, Arg.Any<CancellationToken>())
             .Returns(new HalResourceOfEventTicketCatalogManagementDto());
         var service = new EventTicketingService(apiClient);
@@ -81,7 +81,7 @@ public sealed class EventTicketingServiceTests
             }
         };
         var response = new BaseCommandResponseOfGuid { Success = true };
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IEventTicketingClient>();
         apiClient.GetPaidEventPublicationPreflightAsync(eventId, null, null, cancellation.Token).Returns(preflight);
         apiClient.UpdateEventTicketCatalogCommercialDisclosuresAsync(eventId, commercialDisclosures, null, null, cancellation.Token).Returns(response);
         apiClient.GetEventOrganizerPaymentConnectionAsync(eventId, null, null, cancellation.Token).Returns(paymentConnection);
@@ -116,7 +116,7 @@ public sealed class EventTicketingServiceTests
         var capacityPool = new ManageEventCapacityPoolDto { Name = "Main hall" };
         var draft = new CreateEventTicketCatalogDraftCommand { CurrencyCode = "EUR" };
         var response = new BaseCommandResponseOfGuid { Success = true };
-        var apiClient = Substitute.For<IEventApiClient>();
+        var apiClient = Substitute.For<IEventTicketingClient>();
         apiClient.CreateEventTicketCatalogDraftAsync(eventId, draft, null, null, Arg.Any<CancellationToken>()).Returns(response);
         apiClient.CloneEventTicketCatalogDraftAsync(eventId, null, null, Arg.Any<CancellationToken>()).Returns(response);
         apiClient.CreateEventTicketTypeAsync(eventId, ticketType, null, null, Arg.Any<CancellationToken>()).Returns(response);

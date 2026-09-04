@@ -1,5 +1,5 @@
 // ABOUTME: Contract for RegistrationScope lookup operations (read-only).
-// ABOUTME: Wraps the NSwag-generated IEventApiClient methods for RegistrationScope lookup.
+// ABOUTME: Wraps the NSwag-generated registration-scope lookup client.
 
 using Explore.Blazor.Client.Clients;
 

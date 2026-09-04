@@ -9,7 +9,8 @@ using Explore.Blazor.Client.Services.Http;
 namespace Explore.Blazor.Client.Services.Admissions;
 
 public sealed class AdmissionTicketService(
-    IEventApiClient apiClient,
+    IAdmissionTicketClient ticketClient,
+    IAdmissionTicketRecoveryClient recoveryClient,
     IAdmissionRecoveryBffClient recoveryBffClient,
     ILogger<AdmissionTicketService> logger) : IAdmissionTicketService
 {
@@ -19,7 +20,7 @@ public sealed class AdmissionTicketService(
         try
         {
             HalCollectionResourceOfAdmissionTicketDto collection =
-                await apiClient.GetCurrentAdmissionTicketsAsync(
+                await ticketClient.GetCurrentAdmissionTicketsAsync(
                     cancellationToken: cancellationToken);
             return collection._embedded?.Items is { Count: > 0 } items
                 ? [.. items]
@@ -43,7 +44,7 @@ public sealed class AdmissionTicketService(
 
         try
         {
-            return await apiClient.GetCurrentAdmissionTicketAsync(
+            return await ticketClient.GetCurrentAdmissionTicketAsync(
                 ticketId,
                 cancellationToken: cancellationToken);
         }
@@ -72,7 +73,7 @@ public sealed class AdmissionTicketService(
 
         try
         {
-            return await apiClient.ReissueCurrentAdmissionTicketQrAsync(
+            return await ticketClient.ReissueCurrentAdmissionTicketQrAsync(
                 ticket.TicketId,
                 cancellationToken: cancellationToken);
         }
@@ -95,7 +96,7 @@ public sealed class AdmissionTicketService(
 
         try
         {
-            return await apiClient.ReissueCurrentAdmissionTicketPrintAsync(
+            return await ticketClient.ReissueCurrentAdmissionTicketPrintAsync(
                 ticket.TicketId,
                 cancellationToken: cancellationToken);
         }
@@ -113,7 +114,7 @@ public sealed class AdmissionTicketService(
         try
         {
             AdmissionTicketRecoveryRequestResultDto result =
-                await apiClient.RequestAdmissionTicketRecoveryAsync(
+                await recoveryClient.RequestAdmissionTicketRecoveryAsync(
                     Guid.CreateVersion7().ToString("D"),
                     body: new RequestAdmissionTicketRecoveryCommand { Email = email },
                     cancellationToken: cancellationToken);

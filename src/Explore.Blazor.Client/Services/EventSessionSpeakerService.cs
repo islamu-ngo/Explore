@@ -11,9 +11,9 @@ namespace Explore.Blazor.Client.Services;
 
 public class EventSessionSpeakerService : IEventSessionSpeakerService
 {
-    private readonly IEventApiClient _client;
+    private readonly IEventSessionSpeakerClient _client;
 
-    public EventSessionSpeakerService(IEventApiClient client)
+    public EventSessionSpeakerService(IEventSessionSpeakerClient client)
     {
         _client = client;
     }

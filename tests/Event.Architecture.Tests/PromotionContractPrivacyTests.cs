@@ -140,7 +140,7 @@ public sealed class PromotionContractPrivacyTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs"));
+            "EventApiTagClients.g.cs"));
 
         await Assert.That(ExtractGeneratedType(generated, "QuotaExceededDetails")).DoesNotContain("TenantId");
         await Assert.That(ExtractGeneratedType(generated, "PromotionManagementCommandResponseDto"))
@@ -159,7 +159,7 @@ public sealed class PromotionContractPrivacyTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs"));
+            "EventApiTagClients.g.cs"));
 
         foreach (var method in new[]
                  {

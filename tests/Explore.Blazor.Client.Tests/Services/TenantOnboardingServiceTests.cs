@@ -7,18 +7,24 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class TenantOnboardingServiceTests
 {
-    private readonly IEventApiClient _api;
+    private readonly ITenantOnboardingClient _api;
+    private readonly ISettingsClient _settingsClient;
+    private readonly IAiAssistantClient _aiAssistantClient;
     private readonly ITenantDirectoryOperatorIdentityAdminService _directoryOperatorIdentity;
     private readonly TenantOnboardingService _service;
 
     public TenantOnboardingServiceTests()
     {
-        _api = Substitute.For<IEventApiClient>();
+        _api = Substitute.For<ITenantOnboardingClient>();
+        _settingsClient = Substitute.For<ISettingsClient>();
+        _aiAssistantClient = Substitute.For<IAiAssistantClient>();
         _directoryOperatorIdentity = Substitute.For<ITenantDirectoryOperatorIdentityAdminService>();
         _directoryOperatorIdentity.GetAsync(Arg.Any<CancellationToken>())
             .Returns(CompleteIdentity());
         _service = new TenantOnboardingService(
             _api,
+            _settingsClient,
+            _aiAssistantClient,
             _directoryOperatorIdentity,
             Substitute.For<ILogger<TenantOnboardingService>>());
     }
@@ -122,7 +128,7 @@ public class TenantOnboardingServiceTests
     [Test]
     public async Task GetTenantSettingsAsync_ForwardsExactCategory()
     {
-        _api.GetTenantScopedSettingsAsync(
+        _settingsClient.GetTenantScopedSettingsAsync(
                 "Events",
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
@@ -133,7 +139,7 @@ public class TenantOnboardingServiceTests
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Category).IsEqualTo("Events");
-        await _api.Received(1).GetTenantScopedSettingsAsync(
+        await _settingsClient.Received(1).GetTenantScopedSettingsAsync(
             "Events",
             Arg.Any<string?>(),
             Arg.Any<string?>(),
@@ -143,7 +149,7 @@ public class TenantOnboardingServiceTests
     [Test]
     public async Task UpdateTenantSettingAsync_ForwardsExactKeyAndValue()
     {
-        _api.UpdateTenantSettingAsync(
+        _settingsClient.UpdateTenantSettingAsync(
                 "events.user_submission_enabled",
                 Arg.Is<UpdateSettingValueDto>(body => body != null && body.Value == "true"),
                 Arg.Any<string?>(),
@@ -156,7 +162,7 @@ public class TenantOnboardingServiceTests
             "true");
 
         await Assert.That(result.Success).IsTrue();
-        await _api.Received(1).UpdateTenantSettingAsync(
+        await _settingsClient.Received(1).UpdateTenantSettingAsync(
             "events.user_submission_enabled",
             Arg.Is<UpdateSettingValueDto>(body => body != null && body.Value == "true"),
             Arg.Any<string?>(),
@@ -167,7 +173,7 @@ public class TenantOnboardingServiceTests
     [Test]
     public async Task UpdateTenantSettingAsync_WhenCancelled_ReturnsFailure()
     {
-        _api.UpdateTenantSettingAsync(
+        _settingsClient.UpdateTenantSettingAsync(
                 Arg.Any<string>(),
                 Arg.Any<UpdateSettingValueDto>(),
                 Arg.Any<string?>(),

@@ -59,9 +59,6 @@ public static class HttpClientExtensions
             .AddHttpMessageHandler<BffCookieForwardingHandler>()
             .ConfigureDevCertBypass(environment, allowAutoRedirect: false);
 
-        // Typed NSwag-generated API client
-        services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment, profile)
-            .AddInteractiveResilience();
 
         foreach (var (interfaceType, implementationType) in GeneratedEventApiClients.ClientTypes)
         {

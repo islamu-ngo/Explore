@@ -153,7 +153,7 @@ public sealed class BffAdminClaimsTransformation
         {
             var client = _httpClientFactory.CreateClient(HttpClientName);
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            var apiClient = new EventApiClient(client);
+            var apiClient = new UserClient(client);
             var response = await apiClient.SyncUserAsync(cancellationToken: cancellationToken);
             return response.Success == true && response.Id is { } internalUserId && internalUserId != Guid.Empty
                 ? internalUserId
@@ -194,7 +194,7 @@ public sealed class BffAdminClaimsTransformation
         {
             var client = _httpClientFactory.CreateClient(HttpClientName);
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            var apiClient = new EventApiClient(client);
+            var apiClient = new UserClient(client);
             return await apiClient.GetCurrentUserAdminAuthorityAsync(cancellationToken: cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

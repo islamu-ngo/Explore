@@ -8,12 +8,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 public class LanguageServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly ILanguageClient _apiClient;
     private readonly LanguageService _service;
 
     public LanguageServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<ILanguageClient>();
         _service = new LanguageService(_apiClient);
     }
 

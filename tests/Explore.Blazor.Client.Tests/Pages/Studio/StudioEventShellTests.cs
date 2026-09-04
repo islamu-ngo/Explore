@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Pages.Studio;
 using Explore.Blazor.Client.Services;
@@ -27,6 +28,7 @@ public sealed class StudioEventShellTests : IDisposable
             .Returns((EventTicketCatalogState?)null);
         _ctx.AddMockService<IRegistrationFormAuthoringService>();
         _ctx.AddMockService<IEventDayService>();
+        _ctx.AddMockService<IEventSessionService>();
         _ctx.AddMockService<Explore.Blazor.Client.Contracts.Services.Accessibility.IAccessibilityAnnouncerService>();
         _ctx.AddMockService<Explore.Blazor.Client.Contracts.Services.Accessibility.IAccessibilityFocusService>();
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());

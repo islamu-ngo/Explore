@@ -112,6 +112,8 @@ public partial class EventDetail : ComponentBase, IDisposable
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private TimeProvider Clock { get; set; } = TimeProvider.System;
     [Inject] private IEventService EventService { get; set; } = default!;
+    [Inject] private Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService { get; set; } = default!;
+    [Inject] private Explore.Blazor.Client.Contracts.Services.IEventModerationService EventModerationService { get; set; } = default!;
     [Inject] private IPublicExperienceService PublicExperienceService { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private IMapsService MapsService { get; set; } = default!;
@@ -311,7 +313,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
                 await LoadEventLocationDisclosureAsync();
 
-                _eventSessions = RemovePhysicalLocationData(await EventService.GetSessionsByEventAsync(
+                _eventSessions = RemovePhysicalLocationData(await EventSessionService.GetSessionsByEventAsync(
                     EventId,
                     includeManagedSessions: CanRequestManagedSessions));
                 _primarySession = _eventSessions?.FirstOrDefault();
@@ -1163,7 +1165,7 @@ public partial class EventDetail : ComponentBase, IDisposable
         if (CanRequestManagedSessions)
         {
             _eventSessions = RemovePhysicalLocationData(
-                await EventService.GetSessionsByEventAsync(EventId, includeManagedSessions: true));
+                await EventSessionService.GetSessionsByEventAsync(EventId, includeManagedSessions: true));
         }
 
         var sessions = _eventSessions?
@@ -1217,7 +1219,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         foreach (var session in selectedSessions)
         {
-            var response = await EventService.PublishEventSessionAsync(
+            var response = await EventSessionService.PublishEventSessionAsync(
                 session.SessionId,
                 session.ExpectedConcurrencyStamp);
 
@@ -1278,7 +1280,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         try
         {
-            var response = await EventService.ModerateEventLightAsync(EventId, reasonCode: dialogResult.ReasonCode);
+            var response = await EventModerationService.ModerateEventLightAsync(EventId, reasonCode: dialogResult.ReasonCode);
             if (response?.Success != true)
             {
                 Snackbar.Add(response?.Message ?? "Event could not be moderated.", Severity.Error);
@@ -1323,7 +1325,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         try
         {
-            var response = await EventService.ModerateEventHeavyAsync(EventId, reasonCode: dialogResult.ReasonCode);
+            var response = await EventModerationService.ModerateEventHeavyAsync(EventId, reasonCode: dialogResult.ReasonCode);
             if (response?.Success != true)
             {
                 Snackbar.Add(response?.Message ?? "Event could not be heavy moderated.", Severity.Error);
@@ -1367,7 +1369,7 @@ public partial class EventDetail : ComponentBase, IDisposable
 
         try
         {
-            var response = await EventService.UnmoderateEventAsync(EventId, reasonCode: dialogResult.ReasonCode);
+            var response = await EventModerationService.UnmoderateEventAsync(EventId, reasonCode: dialogResult.ReasonCode);
             if (response?.Success != true)
             {
                 Snackbar.Add(response?.Message ?? "Event could not be unmoderated.", Severity.Error);

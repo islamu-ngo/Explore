@@ -46,7 +46,7 @@ public static class BffFairReturnWaitlistEndpoints
         Guid registrationOrderLineId,
         [FromHeader(Name = CapabilityHeader)]
         string? capability,
-        IEventApiClient api,
+        IFairReturnWaitlistClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -67,7 +67,7 @@ public static class BffFairReturnWaitlistEndpoints
         string idempotencyKey,
         [FromHeader(Name = CapabilityHeader)]
         string? capability,
-        IEventApiClient api,
+        IFairReturnWaitlistClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -89,7 +89,7 @@ public static class BffFairReturnWaitlistEndpoints
         string idempotencyKey,
         [FromHeader(Name = CapabilityHeader)]
         string? capability,
-        IEventApiClient api,
+        IFairReturnWaitlistClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -112,7 +112,7 @@ public static class BffFairReturnWaitlistEndpoints
         string idempotencyKey,
         [FromHeader(Name = CapabilityHeader)]
         string? capability,
-        IEventApiClient api,
+        IFairReturnWaitlistClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(
@@ -136,7 +136,7 @@ public static class BffFairReturnWaitlistEndpoints
         string idempotencyKey,
         [FromHeader(Name = CapabilityHeader)]
         string? capability,
-        IEventApiClient api,
+        IFairReturnWaitlistClient api,
         HttpContext context,
         CancellationToken cancellationToken) =>
         ForwardAsync(

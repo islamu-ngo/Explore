@@ -11,7 +11,7 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly ISettingsClient _apiClient;
     private readonly AuthenticationStateProvider _authenticationStateProvider;
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<UserSettingsService> _logger;
@@ -21,7 +21,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
     public UserSettingsService(
-        IEventApiClient apiClient,
+        ISettingsClient apiClient,
         AuthenticationStateProvider authenticationStateProvider,
         IJSRuntime jsRuntime,
         ILogger<UserSettingsService> logger)

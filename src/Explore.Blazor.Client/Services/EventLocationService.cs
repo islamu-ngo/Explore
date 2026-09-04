@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace Explore.Blazor.Client.Services;
 
 public sealed class EventLocationService(
-    IEventApiClient client,
+    IEventLocationClient client,
     ILogger<EventLocationService> logger) : IEventLocationService
 {
     public async Task<IReadOnlyList<EventLocationPublicDto>> GetPublicAsync(

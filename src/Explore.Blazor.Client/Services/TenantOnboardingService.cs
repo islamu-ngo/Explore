@@ -28,16 +28,22 @@ public class TenantOnboardingService : ITenantOnboardingService
     public const string DirectoryOperatorIdentityUnavailableCode =
         "tenant_directory_operator_identity_unavailable";
 
-    private readonly IEventApiClient _api;
+    private readonly ITenantOnboardingClient _api;
+    private readonly ISettingsClient _settingsClient;
+    private readonly IAiAssistantClient _aiAssistantClient;
     private readonly ITenantDirectoryOperatorIdentityAdminService _directoryOperatorIdentity;
     private readonly ILogger<TenantOnboardingService> _logger;
 
     public TenantOnboardingService(
-        IEventApiClient api,
+        ITenantOnboardingClient api,
+        ISettingsClient settingsClient,
+        IAiAssistantClient aiAssistantClient,
         ITenantDirectoryOperatorIdentityAdminService directoryOperatorIdentity,
         ILogger<TenantOnboardingService> logger)
     {
         _api = api;
+        _settingsClient = settingsClient;
+        _aiAssistantClient = aiAssistantClient;
         _directoryOperatorIdentity = directoryOperatorIdentity;
         _logger = logger;
     }
@@ -95,7 +101,7 @@ public class TenantOnboardingService : ITenantOnboardingService
     {
         try
         {
-            return await _api.GetTenantScopedSettingsAsync(
+            return await _settingsClient.GetTenantScopedSettingsAsync(
                 category,
                 cancellationToken: cancellationToken);
         }
@@ -116,7 +122,7 @@ public class TenantOnboardingService : ITenantOnboardingService
         string value,
         CancellationToken cancellationToken = default) =>
         SendCommandAsync(
-            () => _api.UpdateTenantSettingAsync(
+            () => _settingsClient.UpdateTenantSettingAsync(
                 key,
                 new UpdateSettingValueDto { Value = value },
                 cancellationToken: cancellationToken),
@@ -161,7 +167,7 @@ public class TenantOnboardingService : ITenantOnboardingService
     {
         try
         {
-            var response = await _api.GetAiAssistantModelsAsync(new AiAssistantModelDiscoveryRequestDto
+            var response = await _aiAssistantClient.GetAiAssistantModelsAsync(new AiAssistantModelDiscoveryRequestDto
             {
                 EndpointUrl = endpointUrl,
                 ApiKey = apiKey

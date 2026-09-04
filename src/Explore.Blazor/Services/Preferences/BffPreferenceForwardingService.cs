@@ -34,7 +34,7 @@ public interface IBffPreferenceForwardingService
     Task SetThemeModeAsync(string mode, CancellationToken cancellationToken);
 }
 
-public sealed class BffPreferenceForwardingService(Api.IEventApiClient apiClient) : IBffPreferenceForwardingService
+public sealed class BffPreferenceForwardingService(Api.IUserAppearanceClient apiClient) : IBffPreferenceForwardingService
 {
     public Task<Api.ResolvedAppearanceDto> GetAppearanceAsync(CancellationToken cancellationToken) =>
         apiClient.GetCurrentUserAppearancePreferencesAsync(cancellationToken: cancellationToken);

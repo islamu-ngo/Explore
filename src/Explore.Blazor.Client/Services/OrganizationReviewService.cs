@@ -19,10 +19,10 @@ public interface IOrganizationReviewService
 /// </summary>
 public class OrganizationReviewService : IOrganizationReviewService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IOrganizationReviewClient _apiClient;
     private readonly ILogger<OrganizationReviewService> _logger;
 
-    public OrganizationReviewService(IEventApiClient apiClient, ILogger<OrganizationReviewService> logger)
+    public OrganizationReviewService(IOrganizationReviewClient apiClient, ILogger<OrganizationReviewService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

@@ -5,7 +5,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class TenantReportingIntakePolicyServiceTests
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly ITenantReportingIntakeSettingsClient _apiClient = Substitute.For<ITenantReportingIntakeSettingsClient>();
 
     [Test]
     public async Task GetAsync_UsesTenantPolicyOperationWithExplicitApiVersion()

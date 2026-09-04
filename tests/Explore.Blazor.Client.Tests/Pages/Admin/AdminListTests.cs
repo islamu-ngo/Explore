@@ -11,14 +11,14 @@ namespace Explore.Blazor.Client.Tests.Pages.Admin;
 public class AdminListTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
-    private readonly IAdminService _adminService;
+    private readonly IOrganizationService _organizationService;
 
     public AdminListTests()
     {
         _ctx = new BlazorTestContext();
-        _adminService = Substitute.For<IAdminService>();
+        _organizationService = Substitute.For<IOrganizationService>();
 
-        _ctx.Services.AddSingleton(_adminService);
+        _ctx.Services.AddSingleton(_organizationService);
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Admin User", "admin@example.com");
@@ -37,7 +37,7 @@ public class AdminListTests : IDisposable
     {
         // Arrange
         var pending = new TaskCompletionSource<ICollection<OrganizationListDto>>();
-        _adminService.GetOrganizationRequestsAsync().Returns(pending.Task);
+        _organizationService.GetOrganizationRequestsAsync().Returns(pending.Task);
 
         // Act
         var cut = RenderOrganizationsSection();
@@ -53,7 +53,7 @@ public class AdminListTests : IDisposable
     public async Task AdminList_ShowsErrorAlert_WhenRequestLoadFails()
     {
         // Arrange
-        _adminService.GetOrganizationRequestsAsync().ThrowsAsync(new InvalidOperationException("boom"));
+        _organizationService.GetOrganizationRequestsAsync().ThrowsAsync(new InvalidOperationException("boom"));
 
         // Act
         var cut = RenderOrganizationsSection();
@@ -67,7 +67,7 @@ public class AdminListTests : IDisposable
     public async Task AdminList_ShowsSummaryAndTabs_WhenRequestsLoaded()
     {
         // Arrange
-        _adminService.GetOrganizationRequestsAsync().Returns(
+        _organizationService.GetOrganizationRequestsAsync().Returns(
         [
             new OrganizationListDto
             {

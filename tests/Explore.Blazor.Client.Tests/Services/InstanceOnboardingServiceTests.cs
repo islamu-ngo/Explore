@@ -32,9 +32,20 @@ public class InstanceOnboardingServiceTests
         {
             BaseAddress = new Uri("https://test.local")
         };
-        var api = new EventApiClient(client);
         _bffAuthApi = RestService.For<IBffAuthApi>(authClient);
-        _service = new InstanceOnboardingService(api, _bffAuthApi, _logger, _navigation);
+        _service = new InstanceOnboardingService(
+            new InstanceAuthenticationSettingsClient(client),
+            new InstanceAuthorizationSettingsClient(client),
+            new InstanceGovernanceSettingsClient(client),
+            new InstanceMessagingSettingsClient(client),
+            new InstanceOnboardingClient(client),
+            new InstancePresentationSettingsClient(client),
+            new InstanceStorageSettingsClient(client),
+            new SystemClient(client),
+            new TenantClient(client),
+            _bffAuthApi,
+            _logger,
+            _navigation);
     }
 
     private sealed class TestNavigationManager : NavigationManager

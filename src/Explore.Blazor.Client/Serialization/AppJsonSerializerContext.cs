@@ -15,7 +15,7 @@ namespace Explore.Blazor.Client.Serialization;
 
 /// <summary>
 /// System.Text.Json source generator context for AOT-friendly JSON serialization.
-/// Includes all DTOs used by the NSwag-generated EventApiClient and Blazor UI models.
+/// Includes all DTOs used by the NSwag-generated EventApiTagClients and Blazor UI models.
 /// </summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

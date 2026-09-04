@@ -1,5 +1,5 @@
 // ABOUTME: Contract for EventRegistrationPolicy lookup operations (read-only).
-// ABOUTME: Wraps the NSwag-generated IEventApiClient methods for EventRegistrationPolicy lookup.
+// ABOUTME: Wraps the NSwag-generated event-registration-policy lookup client.
 
 using Explore.Blazor.Client.Clients;
 

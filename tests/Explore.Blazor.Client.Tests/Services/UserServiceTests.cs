@@ -15,13 +15,13 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </remarks>
 public class UserServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IUserClient _apiClient;
     private readonly Microsoft.Extensions.Logging.ILogger<UserService> _logger;
     private readonly UserService _service;
 
     public UserServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IUserClient>();
         _logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<UserService>>();
         _service = new UserService(_apiClient, _logger);
     }

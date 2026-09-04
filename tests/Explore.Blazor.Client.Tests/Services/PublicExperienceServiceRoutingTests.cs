@@ -6,7 +6,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 public class PublicExperienceServiceRoutingTests
 {
     private readonly PublicExperienceService _service = new(
-        Substitute.For<IEventApiClient>(),
+        Substitute.For<IPublicExperienceClient>(),
         Substitute.For<ILogger<PublicExperienceService>>());
 
     [Test]

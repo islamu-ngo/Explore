@@ -5,13 +5,13 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class EventDayServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventDayClient _apiClient;
     private readonly ILogger<EventDayService> _logger;
     private readonly EventDayService _service;
 
     public EventDayServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IEventDayClient>();
         _logger = Substitute.For<ILogger<EventDayService>>();
         _service = new EventDayService(_apiClient, _logger);
     }

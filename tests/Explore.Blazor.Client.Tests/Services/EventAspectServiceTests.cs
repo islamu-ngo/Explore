@@ -5,13 +5,13 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class EventAspectServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventClient _apiClient;
     private readonly ILogger<EventAspectService> _logger;
     private readonly EventAspectService _service;
 
     public EventAspectServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IEventClient>();
         _logger = Substitute.For<ILogger<EventAspectService>>();
         _service = (EventAspectService)Activator.CreateInstance(typeof(EventAspectService), _apiClient, _logger)!;
     }

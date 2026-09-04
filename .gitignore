@@ -89,6 +89,8 @@ AGENTS.local.md
 !/.ci/release/provider-definition.schema.json
 !/docs/releases/
 !/docs/releases/**
+!/docs/internal/releases/
+!/docs/internal/releases/**
 !/eng/release/
 !/eng/release/**
 x64/

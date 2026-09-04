@@ -11,7 +11,7 @@ public sealed class UiShellContextService : IUiShellContextService, IDisposable
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
-    private readonly IEventApiClient _apiClient;
+    private readonly IUiShellClient _apiClient;
     private readonly AuthenticationStateProvider _authStateProvider;
     private readonly CurrentUserState _currentUserState;
     private readonly ILogger<UiShellContextService> _logger;
@@ -20,7 +20,7 @@ public sealed class UiShellContextService : IUiShellContextService, IDisposable
     private bool _disposed;
 
     public UiShellContextService(
-        IEventApiClient apiClient,
+        IUiShellClient apiClient,
         AuthenticationStateProvider authStateProvider,
         CurrentUserState currentUserState,
         ILogger<UiShellContextService> logger)

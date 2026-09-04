@@ -10,13 +10,17 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class WebhookManagementServiceTests
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly IWebhooksClient _webhooksClient = Substitute.For<IWebhooksClient>();
+    private readonly IWebhookEndpointsClient _endpointsClient = Substitute.For<IWebhookEndpointsClient>();
+    private readonly IWebhookMessagesClient _messagesClient = Substitute.For<IWebhookMessagesClient>();
     private readonly WebhookManagementService _service;
 
     public WebhookManagementServiceTests()
     {
         _service = new WebhookManagementService(
-            _apiClient,
+            _webhooksClient,
+            _endpointsClient,
+            _messagesClient,
             Substitute.For<ILogger<WebhookManagementService>>());
         ConfigureEmptySnapshot();
     }
@@ -37,19 +41,21 @@ public sealed class WebhookManagementServiceTests
 
         foreach (var owner in owners)
         {
-            _apiClient.ClearReceivedCalls();
+            _webhooksClient.ClearReceivedCalls();
+            _endpointsClient.ClearReceivedCalls();
+            _messagesClient.ClearReceivedCalls();
 
             var snapshot = await _service.GetSnapshotAsync(owner);
 
             await Assert.That(snapshot.IsSuccess).IsTrue();
-            await _apiClient.Received(1).GetWebhookConsumersAsync(
+            await _webhooksClient.Received(1).GetWebhookConsumersAsync(
                 owner.OwnerKindId,
                 owner.OwnerId,
                 200,
                 null,
                 null,
                 Arg.Any<CancellationToken>());
-            await _apiClient.Received(1).GetWebhookEndpointsAsync(
+            await _endpointsClient.Received(1).GetWebhookEndpointsAsync(
                 owner.OwnerKindId,
                 owner.OwnerId,
                 null,
@@ -57,14 +63,14 @@ public sealed class WebhookManagementServiceTests
                 null,
                 null,
                 Arg.Any<CancellationToken>());
-            await _apiClient.Received(1).GetWebhookMessagesAsync(
+            await _messagesClient.Received(1).GetWebhookMessagesAsync(
                 owner.OwnerKindId,
                 owner.OwnerId,
                 100,
                 null,
                 null,
                 Arg.Any<CancellationToken>());
-            await _apiClient.Received(1).GetWebhookDeliveryAttemptsAsync(
+            await _messagesClient.Received(1).GetWebhookDeliveryAttemptsAsync(
                 owner.OwnerKindId,
                 owner.OwnerId,
                 null,
@@ -91,7 +97,7 @@ public sealed class WebhookManagementServiceTests
             limit: 37);
 
         await Assert.That(attempts.Count).IsEqualTo(0);
-        await _apiClient.Received(1).GetWebhookDeliveryAttemptsAsync(
+        await _messagesClient.Received(1).GetWebhookDeliveryAttemptsAsync(
             (int)WebhookOwnerKind.Organization,
             organizationId,
             messageId,
@@ -111,7 +117,7 @@ public sealed class WebhookManagementServiceTests
             (WebhookClientLinkRelations.ProviderPublications, "/api/webhooks/provider-publications", "GET"),
             (WebhookClientLinkRelations.BulkReplayPreview, "/api/webhooks/bulk-replays/preview", "GET"),
             (WebhookClientLinkRelations.BulkReplays, "/api/webhooks/bulk-replays", "GET"));
-        _apiClient.GetWebhookMessagesAsync(
+        _messagesClient.GetWebhookMessagesAsync(
                 Arg.Any<int?>(),
                 Arg.Any<Guid?>(),
                 Arg.Any<int?>(),
@@ -128,12 +134,12 @@ public sealed class WebhookManagementServiceTests
 
     private void ConfigureEmptySnapshot()
     {
-        _apiClient.GetWebhookEventTypesAsync(
+        _webhooksClient.GetWebhookEventTypesAsync(
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<ICollection<WebhookEventTypeDto>>([]));
-        _apiClient.GetWebhookConsumersAsync(
+        _webhooksClient.GetWebhookConsumersAsync(
                 Arg.Any<int?>(),
                 Arg.Any<Guid?>(),
                 Arg.Any<int?>(),
@@ -141,7 +147,7 @@ public sealed class WebhookManagementServiceTests
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new HalCollectionResourceOfWebhookConsumerDto()));
-        _apiClient.GetWebhookEndpointsAsync(
+        _endpointsClient.GetWebhookEndpointsAsync(
                 Arg.Any<int?>(),
                 Arg.Any<Guid?>(),
                 Arg.Any<Guid?>(),
@@ -150,7 +156,7 @@ public sealed class WebhookManagementServiceTests
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new HalCollectionResourceOfWebhookEndpointDto()));
-        _apiClient.GetWebhookMessagesAsync(
+        _messagesClient.GetWebhookMessagesAsync(
                 Arg.Any<int?>(),
                 Arg.Any<Guid?>(),
                 Arg.Any<int?>(),
@@ -158,7 +164,7 @@ public sealed class WebhookManagementServiceTests
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new HalCollectionResourceOfWebhookMessageDto()));
-        _apiClient.GetWebhookDeliveryAttemptsAsync(
+        _messagesClient.GetWebhookDeliveryAttemptsAsync(
                 Arg.Any<int?>(),
                 Arg.Any<Guid?>(),
                 Arg.Any<Guid?>(),

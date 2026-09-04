@@ -10,7 +10,7 @@ public sealed class FeatureFlagClientServiceTests
     [Test]
     public async Task LoadFlagsAsync_WithSuccessfulResponse_HydratesFeatureState()
     {
-        var api = Substitute.For<IEventApiClient>();
+        var api = Substitute.For<IFeaturesClient>();
         api.GetMyFeatureFlagsAsync(
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
@@ -36,7 +36,7 @@ public sealed class FeatureFlagClientServiceTests
     [Test]
     public async Task LoadFlagsAsync_WithUnauthorizedResponse_LeavesExistingFlagsUnchanged()
     {
-        var api = Substitute.For<IEventApiClient>();
+        var api = Substitute.For<IFeaturesClient>();
         api.GetMyFeatureFlagsAsync(
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
@@ -60,7 +60,7 @@ public sealed class FeatureFlagClientServiceTests
     [Test]
     public async Task LoadFlagsAsync_WithTransportFailure_DoesNotThrowOrClearFlags()
     {
-        var api = Substitute.For<IEventApiClient>();
+        var api = Substitute.For<IFeaturesClient>();
         api.GetMyFeatureFlagsAsync(
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
@@ -77,7 +77,7 @@ public sealed class FeatureFlagClientServiceTests
     }
 
     private static FeatureFlagClientService CreateService(
-        IEventApiClient api,
+        IFeaturesClient api,
         FeatureStateContainer featureState) =>
         new(api, featureState, NullLogger<FeatureFlagClientService>.Instance);
 }

@@ -10,12 +10,16 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class WebhookOperationsServiceTests
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly IWebhookBulkReplaysClient _bulkReplaysClient = Substitute.For<IWebhookBulkReplaysClient>();
+    private readonly IWebhookMessagesClient _messagesClient = Substitute.For<IWebhookMessagesClient>();
     private readonly WebhookOperationsService _service;
 
     public WebhookOperationsServiceTests() =>
         _service = new WebhookOperationsService(
-            _apiClient,
+            _bulkReplaysClient,
+            Substitute.For<IWebhookEndpointOperationsClient>(),
+            _messagesClient,
+            Substitute.For<IWebhookProviderPublicationsClient>(),
             Substitute.For<ILogger<WebhookOperationsService>>());
 
     [Test]
@@ -47,7 +51,7 @@ public sealed class WebhookOperationsServiceTests
             collection,
             ("bulk-replay-preview", "/api/webhooks/bulk-replays/preview", "GET"),
             ("bulk-replays", "/api/webhooks/bulk-replays", "POST"));
-        _apiClient.GetWebhookBulkReplaysAsync(100, null, null, Arg.Any<CancellationToken>())
+        _bulkReplaysClient.GetWebhookBulkReplaysAsync(100, null, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(collection));
 
         var snapshot = await _service.GetBulkReplaysAsync();
@@ -74,7 +78,7 @@ public sealed class WebhookOperationsServiceTests
             PayloadRetentionUntil = TestTime.UtcNow.AddDays(1),
             RetrievedAt = TestTime.UtcNow
         };
-        _apiClient.GetWebhookMessagePayloadAsync(messageId, null, null, Arg.Any<CancellationToken>())
+        _messagesClient.GetWebhookMessagePayloadAsync(messageId, null, null, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(payload));
 
         var result = await _service.GetMessagePayloadAsync(messageId);

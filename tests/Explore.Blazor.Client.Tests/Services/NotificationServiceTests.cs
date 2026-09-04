@@ -16,15 +16,19 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </summary>
 public class NotificationServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly INotificationClient _apiClient;
     private readonly ILogger<NotificationService> _logger;
     private readonly NotificationService _service;
 
     public NotificationServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<INotificationClient>();
         _logger = Substitute.For<ILogger<NotificationService>>();
-        _service = new NotificationService(_apiClient, _logger);
+        _service = new NotificationService(
+            _apiClient,
+            Substitute.For<IGroupClient>(),
+            Substitute.For<IOrganizationClient>(),
+            _logger);
     }
 
     // ========== GetNotificationsAsync ==========

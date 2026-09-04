@@ -34,7 +34,7 @@ public sealed class StorageUploadOpenApiContractTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs"));
+            "EventApiTagClients.g.cs"));
 
         string[] generatedStorageMetadataTypes =
         [
@@ -129,7 +129,7 @@ public sealed class StorageUploadOpenApiContractTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs"));
+            "EventApiTagClients.g.cs"));
         string[] obsoleteGeneratedSymbols =
         [
             "CreateStorageObjectAsync",

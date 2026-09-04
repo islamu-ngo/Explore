@@ -7,9 +7,9 @@ namespace Explore.Blazor.Client.Services.Lookup;
 
 public class EventTypeService : IEventTypeService
 {
-    private readonly IEventApiClient _client;
+    private readonly IEventTypeClient _client;
 
-    public EventTypeService(IEventApiClient client)
+    public EventTypeService(IEventTypeClient client)
     {
         _client = client;
     }

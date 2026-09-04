@@ -60,7 +60,7 @@ public static class ServiceCollectionExtensions
         Action<IServiceProvider, HttpClient>? configureBffRefitClient = null,
         Action<IHttpClientBuilder>? configureBffRefitClientBuilder = null)
     {
-        // Domain services (NSwag IEventApiClient consumers)
+        // Domain services backed by specific NSwag per-tag clients
         services.AddScoped<IApiClientExecutor, ApiClientExecutor>();
         services.AddScoped<AdmissionScannerCapabilityState>();
         services.AddScoped<IAdmissionScannerCapabilityState>(provider =>
@@ -88,7 +88,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITenantReportingIntakePolicyService, TenantReportingIntakePolicyService>();
         services.AddScoped<ITenantShellSettingsService, TenantShellSettingsService>();
         services.AddScoped<IEventService, EventService>();
+        services.AddScoped<IEventSessionService, EventSessionService>();
+        services.AddScoped<IEventOrganizerClaimService, EventOrganizerClaimService>();
+        services.AddScoped<IEventModerationService, EventModerationService>();
         services.AddScoped<IRegistrationOrderService, RegistrationOrderService>();
+        services.AddScoped<IRegistrationPaymentService, RegistrationPaymentService>();
         services.AddScoped<IRegistrationProviderIntegrationService, RegistrationProviderIntegrationService>();
         services.AddScoped<Explore.Blazor.Client.Components.Registration.ProviderLaunch.RegistrationProviderLaunchState>();
         services.AddScoped<INativeRegistrationFormService, NativeRegistrationFormService>();
@@ -101,7 +105,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
-        services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ICustomPropertyAdminService, CustomPropertyAdminService>();
         services.AddScoped<ICustomPropertyDefinitionService, CustomPropertyDefinitionService>();
         services.AddScoped<ICustomPropertyValueService, CustomPropertyValueService>();
@@ -142,6 +145,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IScheduleItemKindService, ScheduleItemKindService>();
         services.AddScoped<IRegistrationScopeService, RegistrationScopeService>();
         services.AddScoped<IEventRegistrationPolicyService, EventRegistrationPolicyService>();
+        services.AddScoped<Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService, Explore.Blazor.Client.Services.Lookup.EventLookupService>();
+        services.AddScoped<Explore.Blazor.Client.Contracts.Services.Lookup.IDemographicLookupService, Explore.Blazor.Client.Services.Lookup.DemographicLookupService>();
+        services.AddScoped<Explore.Blazor.Client.Contracts.Services.Lookup.ICultureLookupService, Explore.Blazor.Client.Services.Lookup.CultureLookupService>();
+        services.AddScoped<Explore.Blazor.Client.Contracts.Services.Lookup.IOrganizationLookupService, Explore.Blazor.Client.Services.Lookup.OrganizationLookupService>();
+        services.AddScoped<Explore.Blazor.Client.Contracts.Services.Lookup.ISystemLookupService, Explore.Blazor.Client.Services.Lookup.SystemLookupService>();
         services.AddScoped<ILookupCacheService, LookupCacheService>();
 
         // Event-specific services

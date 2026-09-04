@@ -1,4 +1,4 @@
-// ABOUTME: Interface for EventAspect service wrapping IEventApiClient for Islamic and Tech aspects.
+// ABOUTME: Interface for EventAspect service wrapping the event tag client.
 // Provides application-layer abstraction over generated API client methods.
 
 using Explore.Blazor.Client.Clients;
@@ -7,7 +7,7 @@ namespace Explore.Blazor.Client.Contracts.Services.Events;
 
 /// <summary>
 /// Service interface for managing Event Aspects (Islamic and Tech characteristics).
-/// Wraps IEventApiClient methods with application-specific error handling.
+/// Wraps generated event-client methods with application-specific error handling.
 /// </summary>
 public interface IEventAspectService
 {

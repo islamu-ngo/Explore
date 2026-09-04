@@ -71,7 +71,7 @@
 </div>
 
 @code {
-    [Inject] private IAdminService AdminService { get; set; } = null!;
+    [Inject] private IOrganizationService OrganizationService { get; set; } = null!;
     [Inject] private IDialogService DialogService { get; set; } = null!;
     [Inject] private NavigationManager NavigationManager { get; set; } = null!;
 
@@ -103,7 +103,7 @@
 
         try
         {
-            _organizationRequests = await AdminService.GetOrganizationRequestsAsync();
+            _organizationRequests = await OrganizationService.GetOrganizationRequestsAsync();
         }
         catch (Exception ex)
         {
@@ -143,7 +143,7 @@
 
         if (ok == true)
         {
-            var success = await AdminService.ApproveOrganizationAsync(req.Id.Value);
+            var success = await OrganizationService.ApproveOrganizationAsync(req.Id.Value);
             if (success)
             {
                 await LoadOrganizationRequestsAsync();
@@ -170,7 +170,7 @@
 
         if (ok == true)
         {
-            var success = await AdminService.RejectOrganizationAsync(req.Id.Value);
+            var success = await OrganizationService.RejectOrganizationAsync(req.Id.Value);
             if (success)
             {
                 await LoadOrganizationRequestsAsync();
@@ -189,7 +189,7 @@
             return;
         }
 
-        var success = await AdminService.RevertToPendingAsync(req.Id.Value);
+        var success = await OrganizationService.RevertToPendingAsync(req.Id.Value);
         if (success)
         {
             await LoadOrganizationRequestsAsync();

@@ -39,7 +39,7 @@ public sealed class ApiServiceDiscoveryTests
 
         using var provider = services.BuildServiceProvider();
         var client = provider.GetRequiredService<IHttpClientFactory>()
-            .CreateClient(nameof(IEventApiClient));
+            .CreateClient(nameof(IInstanceMessagingSettingsClient));
 
         await Assert.That(client.BaseAddress).IsEqualTo(new Uri("https://localhost:7211/"));
     }

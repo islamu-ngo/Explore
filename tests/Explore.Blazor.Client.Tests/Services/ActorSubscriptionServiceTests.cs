@@ -7,12 +7,12 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class ActorSubscriptionServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IActorSubscriptionClient _apiClient;
     private readonly ActorSubscriptionService _service;
 
     public ActorSubscriptionServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IActorSubscriptionClient>();
         var logger = Substitute.For<ILogger<ActorSubscriptionService>>();
         _service = new ActorSubscriptionService(_apiClient, logger);
     }

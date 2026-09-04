@@ -7,7 +7,7 @@ using Explore.Blazor.Client.Contracts.Services;
 namespace Explore.Blazor.Client.Services;
 
 public sealed class TicketingDeploymentCapabilityService(
-    IEventApiClient apiClient) :
+    ITicketingDeploymentCapabilitiesClient apiClient) :
     ITicketingDeploymentCapabilityService
 {
     public Task<TicketingDeploymentCapabilityMatrixDto> GetAsync(

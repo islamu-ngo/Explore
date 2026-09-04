@@ -1,4 +1,4 @@
-// ABOUTME: Service for managing Event Aspects (Islamic and Tech) using the generated IEventApiClient.
+// ABOUTME: Service for managing Event Aspects (Islamic and Tech) using the generated event client.
 // Wraps NSwag-generated client methods with application-specific error handling.
 
 using Explore.Blazor.Client.Clients;
@@ -10,14 +10,14 @@ namespace Explore.Blazor.Client.Services;
 
 /// <summary>
 /// Service implementation for managing Event Aspects (Islamic and Tech characteristics).
-/// Uses the NSwag-generated IEventApiClient for type-safe API communication.
+/// Uses the NSwag-generated event client for type-safe API communication.
 /// </summary>
 public class EventAspectService : IEventAspectService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventClient _apiClient;
     private readonly ILogger<EventAspectService> _logger;
 
-    public EventAspectService(IEventApiClient apiClient, ILogger<EventAspectService> logger)
+    public EventAspectService(IEventClient apiClient, ILogger<EventAspectService> logger)
     {
         _apiClient = apiClient;
         _logger = logger;

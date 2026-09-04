@@ -16,26 +16,28 @@ public sealed class CreateSessionTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IEventService _eventService;
+    private readonly Explore.Blazor.Client.Contracts.Services.IEventSessionService _eventSessionService;
     private readonly IEventSessionLanguageService _eventSessionLanguageService;
-    private readonly IAdminService _adminService;
+    private readonly Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService _eventLookupService;
     private readonly ILocationService _locationService;
     private readonly ILocationRoomService _locationRoomService;
     public CreateSessionTests()
     {
         _ctx = new BlazorTestContext();
         _eventService = Substitute.For<IEventService>();
+        _eventSessionService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         _eventSessionLanguageService = Substitute.For<IEventSessionLanguageService>();
-        _adminService = Substitute.For<IAdminService>();
+        _eventLookupService = Substitute.For<Explore.Blazor.Client.Contracts.Services.Lookup.IEventLookupService>();
         _locationService = Substitute.For<ILocationService>();
         _locationRoomService = Substitute.For<ILocationRoomService>();
         _ctx.Services.AddSingleton(_eventService);
+        _ctx.Services.AddSingleton(_eventSessionService);
         _ctx.Services.AddSingleton(_eventSessionLanguageService);
-        _ctx.Services.AddSingleton(_adminService);
+        _ctx.Services.AddSingleton(_eventLookupService);
         _ctx.Services.AddSingleton(_locationService);
         _ctx.Services.AddSingleton(_locationRoomService);
-        _adminService.GetRegistrationModesAsync().Returns(CreateRegistrationModes());
-        _adminService.GetEventSessionKindsAsync().Returns(CreateSessionKinds());
-        _adminService.GetLanguagesAsync().Returns(CreateLanguages());
+        _eventLookupService.GetRegistrationModesAsync().Returns(CreateRegistrationModes());
+        _eventLookupService.GetEventSessionKindsAsync().Returns(CreateSessionKinds());
         _eventSessionLanguageService.SyncLanguagesForSessionAsync(
                 Arg.Any<Guid>(),
                 Arg.Any<Guid>(),
@@ -44,10 +46,10 @@ public sealed class CreateSessionTests : IDisposable
             .Returns(true);
         _locationService.GetAllLocationsAsync().Returns(new List<LocationListDto>());
         _locationRoomService.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());
-        _eventService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<HalResourceOfEventSessionGroupListDto>());
-        _eventService.GetEventSessionCreateContextAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _eventSessionService.GetSessionGroupsByEventAsync(Arg.Any<Guid>()).Returns(new List<HalResourceOfEventSessionGroupListDto>());
+        _eventSessionService.GetEventSessionCreateContextAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => CreateSessionContext(call.ArgAt<Guid>(0), Guid.NewGuid()));
-        _eventService.AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>())
+        _eventSessionService.AssignSessionToGroupAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<int>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
     }
 
@@ -60,14 +62,14 @@ public sealed class CreateSessionTests : IDisposable
         navigation.NavigateTo($"/events/{eventId}/sessions/create");
 
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
-        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>())
+        _eventSessionService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>())
             .Returns(CreateSessionContext(eventId, tenantId));
 
         var cut = _ctx.Render<CreateSession>();
         cut.WaitForState(() => !cut.Markup.Contains("Loading event draft", StringComparison.Ordinal));
 
         await _eventService.Received(1).GetEventByIdAsync(eventId);
-        await _eventService.Received(1).GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>());
+        await _eventSessionService.Received(1).GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>());
         await Assert.That(cut.Markup).DoesNotContain("The event draft could not be loaded.");
     }
 
@@ -98,7 +100,7 @@ public sealed class CreateSessionTests : IDisposable
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
-        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+        _eventSessionService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
             eventId,
             tenantId,
             notices: ["Add at least one program section before assigning this item."]));
@@ -118,7 +120,7 @@ public sealed class CreateSessionTests : IDisposable
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
-        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+        _eventSessionService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
             eventId,
             tenantId,
             locations:
@@ -130,7 +132,7 @@ public sealed class CreateSessionTests : IDisposable
                 new EventSessionCreateRoomOptionDto { Id = roomId, LocationId = locationId, Name = "Auditorium", Capacity = 120 }
             ]));
 
-        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventSessionService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
@@ -150,7 +152,7 @@ public sealed class CreateSessionTests : IDisposable
 
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Is<ComposerCreateEventSessionRequest>(dto =>
+        await _eventSessionService.Received(1).CreateSessionAsync(Arg.Is<ComposerCreateEventSessionRequest>(dto =>
             dto.EventId == eventId
             && dto.Title == "Opening talk"
             && dto.Description == "A focused opening session."
@@ -173,16 +175,16 @@ public sealed class CreateSessionTests : IDisposable
         var sessionId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
-        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+        _eventSessionService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
             eventId,
             tenantId,
             groups: [new EventSessionCreateGroupOptionDto { Id = groupId, Name = "Main track", SortOrder = 1 }]));
-        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventSessionService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
         });
-        _eventService.AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0).Returns(new BaseCommandResponseOfGuid
+        _eventSessionService.AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = Guid.NewGuid()
@@ -195,7 +197,7 @@ public sealed class CreateSessionTests : IDisposable
 
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
-        await _eventService.Received(1).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
+        await _eventSessionService.Received(1).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -207,16 +209,16 @@ public sealed class CreateSessionTests : IDisposable
         var sessionId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
-        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+        _eventSessionService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
             eventId,
             tenantId,
             groups: [new EventSessionCreateGroupOptionDto { Id = groupId, Name = "Main track", SortOrder = 1 }]));
-        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventSessionService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = sessionId
         });
-        _eventService.AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0)
+        _eventSessionService.AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0)
             .Returns(
                 new BaseCommandResponseOfGuid { Success = false, Message = "Group assignment failed." },
                 new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
@@ -229,8 +231,8 @@ public sealed class CreateSessionTests : IDisposable
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
-        await _eventService.Received(2).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
+        await _eventSessionService.Received(1).CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
+        await _eventSessionService.Received(2).AssignSessionToGroupAsync(eventId, groupId, sessionId, true, 0);
         await Assert.That(_ctx.Services.GetRequiredService<NavigationManager>().Uri.EndsWith($"/events/{eventId}/edit?programUpdated=1", StringComparison.Ordinal)).IsTrue();
     }
 
@@ -248,7 +250,7 @@ public sealed class CreateSessionTests : IDisposable
 
         await cut.InvokeAsync(async () => await InvokePrivateAsync(cut.Instance, "SaveSessionAsync"));
 
-        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
+        await _eventSessionService.DidNotReceive().CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
         var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("End time must be after start time.");
     }
@@ -258,7 +260,7 @@ public sealed class CreateSessionTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
-        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventSessionService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = false,
             Message = "Program item could not be saved."
@@ -279,7 +281,7 @@ public sealed class CreateSessionTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
-        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>())
+        _eventSessionService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>())
             .ThrowsAsync(new ApiException<ClientValidationProblemDetails>(
                 "Bad Request",
                 400,
@@ -310,7 +312,7 @@ public sealed class CreateSessionTests : IDisposable
         const string rawProviderMessage = "provider rejected <script>alert(1)</script> secret";
         var eventId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
-        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>())
+        _eventSessionService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>())
             .ThrowsAsync(new InvalidOperationException(rawProviderMessage));
 
         var cut = _ctx.Render<CreateSession>(parameters => parameters.Add(component => component.EventId, eventId));
@@ -331,7 +333,7 @@ public sealed class CreateSessionTests : IDisposable
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
-        _eventService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
+        _eventSessionService.CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>()).Returns(new BaseCommandResponseOfGuid
         {
             Success = true,
             Id = Guid.NewGuid()
@@ -344,7 +346,7 @@ public sealed class CreateSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.Received(1).CreateSessionAsync(Arg.Is<ComposerCreateEventSessionRequest>(dto => dto.MaxAudienceAttendees == null));
+        await _eventSessionService.Received(1).CreateSessionAsync(Arg.Is<ComposerCreateEventSessionRequest>(dto => dto.MaxAudienceAttendees == null));
     }
 
     [Test]
@@ -359,7 +361,7 @@ public sealed class CreateSessionTests : IDisposable
 
         await InvokePrivateAsync(cut.Instance, "SaveSessionAsync");
 
-        await _eventService.DidNotReceive().CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
+        await _eventSessionService.DidNotReceive().CreateSessionAsync(Arg.Any<ComposerCreateEventSessionRequest>());
         var errorMessage = GetSubmitError(cut.Instance);
         await Assert.That(errorMessage).IsEqualTo("You do not currently have permission to add program items to this event draft.");
     }
@@ -371,7 +373,7 @@ public sealed class CreateSessionTests : IDisposable
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, Guid.NewGuid()));
-        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+        _eventSessionService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
             eventId,
             Guid.NewGuid(),
             locations: [new EventSessionCreateLocationOptionDto { Id = locationId, FullName = "Main Hall", City = "Brussels", Country = "Belgium" }],
@@ -395,7 +397,7 @@ public sealed class CreateSessionTests : IDisposable
         var eventId = Guid.NewGuid();
         var tenantId = Guid.NewGuid();
         _eventService.GetEventByIdAsync(eventId).Returns(CreateDraftEvent(eventId, tenantId));
-        _eventService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
+        _eventSessionService.GetEventSessionCreateContextAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateSessionContext(
             eventId,
             tenantId,
             registrationModeId: 3));

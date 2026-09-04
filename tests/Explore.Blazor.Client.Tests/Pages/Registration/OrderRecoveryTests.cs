@@ -16,6 +16,7 @@ public sealed class OrderRecoveryTests : IDisposable
 {
     private readonly BlazorTestContext _ctx = new();
     private readonly IRegistrationOrderService _service;
+    private readonly IRegistrationPaymentService _paymentService;
     private readonly INativeRegistrationFormService _nativeForms;
     private readonly IGuestRegistrationOrderCapabilityStore _capabilityStore;
     private readonly IAccessibilityAnnouncerService _announcer;
@@ -27,6 +28,7 @@ public sealed class OrderRecoveryTests : IDisposable
         _ctx.Services.AddSingleton<TimeProvider>(
             new FixedTimeProvider(TestTime.UtcNow));
         _service = _ctx.AddMockService<IRegistrationOrderService>();
+        _paymentService = _ctx.AddMockService<IRegistrationPaymentService>();
         _nativeForms = _ctx.AddMockService<INativeRegistrationFormService>();
         _capabilityStore = _ctx.AddMockService<IGuestRegistrationOrderCapabilityStore>();
         _browserActions = _ctx.AddMockService<IBrowserActionInterop>();
@@ -336,9 +338,9 @@ public sealed class OrderRecoveryTests : IDisposable
         await Assert.That(cut.Markup).Contains("does not confirm that payment succeeded");
         await Assert.That(cut.Markup).DoesNotContain("Payment confirmed");
         await Assert.That(cut.Markup).DoesNotContain("Registration confirmed");
-        await _service.DidNotReceiveWithAnyArgs().GetCurrentPaymentAsync(
+        await _paymentService.DidNotReceiveWithAnyArgs().GetCurrentPaymentAsync(
             default, default, default!, default);
-        await _service.DidNotReceiveWithAnyArgs().GetGuestPaymentAsync(
+        await _paymentService.DidNotReceiveWithAnyArgs().GetGuestPaymentAsync(
             default, default, default!, default!, default);
     }
 
@@ -411,9 +413,9 @@ public sealed class OrderRecoveryTests : IDisposable
         order.ExpiresAt = TestTime.UtcNow.AddMinutes(5);
         var failed = CreatePayment("Failed", "Failed", "payment-status", "retry-payment");
         _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
-        _service.GetCurrentPaymentAcceptanceAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>())
+        _paymentService.GetCurrentPaymentAcceptanceAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>())
             .Returns(Acceptance());
-        _service.StartCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, "revision", Arg.Any<CancellationToken>()).Returns(failed);
+        _paymentService.StartCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, "revision", Arg.Any<CancellationToken>()).Returns(failed);
 
         var cut = _ctx.RenderMudComponent<OrderRecovery>(parameters => parameters
             .Add(component => component.EventId, order.EventId.Value)
@@ -434,7 +436,7 @@ public sealed class OrderRecoveryTests : IDisposable
         order.ExpiresAt = TestTime.UtcNow.AddMinutes(5);
         var payment = CreatePayment("Unknown", "Unknown", "payment-status");
         _service.GetCurrentAsync(order.EventId!.Value, order.Id!.Value, Arg.Any<CancellationToken>()).Returns(order);
-        _service.GetCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>()).Returns(payment);
+        _paymentService.GetCurrentPaymentAsync(order.EventId.Value, order.Id.Value, order, Arg.Any<CancellationToken>()).Returns(payment);
 
         var cut = _ctx.RenderMudComponent<OrderRecovery>(parameters => parameters
             .Add(component => component.EventId, order.EventId.Value)
@@ -458,7 +460,7 @@ public sealed class OrderRecoveryTests : IDisposable
         cut.WaitForAssertion(() => Assert.That(cut.Markup).Contains("Awaiting payment"));
         await Assert.That(cut.FindAll("[data-testid='start-payment']")).IsEmpty();
         await Assert.That(cut.FindAll("[data-testid='retry-payment']")).IsEmpty();
-        await _service.DidNotReceive().GetCurrentPaymentAsync(
+        await _paymentService.DidNotReceive().GetCurrentPaymentAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<HalResourceOfRegistrationOrderDto>(), Arg.Any<CancellationToken>());
     }
 
@@ -931,6 +933,7 @@ public sealed class OrderRecoveryTests : IDisposable
 
         using var guestContext = new BlazorTestContext();
         var guestService = guestContext.AddMockService<IRegistrationOrderService>();
+        guestContext.AddMockService<IRegistrationPaymentService>();
         var guestCapabilities = guestContext.AddMockService<IGuestRegistrationOrderCapabilityStore>();
         var guestCapability = new GuestRegistrationOrderCapability("opaque-capability");
         var guestOrder = new HalResourceOfGuestRegistrationOrderDto

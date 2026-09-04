@@ -14,17 +14,18 @@ public sealed class RegistrationPaymentGeneratedClientTests
     {
         var handler = new RecordingHandler();
         using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.example.test") };
-        var client = new EventApiClient(httpClient);
+        var authClient = new AuthenticatedRegistrationOrderPaymentClient(httpClient);
+        var guestClient = new GuestRegistrationOrderPaymentClient(httpClient);
         Guid eventId = Guid.CreateVersion7();
         Guid orderId = Guid.CreateVersion7();
 
-        await client.StartAuthenticatedRegistrationPaymentAsync(
+        await authClient.StartAuthenticatedRegistrationPaymentAsync(
             eventId, orderId, idempotency_Key: "start-key", cancellationToken: CancellationToken.None);
-        await client.RetryAuthenticatedRegistrationPaymentAsync(
+        await authClient.RetryAuthenticatedRegistrationPaymentAsync(
             eventId, orderId, idempotency_Key: "retry-key", cancellationToken: CancellationToken.None);
-        await client.StartGuestRegistrationPaymentAsync(
+        await guestClient.StartGuestRegistrationPaymentAsync(
             eventId, orderId, "guest-start-key", "guest-capability", cancellationToken: CancellationToken.None);
-        await client.RetryGuestRegistrationPaymentAsync(
+        await guestClient.RetryGuestRegistrationPaymentAsync(
             eventId, orderId, "guest-retry-key", "guest-capability", cancellationToken: CancellationToken.None);
 
         await Assert.That(handler.Requests.Count).IsEqualTo(4);
@@ -33,15 +34,15 @@ public sealed class RegistrationPaymentGeneratedClientTests
         await Assert.That(handler.Requests[2].Headers.GetValues("Idempotency-Key").Single()).IsEqualTo("guest-start-key");
         await Assert.That(handler.Requests[3].Headers.GetValues("Idempotency-Key").Single()).IsEqualTo("guest-retry-key");
 
-        foreach (string methodName in new[]
+        foreach (var (interfaceType, methodName) in new (Type, string)[]
                  {
-                     nameof(IEventApiClient.StartAuthenticatedRegistrationPaymentAsync),
-                     nameof(IEventApiClient.RetryAuthenticatedRegistrationPaymentAsync),
-                     nameof(IEventApiClient.StartGuestRegistrationPaymentAsync),
-                     nameof(IEventApiClient.RetryGuestRegistrationPaymentAsync)
+                     (typeof(IAuthenticatedRegistrationOrderPaymentClient), nameof(IAuthenticatedRegistrationOrderPaymentClient.StartAuthenticatedRegistrationPaymentAsync)),
+                     (typeof(IAuthenticatedRegistrationOrderPaymentClient), nameof(IAuthenticatedRegistrationOrderPaymentClient.RetryAuthenticatedRegistrationPaymentAsync)),
+                     (typeof(IGuestRegistrationOrderPaymentClient), nameof(IGuestRegistrationOrderPaymentClient.StartGuestRegistrationPaymentAsync)),
+                     (typeof(IGuestRegistrationOrderPaymentClient), nameof(IGuestRegistrationOrderPaymentClient.RetryGuestRegistrationPaymentAsync))
                  })
         {
-            ParameterInfo parameter = typeof(IEventApiClient).GetMethods().Single(method => method.Name == methodName)
+            ParameterInfo parameter = interfaceType.GetMethods().Single(method => method.Name == methodName)
                 .GetParameters().Single(candidate => candidate.Name == "idempotency_Key");
             await Assert.That(parameter.HasDefaultValue).IsFalse();
             await Assert.That(new NullabilityInfoContext().Create(parameter).ReadState).IsEqualTo(NullabilityState.NotNull);

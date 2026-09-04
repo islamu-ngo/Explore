@@ -107,7 +107,7 @@ public sealed class BffOnboardingStatusProviderTests
     private static TestContext CreateContext(
         HalResourceOfInstanceOnboardingStatusDto resource)
     {
-        IEventApiClient apiClient = Substitute.For<IEventApiClient>();
+        IInstanceOnboardingClient apiClient = Substitute.For<IInstanceOnboardingClient>();
         apiClient.GetInstanceOnboardingStatusAsync(cancellationToken: Arg.Any<CancellationToken>())
             .Returns(resource);
 
@@ -119,7 +119,7 @@ public sealed class BffOnboardingStatusProviderTests
         private readonly ServiceProvider _serviceProvider;
         private readonly MemoryCache _cache = new(new MemoryCacheOptions());
 
-        public TestContext(IEventApiClient apiClient)
+        public TestContext(IInstanceOnboardingClient apiClient)
         {
             var services = new ServiceCollection();
             services.AddSingleton(apiClient);

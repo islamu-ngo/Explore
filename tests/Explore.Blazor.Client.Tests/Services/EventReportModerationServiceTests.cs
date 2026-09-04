@@ -7,7 +7,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class EventReportModerationServiceTests
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly IModerationReportClient _apiClient = Substitute.For<IModerationReportClient>();
     private readonly ILogger<EventReportModerationService> _logger = Substitute.For<ILogger<EventReportModerationService>>();
 
     [Test]

@@ -85,7 +85,7 @@ public sealed class InstanceOnboardingOpenApiContractTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs");
+            "EventApiTagClients.g.cs");
         var generatedClient = await File.ReadAllTextAsync(generatedClientPath);
 
         await Assert.That(operation.GetProperty("operationId").GetString()).IsEqualTo("SaveInstanceOnboardingProfile");
@@ -199,7 +199,7 @@ public sealed class InstanceOnboardingOpenApiContractTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs");
+            "EventApiTagClients.g.cs");
         var generatedClient = await File.ReadAllTextAsync(generatedClientPath);
 
         await Assert.That(generatedClient).DoesNotContain("DecentralizationEnabled", StringComparison.Ordinal);
@@ -215,7 +215,7 @@ public sealed class InstanceOnboardingOpenApiContractTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs");
+            "EventApiTagClients.g.cs");
         var generatedClient = await File.ReadAllTextAsync(generatedClientPath);
 
         await Assert.That(generatedClient).Contains("public GuestRecoveryPolicyEnum? GuestRecoveryPolicy", StringComparison.Ordinal)

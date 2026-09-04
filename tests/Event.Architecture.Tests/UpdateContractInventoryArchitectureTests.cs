@@ -17,7 +17,7 @@ public sealed class UpdateContractInventoryArchitectureTests
         var currentOperations = new HashSet<string>(StringComparer.Ordinal);
         string generatedClient = await File.ReadAllTextAsync(Path.Combine(
             root,
-            "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs"));
+            "src/Explore.Blazor.Client/Clients/EventApiTagClients.g.cs"));
 
         foreach (JsonProperty path in document.RootElement.GetProperty("paths").EnumerateObject())
         {

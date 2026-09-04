@@ -14,7 +14,7 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
     private readonly BlazorTestContext _ctx = new();
     private readonly IEventTicketingService _ticketingService;
     private readonly IEventDayService _eventDayService;
-    private readonly IEventService _eventService;
+    private readonly Explore.Blazor.Client.Contracts.Services.IEventSessionService _eventSessionService;
     private readonly IDialogService _dialogService;
     private readonly IAccessibilityAnnouncerService _announcer;
     private readonly IAccessibilityFocusService _focusService;
@@ -23,13 +23,13 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
     {
         _ticketingService = _ctx.AddMockService<IEventTicketingService>();
         _eventDayService = _ctx.AddMockService<IEventDayService>();
-        _eventService = _ctx.AddMockService<IEventService>();
+        _eventSessionService = _ctx.AddMockService<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         _dialogService = Substitute.For<IDialogService>();
         _announcer = _ctx.AddMockService<IAccessibilityAnnouncerService>();
         _focusService = _ctx.AddMockService<IAccessibilityFocusService>();
         _ctx.Services.AddSingleton(_dialogService);
         _eventDayService.GetDaysByEventAsync(Arg.Any<Guid>(), true, Arg.Any<CancellationToken>()).Returns([]);
-        _eventService.GetSessionsByEventAsync(Arg.Any<Guid>(), true, Arg.Any<CancellationToken>()).Returns([]);
+        _eventSessionService.GetSessionsByEventAsync(Arg.Any<Guid>(), true, Arg.Any<CancellationToken>()).Returns([]);
     }
 
     public void Dispose() => _ctx.Dispose();
@@ -251,7 +251,7 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
         var sessionId = Guid.CreateVersion7();
         _ticketingService.GetCatalogAsync(eventId, Arg.Any<CancellationToken>()).Returns(CreateCatalog(eventId, "create-type"));
         _eventDayService.GetDaysByEventAsync(eventId, true, Arg.Any<CancellationToken>()).Returns([new EventDayListDto { Id = dayId, Label = "Friday" }]);
-        _eventService.GetSessionsByEventAsync(eventId, true, Arg.Any<CancellationToken>()).Returns([new EventSessionListDto { Id = sessionId, EventTitle = "Event", Title = "Opening" }]);
+        _eventSessionService.GetSessionsByEventAsync(eventId, true, Arg.Any<CancellationToken>()).Returns([new EventSessionListDto { Id = sessionId, EventTitle = "Event", Title = "Opening" }]);
 
         var cut = _ctx.RenderMudComponent<EventTicketCatalogEditor>(parameters => parameters
             .Add(component => component.EventId, eventId)
@@ -311,7 +311,7 @@ public sealed class EventTicketCatalogEditorTests : IDisposable
             daysToken = call.ArgAt<CancellationToken>(2);
             return daysCompletion.Task;
         });
-        _eventService.GetSessionsByEventAsync(firstEventId, true, Arg.Any<CancellationToken>()).Returns(call =>
+        _eventSessionService.GetSessionsByEventAsync(firstEventId, true, Arg.Any<CancellationToken>()).Returns(call =>
         {
             sessionsToken = call.ArgAt<CancellationToken>(2);
             return sessionsCompletion.Task;

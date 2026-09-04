@@ -11,7 +11,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     [Test]
     public async Task CreateVersionUsesStrongQuotedStampAfterExactHalTargetValidation()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IRegistrationFormsClient api = Substitute.For<IRegistrationFormsClient>();
         var service = new RegistrationFormAuthoringService(api);
         Guid eventId = Guid.CreateVersion7();
         Guid formId = Guid.CreateVersion7();
@@ -30,7 +30,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     [Test]
     public async Task CreateVersionWithMismatchedHrefDoesNotDispatch()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IRegistrationFormsClient api = Substitute.For<IRegistrationFormsClient>();
         var service = new RegistrationFormAuthoringService(api);
         Guid eventId = Guid.CreateVersion7();
         Guid formId = Guid.CreateVersion7();
@@ -45,7 +45,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     [Test]
     public async Task InstantiateTemplateUsesAdvertisedTemplateRelationOnly()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IRegistrationFormsClient api = Substitute.For<IRegistrationFormsClient>();
         var service = new RegistrationFormAuthoringService(api);
         Guid templateId = Guid.CreateVersion7();
         Guid formId = Guid.CreateVersion7();
@@ -71,7 +71,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     [Test]
     public async Task InstantiateTemplateWithMismatchedHrefDoesNotDispatch()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IRegistrationFormsClient api = Substitute.For<IRegistrationFormsClient>();
         var service = new RegistrationFormAuthoringService(api);
         var input = new InstantiateRegistrationFormTemplateInputDto { EventId = Guid.CreateVersion7(), WorkflowId = Guid.CreateVersion7(), Namespace = "event", Key = "attendee", Name = "Attendee", ExpectedWorkflowConcurrencyStamp = Guid.CreateVersion7() };
         var stale = new HalLink { Href = $"/api/registration-form-templates/{Guid.CreateVersion7()}/instantiate", Method = "POST" };
@@ -84,7 +84,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     [Test]
     public async Task ReorderSectionsDispatchesOneAtomicPutWithAuthoritativeOrder()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IRegistrationFormsClient api = Substitute.For<IRegistrationFormsClient>();
         var service = new RegistrationFormAuthoringService(api);
         Guid eventId = Guid.CreateVersion7();
         Guid formId = Guid.CreateVersion7();
@@ -113,7 +113,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     [Test]
     public async Task SectionAndFieldCrudUseExactRelationsStrongEtagsAndCancellation()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IRegistrationFormsClient api = Substitute.For<IRegistrationFormsClient>();
         var service = new RegistrationFormAuthoringService(api);
         Guid eventId = Guid.CreateVersion7();
         Guid formId = Guid.CreateVersion7();
@@ -159,7 +159,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     [Test]
     public async Task OptionCrudUsesOnlyExactItemRelations()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IRegistrationFormsClient api = Substitute.For<IRegistrationFormsClient>();
         var service = new RegistrationFormAuthoringService(api);
         Guid eventId = Guid.CreateVersion7();
         Guid formId = Guid.CreateVersion7();
@@ -193,7 +193,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     [Test]
     public async Task RuleCrudUsesOnlyExactVersionAndItemRelations()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IRegistrationFormsClient api = Substitute.For<IRegistrationFormsClient>();
         var service = new RegistrationFormAuthoringService(api);
         Guid eventId = Guid.CreateVersion7();
         Guid formId = Guid.CreateVersion7();
@@ -229,7 +229,7 @@ public sealed class RegistrationFormAuthoringServiceTests
     [Test]
     public async Task MismatchedNestedRelationNeverDispatches()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        IRegistrationFormsClient api = Substitute.For<IRegistrationFormsClient>();
         var service = new RegistrationFormAuthoringService(api);
         Guid eventId = Guid.CreateVersion7();
         Guid formId = Guid.CreateVersion7();

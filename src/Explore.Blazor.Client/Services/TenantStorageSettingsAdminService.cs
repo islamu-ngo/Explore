@@ -14,7 +14,7 @@ public interface ITenantStorageSettingsAdminService
 }
 
 public sealed class TenantStorageSettingsAdminService(
-    IEventApiClient api,
+    ITenantStorageSettingsClient api,
     ILogger<TenantStorageSettingsAdminService> logger) : ITenantStorageSettingsAdminService
 {
     public async Task<HalResourceOfTenantStorageSettingsDto> GetAsync(CancellationToken cancellationToken = default)

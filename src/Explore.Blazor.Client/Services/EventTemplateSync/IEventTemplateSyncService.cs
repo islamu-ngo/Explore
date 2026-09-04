@@ -1,5 +1,5 @@
 // ABOUTME: Interface for Event template-sync operations using generated API contracts.
-// ABOUTME: Keeps components behind a service while IEventApiClient owns transport and payload types.
+// ABOUTME: Keeps components behind a service while generated clients own transport and payload types.
 
 using Explore.Blazor.Client.Clients;
 

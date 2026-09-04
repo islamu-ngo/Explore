@@ -17,7 +17,7 @@ public class TranslationService : ITranslationService, IDisposable
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(30);
 
-    private readonly IEventApiClient _apiClient;
+    private readonly ITranslationClient _apiClient;
     private readonly ILogger<TranslationService> _logger;
     private readonly SemaphoreSlim _translationLock = new(1, 1);
     private readonly SemaphoreSlim _languagesLock = new(1, 1);
@@ -30,7 +30,7 @@ public class TranslationService : ITranslationService, IDisposable
 
     public event Action<string>? OnLanguageChanged;
 
-    public TranslationService(IEventApiClient apiClient, ILogger<TranslationService> logger)
+    public TranslationService(ITranslationClient apiClient, ILogger<TranslationService> logger)
     {
         _apiClient = apiClient;
         _logger = logger;

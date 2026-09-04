@@ -18,15 +18,15 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </remarks>
 public class CategoryServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly ICategoryClient _apiClient;
     private readonly ILogger<CategoryService> _logger;
     private readonly CategoryService _service;
 
     public CategoryServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<ICategoryClient>();
         _logger = Substitute.For<ILogger<CategoryService>>();
-        _service = new CategoryService(_apiClient, _logger);
+        _service = new CategoryService(_apiClient, Substitute.For<ICategoryTypeClient>(), _logger);
     }
 
     // ========== GetCategoriesAsync ==========

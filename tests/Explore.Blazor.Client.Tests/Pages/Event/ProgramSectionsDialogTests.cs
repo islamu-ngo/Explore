@@ -20,7 +20,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var eventId = Guid.NewGuid();
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         eventService.CreateSessionGroupAsync(Arg.Any<CreateEventSessionGroupRequestDto>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
         eventService.GetManagedSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>());
@@ -57,7 +57,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var concurrencyStamp = Guid.NewGuid();
         var locationId = Guid.NewGuid();
         var roomId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         eventService.UpdateSessionGroupAsync(
                 sectionId,
                 concurrencyStamp,
@@ -112,7 +112,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var locationId = Guid.NewGuid();
         var oldRoomId = Guid.NewGuid();
         var newRoomId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var roomService = Substitute.For<ILocationRoomService>();
         eventService.GetEventSessionCreateContextAsync(eventId).Returns(new EventSessionCreateContextDto
         {
@@ -148,7 +148,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var sectionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         eventService.DeleteSessionGroupAsync(eventId, sectionId).Returns(true);
         eventService.GetManagedSessionGroupsByEventAsync(eventId).Returns(new List<HalResourceOfEventSessionGroupListDto>());
         var dialogService = Substitute.For<IDialogService>();
@@ -186,7 +186,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
     {
         var eventId = Guid.NewGuid();
         var sectionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var section = CreateSection(sectionId, eventId, hasDelete: false);
 
         RegisterServices(eventService: eventService);
@@ -208,7 +208,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var eventId = Guid.NewGuid();
         var sectionId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         eventService.AssignSessionToGroupAsync(eventId, sectionId, sessionId, true, 10)
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
         eventService.GetSessionsByEventAsync(eventId, includeManagedSessions: true).Returns(new List<EventSessionListDto>());
@@ -236,7 +236,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var eventId = Guid.NewGuid();
         var sectionId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         eventService.UnassignSessionFromGroupAsync(eventId, sectionId, sessionId)
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = Guid.NewGuid() });
         eventService.GetSessionsByEventAsync(eventId, includeManagedSessions: true).Returns(new List<EventSessionListDto>());
@@ -263,7 +263,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var eventId = Guid.NewGuid();
         var sectionId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var section = CreateSection(sectionId, eventId, hasDelete: false, hasAssign: false);
         var session = CreateSession(sessionId, "Panel");
 
@@ -284,7 +284,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
     public void Dispose() => _ctx.Dispose();
 
     private void RegisterServices(
-        IEventService? eventService = null,
+        Explore.Blazor.Client.Contracts.Services.IEventSessionService? eventService = null,
         ILocationService? locationService = null,
         ILocationRoomService? locationRoomService = null,
         IDialogService? dialogService = null)
@@ -295,7 +295,7 @@ public sealed class ProgramSectionsDialogTests : IDisposable
         var rooms = locationRoomService ?? Substitute.For<ILocationRoomService>();
         rooms.GetRoomsByLocationAsync(Arg.Any<Guid>()).Returns(new List<LocationRoomListDto>());
 
-        _ctx.Services.AddSingleton(eventService ?? Substitute.For<IEventService>());
+        _ctx.Services.AddSingleton(eventService ?? Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>());
         _ctx.Services.AddSingleton(locations);
         _ctx.Services.AddSingleton(rooms);
         _ctx.Services.AddSingleton(dialogService ?? Substitute.For<IDialogService>());

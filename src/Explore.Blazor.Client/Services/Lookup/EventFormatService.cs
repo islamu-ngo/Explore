@@ -7,9 +7,9 @@ namespace Explore.Blazor.Client.Services.Lookup;
 
 public class EventFormatService : IEventFormatService
 {
-    private readonly IEventApiClient _client;
+    private readonly IEventFormatClient _client;
 
-    public EventFormatService(IEventApiClient client)
+    public EventFormatService(IEventFormatClient client)
     {
         _client = client;
     }

@@ -1,5 +1,5 @@
 // ABOUTME: Contract for EventAgendaItem CRUD operations consumed by Blazor UI components.
-// ABOUTME: Wraps the NSwag-generated IEventApiClient methods for EventAgendaItem entity.
+// ABOUTME: Wraps the NSwag-generated event-agenda-item client methods.
 
 using Explore.Blazor.Client.Clients;
 

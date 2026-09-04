@@ -1,4 +1,4 @@
-// ABOUTME: Notification service wrapping NSwag-generated IEventApiClient notification methods.
+// ABOUTME: Notification service wrapping generated notification, group, and organization clients.
 // ABOUTME: Follows EventRegistrationService pattern: try-catch with logging, ApiException handling.
 
 using Explore.Blazor.Client.Clients;
@@ -11,12 +11,20 @@ namespace Explore.Blazor.Client.Services;
 
 public class NotificationService : INotificationService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly INotificationClient _apiClient;
+    private readonly IGroupClient _groupClient;
+    private readonly IOrganizationClient _organizationClient;
     private readonly ILogger<NotificationService> _logger;
 
-    public NotificationService(IEventApiClient apiClient, ILogger<NotificationService> logger)
+    public NotificationService(
+        INotificationClient apiClient,
+        IGroupClient groupClient,
+        IOrganizationClient organizationClient,
+        ILogger<NotificationService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _groupClient = groupClient ?? throw new ArgumentNullException(nameof(groupClient));
+        _organizationClient = organizationClient ?? throw new ArgumentNullException(nameof(organizationClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -378,7 +386,7 @@ public class NotificationService : INotificationService
     {
         try
         {
-            return await _apiClient.GetOrganizationNotificationPreferencesAsync(organizationId);
+            return await _organizationClient.GetOrganizationNotificationPreferencesAsync(organizationId);
         }
         catch (ApiException ex)
         {
@@ -399,7 +407,7 @@ public class NotificationService : INotificationService
 
         try
         {
-            var response = await _apiClient.UpdateOrganizationNotificationPreferencesAsync(organizationId, new UpdateNotificationPreferenceMatrixDto
+            var response = await _organizationClient.UpdateOrganizationNotificationPreferencesAsync(organizationId, new UpdateNotificationPreferenceMatrixDto
             {
                 Cells = cells.ToList()
             });
@@ -422,7 +430,7 @@ public class NotificationService : INotificationService
     {
         try
         {
-            var response = await _apiClient.SetOrganizationNotificationPreferenceMuteAsync(organizationId, new SetNotificationPreferenceMuteDto
+            var response = await _organizationClient.SetOrganizationNotificationPreferenceMuteAsync(organizationId, new SetNotificationPreferenceMuteDto
             {
                 IsMuted = isMuted
             });
@@ -445,7 +453,7 @@ public class NotificationService : INotificationService
     {
         try
         {
-            return await _apiClient.GetGroupNotificationPreferencesAsync(groupId);
+            return await _groupClient.GetGroupNotificationPreferencesAsync(groupId);
         }
         catch (ApiException ex)
         {
@@ -466,7 +474,7 @@ public class NotificationService : INotificationService
 
         try
         {
-            var response = await _apiClient.UpdateGroupNotificationPreferencesAsync(groupId, new UpdateNotificationPreferenceMatrixDto
+            var response = await _groupClient.UpdateGroupNotificationPreferencesAsync(groupId, new UpdateNotificationPreferenceMatrixDto
             {
                 Cells = cells.ToList()
             });
@@ -489,7 +497,7 @@ public class NotificationService : INotificationService
     {
         try
         {
-            var response = await _apiClient.SetGroupNotificationPreferenceMuteAsync(groupId, new SetNotificationPreferenceMuteDto
+            var response = await _groupClient.SetGroupNotificationPreferenceMuteAsync(groupId, new SetNotificationPreferenceMuteDto
             {
                 IsMuted = isMuted
             });

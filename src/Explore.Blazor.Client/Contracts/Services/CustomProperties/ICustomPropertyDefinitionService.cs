@@ -1,5 +1,5 @@
 // ABOUTME: Client contract for CRUD operations on custom-property definitions.
-// ABOUTME: Wraps IEventApiClient with HAL unwrap + error handling.
+// ABOUTME: Wraps generated custom-property clients with HAL unwrap and error handling.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;

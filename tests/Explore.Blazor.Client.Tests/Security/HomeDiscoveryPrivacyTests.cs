@@ -10,7 +10,7 @@ public sealed class HomeDiscoveryPrivacyTests
     [Test]
     public async Task GeneratedCompositeClientAcceptsOnlyCoarseAreaAndModeContext()
     {
-        var method = typeof(IEventApiClient).GetMethod("GetHomeDiscoveryAsync")!;
+        var method = typeof(IPublicExperienceClient).GetMethod("GetHomeDiscoveryAsync")!;
         var parameterNames = method.GetParameters().Select(parameter => parameter.Name).ToArray();
 
         await Assert.That(parameterNames).Contains("areaId");

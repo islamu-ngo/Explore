@@ -16,7 +16,7 @@ public sealed class EventSessionManagerTests : IDisposable
         var eventId = Guid.NewGuid();
         var publishedSessionId = Guid.NewGuid();
         var draftSessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventSessionService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var agendaItemService = Substitute.For<IEventSessionAgendaItemService>();
         var sessions = new List<EventSessionListDto>
         {
@@ -42,12 +42,12 @@ public sealed class EventSessionManagerTests : IDisposable
             }
         };
 
-        eventService.GetSessionsByEventAsync(eventId, includeManagedSessions: true)
+        eventSessionService.GetSessionsByEventAsync(eventId, includeManagedSessions: true)
             .Returns(sessions);
         agendaItemService.GetManagedAgendaItemsBySessionAsync(eventId, Arg.Any<Guid>())
             .Returns(new List<EventSessionAgendaItemListDto>());
 
-        _ctx.Services.AddScoped(_ => eventService);
+        _ctx.Services.AddScoped(_ => eventSessionService);
         _ctx.Services.AddScoped(_ => agendaItemService);
 
         var cut = _ctx.RenderMudComponent<EventSessionManager>(parameters => parameters
@@ -60,7 +60,7 @@ public sealed class EventSessionManagerTests : IDisposable
                 throw new InvalidOperationException("Draft session was not rendered.");
         });
 
-        await eventService.Received(1).GetSessionsByEventAsync(eventId, includeManagedSessions: true);
+        await eventSessionService.Received(1).GetSessionsByEventAsync(eventId, includeManagedSessions: true);
         await agendaItemService.Received(1).GetManagedAgendaItemsBySessionAsync(eventId, publishedSessionId);
         await agendaItemService.Received(1).GetManagedAgendaItemsBySessionAsync(eventId, draftSessionId);
         _ = agendaItemService.DidNotReceive().GetAgendaItemsBySessionAsync(Arg.Any<Guid>());
@@ -76,7 +76,7 @@ public sealed class EventSessionManagerTests : IDisposable
         var eventId = Guid.NewGuid();
         var firstSessionId = Guid.NewGuid();
         var secondSessionId = Guid.NewGuid();
-        var eventService = Substitute.For<IEventService>();
+        var eventSessionService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventSessionService>();
         var agendaItemService = Substitute.For<IEventSessionAgendaItemService>();
         var sessions = new List<EventSessionListDto>
         {
@@ -102,7 +102,7 @@ public sealed class EventSessionManagerTests : IDisposable
         agendaItemService.GetAgendaItemsBySessionAsync(Arg.Any<Guid>())
             .Returns(new List<EventSessionAgendaItemListDto>());
 
-        _ctx.Services.AddScoped(_ => eventService);
+        _ctx.Services.AddScoped(_ => eventSessionService);
         _ctx.Services.AddScoped(_ => agendaItemService);
 
         var cut = _ctx.RenderMudComponent<EventSessionManager>(parameters => parameters
@@ -116,7 +116,7 @@ public sealed class EventSessionManagerTests : IDisposable
         });
 
         await Assert.That(cut.Markup).Contains($"/events/{eventId}/sessions/{secondSessionId}");
-        _ = eventService.DidNotReceive().GetSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<bool>());
+        _ = eventSessionService.DidNotReceive().GetSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<bool>());
     }
 
     public void Dispose()

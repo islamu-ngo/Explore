@@ -55,7 +55,7 @@ public sealed class NativeRegistrationOpenApiContractTests
         await Assert.That(fieldProperties.TryGetProperty("retentionPolicyId", out _)).IsFalse();
 
         string generated = await File.ReadAllTextAsync(Path.Combine(
-            ResolveRepositoryRoot(), "src", "Explore.Blazor.Client", "Clients", "EventApiClient.g.cs"));
+            ResolveRepositoryRoot(), "src", "Explore.Blazor.Client", "Clients", "EventApiTagClients.g.cs"));
         await Assert.That(generated).Contains(
             "partial class HalResourceOfNativeRegistrationRequirementProgressCollectionDto");
         await Assert.That(generated).Contains("ICollection<Requirements> Requirements");

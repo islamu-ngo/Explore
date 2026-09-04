@@ -5,7 +5,7 @@
 @using Explore.Blazor.Client.Contracts.Services.Events
 @using MudBlazor
 @inject IDialogService DialogService
-@inject IEventService EventService
+@inject Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService
 @inject IEventSessionAgendaItemService AgendaItemService
 @inject ISnackbar Snackbar
 
@@ -171,7 +171,7 @@
         _isLoading = true;
         try
         {
-            var result = await EventService.GetSessionsByEventAsync(EventId, IncludeManagedSessions);
+            var result = await EventSessionService.GetSessionsByEventAsync(EventId, IncludeManagedSessions);
             await PopulateSessionsAsync(result);
         }
         catch (Exception ex)

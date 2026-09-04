@@ -7,7 +7,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class TenantDirectoryOperatorIdentityAdminServiceTests
 {
-    private readonly IEventApiClient _api = Substitute.For<IEventApiClient>();
+    private readonly ITenantSettingsDocumentsClient _api = Substitute.For<ITenantSettingsDocumentsClient>();
 
     [Test]
     public async Task GetAsync_MapsAllIdentityAndReadinessGroups_FromExactEditAffordanceOnly()

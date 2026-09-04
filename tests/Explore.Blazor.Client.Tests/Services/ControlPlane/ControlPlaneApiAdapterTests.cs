@@ -13,7 +13,11 @@ public sealed class ControlPlaneApiAdapterTests
     [Test]
     public async Task GetOverviewAsync_PreservesSummaryWarningsAndLinks()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
         var overview = new HalResourceOfControlPlaneOverviewDto
         {
             DeploymentMode = "MultiTenant",
@@ -47,8 +51,8 @@ public sealed class ControlPlaneApiAdapterTests
         GeneratedHalLinkTestHelper.SetLinks(
             overview,
             (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/overview", "GET"));
-        apiClient.GetControlPlaneOverviewAsync(null, null, Arg.Any<CancellationToken>()).Returns(overview);
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        controlPlaneClient.GetControlPlaneOverviewAsync(null, null, Arg.Any<CancellationToken>()).Returns(overview);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         var result = await adapter.GetOverviewAsync();
 
@@ -64,7 +68,11 @@ public sealed class ControlPlaneApiAdapterTests
     [Test]
     public async Task GetTenantsAsync_PreservesEmbeddedItemsAndHalLinks()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
         var tenant = new HalResourceOfControlPlaneTenantListItemDto
         {
             Id = Guid.NewGuid(),
@@ -83,8 +91,8 @@ public sealed class ControlPlaneApiAdapterTests
         GeneratedHalLinkTestHelper.SetLinks(
             collection,
             (ControlPlaneLinkRelations.Create, "/api/admin/control-plane/tenants", "POST"));
-        apiClient.GetControlPlaneTenantsAsync(null, null, Arg.Any<CancellationToken>()).Returns(collection);
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        controlPlaneClient.GetControlPlaneTenantsAsync(null, null, Arg.Any<CancellationToken>()).Returns(collection);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         var result = await adapter.GetTenantsAsync();
 
@@ -99,7 +107,11 @@ public sealed class ControlPlaneApiAdapterTests
     [Test]
     public async Task GetPlansAsync_PreservesCatalogItemsPricingAndHalLinks()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
         var plan = new HalResourceOfControlPlaneTenantPlanListItemDto
         {
             Id = Guid.NewGuid(),
@@ -124,8 +136,8 @@ public sealed class ControlPlaneApiAdapterTests
         GeneratedHalLinkTestHelper.SetLinks(
             collection,
             (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/plans", "GET"));
-        apiClient.GetControlPlaneTenantPlansAsync(null, null, Arg.Any<CancellationToken>()).Returns(collection);
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        tenantPlanClient.GetControlPlaneTenantPlansAsync(null, null, Arg.Any<CancellationToken>()).Returns(collection);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         var result = await adapter.GetPlansAsync();
 
@@ -142,7 +154,11 @@ public sealed class ControlPlaneApiAdapterTests
     [Test]
     public async Task GetPlanAsync_PreservesVersionsSettingsQuotasAndLinks()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
         var planId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         var detail = new HalResourceOfControlPlaneTenantPlanDetailDto
@@ -179,9 +195,9 @@ public sealed class ControlPlaneApiAdapterTests
         GeneratedHalLinkTestHelper.SetLinks(
             detail,
             (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/plans/enterprise", "GET"));
-        apiClient.GetControlPlaneTenantPlanByKeyAsync("enterprise", null, null, Arg.Any<CancellationToken>())
+        tenantPlanClient.GetControlPlaneTenantPlanByKeyAsync("enterprise", null, null, Arg.Any<CancellationToken>())
             .Returns(detail);
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         var result = await adapter.GetPlanAsync("enterprise");
 
@@ -198,10 +214,14 @@ public sealed class ControlPlaneApiAdapterTests
     [Test]
     public async Task GetPlansAsync_WhenApiReturnsForbidden_PropagatesGeneratedApiException()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
-        apiClient.GetControlPlaneTenantPlansAsync(null, null, Arg.Any<CancellationToken>())
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
+        tenantPlanClient.GetControlPlaneTenantPlansAsync(null, null, Arg.Any<CancellationToken>())
             .Returns<Task<HalCollectionResourceOfControlPlaneTenantPlanListItemDto>>(_ => throw CreateApiException(403));
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         await Assert.ThrowsAsync<ApiException>(async () => await adapter.GetPlansAsync());
     }
@@ -211,11 +231,15 @@ public sealed class ControlPlaneApiAdapterTests
     {
         using var source = new CancellationTokenSource();
         source.Cancel();
-        var apiClient = Substitute.For<IEventApiClient>();
-        apiClient.GetControlPlaneTenantPlanByKeyAsync("enterprise", null, null, source.Token)
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
+        tenantPlanClient.GetControlPlaneTenantPlanByKeyAsync("enterprise", null, null, source.Token)
             .Returns<Task<HalResourceOfControlPlaneTenantPlanDetailDto>>(_ =>
                 throw new OperationCanceledException(source.Token));
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>
             await adapter.GetPlanAsync("enterprise", source.Token));
@@ -226,7 +250,11 @@ public sealed class ControlPlaneApiAdapterTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddSingleton(Substitute.For<IEventApiClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneDeploymentModeClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneTenantConfigurationClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneTenantLifecycleClient>());
+        services.AddSingleton(Substitute.For<IControlPlaneTenantPlanClient>());
         services.AddSharedApplicationServices();
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
@@ -240,7 +268,11 @@ public sealed class ControlPlaneApiAdapterTests
     [Test]
     public async Task GetDomainsAsync_PreservesDnsRecords()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
         var domains = new HalResourceOfControlPlaneDomainOverviewDto
         {
             DnsRecords =
@@ -258,8 +290,8 @@ public sealed class ControlPlaneApiAdapterTests
         GeneratedHalLinkTestHelper.SetLinks(
             domains,
             (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/domains", "GET"));
-        apiClient.GetControlPlaneDomainsAsync(null, null, Arg.Any<CancellationToken>()).Returns(domains);
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        controlPlaneClient.GetControlPlaneDomainsAsync(null, null, Arg.Any<CancellationToken>()).Returns(domains);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         var result = await adapter.GetDomainsAsync();
 
@@ -274,7 +306,11 @@ public sealed class ControlPlaneApiAdapterTests
     [Test]
     public async Task GetOperationsAsync_PreservesStatusesWarningsMetricsAndLinks()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
         var operations = new HalResourceOfControlPlaneOperationsDto
         {
             GeneratedAtUtc = new DateTimeOffset(2026, 7, 5, 12, 0, 0, TimeSpan.Zero),
@@ -313,8 +349,8 @@ public sealed class ControlPlaneApiAdapterTests
         GeneratedHalLinkTestHelper.SetLinks(
             operations,
             (ControlPlaneLinkRelations.Self, "/api/admin/control-plane/operations", "GET"));
-        apiClient.GetControlPlaneOperationsAsync(null, null, Arg.Any<CancellationToken>()).Returns(operations);
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        controlPlaneClient.GetControlPlaneOperationsAsync(null, null, Arg.Any<CancellationToken>()).Returns(operations);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         var result = await adapter.GetOperationsAsync();
 
@@ -328,10 +364,14 @@ public sealed class ControlPlaneApiAdapterTests
     [Test]
     public async Task GetOverviewAsync_WhenApiReturnsForbidden_PropagatesGeneratedApiException()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
-        apiClient.GetControlPlaneOverviewAsync(null, null, Arg.Any<CancellationToken>())
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
+        controlPlaneClient.GetControlPlaneOverviewAsync(null, null, Arg.Any<CancellationToken>())
             .Returns<Task<HalResourceOfControlPlaneOverviewDto>>(_ => throw CreateApiException(403));
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         await Assert.ThrowsAsync<ApiException>(async () => await adapter.GetOverviewAsync());
     }
@@ -340,8 +380,12 @@ public sealed class ControlPlaneApiAdapterTests
     public async Task ScheduleTenantPurgeAsync_SendsReasonAndConfirmationText()
     {
         var tenantId = Guid.NewGuid();
-        var apiClient = Substitute.For<IEventApiClient>();
-        apiClient.ScheduleControlPlaneTenantPurgeAsync(
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
+        tenantLifecycleClient.ScheduleControlPlaneTenantPurgeAsync(
                 tenantId,
                 null,
                 null,
@@ -353,7 +397,7 @@ public sealed class ControlPlaneApiAdapterTests
                 Success = true,
                 Message = "Purge scheduled."
             });
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         var result = await adapter.ScheduleTenantPurgeAsync(tenantId, "cleanup", "central");
 
@@ -366,7 +410,11 @@ public sealed class ControlPlaneApiAdapterTests
     [Arguments(true)]
     public async Task CreateTenantAsync_PassesGeneratedRequest(bool assignCurrentUserAsTenantAdmin)
     {
-        var apiClient = Substitute.For<IEventApiClient>();
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
         var request = new CreateTenantDto
         {
             FullName = "New Mosque",
@@ -374,19 +422,19 @@ public sealed class ControlPlaneApiAdapterTests
             IsActive = false,
             AssignCurrentUserAsTenantAdmin = assignCurrentUserAsTenantAdmin
         };
-        apiClient.CreateControlPlaneTenantAsync(request, null, null, Arg.Any<CancellationToken>())
+        tenantLifecycleClient.CreateControlPlaneTenantAsync(request, null, null, Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfGuid
             {
                 Success = true,
                 Message = "Tenant created successfully."
             });
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         var result = await adapter.CreateTenantAsync(request);
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Message).IsEqualTo("Tenant created successfully.");
-        await apiClient.Received(1).CreateControlPlaneTenantAsync(
+        await tenantLifecycleClient.Received(1).CreateControlPlaneTenantAsync(
             Arg.Is<CreateTenantDto>(actual => ReferenceEquals(actual, request)),
             null,
             null,
@@ -396,15 +444,19 @@ public sealed class ControlPlaneApiAdapterTests
     [Test]
     public async Task SuspendTenantAsync_WhenApiReturnsConflict_PropagatesGeneratedApiException()
     {
-        var apiClient = Substitute.For<IEventApiClient>();
-        apiClient.SuspendControlPlaneTenantAsync(
+        var controlPlaneClient = Substitute.For<IControlPlaneClient>();
+        var deploymentModeClient = Substitute.For<IControlPlaneDeploymentModeClient>();
+        var tenantConfigurationClient = Substitute.For<IControlPlaneTenantConfigurationClient>();
+        var tenantLifecycleClient = Substitute.For<IControlPlaneTenantLifecycleClient>();
+        var tenantPlanClient = Substitute.For<IControlPlaneTenantPlanClient>();
+        tenantLifecycleClient.SuspendControlPlaneTenantAsync(
                 Arg.Any<Guid>(),
                 null,
                 null,
                 Arg.Any<ControlPlaneTenantLifecycleTransitionRequestDto>(),
                 Arg.Any<CancellationToken>())
             .Returns<Task<BaseCommandResponseOfControlPlaneTenantLifecycleTransitionDto>>(_ => throw CreateApiException(409));
-        var adapter = new ControlPlaneApiAdapter(apiClient);
+        var adapter = new ControlPlaneApiAdapter(controlPlaneClient, deploymentModeClient, tenantConfigurationClient, tenantLifecycleClient, tenantPlanClient);
 
         await Assert.ThrowsAsync<ApiException>(async () =>
             await adapter.SuspendTenantAsync(Guid.NewGuid(), "maintenance"));

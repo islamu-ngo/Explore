@@ -103,6 +103,34 @@ public class BlazorBffWebApplicationFactory : WebApplicationFactory<Program>
                 .Returns(_resolverConfiguration);
             services.AddSingleton(mockResolverConfig);
 
+            services.RemoveAll<IBffOnboardingStatusProvider>();
+            var mockOnboarding = Substitute.For<IBffOnboardingStatusProvider>();
+            mockOnboarding.GetStatusAsync(Arg.Any<CancellationToken>())
+                .Returns(new BffOnboardingStatus(
+                    IsCompleted: true,
+                    State: "Completed",
+                    Mode: "Interactive",
+                    Provider: null,
+                    Generation: 0,
+                    Disposition: BffOnboardingDisposition.Completed));
+            services.AddSingleton(mockOnboarding);
+
+            services.RemoveAll<IInstanceOnboardingClient>();
+            var onboardingClient = Substitute.For<IInstanceOnboardingClient>();
+            onboardingClient.GetInstanceOnboardingStatusAsync(
+                    Arg.Any<string?>(),
+                    Arg.Any<string?>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult(new HalResourceOfInstanceOnboardingStatusDto
+                {
+                    IsCompleted = true,
+                    State = "Completed",
+                    Mode = "Interactive",
+                    Generation = 1,
+                    SelectedDeploymentMode = "SingleTenant"
+                }));
+            services.AddSingleton(onboardingClient);
+
             var testAssembly = typeof(TenantTestController).Assembly;
             services.AddControllers().AddApplicationPart(testAssembly);
         });

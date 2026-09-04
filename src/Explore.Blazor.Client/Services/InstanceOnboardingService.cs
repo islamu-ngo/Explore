@@ -79,31 +79,39 @@ public interface IInstanceOnboardingService
 }
 
 public sealed class InstanceOnboardingService(
-    IEventApiClient api,
+    IInstanceAuthenticationSettingsClient authenticationClient,
+    IInstanceAuthorizationSettingsClient authorizationClient,
+    IInstanceGovernanceSettingsClient governanceClient,
+    IInstanceMessagingSettingsClient messagingClient,
+    IInstanceOnboardingClient onboardingClient,
+    IInstancePresentationSettingsClient presentationClient,
+    IInstanceStorageSettingsClient storageClient,
+    ISystemClient systemClient,
+    ITenantClient tenantClient,
     IBffAuthApi bffAuthApi,
     ILogger<InstanceOnboardingService> logger,
     NavigationManager navigation) : IInstanceOnboardingService
 {
     public Task<SystemOnboardingStatusDto?> GetSystemOnboardingStatusAsync() =>
-        GetOptionalAsync(ct => api.GetSystemOnboardingStatusAsync(cancellationToken: ct), "system onboarding status");
+        GetOptionalAsync(ct => systemClient.GetSystemOnboardingStatusAsync(cancellationToken: ct), "system onboarding status");
 
     public async Task<InstanceOnboardingStartupStatus> GetStartupStatusAsync(
         CancellationToken cancellationToken = default)
     {
         var resource = await GetOptionalAsync(
-            ct => api.GetInstanceOnboardingStatusAsync(cancellationToken: ct),
+            ct => onboardingClient.GetInstanceOnboardingStatusAsync(cancellationToken: ct),
             "instance onboarding startup status",
             cancellationToken);
         return InstanceOnboardingStartupStatusAdapter.FromGenerated(resource.ToDto());
     }
 
     public Task<OnboardingPreflightDto?> GetOnboardingPreflightAsync() =>
-        GetOptionalAsync(ct => api.GetSystemOnboardingPreflightAsync(cancellationToken: ct), "onboarding preflight");
+        GetOptionalAsync(ct => systemClient.GetSystemOnboardingPreflightAsync(cancellationToken: ct), "onboarding preflight");
 
     public async Task<InstanceOnboardingStatusDto?> GetStatusAsync()
     {
         var resource = await GetOptionalAsync(
-            ct => api.GetInstanceOnboardingStatusAsync(cancellationToken: ct),
+            ct => onboardingClient.GetInstanceOnboardingStatusAsync(cancellationToken: ct),
             "instance onboarding status");
         return resource.ToDto();
     }
@@ -112,7 +120,7 @@ public sealed class InstanceOnboardingService(
     {
         try
         {
-            return await api.ValidateInstanceSetupSecretAsync(
+            return await onboardingClient.ValidateInstanceSetupSecretAsync(
                 new ValidateSetupSecretRequest { Secret = secret },
                 cancellationToken: CancellationToken.None);
         }
@@ -136,7 +144,7 @@ public sealed class InstanceOnboardingService(
     {
         try
         {
-            return await api.CompleteInstanceOnboardingAsync(completion, cancellationToken: CancellationToken.None);
+            return await onboardingClient.CompleteInstanceOnboardingAsync(completion, cancellationToken: CancellationToken.None);
         }
         catch (ApiException<ValidationProblemDetails> ex)
         {
@@ -148,7 +156,7 @@ public sealed class InstanceOnboardingService(
             if (await RefreshAuthSessionAsync())
             {
                 return await SendCommandAsync(
-                    ct => api.CompleteInstanceOnboardingAsync(completion, cancellationToken: ct));
+                    ct => onboardingClient.CompleteInstanceOnboardingAsync(completion, cancellationToken: ct));
             }
 
             return MapCommandApiException(ex);
@@ -166,68 +174,68 @@ public sealed class InstanceOnboardingService(
     }
 
     public Task<DeploymentModeDto> GetDeploymentModeAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceDeploymentModeAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => presentationClient.GetInstanceDeploymentModeAsync(cancellationToken: ct), () => new());
 
     public Task<ModuleSettingsDto> GetModuleSettingsAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceModuleSettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => governanceClient.GetInstanceModuleSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<EventPolicyDto> GetEventPolicyAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceEventPolicyAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => governanceClient.GetInstanceEventPolicyAsync(cancellationToken: ct), () => new());
 
     public Task<OrganizationPolicyDto> GetOrganizationPolicyAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceOrganizationPolicyAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => governanceClient.GetInstanceOrganizationPolicyAsync(cancellationToken: ct), () => new());
 
     public Task<BrandingSettingsDto> GetBrandingSettingsAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceBrandingSettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => presentationClient.GetInstanceBrandingSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<DomainSettingsDto> GetDomainSettingsAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceDomainSettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => presentationClient.GetInstanceDomainSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<TenantDelegationSettingsDto> GetTenantDelegationAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceTenantDelegationSettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => governanceClient.GetInstanceTenantDelegationSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<RenderPolicySettingsDto> GetRenderPolicyAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceRenderPolicySettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => presentationClient.GetInstanceRenderPolicySettingsAsync(cancellationToken: ct), () => new());
 
     public Task<McpGovernanceSettingsDto> GetMcpGovernanceSettingsAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceMcpGovernanceSettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => governanceClient.GetInstanceMcpGovernanceSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<AiAssistantGovernanceSettingsDto> GetAiAssistantGovernanceSettingsAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceAiAssistantGovernanceSettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => governanceClient.GetInstanceAiAssistantGovernanceSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<BaseCommandResponseOfGuid> UpdateDeploymentModeAsync(string deploymentMode) =>
-        SendCommandAsync(ct => api.UpdateInstanceDeploymentModeAsync(
+        SendCommandAsync(ct => presentationClient.UpdateInstanceDeploymentModeAsync(
             new UpdateDeploymentModeRequest { DeploymentMode = deploymentMode }, cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateModuleSettingsAsync(ModuleSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceModuleSettingsAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => governanceClient.UpdateInstanceModuleSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateEventPolicyAsync(EventPolicyDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceEventPolicyAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => governanceClient.UpdateInstanceEventPolicyAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateOrganizationPolicyAsync(OrganizationPolicyDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceOrganizationPolicyAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => governanceClient.UpdateInstanceOrganizationPolicyAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateBrandingSettingsAsync(BrandingSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceBrandingSettingsAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => presentationClient.UpdateInstanceBrandingSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateDomainSettingsAsync(DomainSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceDomainSettingsAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => presentationClient.UpdateInstanceDomainSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateTenantDelegationAsync(TenantDelegationSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceTenantDelegationSettingsAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => governanceClient.UpdateInstanceTenantDelegationSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateRenderPolicyAsync(RenderPolicySettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceRenderPolicySettingsAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => presentationClient.UpdateInstanceRenderPolicySettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateMcpGovernanceSettingsAsync(McpGovernanceSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceMcpGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => governanceClient.UpdateInstanceMcpGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateAiAssistantGovernanceSettingsAsync(AiAssistantGovernanceSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceAiAssistantGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => governanceClient.UpdateInstanceAiAssistantGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> UpdateAiAssistantProviderConfigurationAsync(AiAssistantProviderConfigurationWriteDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceAiAssistantGovernanceSettingsAsync(new PatchAiAssistantGovernanceSettingsDto
+        SendCommandAsync(ct => governanceClient.UpdateInstanceAiAssistantGovernanceSettingsAsync(new PatchAiAssistantGovernanceSettingsDto
         {
             ProviderConfiguration = new OptionalUpdateOfAiAssistantProviderConfigurationWriteDto
             {
@@ -240,7 +248,7 @@ public sealed class InstanceOnboardingService(
     {
         try
         {
-            return (await api.GetInstanceStorageSettingsAsync(
+            return (await storageClient.GetInstanceStorageSettingsAsync(
                 cancellationToken: CancellationToken.None)).InitializeForEditing();
         }
         catch (Exception ex)
@@ -252,14 +260,14 @@ public sealed class InstanceOnboardingService(
 
     public Task<BaseCommandResponseOfGuid> UpdateStorageSettingsAsync(HalResourceOfInstanceStorageSettingsDto settings) =>
         settings.HasLink("edit")
-            ? SendCommandAsync(ct => api.UpdateInstanceStorageSettingsAsync(settings.ToUpdateRequest(), cancellationToken: ct))
+            ? SendCommandAsync(ct => storageClient.UpdateInstanceStorageSettingsAsync(settings.ToUpdateRequest(), cancellationToken: ct))
             : Task.FromResult(FailedCommandResponse("The API did not expose a storage settings edit affordance."));
 
     public async Task<InstanceStorageProviderStatusDto> TestStorageConnectionAsync()
     {
         try
         {
-            return await api.TestInstanceStorageConnectionAsync(cancellationToken: CancellationToken.None);
+            return await storageClient.TestInstanceStorageConnectionAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -276,7 +284,7 @@ public sealed class InstanceOnboardingService(
     {
         try
         {
-            return await api.RecalculateInstanceStorageUsageAsync(cancellationToken: CancellationToken.None);
+            return await storageClient.RecalculateInstanceStorageUsageAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -286,10 +294,10 @@ public sealed class InstanceOnboardingService(
     }
 
     public Task<InstanceSmtpSettingsDto> GetSmtpSettingsAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceSmtpSettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => messagingClient.GetInstanceSmtpSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<BaseCommandResponseOfGuid> UpdateSmtpSettingsAsync(InstanceSmtpConfigurationWriteDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceSmtpSettingsAsync(new PatchInstanceSmtpSettingsDto
+        SendCommandAsync(ct => messagingClient.UpdateInstanceSmtpSettingsAsync(new PatchInstanceSmtpSettingsDto
         {
             Configuration = new OptionalUpdateOfInstanceSmtpConfigurationWriteDto
             {
@@ -302,7 +310,7 @@ public sealed class InstanceOnboardingService(
     {
         try
         {
-            return await api.TestInstanceSmtpConnectionAsync(cancellationToken: CancellationToken.None);
+            return await messagingClient.TestInstanceSmtpConnectionAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -315,7 +323,7 @@ public sealed class InstanceOnboardingService(
     {
         try
         {
-            return await api.GetActiveTenantCountAsync(cancellationToken: CancellationToken.None);
+            return await tenantClient.GetActiveTenantCountAsync(cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -325,16 +333,16 @@ public sealed class InstanceOnboardingService(
     }
 
     public Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceOnboardingAuthProviderConfigurationAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => onboardingClient.GetInstanceOnboardingAuthProviderConfigurationAsync(cancellationToken: ct), () => new());
 
     public Task<AuthProviderConfigurationDto> GetAuthProviderConfigurationAsAdminAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceAuthProviderConfigurationAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => authenticationClient.GetInstanceAuthProviderConfigurationAsync(cancellationToken: ct), () => new());
 
     public async Task<BaseCommandResponseOfGuid> BootstrapKeycloakRealmAsync(KeycloakBootstrapRequestDto request)
     {
         ApplyKeycloakBootstrapBrowserDefaults(request);
         var result = await SendCommandAsync(
-            ct => api.BootstrapInstanceOnboardingKeycloakRealmAsync(request, cancellationToken: ct));
+            ct => onboardingClient.BootstrapInstanceOnboardingKeycloakRealmAsync(request, cancellationToken: ct));
         if (result.Success == true)
         {
             await RefreshAuthSchemesAsync();
@@ -345,26 +353,26 @@ public sealed class InstanceOnboardingService(
 
     public Task<KeycloakRealmDoctorResultDto> RunKeycloakRealmDoctorAsync(KeycloakRealmDoctorRequestDto request) =>
         GetSettingsAsync(
-            ct => api.RunInstanceKeycloakRealmDoctorAsync(request, cancellationToken: ct),
+            ct => authenticationClient.RunInstanceKeycloakRealmDoctorAsync(request, cancellationToken: ct),
             () => BlockedDoctor("Keycloak diagnostics failed. Check admin access and retry."));
 
     public Task<KeycloakRealmSyncPlanDto> PreviewKeycloakRealmSyncAsync(KeycloakRealmSyncPreviewRequestDto request) =>
         GetSettingsAsync(
-            ct => api.PreviewInstanceKeycloakRealmSyncAsync(request, cancellationToken: ct),
+            ct => authenticationClient.PreviewInstanceKeycloakRealmSyncAsync(request, cancellationToken: ct),
             () => BlockedPlan("Keycloak sync preview failed. Check admin access and retry."));
 
     public Task<KeycloakRealmSyncPlanDto> ApplyKeycloakRealmSyncAsync(KeycloakRealmSyncApplyRequestDto request) =>
         GetSettingsAsync(
-            ct => api.ApplyInstanceKeycloakRealmSyncAsync(request, cancellationToken: ct),
+            ct => authenticationClient.ApplyInstanceKeycloakRealmSyncAsync(request, cancellationToken: ct),
             () => BlockedPlan("Keycloak sync apply failed. Check admin access and retry."));
 
     public Task<KeycloakClientSecretRotationResultDto> RotateKeycloakClientSecretAsync(KeycloakClientSecretRotationRequestDto request) =>
         GetSettingsAsync(
-            ct => api.RotateInstanceKeycloakClientSecretAsync(request, cancellationToken: ct),
+            ct => authenticationClient.RotateInstanceKeycloakClientSecretAsync(request, cancellationToken: ct),
             () => BlockedRotation("Keycloak client-secret rotation failed. Check admin access and retry."));
 
     public Task<BaseCommandResponseOfGuid> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationDto config) =>
-        SendCommandAsync(ct => api.UpdateInstanceAuthProviderConfigurationAsync(ToPatch(config), cancellationToken: ct));
+        SendCommandAsync(ct => authenticationClient.UpdateInstanceAuthProviderConfigurationAsync(ToPatch(config), cancellationToken: ct));
 
     public async Task<bool> IsAuthProviderConfiguredAsync() =>
         await GetAuthProviderConfiguredStateAsync() ?? false;
@@ -373,7 +381,7 @@ public sealed class InstanceOnboardingService(
     {
         try
         {
-            return (await api.GetInstanceAuthProviderConfigurationStatusAsync(
+            return (await authenticationClient.GetInstanceAuthProviderConfigurationStatusAsync(
                 cancellationToken: CancellationToken.None)).Configured;
         }
         catch (Exception ex)
@@ -384,24 +392,24 @@ public sealed class InstanceOnboardingService(
     }
 
     public Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsync() =>
-        api.GetInstanceOnboardingAuthorizationProviderConfigurationInternalAsync(cancellationToken: CancellationToken.None);
+        onboardingClient.GetInstanceOnboardingAuthorizationProviderConfigurationInternalAsync(cancellationToken: CancellationToken.None);
 
     public Task<AuthorizationProviderConfigurationDto> GetAuthorizationProviderConfigurationAsAdminAsync() =>
         GetSettingsAsync(
-            ct => api.GetInstanceAuthorizationProviderConfigurationAsync(cancellationToken: ct),
+            ct => authorizationClient.GetInstanceAuthorizationProviderConfigurationAsync(cancellationToken: ct),
             () => new());
 
     public Task<BaseCommandResponseOfGuid> UpdateAuthorizationProviderConfigurationAsAdminAsync(AuthorizationProviderConfigurationDto config) =>
-        SendCommandAsync(ct => api.UpdateInstanceAuthorizationProviderConfigurationAsync(ToPatch(config), cancellationToken: ct));
+        SendCommandAsync(ct => authorizationClient.UpdateInstanceAuthorizationProviderConfigurationAsync(ToPatch(config), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsync(AuthorizationPolicyPackageSyncRequestDto? request = null) =>
-        SendCommandAsync(ct => api.SyncInstanceOnboardingAuthorizationPolicyPackageAsync(request ?? new(), cancellationToken: ct));
+        SendCommandAsync(ct => onboardingClient.SyncInstanceOnboardingAuthorizationPolicyPackageAsync(request ?? new(), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> SyncAuthorizationPolicyPackageAsAdminAsync(AuthorizationPolicyPackageSyncRequestDto? request = null) =>
-        SendCommandAsync(ct => api.SyncInstanceAuthorizationPolicyPackageAsync(request ?? new(), cancellationToken: ct));
+        SendCommandAsync(ct => authorizationClient.SyncInstanceAuthorizationPolicyPackageAsync(request ?? new(), cancellationToken: ct));
 
     public Task<BaseCommandResponseOfGuid> VerifyCerbosEndpointAsync(string grpcEndpoint) =>
-        SendCommandAsync(ct => api.VerifyInstanceOnboardingAuthorizationProviderEndpointAsync(
+        SendCommandAsync(ct => onboardingClient.VerifyInstanceOnboardingAuthorizationProviderEndpointAsync(
             body: new VerifyCerbosEndpointRequest { GrpcEndpoint = grpcEndpoint }, cancellationToken: ct));
 
     public async Task<bool> IsAuthorizationProviderConfiguredAsync() =>
@@ -416,7 +424,7 @@ public sealed class InstanceOnboardingService(
         // so using the full config endpoint here causes 429s.
         try
         {
-            var status = await api.GetInstanceAuthorizationProviderConfigurationStatusAsync(
+            var status = await authorizationClient.GetInstanceAuthorizationProviderConfigurationStatusAsync(
                 cancellationToken: CancellationToken.None);
             var deploymentFailed = string.Equals(
                 status.AuthorizationProviderBootstrapStatus,
@@ -439,7 +447,7 @@ public sealed class InstanceOnboardingService(
     {
         try
         {
-            return (await api.GetInstanceAuthorizationProviderConfigurationStatusAsync(
+            return (await authorizationClient.GetInstanceAuthorizationProviderConfigurationStatusAsync(
                 cancellationToken: CancellationToken.None)).Configured;
         }
         catch (Exception ex)
@@ -486,16 +494,16 @@ public sealed class InstanceOnboardingService(
     }
 
     public Task<AnalyticsGovernanceSettingsDto> GetAnalyticsGovernanceSettingsAsync() =>
-        GetSettingsAsync(ct => api.GetInstanceAnalyticsGovernanceSettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => governanceClient.GetInstanceAnalyticsGovernanceSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<BaseCommandResponseOfGuid> UpdateAnalyticsGovernanceSettingsAsync(AnalyticsGovernanceSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateInstanceAnalyticsGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => governanceClient.UpdateInstanceAnalyticsGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     public Task<FooterGovernanceSettingsDto> GetFooterGovernanceSettingsAsync() =>
-        GetSettingsAsync(ct => api.GetFooterGovernanceSettingsAsync(cancellationToken: ct), () => new());
+        GetSettingsAsync(ct => governanceClient.GetFooterGovernanceSettingsAsync(cancellationToken: ct), () => new());
 
     public Task<BaseCommandResponseOfGuid> UpdateFooterGovernanceSettingsAsync(FooterGovernanceSettingsDto settings) =>
-        SendCommandAsync(ct => api.UpdateFooterGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
+        SendCommandAsync(ct => governanceClient.UpdateFooterGovernanceSettingsAsync(ToPatch(settings), cancellationToken: ct));
 
     private void ApplyKeycloakBootstrapBrowserDefaults(KeycloakBootstrapRequestDto request)
     {

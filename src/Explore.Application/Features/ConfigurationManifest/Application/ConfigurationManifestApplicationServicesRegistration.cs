@@ -59,18 +59,6 @@ public static class ConfigurationManifestApplicationServicesRegistration
         services.TryAddScoped<IConfigurationManifestApplier>(provider =>
             provider.GetRequiredService<ApplyConfigurationManifestCommandHandler>());
         services.TryAddSingleton<LegalDocumentRenderingService>();
-        services.TryAddSingleton<ConfigurationImportArtifactParser>();
-        services.TryAddSingleton<ConfigurationImportPreviewComposer>();
-        services.TryAddScoped<ConfigurationImportSessionManager>();
-        services.TryAddScoped<ConfigurationImportSessionApplicationService>();
-        services.TryAddScoped<IConfigurationImportTenantIdentityMutationBoundary,
-            ConfigurationImportTenantIdentityMutationBoundary>();
-        services.TryAddScoped<ConfigurationImportSectionApplier>();
-        services.TryAddScoped<ConfigurationImportApplyService>();
-        services.TryAddScoped<ConfigurationManagedApplyScheduleService>();
-        services.TryAddScoped<ConfigurationDirectTransferService>();
-        services.TryAddScoped<IConfigurationImportEffectDelivery,
-            ConfigurationImportEffectDelivery>();
 
         if (effectDeliveryMode == ConfigurationManifestEffectDeliveryMode.DeferredToRuntime)
         {
@@ -80,6 +68,18 @@ public static class ConfigurationManifestApplicationServicesRegistration
         }
         else
         {
+            services.TryAddSingleton<ConfigurationImportArtifactParser>();
+            services.TryAddSingleton<ConfigurationImportPreviewComposer>();
+            services.TryAddScoped<ConfigurationImportSessionManager>();
+            services.TryAddScoped<ConfigurationImportSessionApplicationService>();
+            services.TryAddScoped<IConfigurationImportTenantIdentityMutationBoundary,
+                ConfigurationImportTenantIdentityMutationBoundary>();
+            services.TryAddScoped<ConfigurationImportSectionApplier>();
+            services.TryAddScoped<ConfigurationImportApplyService>();
+            services.TryAddScoped<ConfigurationManagedApplyScheduleService>();
+            services.TryAddScoped<ConfigurationDirectTransferService>();
+            services.TryAddScoped<IConfigurationImportEffectDelivery,
+                ConfigurationImportEffectDelivery>();
             services.TryAddScoped<
                 IConfigurationManifestEffectDispatcher,
                 ConfigurationManifestEffectDispatcher>();

@@ -34,12 +34,14 @@ public sealed record GroupMembersResult
 
 public class GroupService : IGroupService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IGroupClient _apiClient;
+    private readonly IGroupMemberClient _groupMemberClient;
     private readonly ILogger<GroupService> _logger;
 
-    public GroupService(IEventApiClient apiClient, ILogger<GroupService> logger)
+    public GroupService(IGroupClient apiClient, IGroupMemberClient groupMemberClient, ILogger<GroupService> logger)
     {
         _apiClient = apiClient;
+        _groupMemberClient = groupMemberClient;
         _logger = logger;
     }
 
@@ -136,7 +138,7 @@ public class GroupService : IGroupService
     {
         try
         {
-            var response = await _apiClient.GetGroupMembersAsync(groupId);
+            var response = await _groupMemberClient.GetGroupMembersAsync(groupId);
             if (response is null)
             {
                 return GroupMembersResult.Empty;
@@ -162,7 +164,7 @@ public class GroupService : IGroupService
     {
         try
         {
-            return await _apiClient.CreateGroupMemberAsync(member);
+            return await _groupMemberClient.CreateGroupMemberAsync(member);
         }
         catch (ApiException ex)
         {
@@ -175,7 +177,7 @@ public class GroupService : IGroupService
     {
         try
         {
-            return await _apiClient.UpdateGroupMemberAsync(updateDto);
+            return await _groupMemberClient.UpdateGroupMemberAsync(updateDto);
         }
         catch (ApiException ex)
         {
@@ -188,7 +190,7 @@ public class GroupService : IGroupService
     {
         try
         {
-            return await _apiClient.DeleteGroupMemberAsync(memberId);
+            return await _groupMemberClient.DeleteGroupMemberAsync(memberId);
         }
         catch (ApiException ex)
         {

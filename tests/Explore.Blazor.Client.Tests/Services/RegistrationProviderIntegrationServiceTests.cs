@@ -8,7 +8,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class RegistrationProviderIntegrationServiceTests
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly IRegistrationProviderManagementClient _apiClient = Substitute.For<IRegistrationProviderManagementClient>();
     private readonly RegistrationProviderIntegrationService _service;
 
     public RegistrationProviderIntegrationServiceTests()

@@ -8,7 +8,9 @@ using Microsoft.Extensions.Logging;
 namespace Explore.Blazor.Client.Services.Webhooks;
 
 public sealed class WebhookManagementService(
-    IEventApiClient apiClient,
+    IWebhooksClient webhooksClient,
+    IWebhookEndpointsClient endpointsClient,
+    IWebhookMessagesClient messagesClient,
     ILogger<WebhookManagementService> logger) : IWebhookManagementService
 {
     private const int SnapshotLimit = 200;
@@ -22,23 +24,23 @@ public sealed class WebhookManagementService(
 
         try
         {
-            var eventTypesTask = apiClient.GetWebhookEventTypesAsync(cancellationToken: cancellationToken);
-            var consumersTask = apiClient.GetWebhookConsumersAsync(
+            var eventTypesTask = webhooksClient.GetWebhookEventTypesAsync(cancellationToken: cancellationToken);
+            var consumersTask = webhooksClient.GetWebhookConsumersAsync(
                 ownerKindId: owner.OwnerKindId,
                 ownerId: owner.OwnerId,
                 limit: SnapshotLimit,
                 cancellationToken: cancellationToken);
-            var endpointsTask = apiClient.GetWebhookEndpointsAsync(
+            var endpointsTask = endpointsClient.GetWebhookEndpointsAsync(
                 ownerKindId: owner.OwnerKindId,
                 ownerId: owner.OwnerId,
                 limit: SnapshotLimit,
                 cancellationToken: cancellationToken);
-            var messagesTask = apiClient.GetWebhookMessagesAsync(
+            var messagesTask = messagesClient.GetWebhookMessagesAsync(
                 ownerKindId: owner.OwnerKindId,
                 ownerId: owner.OwnerId,
                 limit: ActivityLimit,
                 cancellationToken: cancellationToken);
-            var attemptsTask = apiClient.GetWebhookDeliveryAttemptsAsync(
+            var attemptsTask = messagesClient.GetWebhookDeliveryAttemptsAsync(
                 ownerKindId: owner.OwnerKindId,
                 ownerId: owner.OwnerId,
                 limit: ActivityLimit,
@@ -95,7 +97,7 @@ public sealed class WebhookManagementService(
 
         try
         {
-            var attempts = await apiClient.GetWebhookDeliveryAttemptsAsync(
+            var attempts = await messagesClient.GetWebhookDeliveryAttemptsAsync(
                 ownerKindId: owner.OwnerKindId,
                 ownerId: owner.OwnerId,
                 messageId: messageId,
@@ -115,7 +117,7 @@ public sealed class WebhookManagementService(
         CreateWebhookConsumerRequestDto request,
         CancellationToken cancellationToken = default) =>
         await ExecuteCommandAsync(
-            () => apiClient.CreateWebhookConsumerAsync(request, cancellationToken: cancellationToken),
+            () => webhooksClient.CreateWebhookConsumerAsync(request, cancellationToken: cancellationToken),
             "Webhook consumer created.",
             "Unable to create webhook consumer.");
 
@@ -123,7 +125,7 @@ public sealed class WebhookManagementService(
         CreateWebhookEndpointRequestDto request,
         CancellationToken cancellationToken = default) =>
         await ExecuteCommandAsync(
-            () => apiClient.CreateWebhookEndpointAsync(request, cancellationToken: cancellationToken),
+            () => endpointsClient.CreateWebhookEndpointAsync(request, cancellationToken: cancellationToken),
             "Webhook endpoint created.",
             "Unable to create webhook endpoint.");
 
@@ -132,7 +134,7 @@ public sealed class WebhookManagementService(
         UpdateWebhookEndpointRequestDto request,
         CancellationToken cancellationToken = default) =>
         await ExecuteCommandAsync(
-            () => apiClient.UpdateWebhookEndpointAsync(endpointId, request, cancellationToken: cancellationToken),
+            () => endpointsClient.UpdateWebhookEndpointAsync(endpointId, request, cancellationToken: cancellationToken),
             "Webhook endpoint updated.",
             "Unable to update webhook endpoint.");
 
@@ -142,7 +144,7 @@ public sealed class WebhookManagementService(
     {
         try
         {
-            await apiClient.DeleteWebhookEndpointAsync(endpointId, cancellationToken: cancellationToken);
+            await endpointsClient.DeleteWebhookEndpointAsync(endpointId, cancellationToken: cancellationToken);
             return WebhookActionResult.Succeeded("Webhook endpoint archived.", endpointId);
         }
         catch (ApiException ex)
@@ -162,7 +164,7 @@ public sealed class WebhookManagementService(
         RotateWebhookEndpointSecretRequestDto request,
         CancellationToken cancellationToken = default) =>
         await ExecuteCommandAsync(
-            () => apiClient.RotateWebhookEndpointSecretAsync(endpointId, request, cancellationToken: cancellationToken),
+            () => endpointsClient.RotateWebhookEndpointSecretAsync(endpointId, request, cancellationToken: cancellationToken),
             "Webhook endpoint secret rotated.",
             "Unable to rotate webhook endpoint secret.");
 
@@ -170,7 +172,7 @@ public sealed class WebhookManagementService(
         Guid endpointId,
         CancellationToken cancellationToken = default) =>
         await ExecuteCommandAsync(
-            () => apiClient.TestWebhookEndpointAsync(endpointId, cancellationToken: cancellationToken),
+            () => endpointsClient.TestWebhookEndpointAsync(endpointId, cancellationToken: cancellationToken),
             "Webhook endpoint test scheduled.",
             "Unable to schedule webhook endpoint test.");
 
@@ -178,7 +180,7 @@ public sealed class WebhookManagementService(
         Guid attemptId,
         CancellationToken cancellationToken = default) =>
         await ExecuteCommandAsync(
-            () => apiClient.RetryWebhookDeliveryAttemptAsync(attemptId, cancellationToken: cancellationToken),
+            () => messagesClient.RetryWebhookDeliveryAttemptAsync(attemptId, cancellationToken: cancellationToken),
             "Webhook delivery retry scheduled.",
             "Unable to retry webhook delivery.");
 
@@ -188,7 +190,7 @@ public sealed class WebhookManagementService(
     {
         try
         {
-            var access = await apiClient.OpenSvixAppPortalAsync(
+            var access = await webhooksClient.OpenSvixAppPortalAsync(
                 new OpenSvixAppPortalRequestDto
                 {
                     ConsumerId = consumerId,

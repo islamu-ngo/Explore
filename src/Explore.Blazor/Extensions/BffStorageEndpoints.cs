@@ -85,7 +85,7 @@ public static class BffStorageEndpoints
     private static async Task<IResult> HandleStorageUploadSessionAsync(
         StorageUploadSessionRequest? request,
         HttpContext ctx,
-        IEventApiClient apiClient,
+        IStorageObjectClient apiClient,
         IStorageUploadSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -145,7 +145,7 @@ public static class BffStorageEndpoints
         Guid organizationId,
         StorageUploadSessionRequest? request,
         HttpContext ctx,
-        IEventApiClient apiClient,
+        IOrganizationTenantEvidenceClient apiClient,
         IStorageUploadSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -207,7 +207,7 @@ public static class BffStorageEndpoints
 
     private static async Task<IResult> HandleStorageUploadProxyAsync(
         HttpContext ctx,
-        IEventApiClient apiClient,
+        IStorageObjectClient apiClient,
         IStorageUploadSessionStore sessionStore,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)

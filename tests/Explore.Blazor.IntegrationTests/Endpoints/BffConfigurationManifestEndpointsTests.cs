@@ -149,8 +149,18 @@ public sealed class BffConfigurationManifestEndpointsTests
         {
             builder.ConfigureTestServices(services =>
             {
-                services.RemoveAll<IEventApiClient>();
-                services.AddSingleton<IEventApiClient>(_ => CreateApiClient(handler));
+                var http = new HttpClient(new StubHttpMessageHandler(handler))
+                {
+                    BaseAddress = new Uri("https://api.test/")
+                };
+                services.RemoveAll<IControlPlaneClient>();
+                services.AddSingleton<IControlPlaneClient>(new ControlPlaneClient(http));
+                services.RemoveAll<IControl_Plane_ConfigurationClient>();
+                services.AddSingleton<IControl_Plane_ConfigurationClient>(new Control_Plane_ConfigurationClient(http));
+                services.RemoveAll<ITenantOnboardingClient>();
+                services.AddSingleton<ITenantOnboardingClient>(new TenantOnboardingClient(http));
+                services.RemoveAll<ITenant_ConfigurationClient>();
+                services.AddSingleton<ITenant_ConfigurationClient>(new Tenant_ConfigurationClient(http));
             });
         });
 
@@ -204,16 +214,6 @@ public sealed class BffConfigurationManifestEndpointsTests
         };
     }
 
-    private static IEventApiClient CreateApiClient(
-        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
-    {
-        var httpClient = new HttpClient(new StubHttpMessageHandler(handler))
-        {
-            BaseAddress = new Uri("https://api.test/")
-        };
-
-        return new EventApiClient(httpClient);
-    }
 
     private sealed class StubHttpMessageHandler(
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)

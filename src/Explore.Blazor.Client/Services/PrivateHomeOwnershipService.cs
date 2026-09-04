@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace Explore.Blazor.Client.Services;
 
 public sealed class PrivateHomeOwnershipService(
-    IEventApiClient client,
+    ILocationClient client,
     ILogger<PrivateHomeOwnershipService> logger) : IPrivateHomeOwnershipService
 {
     public Task<BaseCommandResponseOfGuid> ClassifyAsPrivateHomeAsync(

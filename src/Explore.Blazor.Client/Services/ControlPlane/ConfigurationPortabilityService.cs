@@ -108,7 +108,10 @@ internal interface IConfigurationPortabilityService
 }
 
 internal sealed class ConfigurationPortabilityService(
-    IEventApiClient api,
+    IControlPlaneClient controlPlaneClient,
+    ITenantOnboardingClient tenantOnboardingClient,
+    IControl_Plane_ConfigurationClient instanceConfigurationClient,
+    ITenant_ConfigurationClient tenantConfigurationClient,
     IConfigurationManifestExportService manifestExports,
     IBrowserActionInterop browserActions,
     NavigationManager navigation) : IConfigurationPortabilityService
@@ -122,7 +125,7 @@ internal sealed class ConfigurationPortabilityService(
         if (scope == ConfigurationImportScope.Instance)
         {
             HalResourceOfControlPlaneOverviewDto resource =
-                await api.GetControlPlaneOverviewAsync(
+                await controlPlaneClient.GetControlPlaneOverviewAsync(
                     cancellationToken: cancellationToken);
             return new ConfigurationPortabilityCapabilities(
                 ControlPlaneHal.HasLink(
@@ -143,13 +146,13 @@ internal sealed class ConfigurationPortabilityService(
         }
 
         HalResourceOfTenantOnboardingStatusDto status =
-            await api.GetTenantOnboardingStatusAsync(
+            await tenantOnboardingClient.GetTenantOnboardingStatusAsync(
                 cancellationToken: cancellationToken);
         bool canCreateCloneTarget = false;
         try
         {
             HalCollectionResourceOfControlPlaneTenantListItemDto tenants =
-                await api.GetControlPlaneTenantsAsync(
+                await controlPlaneClient.GetControlPlaneTenantsAsync(
                     cancellationToken: cancellationToken);
             canCreateCloneTarget = ControlPlaneHal.HasLink(
                 tenants._links,
@@ -217,10 +220,10 @@ internal sealed class ConfigurationPortabilityService(
             cancellationToken);
         HalResourceOfConfigurationImportSessionCreatedResult created =
             scope == ConfigurationImportScope.Instance
-                ? await api.CreateInstanceConfigurationImportSessionAsync(
+                ? await instanceConfigurationClient.CreateInstanceConfigurationImportSessionAsync(
                     stream,
                     cancellationToken: cancellationToken)
-                : await api.CreateTenantConfigurationImportSessionAsync(
+                : await tenantConfigurationClient.CreateTenantConfigurationImportSessionAsync(
                     RequireTenantId(tenantId),
                     stream,
                     cancellationToken: cancellationToken);
@@ -242,12 +245,12 @@ internal sealed class ConfigurationPortabilityService(
             applyMode);
         HalResourceOfConfigurationImportPreviewResult preview =
             session.Scope == ConfigurationImportScope.Instance
-                ? await api.PreviewInstanceConfigurationImportSessionAsync(
+                ? await instanceConfigurationClient.PreviewInstanceConfigurationImportSessionAsync(
                     session.SessionId,
                     session.AccessToken,
                     request,
                     cancellationToken: cancellationToken)
-                : await api.PreviewTenantConfigurationImportSessionAsync(
+                : await tenantConfigurationClient.PreviewTenantConfigurationImportSessionAsync(
                     RequireTenantId(session.TenantId),
                     session.SessionId,
                     session.AccessToken,
@@ -285,12 +288,12 @@ internal sealed class ConfigurationPortabilityService(
         };
         HalResourceOfConfigurationImportOperationResult operation =
             session.Scope == ConfigurationImportScope.Instance
-                ? await api.ApplyInstanceConfigurationImportSessionAsync(
+                ? await instanceConfigurationClient.ApplyInstanceConfigurationImportSessionAsync(
                     session.SessionId,
                     session.AccessToken,
                     request,
                     cancellationToken: cancellationToken)
-                : await api.ApplyTenantConfigurationImportSessionAsync(
+                : await tenantConfigurationClient.ApplyTenantConfigurationImportSessionAsync(
                     RequireTenantId(session.TenantId),
                     session.SessionId,
                     session.AccessToken,
@@ -306,10 +309,10 @@ internal sealed class ConfigurationPortabilityService(
     {
         HalResourceOfConfigurationImportHistoryResult history =
             scope == ConfigurationImportScope.Instance
-                ? await api.ListInstanceConfigurationImportHistoryAsync(
+                ? await instanceConfigurationClient.ListInstanceConfigurationImportHistoryAsync(
                     50,
                     cancellationToken: cancellationToken)
-                : await api.ListTenantConfigurationImportHistoryAsync(
+                : await tenantConfigurationClient.ListTenantConfigurationImportHistoryAsync(
                     RequireTenantId(tenantId),
                     50,
                     cancellationToken: cancellationToken);
@@ -337,10 +340,10 @@ internal sealed class ConfigurationPortabilityService(
     {
         HalResourceOfConfigurationImportOperationResult operation =
             scope == ConfigurationImportScope.Instance
-                ? await api.GetInstanceConfigurationImportReceiptAsync(
+                ? await instanceConfigurationClient.GetInstanceConfigurationImportReceiptAsync(
                     operationId,
                     cancellationToken: cancellationToken)
-                : await api.GetTenantConfigurationImportReceiptAsync(
+                : await tenantConfigurationClient.GetTenantConfigurationImportReceiptAsync(
                     RequireTenantId(tenantId),
                     operationId,
                     cancellationToken: cancellationToken);
@@ -355,10 +358,10 @@ internal sealed class ConfigurationPortabilityService(
     {
         HalResourceOfConfigurationImportRollbackSessionCreatedResult created =
             scope == ConfigurationImportScope.Instance
-                ? await api.CreateInstanceConfigurationRollbackSessionAsync(
+                ? await instanceConfigurationClient.CreateInstanceConfigurationRollbackSessionAsync(
                     operationId,
                     cancellationToken: cancellationToken)
-                : await api.CreateTenantConfigurationRollbackSessionAsync(
+                : await tenantConfigurationClient.CreateTenantConfigurationRollbackSessionAsync(
                     RequireTenantId(tenantId),
                     operationId,
                     cancellationToken: cancellationToken);

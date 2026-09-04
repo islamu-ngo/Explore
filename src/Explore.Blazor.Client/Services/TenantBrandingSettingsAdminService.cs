@@ -16,7 +16,7 @@ public interface ITenantBrandingSettingsAdminService
 }
 
 public sealed class TenantBrandingSettingsAdminService(
-    IEventApiClient api,
+    ITenantSettingsDocumentsClient api,
     ILogger<TenantBrandingSettingsAdminService> logger) : ITenantBrandingSettingsAdminService
 {
     private const string EditLinkRel = "edit";

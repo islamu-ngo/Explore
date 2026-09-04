@@ -1,4 +1,4 @@
-// ABOUTME: Implementation of ICustomPropertyValueService wrapping IEventApiClient.
+// ABOUTME: Implements custom-property value operations through event and session tag clients.
 // ABOUTME: Handles getting and setting single and multi values for Event and EventSession.
 
 using Explore.Blazor.Client.Clients;
@@ -10,18 +10,23 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class CustomPropertyValueService : ICustomPropertyValueService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventCustomPropertyClient _eventClient;
+    private readonly IEventSessionCustomPropertyClient _sessionClient;
     private readonly ILogger<CustomPropertyValueService> _logger;
 
-    public CustomPropertyValueService(IEventApiClient apiClient, ILogger<CustomPropertyValueService> logger)
+    public CustomPropertyValueService(
+        IEventCustomPropertyClient eventClient,
+        IEventSessionCustomPropertyClient sessionClient,
+        ILogger<CustomPropertyValueService> logger)
     {
-        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _eventClient = eventClient ?? throw new ArgumentNullException(nameof(eventClient));
+        _sessionClient = sessionClient ?? throw new ArgumentNullException(nameof(sessionClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<IReadOnlyList<CustomPropertyValueModel>> GetEventValuesAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
-        var response = await _apiClient.GetEventCustomPropertyValuesAsync(eventId, cancellationToken: cancellationToken);
+        var response = await _eventClient.GetEventCustomPropertyValuesAsync(eventId, cancellationToken: cancellationToken);
         return response?.Select(CustomPropertyValueModel.FromEventDto).ToList() ?? new List<CustomPropertyValueModel>();
     }
 
@@ -41,7 +46,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 OptionId = model.OptionId
             };
 
-            return await _apiClient.SetEventCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
+            return await _eventClient.SetEventCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -76,7 +81,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 }).ToList()
             };
 
-            return await _apiClient.SetEventCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
+            return await _eventClient.SetEventCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -92,7 +97,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
 
     public async Task<IReadOnlyList<CustomPropertyValueModel>> GetEventSessionValuesAsync(Guid eventSessionId, CancellationToken cancellationToken = default)
     {
-        var response = await _apiClient.GetEventSessionCustomPropertyValuesAsync(eventSessionId, cancellationToken: cancellationToken);
+        var response = await _sessionClient.GetEventSessionCustomPropertyValuesAsync(eventSessionId, cancellationToken: cancellationToken);
         return response?.Select(CustomPropertyValueModel.FromEventSessionDto).ToList() ?? new List<CustomPropertyValueModel>();
     }
 
@@ -112,7 +117,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 OptionId = model.OptionId
             };
 
-            return await _apiClient.SetEventSessionCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
+            return await _sessionClient.SetEventSessionCustomPropertyValueAsync(body, cancellationToken: cancellationToken);
         }
         catch (ApiException<ProblemDetails> ex)
         {
@@ -147,7 +152,7 @@ public sealed class CustomPropertyValueService : ICustomPropertyValueService
                 }).ToList()
             };
 
-            return await _apiClient.SetEventSessionCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
+            return await _sessionClient.SetEventSessionCustomPropertyMultiValuesAsync(body, cancellationToken: cancellationToken);
         }
         catch (ApiException<ProblemDetails> ex)
         {

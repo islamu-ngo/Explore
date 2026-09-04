@@ -1,4 +1,4 @@
-// ABOUTME: Unit tests for Blazor client ContactShareConsentService wrapping IEventApiClient.
+// ABOUTME: Unit tests for Blazor client ContactShareConsentService over its generated tag client.
 // ABOUTME: Tests API call delegation, error handling, and view model mapping.
 
 using Explore.Blazor.Client.Clients;
@@ -14,13 +14,13 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class ContactShareConsentServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IContactShareConsentClient _apiClient;
     private readonly ILogger<ContactShareConsentService> _logger;
     private readonly ContactShareConsentService _service;
 
     public ContactShareConsentServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IContactShareConsentClient>();
         _logger = Substitute.For<ILogger<ContactShareConsentService>>();
         _service = new ContactShareConsentService(_apiClient, _logger);
     }

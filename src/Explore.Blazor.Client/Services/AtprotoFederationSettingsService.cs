@@ -6,7 +6,7 @@ using Explore.Blazor.Client.Contracts.Services.Federation;
 
 namespace Explore.Blazor.Client.Services;
 
-public sealed class AtprotoFederationSettingsService(IEventApiClient apiClient)
+public sealed class AtprotoFederationSettingsService(ISettingsClient apiClient)
     : IAtprotoFederationSettingsService
 {
     private const string TenantCategory = "AtprotoFederation";

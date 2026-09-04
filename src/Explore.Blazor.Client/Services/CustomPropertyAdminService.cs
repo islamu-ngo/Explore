@@ -1,4 +1,4 @@
-// ABOUTME: Tenant-scoped custom-property governance service — wraps IEventApiClient with HAL unwrap + logging.
+// ABOUTME: Tenant-scoped custom-property governance service using definition, governance, and projection clients.
 // ABOUTME: Single source of truth for admin pages interacting with Layer 3 definitions and projection runtime.
 
 using System.Text.Json;
@@ -13,12 +13,20 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly ICustomPropertyDefinitionClient _definitionClient;
+    private readonly ICustomPropertyGovernanceClient _governanceClient;
+    private readonly ICustomPropertyProjectionAdminClient _projectionClient;
     private readonly ILogger<CustomPropertyAdminService> _logger;
 
-    public CustomPropertyAdminService(IEventApiClient apiClient, ILogger<CustomPropertyAdminService> logger)
+    public CustomPropertyAdminService(
+        ICustomPropertyDefinitionClient definitionClient,
+        ICustomPropertyGovernanceClient governanceClient,
+        ICustomPropertyProjectionAdminClient projectionClient,
+        ILogger<CustomPropertyAdminService> logger)
     {
-        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _definitionClient = definitionClient ?? throw new ArgumentNullException(nameof(definitionClient));
+        _governanceClient = governanceClient ?? throw new ArgumentNullException(nameof(governanceClient));
+        _projectionClient = projectionClient ?? throw new ArgumentNullException(nameof(projectionClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -30,7 +38,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
     {
         try
         {
-            var response = await _apiClient.GetCustomPropertyDefinitionsAsync(
+            var response = await _definitionClient.GetCustomPropertyDefinitionsAsync(
                 entityTypeName,
                 pageNumber,
                 pageSize,
@@ -51,7 +59,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
     {
         try
         {
-            var hal = await _apiClient.GetCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
+            var hal = await _definitionClient.GetCustomPropertyDefinitionByIdAsync(id, cancellationToken: cancellationToken);
             return hal.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
@@ -73,7 +81,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
 
         try
         {
-            var hal = await _apiClient.GetCustomPropertyDefinitionByIdAsync(update.DefinitionId, cancellationToken: cancellationToken);
+            var hal = await _definitionClient.GetCustomPropertyDefinitionByIdAsync(update.DefinitionId, cancellationToken: cancellationToken);
             var detail = hal.ToDto();
             if (detail is null)
             {
@@ -85,7 +93,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
             }
 
             var dto = BuildUpdateDto(update);
-            var response = await _apiClient.UpdateCustomPropertyDefinitionAsync(update.DefinitionId, $"\"{detail.ConcurrencyStamp:D}\"", dto, cancellationToken: cancellationToken);
+            var response = await _definitionClient.UpdateCustomPropertyDefinitionAsync(update.DefinitionId, $"\"{detail.ConcurrencyStamp:D}\"", dto, cancellationToken: cancellationToken);
             return response;
         }
         catch (ApiException ex)
@@ -156,7 +164,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
     {
         try
         {
-            var response = await _apiClient.GetCustomPropertyGovernanceReportAsync(
+            var response = await _governanceClient.GetCustomPropertyGovernanceReportAsync(
                 tenantId,
                 scope,
                 recommendation,
@@ -188,7 +196,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
     {
         try
         {
-            var response = await _apiClient.GetCustomPropertyProjectionStatusAsync(tenantId, cancellationToken: cancellationToken);
+            var response = await _projectionClient.GetCustomPropertyProjectionStatusAsync(tenantId, cancellationToken: cancellationToken);
             return response?._embedded?.Items?.ToList() ?? new List<HalResourceOfProjectionStatusDto>();
         }
         catch (Exception ex)
@@ -204,7 +212,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
     {
         try
         {
-            var response = await _apiClient.GetSessionCustomPropertyProjectionStatusAsync(tenantId, cancellationToken: cancellationToken);
+            var response = await _projectionClient.GetSessionCustomPropertyProjectionStatusAsync(tenantId, cancellationToken: cancellationToken);
             return response?._embedded?.Items?.ToList() ?? new List<HalResourceOfProjectionStatusDto>();
         }
         catch (Exception ex)
@@ -223,7 +231,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
     {
         try
         {
-            var response = await _apiClient.GetCustomPropertyProjectionDirtyScopesAsync(
+            var response = await _projectionClient.GetCustomPropertyProjectionDirtyScopesAsync(
                 tenantId,
                 projectionName,
                 pageNumber,
@@ -261,7 +269,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 BatchSize = batchSize
             };
 
-            return await _apiClient.RebuildCustomPropertyProjectionAsync(request, cancellationToken: cancellationToken);
+            return await _projectionClient.RebuildCustomPropertyProjectionAsync(request, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -287,7 +295,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 BatchSize = batchSize
             };
 
-            return await _apiClient.RebuildSessionCustomPropertyProjectionAsync(request, cancellationToken: cancellationToken);
+            return await _projectionClient.RebuildSessionCustomPropertyProjectionAsync(request, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -313,7 +321,7 @@ public sealed class CustomPropertyAdminService : ICustomPropertyAdminService
                 ProjectionName = projectionName
             };
 
-            return await _apiClient.DrainCustomPropertyProjectionDirtyScopesAsync(request, cancellationToken: cancellationToken);
+            return await _projectionClient.DrainCustomPropertyProjectionDirtyScopesAsync(request, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {

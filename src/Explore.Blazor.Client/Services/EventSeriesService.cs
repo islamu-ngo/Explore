@@ -11,11 +11,11 @@ namespace Explore.Blazor.Client.Services;
 
 public class EventSeriesService : IEventSeriesService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventSeriesClient _apiClient;
     private readonly ILogger<EventSeriesService> _logger;
 
     public EventSeriesService(
-        IEventApiClient apiClient,
+        IEventSeriesClient apiClient,
         ILogger<EventSeriesService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));

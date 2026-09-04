@@ -109,7 +109,7 @@ public sealed class EventControlPlaneClientArchitectureTests
                 .Because("Control-plane pages use thin UI services around the generated client.");
         }
 
-        await Assert.That(adapterSource).Contains("IEventApiClient apiClient")
+        await Assert.That(adapterSource).Contains("IControlPlaneClient controlPlaneClient")
             .Because("The generated API client must be the only backend transport boundary.");
         await Assert.That(adapterSource).DoesNotContain("Explore.Application");
         await Assert.That(adapterSource).DoesNotContain("Explore.Domain");
@@ -145,7 +145,7 @@ public sealed class EventControlPlaneClientArchitectureTests
         foreach (var fileName in forbiddenMirrors)
         {
             await Assert.That(File.Exists(Path.Combine(ExploreBlazorClientRoot, "Contracts", "ControlPlane", fileName))).IsFalse()
-                .Because("HAL, result, and command contracts must come from EventApiClient.g.cs.");
+                .Because("HAL, result, and command contracts must come from EventApiTagClients.g.cs.");
         }
 
         foreach (var file in requiredFiles.Where(file => file.Contains($"{Path.DirectorySeparatorChar}Services{Path.DirectorySeparatorChar}", StringComparison.Ordinal)))

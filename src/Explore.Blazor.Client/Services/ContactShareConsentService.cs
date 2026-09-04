@@ -1,5 +1,5 @@
 // ABOUTME: Client-side service for managing contact share consents via the API.
-// ABOUTME: Wraps IEventApiClient consent endpoints with view-model mapping.
+// ABOUTME: Wraps the contact-share consent client with view-model mapping.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
@@ -15,10 +15,10 @@ public class ContactShareConsentService : IContactShareConsentService
         "tsv"
     };
 
-    private readonly IEventApiClient _apiClient;
+    private readonly IContactShareConsentClient _apiClient;
     private readonly ILogger<ContactShareConsentService> _logger;
 
-    public ContactShareConsentService(IEventApiClient apiClient, ILogger<ContactShareConsentService> logger)
+    public ContactShareConsentService(IContactShareConsentClient apiClient, ILogger<ContactShareConsentService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

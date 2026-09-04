@@ -6,7 +6,7 @@ using Explore.Blazor.Client.Contracts.Services;
 
 namespace Explore.Blazor.Client.Services;
 
-public sealed class PlatformMonetizationService(IEventApiClient apiClient) : IPlatformMonetizationService
+public sealed class PlatformMonetizationService(IPlatformMonetizationSettingsClient apiClient) : IPlatformMonetizationService
 {
     public Task<HalResourceOfPlatformMonetizationSettingsDto> GetAsync(
         CancellationToken cancellationToken = default) =>

@@ -25,45 +25,30 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </remarks>
 public class EventServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    public interface ITestEventTagClient :
+        IEventClient,
+        IEventLifecycleClient,
+        IEventManagementReadClient,
+        IEventParticipationClient,
+        IEventPublicActionClient
+    {
+    }
+
+    private readonly ITestEventTagClient _apiClient;
     private readonly ILogger<EventService> _logger;
     private readonly EventService _service;
 
     public EventServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<ITestEventTagClient>();
         _logger = Substitute.For<ILogger<EventService>>();
-        _service = new EventService(_apiClient, _logger);
-    }
-
-    [Test]
-    public async Task UpdateSessionGroupAsync_ForwardsRouteIdGroupedBodyAndIfMatch()
-    {
-        var sectionId = Guid.NewGuid();
-        var concurrencyStamp = Guid.NewGuid();
-        var request = new UpdateEventSessionGroupRequestDto
-        {
-            Metadata = new UpdateEventSessionGroupMetadataDto { Name = "Main stage" }
-        };
-        _apiClient.UpdateEventSessionGroupAsync(
-                sectionId,
-                request,
-                $"\"{concurrencyStamp:D}\"",
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponseOfGuid { Id = sectionId, Success = true });
-
-        var result = await _service.UpdateSessionGroupAsync(sectionId, concurrencyStamp, request);
-
-        await Assert.That(result.Success).IsTrue();
-        await _apiClient.Received(1).UpdateEventSessionGroupAsync(
-            sectionId,
-            request,
-            $"\"{concurrencyStamp:D}\"",
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+        _service = new EventService(
+            _apiClient,
+            _apiClient,
+            _apiClient,
+            _apiClient,
+            _apiClient,
+            _logger);
     }
 
     [Test]
@@ -133,61 +118,6 @@ public class EventServiceTests
         await Assert.That(result.Errors).Contains("Refresh the event and try again.");
     }
 
-    [Test]
-    public async Task SubmitEventOrganizerClaimAsync_ForwardsGeneratedRequest()
-    {
-        var eventId = Guid.NewGuid();
-        var request = new SubmitEventOrganizerClaimDto
-        {
-            ClaimantActorId = Guid.NewGuid(),
-            EvidenceType = "website",
-            EvidenceReference = "https://organizer.test/about"
-        };
-        _apiClient.SubmitEventOrganizerClaimAsync(
-                eventId,
-                request,
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true });
-
-        var result = await _service.SubmitEventOrganizerClaimAsync(eventId, request);
-
-        await Assert.That(result).IsTrue();
-        await _apiClient.Received(1).SubmitEventOrganizerClaimAsync(
-            eventId,
-            request,
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task GetClaimantOrganizerClaimsAsync_ReturnsGeneratedCollectionItems()
-    {
-        var claimantActorId = Guid.NewGuid();
-        var claim = new HalResourceOfEventOrganizerClaimDto
-        {
-            Id = Guid.NewGuid(),
-            EventId = Guid.NewGuid(),
-            ClaimantActorId = claimantActorId,
-            EvidenceType = "website",
-            EvidenceReference = "https://organizer.test"
-        };
-        _apiClient.GetClaimantOrganizerClaimsAsync(
-                claimantActorId,
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new HalCollectionResourceOfEventOrganizerClaimDto
-            {
-                _embedded = new HalCollectionEmbeddedOfEventOrganizerClaimDto { Items = [claim] }
-            });
-
-        var result = await _service.GetClaimantOrganizerClaimsAsync(claimantActorId);
-
-        await Assert.That(result).Contains(claim);
-    }
 
     [Test]
     public async Task GetEventPublicActionsAsync_ReturnsGeneratedHalItems()
@@ -935,7 +865,14 @@ public class EventServiceTests
         {
             BaseAddress = new Uri("https://example.test/")
         };
-        var service = new EventService(new EventApiClient(httpClient), _logger);
+        var lifecycleClient = new EventLifecycleClient(httpClient);
+        var service = new EventService(
+            Substitute.For<IEventClient>(),
+            lifecycleClient,
+            Substitute.For<IEventManagementReadClient>(),
+            Substitute.For<IEventParticipationClient>(),
+            Substitute.For<IEventPublicActionClient>(),
+            _logger);
 
         // Act
         var result = await service.CreateEventAsync(createDto, idempotencyKey);
@@ -1091,220 +1028,6 @@ public class EventServiceTests
 
     #endregion
 
-    #region Moderation Tests
-
-    [Test]
-    public async Task ModerateEventLightAsync_SendsReasonMetadata()
-    {
-        var eventId = Guid.NewGuid();
-        var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
-
-        _apiClient.ModerateEventLightAsync(
-                Arg.Any<Guid>(),
-                Arg.Any<EventModerationRequestDto>(),
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(expectedResponse);
-
-        var result = await _service.ModerateEventLightAsync(eventId, reasonCode: "policy_review", correlationId: "case-1");
-
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Success).IsTrue();
-        await _apiClient.Received(1).ModerateEventLightAsync(
-            eventId,
-            Arg.Is<EventModerationRequestDto>(request =>
-                request.ReasonCode == "policy_review" && request.CorrelationId == "case-1"),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task ModerateEventHeavyAsync_SendsReasonMetadata()
-    {
-        var eventId = Guid.NewGuid();
-        var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
-
-        _apiClient.ModerateEventHeavyAsync(
-                Arg.Any<Guid>(),
-                Arg.Any<EventModerationRequestDto>(),
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(expectedResponse);
-
-        var result = await _service.ModerateEventHeavyAsync(eventId, reasonCode: "illegal_image", correlationId: "case-heavy-1");
-
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Success).IsTrue();
-        await _apiClient.Received(1).ModerateEventHeavyAsync(
-            eventId,
-            Arg.Is<EventModerationRequestDto>(request =>
-                request.ReasonCode == "illegal_image" && request.CorrelationId == "case-heavy-1"),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task UnmoderateEventAsync_SendsReasonMetadata()
-    {
-        var eventId = Guid.NewGuid();
-        var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
-
-        _apiClient.UnmoderateEventAsync(
-                Arg.Any<Guid>(),
-                Arg.Any<EventModerationRequestDto>(),
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(expectedResponse);
-
-        var result = await _service.UnmoderateEventAsync(eventId, reasonCode: "appeal_approved", correlationId: "case-restore-1");
-
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Success).IsTrue();
-        await _apiClient.Received(1).UnmoderateEventAsync(
-            eventId,
-            Arg.Is<EventModerationRequestDto>(request =>
-                request.ReasonCode == "appeal_approved" && request.CorrelationId == "case-restore-1"),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    #endregion
-
-    #region GetSessionsByEventAsync Tests
-
-    [Test]
-    public async Task GetSessionsByEventAsync_WhenManagedSessionsNotRequested_UsesPublicSessionsOnly()
-    {
-        var eventId = Guid.NewGuid();
-        var publicSession = new EventSessionListDto
-        {
-            Id = Guid.NewGuid(),
-            EventId = eventId,
-            Title = "Public session",
-            EventSessionStatusFullName = "Published"
-        };
-
-        _apiClient.GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(CreateHalSessionCollectionResponse([publicSession]));
-
-        var result = await _service.GetSessionsByEventAsync(eventId);
-
-        await Assert.That(result.Count).IsEqualTo(1);
-        await Assert.That(result.Single().Title).IsEqualTo("Public session");
-        await _apiClient.Received(1).GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _apiClient.DidNotReceive().GetManagedEventSessionsByEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task GetSessionsByEventAsync_WhenManagedSessionsRequestedAndPublicRouteHidden_ReturnsManagedDraftSessions()
-    {
-        var eventId = Guid.NewGuid();
-        var draftSession = new EventSessionListDto
-        {
-            Id = Guid.NewGuid(),
-            EventId = eventId,
-            Title = "Internal draft session",
-            EventSessionStatusFullName = "Draft",
-            EventSessionStatusMasterCode = "DRAFT"
-        };
-
-        _apiClient.GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(CreateApiException("Not Found", 404));
-        _apiClient.GetManagedEventSessionsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(CreateHalSessionCollectionResponse([draftSession]));
-
-        var result = await _service.GetSessionsByEventAsync(eventId, includeManagedSessions: true);
-
-        await Assert.That(result.Count).IsEqualTo(1);
-        await Assert.That(result.Single().Title).IsEqualTo("Internal draft session");
-        await Assert.That(result.Single().EventSessionStatusMasterCode).IsEqualTo("DRAFT");
-    }
-
-    [Test]
-    public async Task GetSessionsByEventAsync_WhenManagedDuplicateExists_ReplacesPublicSession()
-    {
-        var eventId = Guid.NewGuid();
-        var sessionId = Guid.NewGuid();
-        var publicSession = new EventSessionListDto
-        {
-            Id = sessionId,
-            EventId = eventId,
-            Title = "Public projection",
-            EventSessionStatusFullName = "Published"
-        };
-        var managedSession = new EventSessionListDto
-        {
-            Id = sessionId,
-            EventId = eventId,
-            Title = "Managed projection",
-            EventSessionStatusFullName = "Draft",
-            EventSessionStatusMasterCode = "DRAFT"
-        };
-        var internalSession = new EventSessionListDto
-        {
-            Id = Guid.NewGuid(),
-            EventId = eventId,
-            Title = "Internal only",
-            EventSessionStatusFullName = "Draft"
-        };
-
-        _apiClient.GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(CreateHalSessionCollectionResponse([publicSession]));
-        _apiClient.GetManagedEventSessionsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(CreateHalSessionCollectionResponse([managedSession, internalSession]));
-
-        var result = await _service.GetSessionsByEventAsync(eventId, includeManagedSessions: true);
-
-        await Assert.That(result.Count).IsEqualTo(2);
-        await Assert.That(result.Select(session => session.Title)).Contains("Managed projection");
-        await Assert.That(result.Select(session => session.Title)).Contains("Internal only");
-        await Assert.That(result.Select(session => session.Title)).DoesNotContain("Public projection");
-    }
-
-    [Test]
-    public async Task GetSessionsByEventAsync_WhenManagedReadUnauthorized_ReturnsPublicSessions()
-    {
-        var eventId = Guid.NewGuid();
-        var publicSession = new EventSessionListDto
-        {
-            Id = Guid.NewGuid(),
-            EventId = eventId,
-            Title = "Public session"
-        };
-
-        _apiClient.GetEventSessionsAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(CreateHalSessionCollectionResponse([publicSession]));
-        _apiClient.GetManagedEventSessionsByEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(CreateApiException("Forbidden", 403));
-
-        var result = await _service.GetSessionsByEventAsync(eventId, includeManagedSessions: true);
-
-        await Assert.That(result.Count).IsEqualTo(1);
-        await Assert.That(result.Single().Title).IsEqualTo("Public session");
-    }
-
-    [Test]
-    public async Task GetSessionsByEventAsync_WhenCancelled_PropagatesCancellation()
-    {
-        var eventId = Guid.NewGuid();
-        using var source = new CancellationTokenSource();
-        source.Cancel();
-        _apiClient.GetEventSessionsAsync(eventId, null, null, source.Token)
-            .Returns(CreateHalSessionCollectionResponse([]));
-        _apiClient.GetManagedEventSessionsByEventAsync(eventId, null, null, source.Token)
-            .Returns<Task<HalCollectionResourceOfEventSessionListDto>>(_ => throw new OperationCanceledException(source.Token));
-
-        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await _service.GetSessionsByEventAsync(eventId, includeManagedSessions: true, source.Token));
-    }
-
-    #endregion
 
     #region UpdateEventAsync Tests
 
@@ -1448,174 +1171,6 @@ public class EventServiceTests
 
     #endregion
 
-    #region Event Session Composer Request Tests
-
-    [Test]
-    public async Task CreateSessionAsync_MapsComposerRequestToGeneratedDto()
-    {
-        var eventId = Guid.NewGuid();
-        var locationId = Guid.NewGuid();
-        var roomId = Guid.NewGuid();
-        var sessionId = Guid.NewGuid();
-        var request = new Explore.Blazor.Client.Clients.CreateEventSessionDto
-        {
-            EventId = eventId,
-            Title = "Opening talk",
-            Description = "Welcome session",
-            Slug = "opening-talk",
-            LocationId = locationId,
-            RoomId = roomId,
-            StartTime = new DateTimeOffset(2026, 6, 1, 9, 0, 0, TimeSpan.Zero),
-            EndTime = new DateTimeOffset(2026, 6, 1, 10, 0, 0, TimeSpan.Zero),
-            MaxAudienceAttendees = 120,
-            RegistrationModeId = 2,
-            EventSessionKindId = 1,
-            IslamicAspect = new EventSessionIslamicAspectDto
-            {
-                StartTimeType = (SessionStartTimeType)1,
-                ReferencePrayer = (PrayerTime)2,
-                OffsetMinutes = 10,
-                RequiresWudu = true,
-                RitualRequirementsJson = "{\"note\":\"Create\"}"
-            }
-        };
-        _apiClient.CreateEventSessionAsync(
-                Arg.Any<CreateEventSessionDto>(),
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = sessionId });
-
-        var result = await _service.CreateSessionAsync(request);
-
-        await Assert.That(result.Id).IsEqualTo(sessionId);
-        await _apiClient.Received(1).CreateEventSessionAsync(
-            Arg.Is<CreateEventSessionDto>(dto =>
-                dto.EventId == eventId
-                && dto.Title == "Opening talk"
-                && dto.Description == "Welcome session"
-                && dto.Slug == "opening-talk"
-                && dto.LocationId == locationId
-                && dto.RoomId == roomId
-                && dto.StartTime == request.StartTime
-                && dto.EndTime == request.EndTime
-                && dto.MaxAudienceAttendees == 120
-                && dto.RegistrationModeId == 2
-                && dto.EventSessionKindId == 1
-                && dto.IslamicAspect != null
-                && dto.IslamicAspect.ReferencePrayer == (PrayerTime)2
-                && dto.IslamicAspect.RitualRequirementsJson == "{\"note\":\"Create\"}"),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task UpdateSessionAsync_ForwardsGeneratedDtoWithConcurrencyHeader()
-    {
-        var eventId = Guid.NewGuid();
-        var sessionId = Guid.NewGuid();
-        var locationId = Guid.NewGuid();
-        var roomId = Guid.NewGuid();
-        var concurrencyStamp = Guid.NewGuid();
-        var startTime = new DateTimeOffset(2026, 6, 1, 11, 0, 0, TimeSpan.Zero);
-        var endTime = new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero);
-        var request = new UpdateEventSessionDto
-        {
-            Event = new UpdateEventSessionEventDto { EventId = eventId },
-            Title = new UpdateEventSessionTitleDto
-            {
-                Value = new OptionalUpdateOfstring { HasValue = true, Value = "Updated workshop" }
-            },
-            Description = new UpdateEventSessionDescriptionDto
-            {
-                Value = new OptionalUpdateOfstring { HasValue = true, Value = "Updated description" }
-            },
-            Slug = new UpdateEventSessionSlugDto
-            {
-                Value = new OptionalUpdateOfstring { HasValue = true, Value = "updated-workshop" }
-            },
-            Location = new UpdateEventSessionLocationDto
-            {
-                Value = new OptionalUpdateOfGuid { HasValue = true, Value = locationId }
-            },
-            Room = new UpdateEventSessionRoomDto
-            {
-                Value = new OptionalUpdateOfGuid { HasValue = true, Value = roomId }
-            },
-            Schedule = new UpdateEventSessionScheduleDto
-            {
-                StartTime = new OptionalUpdateOfDateTimeOffset { HasValue = true, Value = startTime },
-                EndTime = new OptionalUpdateOfDateTimeOffset { HasValue = true, Value = endTime }
-            },
-            MaxAudienceAttendees = new UpdateEventSessionMaxAudienceAttendeesDto
-            {
-                Value = new OptionalUpdateOfint { HasValue = true, Value = 80 }
-            },
-            RegistrationMode = new UpdateEventSessionRegistrationModeDto
-            {
-                Value = new OptionalUpdateOfint { HasValue = true, Value = 3 }
-            },
-            Kind = new UpdateEventSessionKindDto
-            {
-                Value = new OptionalUpdateOfint { HasValue = true, Value = 2 }
-            },
-            IslamicAspect = new UpdateEventSessionIslamicAspectUpdateDto
-            {
-                Value = new OptionalUpdateOfEventSessionIslamicAspectDto
-                {
-                    HasValue = true,
-                    Value = new EventSessionIslamicAspectDto
-                    {
-                        StartTimeType = (SessionStartTimeType)2,
-                        ReferencePrayer = (PrayerTime)3,
-                        OffsetMinutes = 20,
-                        RequiresWudu = false,
-                        RitualRequirementsJson = "{\"note\":\"Update\"}"
-                    }
-                }
-            }
-        };
-        UpdateEventSessionDto? capturedDto = null;
-        string? capturedIfMatch = null;
-        _apiClient.UpdateEventSessionAsync(
-                Arg.Any<Guid>(),
-                Arg.Do<UpdateEventSessionDto>(dto => capturedDto = dto),
-                Arg.Do<string?>(value => capturedIfMatch = value),
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new BaseCommandResponseOfGuid { Success = true, Id = sessionId });
-
-        var result = await _service.UpdateSessionAsync(sessionId, concurrencyStamp, request);
-
-        await Assert.That(result.Id).IsEqualTo(sessionId);
-        await _apiClient.Received(1).UpdateEventSessionAsync(
-            sessionId,
-            Arg.Any<UpdateEventSessionDto>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-        await Assert.That(capturedIfMatch).IsEqualTo($"\"{concurrencyStamp:D}\"");
-        await Assert.That(capturedDto).IsNotNull();
-        await Assert.That(capturedDto!.Event?.EventId).IsEqualTo(eventId);
-        await Assert.That(capturedDto.Title?.Value?.Value).IsEqualTo("Updated workshop");
-        await Assert.That(capturedDto.Description?.Value?.Value).IsEqualTo("Updated description");
-        await Assert.That(capturedDto.Slug?.Value?.Value).IsEqualTo("updated-workshop");
-        await Assert.That(capturedDto.Location?.Value?.Value).IsEqualTo(locationId);
-        await Assert.That(capturedDto.Room?.Value?.Value).IsEqualTo(roomId);
-        await Assert.That(capturedDto.Schedule?.StartTime?.Value).IsEqualTo(startTime);
-        await Assert.That(capturedDto.Schedule?.EndTime?.Value).IsEqualTo(endTime);
-        await Assert.That(capturedDto.MaxAudienceAttendees?.Value?.Value).IsEqualTo(80);
-        await Assert.That(capturedDto.RegistrationMode?.Value?.Value).IsEqualTo(3);
-        await Assert.That(capturedDto.Kind?.Value?.Value).IsEqualTo(2);
-        await Assert.That(capturedDto.IslamicAspect?.Value?.Value?.ReferencePrayer).IsEqualTo((PrayerTime)3);
-        await Assert.That(capturedDto.IslamicAspect?.Value?.Value?.RitualRequirementsJson).IsEqualTo("{\"note\":\"Update\"}");
-    }
-
-    #endregion
-
     #region DeleteEventAsync Tests
 
     [Test]
@@ -1680,182 +1235,7 @@ public class EventServiceTests
 
     #endregion
 
-    #region GetSessionByIdAsync Tests
-
-    [Test]
-    public async Task GetSessionByIdAsync_ReturnsSession_WhenFound()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        var expectedSession = new HalResourceOfEventSessionDto
-        {
-            Id = sessionId,
-            EventId = Guid.NewGuid(),
-            EventTitle = "Parent Event",
-            Title = "Test Session",
-            Slug = "test-session",
-            StartTime = TestTime.UtcNow,
-            EndTime = TestTime.UtcNow.AddHours(1),
-            MaxAudienceAttendees = 100,
-            CurrentAudienceAttendees = 10
-        };
-
-        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(expectedSession);
-
-        // Act
-        var result = await _service.GetSessionByIdAsync(sessionId);
-
-        // Assert
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Id).IsEqualTo(sessionId);
-        await Assert.That(result.Title).IsEqualTo("Test Session");
-    }
-
-    [Test]
-    public async Task GetSessionByIdAsync_ReturnsNull_WhenNotFound()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(CreateApiException("Not Found", 404));
-
-        // Act
-        var result = await _service.GetSessionByIdAsync(sessionId);
-
-        // Assert
-        await Assert.That(result).IsNull();
-    }
-
-    [Test]
-    public async Task GetManagedSessionByIdAsync_UsesExactEventScopedManagedDetail()
-    {
-        var eventId = Guid.NewGuid();
-        var sessionId = Guid.NewGuid();
-        var draftSession = new HalResourceOfEventSessionDto
-        {
-            Id = sessionId,
-            EventId = eventId,
-            EventTitle = "Managed Event",
-            Title = "Internal draft session",
-            EventSessionStatusFullName = "Draft",
-            EventSessionStatusMasterCode = "DRAFT",
-            ConcurrencyStamp = Guid.NewGuid(),
-            AdditionalProperties = CreateHalLinks("publish", "archive")
-        };
-
-        _apiClient.GetManagedEventSessionByIdAsync(
-                eventId,
-                sessionId,
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(draftSession);
-
-        var result = await _service.GetManagedSessionByIdAsync(eventId, sessionId);
-
-        await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Id).IsEqualTo(sessionId);
-        await Assert.That(result.EventId).IsEqualTo(eventId);
-        await Assert.That(result.Title).IsEqualTo("Internal draft session");
-        await Assert.That(result.EventSessionStatusMasterCode).IsEqualTo("DRAFT");
-        await Assert.That(result.HasHalLink("publish")).IsTrue();
-        await Assert.That(result.HasHalLink("archive")).IsTrue();
-        await _apiClient.DidNotReceive().GetEventSessionByIdAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-        await _apiClient.DidNotReceive().GetManagedEventSessionsByEventAsync(
-            Arg.Any<Guid>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task GeneratedEventSessionDetail_UsesStringEnumContractForEndTimeType()
-    {
-        var property = typeof(EventSessionDto).GetProperty(nameof(EventSessionDto.EndTimeType));
-
-        await Assert.That(property).IsNotNull();
-        await Assert.That(property!.PropertyType).IsEqualTo(typeof(SessionEndTimeType?));
-    }
-
-    [Test]
-    public async Task GetSessionByIdAsync_ReturnsNull_WhenApiThrowsException()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(CreateApiException("Server Error", 500));
-
-        // Act
-        var result = await _service.GetSessionByIdAsync(sessionId);
-
-        // Assert
-        await Assert.That(result).IsNull();
-    }
-
-    [Test]
-    public async Task GetSessionByIdAsync_CallsApiWithCorrectId()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        var expectedSession = new HalResourceOfEventSessionDto { Id = sessionId };
-        _apiClient.GetEventSessionByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(expectedSession);
-
-        // Act
-        await _service.GetSessionByIdAsync(sessionId);
-
-        // Assert
-        await _apiClient.Received(1).GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task GetManagedSessionGroupsByEventAsync_PreservesDraftGroupAndManagementLinks()
-    {
-        var eventId = Guid.NewGuid();
-        var groupId = Guid.NewGuid();
-        _apiClient.GetManagedEventSessionGroupsByEventAsync(
-                eventId,
-                Arg.Any<string?>(),
-                Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new HalCollectionResourceOfEventSessionGroupListDto
-            {
-                _embedded = new HalCollectionEmbeddedOfEventSessionGroupListDto
-                {
-                    Items =
-                    [
-                        new HalResourceOfEventSessionGroupListDto
-                        {
-                            Id = groupId,
-                            EventId = eventId,
-                            Name = "Draft track",
-                            IsPublished = false,
-                            _links = new Dictionary<string, HalLink>
-                            {
-                                ["edit"] = new() { Href = $"/api/eventsessiongroup/{groupId}" },
-                                ["delete"] = new() { Href = $"/api/eventsessiongroup/{groupId}" },
-                                ["assign-session"] = new() { Href = $"/api/eventsessiongroup/{groupId}/sessions" }
-                            }
-                        }
-                    ]
-                }
-            });
-
-        var result = await _service.GetManagedSessionGroupsByEventAsync(eventId);
-
-        var draftGroup = result.Single();
-        await Assert.That(draftGroup.Name).IsEqualTo("Draft track");
-        await Assert.That(draftGroup.IsPublished).IsFalse();
-        await Assert.That(draftGroup._links!.Keys).Contains("edit");
-        await Assert.That(draftGroup._links.Keys).Contains("delete");
-        await Assert.That(draftGroup._links.Keys).Contains("assign-session");
-        await _apiClient.DidNotReceiveWithAnyArgs().GetEventSessionGroupsByEventAsync(default);
-    }
+    #region Event Management and Actor Tests
 
     [Test]
     public async Task GetManagedEventProgramSummaryAsync_UsesManagedRoute()

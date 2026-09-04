@@ -7,9 +7,9 @@ namespace Explore.Blazor.Client.Services.Lookup;
 
 public class AudienceAgeService : IAudienceAgeService
 {
-    private readonly IEventApiClient _client;
+    private readonly IAudienceAgeClient _client;
 
-    public AudienceAgeService(IEventApiClient client)
+    public AudienceAgeService(IAudienceAgeClient client)
     {
         _client = client;
     }

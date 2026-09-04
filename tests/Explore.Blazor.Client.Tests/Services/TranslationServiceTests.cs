@@ -8,7 +8,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class TranslationServiceTests : IDisposable
 {
-    private readonly IEventApiClient _apiClient = Substitute.For<IEventApiClient>();
+    private readonly ITranslationClient _apiClient = Substitute.For<ITranslationClient>();
     private readonly TranslationService _service;
 
     public TranslationServiceTests()

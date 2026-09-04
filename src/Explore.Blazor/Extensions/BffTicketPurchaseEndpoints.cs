@@ -40,7 +40,7 @@ public static class BffTicketPurchaseEndpoints
         Guid eventId,
         Guid orderId,
         ReserveTicketPurchaseRequest request,
-        IEventApiClient api,
+        ITicketPurchaseClient api,
         CancellationToken cancellationToken)
     {
         if (!HasRequiredLineage(eventId, orderId))
@@ -69,7 +69,7 @@ public static class BffTicketPurchaseEndpoints
         ReserveTicketPurchaseRequest request,
         [FromHeader(Name = CapabilityHeader)]
         string? capability,
-        IEventApiClient api,
+        ITicketPurchaseClient api,
         CancellationToken cancellationToken)
     {
         if (!HasRequiredLineage(eventId, orderId)

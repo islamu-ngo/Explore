@@ -255,7 +255,7 @@ public sealed class BffIdentityMigrationAnchorTests
         builder.Services.AddSingleton<ISetupSecretCookieProtector, PassThroughCookieProtector>();
         builder.Services.AddSingleton<ISetupSecretResolver>(
             new TrustedSetupSecretResolver(Guid.CreateVersion7().ToString("N")));
-        builder.Services.AddSingleton(Substitute.For<IEventApiClient>());
+        builder.Services.AddSingleton(Substitute.For<IInstanceOnboardingClient>());
 
         var app = builder.Build();
         app.UseRouting();

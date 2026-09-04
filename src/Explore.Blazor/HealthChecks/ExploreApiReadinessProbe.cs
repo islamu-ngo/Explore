@@ -10,7 +10,7 @@ public interface IExploreApiReadinessProbe
     Task EnsureReadyAsync(CancellationToken cancellationToken = default);
 }
 
-public sealed class ExploreApiReadinessProbe(IEventApiClient apiClient) : IExploreApiReadinessProbe
+public sealed class ExploreApiReadinessProbe(IInstanceMessagingSettingsClient apiClient) : IExploreApiReadinessProbe
 {
     public async Task EnsureReadyAsync(CancellationToken cancellationToken = default)
     {

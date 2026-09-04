@@ -22,12 +22,17 @@ public interface ICategoryService
 
 public class CategoryService : ICategoryService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly ICategoryClient _apiClient;
+    private readonly ICategoryTypeClient _categoryTypeClient;
     private readonly ILogger<CategoryService> _logger;
 
-    public CategoryService(IEventApiClient apiClient, ILogger<CategoryService> logger)
+    public CategoryService(
+        ICategoryClient apiClient,
+        ICategoryTypeClient categoryTypeClient,
+        ILogger<CategoryService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _categoryTypeClient = categoryTypeClient ?? throw new ArgumentNullException(nameof(categoryTypeClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -124,7 +129,7 @@ public class CategoryService : ICategoryService
     {
         try
         {
-            return await _apiClient.GetCategoryTypeOptionsWithCategoriesAsync() ?? new List<CategoryTypeWithCategoriesDto>();
+            return await _categoryTypeClient.GetCategoryTypeOptionsWithCategoriesAsync() ?? new List<CategoryTypeWithCategoriesDto>();
         }
         catch (ApiException ex)
         {

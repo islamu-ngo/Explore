@@ -23,17 +23,26 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// </remarks>
 public class OrganizationServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IOrganizationClient _apiClient;
+    private readonly IApprovalStatusClient _approvalStatusClient;
+    private readonly IOrganizationTenantEvidenceClient _tenantEvidenceClient;
     private readonly IBffClient _bffClient;
     private readonly Microsoft.Extensions.Logging.ILogger<OrganizationService> _logger;
     private readonly OrganizationService _service;
 
     public OrganizationServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IOrganizationClient>();
+        _approvalStatusClient = Substitute.For<IApprovalStatusClient>();
+        _tenantEvidenceClient = Substitute.For<IOrganizationTenantEvidenceClient>();
         _bffClient = Substitute.For<IBffClient>();
         _logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<OrganizationService>>();
-        _service = new OrganizationService(_apiClient, _bffClient, _logger);
+        _service = new OrganizationService(
+            _apiClient,
+            _approvalStatusClient,
+            _tenantEvidenceClient,
+            _bffClient,
+            _logger);
     }
 
     // ========== GetMyOrganizationsAsync ==========
@@ -382,7 +391,7 @@ public class OrganizationServiceTests
             new() { Id = 1, FullName = "Pending", MasterCode = "PEND" },
             new() { Id = 2, FullName = "Approved", MasterCode = "APPR" }
         };
-        _apiClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _approvalStatusClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(statuses);
 
         // Act
@@ -397,7 +406,7 @@ public class OrganizationServiceTests
     public async Task GetStatusTypesAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _approvalStatusClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((ICollection<StatusTypeListDto>?)null);
 
         // Act
@@ -411,7 +420,7 @@ public class OrganizationServiceTests
     public async Task GetStatusTypesAsync_ReturnsEmptyList_WhenApiThrows_Exception()
     {
         // Arrange
-        _apiClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _approvalStatusClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Internal Server Error", 500));
 
         // Act
@@ -425,7 +434,7 @@ public class OrganizationServiceTests
     public async Task GetStatusTypesAsync_ReturnsEmptyList_WhenApiReturnsUnauthorized()
     {
         // Arrange
-        _apiClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _approvalStatusClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Unauthorized", 401));
 
         // Act
@@ -471,7 +480,7 @@ public class OrganizationServiceTests
                     StorageObjectId = storageObjectId
                 })
             });
-        _apiClient.SubmitOrganizationTenantEvidenceAsync(
+        _tenantEvidenceClient.SubmitOrganizationTenantEvidenceAsync(
                 organizationId,
                 Arg.Is<SubmitOrganizationTenantEvidenceDto>(dto =>
                     dto.DocumentStorageObjectId == storageObjectId),
@@ -501,7 +510,7 @@ public class OrganizationServiceTests
             ConcurrencyStamp = concurrencyStamp,
             DocumentDisplayName = "legitimacy.pdf"
         };
-        _apiClient.ReviewOrganizationTenantEvidenceAsync(
+        _tenantEvidenceClient.ReviewOrganizationTenantEvidenceAsync(
                 organizationId,
                 evidenceId,
                 Arg.Is<ReviewOrganizationTenantEvidenceDto>(dto =>
@@ -519,6 +528,73 @@ public class OrganizationServiceTests
 
         await Assert.That(result).IsTrue();
     }
+
+    #region Organization Approval Tests
+
+    [Test]
+    public async Task GetOrganizationRequestsAsync_Success_ReturnsItems()
+    {
+        var items = new List<OrganizationListDto>
+        {
+            new() { Id = Guid.NewGuid(), FullName = "Pending Org 1", ApprovalStatusId = ApprovalStatusId.Pending }
+        };
+        _apiClient.GetOrganizationsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize)
+            .Returns(CreateOrgCollectionResponse(items));
+
+        var result = await _service.GetOrganizationRequestsAsync();
+
+        await Assert.That(result).IsNotEmpty();
+        await Assert.That(result.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task GetOrganizationRequestsAsync_ApiException_ReturnsEmpty()
+    {
+        _apiClient.GetOrganizationsAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize)
+            .ThrowsAsync(CreateApiException("Internal Error", 500));
+
+        var result = await _service.GetOrganizationRequestsAsync();
+
+        await Assert.That(result).IsEmpty();
+    }
+
+    [Test]
+    public async Task ApproveOrganizationAsync_Success_ReturnsTrue()
+    {
+        var orgId = Guid.NewGuid();
+        _apiClient.UpdateOrganizationApprovalStatusAsync(orgId, Arg.Is<UpdateOrganizationApprovalStatusDto>(d => d.ApprovalStatusId == ApprovalStatusId.Approved))
+            .Returns(Task.CompletedTask);
+
+        var result = await _service.ApproveOrganizationAsync(orgId);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task RejectOrganizationAsync_Success_ReturnsTrue()
+    {
+        var orgId = Guid.NewGuid();
+        _apiClient.UpdateOrganizationApprovalStatusAsync(orgId, Arg.Is<UpdateOrganizationApprovalStatusDto>(d => d.ApprovalStatusId == ApprovalStatusId.Rejected))
+            .Returns(Task.CompletedTask);
+
+        var result = await _service.RejectOrganizationAsync(orgId);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task RevertToPendingAsync_Success_ReturnsTrue()
+    {
+        var orgId = Guid.NewGuid();
+        _apiClient.UpdateOrganizationApprovalStatusAsync(orgId, Arg.Is<UpdateOrganizationApprovalStatusDto>(d => d.ApprovalStatusId == ApprovalStatusId.Pending))
+            .Returns(Task.CompletedTask);
+
+        var result = await _service.RevertToPendingAsync(orgId);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    #endregion
 
     // ========== HAL Response Helpers ==========
 

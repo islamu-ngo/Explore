@@ -7,7 +7,7 @@ using Explore.Blazor.Client.Pages.Studio;
 
 namespace Explore.Blazor.Client.Services;
 
-public sealed class EventPromotionService(IEventApiClient apiClient) : IEventPromotionService
+public sealed class EventPromotionService(IEventPromotionsClient apiClient) : IEventPromotionService
 {
     public async Task<PromotionManagementCollectionState?> GetPromotionsAsync(Guid eventId, Guid ticketCatalogVersionId, CancellationToken cancellationToken = default)
     {

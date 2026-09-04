@@ -20,7 +20,7 @@ public sealed class PublishedCollectionContractArchitectureTests
     private const string BaselinePath =
         "tests/Event.Architecture.Tests/Baselines/published-collection-contract-dispositions.json";
     private const string GeneratedClientPath =
-        "src/Explore.Blazor.Client/Clients/EventApiClient.g.cs";
+        "src/Explore.Blazor.Client/Clients/EventApiTagClients.g.cs";
     private const string MutableGeneratedContractsPath =
         "eng/tools/Explore.GeneratedContracts/mutable-generated-contracts.txt";
     private const string GeneratedRecordDeclaration =
@@ -31,7 +31,7 @@ public sealed class PublishedCollectionContractArchitectureTests
         typeof(ITenantEntity).Assembly,
         typeof(AuthorizeResourceAttribute).Assembly,
         typeof(OrganizationReviewController).Assembly,
-        typeof(IEventApiClient).Assembly,
+        typeof(Explore.Blazor.Client.Extensions.GeneratedEventApiClients).Assembly,
     ];
 
     private static readonly HashSet<string> Categories = new(StringComparer.Ordinal)
@@ -160,8 +160,8 @@ public sealed class PublishedCollectionContractArchitectureTests
     private static bool IsGenerated(Type type) =>
         type.GetCustomAttribute<GeneratedCodeAttribute>() is not null
         || type.GetCustomAttribute<CompilerGeneratedAttribute>() is not null
-        || (type.Assembly == typeof(IEventApiClient).Assembly
-            && type.Namespace == typeof(IEventApiClient).Namespace
+        || (type.Assembly == typeof(Explore.Blazor.Client.Extensions.GeneratedEventApiClients).Assembly
+            && type.Namespace == "Explore.Blazor.Client.Clients"
             && GeneratedClientRecordNames.Value.Contains(type.Name));
 
     private static HashSet<string> ReadGeneratedClientRecordNames()

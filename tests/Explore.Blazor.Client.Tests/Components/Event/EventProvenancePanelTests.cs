@@ -18,6 +18,7 @@ public sealed class EventProvenancePanelTests : IDisposable
             provider.GetRequiredService<NavigationManager>(),
             new WorkspaceRouteClassifier(new WorkspaceRegistry())));
         _ctx.Services.AddSingleton(Substitute.For<IEventService>());
+        _ctx.Services.AddSingleton(Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventOrganizerClaimService>());
     }
 
     [Test]
@@ -84,11 +85,11 @@ public sealed class EventProvenancePanelTests : IDisposable
             EvidenceReference = "https://other.test",
             _links = new Dictionary<string, HalLink> { ["withdraw-claim"] = new() { Href = "/api/events/other/withdraw", Method = "POST" } }
         };
-        var eventService = Substitute.For<IEventService>();
-        eventService.GetClaimantOrganizerClaimsAsync(actorId, Arg.Any<CancellationToken>())
+        var claimService = Substitute.For<Explore.Blazor.Client.Contracts.Services.IEventOrganizerClaimService>();
+        claimService.GetClaimantOrganizerClaimsAsync(actorId, Arg.Any<CancellationToken>())
             .Returns([claim, unrelatedClaim]);
-        _ctx.Services.RemoveAll<IEventService>();
-        _ctx.Services.AddSingleton(eventService);
+        _ctx.Services.RemoveAll<Explore.Blazor.Client.Contracts.Services.IEventOrganizerClaimService>();
+        _ctx.Services.AddSingleton(claimService);
         var shellState = _ctx.Services.GetRequiredService<UiShellState>();
         shellState.ReconcileActiveActors([new ManagedActorDto { ActorId = actorId, DisplayName = "Organizer" }], actorId);
 

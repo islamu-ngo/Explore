@@ -8,7 +8,8 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public sealed class TemplateSyncServiceTests
 {
-    private readonly IEventApiClient _api = Substitute.For<IEventApiClient>();
+    private readonly IEventTemplateSyncClient _api = Substitute.For<IEventTemplateSyncClient>();
+    private readonly IEventSessionTemplateSyncClient _sessionClient = Substitute.For<IEventSessionTemplateSyncClient>();
 
     [Test]
     public async Task EventTemplateSyncService_GetDiffAsync_ForwardsEventAndVersion()
@@ -90,14 +91,14 @@ public sealed class TemplateSyncServiceTests
     {
         var sessionId = Guid.NewGuid();
         var expected = CreateDiff(9);
-        _api.GetEventSessionTemplateSyncDiffAsync(
+        _sessionClient.GetEventSessionTemplateSyncDiffAsync(
                 sessionId,
                 9,
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(expected);
-        var service = new EventSessionTemplateSyncService(_api);
+        var service = new EventSessionTemplateSyncService(_sessionClient);
 
         var result = await service.GetDiffAsync(sessionId, 9);
 
@@ -114,19 +115,19 @@ public sealed class TemplateSyncServiceTests
             BaseProvenanceVersion = 8
         };
         var expected = CreateOutcome(9);
-        _api.ApplyEventSessionTemplateSyncAsync(
+        _sessionClient.ApplyEventSessionTemplateSyncAsync(
                 sessionId,
                 request,
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(expected);
-        var service = new EventSessionTemplateSyncService(_api);
+        var service = new EventSessionTemplateSyncService(_sessionClient);
 
         var result = await service.ApplySyncAsync(sessionId, request);
 
         await Assert.That(result).IsSameReferenceAs(expected);
-        await _api.Received(1).ApplyEventSessionTemplateSyncAsync(
+        await _sessionClient.Received(1).ApplyEventSessionTemplateSyncAsync(
             sessionId,
             request,
             Arg.Any<string?>(),
@@ -145,7 +146,7 @@ public sealed class TemplateSyncServiceTests
             TotalCount = 0,
             Items = []
         };
-        _api.GetEventSessionTemplateSyncHistoryAsync(
+        _sessionClient.GetEventSessionTemplateSyncHistoryAsync(
                 sessionId,
                 2,
                 5,
@@ -153,7 +154,7 @@ public sealed class TemplateSyncServiceTests
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(expected);
-        var service = new EventSessionTemplateSyncService(_api);
+        var service = new EventSessionTemplateSyncService(_sessionClient);
 
         var result = await service.GetHistoryAsync(sessionId, 2, 5);
 

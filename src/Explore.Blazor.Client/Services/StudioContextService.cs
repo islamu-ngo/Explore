@@ -6,7 +6,10 @@ using Explore.Blazor.Client.Contracts.Services;
 
 namespace Explore.Blazor.Client.Services;
 
-public sealed class StudioContextService(IEventApiClient apiClient) : IStudioContextService
+public sealed class StudioContextService(
+    IStudioClient studioClient,
+    IRegistrationOrderClient orderClient,
+    IAuthenticatedRegistrationOrderClient authenticatedClient) : IStudioContextService
 {
     public async Task<HalResourceOfStudioContextDto?> GetContextAsync(
         Guid? actorId,
@@ -14,7 +17,7 @@ public sealed class StudioContextService(IEventApiClient apiClient) : IStudioCon
     {
         try
         {
-            return await apiClient.GetStudioContextAsync(actorId, cancellationToken: cancellationToken);
+            return await studioClient.GetStudioContextAsync(actorId, cancellationToken: cancellationToken);
         }
         catch (ApiException)
         {
@@ -26,7 +29,7 @@ public sealed class StudioContextService(IEventApiClient apiClient) : IStudioCon
         Guid eventId,
         CancellationToken cancellationToken = default)
     {
-        var resource = await apiClient.GetEventRegistrationOrdersAsync(eventId, cancellationToken: cancellationToken);
+        var resource = await orderClient.GetEventRegistrationOrdersAsync(eventId, cancellationToken: cancellationToken);
         return resource._embedded?.Items?.ToArray() ?? [];
     }
 
@@ -39,7 +42,7 @@ public sealed class StudioContextService(IEventApiClient apiClient) : IStudioCon
             .Where(order => order.Id is not null && order._links?.ContainsKey("view-participants") == true)
             .ToArray();
         HalResourceOfRegistrationOrderParticipantsDto[] participants = await Task.WhenAll(
-            visibleOrders.Select(order => apiClient.GetAuthenticatedRegistrationOrderParticipantsAsync(
+            visibleOrders.Select(order => authenticatedClient.GetAuthenticatedRegistrationOrderParticipantsAsync(
                 eventId, order.Id!.Value, cancellationToken: cancellationToken)));
         return visibleOrders.Zip(participants, static (order, collection) => new StudioAttendeeOrder(order, collection)).ToArray();
     }

@@ -2,6 +2,7 @@
 // ABOUTME: Proves exact-provider admission, closed-state denial, safe redirects, and browser token boundaries.
 
 using System.Text.Encodings.Web;
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Constants;
 using Explore.Blazor.Services;
 using Explore.Blazor.Services.Auth;
@@ -162,6 +163,22 @@ public sealed class ConfiguredAdministratorRoutingTests
                 var onboarding = Substitute.For<IBffOnboardingStatusProvider>();
                 onboarding.GetStatusAsync(Arg.Any<CancellationToken>()).Returns(status);
                 services.AddSingleton(onboarding);
+
+                services.RemoveAll<IInstanceOnboardingClient>();
+                var onboardingClient = Substitute.For<IInstanceOnboardingClient>();
+                onboardingClient.GetInstanceOnboardingStatusAsync(
+                        Arg.Any<string?>(),
+                        Arg.Any<string?>(),
+                        Arg.Any<CancellationToken>())
+                    .Returns(Task.FromResult(new HalResourceOfInstanceOnboardingStatusDto
+                    {
+                        IsCompleted = status.IsCompleted,
+                        State = status.State,
+                        Mode = status.Mode,
+                        Generation = status.Generation,
+                        SelectedDeploymentMode = "SingleTenant"
+                    }));
+                services.AddSingleton(onboardingClient);
 
                 services.RemoveAll<IBffProviderReadinessService>();
                 var readiness = Substitute.For<IBffProviderReadinessService>();

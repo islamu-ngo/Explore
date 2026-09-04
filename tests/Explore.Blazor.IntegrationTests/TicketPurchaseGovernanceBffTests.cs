@@ -18,7 +18,7 @@ public sealed class TicketPurchaseGovernanceBffTests
     [Test]
     public async Task AuthenticatedPurchaseRequiresAntiforgeryBeforeApiCall()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        ITicketPurchaseClient api = Substitute.For<ITicketPurchaseClient>();
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = factory.CreateClient(
@@ -53,7 +53,7 @@ public sealed class TicketPurchaseGovernanceBffTests
     [Test]
     public async Task AuthenticatedPurchaseRequiresCookieAuthority()
     {
-        IEventApiClient api = Substitute.For<IEventApiClient>();
+        ITicketPurchaseClient api = Substitute.For<ITicketPurchaseClient>();
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = factory.CreateClient(
@@ -82,7 +82,7 @@ public sealed class TicketPurchaseGovernanceBffTests
         Guid eventId = Guid.CreateVersion7();
         Guid orderId = Guid.CreateVersion7();
         Guid purchaserActorId = Guid.CreateVersion7();
-        IEventApiClient api = SuccessfulApi(orderId);
+        ITicketPurchaseClient api = SuccessfulApi(orderId);
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = factory.CreateClient(
@@ -139,7 +139,7 @@ public sealed class TicketPurchaseGovernanceBffTests
             "opaque-guest-purchase-capability";
         Guid eventId = Guid.CreateVersion7();
         Guid orderId = Guid.CreateVersion7();
-        IEventApiClient api = SuccessfulApi(orderId);
+        ITicketPurchaseClient api = SuccessfulApi(orderId);
         await using WebApplicationFactory<Program> factory =
             CreateFactory(api);
         using HttpClient client = factory.CreateClient(
@@ -219,11 +219,11 @@ public sealed class TicketPurchaseGovernanceBffTests
         return request;
     }
 
-    private static IEventApiClient SuccessfulApi(
+    private static ITicketPurchaseClient SuccessfulApi(
         Guid orderId)
     {
-        IEventApiClient api =
-            Substitute.For<IEventApiClient>();
+        ITicketPurchaseClient api =
+            Substitute.For<ITicketPurchaseClient>();
         var response =
             new HalResourceOfTicketPurchaseGovernanceResource
             {
@@ -315,13 +315,13 @@ public sealed class TicketPurchaseGovernanceBffTests
         Guid.TryParseExact(value, "N", out _);
 
     private static WebApplicationFactory<Program>
-        CreateFactory(IEventApiClient api) =>
+        CreateFactory(ITicketPurchaseClient api) =>
         new BlazorBffWebApplicationFactory()
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
                 {
-                    services.RemoveAll<IEventApiClient>();
+                    services.RemoveAll<ITicketPurchaseClient>();
                     services.AddSingleton(api);
                 });
             });

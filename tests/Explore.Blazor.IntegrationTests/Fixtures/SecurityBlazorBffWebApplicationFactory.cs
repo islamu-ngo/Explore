@@ -77,14 +77,14 @@ public class SecurityBlazorBffWebApplicationFactory : WebApplicationFactory<Prog
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();
 
-            services.RemoveAll<IEventApiClient>();
-            var apiClient = NSubstitute.Substitute.For<IEventApiClient>();
-            apiClient.GetInstanceOnboardingAuthProviderConfigurationAsync(
+            services.RemoveAll<IInstanceOnboardingClient>();
+            var onboardingClient = NSubstitute.Substitute.For<IInstanceOnboardingClient>();
+            onboardingClient.GetInstanceOnboardingAuthProviderConfigurationAsync(
                     Arg.Any<string?>(),
                     Arg.Any<string?>(),
                     Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult<AuthProviderConfigurationDto>(null!));
-            services.AddSingleton(apiClient);
+            services.AddSingleton(onboardingClient);
 
             services.RemoveAll<IBffResolverConfigurationProvider>();
             var mockResolverConfig = NSubstitute.Substitute.For<IBffResolverConfigurationProvider>();

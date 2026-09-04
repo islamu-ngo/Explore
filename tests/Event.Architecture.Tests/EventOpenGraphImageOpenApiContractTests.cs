@@ -59,24 +59,24 @@ public sealed class EventOpenGraphImageOpenApiContractTests
             "src",
             "Explore.Blazor.Client",
             "Clients",
-            "EventApiClient.g.cs");
+            "EventApiTagClients.g.cs");
         var generatedClient = await File.ReadAllTextAsync(generatedClientPath);
 
         var methodStart = generatedClient.IndexOf(
             "public virtual async System.Threading.Tasks.Task<FileResponse> GetEventOpenGraphImageAsync",
             StringComparison.Ordinal);
-        var nextMethod = generatedClient.IndexOf(
-            "public virtual async",
-            methodStart + 1,
+        var methodEnd = generatedClient.IndexOf(
+            "\n        }\n",
+            methodStart,
             StringComparison.Ordinal);
 
-        await Assert.That(methodStart >= 0 && nextMethod > methodStart).IsTrue();
-        if (methodStart < 0 || nextMethod <= methodStart)
+        await Assert.That(methodStart >= 0 && methodEnd > methodStart).IsTrue();
+        if (methodStart < 0 || methodEnd <= methodStart)
         {
             return;
         }
 
-        var method = generatedClient[methodStart..nextMethod];
+        var method = generatedClient[methodStart..methodEnd];
 
         await Assert.That(generatedClient.Contains(GeneratedMethodSignature, StringComparison.Ordinal)).IsTrue();
         await Assert.That(method.Contains("MediaTypeWithQualityHeaderValue.Parse(\"image/png\")", StringComparison.Ordinal)).IsTrue();

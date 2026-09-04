@@ -81,7 +81,7 @@ public delegate ValueTask<SetupLiveAccessToken?> SetupLiveAccessTokenProvider(
 public sealed class SetupLiveAdapter : IDisposable
 {
     private readonly SetupLiveAccessTokenProvider _accessTokenProvider;
-    private readonly Generated.EventApiClient _client;
+    private readonly Generated.ISetup_LiveClient _client;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly HttpClient _httpClient;
     private readonly HttpClient? _ownedHttpClient;
@@ -114,7 +114,7 @@ public sealed class SetupLiveAdapter : IDisposable
         _ownedHttpClient = CreateOwnedHttpClient();
         _ownedHttpClient.BaseAddress = TargetBaseAddress;
         _httpClient = _ownedHttpClient;
-        _client = new Generated.EventApiClient(_httpClient);
+        _client = new Generated.Setup_LiveClient(_httpClient);
     }
 
     internal SetupLiveAdapter(
@@ -139,7 +139,7 @@ public sealed class SetupLiveAdapter : IDisposable
         _accessTokenProvider = accessTokenProvider;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _httpClient = httpClient;
-        _client = new Generated.EventApiClient(_httpClient);
+        _client = new Generated.Setup_LiveClient(_httpClient);
     }
 
     public Uri TargetBaseAddress { get; }

@@ -22,12 +22,14 @@ public interface ITagService
 
 public class TagService : ITagService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly ITagClient _apiClient;
+    private readonly ITagTypeClient _tagTypeClient;
     private readonly ILogger<TagService> _logger;
 
-    public TagService(IEventApiClient apiClient, ILogger<TagService> logger)
+    public TagService(ITagClient apiClient, ITagTypeClient tagTypeClient, ILogger<TagService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _tagTypeClient = tagTypeClient ?? throw new ArgumentNullException(nameof(tagTypeClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -124,7 +126,7 @@ public class TagService : ITagService
     {
         try
         {
-            return await _apiClient.GetTagTypesWithTagsAsync() ?? new List<TagTypeWithTagsDto>();
+            return await _tagTypeClient.GetTagTypesWithTagsAsync() ?? new List<TagTypeWithTagsDto>();
         }
         catch (ApiException ex)
         {

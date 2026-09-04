@@ -21,7 +21,7 @@ public static class BffAdmissionRecoveryEndpoints
     private static async Task<IResult> HandleConsumeAsync(
         AdmissionRecoveryBffRequest request,
         HttpContext context,
-        IEventApiClient apiClient,
+        IAdmissionTicketRecoveryClient apiClient,
         ILogger<RecoveryLogCategory> logger,
         CancellationToken cancellationToken)
     {

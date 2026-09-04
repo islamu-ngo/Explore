@@ -18,6 +18,12 @@ public sealed class ConfigurationManifestExportQueryTests
         "Explore.Application.Features.ConfigurationManifest.Requests.Queries.ExportConfigurationManifestQuery";
     private const string SerializerTypeName = "ConfigurationManifestExportJsonSerializer";
 
+    // The export query, contract, result, and serializer are declared in Explore.Application, while
+    // the manifest DTOs now live in Event.Wire.Contracts. Anchor the Application-type probes on an
+    // Explore.Application type so they resolve against the assembly that actually declares them.
+    private static readonly Assembly ApplicationAssembly =
+        typeof(AuthorizeResourceAttribute).Assembly;
+
     [Test]
     public async Task Query_UsesCurrentInstanceSettingsViewAndExplicitExportFacts()
     {
@@ -168,7 +174,7 @@ public sealed class ConfigurationManifestExportQueryTests
 
     private static byte[] Serialize(ConfigurationManifestV1Alpha2 manifest)
     {
-        Type serializer = typeof(ConfigurationManifestV1Alpha2).Assembly.GetTypes()
+        Type serializer = ApplicationAssembly.GetTypes()
             .SingleOrDefault(type => type.Name == SerializerTypeName)
             ?? throw new InvalidOperationException(
                 $"Missing {SerializerTypeName}; the current tenant-scoped serializer is not the whole-instance contract.");
@@ -183,7 +189,7 @@ public sealed class ConfigurationManifestExportQueryTests
     }
 
     private static Type RequireApplicationType(string fullName) =>
-        typeof(ConfigurationManifestV1Alpha2).Assembly.GetType(fullName)
+        ApplicationAssembly.GetType(fullName)
         ?? throw new InvalidOperationException($"Missing planned whole-instance production type: {fullName}.");
 
     private static ConfigurationManifestV1Alpha2 Manifest(

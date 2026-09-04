@@ -1,4 +1,4 @@
-// ABOUTME: Extends the monolithic NSwag client and centralizes hooks shared by all generated clients.
+// ABOUTME: Extends generated NSwag tag clients and centralizes hooks shared by all generated clients.
 // ABOUTME: Preserves idempotency, capability capture, and consistent System.Text.Json enum behavior.
 
 using System.Text.Json;
@@ -19,14 +19,6 @@ public sealed class GuestRegistrationOrderStartResult
     internal string Capability { get; }
 }
 
-public partial interface IEventApiClient
-{
-    Task<GuestRegistrationOrderStartResult> StartGuestRegistrationOrderWithCapabilityAsync(
-        Guid eventId,
-        StartRegistrationOrderRequest body,
-        CancellationToken cancellationToken = default);
-}
-
 public partial interface IEventLifecycleClient
 {
     Task<BaseCommandResponseOfGuid> CreateEventWithIdempotencyKeyAsync(
@@ -45,10 +37,7 @@ public partial interface IGuestRegistrationOrderClient
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Partial class extending the monolithic NSwag client during the per-tag expand phase.
-/// </summary>
-public partial class EventApiClient
+public partial class EventLifecycleClient
 {
     public async Task<BaseCommandResponseOfGuid> CreateEventWithIdempotencyKeyAsync(
         CreateEventDraftRequestDto body,
@@ -61,6 +50,15 @@ public partial class EventApiClient
         return await CreateEventAsync(body, apiVersion, xApiVersion, cancellationToken);
     }
 
+    partial void PrepareRequest(HttpClient client, HttpRequestMessage request, string url) =>
+        EventApiTransportBehavior.PrepareRequest(request, url);
+
+    partial void ProcessResponse(HttpClient client, HttpResponseMessage response) =>
+        EventApiTransportBehavior.ProcessResponse(response.RequestMessage, response);
+}
+
+public partial class GuestRegistrationOrderClient
+{
     public async Task<GuestRegistrationOrderStartResult> StartGuestRegistrationOrderWithCapabilityAsync(
         Guid eventId,
         StartRegistrationOrderRequest body,
@@ -87,40 +85,31 @@ public partial class EventApiClient
         EventApiTransportBehavior.ProcessResponse(response.RequestMessage, response);
 }
 
-public partial class EventLifecycleClient
+public partial class GuestRegistrationOrderPaymentClient
 {
-    public async Task<BaseCommandResponseOfGuid> CreateEventWithIdempotencyKeyAsync(
-        CreateEventDraftRequestDto body,
-        string idempotencyKey,
-        string? apiVersion = null,
-        string? xApiVersion = null,
-        CancellationToken cancellationToken = default)
-    {
-        using var operation = EventApiTransportBehavior.BeginCreateEvent(idempotencyKey);
-        return await CreateEventAsync(body, apiVersion, xApiVersion, cancellationToken);
-    }
+    partial void PrepareRequest(HttpClient client, HttpRequestMessage request, string url) =>
+        EventApiTransportBehavior.PrepareRequest(request, url);
+
+    partial void ProcessResponse(HttpClient client, HttpResponseMessage response) =>
+        EventApiTransportBehavior.ProcessResponse(response.RequestMessage, response);
 }
 
-public partial class GuestRegistrationOrderClient
+public partial class AuthenticatedRegistrationOrderPaymentClient
 {
-    public async Task<GuestRegistrationOrderStartResult> StartGuestRegistrationOrderWithCapabilityAsync(
-        Guid eventId,
-        StartRegistrationOrderRequest body,
-        CancellationToken cancellationToken = default)
-    {
-        using var operation = EventApiTransportBehavior.BeginGuestRegistrationOrder();
-        var response = await StartGuestRegistrationOrderAsync(
-            eventId,
-            operation.IdempotencyKey,
-            body: body,
-            cancellationToken: cancellationToken);
-        if (string.IsNullOrWhiteSpace(operation.Capability))
-        {
-            throw new InvalidOperationException("Guest registration capability was not returned.");
-        }
+    partial void PrepareRequest(HttpClient client, HttpRequestMessage request, string url) =>
+        EventApiTransportBehavior.PrepareRequest(request, url);
 
-        return new GuestRegistrationOrderStartResult(response, operation.Capability);
-    }
+    partial void ProcessResponse(HttpClient client, HttpResponseMessage response) =>
+        EventApiTransportBehavior.ProcessResponse(response.RequestMessage, response);
+}
+
+public partial class StudioRegistrationOrderPaymentClient
+{
+    partial void PrepareRequest(HttpClient client, HttpRequestMessage request, string url) =>
+        EventApiTransportBehavior.PrepareRequest(request, url);
+
+    partial void ProcessResponse(HttpClient client, HttpResponseMessage response) =>
+        EventApiTransportBehavior.ProcessResponse(response.RequestMessage, response);
 }
 
 public static class EventApiJsonSerializerSettings

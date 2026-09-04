@@ -6,7 +6,7 @@
 @implements IDisposable
 @inject IEventTicketingService TicketingService
 @inject IEventDayService EventDayService
-@inject IEventService EventService
+@inject Explore.Blazor.Client.Contracts.Services.IEventSessionService EventSessionService
 @inject IDialogService DialogService
 @inject IAccessibilityAnnouncerService Announcer
 @inject IAccessibilityFocusService FocusService
@@ -351,7 +351,7 @@
         try
         {
             var daysTask = EventDayService.GetDaysByEventAsync(eventId, includeManaged: true, cancellationToken);
-            var sessionsTask = EventService.GetSessionsByEventAsync(eventId, includeManagedSessions: true, cancellationToken);
+            var sessionsTask = EventSessionService.GetSessionsByEventAsync(eventId, includeManagedSessions: true, cancellationToken);
             await Task.WhenAll(daysTask, sessionsTask);
             IReadOnlyList<EventDayListDto> eventDays = (await daysTask).Where(item => item.Id is not null).OrderBy(item => item.SortOrder).ToArray();
             IReadOnlyList<EventSessionListDto> eventSessions = (await sessionsTask).Where(item => item.Id is not null).OrderBy(item => item.StartTime).ToArray();

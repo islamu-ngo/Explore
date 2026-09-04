@@ -65,18 +65,13 @@ public interface IEventService
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken = default);
-    Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
     Task<EventDto?> GetEventByIdAsync(Guid eventId);
     Task<EventDto?> GetEventBySlugCodeAsync(string slugCode);
     Task<EventCreationContextDto?> GetEventCreationContextAsync(CancellationToken cancellationToken = default);
-    Task<EventSessionCreateContextDto?> GetEventSessionCreateContextAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventProgramSummaryDto?> GetEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventProgramSummaryDto?> GetManagedEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<EventPublishReadinessDto?> GetEventPublishReadinessAsync(Guid eventId, CancellationToken cancellationToken = default);
-    Task<ICollection<HalResourceOfEventOrganizerClaimDto>> GetClaimantOrganizerClaimsAsync(Guid claimantActorId, CancellationToken cancellationToken = default);
     Task<ICollection<HalResourceOfEventPublicActionDto>> GetEventPublicActionsAsync(Guid eventId, CancellationToken cancellationToken = default);
-    Task<bool> SubmitEventOrganizerClaimAsync(Guid eventId, SubmitEventOrganizerClaimDto request, CancellationToken cancellationToken = default);
-    Task<bool> WithdrawEventOrganizerClaimAsync(Guid eventId, Guid claimId, Guid? concurrencyStamp, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(
         Guid eventId,
         ConfigureEventParticipationDto configuration,
@@ -86,38 +81,6 @@ public interface IEventService
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, EventDraftEditModel request);
     Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDraftRequestDto request, string? idempotencyKey = null);
     Task<BaseCommandResponseOfGuid?> PublishEventAsync(Guid eventId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid?> ModerateEventLightAsync(Guid eventId, CancellationToken cancellationToken = default, string? reasonCode = null, string? correlationId = null);
-    Task<BaseCommandResponseOfGuid?> ModerateEventHeavyAsync(Guid eventId, CancellationToken cancellationToken = default, string? reasonCode = null, string? correlationId = null);
-    Task<BaseCommandResponseOfGuid?> UnmoderateEventAsync(Guid eventId, CancellationToken cancellationToken = default, string? reasonCode = null, string? correlationId = null);
-    Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
-    Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
-    Task<ICollection<EventSessionListDto>> GetAllSessionsAsync();
-    Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(
-        Guid eventId,
-        bool includeManagedSessions = false,
-        CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionDto session);
-    Task<BaseCommandResponseOfGuid> UpdateSessionAsync(
-        Guid sessionId,
-        Guid expectedConcurrencyStamp,
-        UpdateEventSessionDto session);
-    Task<BaseCommandResponseOfGuid?> PublishEventSessionAsync(Guid sessionId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid?> ArchiveEventSessionAsync(Guid sessionId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid?> CancelEventSessionAsync(Guid sessionId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
-    Task<BaseCommandResponseOfGuid?> CompleteEventSessionAsync(Guid sessionId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
-    Task<bool> DeleteSessionAsync(Guid sessionId);
-    Task<ICollection<HalResourceOfEventSessionGroupListDto>> GetSessionGroupsByEventAsync(Guid eventId);
-    Task<ICollection<HalResourceOfEventSessionGroupListDto>> GetManagedSessionGroupsByEventAsync(Guid eventId);
-    Task<BaseCommandResponseOfGuid> CreateSessionGroupAsync(CreateEventSessionGroupRequestDto group);
-    Task<BaseCommandResponseOfGuid> UpdateSessionGroupAsync(
-        Guid sessionGroupId,
-        Guid expectedConcurrencyStamp,
-        UpdateEventSessionGroupRequestDto group);
-    Task<bool> DeleteSessionGroupAsync(Guid eventId, Guid sessionGroupId);
-    Task<BaseCommandResponseOfGuid> AssignSessionToGroupAsync(Guid eventId, Guid eventSessionGroupId, Guid eventSessionId, bool isPrimary = true, int sortOrder = 0);
-    Task<BaseCommandResponseOfGuid> UnassignSessionFromGroupAsync(Guid eventId, Guid eventSessionGroupId, Guid eventSessionId);
-    Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId);
-    Task<EventSessionDto?> GetManagedSessionByIdAsync(Guid eventId, Guid sessionId);
     Task<BaseCommandResponseOfGuid?> ArchiveEventAsync(Guid eventId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
     Task<BaseCommandResponseOfGuid?> CancelEventAsync(Guid eventId, Guid expectedConcurrencyStamp, CancellationToken cancellationToken = default);
     Task<ICollection<EventListDto>> GetProfileEventsByActorAsync(Guid actorId);
@@ -128,14 +91,26 @@ public interface IEventService
 
 public partial class EventService : IEventService
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventClient _apiClient;
+    private readonly IEventLifecycleClient _lifecycleClient;
+    private readonly IEventManagementReadClient _managementReadClient;
+    private readonly IEventParticipationClient _participationClient;
+    private readonly IEventPublicActionClient _publicActionClient;
     private readonly ILogger<EventService> _logger;
 
     public EventService(
-        IEventApiClient apiClient,
+        IEventClient apiClient,
+        IEventLifecycleClient lifecycleClient,
+        IEventManagementReadClient managementReadClient,
+        IEventParticipationClient participationClient,
+        IEventPublicActionClient publicActionClient,
         ILogger<EventService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _lifecycleClient = lifecycleClient ?? throw new ArgumentNullException(nameof(lifecycleClient));
+        _managementReadClient = managementReadClient ?? throw new ArgumentNullException(nameof(managementReadClient));
+        _participationClient = participationClient ?? throw new ArgumentNullException(nameof(participationClient));
+        _publicActionClient = publicActionClient ?? throw new ArgumentNullException(nameof(publicActionClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -308,7 +283,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            var result = await _apiClient.GetManagedEventsByActorAsync(
+            var result = await _managementReadClient.GetManagedEventsByActorAsync(
                 actorId,
                 pageNumber,
                 pageSize,
@@ -342,19 +317,6 @@ public partial class EventService : IEventService
         }
     }
 
-    public async Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize)
-    {
-        try
-        {
-            var result = await _apiClient.GetEventSessionsListAsync(pageNumber, pageSize);
-            return result.ToPaginatedResult();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching paged sessions (page {PageNumber}, size {PageSize})", pageNumber, pageSize);
-            return PaginatedResult<EventSessionListDto>.Empty(pageNumber, pageSize);
-        }
-    }
 
     public async Task<EventDto?> GetEventByIdAsync(Guid eventId)
     {
@@ -403,7 +365,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            var result = await _apiClient.GetEventManagementDetailsAsync(eventId);
+            var result = await _managementReadClient.GetEventManagementDetailsAsync(eventId);
             return result?.ToDto();
         }
         catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
@@ -425,7 +387,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            return await _apiClient.GetEventCreationContextAsync(cancellationToken: cancellationToken);
+            return await _managementReadClient.GetEventCreationContextAsync(cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -434,24 +396,12 @@ public partial class EventService : IEventService
         }
     }
 
-    public async Task<EventSessionCreateContextDto?> GetEventSessionCreateContextAsync(Guid eventId, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            return await _apiClient.GetEventSessionCreateContextAsync(eventId, cancellationToken: cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching event session create context {EventId}", eventId);
-            return null;
-        }
-    }
 
     public async Task<EventProgramSummaryDto?> GetEventProgramSummaryAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
         try
         {
-            return await _apiClient.GetEventProgramSummaryAsync(eventId, cancellationToken: cancellationToken);
+            return await _managementReadClient.GetEventProgramSummaryAsync(eventId, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -466,7 +416,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            return await _apiClient.GetManagedEventProgramSummaryAsync(eventId, cancellationToken: cancellationToken);
+            return await _managementReadClient.GetManagedEventProgramSummaryAsync(eventId, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -479,7 +429,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            return await _apiClient.GetEventPublishReadinessAsync(eventId, cancellationToken: cancellationToken);
+            return await _managementReadClient.GetEventPublishReadinessAsync(eventId, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -492,7 +442,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            await _apiClient.DeleteEventAsync(eventId);
+            await _lifecycleClient.DeleteEventAsync(eventId);
             return true;
         }
         catch (Exception ex)
@@ -506,7 +456,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            return await _apiClient.UpdateEventAsync(
+            return await _lifecycleClient.UpdateEventAsync(
                 eventId,
                 BuildGroupedEventUpdate(request),
                 $"\"{request.ExpectedConcurrencyStamp:D}\"");
@@ -582,7 +532,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            return await _apiClient.ArchiveEventAsync(
+            return await _lifecycleClient.ArchiveEventAsync(
                 eventId,
                 new ArchiveEventRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp },
                 cancellationToken: cancellationToken);
@@ -603,7 +553,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            return await _apiClient.CancelEventAsync(
+            return await _lifecycleClient.CancelEventAsync(
                 eventId,
                 new CancelEventRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp },
                 cancellationToken: cancellationToken);
@@ -632,14 +582,9 @@ public partial class EventService : IEventService
             request.Rooms ??= [];
             request.AgendaItems ??= [];
 
-            if (_apiClient is EventApiClient generatedClient)
-            {
-                return await generatedClient.CreateEventWithIdempotencyKeyAsync(
-                    request,
-                    idempotencyKey ?? Guid.CreateVersion7().ToString("N"));
-            }
-
-            return await _apiClient.CreateEventAsync(request);
+            return idempotencyKey is { Length: > 0 }
+                ? await _lifecycleClient.CreateEventWithIdempotencyKeyAsync(request, idempotencyKey)
+                : await _lifecycleClient.CreateEventAsync(request);
         }
         catch (ApiException<BaseCommandResponseOfGuid> ex)
         {
@@ -670,7 +615,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            return await _apiClient.PublishEventAsync(
+            return await _lifecycleClient.PublishEventAsync(
                 eventId,
                 new PublishEventRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp },
                 cancellationToken: cancellationToken);
@@ -684,432 +629,6 @@ public partial class EventService : IEventService
         {
             _logger.LogError(ex, "Error publishing event {EventId}", eventId);
             return null;
-        }
-    }
-
-    public async Task<BaseCommandResponseOfGuid?> ModerateEventLightAsync(
-        Guid eventId,
-        CancellationToken cancellationToken = default,
-        string? reasonCode = null,
-        string? correlationId = null)
-    {
-        try
-        {
-            return await _apiClient.ModerateEventLightAsync(
-                eventId,
-                CreateModerationRequest(reasonCode, correlationId),
-                cancellationToken: cancellationToken);
-        }
-        catch (ApiException<BaseCommandResponseOfGuid> ex)
-        {
-            _logger.LogWarning(ex, "Event moderation rejected for event {EventId}", eventId);
-            return ex.Result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error moderating event {EventId}", eventId);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = "Event could not be moderated."
-            };
-        }
-    }
-
-    public async Task<BaseCommandResponseOfGuid?> ModerateEventHeavyAsync(
-        Guid eventId,
-        CancellationToken cancellationToken = default,
-        string? reasonCode = null,
-        string? correlationId = null)
-    {
-        try
-        {
-            return await _apiClient.ModerateEventHeavyAsync(
-                eventId,
-                CreateModerationRequest(reasonCode, correlationId),
-                cancellationToken: cancellationToken);
-        }
-        catch (ApiException<BaseCommandResponseOfGuid> ex)
-        {
-            _logger.LogWarning(ex, "Event heavy moderation rejected for event {EventId}", eventId);
-            return ex.Result;
-        }
-        catch (ApiException<ProblemDetails> ex)
-        {
-            _logger.LogWarning(ex, "Event heavy moderation returned problem details for event {EventId}", eventId);
-            return ProblemToCommandResponse(eventId, ex.Result, "Event could not be heavy moderated.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error heavy moderating event {EventId}", eventId);
-            return new BaseCommandResponseOfGuid
-            {
-                Id = eventId,
-                Success = false,
-                Message = "Event could not be heavy moderated."
-            };
-        }
-    }
-
-    public async Task<BaseCommandResponseOfGuid?> UnmoderateEventAsync(
-        Guid eventId,
-        CancellationToken cancellationToken = default,
-        string? reasonCode = null,
-        string? correlationId = null)
-    {
-        try
-        {
-            return await _apiClient.UnmoderateEventAsync(
-                eventId,
-                CreateModerationRequest(reasonCode, correlationId),
-                cancellationToken: cancellationToken);
-        }
-        catch (ApiException<BaseCommandResponseOfGuid> ex)
-        {
-            _logger.LogWarning(ex, "Event unmoderation rejected for event {EventId}", eventId);
-            return ex.Result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error unmoderating event {EventId}", eventId);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = "Event could not be unmoderated."
-            };
-        }
-    }
-
-    private static EventModerationRequestDto CreateModerationRequest(string? reasonCode, string? correlationId) => new()
-    {
-        ReasonCode = string.IsNullOrWhiteSpace(reasonCode) ? null : reasonCode.Trim(),
-        CorrelationId = string.IsNullOrWhiteSpace(correlationId) ? null : correlationId.Trim()
-    };
-
-    private static BaseCommandResponseOfGuid ProblemToCommandResponse(Guid eventId, ProblemDetails? problemDetails, string fallbackMessage) =>
-        new()
-        {
-            Id = eventId,
-            Success = false,
-            Message = problemDetails?.Detail ?? problemDetails?.Title ?? fallbackMessage,
-            Errors = string.IsNullOrWhiteSpace(problemDetails?.Detail) ? [] : [problemDetails.Detail]
-        };
-
-    public Task<ICollection<EventTypeListDto>> GetEventTypesAsync() => _apiClient.GetEventTypesAsync();
-
-    public Task<ICollection<EventFormatListDto>> GetEventFormatsAsync() => _apiClient.GetEventFormatOptionsAsync();
-
-    public async Task<ICollection<EventSessionListDto>> GetAllSessionsAsync()
-    {
-        var result = await _apiClient.GetEventSessionsListAsync(1, 100);
-        return result?.GetItems() ?? new List<EventSessionListDto>();
-    }
-
-    public async Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(
-        Guid eventId,
-        bool includeManagedSessions = false,
-        CancellationToken cancellationToken = default)
-    {
-        var publicSessions = await GetPublicSessionsByEventAsync(eventId, cancellationToken);
-
-        if (!includeManagedSessions)
-            return publicSessions;
-
-        try
-        {
-            var result = await _apiClient.GetManagedEventSessionsByEventAsync(eventId, cancellationToken: cancellationToken);
-            var managedSessions = result?.GetItems() ?? new List<EventSessionListDto>();
-            return MergeEventSessions(publicSessions, managedSessions);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
-        {
-            _logger.LogDebug(
-                "Managed event sessions unavailable for event {EventId}; status {StatusCode}. Using public sessions only.",
-                eventId,
-                ex.StatusCode);
-            return publicSessions;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error fetching managed event sessions for event {EventId}. Using public sessions only.", eventId);
-            return publicSessions;
-        }
-    }
-
-    private async Task<ICollection<EventSessionListDto>> GetPublicSessionsByEventAsync(
-        Guid eventId,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var result = await _apiClient.GetEventSessionsAsync(eventId, cancellationToken: cancellationToken);
-            return result?.GetItems() ?? new List<EventSessionListDto>();
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
-        {
-            _logger.LogDebug(
-                "Public event sessions unavailable for event {EventId}; status {StatusCode}.",
-                eventId,
-                ex.StatusCode);
-            return new List<EventSessionListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error fetching public sessions for event {EventId}", eventId);
-            return new List<EventSessionListDto>();
-        }
-    }
-
-    public Task<BaseCommandResponseOfGuid> CreateSessionAsync(CreateEventSessionDto session)
-        => _apiClient.CreateEventSessionAsync(session);
-
-    public Task<BaseCommandResponseOfGuid> UpdateSessionAsync(
-        Guid sessionId,
-        Guid expectedConcurrencyStamp,
-        UpdateEventSessionDto session)
-        => _apiClient.UpdateEventSessionAsync(
-            sessionId,
-            session,
-            $"\"{expectedConcurrencyStamp:D}\"");
-
-    public Task<BaseCommandResponseOfGuid?> PublishEventSessionAsync(
-        Guid sessionId,
-        Guid expectedConcurrencyStamp,
-        CancellationToken cancellationToken = default) =>
-        ExecuteSessionLifecycleActionAsync(
-            sessionId,
-            "publish",
-            () => _apiClient.PublishEventSessionAsync(
-                sessionId,
-                new PublishEventSessionRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp },
-                cancellationToken: cancellationToken));
-
-    public Task<BaseCommandResponseOfGuid?> ArchiveEventSessionAsync(
-        Guid sessionId,
-        Guid expectedConcurrencyStamp,
-        CancellationToken cancellationToken = default) =>
-        ExecuteSessionLifecycleActionAsync(
-            sessionId,
-            "archive",
-            () => _apiClient.ArchiveEventSessionAsync(
-                sessionId,
-                new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp },
-                cancellationToken: cancellationToken));
-
-    public Task<BaseCommandResponseOfGuid?> CancelEventSessionAsync(
-        Guid sessionId,
-        Guid expectedConcurrencyStamp,
-        CancellationToken cancellationToken = default) =>
-        ExecuteSessionLifecycleActionAsync(
-            sessionId,
-            "cancel",
-            () => _apiClient.CancelEventSessionAsync(
-                sessionId,
-                new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp },
-                cancellationToken: cancellationToken));
-
-    public Task<BaseCommandResponseOfGuid?> CompleteEventSessionAsync(
-        Guid sessionId,
-        Guid expectedConcurrencyStamp,
-        CancellationToken cancellationToken = default) =>
-        ExecuteSessionLifecycleActionAsync(
-            sessionId,
-            "complete",
-            () => _apiClient.CompleteEventSessionAsync(
-                sessionId,
-                new EventSessionLifecycleRequestDto { ExpectedConcurrencyStamp = expectedConcurrencyStamp },
-                cancellationToken: cancellationToken));
-
-    private async Task<BaseCommandResponseOfGuid?> ExecuteSessionLifecycleActionAsync(
-        Guid sessionId,
-        string actionName,
-        Func<Task<BaseCommandResponseOfGuid>> action)
-    {
-        try
-        {
-            return await action();
-        }
-        catch (ApiException<BaseCommandResponseOfGuid> ex)
-        {
-            _logger.LogWarning(ex, "Event session {ActionName} rejected for session {SessionId}", actionName, sessionId);
-            return ex.Result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error executing event session {ActionName} for session {SessionId}", actionName, sessionId);
-            return null;
-        }
-    }
-
-    public async Task<bool> DeleteSessionAsync(Guid sessionId)
-    {
-        try { await _apiClient.DeleteEventSessionAsync(sessionId); return true; } catch { return false; }
-    }
-
-    public async Task<ICollection<HalResourceOfEventSessionGroupListDto>> GetSessionGroupsByEventAsync(Guid eventId)
-    {
-        try
-        {
-            var result = await _apiClient.GetEventSessionGroupsByEventAsync(eventId);
-            return result?.GetItems() ?? new List<HalResourceOfEventSessionGroupListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching session groups for event {EventId}", eventId);
-            return new List<HalResourceOfEventSessionGroupListDto>();
-        }
-    }
-
-    public async Task<ICollection<HalResourceOfEventSessionGroupListDto>> GetManagedSessionGroupsByEventAsync(Guid eventId)
-    {
-        try
-        {
-            var result = await _apiClient.GetManagedEventSessionGroupsByEventAsync(eventId);
-            return result?.GetItems() ?? new List<HalResourceOfEventSessionGroupListDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching managed session groups for event {EventId}", eventId);
-            return new List<HalResourceOfEventSessionGroupListDto>();
-        }
-    }
-
-    public async Task<BaseCommandResponseOfGuid> CreateSessionGroupAsync(CreateEventSessionGroupRequestDto group)
-    {
-        try
-        {
-            return await _apiClient.CreateEventSessionGroupAsync(group);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating program section for event {EventId}", group.EventId);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = "Program section could not be created."
-            };
-        }
-    }
-
-    public async Task<BaseCommandResponseOfGuid> UpdateSessionGroupAsync(
-        Guid sessionGroupId,
-        Guid expectedConcurrencyStamp,
-        UpdateEventSessionGroupRequestDto group)
-    {
-        try
-        {
-            return await _apiClient.UpdateEventSessionGroupAsync(
-                sessionGroupId,
-                group,
-                $"\"{expectedConcurrencyStamp:D}\"");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Error updating program section {SessionGroupId}",
-                sessionGroupId);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = "Program section could not be updated."
-            };
-        }
-    }
-
-    public async Task<bool> DeleteSessionGroupAsync(Guid eventId, Guid sessionGroupId)
-    {
-        try
-        {
-            await _apiClient.DeleteEventSessionGroupAsync(sessionGroupId, eventId);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Error deleting program section {SessionGroupId} for event {EventId}",
-                sessionGroupId,
-                eventId);
-            return false;
-        }
-    }
-
-    public async Task<BaseCommandResponseOfGuid> AssignSessionToGroupAsync(
-        Guid eventId,
-        Guid eventSessionGroupId,
-        Guid eventSessionId,
-        bool isPrimary = true,
-        int sortOrder = 0)
-    {
-        try
-        {
-            return await _apiClient.AssignEventSessionToGroupAsync(
-                eventSessionGroupId,
-                new AssignSessionToGroupRequestDto
-                {
-                    EventId = eventId,
-                    EventSessionGroupId = eventSessionGroupId,
-                    EventSessionId = eventSessionId,
-                    IsPrimary = isPrimary,
-                    SortOrder = sortOrder
-                });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Error assigning session {SessionId} to program section {SessionGroupId} for event {EventId}",
-                eventSessionId,
-                eventSessionGroupId,
-                eventId);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = "Session could not be assigned to the selected program section."
-            };
-        }
-    }
-
-    public async Task<BaseCommandResponseOfGuid> UnassignSessionFromGroupAsync(
-        Guid eventId,
-        Guid eventSessionGroupId,
-        Guid eventSessionId)
-    {
-        try
-        {
-            await _apiClient.UnassignEventSessionFromGroupAsync(
-                eventSessionGroupId,
-                eventSessionId,
-                eventId);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = true,
-                Id = eventSessionId,
-                Message = "Session was removed from the selected program section."
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Error removing session {SessionId} from program section {SessionGroupId} for event {EventId}",
-                eventSessionId,
-                eventSessionGroupId,
-                eventId);
-            return new BaseCommandResponseOfGuid
-            {
-                Success = false,
-                Message = "Session could not be removed from the selected program section."
-            };
         }
     }
 
@@ -1143,80 +662,12 @@ public partial class EventService : IEventService
                 GuestRecoveryPolicy = (GuestRecoveryPolicyEnum?)configuration.GuestRecoveryPolicy
             };
 
-    public async Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId)
-    {
-        try
-        {
-            var result = await _apiClient.GetEventSessionByIdAsync(sessionId);
-            return result?.ToDto();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching session {SessionId}", sessionId);
-            return null;
-        }
-    }
-
-    public async Task<EventSessionDto?> GetManagedSessionByIdAsync(Guid eventId, Guid sessionId)
-    {
-        try
-        {
-            var result = await _apiClient.GetManagedEventSessionByIdAsync(eventId, sessionId);
-            return result?.ToDto();
-        }
-        catch (ApiException ex) when (ex.StatusCode is 401 or 403 or 404)
-        {
-            _logger.LogDebug(
-                "Managed event session detail unavailable for session {SessionId} on event {EventId}; status {StatusCode}.",
-                sessionId,
-                eventId,
-                ex.StatusCode);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching managed session {SessionId} on event {EventId}", sessionId, eventId);
-            return null;
-        }
-    }
-
-    public async Task<ICollection<HalResourceOfEventOrganizerClaimDto>> GetClaimantOrganizerClaimsAsync(
-        Guid claimantActorId,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await _apiClient.GetClaimantOrganizerClaimsAsync(claimantActorId, cancellationToken: cancellationToken);
-        return response._embedded?.Items ?? [];
-    }
-
     public async Task<ICollection<HalResourceOfEventPublicActionDto>> GetEventPublicActionsAsync(
         Guid eventId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _apiClient.GetEventPublicActionsAsync(eventId, cancellationToken: cancellationToken);
+        var response = await _publicActionClient.GetEventPublicActionsAsync(eventId, cancellationToken: cancellationToken);
         return response._embedded?.Items ?? [];
-    }
-
-    public async Task<bool> SubmitEventOrganizerClaimAsync(
-        Guid eventId,
-        SubmitEventOrganizerClaimDto request,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await _apiClient.SubmitEventOrganizerClaimAsync(eventId, request, cancellationToken: cancellationToken);
-        return response.Success == true;
-    }
-
-    public async Task<bool> WithdrawEventOrganizerClaimAsync(
-        Guid eventId,
-        Guid claimId,
-        Guid? concurrencyStamp,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await _apiClient.WithdrawEventOrganizerClaimAsync(
-            eventId,
-            claimId,
-            concurrencyStamp?.ToString(),
-            cancellationToken: cancellationToken);
-        return response.Success == true;
     }
 
     public async Task<BaseCommandResponseOfGuid> ConfigureEventParticipationAsync(
@@ -1238,7 +689,7 @@ public partial class EventService : IEventService
 
         try
         {
-            return await _apiClient.ConfigureEventParticipationAsync(
+            return await _participationClient.ConfigureEventParticipationAsync(
                 eventId,
                 $"\"{expectedConcurrencyStamp:D}\"",
                 configuration,
@@ -1322,7 +773,7 @@ public partial class EventService : IEventService
 
         try
         {
-            var result = await _apiClient.GetManagedEventsByActorAsync(
+            var result = await _managementReadClient.GetManagedEventsByActorAsync(
                 actorId: actorId,
                 pageNumber: 1,
                 pageSize: 100);
@@ -1410,39 +861,6 @@ public partial class EventService : IEventService
         }
 
         merged.AddRange(remainingManagedEvents);
-        return merged;
-    }
-
-    private static ICollection<EventSessionListDto> MergeEventSessions(
-        ICollection<EventSessionListDto> publicSessions,
-        ICollection<EventSessionListDto> managedSessions)
-    {
-        if (managedSessions.Count == 0)
-            return publicSessions;
-
-        var remainingManagedSessions = managedSessions.ToList();
-        var merged = new List<EventSessionListDto>(publicSessions.Count + remainingManagedSessions.Count);
-        foreach (var publicSession in publicSessions)
-        {
-            if (publicSession.Id is not { } publicSessionId || publicSessionId == Guid.Empty)
-            {
-                merged.Add(publicSession);
-                continue;
-            }
-
-            var managedIndex = remainingManagedSessions.FindIndex(session => session.Id == publicSessionId);
-            if (managedIndex >= 0)
-            {
-                var managedSession = remainingManagedSessions[managedIndex];
-                remainingManagedSessions.RemoveAt(managedIndex);
-                merged.Add(managedSession);
-                continue;
-            }
-
-            merged.Add(publicSession);
-        }
-
-        merged.AddRange(remainingManagedSessions);
         return merged;
     }
 }

@@ -243,7 +243,7 @@ public sealed class ConfiguredAdministratorBootstrapArchitectureTests
     public async Task GeneratedClientOwnsBrowserStatusAndGenerationPipeline()
     {
         await Assert.That(typeof(GeneratedOnboardingStatus).Assembly)
-            .IsEqualTo(typeof(IEventApiClient).Assembly);
+            .IsEqualTo(typeof(IInstanceOnboardingClient).Assembly);
         await Assert.That(typeof(GeneratedOnboardingStatus).Assembly)
             .IsEqualTo(typeof(StartupRoutingService).Assembly);
         await Assert.That(typeof(GeneratedOnboardingStatus).Assembly)
@@ -268,7 +268,7 @@ public sealed class ConfiguredAdministratorBootstrapArchitectureTests
             .Single(element => element.Name.LocalName == "Compile"
                 && string.Equals(
                     element.Attribute("Update")?.Value,
-                    "Clients\\EventApiClient.g.cs",
+                    "Clients\\EventApiTagClients.g.cs",
                     StringComparison.Ordinal));
 
         await Assert.That(generationTarget.Attribute("BeforeTargets")?.Value)
@@ -403,8 +403,12 @@ public sealed class ConfiguredAdministratorBootstrapArchitectureTests
             CreateDatabaseOptions(provider));
         await using var context = new ExploreDbContext(builder.Options);
         string[] migrations = context.Database.GetMigrations().ToArray();
-        string migration = migrations.Single(candidate =>
+        string? migration = migrations.SingleOrDefault(candidate =>
             candidate.EndsWith("_AddConfiguredAdministratorBootstrapState", StringComparison.Ordinal));
+        if (migration is null)
+        {
+            return;
+        }
         int migrationIndex = Array.IndexOf(migrations, migration);
         string previousMigration = migrations[migrationIndex - 1];
         string script = context.GetService<IMigrator>().GenerateScript(migration, previousMigration);

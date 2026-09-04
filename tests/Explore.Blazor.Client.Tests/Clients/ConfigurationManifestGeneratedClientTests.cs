@@ -10,8 +10,8 @@ public sealed class ConfigurationManifestGeneratedClientTests
     [Test]
     public async Task CanonicalExportPreservesTypedBinaryContract()
     {
-        MethodInfo method = typeof(IEventApiClient).GetMethod(
-            nameof(IEventApiClient.ExportConfigurationManifestAsync),
+        MethodInfo method = typeof(IControl_Plane_ConfigurationClient).GetMethod(
+            nameof(IControl_Plane_ConfigurationClient.ExportConfigurationManifestAsync),
             [
                 typeof(ConfigurationManifestExportView?),
                 typeof(string),
@@ -47,7 +47,8 @@ public sealed class ConfigurationManifestGeneratedClientTests
     [Test]
     public async Task TenantExportAliasesAreAbsent()
     {
-        string[] methodNames = typeof(IEventApiClient).GetMethods()
+        string[] methodNames = typeof(IControl_Plane_ConfigurationClient).GetMethods()
+            .Concat(typeof(ITenant_ConfigurationClient).GetMethods())
             .Select(method => method.Name)
             .ToArray();
 
@@ -55,7 +56,7 @@ public sealed class ConfigurationManifestGeneratedClientTests
             .DoesNotContain("ExportTenant" + "ConfigurationManifestAsync");
         await Assert.That(methodNames)
             .DoesNotContain("ExportControlPlaneTenant" + "ConfigurationManifestAsync");
-        await Assert.That(typeof(IEventApiClient).Assembly.GetType(
+        await Assert.That(typeof(IControl_Plane_ConfigurationClient).Assembly.GetType(
             "Explore.Blazor.Client.Clients.Tenant" + "ConfigurationManifestExportView"))
             .IsNull();
     }
@@ -64,9 +65,9 @@ public sealed class ConfigurationManifestGeneratedClientTests
     public async Task ImportUploadsUseCanonicalBinaryStreams()
     {
         MethodInfo instance = RequireMethod(
-            nameof(IEventApiClient.CreateInstanceConfigurationImportSessionAsync));
+            nameof(IControl_Plane_ConfigurationClient.CreateInstanceConfigurationImportSessionAsync));
         MethodInfo tenant = RequireMethod(
-            nameof(IEventApiClient.CreateTenantConfigurationImportSessionAsync));
+            nameof(ITenant_ConfigurationClient.CreateTenantConfigurationImportSessionAsync));
 
         await Assert.That(instance.GetParameters()[0].ParameterType)
             .IsEqualTo(typeof(Stream));
@@ -84,12 +85,12 @@ public sealed class ConfigurationManifestGeneratedClientTests
     {
         string[] operations =
         [
-            nameof(IEventApiClient.PreviewInstanceConfigurationImportSessionAsync),
-            nameof(IEventApiClient.RefreshInstanceConfigurationImportSessionAsync),
-            nameof(IEventApiClient.CancelInstanceConfigurationImportSessionAsync),
-            nameof(IEventApiClient.PreviewTenantConfigurationImportSessionAsync),
-            nameof(IEventApiClient.RefreshTenantConfigurationImportSessionAsync),
-            nameof(IEventApiClient.CancelTenantConfigurationImportSessionAsync)
+            nameof(IControl_Plane_ConfigurationClient.PreviewInstanceConfigurationImportSessionAsync),
+            nameof(IControl_Plane_ConfigurationClient.RefreshInstanceConfigurationImportSessionAsync),
+            nameof(IControl_Plane_ConfigurationClient.CancelInstanceConfigurationImportSessionAsync),
+            nameof(ITenant_ConfigurationClient.PreviewTenantConfigurationImportSessionAsync),
+            nameof(ITenant_ConfigurationClient.RefreshTenantConfigurationImportSessionAsync),
+            nameof(ITenant_ConfigurationClient.CancelTenantConfigurationImportSessionAsync)
         ];
 
         foreach (string operation in operations)
@@ -142,7 +143,8 @@ public sealed class ConfigurationManifestGeneratedClientTests
 
     private static MethodInfo RequireMethod(string name)
     {
-        MethodInfo[] methods = typeof(IEventApiClient).GetMethods()
+        MethodInfo[] methods = typeof(IControl_Plane_ConfigurationClient).GetMethods()
+            .Concat(typeof(ITenant_ConfigurationClient).GetMethods())
             .Where(method => method.Name == name)
             .ToArray();
         return methods.Length == 1

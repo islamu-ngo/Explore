@@ -6,7 +6,7 @@ using Explore.Blazor.Client.Contracts.Services.Shell;
 
 namespace Explore.Blazor.Client.Services.Shell;
 
-public sealed class TenantShellSettingsService(IEventApiClient apiClient) : ITenantShellSettingsService
+public sealed class TenantShellSettingsService(ISettingsClient apiClient) : ITenantShellSettingsService
 {
     public const string Category = "UiShell";
 

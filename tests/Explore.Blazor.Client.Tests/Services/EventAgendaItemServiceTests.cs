@@ -7,13 +7,13 @@ namespace Explore.Blazor.Client.Tests.Services;
 
 public class EventAgendaItemServiceTests
 {
-    private readonly IEventApiClient _apiClient;
+    private readonly IEventAgendaItemClient _apiClient;
     private readonly ILogger<EventAgendaItemService> _logger;
     private readonly EventAgendaItemService _service;
 
     public EventAgendaItemServiceTests()
     {
-        _apiClient = Substitute.For<IEventApiClient>();
+        _apiClient = Substitute.For<IEventAgendaItemClient>();
         _logger = Substitute.For<ILogger<EventAgendaItemService>>();
         _service = new EventAgendaItemService(_apiClient, _logger);
     }
