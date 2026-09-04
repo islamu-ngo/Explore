@@ -112,7 +112,7 @@ public sealed class FooterTests : IDisposable
             var cut = context.RenderMudComponent<Footer>();
 
             await Assert.That(cut.FindAll("[data-testid='footer-identity-unavailable'][role]").Count).IsEqualTo(0);
-            await Assert.That(cut.FindAll("[data-testid='footer-identity-unavailable'] [role='alert'][aria-live='assertive']")).HasSingleItem();
+            await Assert.That(cut.FindAll("[data-testid='footer-identity-unavailable'] [role='status'][aria-live='polite']")).HasSingleItem();
             await Assert.That(cut.Markup).DoesNotContain("Hidden brand");
         }
     }
