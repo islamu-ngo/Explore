@@ -178,10 +178,23 @@ Do not create standalone manual-QA, documentation-review, reporting, dev-doc mai
 #### Per-Phase Closing Rule: Verify, Then Commit (in `tasks.md`)
 Every implementation phase MUST end with a **Phase N Commit** task immediately after its phase-verification tasks. The approved task ledger is standing authorization for the same implementing agent to execute the commit; do not defer commit composition to a new session or require another user invocation.
 
-While writing or updating the workstream, the planning agent MUST load `conventional-commit` and place this fully resolved contract in every phase's `tasks.md` section:
+##### Atomic Commit Slicing for Large Phases (Rule 1 & Rule 13)
+When a phase is large (touching dozens or hundreds of files) or spans multiple separable architectural concerns (domain models & invariant tests, persistence & migrations, application CQRS handlers, API endpoints, Blazor UI, documentation), planning MUST NOT create a single monolithic umbrella commit.
+Instead, planning MUST sequence multiple atomic commit contracts (`#### Planned Commit Contract N.1`, `#### Planned Commit Contract N.2`, etc.) adhering to `conventional-commit`:
+- **Smallest Releasable Slice**: Each commit represents the smallest complete, independently reviewable and verifiable outcome.
+- **Indivisible Exception Only (Rule 14)**: A commit touching dozens or hundreds of files is permitted ONLY when the change is mechanically indivisible across the repository (e.g. repository-wide symbol renames or generated client/schema regenerations that cannot compile independently). “Same feature” or “same phase” is never sufficient.
+
+##### Strict Scope Isolation (Plan-Owned Changes Only)
+Every commit contract MUST strictly stage and commit ONLY its own changes directly related to the implementation plan:
+- **Explicit Path Staging**: Staging commands MUST explicitly list exact, phase-owned file paths (`git add -- <file1> <file2>`). Blind staging (`git add .`, `git add -A`, `git add -u`) is strictly forbidden.
+- **Path-Limited Commit**: Commit commands MUST use path-limited execution (`git commit --only ... -- <file1> <file2>`) to guarantee that ambient, uncommitted, or foreign modifications in the working tree are never absorbed.
+- **Pre-Commit Inspection**: Pre-commit inspection commands (`git status --short`, `git diff --name-only`, `git diff --cached --name-only`) must verify that only phase-owned, plan-related files are staged.
+- **Post-Commit Verification**: Post-commit verification (`git show --name-only --format=fuller HEAD`) must prove that the committed file list matches `Commit paths` exactly with zero leaked or unrelated files.
+
+While writing or updating the workstream, the planning agent MUST load `conventional-commit` and place fully resolved contracts in every phase's `tasks.md` section (sequencing multiple contracts when the phase is large):
 
 ```markdown
-#### Planned Commit Contract
+#### Planned Commit Contract [or Planned Commit Contract N.1 for multi-commit phases]
 - **Default title:** `type(scope): benefit-led phase outcome`
 - **Default description:** Exact motivation and data/control-flow description for the planned phase outcome.
 - **Changelog treatment:** Public feature/fix | Change fragment `CHG-YYYY-NNNN` | `Changelog: skip`
@@ -198,9 +211,9 @@ Final workstream artifacts MUST contain concrete values, never the template plac
 
 The phase-close task MUST:
 
-1. Treat the approved contract and embedded staging instructions as self-sufficient. If the planned contract remains truthful, use it directly and do not load `conventional-commit`.
+1. Treat the approved contract(s) and embedded staging instructions as self-sufficient. If the planned contract remains truthful, use it directly and do not load `conventional-commit`.
 2. Reconcile the phase's task/context state and phase-owned path list before staging.
-3. Execute the contract's exact inspection commands, confirm every named file is wholly phase-owned, then execute its exact staging and path-limited commit commands. Never substitute blind/broad staging. Unrelated pre-staged paths remain staged; mixed-ownership files block the commit.
+3. Execute the contract's exact inspection commands, confirm every named file is wholly phase-owned and related to the implementation plan, then execute its exact staging and path-limited commit commands. If multiple atomic commits are planned for the phase, execute each in sequence. Never substitute blind/broad staging. Unrelated pre-staged paths remain staged; mixed-ownership files block the commit.
 4. Treat phase-attributable build/test failures as blockers. If a required broad command fails only because of concurrent changes outside the phase-owned paths, record the exact command, failure, external path/owner evidence, and successful phase-scoped verification in `tasks.md` and `context.md`; do not edit or stage the unrelated work.
 5. Use the planned default title, description, changelog treatment, and trailers unchanged when they remain truthful. The implementing agent MUST NOT rewrite them for style or preference.
 6. Inspect the resulting commit's file list and record its hash in the task ledger before marking the phase complete.
@@ -226,7 +239,7 @@ Name the exact docs, schemas, generated artifacts, settings, environment variabl
 
 ### 8.1 Release, Changelog, And Phase Commit Strategy (Procedural Contribution)
 
-Every implementation plan MUST classify its procedural changelog approach across the 3-tier release model. Planning pre-authors each phase's exact message metadata, commit paths, and executable Git command packet in `tasks.md`. Every phase then closes with that approved self-sufficient contract; release artifacts are created in the owning phase rather than deferred to one catch-all commit:
+Every implementation plan MUST classify its procedural changelog approach across the 3-tier release model. Planning pre-authors each phase's exact message metadata, commit paths, and executable Git command packet in `tasks.md`. When a phase touches dozens or hundreds of files across multiple concerns, planning sequences an ordered series of atomic commits instead of an oversized umbrella commit. Every phase then closes with that approved self-sufficient contract; release artifacts are created in the owning phase rather than deferred to one catch-all commit:
 
 1. **Tier 1 — Standard Feature or Fix (Conventional Commits):**
    - Use public capability scopes from `eng/release/policy/scope-registry.yaml` (e.g. `feat(event): ...`, `fix(auth): ...`).

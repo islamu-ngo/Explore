@@ -31,7 +31,7 @@ priority: high
    - **Green**: Implement production code to satisfy invariants.
    - **Sliced Verification**: Run targeted test class via `--treenode-filter` (~1.5s).
    - **Phase Verification**: Run Release build and single selected project test.
-   - **Immediate Phase Commit**: Execute the self-sufficient planned Conventional Commit contract in `tasks.md`. Commit only phase-owned paths.
+   - **Immediate Phase Commit**: Execute the self-sufficient planned Conventional Commit contract(s) in `tasks.md`. If a phase defines multiple atomic commits (for large or multi-concern phases), execute each in sequence. Stage and commit ONLY exact phase-owned paths related to the implementation plan, strictly isolating them from unrelated working-tree modifications.
    - **Reconcile Ledger**: Check completed tasks in `tasks.md`, update current priority and blockers in `context.md`.
 6. **Knowledge Graduation Gate (Mandatory Before Workstream Close)**:
    Before declaring work complete, merging the branch, or removing the worktree, promote durable knowledge:
@@ -54,7 +54,7 @@ priority: high
    a. Red: failing invariant test
    b. Green: implementation code
    c. Verify: sliced test -> phase build & test
-   d. Commit: execute planned contract from tasks.md
+   d. Commit: execute planned contract(s) from tasks.md (sequential atomic commits if phase is large)
    e. Update: check task in tasks.md, update context.md
 4. Workstream Close & Knowledge Graduation:
    a. Any deferred items? -> write dev/backlog/<slug>.md

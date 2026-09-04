@@ -173,20 +173,22 @@ Last Updated: YYYY-MM-DD Europe/Brussels
 ## Phase 1: ...
 ## Phase 2: ...
 ### Phase N Verification — one Release build and at most one project test
-### Phase N Commit — immediately after verification
-#### Planned Commit Contract
+### Phase N Commit(s) — immediately after verification
+*(Note: If Phase N is large or touches dozens/hundreds of files across multiple concerns, sequence multiple atomic commit contracts instead of one monolithic umbrella commit).*
+#### Planned Commit Contract [or Contract 1 of N for multi-commit phases]
 - Default title: `type(scope): benefit-led phase outcome`
 - Default description: Exact phase motivation and data/control-flow description.
 - Changelog treatment: exact classification
 - Required trailers: exact lines or `None`
-- Commit paths: exact ordered wholly-owned files
+- Commit paths: exact ordered wholly-owned files for this specific atomic commit
 - Pre-commit inspection commands: exact status/unstaged/staged commands
 - Staging command: exact `git add -- ...`
 - Commit command: exact path-limited `git commit --only ...`
 - Post-commit verification command: exact committed-file-list command
 - Message override: Not overridden
+<!-- Repeat Planned Commit Contract block for Contract 2, 3, etc. if phase is large -->
 #### Commit Tasks
-- Use the self-sufficient planned contract without loading `conventional-commit`, commit exact phase-owned paths, verify the file list, and record the hash.
+- Use the self-sufficient planned contract without loading `conventional-commit`, commit exact phase-owned paths related to the plan, verify the file list, and record the hash. If multiple atomic commits are planned, execute each in sequence.
 - Load `conventional-commit` only when a permitted override replaces the default contract.
 ## Remaining / Deferred Work
 ```
@@ -196,8 +198,10 @@ Rewrite rules:
 - every major plan phase should appear in tasks;
 - every risky boundary should have observable acceptance criteria in its owning implementation task;
 - each phase should name exactly one Release build and at most one fastest relevant non-browser project test at the end;
-- each phase should list exact phase-owned paths and place its commit task immediately after verification;
+- each phase should list exact phase-owned paths and place its commit task(s) immediately after verification;
 - each phase commit should contain exact metadata, commit paths, inspection/staging/path-limited commit commands, and verification validated through `conventional-commit`; completed workstreams contain no placeholders;
+- if a phase is large (touching dozens or hundreds of files) or spans multiple separable concerns, mandate an ordered sequence of atomic commit contracts rather than one monolithic umbrella commit;
+- each commit must stage and commit ONLY changes directly belonging to the implementation plan, strictly isolating them with path-limited commands and excluding unrelated working-tree modifications;
 - the implementing agent should use that self-sufficient contract unchanged without loading `conventional-commit`, work on a task branch/worktree when parallelism is needed, and exclude every unrelated dirty or pre-staged path;
 - overrides should be rare and are the only execution path that loads `conventional-commit`; every replacement repeats the complete metadata/path/command packet before committing;
 - phase-attributable failures block commit; proven unrelated failures are recorded with exact external evidence while the phase-owned verification lane remains green;

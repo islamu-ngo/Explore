@@ -32,7 +32,7 @@ priority: high
    - `*-plan.md`: Canonical architectural design, current state, design decisions, and phase-level exit criteria (no granular execution tasks, checkboxes, dynamic status, or session handoffs).
    - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes with atomic verification criteria, dynamic status, phase verification gates, and immediate phase-commit tasks).
    - `*-context.md`: The sole active working memory (session progress, quick resume, blockers, validation baseline results, and dated session handoffs).
-9. **Planned Phase Commit Contract**: Every phase ends with a commit task immediately after verification. While authoring/updating `tasks.md`, planning loads `conventional-commit` and writes the exact title, description, changelog treatment, trailers, commit paths, inspection commands, `git add`, path-limited `git commit`, and post-commit verification command. That packet is self-sufficient: when truthful, implementation executes it without loading the skill. Only material divergence authorizes loading the skill and recording complete replacement packets for every resulting commit. Parallel tasks use dedicated feature branches; phase failures block and unrelated work remains untouched.
+9. **Planned Phase Commit Contract & Atomic Slicing**: Every phase ends with a commit task immediately after verification. If a phase is large (touching dozens or hundreds of files) or spans multiple separable concerns (domain models, persistence, CQRS handlers, API endpoints, UI, docs), planning MUST sequence multiple atomic commit contracts adhering to `conventional-commit` (Rule 1: Smallest Releasable Slice, Rule 13: Oversized Commit Gate); monolithic umbrella commits are forbidden except for provably indivisible mechanical changes (Rule 14). While authoring/updating `tasks.md`, planning loads `conventional-commit` and writes the exact title, description, changelog treatment, trailers, commit paths, inspection commands, `git add`, path-limited `git commit`, and post-commit verification command for each atomic commit. Every commit packet MUST strictly isolate and stage ONLY its own changes directly related to the implementation plan, leaving unrelated working-tree modifications untouched. That packet is self-sufficient: when truthful, implementation executes it without loading the skill. Only material divergence authorizes loading the skill and recording complete replacement packets. Parallel tasks use dedicated feature branches; phase failures block and unrelated work remains untouched.
 10. **Local Working Memory & Native Harness Tooling**: `dev/active/<task>/` is gitignored local working memory to prevent commit log churn, task checkbox noise, and branch merge conflicts. Agents and developers must read, create, and edit these files directly using native harness file tools by deterministic path. Do not use ad-hoc bash script hacks for file manipulation (Critical Rule #9). Phase commits stage and commit product/test code only, never `dev/active/*`.
 11. **Knowledge Graduation Gate**: Active implementation plans in `dev/active/` are ephemeral working memory and disappear upon workstream completion. Every plan MUST include a final phase task for **Knowledge Graduation**: promoting deferred scope into actionable standalone items in `dev/backlog/<slug>.md`, durable architectural decisions into `docs/internal/adr/`, and non-obvious lessons into `dev/_journal/domains/`. These persistent artifacts are staged and committed alongside code.
 
@@ -46,7 +46,7 @@ priority: high
 7. Verification sprawl, which wastes implementation time on per-task checks, multiple test commands, app startup, browser automation, Playwright, Chrome DevTools MCP, Aspire, Docker, or live-service smoke tests.
 8. Stale checkbox debt, which postpones task updates until a separate refresh command and leaves completed implementation appearing unfinished.
 9. **Dev-Doc Triad Bleed / Duplication**, which pollutes `plan.md` with granular task checklists (`- [ ]`), dynamic execution statuses (`IN PROGRESS`), or session handoffs, duplicating `tasks.md` and `context.md`.
-10. **Final-Only, Reloaded, Reinvented, Or Mixed-Tree Commits**, which defers work to another session, reloads `conventional-commit` merely to reuse an approved contract, recreates a message already resolved during planning, silently overrides a truthful default, uses blind staging, or absorbs unrelated work.
+10. **Final-Only, Reloaded, Reinvented, Oversized Umbrella, Or Mixed-Tree Commits**, which defers work to another session, bundles hundreds of files into one monolithic commit instead of clustering into atomic commits, reloads `conventional-commit` merely to reuse an approved contract, recreates a message already resolved during planning, silently overrides a truthful default, uses blind staging, or absorbs unrelated work.
 
 ## Minimal Examples
 ```text
@@ -77,10 +77,10 @@ dotnet test --project <one-relevant-project>.csproj --configuration Release --ve
 Immediate phase close on the task branch:
 classify any failures as phase-attributable or proven unrelated
 inspect the dirty tree and existing index
-use the exact planned title and description by default
+use the exact planned title and description by default (or atomic commit sequence if phase is large)
 load conventional-commit only when a material-divergence override is required
 record the override reason and replacement contracts before committing
-stage and commit exact phase-owned paths only
+stage and commit exact phase-owned, plan-related paths only
 verify the resulting commit contains no unrelated files
 ```
 

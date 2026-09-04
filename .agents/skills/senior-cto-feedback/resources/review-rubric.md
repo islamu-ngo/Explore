@@ -216,9 +216,11 @@ Check:
 - Docs update with behavior changes.
 - Each PR has clear exit criteria.
 - Rollback/reset path exists for self-hosters.
-- Every phase declares exact phase-owned paths and closes with its verification disposition followed immediately by a task containing a concrete planned Conventional Commit contract.
+- Every phase declares exact phase-owned paths and closes with its verification disposition followed immediately by task(s) containing concrete planned Conventional Commit contract(s).
+- If a phase is large (touching dozens or hundreds of files) or spans multiple separable concerns, it MUST provide an ordered sequence of atomic commit contracts following `conventional-commit` rules 1 and 13; reject monolithic umbrella commits unless provably indivisible under rule 14.
 - Every planned default title uses an allowed capability/engineering scope and benefit-led subject; its exact description explains the phase motivation and data/control flow; its changelog treatment and trailers satisfy `conventional-commit`.
 - Every contract contains exact commit paths, inspection commands, `git add`, path-limited `git commit`, and post-commit verification. Command pathspecs equal `Commit paths`; the commit command encodes the reviewed metadata/trailers.
+- Commit commands and staging MUST commit ONLY files belonging to the implementation plan and specific phase/slice, explicitly preventing the absorption of unrelated dirty or modified files in the working tree.
 - No phase leaves placeholders, generic “complete phase” wording, or message composition to the implementation agent.
 - Planning and CTO review load `conventional-commit`; the approved task embeds everything normal execution needs. The implementation agent must not reload the skill when using the truthful default.
 - The approved tasks file authorizes the implementing agent to commit in the same session; no final commit-only session or repeat user invocation is required.
@@ -227,7 +229,7 @@ Check:
 - Task branch staging is explicit-path only. The plan forbids blind staging, modifying or unstaging another contributor's work, and absorbing unrelated dirty or pre-staged files.
 - Path-limited commit guidance applies only to wholly phase-owned files; a file containing another contributor's hunks blocks phase closure until ownership is separated or coordinated.
 - Phase-attributable failures block the commit. Proven unrelated shared-tree failures name exact external evidence, remain untouched, and never become a false green claim.
-- The phase records the resulting commit hash and verifies its file list before completion; atomicity may require more than one commit rather than an umbrella phase commit.
+- The phase records the resulting commit hash(es) and verifies its file list before completion; atomicity requires multiple atomic commits for large phases rather than an umbrella phase commit.
 
 ## 12. Dev-Docs Quality
 

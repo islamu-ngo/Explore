@@ -38,7 +38,7 @@ priority: high
 7. **Greenfield Breaking Change Posture**: ISLAMU Event is pre-v1 with 0 external adopters. The CTO rejects backward-compatibility shims, deprecated route aliases, and adapter baggage. Approve clean breaking changes and structural simplifications over legacy preservation.
 8. **4-Point "Right-Sizing" Rule**: Mandate a PR split ("Split before approval") when 2+ symptoms match: (1) Scope contains multi-intent "and also" clauses, (2) Plan exceeds reviewable task capacity (< 8-10 major tasks), (3) Migration, API contract churn, and UI enablement combined in one big-bang phase, (4) Backend CQRS slice could ship independently of Blazor UI.
 9. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
-10. **Per-Phase Planned Commit Readiness**: Block approval unless every phase has a self-sufficient packet: exact metadata, commit paths, inspection commands, `git add`, path-limited `git commit`, and verification command. Planning/CTO load `conventional-commit` to validate command-message-path parity. Normal implementation does not reload it; overrides load it and repeat the full packet for every resulting commit. Use dedicated feature branches for parallel work and preserve failure ownership, file-list proof, and in-session authorization.
+10. **Per-Phase Planned Commit Readiness & Atomic Slicing**: Block approval unless every phase has a self-sufficient packet: exact metadata, commit paths, inspection commands, `git add`, path-limited `git commit`, and verification command. For large phases (touching dozens or hundreds of files) or multi-concern scopes, mandate multiple atomic commit contracts adhering to `conventional-commit` (Rules 1 & 13); reject monolithic umbrella commits unless provably indivisible under Rule 14. Commits must strictly stage and commit ONLY changes directly related to the implementation plan, using path-limited commands and file-list verification to exclude unrelated dirty files. Planning/CTO load `conventional-commit` to validate command-message-path parity. Normal implementation does not reload it; overrides load it and repeat the full packet for every resulting commit. Use dedicated feature branches for parallel work and preserve failure ownership, file-list proof, and in-session authorization.
 11. **Knowledge Graduation & Persistence Gating**: Verify that out-of-scope, follow-up, or deferred items are not left to rot as un-actionable text in an ephemeral implementation plan. Mandate that deferred scope is explicitly assigned to a planned graduation task into `dev/backlog/<slug>.md`, durable architectural decisions to `docs/internal/adr/`, and lessons to `dev/_journal/` before workstream close.
 
 ## Top Anti-Patterns
@@ -50,7 +50,7 @@ priority: high
 6. Treating missing migration, tenant-isolation, or operator-recovery detail as a minor documentation issue.
 7. Accepting UI/BFF-local authorization or affordance logic instead of API/HAL-authoritative behavior.
 8. Producing generic best-practice feedback that does not name files, plan sections, risks, or required corrections.
-9. **Approving Final-Only, Reloaded, Unplanned, Or Mixed-Tree Commits**, which defers commits, leaves messages for implementation-time invention, makes the executor reload `conventional-commit` for a truthful default, permits silent overrides, lets planning/review skip their required skill validation, or includes another contributor's work.
+9. **Approving Final-Only, Reloaded, Unplanned, Oversized Umbrella, Or Mixed-Tree Commits**, which defers commits, leaves messages for implementation-time invention, permits monolithic umbrella commits for large multi-file phases instead of atomic commit sequences, allows commits to absorb unrelated working-tree modifications, makes the executor reload `conventional-commit` for a truthful default, permits silent overrides, lets planning/review skip their required skill validation, or includes another contributor's work.
 
 ## Minimal Examples
 ```text
@@ -58,7 +58,7 @@ Review flow:
 1. Read plan/context/tasks
 2. Compare against the implementation-plan skill and its quality gates
 3. Verify referenced files/docs/internal/rules
-4. Verify every phase has an exact Conventional Commit contract and closes as implementation -> verification disposition -> planned phase-owned commit
+4. Verify every phase has an exact Conventional Commit contract (or atomic commit sequence if large/multi-concern) and closes as implementation -> verification disposition -> planned phase-owned, plan-related commit(s)
 5. Decide: approve, approve with required changes, split, reject, or defer
 6. Return ranked risks, concrete required changes, and a recommended plan rewrite
 ```
