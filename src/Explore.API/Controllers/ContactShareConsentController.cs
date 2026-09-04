@@ -21,7 +21,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Authenticated)]
-public class ContactShareConsentController : ExploreControllerBase
+public class ContactShareConsentController : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor OrganizationNotFoundProblem = new(
         "Contact share recipient organization not found",

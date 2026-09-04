@@ -28,7 +28,7 @@ namespace Explore.API.Controllers;
 public sealed class TenantStorageSettingsController(
     IMediator mediator,
     IResourceAssembler<TenantStorageSettingsDto, TenantStorageSettingsDto> storageSettingsAssembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor PatchValidationProblem = new(
         "tenantStorageSettings",

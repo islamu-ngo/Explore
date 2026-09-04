@@ -28,7 +28,7 @@ namespace Explore.API.Controllers;
 public sealed class SupportAccessController(
     IMediator mediator,
     IResourceAssembler<SupportAccessSessionDto, SupportAccessSessionDto> sessionAssembler,
-    IResourceAssembler<SupportAccessAuditEventDto, SupportAccessAuditEventDto> auditEventAssembler) : ExploreControllerBase
+    IResourceAssembler<SupportAccessAuditEventDto, SupportAccessAuditEventDto> auditEventAssembler) : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor SupportAccessValidationProblem = new(
         "supportAccess",

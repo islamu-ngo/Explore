@@ -43,7 +43,7 @@ namespace Explore.API.Controllers;
 [Route("api/Event")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class EventCalendarController : ExploreControllerBase
+public class EventCalendarController : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor EventNotFoundProblem = new(
         "Event not found",

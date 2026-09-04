@@ -22,7 +22,7 @@ namespace Explore.API.Controllers;
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
 [Produces(HateoasConstants.JsonMediaType)]
-public sealed class WebhookEndpointOperationsController(IMediator mediator) : ExploreControllerBase
+public sealed class WebhookEndpointOperationsController(IMediator mediator) : EventControllerBase
 {
     [HttpPost("{endpointId:guid}/pause", Name = RouteNames.PauseWebhookEndpoint)]
     [EndpointSummary("Pause webhook endpoint")]

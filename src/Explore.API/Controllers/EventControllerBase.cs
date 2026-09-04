@@ -17,7 +17,7 @@ namespace Explore.API.Controllers;
 /// claims themselves.
 /// </para>
 /// </summary>
-public abstract class ExploreControllerBase : ControllerBase
+public abstract class EventControllerBase : ControllerBase
 {
     protected Guid? CurrentUserId => User.GetPlatformUserId();
 

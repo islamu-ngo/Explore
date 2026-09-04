@@ -21,7 +21,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class OrganizationReviewController : ExploreControllerBase
+public class OrganizationReviewController : EventControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<OrganizationReviewDto, OrganizationReviewDto> _resourceAssembler;

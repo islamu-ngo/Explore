@@ -29,7 +29,7 @@ namespace Explore.API.Controllers;
 public sealed class IncomingWebhookEffectsAdminController(
     IMediator mediator,
     IResourceAssembler<IncomingWebhookEffectStatusDto, IncomingWebhookEffectStatusDto> statusAssembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor ValidationProblem = new(
         "incomingWebhookEffect",

@@ -24,7 +24,7 @@ namespace Explore.API.Controllers;
 [Route("api/organizations/{organizationId:guid}/legitimacy-evidence")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class OrganizationTenantEvidenceController : ExploreControllerBase
+public sealed class OrganizationTenantEvidenceController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor SubmitValidationProblem = new(
         "organizationTenantEvidence",

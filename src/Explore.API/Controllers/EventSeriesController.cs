@@ -22,7 +22,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class EventSeriesController : ControllerBase
+public class EventSeriesController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
         "eventSeries",
@@ -165,28 +165,6 @@ public class EventSeriesController : ControllerBase
                 : this.ToCommandValidationProblem(response, UpdateValidationProblem);
         }
         return Ok(response);
-    }
-
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = Guid.Empty;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var trimmed = ifMatch.Trim();
-        if (trimmed.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"')
-        {
-            trimmed = trimmed[1..^1];
-        }
-
-        return Guid.TryParse(trimmed, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 
     [Authorize]

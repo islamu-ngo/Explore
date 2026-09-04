@@ -28,7 +28,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
-public class InstanceOnboardingController : ExploreControllerBase
+public class InstanceOnboardingController : EventControllerBase
 {
     private const string PreflightBlockedMessage = "Instance cannot be launched because critical launch requirements are not met. Please review the blocking issues and try again.";
 

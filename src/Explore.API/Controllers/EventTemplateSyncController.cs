@@ -29,7 +29,7 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
-public sealed class EventTemplateSyncController : ExploreControllerBase
+public sealed class EventTemplateSyncController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor DiffValidationProblem = new(
         "eventTemplateSync",

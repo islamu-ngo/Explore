@@ -25,7 +25,7 @@ public sealed class TenantModerationReportingDashboardController(
     IMediator mediator,
     ITenantContext tenantContext,
     IResourceAssembler<TenantModerationReportingDashboardDto, TenantModerationReportingDashboardDto> resourceAssembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     [HttpGet(Name = RouteNames.GetTenantModerationReportingDashboard)]
     [EndpointSummary("Get Tenant Moderation Reporting Dashboard")]

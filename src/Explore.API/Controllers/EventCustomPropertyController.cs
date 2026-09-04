@@ -30,7 +30,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class EventCustomPropertyController : ControllerBase
+public class EventCustomPropertyController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
         "eventCustomPropertyDefinition",
@@ -338,23 +338,4 @@ public class EventCustomPropertyController : ControllerBase
 
         return Ok(response);
     }
-
-
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = default;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var value = ifMatch.Trim();
-        if (value.Length != 38 || value[0] != '"' || value[^1] != '"')
-        {
-            return false;
-        }
-
-        return Guid.TryParse(value[1..^1], out concurrencyStamp) && concurrencyStamp != Guid.Empty;
-    }
-
 }

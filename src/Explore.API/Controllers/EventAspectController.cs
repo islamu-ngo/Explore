@@ -22,7 +22,7 @@ namespace Explore.API.Controllers;
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 [Tags("Event")]
-public sealed class EventAspectController(IMediator mediator) : ExploreControllerBase
+public sealed class EventAspectController(IMediator mediator) : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor IslamicAspectValidationProblem = new(
         "eventIslamicAspect",

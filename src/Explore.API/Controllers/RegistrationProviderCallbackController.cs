@@ -20,7 +20,7 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Public)]
 [Produces(HateoasConstants.JsonMediaType)]
 public sealed class RegistrationProviderCallbackController(
-    IIncomingWebhookIntakeService incomingWebhookIntakeService) : ExploreControllerBase
+    IIncomingWebhookIntakeService incomingWebhookIntakeService) : EventControllerBase
 {
     internal const string ProviderHeader = "X-Registration-Callback-Provider";
     internal const string BindingHeader = "X-Registration-Callback-BindingId";

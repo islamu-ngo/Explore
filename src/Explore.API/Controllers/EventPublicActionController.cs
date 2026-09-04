@@ -25,7 +25,7 @@ namespace Explore.API.Controllers;
 [Route("api/events/{eventId:guid}/public-actions")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class EventPublicActionController : ExploreControllerBase
+public sealed class EventPublicActionController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
         "eventPublicAction",

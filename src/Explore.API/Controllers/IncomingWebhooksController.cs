@@ -25,7 +25,7 @@ public sealed class IncomingWebhooksController(
     IIncomingWebhookIntakeService incomingWebhookIntakeService,
     IOptionsMonitor<WebhookOptions> webhookOptions,
     BusinessMetrics metrics,
-    ILogger<IncomingWebhooksController> logger) : ExploreControllerBase
+    ILogger<IncomingWebhooksController> logger) : EventControllerBase
 {
     [HttpPost("svix/operational", Name = RouteNames.IntegrationSvixOperationalCallback)]
     [EndpointSummary("Record Svix Operational Webhook")]

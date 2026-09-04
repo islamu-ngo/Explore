@@ -35,7 +35,7 @@ public sealed class RegistrationProviderManagementController(
     IResourceAssembler<RegistrationProviderBindingDto, RegistrationProviderBindingDto> bindingAssembler,
     IResourceAssembler<RegistrationChannelDto, RegistrationChannelDto> channelAssembler,
     IResourceAssembler<RegistrationProviderLaunchDescriptorDto, RegistrationProviderLaunchDescriptorDto> launchDescriptorAssembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor ValidationProblem = new(
         "registrationProviderManagement",

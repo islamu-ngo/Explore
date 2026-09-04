@@ -35,7 +35,7 @@ public sealed class RegistrationFormsController(
     IResourceAssembler<RegistrationAnswerAnalyticsDto, RegistrationAnswerAnalyticsDto> analyticsAssembler,
     IResourceAssembler<RegistrationFormTemplateDto, RegistrationFormTemplateDto> templateAssembler,
     IResourceAssembler<RegistrationFormPublishPreflightDto, RegistrationFormPublishPreflightDto> preflightAssembler)
-    : ControllerBase
+    : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor RegistrationValidationProblem = new(
         "registrationForm", "Registration form validation failed", "Registration form authoring failed.");
@@ -437,14 +437,6 @@ public sealed class RegistrationFormsController(
         RegistrationFormVersionDto? version = await mediator.Send(
             new GetRegistrationFormVersionQuery(eventId, formId, versionId), ct);
         return await ToResource(version, versionAssembler);
-    }
-
-    private static bool TryParseConcurrencyStamp(string? value, out Guid stamp)
-    {
-        stamp = default;
-        value = value?.Trim();
-        return value is { Length: 38 } && value[0] == '"' && value[^1] == '"'
-            && Guid.TryParse(value[1..^1], out stamp) && stamp != Guid.Empty;
     }
 }
 

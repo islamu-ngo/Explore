@@ -22,7 +22,7 @@ namespace Explore.API.Controllers;
 public sealed class EmailUnsubscribeController(
     IEmailUnsubscribeTokenService tokenService,
     IMediator mediator,
-    ILogger<EmailUnsubscribeController> logger) : ExploreControllerBase
+    ILogger<EmailUnsubscribeController> logger) : EventControllerBase
 {
     [HttpGet(Name = RouteNames.GetEmailUnsubscribe)]
     [AllowAnonymous]

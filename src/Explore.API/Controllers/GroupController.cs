@@ -31,7 +31,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class GroupController : ExploreControllerBase
+public class GroupController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
         "group",

@@ -34,7 +34,7 @@ public sealed class TenantSettingsDocumentsController(
     IResourceAssembler<
         TenantDirectoryOperatorIdentityDocumentDto,
         TenantDirectoryOperatorIdentityDocumentDto> directoryIdentityResourceAssembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor PatchBrandingValidationProblem = new(
         "tenantBrandingSettingsDocument",

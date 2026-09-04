@@ -321,7 +321,7 @@ namespace Explore.API.Controllers;
 [Route("api/events/{eventId:guid}/sponsors")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class EventSponsorsController : ExploreControllerBase
+public class EventSponsorsController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
         "eventSponsor",

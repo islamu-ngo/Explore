@@ -281,7 +281,7 @@ Explore.API/
 ├── Program.cs                     — Application entry point, DI registration, middleware pipeline (slimmed via extensions)
 ├── appsettings.json               — Configuration (connection strings, auth, storage, rate limiting, timeouts)
 ├── Controllers/                   — API controllers (one per entity/aggregate)
-│   ├── ExploreControllerBase.cs   — Projects identity from ControllerBase.User; parses If-Match stamps
+│   ├── EventControllerBase.cs     — Projects identity from ControllerBase.User; parses If-Match stamps
 │   ├── EventController.cs         — Event CRUD with specification pattern filtering via [FromQuery] EventFilterRequest
 │   ├── EventTicketingController.cs — Event-scoped ticket catalog versions, ticket types, capacity pools
 │   ├── OrganizationController.cs  — Organization endpoints

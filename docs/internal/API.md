@@ -140,7 +140,7 @@ Three-reader non-URL versioning — clients may use any of the following; all th
 6. **No Generic CRUD or Lookup Base Controllers**:
    Controllers are concrete HTTP transport adapters, not business entities. Never introduce generic base classes (such as `CrudControllerBase<...>` or `LookupControllerBase<...>`) to abstract endpoint actions. Generic action inheritance creates an inflexible "framework inside a framework", obscures route names and compile-time uniqueness, degrades OpenAPI metadata (`[EndpointSummary]`, `[EndpointDescription]`, operation IDs), and restricts customization when backlog features diverge (custom validation, lifecycle state transitions, Cerbos authorization policies, multipart uploads, sub-resources).
 7. **Approved Base Classes & Composition**:
-   - **Root Base (`EventControllerBase` / legacy `ExploreControllerBase`)**: Exposes request-scoped principal identity (`CurrentUserId`, `RequiredUserId`) and strong ETag/concurrency parsing (`TryParseConcurrencyStamp`).
+   - **Root Base (`EventControllerBase`)**: Exposes request-scoped principal identity (`CurrentUserId`, `RequiredUserId`) and strong ETag/concurrency parsing (`TryParseConcurrencyStamp`).
    - **Domain-Family Base Classes**: Permitted only when two or more split controllers share an exact, multi-step domain protocol or security check (e.g. `RegistrationOrderControllerBase` for guest vs. authenticated checkout; `InstanceSettingsControllerBase` for setup-secret vs. admin).
    - **Composition Over Inheritance**: Shared mechanics belong in `CommandFailurePolicy`, `IResourceAssembler`, MediatR commands/queries, and extension methods (`ToCommandValidationProblem`, `ToNotFoundProblem`), leaving controller actions explicit, declarative, and independent.
 
@@ -150,7 +150,7 @@ Tag, Tenant metadata, tenant navigation links, footer link groups, footer links,
 
 `OptionalUpdate<T>` preserves three distinct JSON states: an omitted member leaves the persisted value unchanged, an explicitly supplied `null` clears a nullable value, and a supplied non-null value replaces it. Record request bodies keep constructor/member names and types aligned for ASP.NET Core and `System.Text.Json`; validation metadata remains on the constructor parameter or bound member used by the public contract. Do not add compatibility readers or aliases for removed authority fields.
 
-Current caller/tenant authority never comes from a request body. Controllers derive it from `EventControllerBase` (formerly `ExploreControllerBase`), `ITenantContext`, an authoritative route/persisted resource, or a purpose-bound trusted adapter, then place it on the Application request only when authorization or business intent needs it. A body `UserId`/`TenantId` is valid only as an explicit target that is independently authorized and tenant-checked.
+Current caller/tenant authority never comes from a request body. Controllers derive it from `EventControllerBase`, `ITenantContext`, an authoritative route/persisted resource, or a purpose-bound trusted adapter, then place it on the Application request only when authorization or business intent needs it. A body `UserId`/`TenantId` is valid only as an explicit target that is independently authorized and tenant-checked.
 
 Tenant navigation and footer-link URLs accept relative paths or HTTPS URLs by default. The instance-only `security.require_https_external_urls` setting defaults to `true`; setting it to `false` permits HTTP only for deployments that explicitly trust an HTTP-only private network.
 

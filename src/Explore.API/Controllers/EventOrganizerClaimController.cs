@@ -22,7 +22,7 @@ namespace Explore.API.Controllers;
 [Route("api/events/{eventId:guid}/organizer-claims")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class EventOrganizerClaimController : ExploreControllerBase
+public sealed class EventOrganizerClaimController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor SubmitValidationProblem = new(
         "eventOrganizerClaim",

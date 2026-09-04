@@ -30,7 +30,7 @@ namespace Explore.API.Controllers;
 public sealed class ControlPlaneDeploymentModeController(
     IMediator mediator,
     IResourceAssembler<ControlPlaneDeploymentModeRunbookDto, ControlPlaneDeploymentModeRunbookDto> runbookAssembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     [HttpGet("", Name = RouteNames.GetControlPlaneDeploymentModeRunbook)]
     [EnableRateLimiting(RateLimitingExtensions.ControlPlanePolicy)]

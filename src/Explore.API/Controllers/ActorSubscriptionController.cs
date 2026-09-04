@@ -23,7 +23,7 @@ namespace Explore.API.Controllers;
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class ActorSubscriptionController : ExploreControllerBase
+public sealed class ActorSubscriptionController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor SubscribeValidationProblem = new(
         "actorSubscription",

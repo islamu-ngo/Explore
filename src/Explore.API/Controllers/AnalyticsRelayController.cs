@@ -18,7 +18,7 @@ namespace Explore.API.Controllers;
 [Route("api/a/t")]
 [ApiController]
 [EndpointClassification(EndpointClass.Public)]
-public class AnalyticsRelayController(IMediator mediator) : ExploreControllerBase
+public class AnalyticsRelayController(IMediator mediator) : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor RelayValidationProblem = new(
         "analyticsRelay",

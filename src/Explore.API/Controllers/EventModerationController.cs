@@ -43,7 +43,7 @@ namespace Explore.API.Controllers;
 [Route("api/Event")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class EventModerationController : ExploreControllerBase
+public class EventModerationController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor StatusValidationProblem = new(
         "event",

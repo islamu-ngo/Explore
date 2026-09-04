@@ -34,7 +34,7 @@ public sealed class ModerationIntegrationController(
     IIncomingWebhookIntakeService incomingWebhookIntakeService,
     IOptionsMonitor<CoopProviderOptions> coopOptions,
     BusinessMetrics metrics,
-    ILogger<ModerationIntegrationController> logger) : ExploreControllerBase
+    ILogger<ModerationIntegrationController> logger) : EventControllerBase
 {
     [HttpPost("osprey/callback", Name = RouteNames.ModerationIntegrationOspreyCallback)]
     [EndpointSummary("Record Osprey Signal Callback")]

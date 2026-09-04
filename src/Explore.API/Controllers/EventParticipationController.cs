@@ -27,7 +27,7 @@ namespace Explore.API.Controllers;
 [Route("api/events/{eventId:guid}/participation")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class EventParticipationController : ControllerBase
+public sealed class EventParticipationController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor ConfigureValidationProblem = new(
         "eventParticipation",
@@ -225,22 +225,5 @@ public sealed class EventParticipationController : ControllerBase
                     "Registration requirement concurrency conflict."),
             _ => this.ToCommandValidationProblem(response, RequirementValidationProblem)
         };
-    }
-
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = default;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var value = ifMatch.Trim();
-        if (value.Length != 38 || value[0] != '"' || value[^1] != '"')
-        {
-            return false;
-        }
-
-        return Guid.TryParse(value[1..^1], out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 }

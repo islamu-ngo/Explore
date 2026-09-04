@@ -25,7 +25,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Authenticated)]
-public class UserController : ExploreControllerBase
+public class UserController : EventControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<UserDto, UserDto> _resourceAssembler;

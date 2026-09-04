@@ -28,7 +28,7 @@ namespace Explore.API.Controllers;
 [Route("api/event-reports")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class EventReportsController : ExploreControllerBase
+public sealed class EventReportsController : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor EventReportOptionsNotFoundProblem = new(
         "Event report options not found",

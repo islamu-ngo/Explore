@@ -360,7 +360,7 @@ authority trust boundaries.
 ### Required in Every Controller
 
 - Concrete controller class — **generic CRUD or lookup base controllers (`CrudControllerBase<...>`, `LookupControllerBase<...>`) are strictly banned**. Controllers are HTTP transport adapters; generic action inheritance creates an inflexible "framework inside a framework", obscures route names, and breaks OpenAPI metadata fidelity.
-- Inherit `EventControllerBase` (formerly `ExploreControllerBase`) for request identity (`CurrentUserId`/`RequiredUserId`) and strong ETag concurrency parsing (`TryParseConcurrencyStamp`), or a domain-family base class when split controllers share an exact multi-step domain protocol.
+- Inherit `EventControllerBase` for request identity (`CurrentUserId`/`RequiredUserId`) and strong ETag concurrency parsing (`TryParseConcurrencyStamp`), or a domain-family base class when split controllers share an exact multi-step domain protocol.
 - Route attribute with version (`[Route("api/[controller]")]`)
 - Explicit OpenAPI and route name attributes on every action (`Name = RouteNames.Xxx`, `[EndpointSummary]`, `[EndpointDescription]`, `[ProducesResponseType]`)
 - Authorization attributes matching the action's `EndpointClassification`

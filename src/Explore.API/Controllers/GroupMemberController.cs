@@ -22,7 +22,7 @@ namespace Explore.API.Controllers;
 [ApiController]
 [Authorize]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class GroupMemberController : ExploreControllerBase
+public class GroupMemberController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor AddValidationProblem = new(
         "groupMember",

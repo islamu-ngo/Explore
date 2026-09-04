@@ -40,7 +40,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class EventController : ExploreControllerBase
+public class EventController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor FilterValidationProblem = new(
         "eventFilter",

@@ -703,7 +703,7 @@ JSON schemas in `cerbos/policies/_schemas/` enforce structural contracts across 
 ## Claim Fallback Rules in Code
 
 `Explore.Application.Authentication.PlatformIdentityPrincipalExtensions` is the single authority for turning a
-`ClaimsPrincipal` into a platform user id. `IUserContext` and `ExploreControllerBase` both delegate to it, so
+`ClaimsPrincipal` into a platform user id. `IUserContext` and `EventControllerBase` both delegate to it, so
 there is one chain rather than the three divergent ones that previously coexisted.
 
 Order, accepting only GUID-parseable values:

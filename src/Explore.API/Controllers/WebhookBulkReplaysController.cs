@@ -29,7 +29,7 @@ public sealed class WebhookBulkReplaysController(
     IMediator mediator,
     ITenantContext tenantContext,
     IResourceAssembler<WebhookBulkReplayOperationDto, WebhookBulkReplayOperationDto> assembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     [HttpGet("preview", Name = RouteNames.PreviewWebhookBulkReplay)]
     [AllowAnonymous]

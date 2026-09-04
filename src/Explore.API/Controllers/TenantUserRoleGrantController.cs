@@ -22,7 +22,7 @@ namespace Explore.API.Controllers;
 [ApiController]
 [Authorize]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class TenantUserRoleGrantController : ExploreControllerBase
+public class TenantUserRoleGrantController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor CreateValidationProblem = new(
         "tenantUserRoleGrant",

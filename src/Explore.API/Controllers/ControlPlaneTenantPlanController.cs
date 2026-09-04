@@ -39,7 +39,7 @@ namespace Explore.API.Controllers;
 [Authorize]
 [EndpointClassification(EndpointClass.Admin)]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class ControlPlaneTenantPlanController : ExploreControllerBase
+public sealed class ControlPlaneTenantPlanController : EventControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<ControlPlaneTenantPlanDetailDto, ControlPlaneTenantPlanListItemDto> _tenantPlanAssembler;

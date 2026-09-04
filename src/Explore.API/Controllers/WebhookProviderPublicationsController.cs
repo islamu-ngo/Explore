@@ -29,7 +29,7 @@ public sealed class WebhookProviderPublicationsController(
     IMediator mediator,
     ITenantContext tenantContext,
     IResourceAssembler<WebhookProviderPublicationDto, WebhookProviderPublicationDto> assembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     [HttpGet(Name = RouteNames.GetWebhookProviderPublications)]
     [AllowAnonymous]

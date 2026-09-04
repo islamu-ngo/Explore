@@ -14,7 +14,7 @@ using Explore.Application.Hateoas;
 using Microsoft.AspNetCore.Mvc;
 
 public abstract class ConfigurationImportSessionsControllerBase
-    : ExploreControllerBase
+    : EventControllerBase
 {
     private protected static async Task<ReadOnlyMemory<byte>> ReadArtifactAsync(
         HttpRequest request,

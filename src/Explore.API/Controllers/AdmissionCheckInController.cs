@@ -38,7 +38,7 @@ public sealed class AdmissionCheckInController(
     AdmissionCheckInService service,
     AdmissionCheckInReportingService reportingService,
     IAuthorizationProvider authorization,
-    ITenantContext tenantContext) : ExploreControllerBase
+    ITenantContext tenantContext) : EventControllerBase
 {
     [HttpPost("", Name = RouteNames.CheckInAdmission)]
     [PrivateNoStore]

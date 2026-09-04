@@ -30,7 +30,7 @@ public sealed class ModerationReportingRoutingController(
     IMediator mediator,
     ITenantContext tenantContext,
     IResourceAssembler<ReportingRoutingStateDto, ReportingRoutingStateDto> routingStateAssembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor UpdateValidationProblem = new(
         "moderationReportingRoutingSettings",

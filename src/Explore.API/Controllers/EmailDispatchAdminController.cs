@@ -28,7 +28,7 @@ namespace Explore.API.Controllers;
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class EmailDispatchAdminController : ExploreControllerBase
+public sealed class EmailDispatchAdminController : EventControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<EmailDispatchStatusDto, EmailDispatchStatusDto> _statusAssembler;

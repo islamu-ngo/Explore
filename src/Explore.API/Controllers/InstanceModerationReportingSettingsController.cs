@@ -21,7 +21,7 @@ using Microsoft.AspNetCore.Mvc;
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class InstanceModerationReportingSettingsController(IMediator mediator) : ExploreControllerBase
+public sealed class InstanceModerationReportingSettingsController(IMediator mediator) : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor UpdateLocksValidationProblem = new(
         "moderationReportingProviderLocks",

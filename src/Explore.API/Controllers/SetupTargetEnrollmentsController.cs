@@ -37,7 +37,7 @@ using MediatR;
 public sealed class SetupTargetEnrollmentsController(
     SetupLiveApplicationService setupLive,
     IMediator mediator,
-    SetupLiveTelemetry telemetry) : ExploreControllerBase
+    SetupLiveTelemetry telemetry) : EventControllerBase
 {
     [HttpPost(Name = RouteNames.CreateSetupTargetEnrollment)]
     [Consumes(SetupLiveContractMetadata.CreateRequestMediaType)]

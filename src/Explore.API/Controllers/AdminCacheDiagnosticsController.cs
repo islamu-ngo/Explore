@@ -19,7 +19,7 @@ namespace Explore.API.Controllers;
 [ApiExplorerSettings(IgnoreApi = true)]
 [Route("api/_internal/admin-cache")]
 [EndpointClassification(EndpointClass.Authenticated)]
-public sealed class AdminCacheDiagnosticsController : ExploreControllerBase
+public sealed class AdminCacheDiagnosticsController : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor AdminCacheDiagnosticsNotFoundProblem = new(
         "Admin cache diagnostics not found",

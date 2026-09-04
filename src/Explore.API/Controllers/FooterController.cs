@@ -22,7 +22,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class FooterController : ExploreControllerBase
+public class FooterController : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor LinkGroupValidationProblem = new(
         "footerLinkGroup",

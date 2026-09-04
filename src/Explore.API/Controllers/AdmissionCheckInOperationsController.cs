@@ -28,7 +28,7 @@ namespace Explore.API.Controllers;
 public sealed class AdmissionCheckInOperationsController(
     AdmissionCheckInOperationsService service,
     IAuthorizationProvider authorization,
-    ITenantContext tenantContext) : ExploreControllerBase
+    ITenantContext tenantContext) : EventControllerBase
 {
     [HttpGet("health", Name = RouteNames.GetAdmissionCheckInHealth)]
     [PrivateNoStore]

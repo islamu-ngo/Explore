@@ -28,7 +28,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class EventSessionController : ControllerBase
+public class EventSessionController : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor EventSessionNotFoundProblem = new(
         "Event session not found",
@@ -524,23 +524,5 @@ public class EventSessionController : ControllerBase
         }
 
         return NoContent();
-    }
-
-    private static bool TryParseConcurrencyStamp(string? ifMatch, out Guid concurrencyStamp)
-    {
-        concurrencyStamp = default;
-        if (string.IsNullOrWhiteSpace(ifMatch))
-        {
-            return false;
-        }
-
-        var value = ifMatch.Trim();
-        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        value = value.Trim('"');
-        return Guid.TryParse(value, out concurrencyStamp) && concurrencyStamp != Guid.Empty;
     }
 }

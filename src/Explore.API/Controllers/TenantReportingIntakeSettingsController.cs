@@ -33,7 +33,7 @@ public sealed class TenantReportingIntakeSettingsController(
     IMediator mediator,
     ITenantContext tenantContext,
     IResourceAssembler<TenantReportingIntakePolicyDto, TenantReportingIntakePolicyDto> assembler)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     private static readonly ApiValidationProblemDescriptor ValidationProblem = new(
         "reportingIntakePolicy",

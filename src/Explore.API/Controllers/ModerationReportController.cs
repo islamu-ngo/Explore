@@ -28,7 +28,7 @@ namespace Explore.API.Controllers;
 [Authorize]
 [EndpointClassification(EndpointClass.Authenticated)]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class ModerationReportController : ExploreControllerBase
+public sealed class ModerationReportController : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor ModerationReportNotFoundProblem = new(
         "Moderation report not found",

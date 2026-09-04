@@ -16,7 +16,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
-public sealed class SystemController(IMediator mediator) : ExploreControllerBase
+public sealed class SystemController(IMediator mediator) : EventControllerBase
 {
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]

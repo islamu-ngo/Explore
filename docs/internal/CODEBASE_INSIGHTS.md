@@ -387,7 +387,7 @@ service to ask who the caller is.
   platform user id (ATProto DIDs, Google subjects): short-circuits on `internal_user_id`, otherwise resolves
   the linked local account through the Application query.
 
-`ExploreControllerBase` now only projects those extensions (`CurrentUserId`, `RequiredUserId`) and parses
+`EventControllerBase` now only projects those extensions (`CurrentUserId`, `RequiredUserId`) and parses
 `If-Match` concurrency stamps. It resolves nothing from the container, and `Explore.Infrastructure.Identity.UserContext`
 delegates to the same extensions so `IUserContext` consumers cannot drift from the chain above.
 
@@ -887,7 +887,7 @@ Platform secrets, encryption keys, and connection credentials are governed by a 
 The platform enforces optimistic concurrency control across all mutable state:
 
 - **`ConcurrencyStamp` on Entities**: Tracked across 423 persistence references. Every update command expects the current concurrency stamp of the target aggregate.
-- **Precondition Evaluation**: Controllers parse the `If-Match` HTTP header using `ExploreControllerBase.TryParseConcurrencyStamp`. If the header is missing or does not match the stored concurrency stamp, the request fails with a validation problem.
+- **Precondition Evaluation**: Controllers parse the `If-Match` HTTP header using `EventControllerBase.TryParseConcurrencyStamp`. If the header is missing or does not match the stored concurrency stamp, the request fails with a validation problem.
 - **ETag Emission**: `ETagMiddleware` automatically generates SHA256 weak ETags (`W/"..."`) for `application/json` and `application/hal+json` responses, enabling HTTP caching and conditional updates (`If-Match` / `If-None-Match`).
 
 ---

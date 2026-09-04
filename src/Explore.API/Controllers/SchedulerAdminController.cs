@@ -32,7 +32,7 @@ namespace Explore.API.Controllers;
 [Authorize]
 [EndpointClassification(EndpointClass.Admin)]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public sealed class SchedulerAdminController : ExploreControllerBase
+public sealed class SchedulerAdminController : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor SchedulerSurfaceDisabledProblem = new(
         "Scheduler administration not found",

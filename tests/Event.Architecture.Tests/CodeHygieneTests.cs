@@ -1,5 +1,5 @@
 // ABOUTME: Regression-prevention tests for code hygiene patterns established during the clean code refactor.
-// ABOUTME: Guards: no controller-local GetCurrentUserId, identity-accessing controllers inherit ExploreControllerBase.
+// ABOUTME: Guards: no controller-local GetCurrentUserId, identity-accessing controllers inherit EventControllerBase.
 
 namespace Event.Architecture.Tests;
 
@@ -29,8 +29,8 @@ public class CodeHygieneTests
     #region Controller Base Class Conventions
 
     [Test]
-    [DisplayName("Controllers that access user identity must inherit from ExploreControllerBase")]
-    public async Task ControllersAccessingIdentity_ShouldInherit_ExploreControllerBase()
+    [DisplayName("Controllers that access user identity must inherit from EventControllerBase")]
+    public async Task ControllersAccessingIdentity_ShouldInherit_EventControllerBase()
     {
         var controllerTypes = Types.InAssembly(ApiAssembly)
             .That()
@@ -40,7 +40,7 @@ public class CodeHygieneTests
             .GetTypes();
 
         var exploreBaseType = ApiAssembly.GetTypes()
-            .Single(t => t.Name == "ExploreControllerBase");
+            .Single(t => t.Name == "EventControllerBase");
 
         var violations = new List<string>();
 
@@ -61,7 +61,7 @@ public class CodeHygieneTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("controllers accessing user identity must inherit from ExploreControllerBase instead of defining local methods");
+            .Because("controllers accessing user identity must inherit from EventControllerBase instead of defining local methods");
     }
 
     [Test]
@@ -91,7 +91,7 @@ public class CodeHygieneTests
         }
 
         await Assert.That(violations).IsEmpty()
-            .Because("controllers must use ExploreControllerBase.CurrentUserId instead of local GetCurrentUserId methods");
+            .Because("controllers must use EventControllerBase.CurrentUserId instead of local GetCurrentUserId methods");
     }
 
     #endregion

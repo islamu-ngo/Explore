@@ -21,7 +21,7 @@ namespace Explore.API.Controllers;
 /// </para>
 /// </summary>
 public abstract class WebhooksControllerBase(IWebhookOwnershipScopeResolver webhookOwnershipScopeResolver)
-    : ExploreControllerBase
+    : EventControllerBase
 {
     protected async Task<WebhookCollectionRouteValues> CreateCollectionRouteValuesAsync(
         int ownerKindId,

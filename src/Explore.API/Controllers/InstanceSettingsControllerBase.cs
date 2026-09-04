@@ -22,7 +22,7 @@ namespace Explore.API.Controllers;
 /// </summary>
 public abstract class InstanceSettingsControllerBase(
     IAdminContext adminContext,
-    ISetupSecretProvider setupSecretProvider) : ExploreControllerBase
+    ISetupSecretProvider setupSecretProvider) : EventControllerBase
 {
     private const string SetupSecretHeader = "X-Setup-Secret";
 

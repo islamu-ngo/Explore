@@ -23,7 +23,7 @@ namespace Explore.API.Controllers;
 [ApiController]
 [Authorize]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class OrganizationMemberController : ExploreControllerBase
+public class OrganizationMemberController : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor OrganizationMemberNotFoundProblem = new(
         "Organization member not found",

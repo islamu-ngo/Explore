@@ -27,7 +27,7 @@ namespace Explore.API.Controllers;
 public sealed class AdmissionScannerCapabilityController(
     AdmissionScannerCapabilityService service,
     IAuthorizationProvider authorization,
-    ITenantContext tenantContext) : ExploreControllerBase
+    ITenantContext tenantContext) : EventControllerBase
 {
     [HttpGet("", Name = RouteNames.ListAdmissionScannerCapabilities)]
     [PrivateNoStore]

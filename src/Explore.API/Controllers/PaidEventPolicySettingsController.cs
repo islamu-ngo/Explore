@@ -28,7 +28,7 @@ namespace Explore.API.Controllers;
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public sealed class InstancePaidEventPolicySettingsController(
     IMediator mediator,
-    IResourceAssembler<PaidEventPolicyDto, PaidEventPolicyDto> assembler) : ExploreControllerBase
+    IResourceAssembler<PaidEventPolicyDto, PaidEventPolicyDto> assembler) : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor NotFoundProblem = new(
         "Paid-event policy not found",
@@ -89,7 +89,7 @@ public sealed class InstancePaidEventPolicySettingsController(
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
 public sealed class TenantPaidEventPolicySettingsController(
     IMediator mediator,
-    IResourceAssembler<TenantPaidEventPolicyConfigurationDto, TenantPaidEventPolicyConfigurationDto> assembler) : ExploreControllerBase
+    IResourceAssembler<TenantPaidEventPolicyConfigurationDto, TenantPaidEventPolicyConfigurationDto> assembler) : EventControllerBase
 {
     private static readonly ApiNotFoundProblemDescriptor NotFoundProblem = new(
         "Paid-event policy not found",
