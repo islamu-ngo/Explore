@@ -62,9 +62,16 @@ public sealed class EventLocationPrivacyModelTests
                 ?? throw new InvalidOperationException($"{carrierType.Name} is not mapped.");
             await Assert.That(entityType.FindAnnotation("EventLocationPrivacy:ConsistencyTrigger")?.Value)
                 .IsNotNull();
-            await Assert.That(entityType.GetIndexes().Any(index =>
-                index.GetDatabaseName()!.EndsWith("elp_consistency", StringComparison.Ordinal)))
-                .IsTrue();
+            string[] consistencyProperties =
+            [
+                "TenantId",
+                carrierType == typeof(EventSessionAgendaItem) ? "EventSessionId" : "EventId",
+                "EventLocationId",
+                "LocationId"
+            ];
+            IIndex consistencyIndex = entityType.GetIndexes().Single(index =>
+                index.Properties.Select(property => property.Name).SequenceEqual(consistencyProperties));
+            await Assert.That(consistencyIndex.GetFilter()).IsNull();
         }
     }
 
