@@ -131,5 +131,9 @@ public class EventAgendaItem : ITenantEntity, IAuditableEntity, ISoftDeletable, 
     {
         EventLocationId = null;
         EventLocation = null;
+        LocationId = null;
+        Location = null;
+        RoomId = null;
+        Room = null;
     }
 }
