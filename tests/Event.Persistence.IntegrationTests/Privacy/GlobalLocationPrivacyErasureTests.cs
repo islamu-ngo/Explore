@@ -658,6 +658,17 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
         ExploreDbContext context,
         string identitySuffix = "")
     {
+        if (!await context.Set<AuthenticationProvider>()
+            .AnyAsync(provider => provider.Id == (int)AuthenticationProviderKind.Keycloak))
+        {
+            context.Add(new AuthenticationProvider
+            {
+                Id = (int)AuthenticationProviderKind.Keycloak,
+                MasterCode = "KEYCLOAK",
+                FullName = "Keycloak"
+            });
+        }
+
         var tenantA = CreateTenant("workflow-a");
         var tenantB = CreateTenant("workflow-b");
         var owner = CreateUser("workflow-owner");
