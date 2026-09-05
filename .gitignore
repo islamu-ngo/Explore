@@ -18,6 +18,9 @@ tmp/
 temp/
 *.tmp
 
+# Git worktrees (isolated agent sessions)
+.worktrees/
+
 # automaker
 .automaker
 
