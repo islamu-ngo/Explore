@@ -104,8 +104,15 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
         await Assert.That(binding.FindProperty(nameof(WebhookConsumerProviderBinding.InstanceId))).IsNotNull();
         await Assert.That(binding.FindProperty(nameof(WebhookConsumerProviderBinding.ApplicationUid))).IsNotNull();
         await Assert.That(binding.FindProperty(nameof(WebhookConsumerProviderBinding.VerificationStateId))).IsNotNull();
-        await Assert.That(binding.GetIndexes().Select(index => index.GetDatabaseName()))
-            .Contains("ux_webhook_provider_bindings_provider_environment_application_uid");
+        var identity = binding.GetIndexes().Single(index =>
+            index.Properties.Select(property => property.Name).SequenceEqual(
+            [
+                nameof(WebhookConsumerProviderBinding.ProviderKindId),
+                nameof(WebhookConsumerProviderBinding.NormalizedEnvironment),
+                nameof(WebhookConsumerProviderBinding.NormalizedApplicationUid)
+            ]));
+        await Assert.That(identity.IsUnique).IsTrue();
+        await Assert.That(identity.GetFilter()).IsNull();
     }
 
     [Test]
@@ -113,11 +120,11 @@ public sealed class WebhookMigrationAndPortalPersistenceTests(PostgreSqlContaine
     {
         await fixture.ResetAsync();
         await using var context = fixture.CreateDbContext();
-        string[] tables = await context.Database.SqlQueryRaw<string>(
-                """
+        string[] tables = await context.Database.SqlQuery<string>(
+                $"""
                 SELECT table_name AS "Value"
                 FROM information_schema.tables
-                WHERE table_schema = 'public'
+                WHERE table_schema = {context.Model.GetDefaultSchema()}
                   AND table_name IN (
                       'webhook_provider_links',
                       'webhook_provider_publications',
