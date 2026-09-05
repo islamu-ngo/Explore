@@ -120,8 +120,7 @@ Last Updated: YYYY-MM-DD Europe/Brussels
 - Update context after a phase, decision, blocker, validation failure, material discovery, or handoff.
 - Update the plan only when scope, architecture, sequencing, acceptance criteria, risk, or validation strategy changes.
 - Do not run build/tests after individual tasks; verify once at phase end.
-- Do not start the app, browser, Docker, Aspire, Playwright, Chrome DevTools MCP, or live services for verification.
-- Use a task branch/worktree for parallel work, and never modify, unstage, stage, or commit another contributor's work in any checkout.
+- planning itself never creates branches or worktrees; plan artifacts live in the root dev/active/ directory.
 
 ## Phase 1: <Name> ⏳ NOT STARTED
 **Phase-owned paths:** exact files this phase may stage; update before verification when legitimate phase work discovers or generates another file.

@@ -5,7 +5,7 @@
 
 ## Stop Condition
 
-Stop after the three planning artifacts are complete, internally consistent, and ready for user review. Do not implement the planned change.
+Stop after the three planning artifacts are complete, internally consistent, and ready for user review. Do not implement the planned change. Planning agents must NEVER create git branches or git worktrees; planning artifacts live exclusively in `dev/active/<task>/` on the main repository workspace (`develop`).
 
 ## 1. Initialize The Integrated Intake
 
