@@ -35,7 +35,16 @@ public sealed class RegistrationAnswerPersistenceContractTests
 
         IEntityType answer = context.Model.FindEntityType(typeof(RegistrationAnswer))!;
         IEntityType sensitive = context.Model.FindEntityType(typeof(RegistrationSensitiveAnswerValue))!;
-        IIndex identity = answer.GetIndexes().Single(index => index.GetDatabaseName() == "ux_registration_answers_durable_identity");
+        IIndex identity = answer.GetIndexes().Single(index =>
+            index.Properties.Select(property => property.Name).SequenceEqual(
+            [
+                nameof(RegistrationAnswer.TenantId),
+                nameof(RegistrationAnswer.RegistrationSubmissionId),
+                nameof(RegistrationAnswer.RegistrationFormFieldId),
+                nameof(RegistrationAnswer.AnswerSubjectTypeId),
+                nameof(RegistrationAnswer.EffectiveSubjectIdentity),
+                nameof(RegistrationAnswer.Ordinal)
+            ]));
 
         await Assert.That(answer.GetDeclaredQueryFilters().Count()).IsEqualTo(2);
         await Assert.That(sensitive.GetDeclaredQueryFilters().Count()).IsEqualTo(2);

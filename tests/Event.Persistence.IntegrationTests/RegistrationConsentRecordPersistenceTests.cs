@@ -8,6 +8,7 @@ using Explore.Domain.Enums;
 using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Database;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -78,7 +79,16 @@ public sealed class RegistrationConsentRecordPersistenceTests
             .PersistAcceptedWithNormalizationAsync(orderScope.Attempt, accepted, expectedAttemptStamp,
                 [answer], [firstDuplicate, secondDuplicate], [issue], [], CancellationToken.None))
             .Throws<Exception>())!;
-        await Assert.That(FindPostgresException(failure).ConstraintName).IsEqualTo("ux_registration_consent_records_evidence");
+        PostgresException postgresFailure = FindPostgresException(failure);
+        await Assert.That(postgresFailure.SqlState).IsEqualTo(PostgresErrorCodes.UniqueViolation);
+        await Assert.That(postgresFailure.ConstraintName).IsEqualTo(
+            RelationalConstraintDescriptorResolver.UniqueIndex<RegistrationConsentRecord>(
+                context,
+                nameof(RegistrationConsentRecord.TenantId),
+                nameof(RegistrationConsentRecord.RegistrationSubmissionId),
+                nameof(RegistrationConsentRecord.RegistrationFormFieldId),
+                nameof(RegistrationConsentRecord.AnswerSubjectTypeId),
+                nameof(RegistrationConsentRecord.EffectiveSubjectIdentity)).Name);
         context.ChangeTracker.Clear();
 
         await Assert.That(await context.RegistrationSubmissions.CountAsync(candidate => candidate.Id == accepted.Id)).IsEqualTo(0);
