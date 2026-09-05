@@ -162,6 +162,7 @@ public sealed class LocalIdentityAuthServiceTests
             new("Data Source=:memory:");
 
         private ServiceProvider? _provider;
+        private AsyncServiceScope? _scope;
 
         private TestFixture()
         {
@@ -180,7 +181,9 @@ public sealed class LocalIdentityAuthServiceTests
                 var services = new ServiceCollection();
                 services.AddLogging();
                 services.AddDbContext<ExploreDbContext>(options =>
-                    options.UseSqlite(fixture._connection).UseSnakeCaseNamingConvention());
+                    options.UseSqlite(fixture._connection)
+                        .UseSnakeCaseNamingConvention()
+                        .EnableServiceProviderCaching(false));
                 services.AddIdentityCore<LocalIdentityUser>(options =>
                     {
                         options.User.RequireUniqueEmail = true;
@@ -190,10 +193,12 @@ public sealed class LocalIdentityAuthServiceTests
                     })
                     .AddRoles<LocalIdentityRole>()
                     .AddEntityFrameworkStores<ExploreDbContext>();
-                fixture._provider = services.BuildServiceProvider();
-                var context = fixture._provider.GetRequiredService<ExploreDbContext>();
+                fixture._provider = services.BuildServiceProvider(validateScopes: true);
+                fixture._scope = fixture._provider.CreateAsyncScope();
+                IServiceProvider scopedServices = fixture._scope.Value.ServiceProvider;
+                var context = scopedServices.GetRequiredService<ExploreDbContext>();
                 await context.Database.EnsureCreatedAsync();
-                fixture.UserManager = fixture._provider
+                fixture.UserManager = scopedServices
                     .GetRequiredService<UserManager<LocalIdentityUser>>();
                 fixture.Service = new LocalIdentityAuthService(
                     fixture.UserManager,
@@ -210,6 +215,11 @@ public sealed class LocalIdentityAuthServiceTests
 
         public async ValueTask DisposeAsync()
         {
+            if (_scope is { } scope)
+            {
+                await scope.DisposeAsync();
+            }
+
             if (_provider is not null)
             {
                 await _provider.DisposeAsync();

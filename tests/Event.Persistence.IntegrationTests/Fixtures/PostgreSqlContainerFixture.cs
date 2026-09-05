@@ -122,13 +122,14 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         PrimaryDatabaseRole role = PrimaryDatabaseRole.Runtime,
         IReadOnlyList<IInterceptor>? interceptors = null)
     {
-        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>();
+        // Provider/schema and interceptor variants belong to this fixture, not EF's process-wide cache.
+        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>()
+            .EnableServiceProviderCaching(false);
         PrimaryDatabaseConnectionResult database = PrimaryDatabaseProviderComposition.ConfigureApplication(
             optionsBuilder,
             CreateDatabaseOptions(role));
         optionsBuilder.ConfigureWarnings(warnings =>
         {
-            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
             warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
         });
         if (interceptors is { Count: > 0 })

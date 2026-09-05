@@ -747,6 +747,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             .UseSnakeCaseNamingConvention()
             .ConfigureWarnings(value => value.Ignore(RelationalEventId.PendingModelChangesWarning))
             .AddInterceptors(interceptor)
+            .EnableServiceProviderCaching(false)
             .Options;
         await using var context = new ExploreDbContext(options);
         context.EnableTenantFilterBypass("ATProto snapshot settlement fence race test.");
@@ -807,6 +808,7 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
             .UseSnakeCaseNamingConvention()
             .ConfigureWarnings(value => value.Ignore(RelationalEventId.PendingModelChangesWarning))
             .AddInterceptors(interceptor)
+            .EnableServiceProviderCaching(false)
             .Options;
         await using var staleContext = new ExploreDbContext(options);
         staleContext.EnableTenantFilterBypass("ATProto fenced settlement race test.");

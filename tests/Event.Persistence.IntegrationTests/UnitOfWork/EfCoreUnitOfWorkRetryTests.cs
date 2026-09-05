@@ -101,6 +101,7 @@ public sealed class EfCoreUnitOfWorkRetryTests
     private static ExploreDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            .EnableServiceProviderCaching(false)
             .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused")
             .Options;
         return new ExploreDbContext(options);

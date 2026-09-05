@@ -27,6 +27,7 @@ public sealed class TenantOnboardingAtomicRollbackTests
             .Build();
         await database.StartAsync();
         DbContextOptions<ExploreDbContext> seedOptions = new DbContextOptionsBuilder<ExploreDbContext>()
+            .EnableServiceProviderCaching(false)
             .UseNpgsql(database.GetConnectionString())
             .Options;
         await using (var schema = new NpgsqlConnection(database.GetConnectionString()))
@@ -61,6 +62,7 @@ public sealed class TenantOnboardingAtomicRollbackTests
         Guid tenantId = Guid.CreateVersion7();
 
         DbContextOptions<ExploreDbContext> writeOptions = new DbContextOptionsBuilder<ExploreDbContext>()
+            .EnableServiceProviderCaching(false)
             .UseNpgsql(database.GetConnectionString())
             .AddInterceptors(new FailMandatoryIdentitySaveInterceptor())
             .Options;
