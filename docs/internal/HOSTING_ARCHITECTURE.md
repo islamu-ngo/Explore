@@ -84,7 +84,46 @@ Application startup in `Explore.API` and `Event.Standalone` executes in determin
 
 ---
 
-## 3. Operational Deployment Runbooks (Public Source of Truth)
+## 3. BFF Data Protection Key Ring & Stateless Checkout Tickets
+
+In Split topology, `Explore.Blazor` protects short-lived browser payloads, including the registration
+payment checkout ticket, with its own Data Protection key ring. That ring is
+configured in `src/Explore.Blazor/Extensions/BffDataProtectionExtensions.cs`:
+
+* The application name is always pinned to `islamu-event`.
+* When `ConnectionStrings:cache` is absent, keys stay in the local native key store
+  (filesystem or platform default for the host).
+* When a cache connection string is present, keys persist to Redis under
+  `islamu-event:data-protection-keys`.
+
+Two consequences matter for topology decisions:
+
+1. **Database-backed keys in `Explore.API` do not extend to a separate Split BFF.** The API's
+   `DataProtectionKeyContext` covers API-issued payloads. A Split BFF still resolves
+   its ring from the rules above, so operators must decide separately how BFF keys
+   are shared.
+2. **Multi-replica BFF requires a shared ring and the same application name.** A
+   ticket protected by replica A is unreadable on replica B unless both read the same
+   keys. Sharing a mounted key directory satisfies this; so does the Redis ring. If
+   the Redis ring is chosen, Redis availability becomes part of the BFF's critical
+   path even though checkout itself stores nothing there.
+
+Combined `Event.Standalone` uses a single service container, not separate rings:
+`Program.cs` calls `AddApiHostServices` before `AddBlazorHostServices`. Without
+cache, the API's `PersistKeysToDbContext<DataProtectionKeyContext>()` registration
+remains effective for the entire process, including the BFF. With cache configured,
+the later BFF Redis repository registration replaces that selection process-wide.
+These existing registration rules are unchanged by stateless checkout tickets.
+
+Checkout tickets themselves are stateless. The BFF keeps no nonce, no Redis entry,
+and no in-memory ticket dictionary: the target URL, audience, session digest, and
+expiry all live inside the protected cookie value. Redis stays optional for checkout
+storage. It is not optional as a shared-key mechanism once you pick it as the ring.
+Contract details live in [PAYMENTS.md](PAYMENTS.md).
+
+---
+
+## 4. Operational Deployment Runbooks (Public Source of Truth)
 
 For step-by-step container configuration, Docker Compose YAML manifests, environment variables, reverse proxies, and backup/restore procedures, **refer exclusively to the canonical public documentation**:
 

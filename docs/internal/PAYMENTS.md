@@ -233,8 +233,8 @@ sequenceDiagram
     API->>Provider: Create Hosted Checkout Session (Direct Charge + Idempotency Key)
     Provider-->>API: Return Checkout URL & Session ID
     API->>DB: Record Dispatch Effect & Session ID
-    API-->>BFF: Return HAL with one-time Checkout Navigation Token
-    BFF-->>Buyer: Redirect (303) to Provider Hosted Checkout
+    API-->>BFF: Return RegistrationPaymentCheckoutTargetDto (typed generated client)
+    BFF-->>Buyer: Set protected checkout ticket cookie, then 303 on navigation
 
     Note over Buyer, Provider: 2. Payment Execution on Provider Domain
     Buyer->>Provider: Enter Payment Details & Complete Authorization
@@ -254,6 +254,66 @@ sequenceDiagram
     API-->>BFF: Order Confirmed
     BFF-->>Buyer: Display Confirmation & Admission Badges
 ```
+
+### Stateless Checkout Handoff Ticket
+
+The browser hop from our origin to the provider's hosted Checkout page carries no
+server-side state. `Explore.Blazor` holds no Redis entry, no in-memory dictionary,
+and no nonce table for checkout tickets; every fact needed for the redirect travels
+inside one ASP.NET Core Data Protection payload.
+
+**Protected payload contents**
+
+| Field | Purpose |
+|---|---|
+| Target URL | Absolute provider Checkout URL, taken from the `RegistrationPaymentCheckoutTargetDto.Url` the BFF receives from `Explore.API` through the generated typed client. |
+| Audience | Request scheme, host, path base, tenant slug, event id, and order id at issue time. |
+| Session digest | Binds the ticket to the dedicated `__Secure-islamu-registration-payment-session` checkout-session cookie. This is deliberately *not* the authentication BFF session, so refreshing or rotating the auth session does not invalidate an in-flight checkout hop. |
+| Expiry | Issue time plus 5 minutes. |
+
+The protected value is ASCII and capped at 3,072 bytes, comfortably inside the
+4,096-byte browser cookie ceiling. Issuance rejects anything larger rather than
+emitting a cookie the browser would silently drop.
+
+**Navigation contract (`GET /bff/registration-payments/checkout`)**
+
+The endpoint accepts same-origin navigations only and takes no query string. Before
+it emits anything, it unprotects the payload and checks the audience, the session
+digest, the expiry, HTTPS, and an exact match against the configured allowed
+Checkout host. Only then does it return `303 See Other` together with a deletion
+cookie carrying `Max-Age=0`.
+
+**Honest security boundary.** The deletion cookie clears the copy the requesting
+browser holds. It is not a server-side single-use guarantee. A ticket copied out of
+the browser before navigation stays replayable until its 5-minute expiry, and
+issuing a replacement ticket does not revoke copies already made. What the deletion
+cookie buys is hygiene, not revocation.
+
+Be precise about what a replay gets you. Anyone holding a copied ticket cookie plus
+the matching checkout-session cookie can revisit the same hosted Checkout session
+until the ticket expires. The BFF prevents neither access to that hosted URL nor
+completion of a payment there; the hosted URL itself may confer access to the
+session. Authorization for what may be paid, and by whom, rests with the provider's
+session rules and the API's order authorization, not the deletion cookie.
+
+What the BFF does guarantee is narrower: navigation is inert. It never creates a
+payment, never settles one, and never mutates order state. Money moves only through
+`Explore.API` with provider idempotency keys, signed webhook ingestion, and
+reconciliation, none of which this ticket changes. A replayed redirect does not
+dispatch another payment-create request.
+[Stripe expires Checkout Sessions](https://docs.stripe.com/api/checkout/sessions/expire),
+and an expired session cannot complete. Treat that as a bound on session lifetime,
+not as proof about what was or wasn't billed. Billing facts come from webhook
+ingestion and reconciliation.
+
+**Key ring requirements.** The ticket is only readable by a host that shares the
+issuing key ring. In Split topology, `BffDataProtectionExtensions` pins the application name to
+`islamu-event` and persists keys to Redis only when a `cache` connection string is
+configured; with no cache configured the BFF falls back to the local native key
+store. Multi-replica BFF deployments therefore MUST share a key ring, whether by
+mounting a shared key directory or by configuring the Redis key ring, and MUST keep
+the same application name. Database-backed Data Protection in `Explore.API` does not
+cover the Split BFF; the BFF has its own key ring decision.
 
 ---
 

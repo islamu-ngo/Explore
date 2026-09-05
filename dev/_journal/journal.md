@@ -770,6 +770,66 @@ When startup is blocked by data that violates an earlier migration, do not try t
 
 ---
 
+[2026-09-05 Europe/Brussels] — Plan prose carried source-free crypto and infrastructure claims that documentation would have published
+
+**Context**: Documenting the payment checkout ticket's move off Redis. The previous
+design issued a random 32-byte nonce per ticket and used Redis Lua scripts
+(`IssueScript`, `ConsumeScript`, `RevokeScript`) to atomically bind, single-consume,
+and revoke it, with a bounded in-memory dictionary as the standalone equivalent. The
+replacement carries the target URL, audience, session digest, and expiry inside one
+Data Protection payload and stores nothing server-side. The plan justified that move
+by asserting cryptographic and operational properties of Data Protection.
+
+**Symptom / Observation**: Two load-bearing claims in the approved plan had no
+source behind them. It stated that Data Protection "already encrypts the ticket
+cookie with AES-256-GCM", and it instructed the public guide to say Redis is
+"purely an optional performance cache". Both read as settled fact; neither was.
+
+**Root Cause**: The default Data Protection payload algorithms are AES-256-CBC with
+HMACSHA256, not GCM, per Microsoft's documented default settings. And Redis is not
+merely a performance cache here: `src/Explore.Blazor/Extensions/BffDataProtectionExtensions.cs`
+persists the BFF key ring to Redis whenever `ConnectionStrings:cache` is set and
+otherwise uses the local native key store, so configuring the Redis ring puts Redis
+back on the critical path for reading any protected cookie. The API's
+`DataProtectionKeyContext` does not cover the BFF ring at all, so "the API stores
+keys in the database" says nothing about whether a Split BFF has shared keys.
+
+**Resolution**: Documented the corrected facts across `docs/internal/PAYMENTS.md`,
+`docs/internal/HOSTING_ARCHITECTURE.md`, `docs/internal/CONFIGURATION.md`, and the
+public `deployment-tiers.md`: Redis is optional for checkout storage, shared keys
+plus an identical application name are mandatory across BFF replicas, and cookie
+deletion on redirect is hygiene rather than server-side single-use. Also recorded
+the honest replay boundary. The Lua `ConsumeScript` gave real atomic single-use;
+the stateless payload gives none, so a copied ticket plus its matching
+checkout-session cookie can revisit the same hosted session until expiry, and reissue
+revokes nothing. That is tolerable only because navigation never creates or settles a
+payment, and because authorization for paying a hosted session stays with the
+provider rather than with us.
+
+**Why This Matters for Future Work**: A plan's justification prose is not evidence.
+Before a documentation phase repeats an algorithm name, a default, or an "X is
+optional" infrastructure claim, verify it against the official interface docs and
+the repository's own composition code. Infrastructure that is optional for one
+concern is frequently mandatory for an adjacent one in the same file.
+
+**References**:
+- `src/Explore.Blazor/Extensions/BffDataProtectionExtensions.cs`
+- `src/Explore.Blazor/Extensions/ServiceRegistrationExtensions.cs` (`RegisterBffDataProtection`)
+- `docs/internal/PAYMENTS.md` §6, `docs/internal/HOSTING_ARCHITECTURE.md` §3
+- `docs/internal/CONFIGURATION.md` (Paid-Event Configuration Boundary)
+- Microsoft Data Protection default settings: <https://learn.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/default-settings?view=aspnetcore-10.0>
+- Stripe Checkout Session expiry: <https://docs.stripe.com/api/checkout/sessions/expire>
+- PR / commit: pending
+
+**Promotion Consideration**:
+- [ ] Candidate for `docs/QUICK_REFERENCE.md` (new non-inferable rule)
+- [ ] Candidate for new `.agents/rules/*.md` entry
+- [ ] Candidate for skill update: `blazor-bff-patterns`
+- [ ] Candidate for ADR / `MAJOR_DECISIONS.md`
+- [x] Stays in journal only (one-off debugging lesson)
+
+---
+
 [2026-06-25 Europe/Brussels] - Cerbos HAL batches must map repeated resources by action
 
 **Context**: While debugging an event draft detail page where the owner did not see the management topbar, the API returned `200 OK` but logs showed `Cerbos decision missing. Default deny` for `update`, `moderate-heavy`, and `delete`.

@@ -64,6 +64,12 @@ ISLAMU Event is architected to scale from a single lightweight VM to a distribut
   - Fail-closed behavior guarantees that PDP unavailability denies unauthorized access.
 - **Storage**: S3-compatible object store (e.g., Cloudflare R2, MinIO, or AWS S3) with metadata-backed verification.
 - **Webhooks & Messaging**: Background outbox dispatchers running alongside Redis / PostgreSQL outbox tables.
+- **Redis**: Optional. Paid ticket checkout no longer needs it. The redirect that hands a buyer to the payment provider carries its own encrypted, short-lived cookie, so a split stack with no Redis container still sells tickets.
+
+> [!IMPORTANT]
+> **Running more than one UI replica?** Each replica must be able to read cookies the others issued. Give them a shared Data Protection key ring, either by mounting the same key directory into every UI container or by pointing them all at the same Redis instance. Keep the application name identical across replicas. If you choose Redis for the key ring, Redis is back on your critical path: plan its availability accordingly. A single-replica deployment needs neither.
+>
+> Database-backed key storage on the API side does not cover the UI host. The UI container makes its own key ring choice.
 
 ---
 
