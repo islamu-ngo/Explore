@@ -6,6 +6,7 @@ using Explore.Application.Features.ConfigurationManifest.Application;
 using Explore.Application.Features.ConfigurationManifest.Requests.Commands;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Domain.Settings.Documents;
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Repositories;
@@ -78,7 +79,12 @@ public sealed class ConfigurationManifestAtomicPersistenceTests
                 .CountAsync()).IsEqualTo(1);
             await Assert.That(await verification.TenantSettingsDocuments
                 .IgnoreQueryFilters()
-                .CountAsync()).IsEqualTo(1);
+                .Select(document => document.DocumentKey)
+                .ToArrayAsync()).IsEquivalentTo(
+            [
+                SettingsDocumentKeys.Tenant.Branding,
+                SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity
+            ]);
             OutboxMessage effectOutbox = await verification.OutboxMessages
                 .AsNoTracking()
                 .SingleAsync(message =>
@@ -179,7 +185,13 @@ public sealed class ConfigurationManifestAtomicPersistenceTests
                 .CountAsync(setting => setting.TenantId == newTenantId)).IsEqualTo(1);
             await Assert.That(await verification.TenantSettingsDocuments
                 .IgnoreQueryFilters()
-                .CountAsync(document => document.TenantId == newTenantId)).IsEqualTo(1);
+                .Where(document => document.TenantId == newTenantId)
+                .Select(document => document.DocumentKey)
+                .ToArrayAsync()).IsEquivalentTo(
+            [
+                SettingsDocumentKeys.Tenant.Branding,
+                SettingsDocumentKeys.Tenant.DirectoryOperatorIdentity
+            ]);
             await Assert.That(results.Single(result =>
                     result.TenantId == existingTenantId).ChangedKeyNames)
                 .IsEmpty();
