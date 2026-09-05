@@ -341,14 +341,23 @@ public sealed class TicketingMonetizationPersistenceTests
             true,
             90);
 
+        IModel model;
         await using (ExploreDbContext seed = CreateNamedInMemoryContext(databaseName, root))
         {
             seed.EnableTenantFilterBypass("Seeds paid policy repository rows.");
             seed.Set<PaidEventPolicyVersion>().AddRange(instance, tenant);
             await seed.SaveChangesAsync();
+            model = seed.Model;
         }
 
-        await using ExploreDbContext context = CreateNamedInMemoryContext(databaseName, root, tenantId);
+        // The shared InMemory store must use the same key metadata across uncached providers.
+        await using ExploreDbContext context = new TicketingTestDbContext(new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseInMemoryDatabase(databaseName, root)
+            .UseModel(model)
+            .Options)
+        {
+            TenantContext = new TestTenantContext(tenantId)
+        };
         var repository = new PaidEventPolicyRepository(context);
 
         PaidEventPolicyVersion? activeInstance = await repository.GetActiveInstanceAsync(CancellationToken.None);
