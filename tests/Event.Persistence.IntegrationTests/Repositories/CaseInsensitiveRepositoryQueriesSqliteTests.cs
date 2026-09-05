@@ -41,11 +41,21 @@ public sealed class CaseInsensitiveRepositoryQueriesSqliteTests
                 CreatedAt = DateTime.UtcNow
             };
             var user = CreateUser("privacy");
-            var login = new UserExternalLogin { Id = Guid.CreateVersion7(),
-            UserId = user.Id,
-            User = user,
-            AuthenticationProviderId = (int)"KeYcLoAk".ParseAuthenticationProviderKind(), AuthenticationProvider = null!, ProviderKey = "sqlite-keycloak-subject",
-            CreatedAt = DateTime.UtcNow };
+            var login = new UserExternalLogin
+            {
+                Id = Guid.CreateVersion7(),
+                UserId = user.Id,
+                User = user,
+                AuthenticationProviderId = (int)"KeYcLoAk".ParseAuthenticationProviderKind(),
+                AuthenticationProvider = new AuthenticationProvider
+                {
+                    Id = (int)AuthenticationProviderKind.Keycloak,
+                    MasterCode = "KEYCLOAK",
+                    FullName = "Keycloak"
+                },
+                ProviderKey = "sqlite-keycloak-subject",
+                CreatedAt = DateTime.UtcNow
+            };
             context.AddRange(status, tenant, user, login);
             await context.SaveChangesAsync();
 
@@ -121,7 +131,7 @@ public sealed class CaseInsensitiveRepositoryQueriesSqliteTests
         }.ToString();
 
         return new ExploreDbContext(
-            new DbContextOptionsBuilder<ExploreDbContext>()
+            TestDbContextOptions.Create<ExploreDbContext>()
                 .UseSqlite(connectionString, options =>
                     options.MigrationsAssembly("Explore.Persistence.Migrations.Sqlite"))
                 .UseSnakeCaseNamingConvention()
