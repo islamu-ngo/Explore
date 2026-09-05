@@ -32,16 +32,14 @@ public sealed class ConfiguredAdministratorBootstrapStartupConcurrencyTests
             Path.GetTempPath(),
             $"configured-bootstrap-{Guid.NewGuid():N}.db");
         var coordination = new EmptyBootstrapRaceCoordination();
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
         try
         {
             await using (ExploreDbContext setup = CreateContext(databasePath))
             {
-                await setup.Database.EnsureCreatedAsync(timeout.Token);
+                await setup.Database.EnsureCreatedAsync();
                 await setup.Database.ExecuteSqlRawAsync(
-                    "PRAGMA journal_mode=WAL;",
-                    timeout.Token);
+                    "PRAGMA journal_mode=WAL;");
             }
 
             IConfiguration configuration = CreateConfiguration();
@@ -55,15 +53,20 @@ public sealed class ConfiguredAdministratorBootstrapStartupConcurrencyTests
             ConfiguredAdministratorBootstrapStartupRunner first = CreateRunner(firstContext, configuration);
             ConfiguredAdministratorBootstrapStartupRunner second = CreateRunner(secondContext, configuration);
 
-            await Task.WhenAll(
+            // Initialize models without opening connections or triggering the race interceptors.
+            _ = firstContext.Model;
+            _ = secondContext.Model;
+            using (var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+            {
+                await Task.WhenAll(
                     first.PrepareAsync(timeout.Token),
-                    second.PrepareAsync(timeout.Token))
-                .WaitAsync(timeout.Token);
+                    second.PrepareAsync(timeout.Token));
+            }
 
             await using ExploreDbContext verification = CreateContext(databasePath);
             var states = await verification.InstanceBootstrapStates
                 .AsNoTracking()
-                .ToListAsync(timeout.Token);
+                .ToListAsync();
             await Assert.That(states).Count().IsEqualTo(1);
             await Assert.That(states[0].Status).IsEqualTo(InstanceBootstrapStatus.Pending);
             await Assert.That(states[0].Generation).IsEqualTo(1L);
