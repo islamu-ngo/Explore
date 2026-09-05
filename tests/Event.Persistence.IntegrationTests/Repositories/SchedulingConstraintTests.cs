@@ -16,6 +16,7 @@ using TUnit.Core;
 namespace Event.Persistence.IntegrationTests.Repositories;
 
 [ClassDataSource<PostgreSqlContainerFixture>(Shared = SharedType.PerAssembly)]
+[NotInParallel("PersistenceDb")]
 public class SchedulingConstraintTests
 {
     private readonly PostgreSqlContainerFixture _fixture;
@@ -534,7 +535,16 @@ public class SchedulingConstraintTests
         context.LocationRooms.Add(room);
         await context.SaveChangesAsync();
 
-        return new RoomScheduleScope(tenant, @event, location, room);
+        var actorUserId = await context.Actors
+            .Where(actor => actor.Id == @event.ActorId)
+            .Select(actor => actor.UserId!.Value)
+            .SingleAsync();
+        var eventLocation = EventLocation.CreatePhysical(
+            tenant.Id, @event.Id, location.Id, actorUserId, DateTime.UtcNow);
+        context.Set<EventLocation>().Add(eventLocation);
+        await context.SaveChangesAsync();
+
+        return new RoomScheduleScope(tenant, @event, location, room, eventLocation);
     }
 
     private static EventSession CreateRoomSession(
@@ -546,15 +556,13 @@ public class SchedulingConstraintTests
         {
             EventId = scope.Event.Id,
             Event = null!,
-            LocationId = scope.Location.Id,
-            Location = null!,
-            RoomId = scope.Room.Id,
-            Room = null!,
             StartTime = startUtc,
             EndTime = endUtc,
             TenantId = scope.Tenant.Id,
             Tenant = null!
         };
+        session.AssignEventLocation(scope.EventLocation);
+        session.RoomId = scope.Room.Id;
         session.Reschedule(UtcInstantRange.Create(startUtc, endUtc), "UTC", new EventScheduleProjectionCalculator());
 
         return session;
@@ -601,5 +609,6 @@ public class SchedulingConstraintTests
         Tenant Tenant,
         Explore.Domain.Event Event,
         Location Location,
-        LocationRoom Room);
+        LocationRoom Room,
+        EventLocation EventLocation);
 }
