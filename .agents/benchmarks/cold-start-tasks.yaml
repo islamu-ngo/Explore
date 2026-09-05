@@ -681,9 +681,9 @@ scenarios:
       - "docs/internal/SECURITY-MODEL.md"
       - "docs/internal/DOMAIN.md"
       - "docs/internal/RECORD_CONTRACTS.md"
-      - "dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-plan.md"
-      - "dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-context.md"
-      - "dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-tasks.md"
+      - "dev/zarchive/strong-typing-reflection-remediation/strong-typing-reflection-remediation-plan.md"
+      - "dev/zarchive/strong-typing-reflection-remediation/strong-typing-reflection-remediation-context.md"
+      - "dev/zarchive/strong-typing-reflection-remediation/strong-typing-reflection-remediation-tasks.md"
     expected_paths_in_scope:
       - "src/Explore.Domain/**/*.cs"
       - "src/Explore.Application/**/*.cs"
@@ -707,7 +707,7 @@ scenarios:
       - "docs/SECURITY-MODEL.md"
       - "docs/DOMAIN.md"
       - "docs/BLAZOR.md"
-      - "dev/active/strong-typing-reflection-remediation/**"
+      - "dev/zarchive/strong-typing-reflection-remediation/**"
     expected_verification_commands:
       - "dotnet build --configuration Release --verbosity quiet"
       - "dotnet test --project tests/Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
