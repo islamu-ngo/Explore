@@ -131,7 +131,7 @@ public sealed class ConfiguredAdministratorBootstrapStartupConcurrencyTests
             Pooling = false,
             DefaultTimeout = 1
         }.ToString();
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseSqlite(connectionString)
             .UseSnakeCaseNamingConvention()
             .AddInterceptors(interceptors)
@@ -218,12 +218,13 @@ public sealed class ConfiguredAdministratorBootstrapMySqlConcurrencyTests(
     public async Task ConcurrentPrepareAgainstEmptyMySqlFamilyDatabaseConverges(
         PrimaryDatabaseProvider provider)
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         await using (ExploreDbContext setup = CreateContext(fixture.CreateOptions(provider)))
         {
-            await setup.Database.EnsureCreatedAsync(timeout.Token);
+            await setup.Database.EnsureCreatedAsync();
         }
 
+        // Bound the bootstrap race, not provisioning the full application schema.
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         var barrier = new EmptyReadBarrier(participantCount: 2);
         IConfiguration configuration =
             ConfiguredAdministratorBootstrapStartupConcurrencyTests.CreateConfiguration();
@@ -256,7 +257,7 @@ public sealed class ConfiguredAdministratorBootstrapMySqlConcurrencyTests(
         PrimaryDatabaseConnectionOptions options,
         params IInterceptor[] interceptors)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, options);
         builder.AddInterceptors(interceptors);
         return new ExploreDbContext(builder.Options);
