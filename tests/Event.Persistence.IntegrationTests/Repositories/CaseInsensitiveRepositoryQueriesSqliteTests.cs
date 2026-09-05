@@ -131,7 +131,7 @@ public sealed class CaseInsensitiveRepositoryQueriesSqliteTests
         }.ToString();
 
         return new ExploreDbContext(
-            TestDbContextOptions.Create<ExploreDbContext>()
+            new DbContextOptionsBuilder<ExploreDbContext>()
                 .UseSqlite(connectionString, options =>
                     options.MigrationsAssembly("Explore.Persistence.Migrations.Sqlite"))
                 .UseSnakeCaseNamingConvention()

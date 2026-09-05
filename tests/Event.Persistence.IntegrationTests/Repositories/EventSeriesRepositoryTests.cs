@@ -165,8 +165,8 @@ public sealed class EventSeriesRepositoryTests
     }
 
     private static EventSeriesTestDbContext CreateInMemoryContext() =>
-        new(TestDbContextOptions.Create<ExploreDbContext>()
-            .UseTestInMemoryDatabase($"event-series-pricing-{Guid.CreateVersion7():N}")
+        new(new DbContextOptionsBuilder<ExploreDbContext>()
+            .UseInMemoryDatabase($"event-series-pricing-{Guid.CreateVersion7():N}")
             .Options);
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;
