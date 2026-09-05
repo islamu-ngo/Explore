@@ -567,7 +567,8 @@ public sealed class CoopIncomingWebhookEffectOutboxTests(PostgreSqlContainerFixt
         await command.ExecuteNonQueryAsync();
         return new NpgsqlConnectionStringBuilder(fixture.ConnectionString)
         {
-            Database = databaseName
+            Database = databaseName,
+            SearchPath = "public"
         }.ConnectionString;
     }
 
@@ -590,8 +591,13 @@ public sealed class CoopIncomingWebhookEffectOutboxTests(PostgreSqlContainerFixt
         }
 
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT to_regclass('public.incoming_webhook_effect_outbox')::text";
-        return await command.ExecuteScalarAsync() is string;
+        var entity = context.Model.FindEntityType(typeof(IncomingWebhookEffectOutbox))!;
+        command.CommandText =
+            "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = @schema "
+            + "AND table_name = @table)";
+        command.Parameters.AddWithValue("schema", entity.GetSchema()!);
+        command.Parameters.AddWithValue("table", entity.GetTableName()!);
+        return await command.ExecuteScalarAsync() is true;
     }
 
     private static IncomingWebhookProcessingService CreateService(ExploreDbContext context, DateTime observedAt) =>
