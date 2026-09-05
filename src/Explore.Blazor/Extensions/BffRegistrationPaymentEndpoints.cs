@@ -23,7 +23,7 @@ public static class BffRegistrationPaymentEndpoints
         app.MapPost("/bff/registration-payments/events/{eventId:guid}/orders/{orderId:guid}/checkout-ticket", HandleCheckoutTicketAsync)
             .RequireRateLimiting(RateLimitingExtensions.RegistrationPaymentCheckoutIssuePolicy)
             .ValidateAntiforgeryBeforeRateLimiting();
-        app.MapGet(CheckoutPath, HandleCheckoutNavigationAsync);
+        app.MapGet(CheckoutPath, HandleCheckoutNavigation);
         app.MapGet("/payments/checkout/success", NavigateToRecovery);
         app.MapGet("/payments/checkout/cancel", NavigateToRecovery);
         return app;
@@ -66,56 +66,38 @@ public static class BffRegistrationPaymentEndpoints
             return Results.NotFound();
         }
 
-        try
+        string checkoutSession = context.Request.Cookies[CheckoutSessionCookieName]
+            ?? WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        RegistrationPaymentCheckoutTicketIssue? issue = ticketStore.PrepareIssue(
+            uri,
+            eventId,
+            orderId,
+            context.Request,
+            tenantContext.TenantSlug ?? string.Empty,
+            checkoutSession);
+        if (issue is null)
         {
-            string checkoutSession = context.Request.Cookies[CheckoutSessionCookieName]
-                ?? WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
-            RegistrationPaymentCheckoutTicketIssue? issue = ticketStore.PrepareIssue(
-                uri,
-                eventId,
-                orderId,
-                context.Request,
-                tenantContext.TenantSlug ?? string.Empty,
-                checkoutSession);
-            if (issue is null)
-            {
-                return Results.BadRequest();
-            }
-
-            try
-            {
-                context.RequestAborted.ThrowIfCancellationRequested();
-                await ticketStore.CommitIssueAsync(issue, context.RequestAborted);
-                context.RequestAborted.ThrowIfCancellationRequested();
-            }
-            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
-            {
-                await ticketStore.RevokeIssueAsync(issue.Ticket, CancellationToken.None);
-                throw;
-            }
-
-            if (!context.Request.Cookies.ContainsKey(CheckoutSessionCookieName))
-            {
-                context.Response.Cookies.Append(
-                    CheckoutSessionCookieName,
-                    checkoutSession,
-                    CreateCheckoutSessionCookieOptions(context.Request));
-            }
-            context.Response.Cookies.Append(CheckoutCookieName, issue.ProtectedCookie, CreateCheckoutCookieOptions(context.Request));
-            return Results.Ok(new BffRegistrationPaymentCheckoutTicketResponseDto(BuildCheckoutPath(context.Request)));
+            return Results.BadRequest();
         }
-        catch (RegistrationPaymentCheckoutStoreUnavailableException)
+
+        context.RequestAborted.ThrowIfCancellationRequested();
+        if (!context.Request.Cookies.ContainsKey(CheckoutSessionCookieName))
         {
-            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+            context.Response.Cookies.Append(
+                CheckoutSessionCookieName,
+                checkoutSession,
+                CreateCheckoutSessionCookieOptions(context.Request));
         }
+        context.Response.Cookies.Append(CheckoutCookieName, issue.ProtectedCookie, CreateCheckoutCookieOptions(context.Request));
+        return Results.Ok(new BffRegistrationPaymentCheckoutTicketResponseDto(BuildCheckoutPath(context.Request)));
     }
 
-    private static async Task<IResult> HandleCheckoutNavigationAsync(
+    private static IResult HandleCheckoutNavigation(
         HttpContext context,
         RegistrationPaymentCheckoutTicketStore ticketStore,
         ITenantRouteContextAccessor tenantContext,
         IConfiguration configuration,
-        CancellationToken cancellationToken)
+        ILogger<RegistrationPaymentCheckoutTicketStore> logger)
     {
         SetNoStore(context.Response.Headers);
         if (context.Request.QueryString.HasValue
@@ -130,42 +112,24 @@ public static class BffRegistrationPaymentEndpoints
             return Results.NotFound();
         }
 
-        RegistrationPaymentCheckoutTicketValidation? ticket = ticketStore.Validate(
+        Uri? target = ticketStore.ValidateAndExtractTarget(
             cookie,
             context.Request,
             tenantContext.TenantSlug ?? string.Empty,
             checkoutSession);
         string[] allowedHosts = configuration.GetSection("Payments:Stripe:AllowedCheckoutHosts").Get<string[]>() ?? ["checkout.stripe.com"];
-        Uri? target;
-        try
+        if (target is null || !IsApprovedCheckoutTarget(target, allowedHosts))
         {
-            target = ticket is null ? null : await ticketStore.PeekTargetAsync(ticket, cancellationToken);
-        }
-        catch (RegistrationPaymentCheckoutStoreUnavailableException)
-        {
-            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
-        }
-
-        if (ticket is null || target is null || !IsApprovedCheckoutTarget(target, allowedHosts))
-        {
+            logger.LogDebug("Registration payment checkout navigation rejected an invalid ticket or destination.");
             return Results.NotFound();
         }
 
-        try
-        {
-            target = await ticketStore.ConsumeTargetAsync(ticket, cancellationToken);
-            if (target is null || !IsApprovedCheckoutTarget(target, allowedHosts))
-            {
-                return Results.NotFound();
-            }
-        }
-        catch (RegistrationPaymentCheckoutStoreUnavailableException)
-        {
-            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
-        }
-
-        context.Response.Cookies.Delete(CheckoutCookieName, CreateCheckoutCookieOptions(context.Request));
-        return Results.Redirect(target.AbsoluteUri, permanent: false, preserveMethod: false);
+        CookieOptions deletionOptions = CreateCheckoutCookieOptions(context.Request);
+        deletionOptions.MaxAge = TimeSpan.Zero;
+        deletionOptions.Expires = DateTimeOffset.UnixEpoch;
+        context.Response.Cookies.Append(CheckoutCookieName, string.Empty, deletionOptions);
+        context.Response.Headers.Location = target.AbsoluteUri;
+        return Results.StatusCode(StatusCodes.Status303SeeOther);
     }
 
     private static IResult NavigateToRecovery(HttpContext context)
