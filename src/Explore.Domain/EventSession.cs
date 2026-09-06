@@ -349,6 +349,10 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     {
         EventLocationId = null;
         EventLocation = null;
+        LocationId = null;
+        Location = null;
+        RoomId = null;
+        Room = null;
     }
 
     private EventSessionStatusEnum CurrentStatus => (EventSessionStatusEnum)EventSessionStatusId;
