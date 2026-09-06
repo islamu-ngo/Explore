@@ -36,10 +36,9 @@ public sealed class GeneratedInitMigrationBehaviorTests(
         string[] exploreMigrations = MigrationIds(explore);
         string[] dataProtectionMigrations = MigrationIds(dataProtection);
         string[] authorityMigrations = MigrationIds(authority);
-        await Assert.That(exploreMigrations).HasSingleItem();
+        await Assert.That(exploreMigrations.Count(migration => migration.EndsWith("_Init", StringComparison.Ordinal))).IsEqualTo(1);
         await Assert.That(dataProtectionMigrations).HasSingleItem();
         await Assert.That(authorityMigrations).HasSingleItem();
-        await Assert.That(exploreMigrations[0]).EndsWith("_Init");
         await Assert.That(dataProtectionMigrations[0]).EndsWith("_Init");
         await Assert.That(authorityMigrations[0]).EndsWith("_Init");
 
@@ -423,7 +422,8 @@ public sealed class GeneratedInitMigrationBehaviorTests(
     private static Migration InitMigration(DbContext context)
     {
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
-        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations.Single();
+        KeyValuePair<string, System.Reflection.TypeInfo> item = assembly.Migrations
+            .Single(migration => migration.Key.EndsWith("_Init", StringComparison.Ordinal));
         return assembly.CreateMigration(item.Value, context.Database.ProviderName!);
     }
 

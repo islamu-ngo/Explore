@@ -32,6 +32,58 @@ CarpaNet's `IOAuthSessionStore` has two adapters and one durable table: a BFF se
 
 OAuth state and cross-host handoff are atomic and single-use. Multi-node deployments use Redis `GETDEL`; process-local atomic storage is limited to explicit single-node development. Handoff URLs contain only an opaque random code, never a platform JWT, PDS credential, DID, or session payload.
 
+### Relational transient storage authority
+
+The database-backed cutover introduces two instance-owned lifecycle entities:
+`AtprotoTransientRecord` for protected OAuth state and tenant handoffs, and
+`AtprotoTransientAssertionReplay` for machine-assertion replay claims. This
+additive schema does not itself switch the BFF consumers away from Redis.
+
+These entities deliberately do not implement the business tenant-filter
+contract. A canonical OAuth callback cannot know its originating tenant until
+it restores protected state. Real authentication records nevertheless require
+a nonempty tenant binding; only a separately constructed, internal health
+probe may omit it. Handoff reads and all authentication consumes require the
+expected tenant. This authority does not disable filters on sessions, users,
+or other business data, and does not fabricate a tenant for replay claims.
+
+Both tables use UUIDv7 identities and immutable rows. A transient record stores
+a closed purpose, lowercase SHA-256 locator digest, tenant binding, bounded
+ciphertext and Unix-millisecond expiry. The unique purpose/digest pair rejects
+duplicate creation without overwriting or renewing the existing record.
+Assertion replay claims use a separately unique digest and expiry; neither
+table stores a raw locator or assertion. The BFF retains payload protection,
+with separate Data Protection purposes for state and handoff.
+
+Consumption reads an untracked candidate and conditionally deletes its exact
+identity, purpose, digest and expected tenant while checking expiry again.
+Only one affected row authorizes returning the candidate. Identity matching
+prevents a stale reader from consuming a replacement row with the same
+locator. The repository owns the durable delete boundary, rejects EF-managed,
+ambient and explicitly enlisted outer transactions and non-relational providers,
+and must not replay a destructive
+operation after an uncertain commit. A lost response requires a fresh login,
+not recovery of already-consumed authentication material.
+
+Replay claims also reject all three outer-transaction forms: successful claim
+creation must be committed before the authenticated operation is dispatched.
+An outer rollback must never reopen an assertion already reported as claimed.
+
+Expiry indexes support bounded cleanup, but eligibility is checked on every
+read and consume independently of cleanup. OAuth state lasts at most ten
+minutes, further bounded by SDK expiry and the browser-proof handoff budget;
+handoffs last at most two minutes. Assertion claims remain until the entire
+30-second acceptance window and five-second clock-skew allowance have ended.
+Protected payloads are limited to 64 KiB UTF-8. Expired material may remain in
+database backups according to operator retention; live-row cleanup does not
+promise backup erasure.
+
+The same schema and winner semantics must hold on PostgreSQL, SQLite, SQL
+Server and MySQL/MariaDB. EF Core generates each provider's migration history.
+Application entities and mappings, not edited migration output, own schema
+corrections. MySQL-family DDL failures require forward repair rather than an
+assumption of transactional rollback.
+
 ### Cryptographic purpose separation and rotation
 
 Three instance-scoped, rotation-capable secret purposes are mandatory:

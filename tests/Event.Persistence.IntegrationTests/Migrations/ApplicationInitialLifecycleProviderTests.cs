@@ -48,18 +48,19 @@ public sealed class SqliteApplicationInitialLifecycleTests
         PrimaryDatabaseProviderComposition.ConfigureApplication(options, databaseOptions);
         await using var context = new ExploreDbContext(options.Options);
         IMigrator migrator = context.GetService<IMigrator>();
-        string migration = context.Database.GetMigrations().Single();
+        string[] migrations = context.Database.GetMigrations().ToArray();
+        string latestMigration = migrations[^1];
 
-        await migrator.MigrateAsync(migration);
+        await migrator.MigrateAsync(latestMigration);
         await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-            .IsEquivalentTo([migration]);
+            .IsEquivalentTo(migrations);
 
         await migrator.MigrateAsync(Migration.InitialDatabase);
         await Assert.That(await context.Database.GetAppliedMigrationsAsync()).IsEmpty();
 
-        await migrator.MigrateAsync(migration);
+        await migrator.MigrateAsync(latestMigration);
         await Assert.That(await context.Database.GetAppliedMigrationsAsync())
-            .IsEquivalentTo([migration]);
+            .IsEquivalentTo(migrations);
     }
 
     internal static async Task AssertDataProtectionLifecycleAsync(
