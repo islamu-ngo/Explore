@@ -89,7 +89,7 @@ public static class EventApiProxyExtensions
                     // Deny the exact private capability even when a browser presents a valid assertion.
                     // Header stripping alone cannot establish a server-only transport boundary.
                     var path = transformContext.HttpContext.Request.Path.Value?.TrimEnd('/');
-                    if (new[] { "create", "read", "consume" }.Any(operation => string.Equals(
+                    if (new[] { "create", "read", "consume", "probe" }.Any(operation => string.Equals(
                             path, "/api/auth/atproto/transient/" + operation, StringComparison.OrdinalIgnoreCase)))
                     {
                         transformContext.HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;

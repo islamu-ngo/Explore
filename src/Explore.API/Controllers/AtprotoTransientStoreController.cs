@@ -1,4 +1,4 @@
-// ABOUTME: Hosts three server-private pre-authentication transient operations with dedicated machine authorization.
+// ABOUTME: Hosts server-private pre-authentication transient operations and a synthetic operational probe.
 // ABOUTME: Excludes protected results from public discovery, HAL, output caching and generic idempotency replay.
 
 using Asp.Versioning;
@@ -8,6 +8,7 @@ using Explore.API.ExceptionHandling;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.Responses;
+using Explore.Application.Features.Authentication.Atproto.Requests.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +36,15 @@ namespace Explore.API.Controllers;
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)]
 public sealed class AtprotoTransientStoreController(IMediator mediator) : ControllerBase
 {
+    [SuppressIdempotencyResponseStorage]
+    [HttpPost("probe", Name = RouteNames.ProbeAtprotoTransient)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<ActionResult> Probe(CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new ProbeAtprotoTransientCommand(), cancellationToken);
+        return Failures.Map(this, result, () => NoContent());
+    }
+
     private static readonly ApiNotFoundProblemDescriptor Missing = new("Not Found", "Transient record not found.");
     private static readonly CommandFailurePolicy Failures = CommandFailurePolicy
         .ValidatedBy(new("request", "Invalid transient request", "Invalid transient request."))

@@ -8,6 +8,7 @@ public interface IAtprotoTransientStoreRepository
 {
     Task<bool> TryCreateAsync(AtprotoTransientRecord record, CancellationToken cancellationToken = default);
     Task<bool> TryCreateHealthProbeAsync(AtprotoTransientRecord record, CancellationToken cancellationToken = default);
+    Task<AtprotoTransientRecord?> ReadHealthProbeAsync(Guid candidateId, string tokenDigest, CancellationToken cancellationToken = default);
     Task<AtprotoTransientRecord?> ReadOAuthStateAsync(string tokenDigest, CancellationToken cancellationToken = default);
     Task<AtprotoTransientRecord?> ReadAsync(AtprotoTransientPurpose purpose, string tokenDigest, Guid tenantId, CancellationToken cancellationToken = default);
     Task<AtprotoTransientRecord?> ConsumeAsync(Guid candidateId, AtprotoTransientPurpose purpose, string tokenDigest, Guid tenantId, CancellationToken cancellationToken = default);

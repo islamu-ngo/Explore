@@ -15,6 +15,7 @@ public sealed class ApiBackedAtprotoTransientStore(
     public const string HttpClientName = "AtprotoTransientBridge";
     private const int MaximumWireBytes = 80 * 1024;
     private const int MaximumCiphertextBytes = 64 * 1024;
+    private static readonly byte[] ProbeBody = "{\"purpose\":\"health_probe\"}"u8.ToArray();
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = false,
@@ -70,6 +71,21 @@ public sealed class ApiBackedAtprotoTransientStore(
         // A successful delete is usable only for the exact previously validated immutable candidate.
         if (result != candidate) throw InvalidResponse();
         return IsLive(candidate.Purpose, candidate.ExpiresAtUnixMilliseconds);
+    }
+
+    public async Task<bool> ProbeAsync(CancellationToken cancellationToken = default)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2), clock);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
+        using var request = new HttpRequestMessage(HttpMethod.Post, AtprotoTransientAssertionService.Prefix + "probe")
+        {
+            Content = new ByteArrayContent(ProbeBody)
+        };
+        request.Content.Headers.ContentType = new("application/json");
+        request.Headers.Add(AtprotoTransientAssertionService.HeaderName, assertions.Issue("probe", "health_probe", ProbeBody));
+        using var client = clients.CreateClient(HttpClientName);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token).ConfigureAwait(false);
+        return response.StatusCode == HttpStatusCode.NoContent;
     }
 
     private async Task<BffAtprotoTransientCandidate?> SendAsync(string operation, string purpose, byte[] body,

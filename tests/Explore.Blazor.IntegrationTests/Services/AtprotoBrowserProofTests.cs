@@ -2,20 +2,11 @@
 // ABOUTME: Guards stable parallel-flow binding, expiry budgets, cold-cookie races and cross-origin/key-loss rejection.
 
 using System.Net;
-using System.Net.Http.Json;
-using System.Security.Cryptography;
-using System.Text.Json;
-using Explore.Blazor.Authentication;
-using Explore.Blazor.Constants;
-using Explore.Blazor.IntegrationTests.Fixtures;
 using Explore.Blazor.Services.Auth;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Net.Http.Headers;
 
 namespace Explore.Blazor.IntegrationTests.Services;
@@ -240,58 +231,6 @@ public sealed class AtprotoBrowserProofTests
         await Assert.That(proof.Validate(duplicate.Request, binding)).IsFalse();
         await Assert.That(() => proof.CreateBinding(duplicate)).Throws<InvalidOperationException>();
     }
-
-    [Test]
-    public async Task NearExpiryChallenge_ReturnsBoundedRetryAfterWithoutRewritingTheProofCookie()
-    {
-        var clock = new Clock();
-        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        var material = key.ExportParameters(true);
-        string ring = JsonSerializer.Serialize(new { keys = new[] { new
-        {
-            kty = "EC", crv = "P-256", kid = "proof-test", use = "sig", alg = "ES256", status = "active",
-            x = Encode(material.Q.X!), y = Encode(material.Q.Y!), d = Encode(material.D!)
-        } } });
-        await using var factory = new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
-        {
-            builder.UseSetting("Atproto:PublicUrl", Origin.AbsoluteUri);
-            builder.UseSetting("Explore:MultiTenancy:DefaultTenantId", Guid.CreateVersion7().ToString("D"));
-            builder.UseSetting("Explore:MultiTenancy:DefaultTenant", "default");
-            builder.ConfigureTestServices(services =>
-            {
-                services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(clock);
-                services.Configure<AtprotoClientKeyOptions>(options => options.OAuthClientPrivateJwks = ring);
-                services.AddAuthentication().AddScheme<AtprotoAuthenticationOptions, AtprotoAuthenticationHandler>(AuthSchemeNames.Atproto, _ => { });
-            });
-        });
-        using var client = factory.CreateClient(new() { BaseAddress = Origin, AllowAutoRedirect = false, HandleCookies = false });
-        using var status = await client.GetAsync("/auth/status");
-        await Assert.That(status.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var cookies = status.Headers.GetValues("Set-Cookie").Select(value => SetCookieHeaderValue.Parse(value)).ToArray();
-        string xsrf = cookies.Single(cookie => cookie.Name.Value == "XSRF-TOKEN").Value.Value!;
-        var proof = factory.Services.GetRequiredService<AtprotoBrowserProof>();
-        var start = Request(new CookieContainer());
-        var binding = proof.CreateBinding(start);
-        string proofCookie = start.Response.Headers.SetCookie.Single()!.Split(';', 2)[0];
-        clock.Advance(TimeSpan.FromMinutes(13.5));
-        using var challenge = new HttpRequestMessage(HttpMethod.Post, "/auth/atproto/challenge")
-        {
-            Content = JsonContent.Create(new { handle = "alice.example", classification = "person", returnPath = "/" })
-        };
-        challenge.Headers.Add("Cookie", string.Join("; ", cookies.Select(cookie => cookie.Name + "=" + cookie.Value).Append(proofCookie)));
-        challenge.Headers.Add("X-CSRF-TOKEN", Uri.UnescapeDataString(xsrf));
-        using var response = await client.SendAsync(challenge);
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.TooManyRequests);
-        await Assert.That(response.Headers.RetryAfter?.Delta).IsEqualTo(TimeSpan.FromSeconds(90));
-        await Assert.That(response.Headers.TryGetValues("Set-Cookie", out var replacements)
-            && replacements.Any(value => value.StartsWith(AtprotoBrowserProof.CookieName + "=", StringComparison.Ordinal))).IsFalse();
-        var retry = Request(new CookieContainer());
-        retry.Request.Headers.Cookie = proofCookie;
-        await Assert.That(proof.Validate(retry.Request, binding)).IsTrue();
-    }
-
-    private static string Encode(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     private static DefaultHttpContext Request(CookieContainer jar, Uri? origin = null)
     {

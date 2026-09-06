@@ -14,8 +14,8 @@ public sealed class AtprotoTransientAssertionService(AtprotoClientKeyProvider ke
 
     public string Issue(string operation, string purpose, ReadOnlySpan<byte> body)
     {
-        if (operation is not ("create" or "read" or "consume")
-            || purpose is not ("oauth_state" or "tenant_handoff")
+        if (operation is not ("create" or "read" or "consume" or "probe")
+            || (operation == "probe" ? purpose != "health_probe" : purpose is not ("oauth_state" or "tenant_handoff"))
             || body.Length is 0 or > 80 * 1024)
             throw new ArgumentException("Invalid ATProto transient assertion target.");
 

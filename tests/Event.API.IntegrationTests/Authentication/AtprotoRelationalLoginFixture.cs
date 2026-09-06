@@ -51,6 +51,7 @@ public sealed class AtprotoRelationalLoginFixture : IAsyncInitializer, IAsyncDis
     public PostgreSqlApiWebApplicationFactory Api { get; private set; } = null!;
     public Guid TenantId { get; private set; }
     public bool ConfiguredOnboarding { get; init; }
+    public bool DisableRateLimiting { get; init; } = true;
     public TimeProvider Clock { get; init; } = TimeProvider.System;
     public string TenantSlug => "transient-" + TenantId.ToString("N");
     public ExternalAtprotoTransport External { get; } = new();
@@ -104,7 +105,7 @@ public sealed class AtprotoRelationalLoginFixture : IAsyncInitializer, IAsyncDis
         var apiConfiguration = new Dictionary<string, string?>
         {
             ["Testing:HostProfile"] = TestHostProfile.RealRuntime,
-            ["RateLimiting:DisableInTesting"] = "true",
+            ["RateLimiting:DisableInTesting"] = DisableRateLimiting.ToString(),
             ["Deployment:Mode"] = "SingleTenant",
             ["Deployment:DefaultTenantId"] = TenantId.ToString("D"),
             ["Authentication:Provider"] = "atproto",
@@ -251,11 +252,14 @@ public sealed class AtprotoRelationalLoginFixture : IAsyncInitializer, IAsyncDis
         public string? State { get; private set; }
         public string? TokenClientKeyId { get; private set; }
         private readonly ConcurrentDictionary<string, (string State, string Code, string Challenge)> authorizations = new();
-        private int dnsRequests, didDocumentRequests, pushedAuthorizationRequests;
+        private int dnsRequests, didDocumentRequests, authorizationMetadataRequests, pushedAuthorizationRequests;
         public int DnsRequests => Volatile.Read(ref dnsRequests);
         public int DidDocumentRequests => Volatile.Read(ref didDocumentRequests);
+        public int AuthorizationMetadataRequests => Volatile.Read(ref authorizationMetadataRequests);
         public int PushedAuthorizationRequests => Volatile.Read(ref pushedAuthorizationRequests);
         public bool UseDidWeb { get; set; }
+        public string AuthorizationEndpoint { get; set; } = "https://issuer.example/oauth/authorize";
+        public string? IdentityDocumentScenario { get; set; }
         public string SubjectDid => UseDidWeb ? "did:web:alice.example" : Did;
         public Func<CancellationToken, Task>? BeforeParResponse { get; set; }
         public int VerifiedPdsRequests { get; private set; }
@@ -290,15 +294,27 @@ public sealed class AtprotoRelationalLoginFixture : IAsyncInitializer, IAsyncDis
                     || owner.UseDidWeb && uri.Host == "alice.example" && uri.AbsolutePath == "/.well-known/did.json"))
                 {
                     Interlocked.Increment(ref owner.didDocumentRequests);
-                    return Json(new { id = owner.SubjectDid, alsoKnownAs = new[] { "at://alice.example" }, service = new[]
-                    { new { id = "#atproto_pds", type = "AtprotoPersonalDataServer", serviceEndpoint = "https://pds.example" } } });
+                    object Service(string endpoint) => new { id = "#atproto_pds", type = "AtprotoPersonalDataServer", serviceEndpoint = endpoint };
+                    object[] services = owner.IdentityDocumentScenario switch
+                    {
+                        "missing_pds" => [],
+                        "duplicate_pds" => [Service("https://pds.example"), Service("https://other-pds.example")],
+                        "non_https_pds" => [Service("http://pds.example")],
+                        "invalid_pds" => [Service("not-a-uri")],
+                        _ => [Service("https://pds.example")]
+                    };
+                    return Json(new { id = owner.SubjectDid,
+                        alsoKnownAs = new[] { owner.IdentityDocumentScenario == "conflicting_handle" ? "at://mallory.example" : "at://alice.example" },
+                        service = services });
                 }
                 if (request.Method == HttpMethod.Get && uri.Host == "pds.example" && uri.AbsolutePath == "/.well-known/oauth-protected-resource")
                     return Json(new { authorization_servers = new[] { "https://issuer.example" } });
                 if (request.Method == HttpMethod.Get && uri.Host == "issuer.example" && uri.AbsolutePath == "/.well-known/oauth-authorization-server")
+                {
+                    Interlocked.Increment(ref owner.authorizationMetadataRequests);
                     return Json(new
                     {
-                        issuer = "https://issuer.example", authorization_endpoint = "https://issuer.example/oauth/authorize",
+                        issuer = "https://issuer.example", authorization_endpoint = owner.AuthorizationEndpoint,
                         token_endpoint = "https://issuer.example/oauth/token", pushed_authorization_request_endpoint = "https://issuer.example/oauth/par",
                         revocation_endpoint = "https://issuer.example/oauth/revoke", require_pushed_authorization_requests = true,
                         token_endpoint_auth_methods_supported = new[] { "private_key_jwt" }, token_endpoint_auth_signing_alg_values_supported = new[] { "ES256" },
@@ -307,6 +323,7 @@ public sealed class AtprotoRelationalLoginFixture : IAsyncInitializer, IAsyncDis
                         authorization_response_iss_parameter_supported = true, client_id_metadata_document_supported = true,
                         scopes_supported = new[] { "atproto" }, require_request_uri_registration = true
                     });
+                }
                 if (request.Method == HttpMethod.Post && uri.Host == "issuer.example" && uri.AbsolutePath is "/oauth/par" or "/oauth/token")
                 {
                     var form = (await request.Content!.ReadAsStringAsync(cancellationToken)).Split('&').Select(part => part.Split('=', 2))

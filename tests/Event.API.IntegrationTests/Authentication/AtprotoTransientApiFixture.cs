@@ -118,7 +118,7 @@ public sealed class AtprotoTransientApiFixture : IAsyncInitializer, IAsyncDispos
     }
 
     public async Task<ServiceProvider> CreateBffServicesAsync(HttpMessageHandler? handler = null, bool rotateKeys = false,
-        bool globalHedging = false, ILoggerProvider? logs = null)
+        bool globalHedging = false, ILoggerProvider? logs = null, TimeProvider? timeProvider = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["ExploreApi:BaseUrl"] = "https://api.test" });
@@ -149,7 +149,7 @@ public sealed class AtprotoTransientApiFixture : IAsyncInitializer, IAsyncDispos
         {
             OAuthClientPrivateJwks = ring.ToJsonString()
         })));
-        builder.Services.AddSingleton<TimeProvider>(Clock);
+        builder.Services.AddSingleton<TimeProvider>(timeProvider ?? Clock);
         builder.Services.AddSingleton<BffAuth.AtprotoTransientAssertionService>();
         builder.Services.AddSingleton<BffAuth.ApiBackedAtprotoTransientStore>();
         return builder.Services.BuildServiceProvider();

@@ -57,7 +57,8 @@ public sealed class AtprotoTransientAssertionValidator(ISecretResolver secrets, 
                 || String(c, "use") != AtprotoTransientAuthenticationDefaults.Use
                 || String(c, "method") != "POST" || String(c, "path") != request.Path.Value
                 || String(c, "operation") != operation
-                || String(c, "purpose") is not ("oauth_state" or "tenant_handoff")
+                || (operation == "probe" ? String(c, "purpose") != "health_probe"
+                    : String(c, "purpose") is not ("oauth_state" or "tenant_handoff"))
                 || !Guid.TryParseExact(String(c, "jti"), "D", out var jti) || jti == Guid.Empty
                 || !Integer(c, "iat", out long issuedAt) || !Integer(c, "exp", out long expiresAt)
                 || !Fresh(issuedAt, expiresAt)
@@ -66,7 +67,8 @@ public sealed class AtprotoTransientAssertionValidator(ISecretResolver secrets, 
             {
                 using var document = JsonDocument.Parse(body, new JsonDocumentOptions { MaxDepth = 8 });
                 if (!HasUniqueProperties(document.RootElement)
-                    || String(document.RootElement, "purpose") != String(c, "purpose")) return null;
+                    || String(document.RootElement, "purpose") != String(c, "purpose")
+                    || (operation == "probe" && document.RootElement.EnumerateObject().Any(property => property.Name != "purpose"))) return null;
             }
             catch (JsonException) { return null; }
 
@@ -78,7 +80,7 @@ public sealed class AtprotoTransientAssertionValidator(ISecretResolver secrets, 
             using var key = ring.CreateEcdsaKey(kid, includePrivateKey: false);
             if (!key.VerifyData(Encoding.ASCII.GetBytes(parts[0] + "." + parts[1]), signature,
                     HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation)) return null;
-            return new(jti.ToString("D"), checked((expiresAt + AtprotoTransientAuthenticationDefaults.SkewSeconds) * 1000));
+            return new(jti.ToString("D"), checked((expiresAt + AtprotoTransientAuthenticationDefaults.SkewSeconds) * 1000), String(c, "purpose")!);
         }
     }
 
@@ -123,7 +125,7 @@ public sealed class AtprotoTransientAssertionValidator(ISecretResolver secrets, 
     }
 }
 
-public sealed record AtprotoTransientAssertion(string Jti, long AcceptanceExpiresAtUnixMilliseconds)
+public sealed record AtprotoTransientAssertion(string Jti, long AcceptanceExpiresAtUnixMilliseconds, string Purpose)
 {
     public override string ToString() => nameof(AtprotoTransientAssertion);
 }

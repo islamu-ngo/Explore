@@ -29,7 +29,7 @@ public sealed class AtprotoTransientBoundaryArchitectureTests
             .Where(endpoint => endpoint.Metadata.GetMetadata<ControllerActionDescriptor>()?.ControllerTypeInfo
                 == typeof(AtprotoTransientStoreController)).ToArray();
         await Assert.That(endpoints.Select(endpoint => ((RouteEndpoint)endpoint).RoutePattern.RawText ?? string.Empty))
-            .IsEquivalentTo(new[] { "api/auth/atproto/transient/create", "api/auth/atproto/transient/read", "api/auth/atproto/transient/consume" });
+            .IsEquivalentTo(new[] { "api/auth/atproto/transient/create", "api/auth/atproto/transient/read", "api/auth/atproto/transient/consume", "api/auth/atproto/transient/probe" });
         foreach (var endpoint in endpoints)
         {
             await Assert.That(endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods).IsEquivalentTo(new[] { "POST" });

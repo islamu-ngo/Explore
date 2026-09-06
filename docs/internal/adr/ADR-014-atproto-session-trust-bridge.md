@@ -119,6 +119,16 @@ assertion. Its ordinary routes are the authorized POST operations `create`,
 `X-Atproto-Transient-Assertion`. The authenticated service subject cannot
 establish a platform user, DID, browser session, or general business-data access.
 
+The additional private `probe` operation accepts only
+`{"purpose":"health_probe"}`. The Application handler generates tenantless,
+random non-secret data with a thirty-second expiry and proves create, read-back,
+and conditional consume before returning an empty `204`. No caller-selected
+tenant, locator, or payload is admitted. The BFF uses the same signed bridge
+without retry/hedging, a two-second deadline, and a ten-second native readiness
+cache. Concurrent cache misses are coalesced per BFF singleton, with the
+two-second budget covering gate waiting and the probe. Leftover synthetic rows after failure expire and use the ordinary
+cleanup pass; no separate health table or persistence abstraction is required.
+
 The ES256 profile uses issuer `event-atproto-transient-bff`, audience
 `event-atproto-transient-api`, subject `event-blazor-bff`, and use
 `atproto-transient`. It binds `jti`, `iat`, `exp`, `method`, exact `path`,
@@ -143,9 +153,9 @@ caching must not replay a consumed payload.
 
 Browser-facing YARP routes must deny the private route set, independently of
 stripping the assertion header. The controller, HAL discovery and public
-OpenAPI/generated clients expose no transient-store affordance. The synthetic
-probe and its closed HealthProbe purpose belong to the later operational
-lifecycle; ordinary create/read/consume never accept that purpose.
+OpenAPI/generated clients expose no transient-store affordance. Only the
+synthetic probe accepts the closed `health_probe` purpose; ordinary
+create/read/consume never accept that purpose.
 
 ### Cryptographic purpose separation and rotation
 
@@ -173,7 +183,7 @@ The BFF's URL-form client ID is its exact canonical HTTPS `/oauth/client-metadat
 - The browser receives only an HttpOnly BFF cookie; the API receives only a short-lived first-party bearer token after PDS verification.
 - BFF, API, and Infrastructure need separate adapters and key consumers while Domain remains unaware of CarpaNet types.
 - Key rotation requires overlap publication, `kid`-based verification/decryption, multi-node consistency, and consumer-specific verification before retired-key removal.
-- CarpaNet outbound traffic passes the constrained transport boundary when an OAuth or PDS operation runs. The advertised BFF readiness signal is a passive local check and does not probe Redis, DNS, a PDS, authorization-server discovery, or the Infrastructure/API key rings.
+- CarpaNet outbound traffic passes the constrained transport boundary when an OAuth or PDS operation runs. BFF readiness combines local prerequisites with the signed operational transient probe, not a user PDS, authorization-server discovery, or session-encryption/session-JWT key-ring probe. ATProto-primary failure is Unhealthy; optional ATProto failure with explicit Local Identity/Keycloak primary is Degraded, and disabled ATProto is Healthy. Liveness remains independent.
 - In-flight logins must restart after the transient-backend cutover; no legacy reader is retained. Existing BFF Data Protection remains separate: Redis-free hosts persist the native key directory, replicas share it with application discriminator `islamu-event`, and an operator choosing no Redis must also remove explicit Redis key persistence. Required key loss fails closed rather than silently relocating keys.
 
 ## Related

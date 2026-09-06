@@ -18,7 +18,8 @@ public static class AtprotoTransientAuthenticationDefaults
     public const int LifetimeSeconds = 30;
     public const int SkewSeconds = 5;
     internal const string BufferedBodyKey = "__atproto_transient_body";
-    private static readonly string[] Operations = ["create", "read", "consume"];
+    internal const string VerifiedPurposeKey = "__atproto_transient_purpose";
+    private static readonly string[] Operations = ["create", "read", "consume", "probe"];
 
     public static bool IsPrivatePath(PathString path) =>
         Operations.Any(operation =>
@@ -30,6 +31,7 @@ public static class AtprotoTransientAuthenticationDefaults
             Prefix + "create" => "create",
             Prefix + "read" => "read",
             Prefix + "consume" => "consume",
+            Prefix + "probe" => "probe",
             _ => null
         } : null;
 }

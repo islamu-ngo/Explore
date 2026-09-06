@@ -233,14 +233,14 @@ The `MultiAuth` policy selector preserves the Keycloak and API-key branches and 
 - The browser cookie stores the first-party platform JWT, never a PDS access token, refresh token, or DPoP private key. Protected OAuth state and cross-host handoffs use the primary relational store through the private machine-authenticated API, with candidate-bound single-winner consumption.
 - `ApiBackedAtprotoTransientStore` checks exact candidate equality and expiry again after the complete consume response arrives. A candidate expiring during delivery is rejected even if browser proof and session remain live; its committed deletion is never retried or recreated, and no authenticated cookie is issued from that result.
 - A separate `__Host-event-atproto-proof` cookie is Secure, HttpOnly, SameSite=Lax, host-only and fixed at fifteen minutes. Each flow stores only its independent identifier, HMAC binding and proof expiry. Same-origin callbacks and destination handoffs validate possession before consuming; a canonical callback for another origin issues no authenticated cookie. Sign-in rechecks proof after provider exchange. Wrong-browser rejection preserves the destination handoff; proof-cookie completion never slides or rewrites the shared proof.
-- The `atproto-authentication` health check is passive and local: it validates canonical BFF identity, the OAuth signing ring, and state/session adapter registration. It does not probe Redis, a user PDS, discovery endpoints, or the Infrastructure/API key rings.
+- The `atproto-authentication` health check validates canonical BFF identity, the OAuth signing ring, and state/session adapter registration, then performs a signed synthetic database create/read/consume probe. Its transport deadline is two seconds, without retries/hedging; completed results are cached for ten seconds. It does not certify a user PDS, discovery endpoints, or session-encryption/session-JWT key rings. Disabled ATProto is Healthy; unavailable ATProto primary is Unhealthy, while unavailable optional ATProto with explicit Local Identity/Keycloak primary is Degraded. Liveness does not probe the store.
 
 OAuth session JSON, access/refresh tokens, DPoP material, JWTs, and JWK private values must never appear in logs, traces, metrics, URLs, OpenAPI, WASM authentication state, or generated clients. Verification failures use bounded reason codes; provider exceptions and response bodies are not reflected to callers.
 
 ### ATProto transient-service privilege
 
 The private transient store authenticates an instance BFF service, not a user.
-Only the exact POST create/read/consume routes under
+Only the exact POST create/read/consume/probe routes under
 `/api/auth/atproto/transient/` use its dedicated assertion scheme and narrow
 tenant-resolution exception. A bootstrap assertion, platform JWT or
 browser-supplied tenant hint cannot substitute for that authority.
@@ -261,6 +261,16 @@ instance-scoped replay claim is required before action dispatch. Only the
 initial OAuth-state lookup may omit the expected tenant; handoff access and
 consumption require it. Replay admission and consumption reject outer
 transactions so their success signals cannot precede durable commit.
+
+The dedicated `probe` operation accepts only the signed body
+`{"purpose":"health_probe"}`; callers cannot supply a tenant, locator, or
+payload. `ProbeAtprotoTransientCommandHandler` generates tenantless random
+non-secret data with a thirty-second expiry, creates it, reads it back, and
+conditionally consumes it. Success is an empty `204`, never an identifier or
+payload. Ordinary operations cannot request `health_probe`. A failed probe
+may leave only this expiring synthetic row; the bounded minute cleanup removes
+it alongside expired authentication rows and replay claims. Replay claims
+remain through acceptance expiry including the five-second skew allowance.
 
 Private responses use no-store and cannot be replayed by generic response
 caching or idempotency middleware. Assertions, locators and ciphertext never

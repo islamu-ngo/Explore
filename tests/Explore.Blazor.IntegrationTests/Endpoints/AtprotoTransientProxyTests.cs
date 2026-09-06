@@ -45,7 +45,7 @@ public sealed class AtprotoTransientProxyTests
         await proxy.StartAsync();
         using var client = proxy.GetTestClient();
         string assertion = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-        foreach (string operation in new[] { "create", "read", "consume" })
+        foreach (string operation in new[] { "create", "read", "consume", "probe" })
         foreach (string path in new[] { $"/api/auth/atproto/transient/{operation}", $"/API/AUTH/ATPROTO/TRANSIENT/{operation}/" })
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, path);

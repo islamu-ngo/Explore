@@ -1,5 +1,5 @@
 // ABOUTME: Exercises backend-independent ATProto challenge validation at the BFF HTTP boundary.
-// ABOUTME: Keeps antiforgery, rate limits, malformed inputs and hostile discovery documents outside relational login tests.
+// ABOUTME: Keeps antiforgery, rate limits and pre-readiness admission outside the relational login preflight tests.
 
 using System.Net;
 using System.Security.Cryptography;
@@ -61,48 +61,6 @@ public sealed class AtprotoAuthenticationFlowTests
     }
 
     [Test]
-    public async Task InvalidMissingAndOversizedHandlesAreRejectedWithoutCredentialReflection()
-    {
-        await using var factory = CreateFactory();
-        string[] payloads =
-        [
-            "{}", "{\"handle\":\"\",\"classification\":\"person\"}",
-            "{\"handle\":\"single-label\",\"classification\":\"person\"}",
-            "{\"handle\":\"bad..example\",\"classification\":\"person\"}",
-            JsonSerializer.Serialize(new { handle = $"oauth-access-token.{new string('a', 240)}.example", classification = "person" })
-        ];
-        foreach (string payload in payloads)
-        {
-            var response = await ChallengeWithAntiforgeryAsync(factory, payload);
-            await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
-            await Assert.That(response.Location).IsNull();
-            await Assert.That(response.Body).Contains("ATProto sign-in could not be started.");
-            foreach (string marker in new[] { "oauth-access-token", "login_hint", "credential" })
-                await Assert.That(response.Body).DoesNotContain(marker);
-        }
-        var oversized = await ChallengeWithAntiforgeryAsync(factory, JsonSerializer.Serialize(new
-        {
-            handle = "alice.example", classification = "person", padding = new string('x', 2200)
-        }));
-        await Assert.That(oversized.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
-        await Assert.That(oversized.Location).IsNull();
-        await Assert.That(oversized.Body).DoesNotContain(new string('x', 64));
-    }
-
-    [Test]
-    public async Task MissingOrUnknownClassificationIsRejectedBeforeOAuthStateCreation()
-    {
-        await using var factory = CreateFactory();
-        foreach (string payload in new[] { "{\"handle\":\"alice.example\"}", "{\"handle\":\"alice.example\",\"classification\":\"bot\"}" })
-        {
-            var response = await ChallengeWithAntiforgeryAsync(factory, payload);
-            await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
-            await Assert.That(response.Location).IsNull();
-            await Assert.That(response.Body).Contains("ATProto sign-in could not be started.");
-        }
-    }
-
-    [Test]
     public async Task ConfiguredKeycloakPendingRejectsAtprotoChallenge()
     {
         await using var factory = CreateFactory(bypassAntiforgery: true, onboardingStatus: new(false,
@@ -131,39 +89,8 @@ public sealed class AtprotoAuthenticationFlowTests
         }
     }
 
-    [Test]
-    [Arguments(IdentityDocumentScenario.HttpAuthorizationEndpoint)]
-    [Arguments(IdentityDocumentScenario.CredentialedAuthorizationEndpoint)]
-    [Arguments(IdentityDocumentScenario.TokenFragmentAuthorizationEndpoint)]
-    public async Task UnsafeAuthorizationEndpointFailsThroughHttpWithoutCredentialReflection(IdentityDocumentScenario scenario)
-    {
-        using var server = new RejectedDiscoveryServer(scenario);
-        await using var factory = CreateFactory(discovery: server);
-        var response = await ChallengeWithAntiforgeryAsync(factory, "{\"handle\":\"alice.example\",\"classification\":\"person\"}");
-        await Assert.That(response.StatusCode).IsEqualTo(StatusCodes.Status400BadRequest);
-        await Assert.That(response.Location).IsNull();
-        foreach (string marker in new[] { "login_hint", "access_token", "user:password" })
-            await Assert.That(response.Body).DoesNotContain(marker);
-        await Assert.That(server.PushedAuthorizationRequests).IsEqualTo(0);
-    }
-
-    [Test]
-    [Arguments(IdentityDocumentScenario.ConflictingHandle)]
-    [Arguments(IdentityDocumentScenario.MissingPds)]
-    [Arguments(IdentityDocumentScenario.DuplicatePds)]
-    [Arguments(IdentityDocumentScenario.NonHttpsPds)]
-    [Arguments(IdentityDocumentScenario.InvalidPds)]
-    public async Task ConflictingHandleOrInvalidPdsServiceFailsBeforeParAndBridge(IdentityDocumentScenario scenario)
-    {
-        using var server = new RejectedDiscoveryServer(scenario);
-        await using var factory = CreateFactory(discovery: server);
-        var response = await ChallengeWithAntiforgeryAsync(factory, "{\"handle\":\"alice.example\",\"classification\":\"person\"}");
-        await Assert.That(response.StatusCode).IsNotEqualTo(StatusCodes.Status200OK);
-        await Assert.That(server.PushedAuthorizationRequests).IsEqualTo(0);
-    }
-
     private static WebApplicationFactory<Program> CreateFactory(bool bypassAntiforgery = false,
-        bool enableRealAtprotoRateLimit = false, BffOnboardingStatus? onboardingStatus = null, RejectedDiscoveryServer? discovery = null) =>
+        bool enableRealAtprotoRateLimit = false, BffOnboardingStatus? onboardingStatus = null) =>
         new BlazorBffWebApplicationFactory().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Atproto:PublicUrl", CanonicalOrigin);
@@ -181,7 +108,7 @@ public sealed class AtprotoAuthenticationFlowTests
                 services.Configure<AtprotoClientKeyOptions>(options => options.OAuthClientPrivateJwks = CreatePrivateJwks());
                 services.AddAuthentication().AddScheme<AtprotoAuthenticationOptions, AtprotoAuthenticationHandler>(AuthSchemeNames.Atproto, _ => { });
                 services.RemoveAll<IAtprotoOAuthTransportFactory>();
-                services.AddSingleton<IAtprotoOAuthTransportFactory>(new RejectedDiscoveryTransport(discovery));
+                services.AddSingleton<IAtprotoOAuthTransportFactory>(new RejectedDiscoveryTransport());
                 if (bypassAntiforgery)
                 {
                     services.RemoveAll<IBffSelfCallTokenService>();
@@ -254,68 +181,13 @@ public sealed class AtprotoAuthenticationFlowTests
         } } });
     }
 
-    private sealed class RejectedDiscoveryTransport(RejectedDiscoveryServer? server) : IAtprotoOAuthTransportFactory, IDnsResolver
+    private sealed class RejectedDiscoveryTransport : IAtprotoOAuthTransportFactory, IDnsResolver
     {
         public HttpMessageHandler CreatePrimaryHandler(Explore.Atproto.Transport.AtprotoOutboundPolicy policy, TimeSpan connectTimeout) =>
-            server ?? throw new InvalidOperationException("Invalid input must fail before external discovery.");
+            throw new InvalidOperationException("Invalid input must fail before external discovery.");
         public IDnsResolver CreateDnsResolver() => this;
         public Task<IReadOnlyList<string>> GetTxtRecordsAsync(string name, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<string>>(name == "_atproto.alice.example" ? ["did=did:plc:alice"] : []);
-    }
-
-    private sealed class RejectedDiscoveryServer(IdentityDocumentScenario scenario) : HttpMessageHandler
-    {
-        public int PushedAuthorizationRequests { get; private set; }
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var uri = request.RequestUri!;
-            object body;
-            if (request.Method == HttpMethod.Get && uri.Host == "plc.directory" && uri.AbsolutePath == "/did:plc:alice")
-            {
-                object[] services = scenario switch
-                {
-                    IdentityDocumentScenario.MissingPds => [],
-                    IdentityDocumentScenario.DuplicatePds => [Service("https://pds.example"), Service("https://other-pds.example")],
-                    IdentityDocumentScenario.NonHttpsPds => [Service("http://pds.example")],
-                    IdentityDocumentScenario.InvalidPds => [Service("not-a-uri")],
-                    _ => [Service("https://pds.example")]
-                };
-                body = new { id = "did:plc:alice", alsoKnownAs = new[] { scenario == IdentityDocumentScenario.ConflictingHandle ? "at://mallory.example" : "at://alice.example" }, service = services };
-            }
-            else if (request.Method == HttpMethod.Get && uri.Host == "pds.example" && uri.AbsolutePath == "/.well-known/oauth-protected-resource")
-                body = new { authorization_servers = new[] { "https://issuer.example" } };
-            else if (request.Method == HttpMethod.Get && uri.Host == "issuer.example" && uri.AbsolutePath == "/.well-known/oauth-authorization-server")
-                body = new
-                {
-                    issuer = "https://issuer.example", authorization_endpoint = scenario switch
-                    {
-                        IdentityDocumentScenario.HttpAuthorizationEndpoint => "http://issuer.example/oauth/authorize",
-                        IdentityDocumentScenario.CredentialedAuthorizationEndpoint => "https://user:password@issuer.example/oauth/authorize",
-                        IdentityDocumentScenario.TokenFragmentAuthorizationEndpoint => "https://issuer.example/oauth/authorize#access_token=secret",
-                        _ => "https://issuer.example/oauth/authorize"
-                    },
-                    token_endpoint = "https://issuer.example/oauth/token", pushed_authorization_request_endpoint = "https://issuer.example/oauth/par",
-                    require_pushed_authorization_requests = true, token_endpoint_auth_methods_supported = new[] { "private_key_jwt" },
-                    token_endpoint_auth_signing_alg_values_supported = new[] { "ES256" }, dpop_signing_alg_values_supported = new[] { "ES256" },
-                    grant_types_supported = new[] { "authorization_code", "refresh_token" }, response_types_supported = new[] { "code" },
-                    code_challenge_methods_supported = new[] { "S256" }, authorization_response_iss_parameter_supported = true,
-                    client_id_metadata_document_supported = true, scopes_supported = new[] { "atproto" }, require_request_uri_registration = true
-                };
-            else
-            {
-                if (uri.AbsolutePath == "/oauth/par") PushedAuthorizationRequests++;
-                throw new InvalidOperationException("Hostile discovery must fail before authorization or session exchange.");
-            }
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            { Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json") });
-        }
-        private static object Service(string endpoint) => new { id = "#atproto_pds", type = "AtprotoPersonalDataServer", serviceEndpoint = endpoint };
-    }
-
-    public enum IdentityDocumentScenario
-    {
-        ConflictingHandle, MissingPds, DuplicatePds, NonHttpsPds, InvalidPds,
-        HttpAuthorizationEndpoint, CredentialedAuthorizationEndpoint, TokenFragmentAuthorizationEndpoint
     }
 
     private sealed record EndpointResponse(int StatusCode, string? Location, string Body);

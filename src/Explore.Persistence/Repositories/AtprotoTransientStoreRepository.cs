@@ -72,6 +72,18 @@ public sealed class AtprotoTransientStoreRepository(ExploreDbContext dbContext, 
         return deleted == 1 ? candidate : null;
     }
 
+    public async Task<AtprotoTransientRecord?> ReadHealthProbeAsync(Guid candidateId, string tokenDigest, CancellationToken cancellationToken = default)
+    {
+        EnsureRelational();
+        ValidateDigest(tokenDigest);
+        if (candidateId == Guid.Empty) throw new ArgumentException("A candidate identity is required.", nameof(candidateId));
+        long now = Now();
+        return await dbContext.AtprotoTransientRecords.AsNoTracking().SingleOrDefaultAsync(record =>
+            record.Id == candidateId && record.Purpose == AtprotoTransientPurpose.HealthProbe
+            && record.TokenDigest == tokenDigest && record.TenantId == null
+            && record.ExpiresAtUnixMilliseconds > now, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<bool> ConsumeHealthProbeAsync(Guid candidateId, string tokenDigest, CancellationToken cancellationToken = default)
     {
         EnsureNoAmbientTransaction();

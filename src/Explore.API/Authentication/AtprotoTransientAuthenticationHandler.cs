@@ -26,6 +26,7 @@ public sealed class AtprotoTransientAuthenticationHandler(IOptionsMonitor<Authen
         if (assertion is null || !await replay.TryClaimAsync(AtprotoTransientAssertionReplay.CreateFromAssertionId(
                 assertion.Jti, assertion.AcceptanceExpiresAtUnixMilliseconds), Context.RequestAborted))
             return AuthenticateResult.Fail("Invalid transient assertion.");
+        Context.Items[AtprotoTransientAuthenticationDefaults.VerifiedPurposeKey] = assertion.Purpose;
         var principal = new ClaimsPrincipal(new ClaimsIdentity([
             new Claim("sub", AtprotoTransientAuthenticationDefaults.Subject),
             new Claim("use", AtprotoTransientAuthenticationDefaults.Use)
