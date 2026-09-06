@@ -1,5 +1,5 @@
 ---
-description: Operate linked-user OAuth, governed publication, exact-collection ingestion, and tenant-gated discovery.
+description: Operate primary or linked AT Protocol login, governed publication, exact-collection ingestion, and tenant-gated discovery.
 ---
 <!-- ABOUTME: Guides operators through AT Protocol login, publication and governed event ingestion. -->
 <!-- ABOUTME: Explains database-backed login state, browser binding and key-persistence recovery requirements. -->
@@ -10,9 +10,9 @@ ISLAMU Event implements a selective **AT Protocol (Bluesky)** federation integra
 
 ---
 
-## 1. Linked-User Authentication & Publication
+## 1. Authentication & Publication
 
-* **OAuth Account Linking**: Authenticated users can link their Bluesky Decentralized Identifier (DID) to an existing local account (see [Authentication Architecture](../security-and-identity/authentication.md#linked-at-protocol-sign-in)).
+* **Primary or Linked Login**: AT Protocol can be the primary passwordless identity provider, creating an account for a verified Decentralized Identifier (DID). When optional alongside Local Identity or Keycloak, sign-in requires an existing exact DID link. Neither mode matches accounts by email or grants authorization roles (see [Authentication Architecture](../security-and-identity/authentication.md#at-protocol-sign-in)).
 * **Outbox-Backed Publication**: Outbound event publication is queued strictly via the transactional outbox after the primary database commit succeeds (see [Architecture & Request Flows](../getting-started/architecture-and-request-flows.md#2-write-command-flow)).
 * **Supported Records**:
   * Calendar Events: Published to the user's repository under `community.lexicon.calendar.event`.
@@ -70,6 +70,6 @@ Ingested external events are subject to tenant federation policies (see [Multi-T
 ## Related Guides & Next Steps
 
 * **[Lexicons Reference](lexicons.md)** — Review JSON schemas and field definitions for calendar records.
-* **[Authentication Architecture](../security-and-identity/authentication.md#linked-at-protocol-sign-in)** — Connect AT Protocol DIDs with Keycloak accounts.
+* **[Authentication Architecture](../security-and-identity/authentication.md#at-protocol-sign-in)** — Understand primary passwordless login and optional linked-account sign-in.
 * **[Multi-Tenancy Architecture](../security-and-identity/multi-tenancy.md)** — Tenant boundaries and discovery policies.
 * **[Architecture & Request Flows](../getting-started/architecture-and-request-flows.md)** — Transactional outbox pattern for event delivery.

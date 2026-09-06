@@ -88,14 +88,15 @@ External programmatic clients and integration workers authenticate using either:
 
 ---
 
-## Linked AT Protocol Sign-In
+## AT Protocol Sign-In
 
 Optional or primary [AT Protocol Authentication](../federation-and-open-protocols/at-protocol-and-bluesky-jetstream.md) enables users to sign in using their Bluesky handle (`@handle.bsky.social`) or Decentralized Identifier (DID):
 * Links strictly by the DID verified with the personal data server.
 * JIT-creates a passwordless account when AT Protocol is primary.
 * Never creates accounts through opportunistic email matching.
 * Does not implicitly grant event publication or federation consent.
-* Operates under the same unified [Authorization](authorization.md) rules as standard Keycloak users.
+* Requires an existing exact DID-linked account when optional under Local Identity or Keycloak.
+* Operates under the same provider-neutral [Authorization](authorization.md) rules as Local Identity and Keycloak users.
 
 ---
 
