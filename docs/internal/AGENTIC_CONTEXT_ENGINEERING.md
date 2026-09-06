@@ -5,7 +5,7 @@
 
 > **Audience:** Contributors | AI Agents | Platform Architects | Maintainers  
 > **Status:** Canonical & Implemented  
-> **Last Verified:** 2026-09-01 Europe/Brussels<br>
+> **Last Verified:** 2026-09-06 Europe/Brussels<br>
 > **Source Anchors:** [`AGENTS.md`](../../AGENTS.md), [`.agents/CONTEXT_ENGINEERING.md`](../../.agents/CONTEXT_ENGINEERING.md), [`.agents/contract/intents.yaml`](../../.agents/contract/intents.yaml), [`implementation-plan`](../../.agents/skills/implementation-plan/SKILL.md), [`senior-cto-feedback`](../../.agents/skills/senior-cto-feedback/SKILL.md), [`conventional-commit`](../../.agents/skills/conventional-commit/SKILL.md), [`docs/QUICK_REFERENCE.md`](QUICK_REFERENCE.md)
 
 ---
@@ -93,7 +93,7 @@ flowchart TD
 
     subgraph Stage3["Stage 3: Adversarial CTO Audit & Socratic Stress-Test (User-Invoked)"]
         DevDocTriadInit --> CTOTrigger["User Prompt:\n'Run senior-cto-feedback'"]
-        CTOTrigger --> CTOSkill["senior-cto-feedback Skill\n• 3D Scorecard (Completeness, Correctness, Coherence)\n• 4-Point Right-Sizing Check (Split PR Heuristic)\n• 'Worst Break' Catastrophic Invariant Check\n• Validates Exact Per-Phase Commit Contracts"]
+        CTOTrigger --> CTOSkill["senior-cto-feedback Skill\n• Audits & Directly Refines Triad (Zero Review Files)\n• 3D Scorecard (Completeness, Correctness, Coherence)\n• 4-Point Right-Sizing Check (Split PR Heuristic)\n• 'Worst Break' Catastrophic Invariant Check\n• High-Signal Chat Summary"]
     end
 
     subgraph Stage4["Stage 4: Implementation Execution & Autonomous Domain Guardrails"]
@@ -115,9 +115,43 @@ flowchart TD
 
 | Tier | Invocation Model | Key Skills | Role & Primary Responsibility |
 |---|---|---|---|
-| **Orchestration Tier** | **User-Invoked** (Direct developer prompt or slash command) | `i-vsd`, `implementation-plan`, `senior-cto-feedback`, `/grill-me`, `/goal`, `robin-neutral` | Sets ethical boundaries, interrogates requirements, authors workstream triads (`dev/active/<task>/`), and audits architecture before implementation. |
+| **Orchestration Tier** | **User-Invoked** (Direct developer prompt or slash command) | `i-vsd`, `implementation-plan`, `senior-cto-feedback`, `/grill-me`, `/goal`, `robin-neutral` | Sets ethical boundaries, interrogates requirements, authors workstream triads (`dev/active/<task>/`), audits architecture, and directly refines triads before implementation. |
 | **Phase Closure Tier** | **Planning/Review-Invoked; override-only during execution** | `conventional-commit` | Planning writes exact self-sufficient contracts; CTO review validates them; normal execution does not reload the skill. Only material divergence loads it to author recorded replacements before committing owned paths. |
 | **Domain Execution Tier** | **Indirectly-Invoked** (Autonomously activated via matched intent, rule path, or graph trigger) | `clean-architecture-rules`, `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`, `blazor-ui-conventions`, `auth-patterns`, `outbox-pattern`, `debug-issue`, `refactor-safely`, `review-changes`, `review-pr`, `accessibility` | Enforces layer boundaries, immutable record contracts, zero-internal-mocking, fail-closed auth, transactional outbox dispatch, and two-axis review during active coding. |
+
+### Multi-Session Cognitive Lifecycle & Session Isolation Architecture
+
+To achieve maximum reliability, eliminate AI cognitive bias, and prevent context saturation, substantial feature work is partitioned across **three independent agent sessions**. Rather than forcing planning, adversarial critique, and implementation into a single long conversation window, each stage runs in an isolated session:
+
+```mermaid
+flowchart TD
+    subgraph S1["Session 1: The Architect / Planner"]
+        M1["Model Tier: Highest Reasoning (e.g. xhigh)\nSkill: implementation-plan"]
+        A1["• Zero-turn graph exploration (code-review-graph)\n• Authors RFC 2119 specs & WHEN/THEN scenarios\n• Drafts initial triad in dev/active/<task>/"]
+    end
+
+    subgraph S2["Session 2: The Adversary / Senior CTO"]
+        M2["Model Tier: High / Highest Reasoning\nSkill: senior-cto-feedback\nEnvironment: Fresh Clean Session"]
+        A2["• Cognitive Orthogonality (zero self-confirmation bias)\n• Zero Context Pollution (0-token fresh scratchpad)\n• Socratic stress-testing & 'Worst Break' check\n• Directly refines triad in place (Zero review files)\n• Marks plan.md §0 'Applied & Aligned'"]
+    end
+
+    subgraph S3["Session 3: The Implementer"]
+        M3["Model Tier: High Reasoning\nSkill: implement-tasks\nEnvironment: Fresh Clean Session + Isolated Worktree"]
+        A3["• Verifies Section 0 review approval\n• Executes plan mv into .worktrees/<task>\n• Red -> Green -> Refactor test-first loops\n• Closes phases with planned Conventional Commits\n• Knowledge graduation & worktree teardown"]
+    end
+
+    S1 -->|Pristine Triad| S2
+    S2 -->|CTO-Refined Triad| S3
+```
+
+#### Why Multi-Session Isolation Is Structurally Superior
+
+1. **Immunity to Self-Confirmation Bias (Ego-Preservation)**: When the same LLM session authors an architecture and is subsequently asked to review it, the model experiences an algorithmic attractor to defend its own previous tokens, downplay its own blind spots, and offer superficial praise. Starting Session 2 in a fresh conversation wipes the autoregressive token history. The reviewing agent evaluates the triad purely as cold, external source material with zero emotional or conversational attachment to authoring choices.
+2. **Elimination of Context Pollution & Attention Degradation**: Intensive planning sessions accumulate 40,000–100,000+ tokens of raw AST searches, grep outputs, and discarded design alternatives. Forcing implementation inside that degraded context window leads to "needle-in-a-haystack" instruction loss and recency bias. Starting Session 3 fresh allows the implementing agent to dedicate 100% of its attention budget to compilation diagnostics, unit test results, and active source files.
+3. **Model Tier Matching Strategy**:
+   - **Planning (Session 1)**: Use the highest available reasoning model (`xhigh` / high reasoning effort) to maximize cross-module foresight, architectural synthesis, and contract precision.
+   - **Review (Session 2)**: Use equal or higher reasoning effort (`xhigh` for Tiers 0–1 Sovereign/Security; `high` for Tiers 2–4). A reviewer must match or exceed the author's reasoning power to spot subtle concurrency races, transaction boundary leaks, and tenant isolation gaps.
+   - **Implementation (Session 3)**: Use high reasoning models (`high`) optimized for fast, accurate code generation, precision typing, and test-first execution loops.
 
 ---
 
@@ -269,6 +303,28 @@ stateDiagram-v2
 | `*-plan.md` | High-level architecture, design decisions, RFC 2119 contracts, `WHEN`/`THEN` scenarios, phase exit criteria, rollback handling. | Granular task checklists, `- [ ]` checkboxes, dynamic statuses (`IN PROGRESS`), ephemeral session progress. | Only when architectural direction or scope shifts. |
 | `*-tasks.md` | Hot execution ledger, granular Red/Green/Refactor tasks, exact phase-owned paths, verification disposition, exact planned commit contracts, governed overrides, and commit tasks. | Long architectural narratives, trade-off debates, session handoff logs. | During planning, after each subtask, before any override, and after each commit. |
 | `*-context.md` | Working memory, quick resume state, blockers, loaded evidence ledger, validation baseline, unrelated shared-tree failures, phase commit hashes, and dated handoffs. | Duplicate task checklists, full source code copies, redundant documentation paste. | At start of session, after phase closure, on blockers, and before handoff/pause. |
+
+### The Triad As The Sole Inter-Session Serialization Protocol
+
+Because implementation workflows span distinct sessions (Planner $\rightarrow$ Adversarial Review $\rightarrow$ Implementer), **the Dev-Doc Triad (`plan.md`, `context.md`, `tasks.md`) serves as the stateless serialization wire between agents**.
+
+No conversational memory, hidden assumptions, or chat dialogue survives session boundaries. If an architectural constraint, edge-case mitigation, or test requirement is not explicitly recorded in the triad, **it does not exist**.
+
+### Zero-Loss Information Preservation Architecture
+
+The repository strictly prohibits writing standalone `*-cto-review.md` or `*-research.md` sidecar files in `dev/active/<task>/`. In practice, separate review markdown files became **orphaned sidecars**—implementing agents rarely opened them, causing the review's stress-tests and mitigations to drift out of sync with code execution.
+
+Instead, **100% of the CTO review's analytical depth and research findings are absorbed directly into canonical locations across the triad**:
+
+| Review Dimension / Element | Destination in the Triad | How & Why It Is Preserved |
+|---|---|---|
+| **3D Evaluation Scorecard**<br>*(Completeness, Correctness, Coherence)* | `plan.md` §0 Planning Metadata & `context.md` Review State | Records the baseline audit scores, gate status, and alignment date permanently in metadata so future sessions inherit the verified review baseline. |
+| **Source-Free Research & Seams Evidence** | `plan.md` §2 Source-Grounded Current State (§2.1–§2.9) | Verified codebase reality, AST types, callers/callees, extension seams, and AST evidence live directly in the plan's current state report. |
+| **Socratic Stress-Testing Challenges**<br>*(Scenarios, Questions, Edge Cases)* | `plan.md` §3 Proposed Future State & §5 Architecture Decisions | Translates Socratic challenges into explicit RFC 2119 requirements (`WHEN`/`THEN` behavioral contracts) and concrete architectural invariants. |
+| **"The Worst Break" Catastrophic Failure Mode** | `plan.md` §7.1 Testing Strategy / §9 Security & `tasks.md` Phase Red Tasks | Documents the catastrophic production failure mode in the testing strategy, and immediately translates it into failing Invariant-Breaker specification tests in Phase Red before implementation. |
+| **Ranked Top Risks & Minimum Acceptable Fixes**<br>*(Blocker, Critical, Major)* | `plan.md` §13/§14.2 Risk Register & `context.md` Known Risks | Preserves ranked risks with concrete mitigations, severity tiers, and verification triggers in the active risk register. |
+| **Breaking Deletions & Legacy Elimination** | `plan.md` §12 Migration & Compatibility Plan & `context.md` Key Decisions | Explicitly records obsolete code, endpoints, tables, and adapter shims marked for outright deletion under greenfield development principles. |
+| **Test-First Sequences & Atomic Commits** | `tasks.md` Phase Checklist & Planned Commit Contracts | Turns architectural advice into an executable, verifiable sequence of Red -> Green -> Refactor tasks with path-limited Conventional Commits. |
 
 ### Native Git Concurrency And Phase-Close Protocol
 
