@@ -32,7 +32,7 @@ public static class CandidateCommand
             }
 
             string releaseDirectory = ResolveChild(root, args[1], mustExist: true);
-            string expectedReleaseParent = Path.Combine(Path.GetFullPath(root), "docs", "internal", "releases");
+            string expectedReleaseParent = Path.Join(Path.GetFullPath(root), "docs", "internal", "releases");
             if (!string.Equals(Path.GetDirectoryName(releaseDirectory), expectedReleaseParent, PathComparison))
             {
                 return Reject(output, "candidate_release_path_invalid");
@@ -245,11 +245,11 @@ public static class CandidateCommand
     {
         string temporaryRoot = Path.Combine(Path.GetTempPath(), $"islamu-candidate-render-{Guid.NewGuid():N}");
         string releaseLeaf = Path.GetFileName(releaseDirectory);
-        if (string.IsNullOrWhiteSpace(releaseLeaf) || Path.IsPathRooted(releaseLeaf))
+        if (string.IsNullOrWhiteSpace(releaseLeaf) || Path.IsPathRooted(releaseLeaf) || releaseLeaf.Contains(Path.DirectorySeparatorChar, StringComparison.Ordinal) || releaseLeaf.Contains(Path.AltDirectorySeparatorChar, StringComparison.Ordinal))
         {
             throw new ArgumentException("Invalid release directory leaf name.", nameof(releaseDirectory));
         }
-        string temporaryRelease = Path.Combine(temporaryRoot, "docs", "internal", "releases", releaseLeaf);
+        string temporaryRelease = Path.Join(temporaryRoot, "docs", "internal", "releases", releaseLeaf);
         try
         {
             Directory.CreateDirectory(temporaryRelease);
@@ -353,7 +353,7 @@ public static class CandidateCommand
 
     private static string[] ReadLinkedFragments(string root, IReadOnlyList<string> linkedChangeIds)
     {
-        string fragmentDirectory = Path.Combine(Path.GetFullPath(root), "docs", "internal", "releases", "changes");
+        string fragmentDirectory = Path.Join(Path.GetFullPath(root), "docs", "internal", "releases", "changes");
         return Directory.Exists(fragmentDirectory)
             ? Directory.EnumerateFiles(fragmentDirectory, "*.yaml", SearchOption.TopDirectoryOnly)
                 .Where(path => linkedChangeIds.Contains(Path.GetFileNameWithoutExtension(path), StringComparer.Ordinal))

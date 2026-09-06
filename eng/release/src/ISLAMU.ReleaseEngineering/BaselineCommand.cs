@@ -59,7 +59,7 @@ public static class BaselineCommand
             if (!authorization.IsValid) return Reject(output, authorization.Diagnostic!);
 
             string baselineFileName = Path.GetFileName(baselineRef + ".v1.json");
-            string evidencePath = Path.Combine(Path.GetFullPath(root), "docs", "internal", "releases", "baselines", baselineFileName);
+            string evidencePath = Path.Join(Path.GetFullPath(root), "docs", "internal", "releases", "baselines", baselineFileName);
             Directory.CreateDirectory(Path.GetDirectoryName(evidencePath)!);
             byte[] manifest = BuildManifest(baselineRef, targetOid, observedTagObjectId, signer);
             if (File.Exists(evidencePath))
@@ -159,7 +159,7 @@ public static class BaselineCommand
     private static string? ExistingTagObjectId(string root, string baselineRef)
     {
         string baselineFileName = Path.GetFileName(baselineRef + ".v1.json");
-        string path = Path.Combine(Path.GetFullPath(root), "docs", "internal", "releases", "baselines", baselineFileName);
+        string path = Path.Join(Path.GetFullPath(root), "docs", "internal", "releases", "baselines", baselineFileName);
         if (!File.Exists(path)) return null;
         using JsonDocument document = JsonDocument.Parse(ReadFileBounded(path));
         return document.RootElement.TryGetProperty("tagObjectId", out JsonElement value) ? value.GetString() : null;
