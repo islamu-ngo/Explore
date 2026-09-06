@@ -15,10 +15,12 @@ using Explore.Domain.Enums;
 using Explore.Persistence;
 using Explore.Persistence.Database;
 using Explore.Persistence.Seed;
+using Explore.Domain;
 using Explore.Secrets.Database;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -50,6 +52,7 @@ public sealed class AtprotoTransientApiFixture : IAsyncInitializer, IAsyncDispos
     public PostgreSqlApiWebApplicationFactory Factory { get; private set; } = null!;
     public HttpClient Client { get; private set; } = null!;
     public FrozenClock Clock { get; } = new();
+    public Func<CancellationToken, Task>? BeforeReplayInsert { get; set; }
 
     public AtprotoTransientApiFixture()
     {
@@ -102,6 +105,7 @@ public sealed class AtprotoTransientApiFixture : IAsyncInitializer, IAsyncDispos
         services.AddSingleton(Secrets);
         services.RemoveAll<TimeProvider>();
         services.AddSingleton<TimeProvider>(Clock);
+        services.ConfigureDbContext<ExploreDbContext>(options => options.AddInterceptors(new ReplayInsertInterceptor(this)));
         services.PostConfigure<AuthenticationOptions>(options =>
         {
             options.DefaultScheme = ApiAuthenticationSchemeNames.MultiAuth;
@@ -216,6 +220,19 @@ public sealed class AtprotoTransientApiFixture : IAsyncInitializer, IAsyncDispos
 
     public sealed class FrozenClock : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => new(2026, 9, 6, 12, 0, 0, TimeSpan.Zero);
+        public DateTimeOffset Now { get; set; } = new(2026, 9, 6, 12, 0, 0, TimeSpan.Zero);
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private sealed class ReplayInsertInterceptor(AtprotoTransientApiFixture fixture) : SaveChangesInterceptor
+    {
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (fixture.BeforeReplayInsert is { } beforeInsert
+                && eventData.Context!.ChangeTracker.Entries<AtprotoTransientAssertionReplay>().Any(entry => entry.State == EntityState.Added))
+                await beforeInsert(cancellationToken);
+            return result;
+        }
     }
 }

@@ -6,6 +6,10 @@ using System.Text;
 using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Infrastructure;
+using Explore.Persistence;
+using Explore.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
@@ -213,6 +217,130 @@ public sealed class AtprotoTransientAuthenticationTests(AtprotoTransientApiFixtu
         string output = await response.Content.ReadAsStringAsync();
         await Assert.That(output.Contains(assertion, StringComparison.Ordinal)).IsFalse();
         await Assert.That(output.Contains("tokenDigest", StringComparison.Ordinal)).IsFalse();
+    }
+
+    [Test]
+    public async Task FastCleanupClock_CannotReopenReplayWithinMaximumReplicaDrift()
+    {
+        DateTimeOffset issuedAt = fixture.Clock.GetUtcNow();
+        var cleanupClock = new AtprotoTransientApiFixture.FrozenClock { Now = issuedAt };
+        string assertionId = Guid.CreateVersion7().ToString("D");
+        byte[] body = fixture.ReadBody();
+        string assertion = fixture.Sign(body, mutate: claims => claims["jti"] = assertionId);
+        string digest = AtprotoTransientAssertionReplay.CreateFromAssertionId(assertionId,
+            issuedAt.AddSeconds(35).ToUnixTimeMilliseconds()).AssertionDigest;
+        try
+        {
+            using var firstRequest = fixture.Request(body, assertion);
+            using var firstResponse = await fixture.Client.SendAsync(firstRequest);
+            await Assert.That(firstResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+            await using var scope = fixture.Factory.Services.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            var cleanup = new AtprotoTransientCleanupService(new AtprotoTransientStoreRepository(context, cleanupClock),
+                new AtprotoTransientAssertionReplayRepository(context, cleanupClock), cleanupClock);
+            await Assert.That(await context.AtprotoTransientAssertionReplays.AsNoTracking()
+                .Where(row => row.AssertionDigest == digest).Select(row => row.ExpiresAtUnixMilliseconds).SingleAsync())
+                .IsEqualTo(issuedAt.AddSeconds(35).ToUnixTimeMilliseconds());
+
+            // Each host can differ from trusted UTC by five seconds, giving a ten-second pairwise spread.
+            cleanupClock.Now = issuedAt.AddSeconds(35);
+            fixture.Clock.Now = issuedAt.AddSeconds(25);
+            await cleanup.CleanupExpiredAsync();
+            await RejectAsync(body, assertion);
+
+            cleanupClock.Now = issuedAt.AddMilliseconds(44_999);
+            fixture.Clock.Now = issuedAt.AddMilliseconds(34_999);
+            await cleanup.CleanupExpiredAsync();
+            await RejectAsync(body, assertion);
+            await Assert.That(await context.AtprotoTransientAssertionReplays.AsNoTracking()
+                .Where(row => row.AssertionDigest == digest).Select(row => row.ExpiresAtUnixMilliseconds).SingleAsync())
+                .IsEqualTo(issuedAt.AddSeconds(35).ToUnixTimeMilliseconds());
+
+            // A distinct assertion of the same age can still dispatch on the slow verifier.
+            string unclaimed = fixture.Sign(body, mutate: claims =>
+            {
+                claims["iat"] = issuedAt.ToUnixTimeSeconds();
+                claims["exp"] = issuedAt.AddSeconds(30).ToUnixTimeSeconds();
+            });
+            using var liveRequest = fixture.Request(body, unclaimed);
+            using var liveResponse = await fixture.Client.SendAsync(liveRequest);
+            await Assert.That(liveResponse.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+
+            cleanupClock.Now = issuedAt.AddSeconds(45);
+            fixture.Clock.Now = issuedAt.AddSeconds(35);
+            await cleanup.CleanupExpiredAsync();
+            await Assert.That(await context.AtprotoTransientAssertionReplays.AnyAsync(row => row.AssertionDigest == digest)).IsFalse();
+            await RejectAsync(body, assertion);
+        }
+        finally
+        {
+            fixture.Clock.Now = issuedAt;
+        }
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task ReplayInsertCommittingAtExpiry_CannotDispatchEvenAfterCleanup(bool previouslyClaimed)
+    {
+        DateTimeOffset issuedAt = fixture.Clock.GetUtcNow();
+        byte[] body = fixture.ReadBody();
+        string assertionId = Guid.CreateVersion7().ToString("D");
+        string assertion = fixture.Sign(body, mutate: claims => claims["jti"] = assertionId);
+        string digest = AtprotoTransientAssertionReplay.CreateFromAssertionId(assertionId,
+            issuedAt.AddSeconds(35).ToUnixTimeMilliseconds()).AssertionDigest;
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<HttpStatusCode>? pending = null;
+        try
+        {
+            if (previouslyClaimed)
+                await Assert.That(await SendAsync()).IsEqualTo(HttpStatusCode.NotFound);
+            fixture.Clock.Now = issuedAt.AddMilliseconds(34_999);
+            int blockNext = 1;
+            fixture.BeforeReplayInsert = async cancellationToken =>
+            {
+                if (Interlocked.Exchange(ref blockNext, 0) == 0) return;
+                entered.TrySetResult();
+                await release.Task.WaitAsync(cancellationToken);
+            };
+            pending = SendAsync();
+            await entered.Task.WaitAsync(deadline.Token);
+
+            fixture.Clock.Now = issuedAt.AddSeconds(35);
+            var cleanupClock = new AtprotoTransientApiFixture.FrozenClock { Now = issuedAt.AddSeconds(45) };
+            await using var scope = fixture.Factory.Services.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            await Assert.That(await context.AtprotoTransientAssertionReplays.AnyAsync(row => row.AssertionDigest == digest))
+                .IsEqualTo(previouslyClaimed);
+            var cleanup = new AtprotoTransientCleanupService(new AtprotoTransientStoreRepository(context, cleanupClock),
+                new AtprotoTransientAssertionReplayRepository(context, cleanupClock), cleanupClock);
+            await cleanup.CleanupExpiredAsync(deadline.Token);
+            await Assert.That(await context.AtprotoTransientAssertionReplays.AnyAsync(row => row.AssertionDigest == digest)).IsFalse();
+
+            release.TrySetResult();
+            await Assert.That(await pending).IsEqualTo(HttpStatusCode.Unauthorized);
+            await Assert.That(await context.AtprotoTransientAssertionReplays.AsNoTracking()
+                .Where(row => row.AssertionDigest == digest).Select(row => row.ExpiresAtUnixMilliseconds).SingleAsync())
+                .IsEqualTo(issuedAt.AddSeconds(35).ToUnixTimeMilliseconds());
+            await RejectAsync(body, assertion);
+        }
+        finally
+        {
+            release.TrySetResult();
+            fixture.BeforeReplayInsert = null;
+            try { if (pending is not null) await pending; }
+            finally { fixture.Clock.Now = issuedAt; }
+        }
+
+        async Task<HttpStatusCode> SendAsync()
+        {
+            using var request = fixture.Request(body, assertion);
+            using var response = await fixture.Client.SendAsync(request, deadline.Token);
+            await Assert.That(response.Headers.CacheControl?.NoStore).IsTrue();
+            return response.StatusCode;
+        }
     }
 
     [Test]

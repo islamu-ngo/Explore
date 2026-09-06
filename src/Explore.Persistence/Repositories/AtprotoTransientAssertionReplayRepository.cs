@@ -32,7 +32,7 @@ public sealed class AtprotoTransientAssertionReplayRepository(ExploreDbContext d
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return true;
+            return replay.ExpiresAtUnixMilliseconds > timeProvider.GetUtcNow().ToUnixTimeMilliseconds();
         }
         catch (DbUpdateException exception) when (AtprotoTransientUniqueConflictClassifier.IsAssertionReplayConflict(dbContext, exception))
         {
@@ -45,12 +45,12 @@ public sealed class AtprotoTransientAssertionReplayRepository(ExploreDbContext d
     {
         EnsureRelational();
         if (batchSize is < 1 or > MaximumDeleteBatchSize) throw new ArgumentOutOfRangeException(nameof(batchSize));
-        IQueryable<Guid> ids = dbContext.AtprotoTransientAssertionReplays.Where(replay =>
+        Guid[] ids = await dbContext.AtprotoTransientAssertionReplays.AsNoTracking().Where(replay =>
             replay.ExpiresAtUnixMilliseconds <= expiresAtOrBeforeUnixMilliseconds)
             .OrderBy(replay => replay.ExpiresAtUnixMilliseconds).ThenBy(replay => replay.Id)
-            .Select(replay => replay.Id).Take(batchSize);
-        return await dbContext.AtprotoTransientAssertionReplays.Where(replay => ids.Contains(replay.Id))
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            .Select(replay => replay.Id).Take(batchSize).ToArrayAsync(cancellationToken).ConfigureAwait(false);
+        return await AtprotoTransientCleanupDelete.ExecuteAsync<AtprotoTransientAssertionReplay>(dbContext, ids, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private void EnsureRelational()

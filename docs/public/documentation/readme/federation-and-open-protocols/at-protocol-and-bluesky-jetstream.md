@@ -32,6 +32,16 @@ For Redis-free single-node hosting, persist the existing native BFF Data Protect
 
 Restart in-flight logins after upgrading from the old transient backend or losing their cookies/keys. The memory-store and configurable handoff-lifetime options are removed, without compatibility aliases. After an API/database outage or a lost consume response, restore dependencies and begin a new login rather than retrying the old callback. The current AT Protocol readiness check is passive; it does not yet prove an operational store round trip.
 
+### Cleanup and retention
+
+Keep the `atproto-transient-cleanup` scheduler job running even after disabling AT Protocol login. With the global scheduler enabled, it runs every minute without overlapping itself. Each pass deletes at most 500 rows per batch and five batches from each of the transient and assertion-replay tables: at most ten delete calls and 5,000 rows total. It captures one time, stops early when a batch is short, and adds no 24-hour grace period. There is no separate cleanup configuration switch.
+
+Expired material is denied even when cleanup is delayed. Assertion replay claims remain through their complete acceptance window, including five seconds of clock skew. Cleanup deletes active database rows, not older backups; apply your backup retention and access-control policy separately. Preserve the shared protection keys needed for valid sessions.
+
+Keep every BFF and API host clock synchronized within five seconds of trusted UTC and monitor that bound. Two hosts can then differ by at most ten seconds; cleanup retains replay claims for ten additional seconds so a faster host cannot reopen an assertion still accepted by a slower one. This does not extend assertion validity or OAuth-state/handoff lifetimes. If a host drifts outside the bound, restore clock synchronization before returning it to authentication traffic.
+
+Monitor `explore.atproto.transient.cleanup_runs` and `explore.atproto.transient.cleanup_rows`. Their success/failure and store labels are fixed; row totals describe completed passes, not partial work from a failed pass. A lost delete acknowledgement stops the pass rather than retrying another batch; subsequent scheduled passes resume. Never add tenant/user identifiers, locators, assertions, payloads or key material to labels or support reports.
+
 ---
 
 ## 2. CarpaNet Jetstream Ingestion & Cursor Settlement

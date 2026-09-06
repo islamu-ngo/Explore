@@ -82,6 +82,29 @@ Protected payloads are limited to 64 KiB UTF-8. Expired material may remain in
 database backups according to operator retention; live-row cleanup does not
 promise backup erasure.
 
+`AtprotoTransientCleanupService` owns a bounded deletion pass over both tables,
+called by the non-overlapping Quartz `atproto-transient-cleanup` job every
+minute. It captures one time and performs at most five 500-row batches per
+table (ten delete calls / 5,000 rows total), stopping each table on a short
+batch. There is no idempotency-style 24-hour grace. Disabling ATProto login does
+not unregister cleanup; the global scheduler switch still governs execution.
+Each repository selects fixed expired IDs and performs one non-retrying,
+parameterized deletion. Ambiguous acknowledgement stops the pass; native
+provider retries must not silently select and delete additional batches.
+
+Every BFF and API host must remain within five seconds of trusted UTC through
+monitored clock synchronization. The maximum pairwise clock difference is
+therefore ten seconds. Credential cleanup uses the captured time unchanged;
+replay cleanup uses that time minus 10,000 milliseconds so an ahead cleanup
+host cannot remove a claim still accepted by a behind verifier. The stored
+claim expiry remains assertion expiry plus the five-second acceptance skew:
+the retention margin must not extend assertion admission after validation.
+The replay repository checks this same expiry both before insertion and after
+the durable commit, rejecting a claim that expired while persistence awaited.
+Any committed claim remains stored on rejection; cleanup owns its removal.
+The margin is not a credential grace period and does not cover clocks outside
+the supported bound; restore synchronization before serving authentication.
+
 The same schema and winner semantics must hold on PostgreSQL, SQLite, SQL
 Server and MySQL/MariaDB. EF Core generates each provider's migration history.
 Application entities and mappings, not edited migration output, own schema

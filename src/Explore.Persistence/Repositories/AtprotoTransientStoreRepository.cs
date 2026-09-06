@@ -91,12 +91,12 @@ public sealed class AtprotoTransientStoreRepository(ExploreDbContext dbContext, 
     {
         EnsureRelational();
         ValidateBatchSize(batchSize);
-        IQueryable<Guid> ids = dbContext.AtprotoTransientRecords.Where(record =>
+        Guid[] ids = await dbContext.AtprotoTransientRecords.AsNoTracking().Where(record =>
             record.ExpiresAtUnixMilliseconds <= expiresAtOrBeforeUnixMilliseconds)
             .OrderBy(record => record.ExpiresAtUnixMilliseconds).ThenBy(record => record.Id)
-            .Select(record => record.Id).Take(batchSize);
-        return await dbContext.AtprotoTransientRecords.Where(record => ids.Contains(record.Id))
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            .Select(record => record.Id).Take(batchSize).ToArrayAsync(cancellationToken).ConfigureAwait(false);
+        return await AtprotoTransientCleanupDelete.ExecuteAsync<AtprotoTransientRecord>(dbContext, ids, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<bool> TryInsertAsync(AtprotoTransientRecord record, CancellationToken cancellationToken)

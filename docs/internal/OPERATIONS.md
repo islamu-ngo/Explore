@@ -2201,6 +2201,36 @@ Operational signals are intentionally bounded:
 | `atproto-jetstream` health check | API readiness for capability resolution and public or DID-curated exact-collection subscription; dormant disabled capability is also healthy. |
 | `pds-sync-drain` structured logs | Aggregate claimed/delivered/failed/claim-lost counts only; provider response bodies, OAuth material, DIDs, record keys, and payloads must not be logged. |
 
+`AtprotoTransientCleanupJob` calls one `AtprotoTransientCleanupService` pass
+every minute, starting after sixty seconds, with `DisallowConcurrentExecution`
+and no job payload. Each pass captures one Unix-millisecond time and deletes
+at most five 500-row batches per table, stopping on a short batch: at most ten
+delete calls and 5,000 rows in total. There is no 24-hour idempotency grace.
+Repositories select fixed expired identities and issue one parameterized,
+non-retrying deletion. A lost acknowledgement fails the pass; the next
+scheduled invocation resumes it. Failed passes can have committed partial work.
+The job remains registered when ATProto is disabled; the existing global
+`Scheduler:Quartz:Enabled` switch still governs execution.
+
+Keep every BFF/API host within five seconds of trusted UTC and monitor clock
+synchronization. This permits at most ten seconds of pairwise clock difference.
+The transient cutoff is the captured time; the replay cutoff is that time minus
+10,000 milliseconds. Replay claims retain their original acceptance expiry
+(assertion expiry plus five seconds), so the extra retention never widens
+assertion admission. An ahead cleanup host therefore cannot delete a claim
+while a supported behind verifier still accepts it. If a host exceeds the
+clock bound, restore synchronization before returning it to authentication
+traffic; the fixed margin does not protect arbitrary clock drift.
+
+The existing `Explore.Business` meter publishes
+`explore.atproto.transient.cleanup_runs` with only `outcome=succeeded|failed`
+and `explore.atproto.transient.cleanup_rows` with only `store=transients|assertions`.
+Row totals describe completed passes, never uncertain partial work. Do not add
+tenant, user, locator, assertion, payload or key labels. Restore scheduler and
+database access after failure and observe subsequent passes; do not extend
+expiry or recycle locators. Replay claims remain through acceptance expiry,
+including five seconds of skew. Active-row deletion does not erase backups.
+
 For delayed or failed publication, keep the local event authoritative. Inspect the newest non-superseded `PdsSyncOutbox` row for the tenant/event, verify capability, consent, linked session, and public-location eligibility, then follow the stable recovery guidance in [TROUBLESHOOTING.md](TROUBLESHOOTING.md). Do not create a PDS record manually and do not replay by changing the stable record key.
 
 ## Ticketing Recovery Operator Matrix
