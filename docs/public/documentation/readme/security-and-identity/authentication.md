@@ -33,6 +33,7 @@ The browser communicates strictly with `Explore.Blazor` over HTTPS regardless of
 * Authentication state is tracked via an encrypted `SameSite=Lax` session cookie managed by the BFF.
 * Local login and registration post through antiforgery-protected BFF endpoints. The BFF stores the returned bearer token only in server-side authentication properties.
 * The API validates Local and Keycloak tokens with isolated bearer schemes. A token signed or issued for one authority cannot authenticate through the other.
+* Direct Google sign-in and Google sign-in brokered by Keycloak use separate provider account namespaces. A brokered login remains bound to the Keycloak issuer and subject; a provider hint does not turn it into a direct Google account. Keep the configured issuer stable when diagnosing account-linking failures.
 
 ### Local Identity
 
