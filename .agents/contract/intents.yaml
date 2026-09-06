@@ -2416,9 +2416,6 @@ intents:
       - docs/internal/SECURITY-MODEL.md
       - docs/internal/DOMAIN.md
       - docs/internal/RECORD_CONTRACTS.md
-      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-plan.md
-      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-context.md
-      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-tasks.md
     load_skills:
       - clean-architecture-rules
       - refactor-safely
@@ -2460,7 +2457,6 @@ intents:
       - "docs/internal/SECURITY-MODEL.md"
       - "docs/internal/DOMAIN.md"
       - "docs/internal/BLAZOR.md"
-      - "dev/active/strong-typing-reflection-remediation/**"
     paths_forbidden:
       - "src/**/Migrations/**"
       - "src/**/*ModelSnapshot.cs"
@@ -2481,8 +2477,6 @@ intents:
       - docs/internal/TESTING.md
       - docs/internal/GOVERNANCE.md
       - docs/internal/RECORD_CONTRACTS.md
-      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-context.md
-      - dev/active/strong-typing-reflection-remediation/strong-typing-reflection-remediation-tasks.md
     unique_acceptance:
       - "Every removed reflection or source-assurance cohort has an explicit invariant disposition and passing replacement before deletion"
       - "Live AT Protocol DIDs parse once at ingress, preserve case-sensitive value, and emit exact scalars without storage or wire drift"
