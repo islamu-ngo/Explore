@@ -34,20 +34,27 @@ priority: high
    - **Phase Verification**: Run Release build and single selected project test within the worktree.
    - **Semantic Phase Commit**: In the isolated worktree, all file changes belong exclusively to this task phase. Stage changes via `git add -A` (or phase-touched paths) and commit using the planned semantic Conventional Commit contract (type, scope, title, description, trailers) from `tasks.md`. Planning defines semantic meaning; execution handles file discovery.
    - **Reconcile Ledger**: Batch task checkbox updates at phase gates in `tasks.md`.
-6. **Knowledge Graduation Gate (Mandatory Before PR)**:
+6. **Self-Contained Phase Reporting & Zero Plan-Opening Prompts**:
+   When pausing for user feedback, milestone approvals, or architectural decisions between phases, executing agents must **never** send cryptic prompts referencing bare IDs (e.g. *"Do you approve proceeding with P04/P06 while keeping both P03 gates open?"*). The developer should **never** have to open `tasks.md` or `plan.md` to understand an agent's prompt. Always provide an inline **Decision Brief**:
+   - Current progress milestone in plain English.
+   - Descriptive names of components/services involved (e.g., *"Phase 4: Outbox Worker & Retries"* instead of *"P04"*).
+   - The concrete decision required, why it matters, and trade-offs of deferrals.
+   - Explicit numbered options with a recommended default.
+   - Immediate next action upon reply.
+7. **Knowledge Graduation Gate (Mandatory Before PR)**:
    Before declaring work complete or pushing, promote durable knowledge within the worktree:
    - **Deferred Work**: Create `dev/backlog/<topic-slug>.md` with problem statement and acceptance criteria.
    - **Architectural Decisions**: Create an ADR in `docs/internal/adr/ADR-XXX-<name>.md`.
    - **Lessons & Quirks**: Append to `dev/_journal/domains/<domain>.md` or `dev/_journal/journal.md`.
    - Stage and commit these persistent files on `feat/<task-name>` so they merge into `develop`!
-7. **Pre-PR Rebase Gate (Concurrency Conflict Protection)**:
+8. **Pre-PR Rebase Gate (Concurrency Conflict Protection)**:
    Before pushing, absorb any concurrent merges from other tasks/agents:
    ```bash
    git fetch origin develop && git rebase origin/develop
    ```
    - If clean: proceed to push.
    - If merge conflicts occur: resolve conflicts inside `.worktrees/<task-name>`, run project verification tests, and complete the rebase (`git rebase --continue`).
-8. **Pull Request Lifecycle & Worktree Disposal**:
+9. **Pull Request Lifecycle & Worktree Disposal**:
    - Push branch to origin: `git push -u origin feat/<task-name> --force-with-lease`
    - Open Pull Request for CI/CD and review: `gh pr create --base develop --fill`
    - Teardown: From the root workspace (or once PR is submitted):

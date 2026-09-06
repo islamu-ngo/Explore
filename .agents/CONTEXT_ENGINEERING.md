@@ -137,6 +137,19 @@ Agents and subagents must operate strictly within the repository's native enviro
 - **Secrets Source of Truth**: Secrets, connection strings, API tokens, passwords, and encryption keys must strictly reside in **Infisical** or **`.env`** (with schema/keys documented in **`.env.example`**). NEVER hard-code, define, or embed secrets in `AppHost.cs`, test fixtures, classes, or configuration files.
 - **Verification Scoping Discipline**: Documentation, agent contract, and markdown-only changes (Tier 4) must NEVER run full `dotnet build` or .NET test suites. Verification for documentation tasks is strictly scoped to file format, schema validation, and link integrity.
 
+## Human-Agent Interaction & Zero-Friction Prompts
+
+Active task artifacts (`plan.md`, `tasks.md`, `context.md` in `dev/active/<task>/`) exist exclusively to maintain deterministic, structured session memory and execution boundaries across agent context resets and worktree transitions. They are **machine and session working memory**, not the developer's user interface.
+
+- **Zero Plan-Opening Mandate**: The developer must **never** be forced to open `dev/active/<task>/` to understand what an agent is asking, reporting, or proposing.
+- **Prohibited Shorthand**: Prompts, approvals, and questions must never use bare IDs (`P01`, `P04/P06`, `T02.1`, `Gate 3`) without immediate inline functional names and plain-English explanations.
+- **Decision Brief Architecture**: Any turn pausing for developer decision or approval must present an inline Decision Brief detailing:
+  1. *Context*: Recent progress and current architectural position.
+  2. *Substance*: Human-readable component and domain names.
+  3. *Decision & Trade-offs*: Why the choice matters and what each path entails.
+  4. *Actionable Choices*: Labeled options with a recommended default.
+  5. *Next Action*: What will be executed immediately upon reply.
+
 ## Workstream And Handoff State
 
 For a substantial active workstream, resume from its task-owned `*-context.md`. Read the current state and current task first, then zoom only the referenced plan heading. Do not automatically load plan, context, and task files together.

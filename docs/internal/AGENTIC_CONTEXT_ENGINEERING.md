@@ -16,13 +16,14 @@ The **ISLAMU Event Agentic Context Engineering System** provides a deterministic
 
 In modern agentic development, AI agents fail not from a lack of programming syntax knowledge, but from **context drift, assumption hallucination, test tautology ("The Ugly Mirror"), token budget exhaustion, and execution sprawl**. 
 
-This system enforces five core design tenets:
+This system enforces six core design tenets:
 
 1. **Smallest Decision-Complete Working Set**: Context is retrieved once, summarized once, and reused via an in-session context ledger (`path + symbol + revision`). Agents never reread unchanged files or inject entire registries.
 2. **Zero-Turn Structural Injection**: When graph tooling is available, pre-flight blast-radius slices reduce manual traversal by injecting callers, callees, impacted flows, and tests on Turn 1.
 3. **Behavior-Bound Test-First Invariants**: Requirements are written as observable system behavior (RFC 2119 + `WHEN`/`THEN` Scenarios) and mapped directly to failing Red tests at pre-agreed public seams *before* production code is touched.
 4. **Portable Root Contract With A Scoped Twin Pair**: `AGENTS.md` is the portable authority. Reciprocal path-rule twins currently cover only `.agents/rules` and `.omo/rules`; Claude, Cursor, Copilot, Gemini, and other harness adapters remain separate drift-prone integration surfaces.
 5. **Phase-Atomic Native Git Delivery**: Planning pre-authors a self-sufficient phase packet containing exact commit metadata, wholly owned paths, inspection/staging/path-limited commit commands, and post-commit verification. Parallel contributors use separate branches/worktrees, while every verified phase closes with literal commit paths and leaves unrelated work untouched.
+6. **Self-Contained Human Interaction & Zero Plan-Opening UX**: Prompts, feedback requests, milestone reports, and approval inquiries must be completely self-contained. The active implementation plan (`dev/active/<task>/`) is internal machine working memory, not the developer console. Agents must never force developers to open plan files to understand bare IDs (e.g. *"P04/P06 with P03 gates open"*); all decisions must be presented as inline, actionable Decision Briefs.
 
 ```mermaid
 flowchart TB
@@ -326,6 +327,40 @@ Instead, **100% of the CTO review's analytical depth and research findings are a
 | **Breaking Deletions & Legacy Elimination** | `plan.md` §12 Migration & Compatibility Plan & `context.md` Key Decisions | Explicitly records obsolete code, endpoints, tables, and adapter shims marked for outright deletion under greenfield development principles. |
 | **Test-First Sequences & Atomic Commits** | `tasks.md` Phase Checklist & Planned Commit Contracts | Turns architectural advice into an executable, verifiable sequence of Red -> Green -> Refactor tasks with path-limited Conventional Commits. |
 
+### The Human Interaction Boundary & Zero Plan-Opening UX (The Developer Console Principle)
+
+While the Dev-Doc Triad (`plan.md`, `tasks.md`, `context.md` in `dev/active/<task>/`) guarantees deterministic **inter-session machine working memory**, it must **never** become an obstacle to human-agent collaboration.
+
+A recurring breakdown in AI-assisted development is the **"curse of knowledge"**: an agent holding the entire triad in context sends cryptic, shorthand prompts to the developer:
+
+> ❌ *“Do you approve proceeding with P04/P06 while keeping both P03 gates explicitly open?”*
+
+This breaks flow by forcing the developer to context-switch, open `dev/active/<task>/`, and grep through markdown checklists just to understand what "P04" or "P03 gates" mean.
+
+#### The Golden Invariant
+> **The developer should never need to open the implementation plan (`dev/active/<task>/...`) just to understand an agent's question, status update, or approval request.**
+
+- The triad in `dev/active/<task>/` is **internal working memory and an execution ledger**.
+- The chat conversation is the **developer console**.
+- Forcing a developer to open internal plan files to decode an agent's prompt is a severe UX defect.
+
+#### The Mandatory Decision Brief Protocol
+Whenever an agent pauses for user approval, flags an architectural choice, reports a milestone, or requests direction on blockers, the response MUST be formatted as an inline, self-contained **Decision Brief**:
+
+1. **Context & Current Position**: 1–2 sentences on what was just completed or where the workstream currently stands.
+2. **Plain-English Substance**: Always use descriptive feature/component names alongside any phase numbers (e.g., *"Phase 4 (PostgreSQL Outbox Worker & Dead-Letter Dispatch)"* instead of bare *"P04"*).
+3. **The Exact Decision & Why It Matters**: Explain in plain English what decision is needed, why it arose, and what the real-world trade-off is (e.g., why gates are open, what dependencies exist).
+4. **Structured Actionable Options**: Provide explicit, numbered choices with a clear recommendation (e.g., `Option A (Recommended): ...`, `Option B: ...`) and the pros/cons of each, allowing the developer to guide in seconds.
+5. **Immediate Next Action**: State what the agent will execute the moment the developer replies.
+
+#### Self-Contained Executive Plan Brief
+When presenting a newly authored or re-baselined implementation plan (Stage 2 exit), agents must not merely provide file paths and ask the user to read them. The agent must deliver an inline **Executive Plan Brief**:
+- **Executive Summary & Architectural Approach**: Core design pattern and business outcome.
+- **Phase Roadmap**: Human-readable list of phases with descriptive names, touched layers, and invariant verification targets.
+- **Key Architectural Decisions & Trade-offs**: Bulleted log of primary choices made during intake.
+- **Potential Risks & "Worst Break" Catastrophic Failure Mode**: Concrete failure mode tested before production code.
+- **Immediate Next Step & Approval Request**: Direct call for approval to begin Phase 1.
+
 ### Native Git Concurrency And Phase-Close Protocol
 
 Parallel contributors should use native Git branches or worktrees instead of
@@ -523,6 +558,7 @@ git diff --check -- .agents/ docs/ dev/
 > - ❌ **NO DI for Validators**: FluentValidation validators must be manually instantiated in handlers.
 > - ❌ **NO Hand-Editing EF Migrations**: Migrations are generated artifacts (`dotnet ef migrations add`). Never manually edit migration files or model snapshots.
 > - ❌ **NO UI Authorization Inspection**: Blazor client affordances must be gated strictly by inspecting HAL `_links` presence, never by local role/claim checking.
+> - ❌ **NO Cryptic Shorthand or Plan-Opening Overhead**: Agents must never prompt the developer with bare phase/task IDs or gates (e.g., *"Proceed with P04/P06 while keeping P03 gates open?"*). All prompts and reports must be self-contained Decision Briefs so the developer never has to open `dev/active/<task>/...` to understand a question or decision.
 
 ---
 

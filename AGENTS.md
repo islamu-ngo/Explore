@@ -81,6 +81,7 @@ Every change must answer these eight questions **before editing any file**:
 11. **Greenfield Breaking Change Freedom (No Backward Compatibility Baggage)**: This repository is pre-release with 0 external adopters. Never preserve obsolete endpoints, bad DTO shapes, legacy columns, or adapter shims for backward compatibility. Breaking changes are encouraged whenever they simplify code or align with Clean Architecture.
 12. **Strict Test Quality Over Quantity (No Mock-Mirroring or Scraping)**: Tests MUST guard true business invariants, rich domain state machines, concurrency races, tenant isolation, and security fail-closed semantics. Prohibit tautological mock-mirroring (`Received(1)`), framework-testing boilerplate (testing EF Core cancellation), raw source-code / CSS text scraping, and ephemeral mutation test project sprawl.
 13. **Dual-Documentation Parity & Separation (Public vs Internal)**: Any change impacting external configuration (`.env.example`), deployment topologies (`docker-compose.yml`), public API endpoints, or administrative features MUST update both the public adopter guide in `docs/public/` (operator/adopter perspective on GitBook) and the technical source anchor in `docs/internal/` (C# architecture and invariants) within the same PR, following Single Responsibility without duplicating raw configs. See `docs/internal/DOCUMENTATION_ARCHITECTURE.md`.
+14. **Self-Contained Interaction & Zero Plan-Opening Overhead**: Prompts, questions, feedback requests, and status reports to the developer MUST be completely self-contained and immediately actionable without requiring the developer to open `dev/active/<task>/...` or grep internal plan files. Agents must NEVER reference bare phase/task IDs (`P04/P06`, `T02.1`, `P03 gates`) in isolation. Every approval request, decision prompt, or milestone update MUST provide a self-contained Decision Brief inline: descriptive human names of features/components, current context, the exact choice with rationale, and clear recommended options with trade-offs. The implementation plan is internal working memory; the chat response is the developer console.
 
 **Full list:** [`docs/internal/QUICK_REFERENCE.md`](docs/internal/QUICK_REFERENCE.md)
 
@@ -147,6 +148,20 @@ dotnet build --configuration Release --verbosity quiet
 Before an implementation agent ends a task, pauses for the user's next prompt, performs a handoff, or claims work is complete, the final response MUST teach the user what changed. Do not give only an abstract status line such as “email sending implemented” or “docs updated.” The user is a developer and must understand the implementation without opening the diff.
 
 The final summary must be medium-sized and technically specific. Include the architecture/design pattern used, concrete libraries/frameworks/infrastructure/protocols, important files/classes/handlers/components changed, data/control flow, relevant best practices such as transactional outbox, CQRS/MediatR, Clean Architecture, HAL affordance gating, tenant isolation, idempotency, retry/error handling, and what was verified or remains. Keep it concise enough for chat, but detailed enough that the user learns the implemented approach.
+
+### Self-Contained Human Interaction & Decision Brief Requirement
+
+> **The Golden Invariant**: The developer should **never** need to open the implementation plan (`dev/active/<task>/...`) just to understand an agent's question, status update, or approval request.
+
+Active dev-docs (`plan.md`, `tasks.md`, `context.md`) serve as machine/session working memory and an execution ledger. They are **not** the developer's primary user interface. Forcing the user to leave the conversation, navigate files, and cross-reference cryptic phase codes (e.g. *"Do you approve proceeding with P04/P06 while keeping both P03 gates explicitly open?"*) is an unacceptable agent UX failure.
+
+Whenever an agent prompts for approval, requests architectural direction, reports milestone completion, or flags a blocker, the response MUST be formatted as a **Self-Contained Decision Brief**:
+
+1. **Context & Current Position**: 1–2 sentences on what was just completed or where the workstream currently stands.
+2. **Plain-English Substance**: Always use descriptive feature/component names alongside any phase numbers (e.g., *"Phase 4 (PostgreSQL Outbox Worker & Dead-Letter Dispatch)"* instead of bare *"P04"*).
+3. **The Exact Decision & Why It Matters**: Explain in plain English what decision is needed, why it arose, and what the real-world trade-off is (e.g., *"Why keep Phase 3 gates open? Because Redis distributed locking requires integration tests that depend on the benchmark harness"*).
+4. **Structured Actionable Options**: Provide explicit, numbered choices with a clear recommendation (e.g., `Option A (Recommended): ...`, `Option B: ...`) and the pros/cons of each, so the developer can approve or guide in seconds without leaving chat.
+5. **Immediate Next Action**: Clearly state what the agent will execute the moment the user responds.
 
 ---
 

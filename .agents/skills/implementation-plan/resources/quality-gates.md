@@ -87,21 +87,32 @@ git diff --check -- .agents/skills .agents/contract tests/Event.Architecture.Tes
 
 Run the planned implementation test suite only during implementation, not while producing the plan. Record known baseline failures honestly in context and tasks.
 
-## Final Response
+## Final Response (Self-Contained Executive Plan Brief)
 
-Use this shape:
+The final response presenting the plan MUST be a **Self-Contained Executive Plan Brief** so the user can understand, review, and approve the plan directly in chat without being forced to open `dev/active/<task-name>/`:
 
 ```text
-Created/updated implementation planning docs for `<task-name>`:
+Created/updated implementation plan for `<task-name>`:
 - dev/active/<task-name>/<task-name>-plan.md
 - dev/active/<task-name>/<task-name>-context.md
 - dev/active/<task-name>/<task-name>-tasks.md
 
-Potential Risks & Unknowns:
-<Short evidence-grounded paragraph naming the hardest unresolved area.>
+### Executive Summary & Architectural Approach
+<2-3 sentences explaining what will change, the core architectural design pattern, and the primary business/platform benefit.>
 
-Recommended next step:
-<Specific section for user review, or the first approved implementation slice.>
+### Phase Roadmap
+- **Phase 1: <Descriptive Name>** — <What is built, layers touched, and invariants verified>
+- **Phase 2: <Descriptive Name>** — <What is built, layers touched, and invariants verified>
+- ...
+
+### Key Decisions & Trade-offs
+- <Bullet points on major technical or architectural choices made during intake/planning>
+
+### Potential Risks & Hardest Unknowns
+<Short evidence-grounded paragraph naming the hardest unresolved area or edge case.>
+
+### Recommended Next Step & Approval Request
+<Explicit call for approval or specific direction to proceed with Phase 1, with options if applicable.>
 ```
 
 Do not say implementation started. If re-baselining, summarize what materially changed in the planning artifacts.
