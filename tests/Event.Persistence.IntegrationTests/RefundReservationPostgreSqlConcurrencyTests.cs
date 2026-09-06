@@ -174,7 +174,7 @@ public sealed class RefundReservationPostgreSqlConcurrencyTests(RefundPostgreSql
 
     private static async Task<ExploreDbContext> CreateContextAsync(string connectionString, bool ensureCreated = true)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(connectionString, provider => provider.EnableRetryOnFailure(3))
             .UseSnakeCaseNamingConvention()
             .Options;
@@ -229,7 +229,7 @@ public sealed class RefundReservationPostgreSqlConcurrencyTests(RefundPostgreSql
             paymentId, tenantId, orderId, recipient, "OrganizerDirect", "2026-08-20.acacia", "refund-race",
             Money.Create(organizerMinor, recipient.CurrencyCode), Money.Create(platformFeeMinor, recipient.CurrencyCode), Money.Create(0, recipient.CurrencyCode), $"payment:{tenantId:N}:{paymentId:N}", UtcNow, UtcNow.AddMinutes(30));
         payment.AttachAcceptance(Acceptance(
-            tenantId, paymentId, orderId, organizerMinor, platformFeeMinor, lineTotals));
+            tenantId, paymentId, orderId, organizerMinor, platformFeeMinor, lineTotals, recipient));
         payment.MarkSucceeded(PaymentProviderId(paymentId), UtcNow.AddSeconds(1), "req_payment");
         context.Tenants.Add(tenant);
         context.RegistrationOrders.Add(order);
@@ -260,12 +260,13 @@ public sealed class RefundReservationPostgreSqlConcurrencyTests(RefundPostgreSql
         Guid orderId,
         long organizerMinor = 1_000,
         long platformFeeMinor = 75,
-        IReadOnlyList<long>? lineTotals = null) =>
+        IReadOnlyList<long>? lineTotals = null,
+        OrganizerPaymentRecipientSnapshot? recipient = null) =>
         PaidOrderAcceptanceSnapshot.Create(
             paymentId, tenantId, tenantId, orderId, Guid.CreateVersion7(), "refund-race", "disclosure-1",
             PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateIdentifier,
             PaidOrderAcceptanceSnapshot.CurrentAcceptanceTemplateText,
-            Guid.CreateVersion7(),
+            recipient?.OrganizerActorId ?? Guid.CreateVersion7(),
             "Example Organizer",
             PaidCheckoutTenantDirectoryOperatorDisclosure.Create(
                 Guid.CreateVersion7(), Guid.CreateVersion7(), "Community Events", "Community Events ASBL",
@@ -278,12 +279,19 @@ public sealed class RefundReservationPostgreSqlConcurrencyTests(RefundPostgreSql
                 "Dispute Operations", "Payment Reconciliation", "approved"),
             PaidOrderDeliverySnapshot.Create(
                 DateTimeOffset.Parse("2026-09-10T17:00:00Z"), DateTimeOffset.Parse("2026-09-10T20:00:00Z"), "Europe/Brussels"),
-            "EUR", organizerMinor, platformFeeMinor, 0, organizerMinor, Guid.CreateVersion7(), 7,
+            "EUR", organizerMinor, platformFeeMinor, 0, organizerMinor,
+            recipient?.InstancePolicyVersionId ?? Guid.CreateVersion7(), 7,
             "Refunds follow accepted policy v7.", "en-GB", "support@example.test",
             PaidCheckoutProviderDisclosure.Create(
                 "stripe", "OrganizerDirect", "direct-charge", "EXAMPLE EVENT", "test", "instance-operator"),
             (lineTotals ?? [organizerMinor]).Select((total, index) => PaidOrderAcceptanceLineFact.Create(
-                Guid.CreateVersion7(), $"Line {index + 1}", 1, total, 0, total)).ToArray(), UtcNow);
+                Guid.CreateVersion7(), $"Line {index + 1}", 1, total, 0, total)).ToArray(), UtcNow,
+            tenantPolicyVersionId: recipient?.TenantPolicyVersionId,
+            organizerPaymentProviderConnectionId:
+                recipient?.OrganizerPaymentProviderConnectionId ?? Guid.CreateVersion7(),
+            connectPlatformId: recipient?.ConnectPlatformId ?? "platform-live-eu",
+            externalAccountId: recipient?.ExternalAccountId ?? "acct_original",
+            merchantCountryCode: recipient?.MerchantCountryCode ?? "BE");
 }
 
 public sealed class RefundPostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable

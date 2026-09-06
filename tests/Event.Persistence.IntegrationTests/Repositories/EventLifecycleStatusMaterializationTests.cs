@@ -25,18 +25,6 @@ public sealed class EventLifecycleStatusMaterializationTests(ProjectionTestConta
         Guid sessionId;
         await using (var seedContext = fixture.CreateDbContext())
         {
-            seedContext.EventStatuses.Add(new EventStatus
-            {
-                Id = (int)EventStatusEnum.Published,
-                MasterCode = "PUBLISHED",
-                FullName = "Published"
-            });
-            seedContext.EventSessionStatuses.Add(new EventSessionStatus
-            {
-                Id = (int)EventSessionStatusEnum.Published,
-                MasterCode = "PUBLISHED",
-                FullName = "Published"
-            });
             var tenant = new Tenant
             {
                 FullName = "Lifecycle materialization tenant",
@@ -304,7 +292,7 @@ public sealed class EventLifecycleStatusSqliteMaterializationTests
     }
 
     private static ExploreDbContext CreateDbContext(string databasePath) => new(
-        new DbContextOptionsBuilder<ExploreDbContext>()
+        TestDbContextOptions.Create<ExploreDbContext>()
             .UseSqlite($"Data Source={databasePath}")
             .UseSnakeCaseNamingConvention()
             .Options);

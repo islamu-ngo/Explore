@@ -26,8 +26,11 @@ priority: high
 - [resources/plan-rewrite-guidance.md](resources/plan-rewrite-guidance.md)
 
 ## Top Invariants
-1. Follow I-VSD `plan-review` mode: bind the verdict to exact plan/tasks and I-VSD revisions, require current `IVSD-*` mappings, and block technical approval when the report is missing, stale, or unresolved.
-2. Default to read-only review plus `dev/active/<task>/<task>-cto-review.md`. An explicitly requested rewrite that changes a refresh trigger marks I-VSD stale; the reviewer cannot approve its rewritten revision in the same pass. CTO readiness never grants user or scholarly/legal approval.
+1. Follow I-VSD `plan-review` mode: bind the verdict to the current plan/tasks and I-VSD report, require current `IVSD-*` mappings, and block technical approval when the report is missing, stale, or unresolved.
+2. **Review Workflow & Adaptive Sizing**:
+   - **Tier 0–2 (Sovereign / Security / Data Loss)**: Conduct comprehensive adversarial audit written to `dev/active/<task>/<task>-cto-review.md`.
+   - **Tier 3–4 (Application / UI / Refactoring)**: Provide a lean 4-section review (Executive Verdict, Blast Radius & Edge Cases, Contract & Sequencing, Direct Adjustments).
+   - **In-Place Rewrites**: When a rewrite is requested, apply corrections directly into `plan.md` and `tasks.md` rather than generating disconnected critique docs. CTO readiness never grants user or scholarly/legal approval.
 3. Distinguish verified codebase reality from plan aspiration. Do not approve claims you did not verify.
 4. Apply the `grill-me` Socratic stress test to the plan's technical claims, including rollback safety, tenant boundaries, query-performance thresholds, operator clarity, failure modes, and **"The Worst Break" Adversarial Scenario** (the single most catastrophic failure mode); unresolved material answers block approval.
 5. **3-Dimensional Evaluation Model**: Evaluate the plan across three distinct dimensions:
@@ -38,7 +41,7 @@ priority: high
 7. **Greenfield Breaking Change Posture**: ISLAMU Event is pre-v1 with 0 external adopters. The CTO rejects backward-compatibility shims, deprecated route aliases, and adapter baggage. Approve clean breaking changes and structural simplifications over legacy preservation.
 8. **4-Point "Right-Sizing" Rule**: Mandate a PR split ("Split before approval") when 2+ symptoms match: (1) Scope contains multi-intent "and also" clauses, (2) Plan exceeds reviewable task capacity (< 8-10 major tasks), (3) Migration, API contract churn, and UI enablement combined in one big-bang phase, (4) Backend CQRS slice could ship independently of Blazor UI.
 9. Require a sharper sequence or PR split for large or mixed plans; when vendor or pattern dogmatism hides a material fork, invoke `robin-neutral` to steel-man alternatives before deciding.
-10. **Per-Phase Planned Commit Readiness & Atomic Slicing**: Block approval unless every phase has a self-sufficient packet: exact metadata, commit paths, inspection commands, `git add`, path-limited `git commit`, and verification command. For large phases (touching dozens or hundreds of files) or multi-concern scopes, mandate multiple atomic commit contracts adhering to `conventional-commit` (Rules 1 & 13); reject monolithic umbrella commits unless provably indivisible under Rule 14. Commits must strictly stage and commit ONLY changes directly related to the implementation plan, using path-limited commands and file-list verification to exclude unrelated dirty files. Planning/CTO load `conventional-commit` to validate command-message-path parity. Normal implementation does not reload it; overrides load it and repeat the full packet for every resulting commit. Use dedicated feature branches for parallel work and preserve failure ownership, file-list proof, and in-session authorization.
+10. **Per-Phase Planned Commit Readiness & Atomic Slicing**: Block approval unless every phase has a self-sufficient declarative commit contract: type, scope, title, description, changelog treatment, trailers, and commit paths. For large phases (touching dozens or hundreds of files) or multi-concern scopes, mandate multiple atomic commit contracts adhering to `conventional-commit` (Rules 1 & 13); reject monolithic umbrella commits unless provably indivisible under Rule 14. Commits stage and commit only changes directly related to the implementation plan on the dedicated task branch (`feat/<task-name>`). Normal implementation executes without reloading `conventional-commit`.
 11. **Knowledge Graduation & Persistence Gating**: Verify that out-of-scope, follow-up, or deferred items are not left to rot as un-actionable text in an ephemeral implementation plan. Mandate that deferred scope is explicitly assigned to a planned graduation task into `dev/backlog/<slug>.md`, durable architectural decisions to `docs/internal/adr/`, and lessons to `dev/_journal/` before workstream close.
 
 ## Top Anti-Patterns
@@ -50,17 +53,17 @@ priority: high
 6. Treating missing migration, tenant-isolation, or operator-recovery detail as a minor documentation issue.
 7. Accepting UI/BFF-local authorization or affordance logic instead of API/HAL-authoritative behavior.
 8. Producing generic best-practice feedback that does not name files, plan sections, risks, or required corrections.
-9. **Approving Final-Only, Reloaded, Unplanned, Oversized Umbrella, Or Mixed-Tree Commits**, which defers commits, leaves messages for implementation-time invention, permits monolithic umbrella commits for large multi-file phases instead of atomic commit sequences, allows commits to absorb unrelated working-tree modifications, makes the executor reload `conventional-commit` for a truthful default, permits silent overrides, lets planning/review skip their required skill validation, or includes another contributor's work.
+9. **Approving Monolithic Umbrella Commits or Brittle Bash Scripts**, which permits monolithic umbrella commits for large multi-file phases instead of atomic commit sequences, or mandates literal bash scripts instead of declarative Conventional Commit contracts.
 
 ## Minimal Examples
 ```text
 Review flow:
-1. Read plan/context/tasks
+1. Read plan/tasks
 2. Compare against the implementation-plan skill and its quality gates
 3. Verify referenced files/docs/internal/rules
-4. Verify every phase has an exact Conventional Commit contract (or atomic commit sequence if large/multi-concern) and closes as implementation -> verification disposition -> planned phase-owned, plan-related commit(s)
+4. Verify every phase has an exact declarative Conventional Commit contract (or atomic commit sequence if large/multi-concern)
 5. Decide: approve, approve with required changes, split, reject, or defer
-6. Return ranked risks, concrete required changes, and a recommended plan rewrite
+6. Return ranked risks, concrete required changes, and apply in-place rewrite when requested
 ```
 
 ```text

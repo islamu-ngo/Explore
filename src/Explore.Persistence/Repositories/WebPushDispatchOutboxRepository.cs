@@ -290,49 +290,52 @@ public sealed class WebPushDispatchOutboxRepository : IWebPushDispatchOutboxRepo
         DateTime failedAt,
         CancellationToken cancellationToken = default)
     {
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-        var updatedDispatch = await _dbContext.WebPushDispatchOutbox
-            .IgnoreTenantFilter(TenantFilterBypassReasons.WebPushTenantOperation)
-            .Where(row => row.TenantId == tenantId
-                && row.Id == dispatchId
-                && row.SubscriptionId == subscriptionId
-                && row.Status == WebPushDispatchStatus.Processing
-                && row.ProcessingLeaseToken == leaseToken)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(row => row.Status, WebPushDispatchStatus.PermanentFailed)
-                .SetProperty(row => row.PermanentFailedAt, failedAt)
-                .SetProperty(row => row.ProcessingStartedAt, (DateTime?)null)
-                .SetProperty(row => row.ProcessingLeaseToken, (Guid?)null)
-                .SetProperty(row => row.NextAttemptAt, (DateTime?)null)
-                .SetProperty(row => row.LastFailureCategory, Truncate(failureCategory, 100))
-                .SetProperty(row => row.LastError, Truncate(errorMessage, MaxErrorLength))
-                .SetProperty(row => row.LastFailureAt, failedAt)
-                .SetProperty(row => row.UpdatedAt, failedAt), cancellationToken);
-
-        if (updatedDispatch == 0)
+        return await _dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
         {
-            return false;
-        }
+            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+            var updatedDispatch = await _dbContext.WebPushDispatchOutbox
+                .IgnoreTenantFilter(TenantFilterBypassReasons.WebPushTenantOperation)
+                .Where(row => row.TenantId == tenantId
+                    && row.Id == dispatchId
+                    && row.SubscriptionId == subscriptionId
+                    && row.Status == WebPushDispatchStatus.Processing
+                    && row.ProcessingLeaseToken == leaseToken)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(row => row.Status, WebPushDispatchStatus.PermanentFailed)
+                    .SetProperty(row => row.PermanentFailedAt, failedAt)
+                    .SetProperty(row => row.ProcessingStartedAt, (DateTime?)null)
+                    .SetProperty(row => row.ProcessingLeaseToken, (Guid?)null)
+                    .SetProperty(row => row.NextAttemptAt, (DateTime?)null)
+                    .SetProperty(row => row.LastFailureCategory, Truncate(failureCategory, 100))
+                    .SetProperty(row => row.LastError, Truncate(errorMessage, MaxErrorLength))
+                    .SetProperty(row => row.LastFailureAt, failedAt)
+                    .SetProperty(row => row.UpdatedAt, failedAt), cancellationToken);
 
-        var updatedSubscription = await _dbContext.WebPushSubscriptions
-            .IgnoreTenantFilter(TenantFilterBypassReasons.WebPushTenantOperation)
-            .Where(subscription => subscription.TenantId == tenantId
-                && subscription.Id == subscriptionId
-                && subscription.IsActive)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(subscription => subscription.IsActive, false)
-                .SetProperty(subscription => subscription.DeactivatedAt, failedAt)
-                .SetProperty(subscription => subscription.DeactivationReason, Truncate(failureCategory, 100))
-                .SetProperty(subscription => subscription.UpdatedAt, failedAt), cancellationToken);
+            if (updatedDispatch == 0)
+            {
+                return false;
+            }
 
-        if (updatedSubscription == 0 && !await SameTenantInactiveSubscriptionExists(tenantId, subscriptionId, cancellationToken))
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return false;
-        }
+            var updatedSubscription = await _dbContext.WebPushSubscriptions
+                .IgnoreTenantFilter(TenantFilterBypassReasons.WebPushTenantOperation)
+                .Where(subscription => subscription.TenantId == tenantId
+                    && subscription.Id == subscriptionId
+                    && subscription.IsActive)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(subscription => subscription.IsActive, false)
+                    .SetProperty(subscription => subscription.DeactivatedAt, failedAt)
+                    .SetProperty(subscription => subscription.DeactivationReason, Truncate(failureCategory, 100))
+                    .SetProperty(subscription => subscription.UpdatedAt, failedAt), cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
-        return true;
+            if (updatedSubscription == 0 && !await SameTenantInactiveSubscriptionExists(tenantId, subscriptionId, cancellationToken))
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return false;
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        });
     }
 
     private async Task<bool> SameTenantInactiveSubscriptionExists(Guid tenantId, Guid subscriptionId, CancellationToken cancellationToken)

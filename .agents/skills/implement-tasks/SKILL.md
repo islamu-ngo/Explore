@@ -32,7 +32,7 @@ priority: high
    - **Green**: Implement production code to satisfy invariants.
    - **Sliced Verification**: Run targeted test class via `--treenode-filter` (~1.5s) inside the worktree directory.
    - **Phase Verification**: Run Release build and single selected project test within the worktree.
-   - **Semantic Phase Commit**: In the isolated worktree, all file changes belong exclusively to this task phase. Stage changes via `git add -A` (or phase-touched paths) and commit using the planned semantic Conventional Commit contract (type, scope, title, description, trailers) from `tasks.md`. Planning defines semantic meaning; execution handles file discovery.
+   - **Immediate Phase Commit**: Inspect ownership, stage exact phase-owned paths (`git add -- <paths>`), and execute each planned atomic contract from `tasks.md`. Isolation does not imply ownership of every dirty file. Preserve unrelated edits; verify the committed inventory and index. No post-commit hash recording.
    - **Reconcile Ledger**: Batch task checkbox updates at phase gates in `tasks.md`.
 6. **Knowledge Graduation Gate (Mandatory Before PR)**:
    Before declaring work complete or pushing, promote durable knowledge within the worktree:
@@ -68,7 +68,7 @@ priority: high
    a. Red: compilable stubs + failing invariant test
    b. Green: implementation code
    c. Verify: sliced test -> phase build & test (Cwd: .worktrees/<task>)
-   d. Commit: git add -A && git commit using semantic phase contract from tasks.md
+   d. Commit: git add -- <phase-owned paths> && git commit using each atomic contract from tasks.md
    e. Update: batch checkbox updates in tasks.md
 4. Knowledge Graduation (in worktree):
    a. Any deferred items? -> write dev/backlog/<slug>.md

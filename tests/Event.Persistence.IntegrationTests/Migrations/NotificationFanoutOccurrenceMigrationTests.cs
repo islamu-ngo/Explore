@@ -29,7 +29,7 @@ public sealed class NotificationFanoutOccurrenceMigrationTests(
         {
             await migrator.MigrateAsync();
             await Assert.That(ReadPendingModelOperations(context)).IsEmpty();
-            await AssertSchemaAsync(expected: true);
+            await AssertSchemaAsync(context.Model.GetDefaultSchema()!);
         }
         finally
         {
@@ -41,15 +41,13 @@ public sealed class NotificationFanoutOccurrenceMigrationTests(
 
     private ExploreDbContext CreateDbContext()
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
             .ConfigureWarnings(warnings =>
             {
                 warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
-                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
             });
-        builder.EnableServiceProviderCaching(false);
         return new ExploreDbContext(builder.Options);
     }
 
@@ -85,45 +83,20 @@ public sealed class NotificationFanoutOccurrenceMigrationTests(
         _ => operation.GetType().Name
     };
 
-    private async Task AssertSchemaAsync(bool expected)
+    private async Task AssertSchemaAsync(string schema)
     {
         await using var connection = new NpgsqlConnection(fixture.ConnectionString);
         await connection.OpenAsync();
 
-        await Assert.That(await ExistsAsync(connection, """
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.tables
-                WHERE table_schema = current_schema() AND table_name = 'notification_fanout_occurrences')
-            """)).IsEqualTo(expected);
-        await Assert.That(await ExistsAsync(connection, """
-            SELECT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_schema = current_schema() AND table_name = 'notification_intents'
-                  AND column_name = 'fanout_occurrence_id')
-            """)).IsEqualTo(expected);
-
-        if (!expected)
-        {
-            return;
-        }
-
-        await Assert.That(await ExistsAsync(connection, """
-            SELECT EXISTS (
-                SELECT 1 FROM pg_constraint
-                WHERE conname = 'fk_notification_intents_fanout_occurrence_tenant')
-            """)).IsTrue();
-        await Assert.That(await ExistsAsync(connection, """
-            SELECT EXISTS (
-                SELECT 1 FROM pg_indexes
-                WHERE schemaname = current_schema()
-                  AND indexname = 'ux_notification_intents_tenant_occurrence_recipient')
-            """)).IsTrue();
-    }
-
-    private static async Task<bool> ExistsAsync(NpgsqlConnection connection, string sql)
-    {
-        await using var command = new NpgsqlCommand(sql, connection);
-        return (bool)(await command.ExecuteScalarAsync()
-            ?? throw new InvalidOperationException("Schema existence query returned no value."));
+        await Assert.That(await NotificationMigrationSchemaContract.HasTableAsync(
+            connection, schema, "notification_fanout_occurrences")).IsTrue();
+        await Assert.That(await NotificationMigrationSchemaContract.HasColumnAsync(
+            connection, schema, "notification_intents", "fanout_occurrence_id")).IsTrue();
+        await Assert.That(await NotificationMigrationSchemaContract.HasForeignKeyAsync(
+            connection, schema, "notification_intents", ["tenant_id", "fanout_occurrence_id"],
+            "notification_fanout_occurrences", ["tenant_id", "id"])).IsTrue();
+        await Assert.That(await NotificationMigrationSchemaContract.HasUniqueIndexAsync(
+            connection, schema, "notification_intents",
+            ["tenant_id", "fanout_occurrence_id", "recipient_user_id"])).IsTrue();
     }
 }

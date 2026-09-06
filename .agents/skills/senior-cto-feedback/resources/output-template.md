@@ -2,9 +2,13 @@
 <!-- ABOUTME: Forces decisive verdicts, artifact-specific critique, and actionable rewrite guidance for /dev-docs plans. -->
 # Output Template
 
-Write the full review to `dev/active/<task-name>/<task-name>-cto-review.md`; the chat response names the file, decision, top blocker, and next required gate without duplicating it. Normal review is read-only except for this artifact.
+Write the review to `dev/active/<task-name>/<task-name>-cto-review.md` (for Tier 0–2 comprehensive audits or when a persistent review artifact is requested). For Tier 3–4 tasks, or when rewrite mode is active, the chat response delivers the verdict and direct in-place edits are applied to `plan.md` and `tasks.md`.
 
-## Required Structure
+## Adaptive Review Sizing
+- **Comprehensive Audit (Tiers 0–2: Sovereign, Security, Data Loss)**: Use the full 14-section review below.
+- **Lean Review (Tiers 3–4: Application, UI, Refactoring)**: Use the 5-section Lean Review structure (Metadata, Verdict, Blast Radius & Edge Cases, Architecture/Contract, Direct Plan Adjustments).
+
+## Required Metadata
 
 ```markdown
 # Senior CTO Feedback
@@ -13,13 +17,17 @@ Last Updated: YYYY-MM-DD Europe/Brussels
 
 ## Review Metadata
 
-- Review mode: Read-only | Rewrite requested
-- Reviewed plan revision: `<Git object or SHA-256 digest>`
-- Reviewed tasks revision: `<Git object or SHA-256 digest>`
-- Reviewed I-VSD revision: `<Git object or SHA-256 digest>`
+- Review mode: Read-only | Rewrite applied in-place
+- Reviewed workstream: `<task-name>`
+- Reviewed artifacts: `[plan.md, tasks.md]`
 - I-VSD freshness: Current | Stale | Missing
 - Decision: Approve | Approve with required changes | Split before approval | Reject | Defer
 - User approval: Not granted by this review
+```
+
+## Structure: Comprehensive Review (Tiers 0–2)
+
+```markdown
 
 ## Executive Verdict
 
@@ -132,6 +140,31 @@ Optional sections
 ## Operator Runbook Requirements
 
 [What self-hosters need for install/upgrade/recovery.]
+```
+
+## Structure: Lean Review (Tiers 3–4: Application, UI, Refactoring)
+
+```markdown
+# Senior CTO Feedback (Lean Review)
+
+Last Updated: YYYY-MM-DD Europe/Brussels
+
+## Review Metadata
+- Reviewed workstream: `<task-name>`
+- Reviewed artifacts: `[plan.md, tasks.md]`
+- Decision: Approve | Approve with required changes | Split before approval | Reject | Defer
+
+## 1. Executive Verdict & Decision
+[One concise paragraph with the verdict and top priorities.]
+
+## 2. Blast Radius & Edge Cases
+[Unaddressed callers, callees, downstream events, or missing boundary scenarios.]
+
+## 3. Architecture, Contracts & Invariant Tests
+[Clean Architecture conformance, declarative commit contracts, absence of mock-mirroring, and TUnit verification lanes.]
+
+## 4. Concrete Plan Adjustments
+[Actionable list of changes applied or required in plan.md and tasks.md.]
 ```
 
 ## Answer Style Rules
