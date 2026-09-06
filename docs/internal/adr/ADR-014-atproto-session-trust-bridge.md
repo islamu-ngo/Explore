@@ -84,11 +84,47 @@ Application entities and mappings, not edited migration output, own schema
 corrections. MySQL-family DDL failures require forward repair rather than an
 assumption of transactional rollback.
 
+### Private transient-service transport
+
+The transient bridge is an instance service privilege, not a user identity
+assertion. Its ordinary routes are the authorized POST operations `create`,
+`read`, and `consume` under `/api/auth/atproto/transient/`, using only
+`X-Atproto-Transient-Assertion`. The authenticated service subject cannot
+establish a platform user, DID, browser session, or general business-data access.
+
+The ES256 profile uses issuer `event-atproto-transient-bff`, audience
+`event-atproto-transient-api`, subject `event-blazor-bff`, and use
+`atproto-transient`. It binds `jti`, `iat`, `exp`, `method`, exact `path`,
+closed `operation` and `purpose`, and `body_sha256` for the exact request bytes.
+Assertions last at most 30 seconds with five seconds of clock skew. The
+OAuth-client public key ring remains the sole verification authority; key
+URLs supplied by a request never select or fetch a verification key.
+
+Ingress must enforce the route-specific rate limit before buffering and the
+80-KiB request bound before signature verification or database work. The
+private request-timeout policy covers buffering as well as dispatch. The protected payload retains
+its separate 64-KiB UTF-8 limit. Bounded buffering is rewound for model binding;
+duplicate credential headers, security claims or JSON security fields fail
+closed. Invalid assertions cannot fall through to a bearer or user scheme.
+
+The API commits the instance replay claim before dispatching the requested
+operation. Only initial OAuth-state lookup can recover an unknown tenant;
+handoff reads and ordinary consumes bind the expected enabled tenant. No
+business tenant filter is disabled. Responses are no-store and do not log
+assertions, locators or protected payloads. Generic idempotency or output
+caching must not replay a consumed payload.
+
+Browser-facing YARP routes must deny the private route set, independently of
+stripping the assertion header. The controller, HAL discovery and public
+OpenAPI/generated clients expose no transient-store affordance. The synthetic
+probe and its closed HealthProbe purpose belong to the later operational
+lifecycle; ordinary create/read/consume never accept that purpose.
+
 ### Cryptographic purpose separation and rotation
 
 Three instance-scoped, rotation-capable secret purposes are mandatory:
 
-- `auth.atproto.oauth_client_private_jwks` signs OAuth `private_key_jwt` assertions and the server-private bootstrap assertion.
+- `auth.atproto.oauth_client_private_jwks` signs OAuth `private_key_jwt`, server-private bootstrap, and transient-service assertions with separate validated assertion profiles.
 - `auth.atproto.session_encryption_keyring` encrypts persisted CarpaNet OAuth-session envelopes.
 - `auth.atproto.session_jwt_private_jwks` signs first-party API session JWTs.
 

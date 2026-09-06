@@ -235,6 +235,37 @@ The `MultiAuth` policy selector preserves the Keycloak and API-key branches and 
 
 OAuth session JSON, access/refresh tokens, DPoP material, JWTs, and JWK private values must never appear in logs, traces, metrics, URLs, OpenAPI, WASM authentication state, or generated clients. Verification failures use bounded reason codes; provider exceptions and response bodies are not reflected to callers.
 
+### ATProto transient-service privilege
+
+The private transient store authenticates an instance BFF service, not a user.
+Only the exact POST create/read/consume routes under
+`/api/auth/atproto/transient/` use its dedicated assertion scheme and narrow
+tenant-resolution exception. A bootstrap assertion, platform JWT or
+browser-supplied tenant hint cannot substitute for that authority.
+
+`X-Atproto-Transient-Assertion` carries an ES256 assertion with distinct
+issuer `event-atproto-transient-bff`, audience `event-atproto-transient-api`,
+subject `event-blazor-bff`, and use `atproto-transient`. Its method, exact path,
+operation, purpose and `body_sha256` bind the exact buffered request bytes.
+The maximum lifetime is 30 seconds plus five seconds of validation skew,
+independent of user-token validation settings. Duplicate security fields,
+unknown signing keys, request-provided key URLs and credential conflicts
+must fail closed without another authentication scheme taking over.
+
+Route-specific throttling precedes buffering; the private timeout covers the
+body read and dispatch. The 80-KiB request limit precedes cryptographic and
+storage work; ciphertext is separately bounded to 64 KiB UTF-8. A durable,
+instance-scoped replay claim is required before action dispatch. Only the
+initial OAuth-state lookup may omit the expected tenant; handoff access and
+consumption require it. Replay admission and consumption reject outer
+transactions so their success signals cannot precede durable commit.
+
+Private responses use no-store and cannot be replayed by generic response
+caching or idempotency middleware. Assertions, locators and ciphertext never
+enter diagnostics. Browser YARP access is denied as well as header-sanitized,
+and no public OpenAPI, HAL or generated-client surface exposes the store.
+See [ADR-014](adr/ADR-014-atproto-session-trust-bridge.md#private-transient-service-transport).
+
 ### Global Actor and credential moderation
 
 Only an authenticated instance administrator can suspend or reinstate a global Actor or exact `AtprotoIdentity`. The CQRS requests use the existing instance-setting update permission for `global-actor-moderation`, and each handler independently rechecks instance-admin status before target lookup. Tenant context, tenant-admin status, participation, DID ownership claims, and route input never grant authority over global state.

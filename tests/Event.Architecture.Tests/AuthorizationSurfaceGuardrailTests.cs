@@ -25,6 +25,14 @@ public sealed class AuthorizationSurfaceGuardrailTests
     private static readonly InventoryEntry[] NamedMediatRExceptions =
     [
         new(
+            "Explore.Application.Features.Authentication.Atproto.Requests.Commands.CreateAtprotoTransientCommand",
+            "private-pre-authentication-machine",
+            "Approved instance-owned transient authority: the exact private POST route accepts only the AtprotoTransient ES256 scheme, binds exact request bytes and claims P1 replay before dispatch. The handler checks the enabled target tenant without user identity or business filter bypass. AtprotoTransientAuthenticationTests and AtprotoTransientStoreControllerTests exercise the real HTTP/P1 boundary."),
+        new(
+            "Explore.Application.Features.Authentication.Atproto.Requests.Commands.ConsumeAtprotoTransientCommand",
+            "private-pre-authentication-machine",
+            "Approved instance-owned transient authority: the dedicated exact-body machine scheme admits durable replay before dispatch; the handler validates the enabled expected tenant and P1 grants a payload only after an exact single-winner row deletion. AtprotoTransientStoreControllerTests proves tenant mismatch and concurrent loser rejection with no ambient transaction or generic idempotency replay."),
+        new(
             "Explore.Application.Features.ConfigurationManifest.Requests.Commands.ApplyConfigurationManifestCommand",
             "host-local-bootstrap",
             "Dispatched only by ConfigurationManifestStartupRunner through IConfigurationManifestApplier inside the trusted deployment boundary; no controller or route sends it, no user principal exists at startup, and its authority is the operator-owned manifest file mounted read-only into the bootstrap host."),
