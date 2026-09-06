@@ -1,24 +1,37 @@
 // ABOUTME: Hosts the real API authentication pipeline and P1 stores on migrated PostgreSQL.
 // ABOUTME: Supplies ephemeral signing authority through the external secret resolver and restores production auth dispatch.
 
+extern alias bff;
+
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Secrets;
 using Explore.Domain.Secrets;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Explore.Persistence.Database;
 using Explore.Persistence.Seed;
+using Explore.Secrets.Database;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using Testcontainers.PostgreSql;
 using TUnit.Core.Interfaces;
+using BffAuth = bff::Explore.Blazor.Services.Auth;
+using BffHttpClients = bff::Explore.Blazor.Extensions.HttpClientExtensions;
 
 namespace Event.API.IntegrationTests.Authentication;
 
@@ -64,9 +77,12 @@ public sealed class AtprotoTransientApiFixture : IAsyncInitializer, IAsyncDispos
     public async Task InitializeAsync()
     {
         await container.StartAsync();
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseNpgsql(container.GetConnectionString()).UseSnakeCaseNamingConvention().Options;
-        await using (var db = new ExploreDbContext(options))
+        var configuration = new Dictionary<string, string?>();
+        TestDatabaseConfiguration.AddPostgreSql(configuration, container.GetConnectionString());
+        var options = new DbContextOptionsBuilder<ExploreDbContext>();
+        PrimaryDatabaseProviderComposition.ConfigureApplication(options,
+            PrimaryDatabaseConfiguration.BindRuntime(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build()));
+        await using (var db = new ExploreDbContext(options.Options))
         {
             await db.Database.MigrateAsync();
             await LookupTableSeeder.SeedAsync(db);
@@ -95,6 +111,44 @@ public sealed class AtprotoTransientApiFixture : IAsyncInitializer, IAsyncDispos
             options.DefaultSignInScheme = null;
             options.DefaultSignOutScheme = null;
         });
+    }
+
+    public async Task<ServiceProvider> CreateBffServicesAsync(HttpMessageHandler? handler = null, bool rotateKeys = false,
+        bool globalHedging = false, ILoggerProvider? logs = null)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["ExploreApi:BaseUrl"] = "https://api.test" });
+        if (logs is not null)
+        {
+            builder.Logging.ClearProviders();
+            builder.Logging.AddFilter((_, _) => true);
+            builder.Logging.AddProvider(logs);
+        }
+        // Deliberately install global resilience first: the actual private-client registration must remove it.
+        builder.Services.ConfigureHttpClientDefaults(client =>
+        {
+            if (globalHedging) client.AddStandardHedgingHandler();
+            else client.AddStandardResilienceHandler();
+        });
+        BffHttpClients.AddApiHttpClients(builder.Services, builder.Configuration, builder.Environment);
+        builder.Services.AddHttpClient(BffAuth.ApiBackedAtprotoTransientStore.HttpClientName)
+            .ConfigureHttpClient(client => client.BaseAddress = new Uri("https://api.test"))
+            .ConfigurePrimaryHttpMessageHandler(() => handler ?? Factory.Server.CreateHandler());
+        var authority = await Secrets.ResolveAsync(SecretDefinitionRegistry.Keys.Atproto.OAuthClientPrivateJwks, null, default);
+        var ring = JsonNode.Parse(authority.Value!)!;
+        if (rotateKeys)
+        {
+            foreach (var key in ring["keys"]!.AsArray())
+                key!["status"] = key["status"]!.GetValue<string>() == "active" ? "retired" : "active";
+        }
+        builder.Services.AddSingleton(new BffAuth.AtprotoClientKeyProvider(Options.Create(new BffAuth.AtprotoClientKeyOptions
+        {
+            OAuthClientPrivateJwks = ring.ToJsonString()
+        })));
+        builder.Services.AddSingleton<TimeProvider>(Clock);
+        builder.Services.AddSingleton<BffAuth.AtprotoTransientAssertionService>();
+        builder.Services.AddSingleton<BffAuth.ApiBackedAtprotoTransientStore>();
+        return builder.Services.BuildServiceProvider();
     }
 
     public byte[] ReadBody(string? digest = null, string purpose = Purpose, Guid? tenantId = null) =>

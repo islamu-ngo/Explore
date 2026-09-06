@@ -1,6 +1,8 @@
 ---
 description: Operate linked-user OAuth, governed publication, exact-collection ingestion, and tenant-gated discovery.
 ---
+<!-- ABOUTME: Guides operators through AT Protocol login, publication and governed event ingestion. -->
+<!-- ABOUTME: Explains database-backed login state, browser binding and key-persistence recovery requirements. -->
 
 # AT Protocol & Bluesky Jetstream
 
@@ -15,6 +17,18 @@ ISLAMU Event implements a selective **AT Protocol (Bluesky)** federation integra
 * **Supported Records**:
   * Calendar Events: Published to the user's repository under `community.lexicon.calendar.event`.
   * Attendance Intent: Published under `community.lexicon.calendar.rsvp` with status `#going`.
+
+### Login state and browser binding
+
+OAuth login state and one-time cross-domain handoffs use the primary database, not Redis or process-local memory. The BFF accesses them through a private authenticated API; no database credentials belong in the BFF. Existing durable OAuth sessions remain separate.
+
+Use HTTPS for the public instance and every configured tenant login origin, including local development. Keep the same browser throughout login. A protected host-only proof cookie lasts fifteen minutes and supports parallel login attempts without being rewritten. State lasts at most ten minutes (or the shorter configured SDK lifetime), reserving two minutes for handoff. A handoff lasts at most two minutes and never outlives browser proof. Near proof expiry, wait for the returned `Retry-After` before starting another attempt; do not clear cookies underneath other pending logins.
+
+For a custom-domain login, the canonical callback redirects an opaque code back to the initiating domain without signing the browser in on the canonical host. Opening that code in another browser cannot sign it in or consume the legitimate destination handoff.
+
+For Redis-free single-node hosting, persist the existing native BFF Data Protection key directory. Replicas need the same persistent key directory and application discriminator, with restricted permissions and encryption at rest. An explicitly configured cache connection still selects Redis for those protection keys; remove that selection when choosing a completely Redis-free deployment. Keep the OAuth signing key ring available across replicas and retain keys needed by outstanding flows.
+
+Restart in-flight logins after upgrading from the old transient backend or losing their cookies/keys. The memory-store and configurable handoff-lifetime options are removed, without compatibility aliases. After an API/database outage or a lost consume response, restore dependencies and begin a new login rather than retrying the old callback. The current AT Protocol readiness check is passive; it does not yet prove an operational store round trip.
 
 ---
 

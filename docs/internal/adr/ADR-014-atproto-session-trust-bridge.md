@@ -30,14 +30,18 @@ An AT Protocol authorization produces PDS-bound OAuth/DPoP credentials, not an a
 
 CarpaNet's `IOAuthSessionStore` has two adapters and one durable table: a BFF server-private API adapter and an Infrastructure repository adapter over `UserAuthenticationToken`. The complete versioned `OAuthSessionData` is encrypted as one AES-GCM envelope with subject DID, encryption key ID, safe PDS host, and expiry metadata; plaintext and partial-column fallbacks are forbidden.
 
-OAuth state and cross-host handoff are atomic and single-use. Multi-node deployments use Redis `GETDEL`; process-local atomic storage is limited to explicit single-node development. Handoff URLs contain only an opaque random code, never a platform JWT, PDS credential, DID, or session payload.
+OAuth state and cross-host handoff are atomic and single-use through the private primary-database bridge in every environment. `ApiBackedOAuthStateStore` and `AtprotoTenantSessionHandoffStore` share `ApiBackedAtprotoTransientStore`; Redis/memory transient adapters and their mode aliases are removed. Handoff URLs contain only an opaque random code, never a platform JWT, PDS credential, DID, or session payload.
+
+One origin-protected, host-only `__Host-event-atproto-proof` cookie holds a separate 256-bit browser proof for a fixed fifteen minutes. It is Secure, HttpOnly, SameSite=Lax and smaller than 1 KiB. Established cookies are reused without sliding or per-flow deletion; independent random flow identifiers derive HMAC-SHA256 bindings stored inside protected state. Cold first-cookie races fail closed for the losing binding. Near-expiry challenges return a bounded retry deadline without replacing proof under active flows.
+
+The adapters read/decrypt and validate issuer, PDS, current tenant/origin mapping and proof before candidate-bound consumption. Same-origin callbacks check browser possession; a canonical callback originating elsewhere can exchange the provider result but issues only an opaque handoff. Its destination validates the initiating browser before consuming and issuing a cookie. Cookie sign-in rechecks proof after provider exchange. State expiry reserves the two-minute handoff budget; a post-callback handoff is capped by proof expiry, not by already-consumed state expiry.
 
 ### Relational transient storage authority
 
 The database-backed cutover introduces two instance-owned lifecycle entities:
 `AtprotoTransientRecord` for protected OAuth state and tenant handoffs, and
-`AtprotoTransientAssertionReplay` for machine-assertion replay claims. This
-additive schema does not itself switch the BFF consumers away from Redis.
+`AtprotoTransientAssertionReplay` for machine-assertion replay claims. Both
+BFF transient consumers now use this authority through private HTTP contracts.
 
 These entities deliberately do not implement the business tenant-filter
 contract. A canonical OAuth callback cannot know its originating tenant until
@@ -147,7 +151,7 @@ The BFF's URL-form client ID is its exact canonical HTTPS `/oauth/client-metadat
 - BFF, API, and Infrastructure need separate adapters and key consumers while Domain remains unaware of CarpaNet types.
 - Key rotation requires overlap publication, `kid`-based verification/decryption, multi-node consistency, and consumer-specific verification before retired-key removal.
 - CarpaNet outbound traffic passes the constrained transport boundary when an OAuth or PDS operation runs. The advertised BFF readiness signal is a passive local check and does not probe Redis, DNS, a PDS, authorization-server discovery, or the Infrastructure/API key rings.
-- Existing development sessions may be invalidated; backward-compatible plaintext or FishyFlip paths are intentionally not retained.
+- In-flight logins must restart after the transient-backend cutover; no legacy reader is retained. Existing BFF Data Protection remains separate: Redis-free hosts persist the native key directory, replicas share it with application discriminator `islamu-event`, and an operator choosing no Redis must also remove explicit Redis key persistence. Required key loss fails closed rather than silently relocating keys.
 
 ## Related
 
