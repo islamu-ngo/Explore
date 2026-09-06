@@ -574,6 +574,21 @@ These profiles are correctness tests, not performance benchmarks. Runtime benchm
 
 ### Fixture Architecture
 
+Onboarding HTTP tests use `OnboardingWebApplicationFactory` with a unique SQLite
+file under the test process's temporary directory. It reuses production provider
+composition, including transaction-completion interceptors that release named
+locks, and deletes its own file after disposing its unpooled connection. An
+in-memory replacement cannot prove this transaction lifecycle. Fixtures seed
+UUIDv7 user identities and issuer-bound external-login keys; a session ID or
+unlinked internal-user claim is not account authority.
+
+Inject disposable `SETUP_SECRET` and, for Keycloak rotation tests,
+`KEYCLOAK_BLAZOR_CLIENT_SECRET` through the environment keys documented in
+`.env.example`. These fixtures do not embed credentials or mutate process-wide
+secret values. Keep real operator credentials out of test runs and logs.
+The reusable API integration CI step generates and masks both disposable values
+for its test process; it does not need repository or operator secret access.
+
 ```
 Event.API.IntegrationTests/
 ├── Builders/           # Fluent entity builders (TenantBuilder, UserBuilder, ActorBuilder, EventBuilder)
