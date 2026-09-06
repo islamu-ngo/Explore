@@ -7,8 +7,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
+using Explore.Application.Contracts.Persistence;
+using Explore.Domain;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -146,6 +149,59 @@ public sealed class AtprotoRelationalLoginFlowTests(AtprotoRelationalLoginFixtur
         await Assert.That(persistedBody.RootElement.GetProperty("did").GetString()).IsEqualTo(AtprotoRelationalLoginFixture.ExternalAtprotoTransport.Did);
     }
 
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task CommittedConsumeArrivingAtExpiry_CannotIssueCookieOrReplay(bool crossHost)
+    {
+        var clock = new ProofClock();
+        string purpose = crossHost ? "tenant_handoff" : "oauth_state";
+        var boundary = new ExpireAfterConsumeResponse(clock, purpose);
+        await using var consumer = fixture.CreateBff().WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<TimeProvider>(clock);
+            services.AddHttpClient(BffAuth.ApiBackedAtprotoTransientStore.HttpClientName)
+                .AddHttpMessageHandler(() => boundary);
+        }));
+        await using var issuer = fixture.CreateBff(rotateKeys: true);
+        string origin = crossHost ? TenantOrigin : CanonicalOrigin;
+        var browser = new CookieContainer();
+        using var login = BrowserClient(crossHost ? consumer : issuer, origin, browser);
+        using var callbackClient = BrowserClient(crossHost ? issuer : consumer, CanonicalOrigin, browser);
+        using var status = await login.GetAsync("/auth/status");
+        await Assert.That(status.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var flow = await StartFlowAsync(login, browser, "/events?attempt=expiry", CancellationToken.None);
+        using var callback = await callbackClient.GetAsync(flow.Callback);
+        if (crossHost)
+        {
+            await Assert.That(callback.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+            await Assert.That(callback.Headers.Location!.AbsolutePath).IsEqualTo("/auth/atproto/handoff");
+        }
+        using var completion = crossHost ? await login.GetAsync(callback.Headers.Location!.PathAndQuery) : null;
+        var candidate = boundary.Consumed;
+        await Assert.That(candidate).IsNotNull();
+        var expiry = DateTimeOffset.FromUnixTimeMilliseconds(candidate!.ExpiresAtUnixMilliseconds);
+        await Assert.That(clock.GetUtcNow()).IsEqualTo(expiry);
+        await Assert.That(fixture.Clock.GetUtcNow()).IsLessThan(expiry);
+        if (crossHost)
+        {
+            var protector = consumer.Services.GetRequiredService<IDataProtectionProvider>()
+                .CreateProtector(typeof(BffAuth.AtprotoTenantSessionHandoffStore).FullName!, "tenant-handoff-v2");
+            var handoff = JsonSerializer.Deserialize<BffAuth.AtprotoTenantHandoff>(
+                protector.Unprotect(Convert.FromBase64String(candidate.ProtectedPayload)), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+            await Assert.That(handoff.Seed.BrowserBinding.ProofExpiresAt).IsGreaterThan(expiry);
+            await Assert.That(handoff.Session.ExpiresAt).IsGreaterThan(expiry);
+        }
+        await using var scope = fixture.Api.Services.CreateAsyncScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IAtprotoTransientStoreRepository>();
+        var storedPurpose = crossHost ? AtprotoTransientPurpose.TenantHandoff : AtprotoTransientPurpose.OAuthState;
+        await Assert.That(await repository.ReadAsync(storedPurpose, candidate.TokenDigest, candidate.TenantId)).IsNull();
+        await Assert.That(await repository.ConsumeAsync(candidate.Id, storedPurpose, candidate.TokenDigest, candidate.TenantId)).IsNull();
+        await AssertRejectedWithoutCookie(completion ?? callback);
+        await Assert.That(browser.GetCookies(new Uri(origin))[".AspNetCore.Cookies"]).IsNull();
+    }
+
     private static async Task AssertRejectedWithoutCookie(HttpResponseMessage response)
     {
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
@@ -229,8 +285,9 @@ public sealed class AtprotoRelationalLoginFlowTests(AtprotoRelationalLoginFixtur
         {
             Content = JsonContent.Create(new { handle = "alice.example", classification = "person", returnPath })
         };
-        request.Headers.Add("X-CSRF-TOKEN", Uri.UnescapeDataString(browser.GetCookies(new Uri(CanonicalOrigin))["XSRF-TOKEN"]!.Value));
-        request.Headers.Add("Origin", CanonicalOrigin);
+        string origin = client.BaseAddress!.GetLeftPart(UriPartial.Authority);
+        request.Headers.Add("X-CSRF-TOKEN", Uri.UnescapeDataString(browser.GetCookies(new Uri(origin))["XSRF-TOKEN"]!.Value));
+        request.Headers.Add("Origin", origin);
         using var response = await client.SendAsync(request, cancellationToken);
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
@@ -246,8 +303,34 @@ public sealed class AtprotoRelationalLoginFlowTests(AtprotoRelationalLoginFixtur
     private sealed class ProofClock : TimeProvider
     {
         private long offsetTicks;
-        public override DateTimeOffset GetUtcNow() => DateTimeOffset.UtcNow.AddTicks(Interlocked.Read(ref offsetTicks));
+        private long frozenUnixMilliseconds;
+        public override DateTimeOffset GetUtcNow() => Interlocked.Read(ref frozenUnixMilliseconds) is > 0 and var frozen
+            ? DateTimeOffset.FromUnixTimeMilliseconds(frozen)
+            : DateTimeOffset.UtcNow.AddTicks(Interlocked.Read(ref offsetTicks));
         public void ExpireProof() => Interlocked.Exchange(ref offsetTicks, TimeSpan.FromMinutes(16).Ticks);
+        public void FreezeAt(long expiry) => Interlocked.Exchange(ref frozenUnixMilliseconds, expiry);
+    }
+
+    private sealed class ExpireAfterConsumeResponse(ProofClock clock, string purpose) : DelegatingHandler
+    {
+        public BffAuth.BffAtprotoTransientCandidate? Consumed { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var response = await base.SendAsync(request, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.OK
+                && request.RequestUri!.AbsolutePath == BffAuth.AtprotoTransientAssertionService.Prefix + "consume")
+            {
+                var candidate = JsonSerializer.Deserialize<BffAuth.BffAtprotoTransientCandidate>(
+                    await response.Content.ReadAsByteArrayAsync(cancellationToken), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                if (candidate?.Purpose == purpose)
+                {
+                    Consumed = candidate;
+                    clock.FreezeAt(candidate.ExpiresAtUnixMilliseconds);
+                }
+            }
+            return response;
+        }
     }
 
     private sealed class ExpireAfterAuthorityResponse(ProofClock clock) : DelegatingHandler

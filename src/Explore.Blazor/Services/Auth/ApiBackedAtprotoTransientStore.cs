@@ -69,7 +69,7 @@ public sealed class ApiBackedAtprotoTransientStore(
         if (result is null) return false;
         // A successful delete is usable only for the exact previously validated immutable candidate.
         if (result != candidate) throw InvalidResponse();
-        return true;
+        return IsLive(candidate.Purpose, candidate.ExpiresAtUnixMilliseconds);
     }
 
     private async Task<BffAtprotoTransientCandidate?> SendAsync(string operation, string purpose, byte[] body,

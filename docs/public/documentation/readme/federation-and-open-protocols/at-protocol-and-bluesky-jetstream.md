@@ -26,6 +26,8 @@ Use HTTPS for the public instance and every configured tenant login origin, incl
 
 For a custom-domain login, the canonical callback redirects an opaque code back to the initiating domain without signing the browser in on the canonical host. Opening that code in another browser cannot sign it in or consume the legitimate destination handoff.
 
+If login state or a handoff expires while the API response is in transit, sign-in is rejected even if the browser proof is still valid. Start a fresh login; a successfully consumed code cannot be recovered or retried.
+
 For Redis-free single-node hosting, persist the existing native BFF Data Protection key directory. Replicas need the same persistent key directory and application discriminator, with restricted permissions and encryption at rest. An explicitly configured cache connection still selects Redis for those protection keys; remove that selection when choosing a completely Redis-free deployment. Keep the OAuth signing key ring available across replicas and retain keys needed by outstanding flows.
 
 Restart in-flight logins after upgrading from the old transient backend or losing their cookies/keys. The memory-store and configurable handoff-lifetime options are removed, without compatibility aliases. After an API/database outage or a lost consume response, restore dependencies and begin a new login rather than retrying the old callback. The current AT Protocol readiness check is passive; it does not yet prove an operational store round trip.
