@@ -92,14 +92,14 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
                         cmd.CommandText = $"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE;";
                         await cmd.ExecuteNonQueryAsync();
                     }
-                    catch
+                    catch (DbException)
                     {
                         // Best-effort schema cleanup before container disposal
                     }
                 }
             }
         }
-        catch
+        catch (DbException)
         {
             // Container teardown takes precedence
         }
@@ -168,7 +168,7 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
             ? interceptors.Append(searchPathInterceptor).ToArray()
             : [searchPathInterceptor];
 
-        var context = CreateDbContextInternal(PrimaryDatabaseRole.Runtime, combinedInterceptors);
+        var context = CreateDbContextInternal(PrimaryDatabaseRole.Runtime, combinedInterceptors, schema);
         context.EnableTenantFilterBypass("Persistence integration test isolated schema context.");
         return context;
     }
@@ -388,12 +388,14 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
 /// <summary>
 /// EF Core connection interceptor that sets PostgreSQL search_path on each connection open for dynamic schema isolation.
 /// </summary>
-public sealed class PostgresSearchPathInterceptor(string schema, string fallbackSchema = "islamu_event") : DbConnectionInterceptor
+public sealed class PostgresSearchPathInterceptor(string schema, string? fallbackSchema = null) : DbConnectionInterceptor
 {
+    private readonly string _fallbackSchema = fallbackSchema ?? RelationalModelNamespace.DefaultSchema;
+
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = $"SET search_path TO \"{schema}\", \"{fallbackSchema}\", public;";
+        command.CommandText = $"SET search_path TO \"{schema}\", \"{_fallbackSchema}\", public;";
         command.ExecuteNonQuery();
     }
 
@@ -403,7 +405,7 @@ public sealed class PostgresSearchPathInterceptor(string schema, string fallback
         CancellationToken cancellationToken = default)
     {
         await using var command = connection.CreateCommand();
-        command.CommandText = $"SET search_path TO \"{schema}\", \"{fallbackSchema}\", public;";
+        command.CommandText = $"SET search_path TO \"{schema}\", \"{_fallbackSchema}\", public;";
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 }

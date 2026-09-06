@@ -87,7 +87,7 @@ public static class ChangeWorkflowCommand
         }
 
         string id = AllocateUnused(root, timeout);
-        string directory = Path.Combine(root, "docs", "internal", "releases", "changes");
+        string directory = Path.Combine(Path.GetFullPath(root), "docs", "internal", "releases", "changes");
         Directory.CreateDirectory(directory);
         string path = Path.Combine(directory, id + ".yaml");
         WriteAtomic(path, StrictUtf8.GetBytes(Fragment(id, title, type, scope, summary, group)));
