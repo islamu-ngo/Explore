@@ -646,6 +646,13 @@ seed convenience; production/staging do not. The API owns only the Quartz
 scheduler schema, which is applied as idempotent DDL rather than an EF Core
 migration and works on every supported primary provider, including SQLite.
 
+SQLite transaction-owned named locks retain their owning connection separately
+from the transaction object. Commit, rollback, closed/disposed-connection cleanup,
+and reaping completed owners before connection reuse release the process semaphore.
+This prevents implicit rollback from stranding later payment or configuration work
+without releasing a lock while its owning transaction is still active. SQLite
+remains a single-instance deployment; server-provider locking is unchanged.
+
 | Provider | Application migrations | Data Protection migrations | Namespace/history |
 |---|---|---|---|
 | PostgreSQL | `Explore.Persistence` | `Explore.Persistence` | Configured schema (default `islamu_event`) with separate histories |

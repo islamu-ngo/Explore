@@ -138,6 +138,57 @@ public sealed class RelationalNamedLockTests
     }
 
     [Test]
+    public async Task SqliteTransactionLock_ImplicitRollbackAllowsNextTransactionOnSameConnection()
+    {
+        await using ExploreDbContext context = CreateSqliteContext();
+        await context.Database.OpenConnectionAsync();
+        string resource = $"same-connection-rollback:{Guid.CreateVersion7():N}";
+        await using (var transaction = await context.Database.BeginTransactionAsync())
+        {
+            await using IAsyncDisposable lease = await RelationalNamedLock.AcquireTransactionAsync(
+                context, resource, CancellationToken.None);
+        }
+
+        await using var nextTransaction = await context.Database.BeginTransactionAsync();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        await using IAsyncDisposable nextLease = await RelationalNamedLock.AcquireTransactionAsync(
+            context, resource, cancellation.Token);
+        await nextTransaction.RollbackAsync();
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task SqliteTransactionLock_ImplicitRollbackReleasesOnConnectionCleanup(bool disposeContext)
+    {
+        await using ExploreDbContext firstContext = CreateSqliteContext();
+        await using ExploreDbContext secondContext = CreateSqliteContext();
+        string resource = $"implicit-rollback:{Guid.CreateVersion7():N}";
+        await using var firstTransaction = await firstContext.Database.BeginTransactionAsync();
+        await using IAsyncDisposable firstLease = await RelationalNamedLock.AcquireTransactionAsync(
+            firstContext, resource, CancellationToken.None);
+        await firstLease.DisposeAsync();
+        await using var secondTransaction = await secondContext.Database.BeginTransactionAsync();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        Task<IAsyncDisposable> waiting = RelationalNamedLock.AcquireTransactionAsync(
+            secondContext, resource, cancellation.Token);
+        await Assert.That(waiting.IsCompleted).IsFalse();
+
+        await firstTransaction.DisposeAsync();
+        if (disposeContext)
+        {
+            await firstContext.DisposeAsync();
+        }
+        else
+        {
+            await firstContext.Database.CloseConnectionAsync();
+        }
+
+        await using IAsyncDisposable nextLease = await waiting;
+        await secondTransaction.RollbackAsync();
+    }
+
+    [Test]
     public async Task SqliteManifestTransactionLock_HoldsProcessLeaseUntilCallerCommit()
     {
         await using ExploreDbContext firstContext = CreateSqliteContext();
