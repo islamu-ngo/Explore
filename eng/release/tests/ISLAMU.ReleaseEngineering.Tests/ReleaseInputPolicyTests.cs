@@ -460,7 +460,7 @@ public sealed class ReleaseInputPolicyTests
         Supersedes: []
         Impacts:
           Breaking:
-            Reference: docs/releases/README.md
+            Reference: docs/internal/releases/README.md
             Disposition: documented
             Detail: Check-in integrations must send credential after upgrading.
           Security:
