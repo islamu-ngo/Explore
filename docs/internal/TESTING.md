@@ -69,6 +69,17 @@ Each project has a specific role. Run individually — never use solution-level 
 
 ### Run Commands
 
+Host-lifetime regressions in `ApiHostLifetimeTests` and
+`GracefulShutdownLifetimeTests` distinguish stopped/never-started host disposal
+from process-global callback retention using non-inlined helpers and weak
+references. `HostProcessSignalSubscriptions` is DI-created through
+`AddServiceDefaults`; disposal removes each exact Console/ProcessExit delegate.
+Minimal hosts calling the public startup extensions must include those service
+defaults. All executable roots lexically dispose their application if startup
+fails before `Run`. Callback behavior is unchanged, and detaching an event does
+not wait for a callback already dispatched. These focused checks do not replace
+full-project acceptance or prove the cause of an entire process-memory failure.
+
 ```bash
 # Unit tests (no infrastructure needed)
 dotnet test --project tests/Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
