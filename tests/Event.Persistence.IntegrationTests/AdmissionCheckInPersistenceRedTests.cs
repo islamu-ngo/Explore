@@ -4,6 +4,7 @@
 using System.Data.Common;
 using System.Diagnostics;
 using System.Reflection;
+using Event.Persistence.IntegrationTests;
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Admissions;
 using Explore.Application.Contracts.Infrastructure;
@@ -575,7 +576,7 @@ public sealed class AdmissionCheckInConstraintRuntimeTests
     }
 
     private static ExploreDbContext CreateContext(SqliteConnection connection, Guid tenantId) => new(
-        new DbContextOptionsBuilder<ExploreDbContext>()
+        TestDbContextOptions.Create<ExploreDbContext>()
             .UseSqlite(connection)
             .UseSnakeCaseNamingConvention()
             .Options)
@@ -1450,8 +1451,7 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
 
         ExploreDbContext CreateMeasuredContext(CredentialLookupCommandCounter? counter = null)
         {
-            var options = new DbContextOptionsBuilder<ExploreDbContext>()
-                .EnableServiceProviderCaching(false)
+            var options = TestDbContextOptions.Create<ExploreDbContext>()
                 .UseNpgsql(fixture.ConnectionString)
                 .UseSnakeCaseNamingConvention()
                 .UseMemoryCache(metadataCache);
@@ -1680,7 +1680,7 @@ public sealed class AdmissionCheckInPostgreSqlRedTests(PostgreSqlContainerFixtur
 
     private ExploreDbContext TenantContext(Guid tenantId, params IInterceptor[] interceptors)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention();
         if (interceptors.Length > 0)
@@ -1887,7 +1887,7 @@ internal sealed class Phase21PersistenceSurface
 
     internal static ExploreDbContext CreateModelContext(string provider)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         switch (provider)
         {
             case "PostgreSql":

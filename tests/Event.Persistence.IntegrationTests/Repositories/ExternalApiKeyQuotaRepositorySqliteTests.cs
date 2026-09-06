@@ -171,7 +171,7 @@ public sealed class ExternalApiKeyQuotaRepositorySqliteTests
             Pooling = true,
         }.ToString();
 
-        var context = new ExploreDbContext(new DbContextOptionsBuilder<ExploreDbContext>()
+        var context = new ExploreDbContext(TestDbContextOptions.Create<ExploreDbContext>()
             .UseSqlite(connectionString)
             .UseSnakeCaseNamingConvention()
             .Options);

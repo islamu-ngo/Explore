@@ -44,7 +44,7 @@ public sealed class SqliteApplicationInitialLifecycleTests
     internal static async Task AssertLifecycleAsync(
         PrimaryDatabaseConnectionOptions databaseOptions)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>();
+        var options = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(options, databaseOptions);
         await using var context = new ExploreDbContext(options.Options);
         IMigrator migrator = context.GetService<IMigrator>();
@@ -65,7 +65,7 @@ public sealed class SqliteApplicationInitialLifecycleTests
     internal static async Task AssertDataProtectionLifecycleAsync(
         PrimaryDatabaseConnectionOptions databaseOptions)
     {
-        var options = new DbContextOptionsBuilder<DataProtectionKeyContext>();
+        var options = TestDbContextOptions.Create<DataProtectionKeyContext>();
         PrimaryDatabaseProviderComposition.ConfigureDataProtection(options, databaseOptions);
         await using var context = new DataProtectionKeyContext(options.Options);
         IMigrator migrator = context.GetService<IMigrator>();

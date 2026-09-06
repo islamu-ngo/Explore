@@ -396,8 +396,7 @@ public sealed class EmbeddedPrivacyErasureRecoveryTests
             Provider = PrimaryDatabaseProvider.Sqlite,
             Database = path,
         };
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
-            .EnableServiceProviderCaching(false);
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, options);
         var context = new ExploreDbContext(builder.Options);
         context.EnableTenantFilterBypass("Embedded authority primary-only recovery rehearsal.");
@@ -422,9 +421,9 @@ public sealed class EmbeddedPrivacyErasureRecoveryTests
             skipDbContextRegistration: true,
             skipLookupCacheInitializer: true);
         services.ConfigureDbContext<EmbeddedPrivacyErasureAuthorityDbContext>(
-            options => options.EnableServiceProviderCaching(false),
+            TestDbContextOptions.Apply,
             ServiceLifetime.Singleton);
-        ServiceProvider provider = services.BuildServiceProvider(validateScopes: true);
+        ServiceProvider provider = services.BuildIsolatedServiceProvider(validateScopes: true);
         try
         {
             await provider.GetRequiredService<EmbeddedPrivacyErasureAuthorityStorage>()

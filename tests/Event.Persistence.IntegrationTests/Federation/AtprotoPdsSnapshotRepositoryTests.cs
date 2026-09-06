@@ -237,7 +237,7 @@ public sealed class AtprotoPdsSnapshotRepositoryTests(PostgreSqlContainerFixture
         AtprotoRecord canonical = Record(did, "3mretryrec222", 100, now);
         var failure = new FailAfterSaveChangesInterceptor();
         await using ExploreDbContext fixtureContext = fixture.CreateDbContext(failure);
-        DbContextOptions<ExploreDbContext> options = new DbContextOptionsBuilder<ExploreDbContext>(
+        DbContextOptions<ExploreDbContext> options = TestDbContextOptions.Create<ExploreDbContext>(
                 (DbContextOptions<ExploreDbContext>)fixtureContext.GetService<IDbContextOptions>())
             .ReplaceService<IExecutionStrategyFactory, RetryOnceExecutionStrategyFactory>()
             .Options;

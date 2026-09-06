@@ -29,7 +29,7 @@ public sealed class RegistrationAnswerPersistenceContractTests
     public async Task ModelDeclaresTypedAnswerIdentitySensitiveShapeAndNamedFilters()
     {
         await using ExploreDbContext context = new(
-            new DbContextOptionsBuilder<ExploreDbContext>()
+            TestDbContextOptions.Create<ExploreDbContext>()
                 .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused")
                 .UseSnakeCaseNamingConvention()
                 .Options);
@@ -79,8 +79,8 @@ public sealed class RegistrationAnswerPersistenceContractTests
     }
 
     private static ExploreDbContext CreateInMemoryContext() => new(
-        new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseInMemoryDatabase($"analytics-{Guid.NewGuid():N}")
+        TestDbContextOptions.Create<ExploreDbContext>()
+            .UseTestInMemoryDatabase($"analytics-{Guid.NewGuid():N}")
             .Options);
 
     private static AnalyticsScope SeedAnalyticsScope(ExploreDbContext context)

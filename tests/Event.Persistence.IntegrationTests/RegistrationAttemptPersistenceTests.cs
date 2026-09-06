@@ -416,11 +416,9 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
 
     private static ExploreDbContext CreateModelContext()
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused")
-            .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
-        builder.EnableServiceProviderCaching(false);
+            .UseSnakeCaseNamingConvention();
         return new ExploreDbContext(builder.Options);
     }
 
@@ -428,11 +426,9 @@ public sealed class RegistrationAttemptPersistenceCharacterizationTests
         Guid tenantId,
         SaveChangesInterceptor? interceptor = null)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseInMemoryDatabase($"registration-attempt-{Guid.NewGuid():N}")
-            .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings => warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
-        options.EnableServiceProviderCaching(false);
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
+            .UseTestInMemoryDatabase($"registration-attempt-{Guid.NewGuid():N}")
+            .UseSnakeCaseNamingConvention();
         if (interceptor is not null)
         {
             options.AddInterceptors(interceptor);

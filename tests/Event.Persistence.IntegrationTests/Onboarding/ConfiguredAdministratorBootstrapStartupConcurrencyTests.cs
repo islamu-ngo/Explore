@@ -134,7 +134,7 @@ public sealed class ConfiguredAdministratorBootstrapStartupConcurrencyTests
             Pooling = false,
             DefaultTimeout = 1
         }.ToString();
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseSqlite(connectionString)
             .UseSnakeCaseNamingConvention()
             .AddInterceptors(interceptors)
@@ -260,7 +260,7 @@ public sealed class ConfiguredAdministratorBootstrapMySqlConcurrencyTests(
         PrimaryDatabaseConnectionOptions options,
         params IInterceptor[] interceptors)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, options);
         builder.AddInterceptors(interceptors);
         return new ExploreDbContext(builder.Options);

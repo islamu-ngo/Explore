@@ -132,8 +132,7 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         IReadOnlyList<IInterceptor>? interceptors = null)
     {
         // Provider/schema and interceptor variants belong to this fixture, not EF's process-wide cache.
-        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>()
-            .EnableServiceProviderCaching(false)
+        var optionsBuilder = TestDbContextOptions.Create<ExploreDbContext>()
             .UseMemoryCache(_metadataCache);
         PrimaryDatabaseConnectionResult database = PrimaryDatabaseProviderComposition.ConfigureApplication(
             optionsBuilder,

@@ -731,7 +731,7 @@ public sealed class LocalAddressSuggestionQueryTests(PostgreSqlContainerFixture 
 
     private ExploreDbContext CreatePostgreSqlContext(DbCommandInterceptor interceptor)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
             .AddInterceptors(interceptor)
@@ -741,7 +741,7 @@ public sealed class LocalAddressSuggestionQueryTests(PostgreSqlContainerFixture 
 
     private static ExploreDbContext CreateSqliteContext(string path, DbCommandInterceptor? interceptor = null)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = TestDbContextOptions.Create<ExploreDbContext>()
             .UseSqlite(new SqliteConnectionStringBuilder
             {
                 DataSource = path,

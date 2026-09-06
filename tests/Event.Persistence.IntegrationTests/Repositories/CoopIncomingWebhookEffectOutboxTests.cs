@@ -490,7 +490,7 @@ public sealed class CoopIncomingWebhookEffectOutboxTests(PostgreSqlContainerFixt
         var connectionString = await CreateDatabaseAsync(databaseName);
         try
         {
-            var options = new DbContextOptionsBuilder<ExploreDbContext>()
+            var options = TestDbContextOptions.Create<ExploreDbContext>()
                 .UseNpgsql(connectionString)
                 .UseSnakeCaseNamingConvention()
                 .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))

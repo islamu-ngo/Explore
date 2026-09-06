@@ -76,7 +76,7 @@ public sealed class SemanticValueNonTransactionalMigrationTests(
     private static ExploreDbContext CreateContext(
         PrimaryDatabaseConnectionOptions options)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, options);
         return new ExploreDbContext(builder.Options);
     }

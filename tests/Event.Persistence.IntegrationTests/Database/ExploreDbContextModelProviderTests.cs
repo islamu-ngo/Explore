@@ -737,7 +737,7 @@ public sealed class ExploreDbContextModelProviderTests
         var databasePath = Path.Combine(Path.GetTempPath(), $"islamu-event-model-{Guid.NewGuid():N}.db");
         try
         {
-            var builder = new DbContextOptionsBuilder<ExploreDbContext>()
+            var builder = TestDbContextOptions.Create<ExploreDbContext>()
                 .UseSqlite($"Data Source={databasePath}")
                 .UseSnakeCaseNamingConvention();
             await using var context = new ExploreDbContext(builder.Options);
@@ -754,7 +754,7 @@ public sealed class ExploreDbContextModelProviderTests
 
     internal static ExploreDbContext CreateContext(string provider, string? modelSchema = null)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         switch (provider)
         {
             case "PostgreSql":
@@ -798,7 +798,6 @@ public sealed class ExploreDbContextModelProviderTests
                 new RelationalNamespaceOptionsExtension(modelSchema, modelSchema));
         }
         builder.UseSnakeCaseNamingConvention();
-        builder.EnableServiceProviderCaching(false);
         return new ExploreDbContext(builder.Options);
     }
 

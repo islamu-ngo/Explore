@@ -742,12 +742,11 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(value => value.LeaseExpiresAt, now.AddSeconds(-1)));
         });
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
             .ConfigureWarnings(value => value.Ignore(RelationalEventId.PendingModelChangesWarning))
             .AddInterceptors(interceptor)
-            .EnableServiceProviderCaching(false)
             .Options;
         await using var context = new ExploreDbContext(options);
         context.EnableTenantFilterBypass("ATProto snapshot settlement fence race test.");
@@ -803,12 +802,11 @@ public sealed class AtprotoFederationPersistenceTests(PostgreSqlContainerFixture
                 TimeSpan.FromMinutes(5));
             await Assert.That(reclaimed).HasSingleItem();
         });
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
             .UseSnakeCaseNamingConvention()
             .ConfigureWarnings(value => value.Ignore(RelationalEventId.PendingModelChangesWarning))
             .AddInterceptors(interceptor)
-            .EnableServiceProviderCaching(false)
             .Options;
         await using var staleContext = new ExploreDbContext(options);
         staleContext.EnableTenantFilterBypass("ATProto fenced settlement race test.");

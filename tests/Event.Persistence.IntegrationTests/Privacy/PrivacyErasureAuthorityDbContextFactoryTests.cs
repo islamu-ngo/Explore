@@ -17,6 +17,7 @@ namespace Event.Persistence.IntegrationTests.Privacy;
 public sealed class PrivacyErasureAuthorityDbContextFactoryTests
 {
     [Test]
+    [TUnit.Core.Executors.TestExecutor<FreshEfProcessExecutor>]
     public async Task CreateDbContext_UsesStructuredMigratorTargetWithoutOpeningIt()
     {
         IConfiguration configuration = StructuredMigratorConfiguration();
@@ -33,6 +34,7 @@ public sealed class PrivacyErasureAuthorityDbContextFactoryTests
     }
 
     [Test]
+    [TUnit.Core.Executors.TestExecutor<FreshEfProcessExecutor>]
     public async Task CreateDbContext_UsesDistinctAuthorityMigrationHistoryTable()
     {
         await using PrivacyErasureAuthorityDbContext context =

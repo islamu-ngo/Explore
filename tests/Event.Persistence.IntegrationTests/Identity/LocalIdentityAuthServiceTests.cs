@@ -182,8 +182,7 @@ public sealed class LocalIdentityAuthServiceTests
                 services.AddLogging();
                 services.AddDbContext<ExploreDbContext>(options =>
                     options.UseSqlite(fixture._connection)
-                        .UseSnakeCaseNamingConvention()
-                        .EnableServiceProviderCaching(false));
+                        .UseSnakeCaseNamingConvention());
                 services.AddIdentityCore<LocalIdentityUser>(options =>
                     {
                         options.User.RequireUniqueEmail = true;
@@ -193,7 +192,7 @@ public sealed class LocalIdentityAuthServiceTests
                     })
                     .AddRoles<LocalIdentityRole>()
                     .AddEntityFrameworkStores<ExploreDbContext>();
-                fixture._provider = services.BuildServiceProvider(validateScopes: true);
+                fixture._provider = services.BuildIsolatedServiceProvider(validateScopes: true);
                 fixture._scope = fixture._provider.CreateAsyncScope();
                 IServiceProvider scopedServices = fixture._scope.Value.ServiceProvider;
                 var context = scopedServices.GetRequiredService<ExploreDbContext>();

@@ -39,12 +39,9 @@ public sealed class PostgresModelConstraintApplierTests
             Password = container.Password,
             TlsMode = PrimaryDatabaseTlsMode.Disabled,
         };
-        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>();
-        optionsBuilder.EnableServiceProviderCaching(false);
+        var optionsBuilder = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseConnectionResult configured =
             PrimaryDatabaseProviderComposition.ConfigureApplication(optionsBuilder, options);
-        optionsBuilder.ConfigureWarnings(warnings =>
-            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         await using var context = new ExploreDbContext(optionsBuilder.Options);
         await context.Database.MigrateAsync();
 

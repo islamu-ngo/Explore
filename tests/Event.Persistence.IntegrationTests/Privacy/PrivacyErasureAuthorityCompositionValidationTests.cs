@@ -48,7 +48,7 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests(
             configuration,
             skipLookupCacheInitializer: true);
 
-        await using ServiceProvider provider = services.BuildServiceProvider(
+        await using ServiceProvider provider = services.BuildIsolatedServiceProvider(
             new ServiceProviderOptions { ValidateScopes = true });
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
         IPrivacyErasureAuthority authority =
@@ -85,8 +85,8 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests(
             skipLookupCacheInitializer: true);
 
         services.ConfigureDbContext<CoLocatedPrivacyErasureAuthorityDbContext>(
-            options => options.EnableServiceProviderCaching(false));
-        await using ServiceProvider provider = services.BuildServiceProvider(
+            TestDbContextOptions.Apply);
+        await using ServiceProvider provider = services.BuildIsolatedServiceProvider(
             new ServiceProviderOptions { ValidateScopes = true });
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
         await using CoLocatedPrivacyErasureAuthorityDbContext context = scope.ServiceProvider
@@ -246,8 +246,7 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests(
         PrimaryDatabaseRole role,
         string schema)
     {
-        var options = new DbContextOptionsBuilder<CoLocatedPrivacyErasureAuthorityDbContext>()
-            .EnableServiceProviderCaching(false);
+        var options = TestDbContextOptions.Create<CoLocatedPrivacyErasureAuthorityDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureCoLocatedPrivacyErasureAuthority(
             options,
             CreatePostgresOptions(fixture.ConnectionString, role, schema));
@@ -276,11 +275,11 @@ public sealed class PrivacyErasureAuthorityCompositionValidationTests(
             skipLookupCacheInitializer: true);
 
         services.ConfigureDbContext<EmbeddedPrivacyErasureAuthorityDbContext>(
-            options => options.EnableServiceProviderCaching(false),
+            TestDbContextOptions.Apply,
             ServiceLifetime.Singleton);
         try
         {
-            await using ServiceProvider provider = services.BuildServiceProvider(
+            await using ServiceProvider provider = services.BuildIsolatedServiceProvider(
                 new ServiceProviderOptions { ValidateScopes = true });
             await using AsyncServiceScope scope = provider.CreateAsyncScope();
             IPrivacyErasureAuthority authority =

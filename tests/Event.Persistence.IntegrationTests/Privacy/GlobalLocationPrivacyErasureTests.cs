@@ -615,7 +615,7 @@ public sealed class GlobalLocationPrivacyErasureTests(ExternalDatabasePrivacyEra
     {
         var services = new ServiceCollection();
         services.AddHybridCache();
-        ServiceProvider cacheProvider = services.BuildServiceProvider();
+        ServiceProvider cacheProvider = services.BuildIsolatedServiceProvider();
         var userRepository = new UserRepository(context);
         var userPiiRepository = new GenericRepository<UserPii, Guid>(context);
         var tokenRepository = new UserAuthenticationTokenRepository(context);
@@ -1746,7 +1746,7 @@ public sealed class ExternalDatabasePrivacyErasurePostgreSqlFixture : IAsyncInit
 
     public PrivacyErasureAuthorityDbContext CreateAuthorityDbContext()
     {
-        var options = new DbContextOptionsBuilder<PrivacyErasureAuthorityDbContext>()
+        var options = TestDbContextOptions.Create<PrivacyErasureAuthorityDbContext>()
             .UseNpgsql(_authorityRuntimeConnectionString)
             .UseSnakeCaseNamingConvention()
             .Options;
@@ -1755,7 +1755,7 @@ public sealed class ExternalDatabasePrivacyErasurePostgreSqlFixture : IAsyncInit
 
     public PrivacyErasureAuthorityDbContext CreateAuthorityAdminDbContext()
     {
-        var options = new DbContextOptionsBuilder<PrivacyErasureAuthorityDbContext>()
+        var options = TestDbContextOptions.Create<PrivacyErasureAuthorityDbContext>()
             .UseNpgsql(_authorityContainer.GetConnectionString())
             .UseSnakeCaseNamingConvention()
             .Options;
@@ -1854,7 +1854,7 @@ public sealed class ExternalDatabasePrivacyErasurePostgreSqlFixture : IAsyncInit
         {
             Database = database,
         }.ConnectionString;
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(connectionString, npgsql =>
             {
                 if (enableRetryOnFailure)

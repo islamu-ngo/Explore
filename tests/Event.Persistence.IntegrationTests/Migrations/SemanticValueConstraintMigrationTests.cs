@@ -801,7 +801,7 @@ public sealed class SemanticValueConstraintMigrationTests(
     private ExploreDbContext CreatePostgreSqlContext(Action<string>? captureDiagnostics = null)
     {
         var connection = new NpgsqlConnectionStringBuilder(fixture.ConnectionString);
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(
             builder,
             new PrimaryDatabaseConnectionOptions
@@ -826,7 +826,7 @@ public sealed class SemanticValueConstraintMigrationTests(
 
     private static ExploreDbContext CreateCatalogContext(PrimaryDatabaseProvider provider)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, CreateCatalogOptions(provider));
         return new ExploreDbContext(builder.Options);
     }

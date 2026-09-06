@@ -560,7 +560,7 @@ public sealed class WebPushFoundationPersistenceTests(PostgreSqlContainerFixture
 
     private static ExploreDbContext CreateDbContext(string connectionString, SaveChangesInterceptor interceptor)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(connectionString)
             .UseSnakeCaseNamingConvention()
             .AddInterceptors(interceptor)

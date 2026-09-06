@@ -31,7 +31,7 @@ public sealed class RegistrationConsentRecordPersistenceTests
             .WithPassword("postgres")
             .Build();
         await database.StartAsync();
-        DbContextOptions<ExploreDbContext> options = new DbContextOptionsBuilder<ExploreDbContext>()
+        DbContextOptions<ExploreDbContext> options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .UseSnakeCaseNamingConvention()
             .Options;

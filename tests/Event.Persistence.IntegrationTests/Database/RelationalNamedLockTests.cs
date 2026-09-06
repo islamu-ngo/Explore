@@ -99,7 +99,7 @@ public sealed class RelationalNamedLockTests
     public async Task TransactionLock_RequiresActiveTransactionForEveryRelationalProvider(
         PrimaryDatabaseProvider provider)
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>();
+        var options = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(options, CreateOptions(provider));
         await using var context = new ExploreDbContext(options.Options);
 
@@ -322,14 +322,11 @@ public sealed class RelationalNamedLockTests
 
     private static ExploreDbContext CreateSqliteContext()
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
-        builder.EnableServiceProviderCaching(false);
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         builder.UseSqlite("Data Source=:memory:");
         builder.AddInterceptors(
             SqliteNamedLockTransactionInterceptor.Instance,
             SqliteProjectionLockTransactionInterceptor.Instance);
-        builder.ConfigureWarnings(warnings =>
-            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         return new ExploreDbContext(builder.Options);
     }
 

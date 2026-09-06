@@ -395,34 +395,25 @@ public sealed class GeneratedInitMigrationBehaviorTests(
 
     private ExploreDbContext CreateExploreContext()
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>()
+        var builder = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql(fixture.ConnectionString)
-            .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings =>
-                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
-        builder.EnableServiceProviderCaching(false);
+            .UseSnakeCaseNamingConvention();
         return new ExploreDbContext(builder.Options);
     }
 
     private DataProtectionKeyContext CreateDataProtectionContext()
     {
-        var builder = new DbContextOptionsBuilder<DataProtectionKeyContext>()
+        var builder = TestDbContextOptions.Create<DataProtectionKeyContext>()
             .UseNpgsql(fixture.ConnectionString)
-            .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings =>
-                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
-        builder.EnableServiceProviderCaching(false);
+            .UseSnakeCaseNamingConvention();
         return new DataProtectionKeyContext(builder.Options);
     }
 
     private PrivacyErasureAuthorityDbContext CreateAuthorityContext()
     {
-        var builder = new DbContextOptionsBuilder<PrivacyErasureAuthorityDbContext>()
+        var builder = TestDbContextOptions.Create<PrivacyErasureAuthorityDbContext>()
             .UseNpgsql(fixture.ConnectionString)
-            .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(warnings =>
-                warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
-        builder.EnableServiceProviderCaching(false);
+            .UseSnakeCaseNamingConvention();
         return new PrivacyErasureAuthorityDbContext(builder.Options);
     }
 

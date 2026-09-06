@@ -583,7 +583,7 @@ public sealed class ContainerizedPrimaryDatabaseProviderBehaviorContractTests(
         PrimaryDatabaseConnectionOptions databaseOptions)
     {
         var applicationOptions =
-            new DbContextOptionsBuilder<ExploreDbContext>();
+            TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(
             applicationOptions,
             databaseOptions);
@@ -594,7 +594,7 @@ public sealed class ContainerizedPrimaryDatabaseProviderBehaviorContractTests(
         }
 
         var dataProtectionOptions =
-            new DbContextOptionsBuilder<DataProtectionKeyContext>();
+            TestDbContextOptions.Create<DataProtectionKeyContext>();
         PrimaryDatabaseProviderComposition.ConfigureDataProtection(
             dataProtectionOptions,
             databaseOptions);

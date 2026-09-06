@@ -115,7 +115,7 @@ public sealed class AtprotoBootstrapReplayRepositorySqliteTests
             DefaultTimeout = 30,
             Pooling = false,
         }.ToString();
-        return new ExploreDbContext(new DbContextOptionsBuilder<ExploreDbContext>()
+        return new ExploreDbContext(TestDbContextOptions.Create<ExploreDbContext>()
             .UseSqlite(connectionString)
             .UseSnakeCaseNamingConvention()
             .Options);

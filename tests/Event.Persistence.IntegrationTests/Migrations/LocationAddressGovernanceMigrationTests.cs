@@ -511,11 +511,8 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
         PrimaryDatabaseConnectionOptions database,
         IModel? model = null)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
-        builder.EnableServiceProviderCaching(false);
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         PrimaryDatabaseProviderComposition.ConfigureApplication(builder, database);
-        builder.ConfigureWarnings(warnings =>
-            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         if (model is not null)
         {
             builder.UseModel(model);
@@ -525,8 +522,7 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
 
     private static ExploreDbContext CreateModelContext(string provider)
     {
-        var builder = new DbContextOptionsBuilder<ExploreDbContext>();
-        builder.EnableServiceProviderCaching(false);
+        var builder = TestDbContextOptions.Create<ExploreDbContext>();
         switch (provider)
         {
             case "PostgreSql":
@@ -548,8 +544,6 @@ public sealed class LocationAddressGovernanceMigrationTests(PostgreSqlContainerF
                 throw new ArgumentOutOfRangeException(nameof(provider), provider, null);
         }
         builder.UseSnakeCaseNamingConvention();
-        builder.ConfigureWarnings(warnings =>
-            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning));
         return new ExploreDbContext(builder.Options);
     }
 

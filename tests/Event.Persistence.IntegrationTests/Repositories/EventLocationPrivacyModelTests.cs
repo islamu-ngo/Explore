@@ -77,7 +77,7 @@ public sealed class EventLocationPrivacyModelTests
 
     private static ExploreDbContext CreateContext()
     {
-        var options = new DbContextOptionsBuilder<ExploreDbContext>()
+        var options = TestDbContextOptions.Create<ExploreDbContext>()
             .UseNpgsql("Host=localhost;Database=event_location_privacy_model;Username=unused;Password=unused")
             .UseSnakeCaseNamingConvention()
             .Options;
