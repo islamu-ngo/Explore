@@ -431,12 +431,55 @@ flowchart TD
     VerificationPhase --> CommitPhase
 ```
 
+### The 3-Ring Progressive Verification Model
+
+To eliminate the severe 50% test diagnosis and 15% container troubleshooting bottleneck, the repository strictly stratifies test execution into three progressive rings:
+
+```mermaid
+flowchart TD
+    subgraph Ring1["Ring 1: Inner Loop (Subtask Level)"]
+        R1Scope["Scope: Target Test Class via --treenode-filter\nLatency Budget: < 2 seconds\nInfrastructure: 0 Docker containers, 0 network I/O\nSuites: Event.Domain.UnitTests, Event.Application.UnitTests"]
+    end
+
+    subgraph Ring2["Ring 2: Phase Exit Gate (Phase Level)"]
+        R2Scope["Scope: Single Modified Project + Release Build\nLatency Budget: < 15 seconds\nInfrastructure: 1 Canonical Provider (e.g. SQLite / single Postgres)\nSuites: Target project only (dotnet build -c Release -v q)"]
+    end
+
+    subgraph Ring3["Ring 3: Plan Exit Gate (Workstream Level)"]
+        R3Scope["Scope: Full Multi-Provider Matrix & System Rules\nLatency Budget: Workstream Exit Only\nInfrastructure: Full 5-Database Matrix + Testcontainers\nSuites: Event.Persistence.IntegrationTests, Event.Architecture.Tests, Migrations"]
+    end
+
+    Ring1 -->|Subtask Green| Ring1
+    Ring1 -->|All Phase Subtasks Green| Ring2
+    Ring2 -->|Phase Committed| NextPhase["Next Phase Subtasks"]
+    NextPhase --> Ring1
+    Ring2 -->|All Plan Phases Complete| Ring3
+    Ring3 --> PRReady(["Ready for PR Submission"])
+```
+
+### The Yak-Shaving Quarantine Protocol
+
+When an agent encounters a broken test outside the phase-owned path, it MUST follow the quarantine protocol rather than attempting to fix the failure:
+
+```mermaid
+flowchart TD
+    TestFail["Test Failure Observed During Run"] --> CheckScope{"Is failing test in\nphase-owned scope?"}
+    CheckScope -->|"Yes"| OwnedTest["Phase-Owned Defect:\nFix immediately in current task"]
+    CheckScope -->|"No"| ReproCheck["Base Branch Reproduction Check:\nRun failing test on untouched develop worktree"]
+    ReproCheck --> Reproduces{"Reproduces on\nclean base?"}
+    Reproduces -->|"Yes (Pre-existing)"| QuarantineAction["Yak-Shaving Quarantine Rule:\n1. Strictly FORBIDDEN from fixing in this task\n2. Record in *-context.md under Pre-Existing Technical Debt\n3. File dev/backlog/<slug>.md\n4. Quarantine failure & proceed with phase deliverable"]
+    Reproduces -->|"No (Regression)"| RegressionAction["True Blast Radius Defect:\nInvestigate task's unintended side effects via graph"]
+```
+
 ### Core Testing Invariants
 
 1. **Pre-Agreed Public Seams**: Tests verify behavior strictly through public interfaces (MediatR requests, HTTP routes, aggregate root methods), never by inspecting private internal state or mocking internal collaborators.
 2. **No Tautological Assertions**: Expected values must originate from an independent known-good literal or specification. Assertions that recompute expected values using the same formula as production code (`Assert.Equal(items.Sum(x => x.Price), result.Total)`) are strictly forbidden.
 3. **No Interface Bypassing**: Tests must verify state transitions through the public interface. A test must not bypass the domain aggregate to assert directly against raw database tables.
 4. **Mock Boundary Rule**: Mock **ONLY** external third-party infrastructure (payment gateways, external email delivery, system clock, random generators). **NEVER mock internal domain entities, aggregate roots, repositories, or MediatR handlers.** Use real domain entities and in-memory or Testcontainers-backed databases.
+5. **The 3-Ring Progressive Verification Hierarchy**: Subtasks run fast in-memory sliced tests (< 2s). Phase exits run single-project Release builds + single canonical provider tests (< 15s). Multi-database provider matrices, migration checks, and architecture rules run strictly at plan exit.
+6. **The Yak-Shaving Quarantine Rule**: Unrelated pre-existing test suite rot or container flakiness is quarantined and logged under `*-context.md` / `dev/backlog/`, never repaired during unrelated feature work.
+7. **Pure Domain Invariants over Persistence Queries**: 90%+ of algorithmic, normalization, validation, and state-machine checks live in `Event.Domain.UnitTests` without Docker dependencies.
 
 ---
 
@@ -559,6 +602,7 @@ git diff --check -- .agents/ docs/ dev/
 > - ❌ **NO Hand-Editing EF Migrations**: Migrations are generated artifacts (`dotnet ef migrations add`). Never manually edit migration files or model snapshots.
 > - ❌ **NO UI Authorization Inspection**: Blazor client affordances must be gated strictly by inspecting HAL `_links` presence, never by local role/claim checking.
 > - ❌ **NO Cryptic Shorthand or Plan-Opening Overhead**: Agents must never prompt the developer with bare phase/task IDs or gates (e.g., *"Proceed with P04/P06 while keeping P03 gates open?"*). All prompts and reports must be self-contained Decision Briefs so the developer never has to open `dev/active/<task>/...` to understand a question or decision.
+> - ❌ **NO Yak-Shaving Unrelated Test Rot**: Never derail feature tasks to fix pre-existing failures in unrelated test suites. Isolate on clean base, log under `*-context.md` / `dev/backlog/`, and quarantine.
 
 ---
 
