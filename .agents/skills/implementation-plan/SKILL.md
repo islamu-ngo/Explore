@@ -35,12 +35,12 @@ priority: high
    - **Yak-Shaving Quarantine Rule**: Forbid planning or executing fixes for unrelated pre-existing test rot or broken fixtures outside the task scope. Unrelated failures are quarantined, logged in `context.md` / `dev/backlog/`, and deferred.
 6. **Greenfield Breaking Change Freedom**: This platform is pre-release (0 users, 0 external adopters). Never plan backward-compatibility shims, deprecated route aliases, or legacy compatibility layers. Break and replace cleanly to achieve optimal architecture.
 7. **Strict Deferrable Open Questions Gate**: Unknowns in `plan.md` Section 2.6 are strictly for genuinely deferrable details that will not alter scope, architectural patterns, or task breakdown. If an unknown would shift the task sequence, resolve it via `grill-me` before finalizing the plan.
-8. **Dev-Doc Triad Single Responsibility**: Maintain strict separation of concerns across artifacts:
-   - `*-plan.md`: Canonical architectural design, current state, design decisions, and phase-level exit criteria (no granular execution tasks, checkboxes, dynamic status, or session handoffs).
-   - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkboxes with atomic verification criteria, dynamic status, phase verification gates, and immediate phase-commit tasks).
-   - `*-context.md`: The sole active working memory (session progress, quick resume, blockers, validation baseline results, and dated session handoffs).
-9. **Semantic Phase Commit Contracts & Atomic Slicing**: Every phase ends with a commit task immediately after verification. If a phase is large (touching dozens or hundreds of files) or spans multiple separable concerns (domain models, persistence, CQRS handlers, API endpoints, UI, docs), planning MUST sequence multiple atomic commit contracts adhering to `conventional-commit` (Rule 1: Smallest Releasable Slice, Rule 13: Oversized Commit Gate); monolithic umbrella commits are forbidden except for provably indivisible mechanical changes (Rule 14). While authoring/updating `tasks.md`, planning loads `conventional-commit` to author the **Semantic Commit Contract** for each phase: exact type, scope, title, description, changelog treatment, and trailers. Planning specifies semantic intent rather than micromanaging speculative individual file paths; the executing agent stages its phase-owned changes within its isolated worktree (`git add -A` or phase scope) and applies the planned contract without needing to reload `conventional-commit`. That packet is self-sufficient: when truthful, implementation executes it directly. Only material trajectory divergence authorizes loading the skill and recording replacement packets.
-10. **Local Working Memory & Native Harness Tooling**: `dev/active/<task>/` is gitignored local working memory to prevent commit log churn, task checkbox noise, and branch merge conflicts. It lives directly in the root repository workspace on `develop` during planning, and is moved into `.worktrees/<task>/dev/active/` during execution. Agents and developers must read, create, and edit these files directly using native harness file tools by deterministic path. Do not use ad-hoc bash script hacks for file manipulation (Critical Rule #9). Phase commits stage and commit product/test code only, never `dev/active/*`.
+8. **Dev-Doc Triad & Lean Working Memory**: Maintain clean separation across artifacts without unnecessary duplication:
+   - `*-plan.md`: Canonical architectural design, current-state evidence, RFC 2119 behavioral scenarios, design decisions, and phase-level boundaries (no granular execution tasks, checkboxes, or ephemeral session churn).
+   - `*-tasks.md`: The sole hot execution ledger (granular Red/Green task breakdown, checkable tasks with atomic verification criteria, phase verification gates, and declarative phase commit contracts).
+   - `*-context.md`: Ephemeral session memory (quick resume, blockers, validation baseline results, and dated session handoffs). In a single uninterrupted session, `context.md` does not need constant micro-churn; focus execution tracking on `tasks.md`.
+9. **Declarative Planned Phase Commit Contract & Atomic Slicing**: Every phase ends with a commit task immediately after verification. If a phase is large (touching dozens or hundreds of files) or spans multiple separable concerns (domain models, persistence, CQRS handlers, API endpoints, UI, docs), planning MUST sequence multiple atomic commit contracts adhering to `conventional-commit` (Rule 1: Smallest Releasable Slice, Rule 13: Oversized Commit Gate); monolithic umbrella commits are forbidden except for provably indivisible mechanical changes (Rule 14). Planning specifies the **declarative contract** (type, scope, title, description, changelog treatment, trailers, commit paths); harnesses execute native git staging and commits without requiring pre-generated literal bash scripts, quote escaping, or post-commit hash recording. Commits stage and commit only phase-owned files related to this implementation plan on the dedicated task branch (`feat/<task-name>`). When truthful, implementation executes the contract without reloading `conventional-commit`.
+10. **Local Working Memory & Native Harness Tooling**: `dev/active/<task>/` is gitignored local working memory, initially in the root during planning and moved into the worktree during execution. Use native file tools at its authoritative location; never duplicate the active ledger or commit `dev/active/*`.
 11. **Knowledge Graduation Gate**: Active implementation plans in `dev/active/` are ephemeral working memory and disappear upon workstream completion. Every plan MUST include a final phase task for **Knowledge Graduation**: promoting deferred scope into actionable standalone items in `dev/backlog/<slug>.md`, durable architectural decisions into `docs/internal/adr/`, and non-obvious lessons into `dev/_journal/domains/`. These persistent artifacts are staged and committed alongside code.
 
 ## Top Anti-Patterns
@@ -53,8 +53,8 @@ priority: high
 7. **Verification Sprawl & Premature Multi-Provider Matrices**, which wastes implementation time planning multi-container sweeps, 5-database matrices, app startup, browser automation, Playwright, Chrome DevTools MCP, Aspire, Docker, or live-service smoke tests during intermediate phases.
 8. Stale checkbox debt, which postpones task updates until a separate refresh command and leaves completed implementation appearing unfinished.
 9. **Dev-Doc Triad Bleed / Duplication**, which pollutes `plan.md` with granular task checklists (`- [ ]`), dynamic execution statuses (`IN PROGRESS`), or session handoffs, duplicating `tasks.md` and `context.md`.
-10. **Final-Only, Reloaded, Reinvented, Oversized Umbrella, Or Mixed-Tree Commits**, which defers work to another session, bundles hundreds of files into one monolithic commit instead of clustering into atomic commits, reloads `conventional-commit` merely to reuse an approved contract, recreates a message already resolved during planning, silently overrides a truthful default, uses blind staging, or absorbs unrelated work.
-11. **Planning-Time Worktree/Branch Creation**: Creating git branches (`plan/*`, `feat/*`) or git worktrees (`.worktrees/*`) during planning. This violates Separation of Concerns, misplaces dev-docs into isolated worktrees away from the main repository `dev/active/`, and conflates planning with execution.
+10. **Monolithic Umbrella Commits or Bash Script Over-Engineering**, which bundles hundreds of files into one giant commit, pre-generates brittle raw bash scripts with escaping errors instead of declarative contracts, or forces post-commit hash recording into ephemeral docs.
+11. **Planning-Time Worktree/Branch Creation**: Planning must not create branches or worktrees; execution owns topology and transfer of the single authoritative task folder.
 
 ## Minimal Examples
 ```text
@@ -78,9 +78,11 @@ revalidate I-VSD mappings -> cross-check
 Ring 1 subtask verification (TUnit sliced in-memory, < 2s):
 dotnet run --project <one-relevant-project>.csproj --no-build -- --treenode-filter "/*/*/*<TargetTestClass>/*"
 
-Ring 2 phase-end verification only (< 15s, single canonical provider):
+Ring 2 phase-end verification & immediate phase close (< 15s, single canonical provider):
 dotnet build --configuration Release --verbosity quiet
 dotnet test --project <one-relevant-project>.csproj --configuration Release --verbosity quiet
+stage phase-owned paths and execute git commit using the planned declarative contract
+verify clean git status and proceed to the next phase
 
 Ring 3 plan exit gate (workstream boundary):
 full multi-provider matrix, migrations, and architecture rules run once before PR creation
@@ -88,11 +90,10 @@ full multi-provider matrix, migrations, and architecture rules run once before P
 
 ```text
 Progress cadence:
-start/resume -> read once
-substantial task done -> check it immediately
-small tasks done -> reconcile no later than phase end
+start/resume -> read tasks/plan once
+subtasks completed -> batch checkbox updates at phase completion or logical milestone
+phase verified -> execute planned commit contract
 strategy changed -> update plan
-decision/blocker/handoff -> update context
 ```
 
 ## OmO Prometheus Integration (Optional)

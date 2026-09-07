@@ -9,6 +9,7 @@ using Explore.Domain.Services.Scheduling;
 using Explore.Domain.ValueObjects;
 using Explore.Persistence;
 using Explore.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -252,18 +253,28 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         context.Events.AddRange(hiddenOnlyEvent, publicSessionEvent);
         await context.SaveChangesAsync();
 
-        context.EventSessions.Add(CreateSession(
+        Guid actorUserId = await context.Actors.Where(actor => actor.Id == actorId)
+            .Select(actor => actor.UserId!.Value).SingleAsync();
+        var hiddenLocation = EventLocation.CreatePhysical(
+            tenantId, hiddenOnlyEvent.Id, location.Id, actorUserId, DateTime.UtcNow);
+        var publicLocation = EventLocation.CreatePhysical(
+            tenantId, publicSessionEvent.Id, location.Id, actorUserId, DateTime.UtcNow);
+        context.Set<EventLocation>().AddRange(hiddenLocation, publicLocation);
+        var hiddenSession = CreateSession(
             tenantId,
             hiddenOnlyEvent.Id,
             location.Id,
             EventSessionStatusEnum.Draft,
-            new DateTimeOffset(2026, 8, 1, 9, 0, 0, TimeSpan.Zero)));
-        context.EventSessions.Add(CreateSession(
+            new DateTimeOffset(2026, 8, 1, 9, 0, 0, TimeSpan.Zero));
+        hiddenSession.AssignEventLocation(hiddenLocation);
+        var publicSession = CreateSession(
             tenantId,
             publicSessionEvent.Id,
             location.Id,
             EventSessionStatusEnum.Published,
-            new DateTimeOffset(2026, 8, 2, 9, 0, 0, TimeSpan.Zero)));
+            new DateTimeOffset(2026, 8, 2, 9, 0, 0, TimeSpan.Zero));
+        publicSession.AssignEventLocation(publicLocation);
+        context.EventSessions.AddRange(hiddenSession, publicSession);
         await context.SaveChangesAsync();
 
         var spec = new EventQuerySpecification()

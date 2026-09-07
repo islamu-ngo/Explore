@@ -127,6 +127,10 @@ public sealed class EventSeriesRepositoryTests
         deletedTicket.IsDeleted = true;
         publishedCatalog.AddTicketType(deletedTicket, capacityPool: null);
         publishedCatalog.AddEntitlement(deletedTicket, TicketTypeEntitlement.CreateForEvent(deletedTicket.Id, tenantId, eventId, 1));
+        publishedCatalog.UpdateCommercialDisclosures(
+            "Tickets sold by the series organizer.",
+            "Refund requests are reviewed by the organizer before the event.",
+            "Contact tickets@example.com for ticket support.");
         publishedCatalog.Publish();
 
         EventTicketCatalogVersion draftCatalog = EventTicketCatalogVersion.Create(tenantId, eventId, "USD", 1);
@@ -161,8 +165,8 @@ public sealed class EventSeriesRepositoryTests
     }
 
     private static EventSeriesTestDbContext CreateInMemoryContext() =>
-        new(new DbContextOptionsBuilder<ExploreDbContext>()
-            .UseInMemoryDatabase($"event-series-pricing-{Guid.CreateVersion7():N}")
+        new(TestDbContextOptions.Create<ExploreDbContext>()
+            .UseTestInMemoryDatabase($"event-series-pricing-{Guid.CreateVersion7():N}")
             .Options);
 
     private sealed record TestTenantContext(Guid TenantId) : ITenantContext;

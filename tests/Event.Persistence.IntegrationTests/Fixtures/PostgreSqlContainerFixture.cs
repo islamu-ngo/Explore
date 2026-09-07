@@ -12,6 +12,7 @@ using Explore.Persistence.Seed;
 using Explore.Secrets.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
 using Respawn;
 using Respawn.Graph;
@@ -30,6 +31,7 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
 {
     private readonly PostgreSqlContainer _container;
     private readonly ConcurrentBag<string> _isolatedSchemas = new();
+    private readonly MemoryCache _metadataCache = new(new MemoryCacheOptions());
     private string? _runtimeConnectionString;
     private Respawner? _respawner;
 
@@ -103,9 +105,18 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         {
             // Container teardown takes precedence
         }
-
-        await _container.StopAsync();
-        await _container.DisposeAsync();
+        finally
+        {
+            try
+            {
+                await _container.StopAsync();
+                await _container.DisposeAsync();
+            }
+            finally
+            {
+                _metadataCache.Dispose();
+            }
+        }
     }
 
     /// <summary>
@@ -224,13 +235,14 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         IReadOnlyList<IInterceptor>? interceptors = null,
         string? schema = null)
     {
-        var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>();
+        // Provider/schema and interceptor variants belong to this fixture, not EF's process-wide cache.
+        var optionsBuilder = TestDbContextOptions.Create<ExploreDbContext>()
+            .UseMemoryCache(_metadataCache);
         PrimaryDatabaseConnectionResult database = PrimaryDatabaseProviderComposition.ConfigureApplication(
             optionsBuilder,
             CreateDatabaseOptions(role, schema));
         optionsBuilder.ConfigureWarnings(warnings =>
         {
-            warnings.Log(CoreEventId.ManyServiceProvidersCreatedWarning);
             warnings.Ignore(RelationalEventId.PendingModelChangesWarning);
         });
         if (interceptors is { Count: > 0 })
